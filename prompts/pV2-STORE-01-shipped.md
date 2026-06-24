@@ -203,6 +203,12 @@ Liam QC: delete must use our standard dialog (Cancel / Delete), not `confirm()`.
 ### v2.34i — fix empty confirm dialog
 Liam QC: the dialog opened empty. Cause: the `<ng-template pTemplate="header/footer">` were wrapped in an outer `@if (svc.options())`, which hid them from PrimeNG Dialog's `ContentChildren(PrimeTemplate)` query → no header/footer rendered. Fix: keep the templates unconditional (matching the working `/style/dialogs` demo) and move the `@if` *inside* each template. Build clean. (Couldn't drive the logged-in flow in preview — login is now real Google OAuth — so re-QC.)
 
+### v2.34k/l — active toggle: confirm dialog + approved-only gate
+Liam QC: clicking the eye must confirm via the standard dialog; activation is blocked for non-approved items.
+- **v2.34k** — swapped the eye glyph to be action-based (active → eye-off "Hide", inactive → eye "Show").
+- **v2.34l** — the eye toggle now opens the standard confirm dialog: **Activate** → "This will make this item available for purchase." (Cancel / Activate); **Deactivate** → "This will make this item unavailable for purchase." (Cancel / Deactivate). Both gradient (non-destructive), eye/eye-off puck.
+  - **Approved-only activation** — `PATCH /:id/active` returns 409 if activating a non-approved item; the card's Activate button is **disabled** for draft/pending/rejected items (tooltip: "Only approved items can be activated"). Deactivating is always allowed.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

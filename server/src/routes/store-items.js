@@ -80,7 +80,13 @@ router.patch('/:id/active', async (req, res, next) => {
     if (typeof req.body?.is_active !== 'boolean') {
       return res.status(400).json({ error: 'is_active (boolean) is required' });
     }
-    if (!(await ownItemOr(res, req.params.id, req.user.org_id))) return;
+    const existing = await ownItemOr(res, req.params.id, req.user.org_id);
+    if (!existing) return;
+    // Only an APPROVED item may go live — a draft/pending/rejected item can't be
+    // made available for purchase. (Deactivating is always allowed.)
+    if (req.body.is_active === true && existing.approval_status !== 'approved') {
+      return res.status(409).json({ error: 'Only approved items can be activated' });
+    }
     const item = await ItemService.update(req.params.id, { is_active: req.body.is_active });
     res.json(item);
   } catch (err) { next(err); }

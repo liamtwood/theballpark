@@ -117,9 +117,9 @@ import { ConfirmService } from '../confirm/confirm.service';
           <button
             type="button"
             class="bp-item-card__act"
-            [disabled]="busy()"
-            [title]="item().isActive ? 'Hide (mark inactive)' : 'Show (mark active)'"
-            [attr.aria-label]="item().isActive ? 'Mark inactive' : 'Mark active'"
+            [disabled]="busy() || (!item().isActive && item().approvalStatus !== 'approved')"
+            [title]="item().isActive ? 'Deactivate (make unavailable)' : (item().approvalStatus === 'approved' ? 'Activate (make available)' : 'Only approved items can be activated')"
+            [attr.aria-label]="item().isActive ? 'Deactivate' : 'Activate'"
             (click)="onToggleActive($event)"
           >
             <lucide-icon [name]="item().isActive ? 'eye-off' : 'eye'" [size]="15" />
@@ -219,9 +219,34 @@ export class ItemCardComponent {
       .catch(() => { /* host keeps the row; a toast lands with the dialog work */ })
       .finally(() => this.busy.set(false));
   }
-  protected onToggleActive(e: Event): void {
+  protected async onToggleActive(e: Event): Promise<void> {
     e.stopPropagation();
-    this.run(this.store.setActive(this.item().id, !this.item().isActive));
+    if (this.busy()) return;
+    const item = this.item();
+    const activating = !item.isActive;
+    // Only approved items can go live (the button is also disabled otherwise).
+    if (activating && item.approvalStatus !== 'approved') return;
+    const ok = await this.confirm.ask(
+      activating
+        ? {
+            title: 'Activate item?',
+            message: 'This will make this item available for purchase.',
+            confirmLabel: 'Activate',
+            cancelLabel: 'Cancel',
+            danger: false,
+            icon: 'eye',
+          }
+        : {
+            title: 'Deactivate item?',
+            message: 'This will make this item unavailable for purchase.',
+            confirmLabel: 'Deactivate',
+            cancelLabel: 'Cancel',
+            danger: false,
+            icon: 'eye-off',
+          }
+    );
+    if (!ok) return;
+    this.run(this.store.setActive(item.id, activating));
   }
   protected async onTrash(e: Event): Promise<void> {
     e.stopPropagation();
