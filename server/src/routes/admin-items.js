@@ -6,9 +6,9 @@
 //   GET /api/admin/items/:id            → any item (full row), for review
 //   PUT /api/admin/items/:id/approval   → { decision: 'approve' | 'reject' }
 //
-// approve → approved + is_active (publishes to the marketplace);
-// reject  → rejected + inactive (stays hidden). The supplier resubmits from
-// their own editor (draft → pending) to re-enter the queue.
+// approve → approved + INACTIVE (NOT auto-published — the supplier activates it
+// themselves to make it available for purchase); reject → rejected + inactive.
+// The supplier resubmits from their own editor (draft → pending) to re-queue.
 
 const router = require('express').Router();
 const { z } = require('zod');
@@ -33,9 +33,12 @@ router.put('/items/:id/approval', async (req, res, next) => {
     const existing = await ItemService.getById(req.params.id);
     if (!existing || existing.deleted_at) return res.status(404).json({ error: 'Not found' });
     const approve = parsed.data.decision === 'approve';
+    // Approval does NOT publish — it sets the status to approved and leaves the
+    // item INACTIVE. The supplier then chooses to activate it (make it available
+    // for purchase) via the store. Reject also stays inactive.
     const item = await ItemService.update(req.params.id, {
       approval_status: approve ? 'approved' : 'rejected',
-      is_active: approve,   // approve publishes; reject keeps it hidden
+      is_active: false,
     });
     res.json(item);
   } catch (err) { next(err); }

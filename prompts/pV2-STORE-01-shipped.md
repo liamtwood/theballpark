@@ -209,6 +209,9 @@ Liam QC: clicking the eye must confirm via the standard dialog; activation is bl
 - **v2.34l** — the eye toggle now opens the standard confirm dialog: **Activate** → "This will make this item available for purchase." (Cancel / Activate); **Deactivate** → "This will make this item unavailable for purchase." (Cancel / Deactivate). Both gradient (non-destructive), eye/eye-off puck.
   - **Approved-only activation** — `PATCH /:id/active` returns 409 if activating a non-approved item; the card's Activate button is **disabled** for draft/pending/rejected items (tooltip: "Only approved items can be activated"). Deactivating is always allowed.
 
+### fix — approval no longer auto-activates
+Liam QC: approved a pending item; it came back **active** (should be approved + **inactive**, with the supplier choosing to activate). Cause: the admin approve endpoint set `is_active: approve` (true on approve). Fixed: `PUT /api/admin/items/:id/approval` now sets `is_active: false` on both approve and reject — approval sets status only; the supplier activates via the store (eye → "available for purchase"). 48/48 server tests.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 
