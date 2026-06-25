@@ -14,6 +14,8 @@
 
 const pool = require('../db/pool');
 const TaxonomyService = require('./taxonomy.service');
+const messageService = require('./message.service');
+const { getByMessage, aggregateStatus } = require('./message-item.service');
 
 function httpErr(message, status) {
   const e = new Error(message);
@@ -167,4 +169,83 @@ async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
   };
 }
 
-module.exports = { listSupplierProjects, sendOutreach };
+/** Map a message row to a conversation bubble from the SUPPLIER's point of
+ *  view: the agency's outbound brief/replies are incoming (left, white);
+ *  the supplier's own inbound replies are outgoing (right, gradient). */
+function toBubble(m, agencyName) {
+  const mine = m.direction === 'inbound';
+  return {
+    id: m.id,
+    mine,
+    author: mine ? 'You' : agencyName || 'Agency',
+    body: m.body || '',
+    createdAt: m.created_at,
+  };
+}
+
+function toThreadItem(it) {
+  return {
+    id: it.id,
+    name: it.name,
+    description: it.description || null,
+    status: it.status,
+    priceRef: it.price_ref == null ? null : Number(it.price_ref),
+    priceCurrent: it.price_current == null ? null : Number(it.price_current),
+    imageUrl: it.item_image_url ?? null,
+  };
+}
+
+/** pV2-INBOX-01 — the caller-supplier's conversation threads for one
+ *  project. A thread is keyed (project, supplier, category) — for a fixed
+ *  supplier that's just the category. Each carries the counterparty agency,
+ *  the brief's items (per-item status/price), the aggregate status + total,
+ *  and the message bubbles. org from JWT only (RP-INB1): we read the
+ *  supplier's own feed and never trust a client id. */
+async function getSupplierThreads(supplierOrgId, projectId) {
+  const all = await messageService.getAllForSupplier(supplierOrgId);
+  const scoped = all.filter((m) => m.project_id === projectId);
+
+  // Group by category (rows arrive created_at ASC, so the first seen per
+  // category is the lead brief — its message_items are the thread's items).
+  const groups = new Map();
+  for (const m of scoped) {
+    const key = m.category_id ?? '';
+    let g = groups.get(key);
+    if (!g) {
+      g = { categoryId: m.category_id, lead: m, messages: [] };
+      groups.set(key, g);
+    }
+    g.messages.push(m);
+  }
+
+  const threads = [];
+  for (const g of groups.values()) {
+    const items = await getByMessage(g.lead.id);
+    const agencyName = g.lead.agency_name;
+    threads.push({
+      id: g.lead.id,
+      categoryId: g.categoryId,
+      categoryName: g.lead.category_name || null,
+      agencyOrgId: g.lead.agency_org_id ?? null,
+      agencyName: agencyName ?? null,
+      agencyLogoUrl: g.lead.agency_logo_url ?? null,
+      projectId: g.lead.project_id,
+      projectName: g.lead.project_name ?? null,
+      refCode: g.lead.ref_code ?? null,
+      status: aggregateStatus(items, 'supplier'),
+      total: items.reduce((s, it) => s + Number(it.price_current ?? it.price_ref ?? 0), 0),
+      items: items.map(toThreadItem),
+      messages: g.messages.map((m) => toBubble(m, agencyName)),
+    });
+  }
+
+  // Newest-active thread first.
+  threads.sort((a, b) => {
+    const am = a.messages[a.messages.length - 1]?.createdAt ?? 0;
+    const bm = b.messages[b.messages.length - 1]?.createdAt ?? 0;
+    return new Date(bm) - new Date(am);
+  });
+  return threads;
+}
+
+module.exports = { listSupplierProjects, sendOutreach, getSupplierThreads };

@@ -34,6 +34,20 @@ const SendSchema = z.object({
     .min(1),
 });
 
+// GET /api/inbox/projects/:projectId/threads — the caller-supplier's
+// conversation threads for one project (per category). org from JWT.
+const UUID = z.string().uuid();
+router.get('/projects/:projectId/threads', async (req, res, next) => {
+  try {
+    if (!UUID.safeParse(req.params.projectId).success) {
+      return res.status(400).json({ error: 'Invalid project id' });
+    }
+    res.json(await inbox.getSupplierThreads(req.user.org_id, req.params.projectId));
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/send', async (req, res, next) => {
   try {
     const parsed = SendSchema.safeParse(req.body);

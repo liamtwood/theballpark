@@ -21,6 +21,46 @@ export class InboxService {
   send(projectId: string, roster: OutreachRosterEntry[]): Observable<OutreachSendResult> {
     return this.api.post<OutreachSendResult>('/api/inbox/send', { projectId, roster });
   }
+
+  /** The caller-supplier's conversation threads for one project (per
+   *  category) — items + bubbles + counterparty agency. */
+  supplierThreads(projectId: string): Observable<InboxThread[]> {
+    return this.api.get<InboxThread[]>(`/api/inbox/projects/${projectId}/threads`);
+  }
+}
+
+export interface InboxThreadItem {
+  id: string;
+  name: string;
+  description: string | null;
+  status: string;
+  priceRef: number | null;
+  priceCurrent: number | null;
+  imageUrl: string | null;
+}
+
+export interface InboxBubble {
+  id: string;
+  mine: boolean;
+  author: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface InboxThread {
+  id: string;
+  categoryId: string | null;
+  categoryName: string | null;
+  agencyOrgId: string | null;
+  agencyName: string | null;
+  agencyLogoUrl: string | null;
+  projectId: string;
+  projectName: string | null;
+  refCode: string | null;
+  status: string;
+  total: number;
+  items: InboxThreadItem[];
+  messages: InboxBubble[];
 }
 
 export interface OutreachRosterEntry {

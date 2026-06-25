@@ -74,6 +74,52 @@ title changes). Quoting is the meaningful bucket for now.
 **Suggested fix:** add supplier-side status bucketing in a later slice.
 **Severity:** LOW
 
+---
+
+## Slice A — supplier conversation surface (read-only)
+
+**Shipped:** 2026-06-25, chip `[Dev v2] v2.35g`
+
+### What landed
+- **`GET /api/inbox/projects/:projectId/threads`** — the caller-supplier's
+  conversation threads for a project (one per category), each with the
+  counterparty agency, the brief's items (per-item status/price), the
+  aggregate status + total, and the message bubbles (mapped to the
+  supplier's POV — agency = incoming, theirs = outgoing). org from JWT
+  (RP-INB1); reuses `getAllForSupplier` + `getByMessage` + `aggregateStatus`.
+- **`/inbox/:projectId`** is now the real **2-col surface** (was the
+  ComingSoon placeholder): left rail = their items (category-grouped only
+  when >1 — the single-category collapse rule), right pane = the
+  conversation with the agency (counterparty · project · status · total
+  header, gradient/white bubbles via `--bp-gradient`, a disabled compose
+  bar). Item status pills via the `message_item_status` codelist.
+- Verified the reader against live data: a supplier's Catering thread →
+  Woodland Agency, 5 items (accepted/adjusted/declined), 4 bubbles.
+
+### Files touched
+| File | Notes |
+|---|---|
+| server/src/services/inbox.service.js | `getSupplierThreads` + bubble/item mappers |
+| server/src/routes/inbox.js | `GET /projects/:projectId/threads` |
+| client-v2/.../core/inbox/inbox.service.ts | `supplierThreads` + thread types |
+| client-v2/.../pages/inbox/inbox-project.component.ts | NEW — the 2-col surface |
+| client-v2/src/app/app.routes.ts | wire `/inbox/:projectId` → real component |
+| client-v2/src/app/app.config.ts | register `Paperclip` icon |
+| client-v2/src/environments/environment.ts | chip → v2.35g |
+
+### Concerns not in spec
+#### Status-pill meta still un-enriched (grey item pills)
+**What:** `message_item_status` codelist values carry label + semantic but no
+`color`/`icon`, so item pills render neutral grey. Functional, not pretty —
+the meta enrichment (semantic → token colour + lucide icon) is a planned
+follow-up. **Severity:** LOW
+
+#### Agent hitting /inbox/:projectId sees an empty thread list
+**What:** the endpoint is supplier-scoped (`getAllForSupplier`). An agency
+caller gets no threads (their org isn't a `supplier_org_id`). The agent
+inbox surface (supplier-cards tree) is a separate, later piece.
+**Severity:** LOW
+
 ## QC notes
 (Liam)
 

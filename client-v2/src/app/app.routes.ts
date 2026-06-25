@@ -128,12 +128,11 @@ export const routes: Routes = [
         data: { feature: 'Inbox' },
       },
       {
-        // pV2-INBOX-01 — a project's Inbox. Supplier quoting cards drill
-        // here; the real 2-col surface lands in the next slice (placeholder
-        // until then so the entry-point click resolves).
+        // pV2-INBOX-01 — a project's Inbox: the supplier's per-project
+        // conversation surface (their items + the agency thread).
         path: 'inbox/:projectId',
-        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { feature: 'Inbox' },
+        loadComponent: () =>
+          import('./pages/inbox/inbox-project.component').then((m) => m.InboxProjectComponent),
       },
       {
         // pV2-06d — supplier storefront + store.
