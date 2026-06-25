@@ -165,9 +165,9 @@ export class SupplierDetailComponent {
    *  global marketplace — rather than always /marketplace (INBOX-02 QC). The
    *  owner (no storefront tab) goes straight back Home. */
   protected readonly heroBack = computed(() => {
-    if (this.isOwner()) return { label: 'Home', href: '/home' };
+    if (this.isOwner()) return { label: 'Back', href: '/home', history: true };
     return this.tab() === 'store'
-      ? { label: 'Storefront', href: `/suppliers/${this.store.pinnedSupplierId() ?? ''}` }
+      ? { label: 'Back', href: `/suppliers/${this.store.pinnedSupplierId() ?? ''}`, history: true }
       : { label: 'Back', href: '/marketplace', history: true };
   });
 
