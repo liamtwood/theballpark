@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom, map } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
+import { PageConfigService } from '../../core/config/page-config.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
@@ -175,6 +176,7 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
 export class InboxProjectComponent {
   private readonly inbox = inject(InboxService);
   private readonly route = inject(ActivatedRoute);
+  private readonly pageConfig = inject(PageConfigService);
 
   private readonly projectId = toSignal(this.route.paramMap.pipe(map((p) => p.get('projectId') ?? '')), {
     initialValue: '',
@@ -207,9 +209,8 @@ export class InboxProjectComponent {
     return t.items.find((i) => i.id === this.selectedId()) ?? t.items[0] ?? null;
   });
 
-  protected readonly heroSubtitle = computed(
-    () => this.project()?.name ?? 'Supplier conversations for this project.'
-  );
+  /** "<Project> conversations" — tracks the configurable event label. */
+  protected readonly heroSubtitle = computed(() => `${this.pageConfig.eventLabel()} conversations`);
 
   /** Tree-header label: the category name when there's more than one
    *  category, else "PROJECT ITEMS". */
