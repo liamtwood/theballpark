@@ -303,6 +303,8 @@ app.get('/api/unsplash/search', async (req, res) => {
   v2.use('/media', require('./routes/media')); // pV2-MEDIA-01 — gated image upload
   // pV2-STORE-01 — supplier item editor (create/update own items, draft→submit).
   v2.use('/store/items', require('./routes/store-items'));
+  // pV2-INBOX-01 — gated inbox façade over v1's message data (RP-INB1).
+  v2.use('/inbox', require('./routes/inbox'));
   // future v2 endpoints: v2.use('/home', ...) — they inherit the gate
   // automatically by being mounted here.
   app.use('/api', v2);

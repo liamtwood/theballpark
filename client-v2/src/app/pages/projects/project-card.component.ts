@@ -18,7 +18,7 @@ import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.compon
   imports: [CurrencyPipe, RouterLink, EntityIconComponent],
   host: { class: 'bp-card bp-card--zoom' },
   template: `
-    <a [routerLink]="['/projects', project().id]" class="block no-underline text-text" [attr.aria-label]="project().name">
+    <a [routerLink]="[linkBase(), project().id]" class="block no-underline text-text" [attr.aria-label]="project().name">
       <!-- Cover: image (focal-anchored) → icon fallback → status gradient. -->
       @let proj = project();
       <div class="bp-projcard__cover">
@@ -66,6 +66,9 @@ export class ProjectCardComponent {
   readonly project = input.required<ProjectCard>();
   /** Stable "now" passed by the list (one Date read per render, not per card). */
   readonly now = input<number>(0);
+  /** Whole-card destination base. Agency list → /projects/:id (default);
+   *  the supplier quoting list points it at /inbox/:projectId. */
+  readonly linkBase = input<string>('/projects');
 
   protected readonly age = computed(() => relativeAge(this.project().updatedAt, this.now()));
   protected readonly coverBg = computed(() => {
