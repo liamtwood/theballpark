@@ -159,6 +159,31 @@ async function seedCodelists(client) {
        WHERE list_name = 'item_approval_status' AND code = 'rejected' AND is_active = false`
   );
 
+  // pV2-INBOX-01 — message_item_status was seeded label + semantic only (no
+  // color/icon → grey pills in the inbox). Enrich the DISPLAY meta so the
+  // status pills render like every other status pill. Idempotent jsonb
+  // merge (preserves semantic/terminal); token color refs + Lucide icons
+  // already in the app's pick set.
+  const ITEM_STATUS_META = {
+    brief_sent:           { color: '--color-warn',    icon: 'mail' },
+    holding:              { color: '--color-warn',    icon: 'clock' },
+    quoted:               { color: '--color-info',    icon: 'pencil-line' },
+    adjusted_by_supplier: { color: '--color-info',    icon: 'pencil-line' },
+    adjusted_by_agent:    { color: '--color-warn',    icon: 'pencil-line' },
+    accepted:             { color: '--color-success', icon: 'check' },
+    booked:               { color: '--color-success', icon: 'check-check' },
+    declined_by_supplier: { color: '--color-danger',  icon: 'x' },
+    declined_by_agent:    { color: '--color-danger',  icon: 'x' },
+  };
+  for (const [code, m] of Object.entries(ITEM_STATUS_META)) {
+    await client.query(
+      `UPDATE shared.reference_codelist_values
+          SET meta = COALESCE(meta, '{}'::jsonb) || $2::jsonb, updated_at = NOW()
+        WHERE list_name = 'message_item_status' AND code = $1`,
+      [code, JSON.stringify(m)]
+    );
+  }
+
   // country — codes constant, labels via Intl (never hand-typed).
   const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
   for (let i = 0; i < ISO_3166_1_ALPHA_2.length; i++) {

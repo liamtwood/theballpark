@@ -65,7 +65,7 @@ import { InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inb
                     <h2 class="bp-card-title text-lg">{{ t.agencyName ?? 'Agency' }}</h2>
                     <p class="bp-meta truncate">{{ t.projectName }}{{ t.categoryName ? ' · ' + t.categoryName : '' }} · {{ t.items.length }} item{{ t.items.length === 1 ? '' : 's' }}</p>
                   </div>
-                  <span class="bp-pill shrink-0 border border-hairline bg-fill text-secondary">{{ statusLabel(t.status) }}</span>
+                  <span class="bp-status-pill bp-pill shrink-0" [style.background]="aggBg(t.status)" [style.color]="'var(--bp-text-on-gradient)'">{{ statusLabel(t.status) }}</span>
                 </div>
                 <div class="mt-2 flex items-center gap-4">
                   <span class="bp-body-small font-semibold text-text">{{ t.total | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
@@ -88,12 +88,21 @@ import { InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inb
                 }
               </div>
 
-              <!-- Compose (read-only this slice — wired in the next one). -->
+              <!-- Compose — the standard field chrome (catalogue-search
+                   rhythm). Read-only this slice; wired in the next one. -->
               <div class="border-t border-hairline px-4 py-3">
-                <div class="flex items-center gap-2 rounded-full border border-hairline bg-fill px-3 py-1.5 opacity-60">
-                  <lucide-icon name="paperclip" [size]="16" class="text-muted" />
-                  <input class="flex-1 bg-transparent text-base outline-none" placeholder="Type your message…" disabled />
-                  <span class="bp-send-circle"><lucide-icon name="send" [size]="15" /></span>
+                <div class="flex h-[42px] items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 shadow-[var(--shadow-xs)] focus-within:border-accent">
+                  <button type="button" class="shrink-0 text-muted hover:text-text" aria-label="Attach a file" disabled>
+                    <lucide-icon name="paperclip" [size]="16" />
+                  </button>
+                  <input
+                    class="w-full border-none bg-transparent p-0 text-md outline-none ring-0 placeholder:text-muted focus:ring-0"
+                    placeholder="Type your message…"
+                    disabled
+                  />
+                  <button type="button" class="bp-send-circle shrink-0" aria-label="Send" disabled>
+                    <lucide-icon name="send" [size]="15" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -184,6 +193,12 @@ export class InboxProjectComponent {
   protected statusLabel(status: string): string {
     return AGG_STATUS_LABELS[status] ?? 'In Progress';
   }
+
+  /** Solid pill colour for the aggregate status (token refs — the same
+   *  treatment as the codelist status pills). */
+  protected aggBg(status: string): string {
+    return AGG_STATUS_COLORS[status] ?? 'var(--color-text-muted)';
+  }
 }
 
 const AGG_STATUS_LABELS: Record<string, string> = {
@@ -192,4 +207,12 @@ const AGG_STATUS_LABELS: Record<string, string> = {
   quoted: 'Quoted',
   booked: 'Booked',
   closed: 'Closed',
+};
+
+const AGG_STATUS_COLORS: Record<string, string> = {
+  action: 'var(--color-warn)',
+  waiting: 'var(--color-info)',
+  quoted: 'var(--color-info)',
+  booked: 'var(--color-success)',
+  closed: 'var(--color-text-muted)',
 };

@@ -120,6 +120,21 @@ caller gets no threads (their org isn't a `supplier_org_id`). The agent
 inbox surface (supplier-cards tree) is a separate, later piece.
 **Severity:** LOW
 
+### Iteration — v2.35h (2026-06-25)
+**Triggered by QC (Liam):** the compose box, header pill and icons didn't
+look like standard components.
+- **Compose** now uses the standard field chrome (the `catalogue-search`
+  rhythm: `--radius-field` + hairline border + `bg-surface` +
+  `focus-within:border-accent`) with a proper attach/send button — was a
+  bespoke `rounded-full bg-fill opacity-60` box.
+- **Header status pill** now uses the solid `.bp-status-pill .bp-pill`
+  chrome with a token colour (was a bordered outline pill).
+- **Item status pills** were grey because `message_item_status` carried no
+  `color`/`icon` meta. Enriched the codelist seed (token colours +
+  registered Lucide icons, idempotent jsonb merge). **Needs a
+  `db:migrate:schemas` run to apply to the shared DB** — pending Liam's ok
+  (offered a targeted idempotent UPDATE as the lighter alternative).
+
 ## QC notes
 (Liam)
 
