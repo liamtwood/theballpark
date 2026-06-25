@@ -34,9 +34,12 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
              to the quote (a real button — stops the card's navigation);
              elsewhere it's the visual "View supplier" cue on the link. -->
         @if (quotable()) {
+          <!-- Once added, the CTA is a non-interactive "Added" state — you
+               remove a supplier from the Quote rail, not by re-clicking
+               here (so a stray click can't toggle it back off). -->
           <button
             type="button"
-            [class]="(inQuote() ? 'bp-btn-outline' : 'bp-btn-grad') + ' mt-3 w-full'"
+            [class]="(inQuote() ? 'bp-btn-outline cursor-not-allowed opacity-70' : 'bp-btn-grad') + ' mt-3 w-full'"
             (click)="onQuote($event)"
           >
             <lucide-icon [name]="inQuote() ? 'check' : 'plus'" [size]="16" />
@@ -78,11 +81,14 @@ export class SupplierCardComponent {
     return sizedImage(this.supplier().coverUrl, 480);
   }
 
-  /** The CTA sits inside the card's <a>; stop the navigation so the click
-   *  only toggles the quote. */
+  /** The CTA sits inside the card's <a>; always stop the navigation. Only
+   *  ADD here — once in the quote it's inert (removal is via the rail), and
+   *  we keep the click handler (not `disabled`) so it reliably swallows the
+   *  click instead of letting it bubble to the card link. */
   protected onQuote(e: Event): void {
     e.preventDefault();
     e.stopPropagation();
+    if (this.inQuote()) return;
     this.quoteToggled.emit(this.supplier().id);
   }
 }

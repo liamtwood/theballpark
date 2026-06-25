@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, resource, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
@@ -68,10 +68,7 @@ interface DetailForm {
     ProjectMarketplaceComponent,
     ProjectEstimateComponent,
   ],
-  // ProjectOutreachStore is provided HERE (not in the marketplace tab) so
-  // the ephemeral supplier roster survives Marketplace ↔ Estimate switches
-  // (pV2-INBOX-02).
-  providers: [MessageService, ProjectOutreachStore],
+  providers: [MessageService],
   /* Viewport-fit on EVERY tab (universal rule: the hero never scrolls).
      The marketplace tab manages its own column scroll; Details/Estimate
      scroll inside their own region below the anchored hero. */
@@ -247,10 +244,15 @@ export class ProjectDetailComponent {
   private readonly codelists = inject(CodelistService);
   private readonly pageConfig = inject(PageConfigService);
   private readonly toast = inject(MessageService);
+  private readonly outreach = inject(ProjectOutreachStore);
 
   private readonly params = toSignal(this.route.paramMap, { initialValue: this.route.snapshot.paramMap });
   private readonly query = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
   protected readonly id = computed(() => this.params().get('id') ?? '');
+
+  // Point the (root-singleton) outreach store at this project so its
+  // supplier roster is retained across leaving and returning (pV2-INBOX-02).
+  private readonly _bindOutreach = effect(() => this.outreach.setProject(this.id()));
 
   /** Marketplace is the default tab (PROJECTS.md) — it's where you build
    *  the project's quote. */

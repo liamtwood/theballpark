@@ -1,6 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 
-const EMPTY: ReadonlySet<string> = new Set<string>();
+const EMPTY_SET: ReadonlySet<string> = new Set<string>();
+const EMPTY_ROSTER: ReadonlyMap<string, ReadonlySet<string>> = new Map();
 
 /** A supplier as held in the roster — just enough to render a chip. */
 export interface RosterSupplier {
@@ -8,26 +9,34 @@ export interface RosterSupplier {
   name: string;
 }
 
-/** pV2-INBOX-02 — the ephemeral supplier roster for an agency's outreach.
+/** pV2-INBOX-02 — the agency's supplier roster, keyed by project.
  *
- *  Holds, per category, the set of suppliers the agent has added to the
- *  quote ("Add to Quote" on a supplier card). Deliberately EPHEMERAL
- *  (v1-parity, Liam 2026-06-25): nothing is persisted until "Message
- *  suppliers" fires the send — the threads are then the durable record.
- *  Provided at the project-detail level so the picks survive tab switches
- *  (Marketplace ↔ Estimate / final quote) within the project, and is
- *  injected by both the supplier fan-out and the send. */
-@Injectable()
+ *  `providedIn: 'root'` + keyed by projectId so the picks survive LEAVING
+ *  and returning to a project within the session (project-detail being
+ *  destroyed/recreated no longer wipes them). Still ephemeral across a hard
+ *  reload — nothing is persisted until "Message suppliers" fires the send
+ *  and the threads become the durable record (Liam 2026-06-25). A
+ *  `project_category_suppliers` table is the reload-survival follow-up. */
+@Injectable({ providedIn: 'root' })
 export class ProjectOutreachStore {
-  /** Map<categoryId, Set<supplierOrgId>> — the per-category roster. */
-  private readonly roster = signal<ReadonlyMap<string, ReadonlySet<string>>>(new Map());
+  /** projectId → (categoryId → Set<supplierOrgId>). */
+  private readonly projects = signal<ReadonlyMap<string, ReadonlyMap<string, ReadonlySet<string>>>>(new Map());
   /** supplierId → display name, registered as suppliers are added. */
   private readonly names = signal<ReadonlyMap<string, string>>(new Map());
+  /** The project the reads/writes below operate on (set by project-detail). */
+  private readonly current = signal<string | null>(null);
 
-  /** The roster as a reactive read (categories → supplier sets). */
-  readonly byCategory = computed(() => this.roster());
+  /** Point the store at a project. Idempotent — re-entering a project just
+   *  re-points at its retained roster. */
+  setProject(projectId: string): void {
+    this.current.set(projectId || null);
+  }
 
-  /** Total distinct suppliers enlisted across all categories. */
+  private readonly roster = computed<ReadonlyMap<string, ReadonlySet<string>>>(
+    () => this.projects().get(this.current() ?? '') ?? EMPTY_ROSTER
+  );
+
+  /** Total distinct suppliers enlisted across the current project. */
   readonly supplierCount = computed(() => {
     const all = new Set<string>();
     for (const set of this.roster().values()) for (const id of set) all.add(id);
@@ -35,7 +44,7 @@ export class ProjectOutreachStore {
   });
 
   enlistedFor(categoryId: string): ReadonlySet<string> {
-    return this.roster().get(categoryId) ?? EMPTY;
+    return this.roster().get(categoryId) ?? EMPTY_SET;
   }
 
   isEnlisted(categoryId: string, supplierId: string): boolean {
@@ -55,22 +64,28 @@ export class ProjectOutreachStore {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  /** Toggle a supplier across a set of categories: if it's already in ALL
-   *  of them, remove from each; otherwise add to each. Empty categories
-   *  collapse out of the map so reads stay clean. */
+  /** Toggle a supplier across a set of categories (in the current project):
+   *  if it's already in ALL of them, remove from each; otherwise add to
+   *  each. Empty categories/projects collapse out so reads stay clean. */
   toggleSupplier(categoryIds: readonly string[], supplier: RosterSupplier): void {
-    if (!categoryIds.length) return;
+    const pid = this.current();
+    if (!pid || !categoryIds.length) return;
     const id = supplier.id;
     const fully = categoryIds.every((c) => this.isEnlisted(c, id));
-    this.roster.update((prev) => {
-      const next = new Map<string, Set<string>>([...prev].map(([k, v]) => [k, new Set(v)]));
+    this.projects.update((prev) => {
+      const next = new Map<string, Map<string, Set<string>>>(
+        [...prev].map(([k, v]) => [k, new Map([...v].map(([ck, cv]) => [ck, new Set(cv)]))])
+      );
+      const roster = next.get(pid) ?? new Map<string, Set<string>>();
       for (const c of categoryIds) {
-        const set = next.get(c) ?? new Set<string>();
+        const set = roster.get(c) ?? new Set<string>();
         if (fully) set.delete(id);
         else set.add(id);
-        if (set.size) next.set(c, set);
-        else next.delete(c);
+        if (set.size) roster.set(c, set);
+        else roster.delete(c);
       }
+      if (roster.size) next.set(pid, roster);
+      else next.delete(pid);
       return next;
     });
     if (!fully && !this.names().has(id)) {
@@ -84,7 +99,14 @@ export class ProjectOutreachStore {
     this.toggleSupplier([categoryId], { id: supplierId, name: this.nameOf(supplierId) });
   }
 
+  /** Drop the current project's roster (after a successful send). */
   clear(): void {
-    this.roster.set(new Map());
+    const pid = this.current();
+    if (!pid) return;
+    this.projects.update((prev) => {
+      const next = new Map(prev);
+      next.delete(pid);
+      return next;
+    });
   }
 }

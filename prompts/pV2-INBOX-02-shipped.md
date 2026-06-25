@@ -166,6 +166,21 @@ the Suppliers tab with the category still selected (lost stickiness).
   Ballpark". ✓
 - v2 build clean. ✓
 
+### Iteration — v2.35c (2026-06-25)
+**Triggered by QC (Liam):** (1) "Add to Quote" should be disabled once a
+supplier is already in the quote; (2) leaving the project and returning
+cleared the picks.
+- (1) The card CTA is now an inert **"Added to Quote"** state
+  (cursor-not-allowed + dimmed); re-clicking does nothing. Removal is via
+  the Quote rail chips only — so a stray click can't toggle a supplier back
+  off.
+- (2) `ProjectOutreachStore` is now **`providedIn: 'root'` keyed by
+  projectId** (was provided at project-detail, so it died with the
+  component). project-detail points it at the active project via an effect.
+  Picks now survive leaving and returning to a project within the session;
+  a hard reload still clears (the DB-persistence follow-up covers reload
+  survival).
+
 ## QC notes
 (Liam)
 
