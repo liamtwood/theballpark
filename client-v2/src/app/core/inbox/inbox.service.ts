@@ -27,6 +27,29 @@ export class InboxService {
   supplierInbox(projectId: string): Observable<InboxProjectView> {
     return this.api.get<InboxProjectView>(`/api/inbox/projects/${projectId}/threads`);
   }
+
+  /** Reply in a thread — a chat message and/or per-item actions. */
+  reply(threadId: string, body: InboxReplyBody): Observable<InboxReplyResult> {
+    return this.api.post<InboxReplyResult>(`/api/inbox/threads/${threadId}/reply`, body);
+  }
+}
+
+export interface InboxItemAction {
+  itemId: string;
+  action: 'accept' | 'adjust' | 'decline';
+  price?: number;
+  note?: string;
+}
+
+export interface InboxReplyBody {
+  text?: string;
+  itemActions?: InboxItemAction[];
+}
+
+export interface InboxReplyResult {
+  ok: boolean;
+  replyId: string;
+  changes: { name: string; from: string; to: string }[];
 }
 
 export interface InboxProjectSummary {

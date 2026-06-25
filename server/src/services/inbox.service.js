@@ -13,9 +13,10 @@
 // project-card grid (Defer 1 — a bespoke supplier card comes later).
 
 const pool = require('../db/pool');
+const { withTransaction } = require('../db/with-transaction');
 const TaxonomyService = require('./taxonomy.service');
 const messageService = require('./message.service');
-const { getByMessage, aggregateStatus } = require('./message-item.service');
+const { getByMessage, aggregateStatus, transitionItem, recordDecision } = require('./message-item.service');
 
 function httpErr(message, status) {
   const e = new Error(message);
@@ -281,4 +282,101 @@ async function getSupplierThreads(supplierOrgId, projectId) {
   return { project, threads };
 }
 
-module.exports = { listSupplierProjects, sendOutreach, getSupplierThreads };
+/** pV2-INBOX-01 — the caller-supplier replies in a thread: a chat message
+ *  and/or per-item actions (Accept / Propose-new-price / Decline). Identity
+ *  is the JWT caller; we verify the thread (its lead brief) belongs to this
+ *  supplier (RP-INB1). Reuses message-item.service transitions + decisions;
+ *  one transaction (Hygiene Rule 1). Item state lives on the lead's
+ *  message_items — the reply row is just the bubble (v1 model). */
+async function reply({ supplierOrgId, userId, threadId, text, itemActions }) {
+  const lead = await pool.query(
+    `SELECT id, project_id, supplier_org_id, category_id, category_name,
+            supplier_name, subject, ref_code
+       FROM messages WHERE id = $1 AND deleted_at IS NULL`,
+    [threadId]
+  );
+  if (!lead.rows.length) throw httpErr('Thread not found', 404);
+  const lm = lead.rows[0];
+  // Participation: not-found and not-yours are the same 404 (no disclosure).
+  if (lm.supplier_org_id !== supplierOrgId) throw httpErr('Thread not found', 404);
+
+  const actions = Array.isArray(itemActions) ? itemActions : [];
+  const hasText = !!(text && String(text).trim());
+  if (!hasText && !actions.length) throw httpErr('reply needs text or item actions', 400);
+
+  return withTransaction(async (db) => {
+    // The supplier's reply is inbound (supplier → agency), unread to them.
+    const ins = await db.query(
+      `INSERT INTO messages
+         (project_id, user_id, supplier_org_id, category_id, category_name,
+          supplier_name, subject, body, direction, msg_status, read, next_action_by, ref_code)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'inbound', 'unread', false, NULL, $9)
+       RETURNING id`,
+      [lm.project_id, userId || null, lm.supplier_org_id, lm.category_id,
+       lm.category_name, lm.supplier_name,
+       `Re: ${lm.subject || lm.ref_code || ''}`,
+       hasText ? text : '', lm.ref_code]
+    );
+    const replyId = ins.rows[0].id;
+
+    const changes = [];
+    for (const a of actions) {
+      const { itemId, action, price, note } = a || {};
+      if (!itemId || !action) continue;
+      // The item must belong to THIS thread's brief (lead message).
+      const before = await db.query(
+        `SELECT name, price_current, status FROM message_items
+          WHERE id = $1 AND message_id = $2`,
+        [itemId, lm.id]
+      );
+      if (!before.rows.length) continue;
+      const b = before.rows[0];
+
+      let toStatus = null;
+      let extra = null;
+      switch (action) {
+        case 'accept':  toStatus = 'accepted'; break;
+        case 'adjust':  toStatus = 'adjusted_by_supplier'; extra = { price }; break;
+        case 'decline': toStatus = 'declined_by_supplier'; break;
+        default: continue;
+      }
+
+      const result = await transitionItem({
+        itemId,
+        toStatus,
+        actor: { type: 'supplier', id: userId || null },
+        note: note || null,
+        priceBefore: b.price_current,
+        priceAfter: action === 'adjust' && price != null ? price : null,
+        extra,
+        executor: db,
+      });
+
+      if (action === 'accept' || action === 'decline') {
+        await recordDecision({
+          messageItemId: itemId,
+          side: 'seller',
+          decision: action === 'accept' ? 'accepted' : 'declined',
+          userId: userId || null,
+          note: note || null,
+          executor: db,
+        });
+      } else if (action === 'adjust') {
+        // A material edit clears the agency's prior accept — they re-accept.
+        await recordDecision({
+          messageItemId: itemId,
+          side: 'buyer',
+          decision: 'cleared',
+          userId: userId || null,
+          note: 'auto-cleared — supplier edited',
+          executor: db,
+        });
+      }
+      changes.push({ name: b.name, from: b.status, to: result.toStatus });
+    }
+
+    return { ok: true, replyId, changes };
+  });
+}
+
+module.exports = { listSupplierProjects, sendOutreach, getSupplierThreads, reply };

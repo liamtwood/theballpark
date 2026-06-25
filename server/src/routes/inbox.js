@@ -6,7 +6,10 @@
 
 const router = require('express').Router();
 const { z } = require('zod');
+const { requireActiveMembership } = require('../middleware/require-active-membership');
 const inbox = require('../services/inbox.service');
+
+const canReply = requireActiveMembership('inbox.reply');
 
 // GET /api/inbox/projects — the caller-supplier's quote-request projects
 // (the agency reached out about them), as ProjectCard[] for the
@@ -44,6 +47,50 @@ router.get('/projects/:projectId/threads', async (req, res, next) => {
     }
     res.json(await inbox.getSupplierThreads(req.user.org_id, req.params.projectId));
   } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/inbox/threads/:threadId/reply — the supplier replies in a
+// thread: a chat message and/or per-item actions. org from JWT; the service
+// verifies the thread is theirs (RP-INB1). Gated to inbox.reply.
+const ReplySchema = z
+  .object({
+    text: z.string().trim().max(4000).optional(),
+    itemActions: z
+      .array(
+        z.object({
+          itemId: z.string().uuid(),
+          action: z.enum(['accept', 'adjust', 'decline']),
+          price: z.number().nonnegative().optional(),
+          note: z.string().max(1000).optional(),
+        })
+      )
+      .optional(),
+  })
+  .refine((d) => (d.text && d.text.trim()) || (d.itemActions && d.itemActions.length), {
+    message: 'reply needs text or item actions',
+  });
+
+router.post('/threads/:threadId/reply', canReply, async (req, res, next) => {
+  try {
+    if (!UUID.safeParse(req.params.threadId).success) {
+      return res.status(400).json({ error: 'Invalid thread id' });
+    }
+    const parsed = ReplySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const result = await inbox.reply({
+      supplierOrgId: req.user.org_id,
+      userId: req.user.id,
+      threadId: req.params.threadId,
+      text: parsed.data.text,
+      itemActions: parsed.data.itemActions,
+    });
+    res.status(201).json(result);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
   }
 });

@@ -150,6 +150,50 @@ look like standard components.
 - Reference: mockup `Screenshot 2026-06-24 193449` for content; our
   card/token styling for format.
 
+## Slice B — supplier compose (send a chat reply)
+
+**Shipped:** 2026-06-25, chip `[Dev v2] v2.35p`
+
+### What landed
+- **`POST /api/inbox/threads/:threadId/reply`** (gated `inbox.reply`): the
+  supplier sends a chat message and/or per-item actions
+  (accept/adjust/decline) in a thread. org from JWT; the service verifies
+  the thread's lead belongs to the caller-supplier (RP-INB1). One
+  transaction (`withTransaction`), reusing `transitionItem` +
+  `recordDecision`. Item state stays on the lead's `message_items`; the
+  reply row is the bubble (v1 model).
+- The compose box is **live** — typing + Enter / send button posts the
+  message and refreshes so the new (gradient, right-side) bubble appears.
+
+### Files touched
+| File | Notes |
+|---|---|
+| server/src/services/inbox.service.js | `reply()` (txn; transitions + decisions) |
+| server/src/routes/inbox.js | `POST /threads/:threadId/reply` (Zod, `inbox.reply` gate) |
+| client-v2/.../core/inbox/inbox.service.ts | `reply()` + payload types |
+| client-v2/.../pages/inbox/inbox-project.component.ts | live compose (draft/sending/send) |
+| client-v2/src/environments/environment.ts | chip → v2.35p |
+
+### API audit — `POST /api/inbox/threads/:threadId/reply`
+- ✓ Method — POST, creates a message (201)
+- ✓ Validation — Zod (threadId uuid; text ≤4000; itemActions enum + uuid + non-neg price); refine requires text or actions
+- ✓ Authorization — gated router + `inbox.reply`; service verifies thread.supplier_org_id === req.user.org_id (RP-INB1)
+- ✓ Status codes — 201 / 400 / 404 (not-found AND not-yours both 404) / 401·403
+- ✓ Info disclosure — not-yours is 404
+- ✓ Observability — central error handler
+- N/A Idempotency — each reply is a new message (intended)
+- ✓ Performance — one txn; per-action item lookup scoped to the lead
+
+### Concerns not in spec
+#### No send-failure toast yet
+**What:** a failed reply keeps the draft for retry but shows no toast (the
+inbox component has no MessageService/p-toast yet). Add the shared toast
+surface when wiring slice C actions. **Severity:** LOW
+
+#### Per-item actions endpoint ready, UI pending
+**What:** the reply endpoint already accepts `itemActions`
+(accept/adjust/decline) — slice C just wires the buttons. **Severity:** info
+
 ## QC notes
 (Liam)
 

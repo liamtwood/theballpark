@@ -110,8 +110,7 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                 }
               </div>
 
-              <!-- Compose — the standard field chrome (catalogue-search
-                   rhythm). Read-only this slice; wired in the next one. -->
+              <!-- Compose — the standard field chrome (catalogue-search rhythm). -->
               <div class="border-t border-hairline px-4 py-3">
                 <div class="flex h-[42px] items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 shadow-[var(--shadow-xs)] focus-within:border-accent">
                   <button type="button" class="shrink-0 text-muted hover:text-text" aria-label="Attach a file" disabled>
@@ -120,9 +119,19 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                   <input
                     class="w-full border-none bg-transparent p-0 text-md outline-none ring-0 placeholder:text-muted focus:ring-0"
                     placeholder="Type your message…"
-                    disabled
+                    [value]="draft()"
+                    [disabled]="sending()"
+                    (input)="draft.set($any($event.target).value)"
+                    (keydown.enter)="send(t.id)"
                   />
-                  <button type="button" class="bp-send-circle shrink-0" aria-label="Send" disabled>
+                  <button
+                    type="button"
+                    class="bp-send-circle shrink-0"
+                    [class.opacity-50]="!draft().trim() || sending()"
+                    aria-label="Send"
+                    [disabled]="!draft().trim() || sending()"
+                    (click)="send(t.id)"
+                  >
                     <lucide-icon name="send" [size]="15" />
                   </button>
                 </div>
@@ -216,6 +225,28 @@ export class InboxProjectComponent {
    *  category, else "PROJECT ITEMS". */
   protected headerLabel(t: InboxThread): string {
     return this.singleCategory() || !t.categoryName ? 'PROJECT ITEMS' : t.categoryName;
+  }
+
+  // ── Compose ───────────────────────────────────────────────────────────
+  protected readonly draft = signal('');
+  protected readonly sending = signal(false);
+
+  /** Send the composed message in the given thread, then refresh so the new
+   *  bubble appears. */
+  protected async send(threadId: string): Promise<void> {
+    const text = this.draft().trim();
+    if (!text || this.sending()) return;
+    this.sending.set(true);
+    try {
+      await firstValueFrom(this.inbox.reply(threadId, { text }));
+      this.draft.set('');
+      this.threadsRes.reload();
+    } catch {
+      // Keep the draft so the user can retry; a toast lands with the
+      // shared error surface when the inbox gets one.
+    } finally {
+      this.sending.set(false);
+    }
   }
 
   // Tree expansion — collapsed-by-id (default expanded so items show).
