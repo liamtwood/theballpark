@@ -6,7 +6,7 @@ import { firstValueFrom, map } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
-import { InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
+import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
 
 /** pV2-INBOX-01 — the supplier's per-project conversation surface
  *  (/inbox/:projectId). Left rail = THEIR items, grouped by category and
@@ -32,8 +32,37 @@ import { InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inb
         <p class="bp-body-small text-secondary">No quote requests in this project yet.</p>
       } @else {
         <div class="grid min-h-0 flex-1 grid-cols-1 gap-6 xl:grid-cols-[300px_1fr]">
-          <!-- Left rail: their items (category-grouped only when >1). -->
-          <div class="hidden min-h-0 xl:flex xl:flex-col xl:overflow-y-auto">
+          <!-- Left rail: project context card + their items. -->
+          <div class="hidden min-h-0 xl:flex xl:flex-col xl:gap-3 xl:overflow-y-auto">
+            @if (project(); as p) {
+              <div class="bp-card p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <h3 class="bp-list-title leading-snug">{{ p.clientName ? p.clientName + ' — ' : '' }}{{ p.name }}</h3>
+                    <div class="mt-2.5 flex items-center gap-1.5 text-secondary">
+                      <lucide-icon name="calendar" [size]="14" [strokeWidth]="1.75" />
+                      <span class="bp-body-small">{{ p.eventDate || 'Date TBC' }}</span>
+                    </div>
+                    <div class="mt-1.5 flex items-center gap-1.5 text-secondary">
+                      <lucide-icon name="map-pin" [size]="14" [strokeWidth]="1.75" />
+                      <span class="bp-body-small">{{ p.location || '—' }}</span>
+                    </div>
+                    <div class="mt-2 bp-meta">{{ p.agencyName }}</div>
+                  </div>
+                  <div class="shrink-0 text-right">
+                    <div class="bp-meta truncate">{{ p.name }}</div>
+                    <div class="mt-2.5">
+                      <div class="bp-caption">Original</div>
+                      <div class="bp-body-small text-secondary">{{ p.originalTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</div>
+                    </div>
+                    <div class="mt-1.5">
+                      <div class="bp-caption">Revised</div>
+                      <div class="bp-body-small font-semibold text-text">{{ p.revisedTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
             @for (t of threads(); track t.id) {
               @if (!singleCategory() && t.categoryName) {
                 <div class="bp-cart-cat-band mt-2 first:mt-0">{{ t.categoryName }}</div>
@@ -58,20 +87,24 @@ import { InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inb
           <!-- Right pane: the selected item's category conversation. -->
           @if (selectedThread(); as t) {
             <div class="flex min-h-0 flex-col rounded-xl border border-hairline bg-surface">
-              <!-- Header -->
-              <div class="border-b border-hairline px-5 py-4">
-                <div class="flex items-start justify-between gap-3">
-                  <div class="min-w-0">
-                    <h2 class="bp-card-title text-lg">{{ t.agencyName ?? 'Agency' }}</h2>
-                    <p class="bp-meta truncate">{{ t.projectName }}{{ t.categoryName ? ' · ' + t.categoryName : '' }} · {{ t.items.length }} item{{ t.items.length === 1 ? '' : 's' }}</p>
-                  </div>
-                  <span class="bp-status-pill bp-pill shrink-0" [style.background]="aggBg(t.status)" [style.color]="'var(--bp-text-on-gradient)'">{{ statusLabel(t.status) }}</span>
-                </div>
-                <div class="mt-2 flex items-center gap-4">
-                  <span class="bp-body-small font-semibold text-text">{{ t.total | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-                  @if (t.refCode) {
-                    <span class="bp-meta">{{ t.refCode }}</span>
+              <!-- Header — project name + original/revised cost (no agency
+                   line / status pill; that context lives in the rail card). -->
+              <div class="flex items-start justify-between gap-4 border-b border-hairline px-5 py-4">
+                <div class="min-w-0">
+                  <h2 class="bp-card-title text-lg">{{ t.projectName }}</h2>
+                  @if (t.categoryName) {
+                    <p class="bp-meta truncate">{{ t.categoryName }} · {{ t.items.length }} item{{ t.items.length === 1 ? '' : 's' }}</p>
                   }
+                </div>
+                <div class="flex shrink-0 items-center gap-5 text-right">
+                  <div>
+                    <div class="bp-caption">Original</div>
+                    <div class="bp-body-small text-secondary">{{ t.originalTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</div>
+                  </div>
+                  <div>
+                    <div class="bp-caption">Revised</div>
+                    <div class="bp-body-small font-semibold text-text">{{ t.revisedTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</div>
+                  </div>
                 </div>
               </div>
 
@@ -161,9 +194,10 @@ export class InboxProjectComponent {
 
   protected readonly threadsRes = resource({
     params: () => this.projectId() || undefined,
-    loader: ({ params }) => firstValueFrom(this.inbox.supplierThreads(params)),
+    loader: ({ params }) => firstValueFrom(this.inbox.supplierInbox(params)),
   });
-  protected readonly threads = computed<InboxThread[]>(() => this.threadsRes.value() ?? []);
+  protected readonly project = computed<InboxProjectSummary | null>(() => this.threadsRes.value()?.project ?? null);
+  protected readonly threads = computed<InboxThread[]>(() => this.threadsRes.value()?.threads ?? []);
   protected readonly singleCategory = computed(() => this.threads().length <= 1);
 
   /** Selected item drives the visible thread; defaults to the first item,
@@ -186,33 +220,6 @@ export class InboxProjectComponent {
   });
 
   protected readonly heroSubtitle = computed(
-    () => this.threads()[0]?.projectName ?? 'Supplier conversations for this project.'
+    () => this.project()?.name ?? 'Supplier conversations for this project.'
   );
-
-  /** The supplier-side aggregate status as a friendly header label. */
-  protected statusLabel(status: string): string {
-    return AGG_STATUS_LABELS[status] ?? 'In Progress';
-  }
-
-  /** Solid pill colour for the aggregate status (token refs — the same
-   *  treatment as the codelist status pills). */
-  protected aggBg(status: string): string {
-    return AGG_STATUS_COLORS[status] ?? 'var(--color-text-muted)';
-  }
 }
-
-const AGG_STATUS_LABELS: Record<string, string> = {
-  action: 'Action needed',
-  waiting: 'Awaiting agency',
-  quoted: 'Quoted',
-  booked: 'Booked',
-  closed: 'Closed',
-};
-
-const AGG_STATUS_COLORS: Record<string, string> = {
-  action: 'var(--color-warn)',
-  waiting: 'var(--color-info)',
-  quoted: 'var(--color-info)',
-  booked: 'var(--color-success)',
-  closed: 'var(--color-text-muted)',
-};

@@ -22,11 +22,29 @@ export class InboxService {
     return this.api.post<OutreachSendResult>('/api/inbox/send', { projectId, roster });
   }
 
-  /** The caller-supplier's conversation threads for one project (per
-   *  category) — items + bubbles + counterparty agency. */
-  supplierThreads(projectId: string): Observable<InboxThread[]> {
-    return this.api.get<InboxThread[]>(`/api/inbox/projects/${projectId}/threads`);
+  /** The caller-supplier's inbox for one project: a project summary card +
+   *  the per-category conversation threads. */
+  supplierInbox(projectId: string): Observable<InboxProjectView> {
+    return this.api.get<InboxProjectView>(`/api/inbox/projects/${projectId}/threads`);
   }
+}
+
+export interface InboxProjectSummary {
+  id: string;
+  name: string | null;
+  clientName: string | null;
+  eventDate: string | null;
+  location: string | null;
+  agencyName: string | null;
+  agencyLogoUrl: string | null;
+  itemCount: number;
+  originalTotal: number;
+  revisedTotal: number;
+}
+
+export interface InboxProjectView {
+  project: InboxProjectSummary;
+  threads: InboxThread[];
 }
 
 export interface InboxThreadItem {
@@ -59,6 +77,8 @@ export interface InboxThread {
   refCode: string | null;
   status: string;
   total: number;
+  originalTotal: number;
+  revisedTotal: number;
   items: InboxThreadItem[];
   messages: InboxBubble[];
 }

@@ -135,6 +135,21 @@ look like standard components.
   `db:migrate:schemas` run to apply to the shared DB** — pending Liam's ok
   (offered a targeted idempotent UPDATE as the lighter alternative).
 
+### Iteration — v2.35i (2026-06-25)
+**Triggered by QC (Liam):** rework the surface to the requested layout.
+- Reader now returns **`{ project, threads }`** — a project summary
+  (client · event date · location · agency · original/revised totals; joins
+  `clients` + the project) plus the threads (each gains per-thread
+  `originalTotal`/`revisedTotal`).
+- **Left rail** leads with a **context card**: `Client — Event` title, 📅
+  event date, 📍 location, agency name; project name + original/revised
+  cost on its right. Items list below.
+- **Conversation header** now shows **project name + original/revised cost**
+  (was agency name + "project · category · items"); the **"Action needed"
+  aggregate pill is gone**.
+- Reference: mockup `Screenshot 2026-06-24 193449` for content; our
+  card/token styling for format.
+
 ## QC notes
 (Liam)
 

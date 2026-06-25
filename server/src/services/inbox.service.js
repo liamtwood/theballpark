@@ -195,12 +195,11 @@ function toThreadItem(it) {
   };
 }
 
-/** pV2-INBOX-01 — the caller-supplier's conversation threads for one
- *  project. A thread is keyed (project, supplier, category) — for a fixed
- *  supplier that's just the category. Each carries the counterparty agency,
- *  the brief's items (per-item status/price), the aggregate status + total,
- *  and the message bubbles. org from JWT only (RP-INB1): we read the
- *  supplier's own feed and never trust a client id. */
+/** pV2-INBOX-01 — the caller-supplier's inbox for one project: a project
+ *  summary card (client · event date · location · agency · original/revised
+ *  totals) plus the per-category conversation threads (items + bubbles).
+ *  org from JWT only (RP-INB1): we read the supplier's own feed and never
+ *  trust a client id. */
 async function getSupplierThreads(supplierOrgId, projectId) {
   const all = await messageService.getAllForSupplier(supplierOrgId);
   const scoped = all.filter((m) => m.project_id === projectId);
@@ -234,6 +233,8 @@ async function getSupplierThreads(supplierOrgId, projectId) {
       refCode: g.lead.ref_code ?? null,
       status: aggregateStatus(items, 'supplier'),
       total: items.reduce((s, it) => s + Number(it.price_current ?? it.price_ref ?? 0), 0),
+      originalTotal: items.reduce((s, it) => s + Number(it.price_ref ?? 0), 0),
+      revisedTotal: items.reduce((s, it) => s + Number(it.price_current ?? it.price_ref ?? 0), 0),
       items: items.map(toThreadItem),
       messages: g.messages.map((m) => toBubble(m, agencyName)),
     });
@@ -245,7 +246,39 @@ async function getSupplierThreads(supplierOrgId, projectId) {
     const bm = b.messages[b.messages.length - 1]?.createdAt ?? 0;
     return new Date(bm) - new Date(am);
   });
-  return threads;
+
+  // Project summary for the rail context card. Original = the agency's
+  // reference price; Revised = the current (post-adjustment) price.
+  const allItems = threads.flatMap((t) => t.items);
+  const originalTotal = allItems.reduce((s, it) => s + Number(it.priceRef ?? 0), 0);
+  const revisedTotal = allItems.reduce((s, it) => s + Number(it.priceCurrent ?? it.priceRef ?? 0), 0);
+
+  const ctx = await pool.query(
+    `SELECT COALESCE(p.event_name, p.name) AS project_name,
+            p.event_date, p.venue_city, p.venue_name,
+            cl.name AS client_name,
+            ag.name AS agency_name, ag.logo_url AS agency_logo_url
+       FROM projects p
+       LEFT JOIN clients cl ON cl.id = p.client_id
+       LEFT JOIN orgs    ag ON ag.id = p.org_id
+      WHERE p.id = $1`,
+    [projectId]
+  );
+  const row = ctx.rows[0] || {};
+  const project = {
+    id: projectId,
+    name: row.project_name ?? threads[0]?.projectName ?? null,
+    clientName: row.client_name ?? null,
+    eventDate: row.event_date ?? null,
+    location: row.venue_city || row.venue_name || null,
+    agencyName: row.agency_name ?? threads[0]?.agencyName ?? null,
+    agencyLogoUrl: row.agency_logo_url ?? null,
+    itemCount: allItems.length,
+    originalTotal,
+    revisedTotal,
+  };
+
+  return { project, threads };
 }
 
 module.exports = { listSupplierProjects, sendOutreach, getSupplierThreads };
