@@ -17,15 +17,17 @@ import { CategoryInfo } from './catalogue.types';
   host: { class: 'block' },
   template: `
     <nav class="flex flex-col gap-0.5">
-      <button
-        type="button"
-        class="bp-catstrip-row"
-        [class.bp-catstrip-row--active]="!activeId()"
-        (click)="categorySelected.emit(null)"
-      >
-        <span class="truncate">All Categories</span>
-        <span class="bp-meta">{{ totalCount() }}</span>
-      </button>
+      @if (!hideAll()) {
+        <button
+          type="button"
+          class="bp-catstrip-row"
+          [class.bp-catstrip-row--active]="!activeId()"
+          (click)="categorySelected.emit(null)"
+        >
+          <span class="truncate">All Categories</span>
+          <span class="bp-meta">{{ totalCount() }}</span>
+        </button>
+      }
 
       @for (cat of categories(); track cat.id) {
         <button
@@ -80,6 +82,9 @@ export class CategoryStripComponent {
   readonly categories = input.required<readonly CategoryInfo[]>();
   readonly activeId = input<string | null>(null);
   readonly totalCount = input<number>(0);
+  /** Hide the "All Categories" row — used by the in-project supplier
+   *  fan-out, which scopes to the quote's categories (no all-browse). */
+  readonly hideAll = input<boolean>(false);
   /** The active category's subcategories (the shared store loads them). */
   readonly subcategories = input<readonly CategoryInfo[]>([]);
   readonly activeSubId = input<string | null>(null);

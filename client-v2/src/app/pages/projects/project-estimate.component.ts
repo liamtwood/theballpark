@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, resource, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { MessageService } from 'primeng/api';
@@ -177,6 +177,13 @@ import { QtyInputComponent } from './qty-input.component';
         }
 
         <p class="bp-caption mt-4">Indicative — based on marketplace base prices. Final supplier quotes and the priced rollup land with checkout.</p>
+
+        <!-- The forward action: take this ballpark to the marketplace and
+             fan the categories out to suppliers for real quotes. -->
+        <button type="button" class="bp-btn-grad mt-5 w-full" (click)="goToMarketplace.emit()">
+          Go with this Ballpark
+          <lucide-icon name="arrow-right" [size]="16" />
+        </button>
       }
       </div>
     </div>
@@ -188,6 +195,9 @@ export class ProjectEstimateComponent {
 
   readonly projectId = input.required<string>();
   readonly project = input.required<ProjectDetail>();
+  /** "Go with this Ballpark" — hand off to the in-project Marketplace's
+   *  supplier fan-out (project-detail switches the tab + supplier mode). */
+  readonly goToMarketplace = output<void>();
 
   /** Quote lines as writable state (seeded from the resource load) so qty
    *  edits can update optimistically + revert on failure. */

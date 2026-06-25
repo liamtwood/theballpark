@@ -203,7 +203,7 @@ interface DetailForm {
           }
           @case ('estimate') {
             <div class="min-h-0 flex-1 overflow-y-auto">
-              <app-project-estimate [projectId]="p.id" [project]="p" />
+              <app-project-estimate [projectId]="p.id" [project]="p" (goToMarketplace)="goToMarketplace()" />
             </div>
           }
           @default {
@@ -300,6 +300,15 @@ export class ProjectDetailComponent {
   protected setTab(t: string): void {
     this.router
       .navigate([], { relativeTo: this.route, queryParams: { tab: t }, queryParamsHandling: 'merge' })
+      .catch((err) => console.warn('[ProjectDetail] nav failed', err));
+  }
+
+  /** "Go with this Ballpark" (Estimate tab) → the Marketplace tab in
+   *  supplier mode, where the agent fans the quote's categories out to
+   *  suppliers. */
+  protected goToMarketplace(): void {
+    this.router
+      .navigate([], { relativeTo: this.route, queryParams: { tab: 'marketplace', mode: 'suppliers' }, queryParamsHandling: 'merge' })
       .catch((err) => console.warn('[ProjectDetail] nav failed', err));
   }
 
