@@ -64,11 +64,11 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                 @for (it of t.items; track it.id) {
                   <button
                     type="button"
-                    class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left hover:bg-fill"
+                    class="flex w-full flex-col items-start gap-1.5 rounded-lg px-3 py-2.5 text-left hover:bg-fill"
                     [class.bg-fill]="it.id === selectedId()"
                     (click)="selectedId.set(it.id)"
                   >
-                    <span class="bp-list-title min-w-0 flex-1 truncate">{{ it.name }}</span>
+                    <span class="bp-list-title w-full truncate">{{ it.name }}</span>
                     <app-status-pill list="message_item_status" [code]="it.status" />
                   </button>
                 }
