@@ -159,13 +159,16 @@ export class SupplierDetailComponent {
   );
 
   /** Back walks the drill in reverse (QC): Store → Storefront (same route,
-   *  params cleared by the hero's plain routerLink) → Marketplace. The owner
-   *  (no storefront tab) goes straight back Home. */
+   *  params cleared by the hero's plain routerLink) → wherever you came from.
+   *  The storefront leaf pops history so it returns to the actual entry point
+   *  — the project supplier fan-out (with its category selected) or the
+   *  global marketplace — rather than always /marketplace (INBOX-02 QC). The
+   *  owner (no storefront tab) goes straight back Home. */
   protected readonly heroBack = computed(() => {
     if (this.isOwner()) return { label: 'Home', href: '/home' };
     return this.tab() === 'store'
       ? { label: 'Storefront', href: `/suppliers/${this.store.pinnedSupplierId() ?? ''}` }
-      : { label: 'Marketplace', href: '/marketplace' };
+      : { label: 'Back', href: '/marketplace', history: true };
   });
 
   /** Skips entirely until :id resolves — no empty-id fetch (audit C1). */

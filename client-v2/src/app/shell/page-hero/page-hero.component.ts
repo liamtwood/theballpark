@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { Location } from '@angular/common';
+import { Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 
 /** The standard page hero band — first child of every v2 feature page, below
@@ -19,10 +20,20 @@ import { LucideAngularModule } from 'lucide-angular';
   },
   template: `
     @if (back(); as b) {
-      <a class="bp-page-back bp-page-hero__back" [routerLink]="b.href">
-        <lucide-icon name="arrow-left" [size]="16"></lucide-icon>
-        <span>{{ b.label }}</span>
-      </a>
+      @if (b.history) {
+        <!-- History-back: returns to the exact previous URL + its state
+             (e.g. the project supplier fan-out with its category selected),
+             falling back to href when there's no in-app history to pop. -->
+        <button type="button" class="bp-page-back bp-page-hero__back" (click)="goBack(b.href)">
+          <lucide-icon name="arrow-left" [size]="16"></lucide-icon>
+          <span>{{ b.label }}</span>
+        </button>
+      } @else {
+        <a class="bp-page-back bp-page-hero__back" [routerLink]="b.href">
+          <lucide-icon name="arrow-left" [size]="16"></lucide-icon>
+          <span>{{ b.label }}</span>
+        </a>
+      }
     }
 
     <div class="bp-page-hero__text">
@@ -115,8 +126,20 @@ import { LucideAngularModule } from 'lucide-angular';
   ],
 })
 export class PageHeroComponent {
-  /** Optional back link target — when set, renders a back chevron + label. */
-  readonly back = input<{ label: string; href: string } | null>(null);
+  private readonly location = inject(Location);
+  private readonly router = inject(Router);
+
+  /** Optional back link target — when set, renders a back chevron + label.
+   *  `history: true` makes it pop browser history (restoring the previous
+   *  page + its URL state) instead of routing to `href`. */
+  readonly back = input<{ label: string; href: string; history?: boolean } | null>(null);
+
+  /** History-aware back: pop to the previous entry when one exists, else
+   *  route to the supplied fallback. */
+  protected goBack(fallbackHref: string): void {
+    if (history.length > 1) this.location.back();
+    else this.router.navigateByUrl(fallbackHref);
+  }
 
   /** Main title — required. */
   readonly title = input.required<string>();

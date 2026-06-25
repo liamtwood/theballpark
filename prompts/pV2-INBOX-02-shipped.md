@@ -118,6 +118,20 @@ category then viewed on All, they read "Add to Quote" (clicking tops up the
 rest). Deterministic but can look partial. The per-category rail (slice 3)
 will make the true state visible. **Severity:** LOW
 
+### Iteration — v2.34z (2026-06-25)
+**Triggered by QC (Liam):** viewing a supplier then Back didn't return to
+the Suppliers tab with the category still selected (lost stickiness).
+- Root cause: supplier-detail's leaf Back was a fixed `href: '/marketplace'`.
+- Fix: page-hero `back` gains an optional `history: true` flag → pops
+  browser history (restoring the exact previous URL + its `?tab/mode/cat`
+  state), falling back to the href when there's no in-app history. The
+  supplier-detail storefront leaf now uses it (label "Back").
+- **Known limitation (ephemeral, not fixed):** the URL/tab/category restore,
+  but navigating out to `/suppliers/:id` destroys project-detail, so the
+  in-memory `ProjectOutreachStore` picks are lost on that round-trip. The
+  persisted-roster follow-up (option b) resolves it; acceptable for MVP
+  since the add → message flow stays within the project.
+
 ## QC notes
 (Liam)
 
