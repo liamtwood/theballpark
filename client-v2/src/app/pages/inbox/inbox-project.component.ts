@@ -78,7 +78,7 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
 
           <!-- Right pane: the selected item's category conversation. -->
           @if (selectedThread(); as t) {
-            <div class="flex min-h-0 flex-col rounded-xl border border-hairline bg-surface">
+            <div class="flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-surface shadow-[var(--shadow-xs)]">
               <!-- Header — project name with original/revised cost beneath
                    (no agency line / status pill / category·items; that
                    context lives in the rail card). -->
