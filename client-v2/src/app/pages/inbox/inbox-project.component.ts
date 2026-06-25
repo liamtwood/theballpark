@@ -68,10 +68,7 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                     [class.bg-fill]="it.id === selectedId()"
                     (click)="selectedId.set(it.id)"
                   >
-                    <span class="min-w-0 flex-1">
-                      <span class="bp-list-title block truncate">{{ it.name }}</span>
-                      <span class="bp-meta">{{ (it.priceCurrent ?? it.priceRef) | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-                    </span>
+                    <span class="bp-list-title min-w-0 flex-1 truncate">{{ it.name }}</span>
                     <app-status-pill list="message_item_status" [code]="it.status" />
                   </button>
                 }
@@ -82,24 +79,20 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
           <!-- Right pane: the selected item's category conversation. -->
           @if (selectedThread(); as t) {
             <div class="flex min-h-0 flex-col rounded-xl border border-hairline bg-surface">
-              <!-- Header — project name + original/revised cost (no agency
-                   line / status pill; that context lives in the rail card). -->
-              <div class="flex items-start justify-between gap-4 border-b border-hairline px-5 py-4">
-                <div class="min-w-0">
-                  <h2 class="bp-card-title text-lg">{{ t.projectName }}</h2>
-                  @if (t.categoryName) {
-                    <p class="bp-meta truncate">{{ t.categoryName }} · {{ t.items.length }} item{{ t.items.length === 1 ? '' : 's' }}</p>
-                  }
-                </div>
-                <div class="flex shrink-0 items-center gap-5 text-right">
-                  <div>
-                    <div class="bp-caption">Original</div>
-                    <div class="bp-body-small text-secondary">{{ t.originalTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</div>
-                  </div>
-                  <div>
-                    <div class="bp-caption">Revised</div>
-                    <div class="bp-body-small font-semibold text-text">{{ t.revisedTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</div>
-                  </div>
+              <!-- Header — project name with original/revised cost beneath
+                   (no agency line / status pill / category·items; that
+                   context lives in the rail card). -->
+              <div class="border-b border-hairline px-5 py-4">
+                <h2 class="bp-card-title text-lg">{{ t.projectName }}</h2>
+                <div class="mt-1.5 flex items-center gap-6">
+                  <span>
+                    <span class="bp-caption">Original</span>
+                    <span class="bp-body-small ml-1.5 text-secondary">{{ t.originalTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+                  </span>
+                  <span>
+                    <span class="bp-caption">Revised</span>
+                    <span class="bp-body-small ml-1.5 font-semibold text-text">{{ t.revisedTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+                  </span>
                 </div>
               </div>
 
