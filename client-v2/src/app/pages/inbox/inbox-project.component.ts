@@ -110,6 +110,36 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                 }
               </div>
 
+              <!-- Per-item actions — the selected item, when it's still
+                   actionable (not terminal). Accept at the current price, or
+                   propose a new one. -->
+              @if (selectedItem(); as it) {
+                @if (!isTerminal(it.status)) {
+                  <div class="flex items-center gap-2 border-t border-hairline px-4 py-2.5">
+                    <span class="bp-body-small min-w-0 flex-1 truncate text-secondary">
+                      <span class="font-semibold text-text">{{ it.name }}</span>
+                      · {{ (it.priceCurrent ?? it.priceRef) | currency: 'GBP' : 'symbol' : '1.0-0' }}
+                    </span>
+                    @if (proposing()) {
+                      <input
+                        type="number"
+                        class="h-8 w-28 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-md outline-none focus:border-accent"
+                        [value]="proposePrice() ?? ''"
+                        [disabled]="sending()"
+                        placeholder="New price"
+                        (input)="proposePrice.set($any($event.target).valueAsNumber)"
+                        (keydown.enter)="submitPropose(it)"
+                      />
+                      <button type="button" class="bp-btn-outline" [disabled]="sending()" (click)="proposing.set(false)">Cancel</button>
+                      <button type="button" class="bp-btn-grad" [disabled]="sending() || proposePrice() == null" (click)="submitPropose(it)">Send price</button>
+                    } @else {
+                      <button type="button" class="bp-btn-outline" [disabled]="sending()" (click)="startPropose(it)">Propose new price</button>
+                      <button type="button" class="bp-btn-grad" [disabled]="sending()" (click)="accept(it)">Accept</button>
+                    }
+                  </div>
+                }
+              }
+
               <!-- Compose — the standard field chrome (catalogue-search rhythm). -->
               <div class="border-t border-hairline px-4 py-3">
                 <div class="flex h-[42px] items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 shadow-[var(--shadow-xs)] focus-within:border-accent">
@@ -249,6 +279,43 @@ export class InboxProjectComponent {
     }
   }
 
+  // ── Per-item actions (Accept / Propose new price) ──────────────────────
+  protected readonly proposing = signal(false);
+  protected readonly proposePrice = signal<number | null>(null);
+
+  /** Terminal items are read-only (no actions). */
+  protected isTerminal(status: string): boolean {
+    return TERMINAL_STATUSES.has(status);
+  }
+
+  protected accept(it: InboxThreadItem): void {
+    void this.itemAction(it.id, 'accept');
+  }
+  protected startPropose(it: InboxThreadItem): void {
+    this.proposePrice.set(it.priceCurrent ?? it.priceRef ?? 0);
+    this.proposing.set(true);
+  }
+  protected async submitPropose(it: InboxThreadItem): Promise<void> {
+    const price = this.proposePrice();
+    if (price == null || price < 0) return;
+    await this.itemAction(it.id, 'adjust', price);
+    this.proposing.set(false);
+  }
+
+  private async itemAction(itemId: string, action: 'accept' | 'adjust', price?: number): Promise<void> {
+    const thread = this.selectedThread();
+    if (!thread || this.sending()) return;
+    this.sending.set(true);
+    try {
+      await firstValueFrom(this.inbox.reply(thread.id, { itemActions: [{ itemId, action, price }] }));
+      this.threadsRes.reload();
+    } catch {
+      // Retry on the next click; shared toast surface lands later.
+    } finally {
+      this.sending.set(false);
+    }
+  }
+
   // Tree expansion — collapsed-by-id (default expanded so items show).
   private readonly collapsed = signal<ReadonlySet<string>>(new Set());
   protected isExpanded(id: string): boolean {
@@ -263,3 +330,6 @@ export class InboxProjectComponent {
     });
   }
 }
+
+/** Terminal item statuses — no further supplier action. */
+const TERMINAL_STATUSES = new Set(['declined_by_supplier', 'declined_by_agent', 'booked']);

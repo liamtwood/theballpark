@@ -194,6 +194,30 @@ surface when wiring slice C actions. **Severity:** LOW
 **What:** the reply endpoint already accepts `itemActions`
 (accept/adjust/decline) — slice C just wires the buttons. **Severity:** info
 
+## Slice C — per-item Accept / Propose new price
+
+**Shipped:** 2026-06-25, chip `[Dev v2] v2.35q`
+
+### What landed
+- An **action bar** on the selected item (above compose, hidden for
+  terminal items): **Accept** (→ `accepted` + seller decision) and
+  **Propose new price** (inline price field → `adjusted_by_supplier`, clears
+  the agency's prior accept). Both post to the slice-B reply endpoint
+  (`itemActions`), then refresh so the item's status pill + Revised total
+  update. No server change — the endpoint already accepted item actions.
+
+### Files touched
+| File | Notes |
+|---|---|
+| client-v2/.../pages/inbox/inbox-project.component.ts | action bar + accept/propose handlers |
+| client-v2/src/environments/environment.ts | chip → v2.35q |
+
+### Concerns not in spec
+#### Optimism / toast still pending
+**What:** actions reload the thread on success and silently keep state on
+failure (no toast yet — same gap as slice B). Wire the shared toast when the
+inbox gets a MessageService. **Severity:** LOW
+
 ## QC notes
 (Liam)
 
