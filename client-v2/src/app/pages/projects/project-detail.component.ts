@@ -21,6 +21,7 @@ import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.
 import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.component';
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
+import { ProjectOutreachStore } from './project-outreach.store';
 
 type Tab = 'marketplace' | 'estimate' | 'details';
 const TABS: Tab[] = ['marketplace', 'estimate', 'details'];
@@ -67,7 +68,10 @@ interface DetailForm {
     ProjectMarketplaceComponent,
     ProjectEstimateComponent,
   ],
-  providers: [MessageService],
+  // ProjectOutreachStore is provided HERE (not in the marketplace tab) so
+  // the ephemeral supplier roster survives Marketplace ↔ Estimate switches
+  // (pV2-INBOX-02).
+  providers: [MessageService, ProjectOutreachStore],
   /* Viewport-fit on EVERY tab (universal rule: the hero never scrolls).
      The marketplace tab manages its own column scroll; Details/Estimate
      scroll inside their own region below the anchored hero. */

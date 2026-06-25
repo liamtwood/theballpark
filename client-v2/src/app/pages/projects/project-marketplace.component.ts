@@ -14,6 +14,7 @@ import { ProjectService } from '../../core/projects/project.service';
 import { QuoteLine } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
 import { ProjectQuoteRailComponent } from './project-quote-rail.component';
+import { ProjectOutreachStore } from './project-outreach.store';
 
 /** pV2-PROJECTS-02 slice 2 — the inside-project Marketplace tab. The SAME
  *  catalogue engine the global marketplace + supplier store mount (RP-06,
@@ -82,7 +83,10 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
               [suppliers]="relevantSuppliers()"
               [viewMode]="store.viewMode()"
               [favouriteIds]="favs.suppliers()"
+              [quotable]="true"
+              [quoteIds]="enlistedSupplierIds()"
               (favouriteToggled)="favs.toggle('supplier', $event)"
+              (quoteToggled)="onSupplierQuoteToggle($event)"
             />
           }
         } @else if (store.loadingFirstPage()) {
@@ -125,6 +129,7 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
 export class ProjectMarketplaceComponent {
   protected readonly store = inject(MarketplaceStore);
   protected readonly favs = inject(FavouritesStore);
+  protected readonly outreach = inject(ProjectOutreachStore);
   private readonly projects = inject(ProjectService);
   private readonly catalogue = inject(CatalogueService);
   private readonly toast = inject(MessageService);
@@ -167,6 +172,11 @@ export class ProjectMarketplaceComponent {
    *  reads are cached by the catalogue service, so the union is cheap.
    *  First page per category by design (the supplier set is small); a
    *  no-silent-cap note rides the ship report. */
+  /** Supplier → the quote-categories they serve in the CURRENT view (one
+   *  category when a row is selected; the union's categories on "All").
+   *  Drives which categories an "Add to Quote" click enlists them for. */
+  private readonly supplierCats = signal<ReadonlyMap<string, string[]>>(new Map());
+
   protected readonly relevantSuppliersRes = resource({
     params: () => {
       if (this.store.mode() !== 'suppliers') return undefined;
@@ -177,13 +187,37 @@ export class ProjectMarketplaceComponent {
     loader: async ({ params: cats }) => {
       const pages = await Promise.all(cats.map((c) => this.catalogue.suppliers({ cat: c })));
       const byId = new Map<string, CatalogueSupplier>();
-      for (const page of pages) {
-        for (const s of page.items) if (!byId.has(s.id)) byId.set(s.id, s);
-      }
+      const catsBySupplier = new Map<string, string[]>();
+      cats.forEach((c, i) => {
+        for (const s of pages[i].items) {
+          if (!byId.has(s.id)) byId.set(s.id, s);
+          const arr = catsBySupplier.get(s.id) ?? [];
+          arr.push(c);
+          catsBySupplier.set(s.id, arr);
+        }
+      });
+      this.supplierCats.set(catsBySupplier);
       return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
     },
   });
   protected readonly relevantSuppliers = computed(() => this.relevantSuppliersRes.value() ?? []);
+
+  /** Suppliers showing "Added to Quote" — enlisted for every quote-category
+   *  they serve in the current view. */
+  protected readonly enlistedSupplierIds = computed(() => {
+    const out = new Set<string>();
+    for (const [sid, cats] of this.supplierCats()) {
+      if (cats.length && cats.every((c) => this.outreach.isEnlisted(c, sid))) out.add(sid);
+    }
+    return out;
+  });
+
+  /** "Add to Quote" on a supplier card → toggle them across the quote
+   *  categories they serve in this view (the selected one, or all of them
+   *  on the "All Categories" view). */
+  protected onSupplierQuoteToggle(supplierId: string): void {
+    this.outreach.toggleSupplier(this.supplierCats().get(supplierId) ?? [], supplierId);
+  }
 
   protected readonly quoteLines = signal<QuoteLine[]>([]);
   protected readonly quoteIds = computed(() => new Set(this.quoteLines().map((l) => l.itemId)));
