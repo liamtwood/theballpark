@@ -113,6 +113,16 @@ export class ProjectOutreachStore {
     }
   }
 
+  /** The current project's roster as a send payload (categories with ≥1
+   *  picked supplier). */
+  rosterPayload(): { categoryId: string; supplierIds: string[] }[] {
+    const out: { categoryId: string; supplierIds: string[] }[] = [];
+    for (const [categoryId, set] of this.roster()) {
+      if (set.size) out.push({ categoryId, supplierIds: [...set] });
+    }
+    return out;
+  }
+
   /** Drop the current project's roster (after a successful send). */
   clear(): void {
     const pid = this.current();

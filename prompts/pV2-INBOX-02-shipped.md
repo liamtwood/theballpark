@@ -190,6 +190,76 @@ cleared the picks.
   extra fetch. The supplier-card add path uses `addSupplier` too; the unused
   toggle method was removed.
 
+## Slice 4 — gated send (`POST /api/inbox/send`) — the producer
+
+**Shipped:** 2026-06-25, chip `[Dev v2] v2.35f`
+
+### What landed
+- **`POST /api/inbox/send`** (gated v2 inbox router): the agency fans a
+  project's quote out to the picked suppliers. org is the JWT caller; the
+  service verifies it **owns the project** before any write (RP-INB1). One
+  thread per **(category × supplier)**, seeded `brief_sent` message_items +
+  events + quote_requests + the outreach email.
+- **Max reuse:** `inbox.service.sendOutreach` builds per-category
+  requirements from `project_items` and calls v1's `requestQuotes` — with a
+  new **`skip_balls`** flag (no Balls economy in v2 yet; emails kept).
+  `messages.category_id` FKs to `project_categories`, so the service
+  resolves (or lazily creates) that row per category to keep threads keyed
+  per category.
+- **"Message suppliers"** now calls it: on success the ephemeral roster
+  clears, a success toast reports `N threads across M categories`, and the
+  categories flip to `out_for_quote` server-side. Those threads surface in
+  the supplier's Inbox (INBOX-01 reader) — **end to end**.
+
+### Files touched
+| File | Notes |
+|---|---|
+| server/src/services/taxonomy.service.js | `skip_balls` flag (balance check / debit / return guarded) — v1 callers unchanged |
+| server/src/services/inbox.service.js | `sendOutreach` + `resolveProjectCategoryId` |
+| server/src/routes/inbox.js | `POST /send` (Zod) |
+| client-v2/.../core/inbox/inbox.service.ts | `send()` + payload types |
+| client-v2/.../projects/project-outreach.store.ts | `rosterPayload()` |
+| client-v2/.../projects/project-detail.component.ts | real `onMessageSuppliers` (send + clear + toast) |
+| client-v2/src/environments/environment.ts | chip → v2.35f |
+
+### API audit — `POST /api/inbox/send`
+- ✓ HTTP method semantics — POST, creates threads (201)
+- ✓ Input validation — Zod (projectId uuid; roster: ≥1 category, each ≥1 supplier uuid)
+- ✓ Authorization — gated router (authenticate + active membership); service verifies `project.org_id === req.user.org_id` (RP-INB1, no client org). Supplier callers can't match a project they own → 404.
+- ✓ Status codes — 201 / 400 / 404 (not-found AND not-owner both 404, no existence disclosure) / 401·403 from middleware
+- ✓ Response shape — `{ categories, threads, results[] }`
+- ✓ Information disclosure — not-owner is 404, identical to not-found
+- ✓ Observability — errors flow to the central handler; email failures are fire-and-forget logged (v1)
+- N/A Idempotency — re-sending re-creates threads (v1 `requestQuotes` is idempotent only on the "new" item upsert, not the message); see concern below
+- ✓ Performance — one query for items, then one `requestQuotes` txn per category (small N)
+
+### Concerns not in spec
+#### Per-category atomicity (no all-or-nothing across categories)
+**Where:** inbox.service.js `sendOutreach`
+**What:** each category's `requestQuotes` is its own transaction (v1 opens
+its own BEGIN/COMMIT). If category 3 of 5 fails, 1–2 already committed —
+partial send. Acceptable for MVP (categories are independent); the user can
+re-send the rest.
+**Severity:** LOW
+
+#### No idempotency / double-send guard
+**Where:** `POST /api/inbox/send`
+**What:** clicking "Message suppliers" twice (or re-entering and sending
+again) creates duplicate threads — there's no "already sent" guard. The
+roster clears on success, which mitigates the immediate double-click, but
+nothing stops a second deliberate send.
+**Suggested fix:** dedupe on an existing open thread per (project, supplier,
+category), or disable send once `out_for_quote`. Deferred.
+**Severity:** MEDIUM
+
+#### Outreach emails fire on send (env-gated)
+**Where:** v1 `requestQuotes` email loop, `QUOTE_REQUEST_EMAILS_ENABLED=true`
+**What:** a send emails each supplier org's stored address (Liam wants
+emails kept). On the shared preview/prod DB, QC sends will email whatever
+addresses those supplier orgs carry. **QC note for Liam:** confirm the test
+supplier orgs have safe addresses before sending to a real one.
+**Severity:** LOW (intended behaviour, flagged for QC awareness)
+
 ## QC notes
 (Liam)
 

@@ -8,6 +8,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { CodelistService } from '../../core/codelists/codelist.service';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { ProjectService } from '../../core/projects/project.service';
+import { InboxService } from '../../core/inbox/inbox.service';
 import { ProjectDetail, ProjectUpdate } from '../../core/projects/project.types';
 import { GalleryImage, PickerResult } from '../../core/media/media.types';
 import { errorDetail } from '../../core/http-error';
@@ -245,6 +246,7 @@ export class ProjectDetailComponent {
   private readonly pageConfig = inject(PageConfigService);
   private readonly toast = inject(MessageService);
   private readonly outreach = inject(ProjectOutreachStore);
+  private readonly inbox = inject(InboxService);
 
   private readonly params = toSignal(this.route.paramMap, { initialValue: this.route.snapshot.paramMap });
   private readonly query = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
@@ -318,10 +320,30 @@ export class ProjectDetailComponent {
       .catch((err) => console.warn('[ProjectDetail] nav failed', err));
   }
 
-  /** "Message suppliers" — the gated outreach send lands in slice 4. */
-  protected onMessageSuppliers(): void {
-    this.toast.add({ severity: 'info', summary: 'Sending the brief to suppliers lands next (pV2-INBOX-02 slice 4).', life: 4000 });
+  /** "Message suppliers" — fan the quote out to the picked suppliers (one
+   *  thread per category × supplier). On success the ephemeral roster is
+   *  cleared (the threads are now the record) and the categories flip to
+   *  "out for quote" server-side. */
+  protected async onMessageSuppliers(): Promise<void> {
+    const roster = this.outreach.rosterPayload();
+    if (!roster.length || this.sending()) return;
+    this.sending.set(true);
+    try {
+      const res = await firstValueFrom(this.inbox.send(this.id(), roster));
+      this.outreach.clear();
+      this.toast.add({
+        severity: 'success',
+        summary: `Brief sent — ${res.threads} supplier ${res.threads === 1 ? 'thread' : 'threads'} across ${res.categories} ${res.categories === 1 ? 'category' : 'categories'}.`,
+        life: 5000,
+      });
+    } catch (err) {
+      this.toast.add({ severity: 'error', summary: "Couldn't send the brief — please try again.", detail: errorDetail(err), life: 5000 });
+    } finally {
+      this.sending.set(false);
+    }
   }
+
+  protected readonly sending = signal(false);
 
   protected patch(p: Partial<DetailForm>): void {
     this.form.update((f) => ({ ...f, ...p }));

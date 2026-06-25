@@ -1007,7 +1007,10 @@ async function requestQuotes(body) {
   const {
     project_id, project_category_id, category_id,
     requirements, supplier_ids, user_id,
-    subject: composedSubject, body: composedBody
+    subject: composedSubject, body: composedBody,
+    // pV2-INBOX-02: the gated v2 inbox send passes skip_balls — v2 has no
+    // Balls economy yet, so the outreach must not debit / gate on Balls.
+    skip_balls = false,
   } = body || {};
 
   if (!project_id)  throw httpErr('project_id is required', 400);
@@ -1055,7 +1058,7 @@ async function requestQuotes(body) {
   // One Ball per outreach — verify the agency can afford it.
   const bal = await pool.query('SELECT balls_balance FROM orgs WHERE id = $1', [agencyOrgId]);
   const balance = bal.rows.length ? Number(bal.rows[0].balls_balance) || 0 : 0;
-  if (balance < 1) {
+  if (!skip_balls && balance < 1) {
     throw httpErr('Not enough Balls to send this outreach — top up to continue.', 402);
   }
 
@@ -1135,20 +1138,24 @@ async function requestQuotes(body) {
       }
     }
 
-    // ONE Ball debit for the whole outreach (project-level).
-    const ballTx = await client.query(
-      `INSERT INTO balls_transactions
-         (org_id, project_id, supplier_org_id, user_id, amount, direction, reason, description)
-       VALUES ($1, $2, NULL, $3, 1, 'debit', 'spend', $4)
-       RETURNING id`,
-      [agencyOrgId, project_id, user_id || null,
-       `Quote outreach — ${categoryName}: ${supplierIds.length} supplier(s)`]
-    );
-    const ballTxId = ballTx.rows[0].id;
-    await client.query(
-      'UPDATE orgs SET balls_balance = balls_balance - 1, updated_at = NOW() WHERE id = $1',
-      [agencyOrgId]
-    );
+    // ONE Ball debit for the whole outreach (project-level). Skipped by the
+    // gated v2 inbox send (skip_balls) — no Balls economy in v2 yet.
+    let ballTxId = null;
+    if (!skip_balls) {
+      const ballTx = await client.query(
+        `INSERT INTO balls_transactions
+           (org_id, project_id, supplier_org_id, user_id, amount, direction, reason, description)
+         VALUES ($1, $2, NULL, $3, 1, 'debit', 'spend', $4)
+         RETURNING id`,
+        [agencyOrgId, project_id, user_id || null,
+         `Quote outreach — ${categoryName}: ${supplierIds.length} supplier(s)`]
+      );
+      ballTxId = ballTx.rows[0].id;
+      await client.query(
+        'UPDATE orgs SET balls_balance = balls_balance - 1, updated_at = NOW() WHERE id = $1',
+        [agencyOrgId]
+      );
+    }
 
     // Per supplier: one outbound message (the conversation anchor), its
     // line items, and a quote_requests row per requirement.
@@ -1282,7 +1289,7 @@ async function requestQuotes(body) {
       suppliers: supplierIds.length,
       requirements: resolved.length,
       ball_transaction_id: ballTxId,
-      balls_balance: balance - 1
+      balls_balance: skip_balls ? null : balance - 1
     };
   } catch (err) {
     await client.query('ROLLBACK');

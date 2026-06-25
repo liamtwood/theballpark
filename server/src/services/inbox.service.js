@@ -13,6 +13,13 @@
 // project-card grid (Defer 1 — a bespoke supplier card comes later).
 
 const pool = require('../db/pool');
+const TaxonomyService = require('./taxonomy.service');
+
+function httpErr(message, status) {
+  const e = new Error(message);
+  e.status = status;
+  return e;
+}
 
 /** Map a supplier-projects row to the ProjectCard contract
  *  (client-v2 core/projects/project.types.ts). The reaching-out agency
@@ -79,4 +86,85 @@ async function listSupplierProjects(supplierOrgId) {
   return r.rows.map(toSupplierProjectCard);
 }
 
-module.exports = { listSupplierProjects };
+/** Resolve (or lazily create) the project_categories row for a project's
+ *  catalogue category — messages.category_id FKs to project_categories(id),
+ *  so the thread keys per (project, supplier, category). v2 quote items
+ *  normally already carry a project_categories row (recommend creates it);
+ *  the INSERT is the rare fallback. */
+async function resolveProjectCategoryId(executor, projectId, categoryId) {
+  const found = await executor.query(
+    `SELECT id FROM project_categories
+      WHERE project_id = $1 AND category_id = $2 AND is_active = true
+      ORDER BY created_at ASC LIMIT 1`,
+    [projectId, categoryId]
+  );
+  if (found.rows.length) return found.rows[0].id;
+  const ins = await executor.query(
+    `INSERT INTO project_categories (project_id, category_id, status_code)
+     VALUES ($1, $2, 'draft') RETURNING id`,
+    [projectId, categoryId]
+  );
+  return ins.rows[0].id;
+}
+
+/** pV2-INBOX-02 — fan a project's quote out to the agent-picked suppliers.
+ *
+ *  The agency org is the JWT caller (RP-INB1): we verify it owns the project
+ *  before any write. For each (category → supplierIds) in the roster we build
+ *  the requirements from the project's quote items in that category, then
+ *  reuse the v1 `requestQuotes` writes (one outbound thread per supplier,
+ *  seeded `brief_sent` message_items + events + quote_requests + the outreach
+ *  email) with `skip_balls` — v2 has no Balls economy yet. */
+async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
+  const proj = await pool.query(
+    `SELECT org_id FROM projects WHERE id = $1 AND deleted_at IS NULL`,
+    [projectId]
+  );
+  if (!proj.rows.length) throw httpErr('Project not found', 404);
+  // Participation: only the owning agency may fan its own project out.
+  if (proj.rows[0].org_id !== agencyOrgId) throw httpErr('Project not found', 404);
+
+  // The quote's item ids grouped by catalogue category.
+  const itemsRes = await pool.query(
+    `SELECT i.category_id, pi.item_id
+       FROM project_items pi
+       JOIN items i ON i.id = pi.item_id
+      WHERE pi.project_id = $1 AND pi.deleted_at IS NULL`,
+    [projectId]
+  );
+  const itemsByCat = new Map();
+  for (const r of itemsRes.rows) {
+    const arr = itemsByCat.get(r.category_id) ?? [];
+    arr.push(r.item_id);
+    itemsByCat.set(r.category_id, arr);
+  }
+
+  const results = [];
+  for (const entry of roster) {
+    const categoryId = entry.categoryId;
+    const supplierIds = [...new Set((entry.supplierIds || []).filter(Boolean))];
+    const itemIds = itemsByCat.get(categoryId) || [];
+    // Nothing to ask, or no one to ask — skip (e.g. a stale roster category).
+    if (!supplierIds.length || !itemIds.length) continue;
+
+    const projectCategoryId = await resolveProjectCategoryId(pool, projectId, categoryId);
+    const res = await TaxonomyService.requestQuotes({
+      project_id: projectId,
+      category_id: categoryId,
+      project_category_id: projectCategoryId,
+      requirements: itemIds.map((item_id) => ({ item_id })),
+      supplier_ids: supplierIds,
+      user_id: userId,
+      skip_balls: true,
+    });
+    results.push({ categoryId, refCode: res.ref_code, suppliers: res.suppliers, requirements: res.requirements });
+  }
+
+  return {
+    categories: results.length,
+    threads: results.reduce((n, r) => n + (r.suppliers || 0), 0),
+    results,
+  };
+}
+
+module.exports = { listSupplierProjects, sendOutreach };

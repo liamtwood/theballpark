@@ -15,4 +15,20 @@ export class InboxService {
   supplierProjects(): Observable<ProjectCard[]> {
     return this.api.get<ProjectCard[]>('/api/inbox/projects');
   }
+
+  /** Fan a project's quote out to the picked suppliers — one thread per
+   *  (category × supplier). org from JWT. */
+  send(projectId: string, roster: OutreachRosterEntry[]): Observable<OutreachSendResult> {
+    return this.api.post<OutreachSendResult>('/api/inbox/send', { projectId, roster });
+  }
+}
+
+export interface OutreachRosterEntry {
+  categoryId: string;
+  supplierIds: string[];
+}
+
+export interface OutreachSendResult {
+  categories: number;
+  threads: number;
 }
