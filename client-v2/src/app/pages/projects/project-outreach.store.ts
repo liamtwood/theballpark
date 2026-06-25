@@ -64,39 +64,53 @@ export class ProjectOutreachStore {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  /** Toggle a supplier across a set of categories (in the current project):
-   *  if it's already in ALL of them, remove from each; otherwise add to
-   *  each. Empty categories/projects collapse out so reads stay clean. */
-  toggleSupplier(categoryIds: readonly string[], supplier: RosterSupplier): void {
-    const pid = this.current();
-    if (!pid || !categoryIds.length) return;
-    const id = supplier.id;
-    const fully = categoryIds.every((c) => this.isEnlisted(c, id));
-    this.projects.update((prev) => {
-      const next = new Map<string, Map<string, Set<string>>>(
-        [...prev].map(([k, v]) => [k, new Map([...v].map(([ck, cv]) => [ck, new Set(cv)]))])
-      );
-      const roster = next.get(pid) ?? new Map<string, Set<string>>();
+  /** Enlist a supplier for each category — idempotent, NEVER removes. Used
+   *  when adding an ITEM implies adding its supplier (Liam 2026-06-25): a
+   *  second item from the same supplier must not toggle them back off. */
+  addSupplier(categoryIds: readonly string[], supplier: RosterSupplier): void {
+    if (!categoryIds.length || categoryIds.every((c) => this.isEnlisted(c, supplier.id))) return;
+    this.mutate((roster) => {
       for (const c of categoryIds) {
         const set = roster.get(c) ?? new Set<string>();
-        if (fully) set.delete(id);
-        else set.add(id);
-        if (set.size) roster.set(c, set);
-        else roster.delete(c);
+        set.add(supplier.id);
+        roster.set(c, set);
       }
-      if (roster.size) next.set(pid, roster);
-      else next.delete(pid);
-      return next;
     });
-    if (!fully && !this.names().has(id)) {
-      this.names.update((m) => new Map(m).set(id, supplier.name));
-    }
+    this.registerName(supplier);
   }
 
   /** Remove a supplier from one category (the rail's chip remove). */
   remove(categoryId: string, supplierId: string): void {
     if (!this.isEnlisted(categoryId, supplierId)) return;
-    this.toggleSupplier([categoryId], { id: supplierId, name: this.nameOf(supplierId) });
+    this.mutate((roster) => {
+      const set = roster.get(categoryId);
+      if (!set) return;
+      set.delete(supplierId);
+      if (!set.size) roster.delete(categoryId);
+    });
+  }
+
+  /** Apply a mutation to the current project's roster (deep-cloned so the
+   *  signal sees a new reference), pruning empty rosters/categories. */
+  private mutate(apply: (roster: Map<string, Set<string>>) => void): void {
+    const pid = this.current();
+    if (!pid) return;
+    this.projects.update((prev) => {
+      const next = new Map<string, Map<string, Set<string>>>(
+        [...prev].map(([k, v]) => [k, new Map([...v].map(([ck, cv]) => [ck, new Set(cv)]))])
+      );
+      const roster = next.get(pid) ?? new Map<string, Set<string>>();
+      apply(roster);
+      if (roster.size) next.set(pid, roster);
+      else next.delete(pid);
+      return next;
+    });
+  }
+
+  private registerName(supplier: RosterSupplier): void {
+    if (!this.names().has(supplier.id)) {
+      this.names.update((m) => new Map(m).set(supplier.id, supplier.name));
+    }
   }
 
   /** Drop the current project's roster (after a successful send). */

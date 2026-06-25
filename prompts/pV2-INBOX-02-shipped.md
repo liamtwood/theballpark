@@ -181,6 +181,15 @@ cleared the picks.
   a hard reload still clears (the DB-persistence follow-up covers reload
   survival).
 
+### Iteration — v2.35d (2026-06-25)
+**Triggered by Liam:** adding an item should enlist that item's supplier.
+- Adding an item to the quote (Items mode `+`) now also adds its supplier to
+  that item's category roster — via a new **idempotent `addSupplier`** (a
+  second item from the same supplier never toggles them off). The
+  `CatalogueItem` carries `supplierId`/`supplierName`/`categoryId`, so no
+  extra fetch. The supplier-card add path uses `addSupplier` too; the unused
+  toggle method was removed.
+
 ## QC notes
 (Liam)
 

@@ -220,7 +220,7 @@ export class ProjectMarketplaceComponent {
    *  on the "All Categories" view). */
   protected onSupplierQuoteToggle(supplierId: string): void {
     const name = this.relevantSuppliers().find((s) => s.id === supplierId)?.name ?? supplierId;
-    this.outreach.toggleSupplier(this.supplierCats().get(supplierId) ?? [], { id: supplierId, name });
+    this.outreach.addSupplier(this.supplierCats().get(supplierId) ?? [], { id: supplierId, name });
   }
 
   protected readonly quoteLines = signal<QuoteLine[]>([]);
@@ -248,6 +248,12 @@ export class ProjectMarketplaceComponent {
       } else {
         const line = await firstValueFrom(this.projects.addQuoteItem(id, itemId));
         this.quoteLines.update((ls) => [...ls, line]);
+        // Adding an item implies adding its supplier to that category's
+        // roster (Liam 2026-06-25). Idempotent — re-adding never removes.
+        const item = this.store.items().find((i) => i.id === itemId);
+        if (item) {
+          this.outreach.addSupplier([item.categoryId], { id: item.supplierId, name: item.supplierName });
+        }
       }
     } catch (err) {
       this.quoteLines.set(before);
