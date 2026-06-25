@@ -48,23 +48,33 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                 <div class="mt-2 bp-meta">{{ p.agencyName }}</div>
               </div>
             }
+            <!-- Always a tree header: the category name when there are
+                 several, else "PROJECT ITEMS". Expand to reveal the items. -->
             @for (t of threads(); track t.id) {
-              @if (!singleCategory() && t.categoryName) {
-                <div class="bp-cart-cat-band mt-2 first:mt-0">{{ t.categoryName }}</div>
-              }
-              @for (it of t.items; track it.id) {
-                <button
-                  type="button"
-                  class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left hover:bg-fill"
-                  [class.bg-fill]="it.id === selectedId()"
-                  (click)="selectedId.set(it.id)"
-                >
-                  <span class="min-w-0 flex-1">
-                    <span class="bp-list-title block truncate">{{ it.name }}</span>
-                    <span class="bp-meta">{{ (it.priceCurrent ?? it.priceRef) | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-                  </span>
-                  <app-status-pill list="message_item_status" [code]="it.status" />
-                </button>
+              <button
+                type="button"
+                class="flex w-full items-center gap-1.5 px-2 pb-1 pt-3 text-left first:pt-1"
+                (click)="toggle(t.id)"
+              >
+                <lucide-icon [name]="isExpanded(t.id) ? 'chevron-down' : 'chevron-right'" [size]="15" class="shrink-0 text-muted" />
+                <span class="bp-field-label flex-1 uppercase tracking-wide">{{ headerLabel(t) }}</span>
+                <span class="bp-meta">{{ t.items.length }}</span>
+              </button>
+              @if (isExpanded(t.id)) {
+                @for (it of t.items; track it.id) {
+                  <button
+                    type="button"
+                    class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left hover:bg-fill"
+                    [class.bg-fill]="it.id === selectedId()"
+                    (click)="selectedId.set(it.id)"
+                  >
+                    <span class="min-w-0 flex-1">
+                      <span class="bp-list-title block truncate">{{ it.name }}</span>
+                      <span class="bp-meta">{{ (it.priceCurrent ?? it.priceRef) | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+                    </span>
+                    <app-status-pill list="message_item_status" [code]="it.status" />
+                  </button>
+                }
               }
             }
           </div>
@@ -207,4 +217,24 @@ export class InboxProjectComponent {
   protected readonly heroSubtitle = computed(
     () => this.project()?.name ?? 'Supplier conversations for this project.'
   );
+
+  /** Tree-header label: the category name when there's more than one
+   *  category, else "PROJECT ITEMS". */
+  protected headerLabel(t: InboxThread): string {
+    return this.singleCategory() || !t.categoryName ? 'PROJECT ITEMS' : t.categoryName;
+  }
+
+  // Tree expansion — collapsed-by-id (default expanded so items show).
+  private readonly collapsed = signal<ReadonlySet<string>>(new Set());
+  protected isExpanded(id: string): boolean {
+    return !this.collapsed().has(id);
+  }
+  protected toggle(id: string): void {
+    this.collapsed.update((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 }
