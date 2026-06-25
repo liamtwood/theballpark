@@ -36,31 +36,16 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
           <div class="hidden min-h-0 xl:flex xl:flex-col xl:gap-3 xl:overflow-y-auto">
             @if (project(); as p) {
               <div class="bp-card p-4">
-                <div class="flex items-start justify-between gap-3">
-                  <div class="min-w-0">
-                    <h3 class="bp-list-title leading-snug">{{ p.clientName ? p.clientName + ' — ' : '' }}{{ p.name }}</h3>
-                    <div class="mt-2.5 flex items-center gap-1.5 text-secondary">
-                      <lucide-icon name="calendar" [size]="14" [strokeWidth]="1.75" />
-                      <span class="bp-body-small">{{ p.eventDate || 'Date TBC' }}</span>
-                    </div>
-                    <div class="mt-1.5 flex items-center gap-1.5 text-secondary">
-                      <lucide-icon name="map-pin" [size]="14" [strokeWidth]="1.75" />
-                      <span class="bp-body-small">{{ p.location || '—' }}</span>
-                    </div>
-                    <div class="mt-2 bp-meta">{{ p.agencyName }}</div>
-                  </div>
-                  <div class="shrink-0 text-right">
-                    <div class="bp-meta truncate">{{ p.name }}</div>
-                    <div class="mt-2.5">
-                      <div class="bp-caption">Original</div>
-                      <div class="bp-body-small text-secondary">{{ p.originalTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</div>
-                    </div>
-                    <div class="mt-1.5">
-                      <div class="bp-caption">Revised</div>
-                      <div class="bp-body-small font-semibold text-text">{{ p.revisedTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</div>
-                    </div>
-                  </div>
+                <h3 class="bp-list-title leading-snug">{{ p.clientName ? p.clientName + ' — ' : '' }}{{ p.name }}</h3>
+                <div class="mt-2.5 flex items-center gap-1.5 text-secondary">
+                  <lucide-icon name="calendar" [size]="14" [strokeWidth]="1.75" />
+                  <span class="bp-body-small">{{ p.eventDate || 'Date TBC' }}</span>
                 </div>
+                <div class="mt-1.5 flex items-center gap-1.5 text-secondary">
+                  <lucide-icon name="map-pin" [size]="14" [strokeWidth]="1.75" />
+                  <span class="bp-body-small">{{ p.location || '—' }}</span>
+                </div>
+                <div class="mt-2 bp-meta">{{ p.agencyName }}</div>
               </div>
             }
             @for (t of threads(); track t.id) {
