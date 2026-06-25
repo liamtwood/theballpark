@@ -7,6 +7,7 @@ import { ProjectService } from '../../core/projects/project.service';
 import { ProjectDetail, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
 import { QtyInputComponent } from './qty-input.component';
+import { ProjectOutreachStore } from './project-outreach.store';
 
 /** pV2-PROJECTS-02 slice 3 — the Estimate tab. Ports the v1 estimate
  *  breakdown (Subtotal → Contingency → Your cost → Margin → VAT → Client
@@ -178,12 +179,22 @@ import { QtyInputComponent } from './qty-input.component';
 
         <p class="bp-caption mt-4">Indicative — based on marketplace base prices. Final supplier quotes and the priced rollup land with checkout.</p>
 
-        <!-- The forward action: take this ballpark to the marketplace and
-             fan the categories out to suppliers for real quotes. -->
-        <button type="button" class="bp-btn-grad mt-5 w-full" (click)="goToMarketplace.emit()">
-          Go with this Ballpark
-          <lucide-icon name="arrow-right" [size]="16" />
-        </button>
+        <!-- Forward action. With suppliers picked, this IS the final quote
+             view: send the brief out. Otherwise, go pick suppliers. -->
+        @if (outreach.supplierCount(); as n) {
+          <button type="button" class="bp-btn-grad mt-5 w-full" (click)="messageSuppliers.emit()">
+            <lucide-icon name="send" [size]="16" />
+            Message {{ n }} supplier{{ n === 1 ? '' : 's' }}
+          </button>
+          <button type="button" class="bp-btn-outline mt-2 w-full" (click)="goToMarketplace.emit()">
+            Add more suppliers
+          </button>
+        } @else {
+          <button type="button" class="bp-btn-grad mt-5 w-full" (click)="goToMarketplace.emit()">
+            Go with this Ballpark
+            <lucide-icon name="arrow-right" [size]="16" />
+          </button>
+        }
       }
       </div>
     </div>
@@ -192,12 +203,15 @@ import { QtyInputComponent } from './qty-input.component';
 export class ProjectEstimateComponent {
   private readonly projects = inject(ProjectService);
   private readonly toast = inject(MessageService);
+  protected readonly outreach = inject(ProjectOutreachStore);
 
   readonly projectId = input.required<string>();
   readonly project = input.required<ProjectDetail>();
   /** "Go with this Ballpark" — hand off to the in-project Marketplace's
    *  supplier fan-out (project-detail switches the tab + supplier mode). */
   readonly goToMarketplace = output<void>();
+  /** "Message suppliers" — fire the outreach send (wired in slice 4). */
+  readonly messageSuppliers = output<void>();
 
   /** Quote lines as writable state (seeded from the resource load) so qty
    *  edits can update optimistically + revert on failure. */

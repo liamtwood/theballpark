@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, resource, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { MarketplaceStore } from '../marketplace/marketplace-store';
@@ -133,6 +134,8 @@ export class ProjectMarketplaceComponent {
   private readonly projects = inject(ProjectService);
   private readonly catalogue = inject(CatalogueService);
   private readonly toast = inject(MessageService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly projectId = input.required<string>();
 
@@ -216,7 +219,8 @@ export class ProjectMarketplaceComponent {
    *  categories they serve in this view (the selected one, or all of them
    *  on the "All Categories" view). */
   protected onSupplierQuoteToggle(supplierId: string): void {
-    this.outreach.toggleSupplier(this.supplierCats().get(supplierId) ?? [], supplierId);
+    const name = this.relevantSuppliers().find((s) => s.id === supplierId)?.name ?? supplierId;
+    this.outreach.toggleSupplier(this.supplierCats().get(supplierId) ?? [], { id: supplierId, name });
   }
 
   protected readonly quoteLines = signal<QuoteLine[]>([]);
@@ -265,7 +269,11 @@ export class ProjectMarketplaceComponent {
     }
   }
 
+  /** Rail's "See Final Project Quote" → the Estimate tab, which shows the
+   *  priced breakdown + the "Message suppliers" action (pV2-INBOX-02). */
   protected onCheckout(): void {
-    this.toast.add({ severity: 'info', summary: 'The final quote & checkout land in the next arc (pV2-06f).', life: 4000 });
+    this.router
+      .navigate([], { relativeTo: this.route, queryParams: { tab: 'estimate' }, queryParamsHandling: 'merge' })
+      .catch((err) => console.warn('[ProjectMarketplace] nav failed', err));
   }
 }

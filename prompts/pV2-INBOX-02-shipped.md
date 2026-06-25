@@ -132,6 +132,40 @@ the Suppliers tab with the category still selected (lost stickiness).
   persisted-roster follow-up (option b) resolves it; acceptable for MVP
   since the add → message flow stays within the project.
 
+## Slice 3 — final quote + "Message suppliers" + rail roster
+
+**Shipped:** 2026-06-25, chip `[Dev v2] v2.35b`
+
+### What landed
+- The Quote rail now lists the **picked suppliers per category** (removable
+  chips) under each category band — sourced from the ephemeral roster. The
+  store gained name tracking (`RosterSupplier`, `pickedFor`, `nameOf`).
+- The rail's **"See Final Project Quote"** CTA now navigates to the
+  **Estimate** tab (was a stub toast).
+- The Estimate IS the final quote view: when the roster has suppliers, the
+  forward CTA becomes **"Message N suppliers"** (+ a secondary "Add more
+  suppliers" → back to the fan-out); with no picks it stays "Go with this
+  Ballpark". `messageSuppliers` output is stubbed in project-detail (a
+  toast) — the gated send is **slice 4**.
+
+### Files touched
+| File | Notes |
+|---|---|
+| client-v2/.../projects/project-outreach.store.ts | name tracking + `pickedFor`/`nameOf`; `toggleSupplier` takes `{id,name}` |
+| client-v2/.../projects/project-quote-rail.component.ts | per-category supplier chips (remove) |
+| client-v2/.../projects/project-marketplace.component.ts | pass name on toggle; rail CTA → Estimate tab |
+| client-v2/.../projects/project-estimate.component.ts | "Message suppliers" CTA + `messageSuppliers` output |
+| client-v2/.../projects/project-detail.component.ts | wire `messageSuppliers` (stub toast) |
+| client-v2/src/environments/environment.ts | chip → v2.35b |
+
+### Acceptance
+- Add suppliers in the fan-out → chips appear per category in the rail,
+  removable. ✓ (Liam to QC)
+- "See Final Project Quote" → Estimate tab. ✓
+- Estimate shows "Message N suppliers" when picks exist, else "Go with this
+  Ballpark". ✓
+- v2 build clean. ✓
+
 ## QC notes
 (Liam)
 

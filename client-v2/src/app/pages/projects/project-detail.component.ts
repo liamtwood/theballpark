@@ -207,7 +207,7 @@ interface DetailForm {
           }
           @case ('estimate') {
             <div class="min-h-0 flex-1 overflow-y-auto">
-              <app-project-estimate [projectId]="p.id" [project]="p" (goToMarketplace)="goToMarketplace()" />
+              <app-project-estimate [projectId]="p.id" [project]="p" (goToMarketplace)="goToMarketplace()" (messageSuppliers)="onMessageSuppliers()" />
             </div>
           }
           @default {
@@ -314,6 +314,11 @@ export class ProjectDetailComponent {
     this.router
       .navigate([], { relativeTo: this.route, queryParams: { tab: 'marketplace', mode: 'suppliers' }, queryParamsHandling: 'merge' })
       .catch((err) => console.warn('[ProjectDetail] nav failed', err));
+  }
+
+  /** "Message suppliers" — the gated outreach send lands in slice 4. */
+  protected onMessageSuppliers(): void {
+    this.toast.add({ severity: 'info', summary: 'Sending the brief to suppliers lands next (pV2-INBOX-02 slice 4).', life: 4000 });
   }
 
   protected patch(p: Partial<DetailForm>): void {
