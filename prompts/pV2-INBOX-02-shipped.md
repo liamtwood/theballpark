@@ -65,6 +65,20 @@ effect-driven navigation in slice 1.
 **Suggested fix:** auto-select the first scoped category if Liam wants it
 one-click. **Severity:** LOW
 
+### Iteration — v2.34x (2026-06-25)
+**Triggered by QC (Liam):** Suppliers rail should show **"All Categories"**
+too, scoped to suppliers across **all** the quote's categories (not the
+whole catalogue).
+- Dropped the `hideAll` strip input (added then unused); replaced with an
+  `allLabel` input. The "All Categories" row is back in Suppliers mode.
+- The supplier list now comes from a **client-side union**: "All" fetches
+  suppliers per quote-category and dedupes by id (per-category reads are
+  cached by the catalogue service). A specific category still shows just
+  that category's suppliers. Strip "All" count = the relevant categories'
+  totals only (`scopedTotal`), not the full catalogue.
+- No-silent-cap: the union takes the **first page** per category (supplier
+  set is small today); revisit if a category exceeds one page.
+
 ## QC notes
 (Liam)
 

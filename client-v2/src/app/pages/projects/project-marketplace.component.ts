@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, resource, 
 import { firstValueFrom } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { MarketplaceStore } from '../marketplace/marketplace-store';
+import { CatalogueService } from '../../core/marketplace/catalogue.service';
+import { CatalogueSupplier } from '../../shared/catalogue/catalogue.types';
 import { CatalogueFilterBandComponent } from '../../shared/catalogue/filter-band.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
@@ -58,9 +60,8 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
              (no "All" browse) so only project-relevant suppliers surface. -->
         <app-category-strip
           [categories]="stripCategories()"
-          [hideAll]="store.mode() === 'suppliers'"
           [activeId]="store.categoryId()"
-          [totalCount]="allItemsCount()"
+          [totalCount]="store.mode() === 'suppliers' ? scopedTotal() : allItemsCount()"
           [subcategories]="store.mode() === 'items' ? store.subcategories() : []"
           [activeSubId]="store.subcategoryId()"
           (categorySelected)="store.setCategory($event)"
@@ -70,26 +71,19 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
 
       <div class="min-h-0 min-w-0 xl:overflow-y-auto xl:pr-1">
         @if (store.mode() === 'suppliers') {
-          @if (!store.categoryId()) {
-            <p class="bp-body-small text-secondary">
-              Select one of your project's categories on the left to see the suppliers who serve it — then add them to the quote.
-            </p>
-          } @else if (store.suppliersRes.isLoading() && store.supplierRows().length === 0) {
+          @if (relevantSuppliersRes.isLoading()) {
             <p class="bp-body-small text-secondary">Loading…</p>
-          } @else if (store.supplierRows().length === 0) {
-            <p class="bp-body-small text-secondary">No suppliers serve this category yet.</p>
+          } @else if (relevantSuppliers().length === 0) {
+            <p class="bp-body-small text-secondary">
+              No suppliers serve {{ store.categoryId() ? 'this category' : 'your project categories' }} yet.
+            </p>
           } @else {
             <app-supplier-grid
-              [suppliers]="store.supplierRows()"
+              [suppliers]="relevantSuppliers()"
               [viewMode]="store.viewMode()"
               [favouriteIds]="favs.suppliers()"
               (favouriteToggled)="favs.toggle('supplier', $event)"
             />
-            @if (store.suppliersHasMore()) {
-              <div class="mt-6 flex justify-center">
-                <button type="button" class="bp-btn-outline" (click)="store.showMore()">Show more</button>
-              </div>
-            }
           }
         } @else if (store.loadingFirstPage()) {
           <p class="bp-body-small text-secondary">Loading…</p>
@@ -132,6 +126,7 @@ export class ProjectMarketplaceComponent {
   protected readonly store = inject(MarketplaceStore);
   protected readonly favs = inject(FavouritesStore);
   private readonly projects = inject(ProjectService);
+  private readonly catalogue = inject(CatalogueService);
   private readonly toast = inject(MessageService);
 
   readonly projectId = input.required<string>();
@@ -151,9 +146,44 @@ export class ProjectMarketplaceComponent {
    *  so the agent fans out to project-relevant suppliers only. */
   protected readonly stripCategories = computed(() => {
     if (this.store.mode() !== 'suppliers') return this.store.categories();
-    const ids = new Set(this.quoteLines().map((l) => l.categoryId).filter(Boolean));
+    const ids = this.quoteCategoryIds();
     return this.store.categories().filter((c) => ids.has(c.id));
   });
+
+  /** The distinct categories present in this project's quote. */
+  private readonly quoteCategoryIds = computed(
+    () => new Set(this.quoteLines().map((l) => l.categoryId).filter((id): id is string => !!id))
+  );
+
+  /** "All Categories" count in Suppliers mode = the relevant categories'
+   *  item counts only (not the whole catalogue). */
+  protected readonly scopedTotal = computed(() =>
+    this.stripCategories().reduce((sum, c) => sum + c.count, 0)
+  );
+
+  /** Suppliers shown in the fan-out. A specific category → that category's
+   *  suppliers; "All Categories" → the UNION across the quote's categories
+   *  (project-relevant only, never the whole catalogue). The per-category
+   *  reads are cached by the catalogue service, so the union is cheap.
+   *  First page per category by design (the supplier set is small); a
+   *  no-silent-cap note rides the ship report. */
+  protected readonly relevantSuppliersRes = resource({
+    params: () => {
+      if (this.store.mode() !== 'suppliers') return undefined;
+      const cat = this.store.categoryId();
+      const cats = cat ? [cat] : [...this.quoteCategoryIds()];
+      return cats.length ? cats : undefined;
+    },
+    loader: async ({ params: cats }) => {
+      const pages = await Promise.all(cats.map((c) => this.catalogue.suppliers({ cat: c })));
+      const byId = new Map<string, CatalogueSupplier>();
+      for (const page of pages) {
+        for (const s of page.items) if (!byId.has(s.id)) byId.set(s.id, s);
+      }
+      return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+    },
+  });
+  protected readonly relevantSuppliers = computed(() => this.relevantSuppliersRes.value() ?? []);
 
   protected readonly quoteLines = signal<QuoteLine[]>([]);
   protected readonly quoteIds = computed(() => new Set(this.quoteLines().map((l) => l.itemId)));
