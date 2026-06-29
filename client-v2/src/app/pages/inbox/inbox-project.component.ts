@@ -70,7 +70,7 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                     type="button"
                     class="flex w-full flex-col items-start gap-1.5 rounded-lg px-3 py-2.5 text-left hover:bg-fill"
                     [class.bp-item--selected]="it.id === selectedId()"
-                    (click)="selectedId.set(it.id)"
+                    (click)="selectItem(it.id)"
                   >
                     <span class="bp-list-title w-full truncate">{{ it.name }}</span>
                     <span [class]="'bp-spill bp-spill--' + pill(it).tone">{{ pill(it).label }}</span>
@@ -348,24 +348,41 @@ export class InboxProjectComponent {
     return [...bySupplier.values()];
   });
 
-  /** Selected item drives the visible thread; defaults to the first item,
-   *  resetting whenever the loaded threads change. */
+  /** No item is auto-selected — you land on thread-level chat (action bar
+   *  hidden). Selecting an item arms its actions; clicking it again
+   *  deselects. The visible conversation is its own pick so it survives a
+   *  deselect (Liam 2026-06-29). */
   protected readonly selectedId = linkedSignal<InboxThread[], string | null>({
     source: this.threads,
-    computation: (ts) => ts[0]?.items[0]?.id ?? null,
+    computation: () => null,
+  });
+  protected readonly selectedThreadId = linkedSignal<InboxThread[], string | null>({
+    source: this.threads,
+    computation: (ts) => ts[0]?.id ?? null,
   });
 
   protected readonly selectedThread = computed<InboxThread | null>(() => {
     const ts = this.threads();
-    const id = this.selectedId();
-    return ts.find((t) => t.items.some((i) => i.id === id)) ?? ts[0] ?? null;
+    return ts.find((t) => t.id === this.selectedThreadId()) ?? ts[0] ?? null;
   });
 
   protected readonly selectedItem = computed<InboxThreadItem | null>(() => {
-    const t = this.selectedThread();
-    if (!t) return null;
-    return t.items.find((i) => i.id === this.selectedId()) ?? t.items[0] ?? null;
+    const id = this.selectedId();
+    if (!id) return null;
+    return this.selectedThread()?.items.find((i) => i.id === id) ?? null;
   });
+
+  /** Click an item: arm it (and switch to its thread); clicking the armed
+   *  item again clears it back to thread-level chat. */
+  protected selectItem(itemId: string): void {
+    if (this.selectedId() === itemId) {
+      this.selectedId.set(null);
+      return;
+    }
+    const t = this.threads().find((th) => th.items.some((i) => i.id === itemId));
+    if (t) this.selectedThreadId.set(t.id);
+    this.selectedId.set(itemId);
+  }
 
   /** "<Project> conversations" — tracks the configurable event label. */
   protected readonly heroSubtitle = computed(() => `${this.pageConfig.eventLabel()} conversations`);
@@ -387,7 +404,10 @@ export class InboxProjectComponent {
     if (!text || this.sending()) return;
     this.sending.set(true);
     try {
-      await firstValueFrom(this.inbox.reply(threadId, { text }));
+      // A message composed with an item selected tags it; otherwise it's a
+      // thread-level broadcast.
+      const taggedItemId = this.selectedItem()?.itemId ?? undefined;
+      await firstValueFrom(this.inbox.reply(threadId, { text, taggedItemId }));
       this.draft.set('');
       this.threadsRes.reload();
     } catch {

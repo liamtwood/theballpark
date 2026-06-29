@@ -64,6 +64,8 @@ router.get('/projects/:projectId/threads', async (req, res, next) => {
 const ReplySchema = z
   .object({
     text: z.string().trim().max(4000).optional(),
+    // Tag a free-text message to a catalogue item (filters the thread).
+    taggedItemId: z.string().uuid().optional(),
     itemActions: z
       .array(
         z.object({
@@ -95,6 +97,7 @@ router.post('/threads/:threadId/reply', canReply, async (req, res, next) => {
       threadId: req.params.threadId,
       text: parsed.data.text,
       itemActions: parsed.data.itemActions,
+      taggedItemId: parsed.data.taggedItemId,
     });
     res.status(201).json(result);
   } catch (err) {

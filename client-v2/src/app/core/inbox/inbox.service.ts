@@ -45,6 +45,8 @@ export interface InboxItemAction {
 export interface InboxReplyBody {
   text?: string;
   itemActions?: InboxItemAction[];
+  /** Tag a free-text message to a catalogue item (filters the thread). */
+  taggedItemId?: string;
 }
 
 export interface InboxReplyResult {
@@ -73,6 +75,8 @@ export interface InboxProjectView {
 
 export interface InboxThreadItem {
   id: string;
+  /** Catalogue item_id — the key messages are tagged against. */
+  itemId: string | null;
   name: string;
   description: string | null;
   status: string;
@@ -90,6 +94,8 @@ export interface InboxBubble {
   author: string;
   body: string;
   createdAt: string;
+  /** Catalogue item_ids this message is tagged to (empty = broadcast). */
+  taggedItemIds: string[];
 }
 
 export interface InboxThread {

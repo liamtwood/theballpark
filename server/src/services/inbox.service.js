@@ -174,7 +174,7 @@ async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
  *  view. Supplier: their inbound replies are "mine"; the agency's outbound
  *  brief is incoming. Agency: the reverse. The counterparty name labels the
  *  incoming bubbles. */
-function toBubble(m, viewer, counterpartyName) {
+function toBubble(m, viewer, counterpartyName, taggedItemIds) {
   const mine = viewer === 'supplier' ? m.direction === 'inbound' : m.direction === 'outbound';
   return {
     id: m.id,
@@ -182,12 +182,36 @@ function toBubble(m, viewer, counterpartyName) {
     author: mine ? 'You' : counterpartyName || (viewer === 'supplier' ? 'Agency' : 'Supplier'),
     body: m.body || '',
     createdAt: m.created_at,
+    // catalogue item_ids this message is tagged to (empty = thread-level
+    // broadcast). The brief carries all its items, so it shows in every
+    // item filter (pV2-INBOX-04).
+    taggedItemIds: taggedItemIds ?? [],
   };
+}
+
+/** Per-message tags: catalogue item_ids each message carries a message_items
+ *  row for (the brief's real items + the pure-tag rows on replies). */
+async function fetchTags(messageIds) {
+  if (!messageIds.length) return new Map();
+  const r = await pool.query(
+    `SELECT message_id, item_id FROM message_items
+      WHERE message_id = ANY($1::uuid[]) AND item_id IS NOT NULL AND deleted_at IS NULL`,
+    [messageIds]
+  );
+  const map = new Map();
+  for (const row of r.rows) {
+    const arr = map.get(row.message_id) ?? [];
+    arr.push(row.item_id);
+    map.set(row.message_id, arr);
+  }
+  return map;
 }
 
 function toThreadItem(it) {
   return {
     id: it.id,
+    // The catalogue item_id — the tag-match key for filtering messages.
+    itemId: it.item_id ?? null,
     name: it.name,
     description: it.description || null,
     status: it.status,
@@ -223,10 +247,11 @@ async function getSupplierThreads(supplierOrgId, projectId) {
     g.messages.push(m);
   }
 
+  const tags = await fetchTags(scoped.map((m) => m.id));
   const threads = [];
   for (const g of groups.values()) {
     const items = await getByMessage(g.lead.id);
-    threads.push(makeThread(g.lead, g.messages, items, 'supplier'));
+    threads.push(makeThread(g.lead, g.messages, items, 'supplier', tags));
   }
   sortThreads(threads);
   const project = await getProjectSummary(projectId, threads);
@@ -236,7 +261,7 @@ async function getSupplierThreads(supplierOrgId, projectId) {
 /** Build one thread object from the VIEWER's perspective. Carries both the
  *  agency and supplier identities (the client picks the counterparty); the
  *  bubbles + aggregate status are mapped for the viewer. */
-function makeThread(lead, msgs, items, viewer) {
+function makeThread(lead, msgs, items, viewer, tagsByMessage) {
   const counterpartyName = viewer === 'supplier' ? lead.agency_name : lead.supplier_name;
   return {
     id: lead.id,
@@ -258,7 +283,9 @@ function makeThread(lead, msgs, items, viewer) {
     items: items.map(toThreadItem),
     // Empty-body rows carry no conversation (e.g. an action-only reply) —
     // never render a blank bubble.
-    messages: msgs.filter((m) => (m.body || '').trim()).map((m) => toBubble(m, viewer, counterpartyName)),
+    messages: msgs
+      .filter((m) => (m.body || '').trim())
+      .map((m) => toBubble(m, viewer, counterpartyName, tagsByMessage?.get(m.id))),
   };
 }
 
@@ -323,10 +350,11 @@ async function getAgentThreads(agencyOrgId, projectId) {
     g.messages.push(m);
   }
 
+  const tags = await fetchTags(all.map((m) => m.id));
   const threads = [];
   for (const g of groups.values()) {
     const items = await getByMessage(g.lead.id);
-    threads.push(makeThread(g.lead, g.messages, items, 'agency'));
+    threads.push(makeThread(g.lead, g.messages, items, 'agency', tags));
   }
   sortThreads(threads);
   const project = await getProjectSummary(projectId, threads);
@@ -339,7 +367,7 @@ async function getAgentThreads(agencyOrgId, projectId) {
  *  supplier (RP-INB1). Reuses message-item.service transitions + decisions;
  *  one transaction (Hygiene Rule 1). Item state lives on the lead's
  *  message_items — the reply row is just the bubble (v1 model). */
-async function reply({ viewer, orgId, userId, threadId, text, itemActions }) {
+async function reply({ viewer, orgId, userId, threadId, text, itemActions, taggedItemId }) {
   const isSupplier = viewer !== 'agency';
   const lead = await pool.query(
     `SELECT id, project_id, supplier_org_id, category_id, category_name,
@@ -393,18 +421,25 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions }) {
       replyId = ins.rows[0].id;
     }
 
+    // Items this reply is tagged to → a pure message_items row per item
+    // (item_id only; INBOX.md #10, no schema change). Actions tag their
+    // item; an item-selected chat tags via taggedItemId. catalogue item_id
+    // → display name.
+    const tagItems = new Map();
+
     const changes = [];
     for (const a of actions) {
       const { itemId, action, price, note } = a || {};
       if (!itemId || !action) continue;
       // The item must belong to THIS thread's brief (lead message).
       const before = await db.query(
-        `SELECT name, price_current, status FROM message_items
+        `SELECT name, price_current, status, item_id FROM message_items
           WHERE id = $1 AND message_id = $2`,
         [itemId, lm.id]
       );
       if (!before.rows.length) continue;
       const b = before.rows[0];
+      if (b.item_id) tagItems.set(b.item_id, b.name);
 
       let toStatus = null;
       let extra = null;
@@ -457,6 +492,26 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions }) {
         });
       }
       changes.push({ name: b.name, from: b.status, to: result.toStatus });
+    }
+
+    // A chat message composed with an item selected (no action) tags that
+    // item too.
+    if (taggedItemId && !tagItems.has(taggedItemId)) {
+      const nm = await db.query(
+        `SELECT name FROM message_items WHERE message_id = $1 AND item_id = $2 LIMIT 1`,
+        [lm.id, taggedItemId]
+      );
+      if (nm.rows.length) tagItems.set(taggedItemId, nm.rows[0].name);
+    }
+
+    // Write the tag rows on the reply bubble (skip if no bubble was made).
+    if (replyId) {
+      for (const [itemId, name] of tagItems) {
+        await db.query(
+          `INSERT INTO message_items (message_id, item_id, name) VALUES ($1, $2, $3)`,
+          [replyId, itemId, name]
+        );
+      }
     }
 
     return { ok: true, replyId, changes };
