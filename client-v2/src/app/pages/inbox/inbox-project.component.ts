@@ -67,11 +67,11 @@ import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThrea
                 </button>
                 <button
                   type="button"
-                  class="flex w-full items-center gap-1.5 px-3 pb-2.5 text-left text-muted hover:text-text"
+                  class="flex w-full items-center justify-between px-3 pb-2.5 text-left text-muted hover:text-text"
                   (click)="toggle(g.id)"
                 >
-                  <lucide-icon [name]="isExpanded(g.id) ? 'chevron-down' : 'chevron-right'" [size]="14" />
                   <span class="bp-meta">{{ g.items.length }} item{{ g.items.length === 1 ? '' : 's' }}</span>
+                  <lucide-icon [name]="isExpanded(g.id) ? 'chevron-down' : 'chevron-right'" [size]="14" />
                 </button>
               </div>
               @if (isExpanded(g.id)) {
