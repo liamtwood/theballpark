@@ -73,7 +73,7 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                     (click)="selectedId.set(it.id)"
                   >
                     <span class="bp-list-title w-full truncate">{{ it.name }}</span>
-                    <span [class]="'bp-spill bp-spill--' + sv(it.status).tone">{{ sv(it.status).label }}</span>
+                    <span [class]="'bp-spill bp-spill--' + pill(it).tone">{{ pill(it).label }}</span>
                   </button>
                 }
               }
@@ -454,10 +454,20 @@ export class InboxProjectComponent {
     }
   }
 
-  /** Status pill — viewer-perspective label + soft colour tone. */
-  protected sv(status: string): { label: string; tone: 'green' | 'yellow' | 'gray' | 'red' } {
+  /** Status pill — viewer-perspective label + soft tone. `accepted` is
+   *  resolved from the per-side decisions (YOU / THEY / BOTH accepted);
+   *  every other status reads from the viewer's label map. */
+  protected pill(it: InboxThreadItem): { label: string; tone: 'green' | 'yellow' | 'gray' | 'red' } {
+    if (it.status === 'accepted') {
+      const mine = this.isAgency() ? it.buyerAccepted : it.sellerAccepted;
+      const theirs = this.isAgency() ? it.sellerAccepted : it.buyerAccepted;
+      if (mine && theirs) return { label: 'Both accepted', tone: 'green' };
+      if (mine) return { label: 'You accepted', tone: 'green' };
+      if (theirs) return { label: 'They accepted', tone: 'green' };
+      return { label: 'Accepted', tone: 'green' };
+    }
     const map = this.isAgency() ? STATUS_VIEW_AGENCY : STATUS_VIEW;
-    return map[status] ?? { label: status, tone: 'gray' };
+    return map[it.status] ?? { label: it.status, tone: 'gray' };
   }
 
   // Tree expansion — collapsed-by-id (default expanded so items show).

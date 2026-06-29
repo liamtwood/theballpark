@@ -79,6 +79,9 @@ export interface InboxThreadItem {
   priceRef: number | null;
   priceCurrent: number | null;
   imageUrl: string | null;
+  /** Latest accept per side (buyer = agency, seller = supplier). */
+  buyerAccepted: boolean;
+  sellerAccepted: boolean;
 }
 
 export interface InboxBubble {

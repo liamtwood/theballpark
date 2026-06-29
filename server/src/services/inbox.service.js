@@ -194,6 +194,10 @@ function toThreadItem(it) {
     priceRef: it.price_ref == null ? null : Number(it.price_ref),
     priceCurrent: it.price_current == null ? null : Number(it.price_current),
     imageUrl: it.item_image_url ?? null,
+    // Latest decision per side (from message_item_decisions) — drives the
+    // YOU / THEY / BOTH accepted pill (buyer = agency, seller = supplier).
+    buyerAccepted: it.buyer_status === 'accepted',
+    sellerAccepted: it.seller_status === 'accepted',
   };
 }
 
