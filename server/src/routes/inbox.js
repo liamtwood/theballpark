@@ -37,16 +37,23 @@ const SendSchema = z.object({
     .min(1),
 });
 
-// GET /api/inbox/projects/:projectId/threads — the caller-supplier's
-// conversation threads for one project (per category). org from JWT.
+// GET /api/inbox/projects/:projectId/threads — the project's conversation
+// threads, from the CALLER's perspective: a supplier sees their own threads
+// (per category); an agency sees every supplier's threads on a project it
+// owns. org + role from JWT.
 const UUID = z.string().uuid();
 router.get('/projects/:projectId/threads', async (req, res, next) => {
   try {
     if (!UUID.safeParse(req.params.projectId).success) {
       return res.status(400).json({ error: 'Invalid project id' });
     }
-    res.json(await inbox.getSupplierThreads(req.user.org_id, req.params.projectId));
+    const view =
+      req.user.org_type === 'agency'
+        ? await inbox.getAgentThreads(req.user.org_id, req.params.projectId)
+        : await inbox.getSupplierThreads(req.user.org_id, req.params.projectId);
+    res.json(view);
   } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
   }
 });

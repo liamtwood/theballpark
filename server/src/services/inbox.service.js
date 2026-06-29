@@ -170,15 +170,16 @@ async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
   };
 }
 
-/** Map a message row to a conversation bubble from the SUPPLIER's point of
- *  view: the agency's outbound brief/replies are incoming (left, white);
- *  the supplier's own inbound replies are outgoing (right, gradient). */
-function toBubble(m, agencyName) {
-  const mine = m.direction === 'inbound';
+/** Map a message row to a conversation bubble from the VIEWER's point of
+ *  view. Supplier: their inbound replies are "mine"; the agency's outbound
+ *  brief is incoming. Agency: the reverse. The counterparty name labels the
+ *  incoming bubbles. */
+function toBubble(m, viewer, counterpartyName) {
+  const mine = viewer === 'supplier' ? m.direction === 'inbound' : m.direction === 'outbound';
   return {
     id: m.id,
     mine,
-    author: mine ? 'You' : agencyName || 'Agency',
+    author: mine ? 'You' : counterpartyName || (viewer === 'supplier' ? 'Agency' : 'Supplier'),
     body: m.body || '',
     createdAt: m.created_at,
   };
@@ -221,43 +222,55 @@ async function getSupplierThreads(supplierOrgId, projectId) {
   const threads = [];
   for (const g of groups.values()) {
     const items = await getByMessage(g.lead.id);
-    const agencyName = g.lead.agency_name;
-    threads.push({
-      id: g.lead.id,
-      categoryId: g.categoryId,
-      categoryName: g.lead.category_name || null,
-      agencyOrgId: g.lead.agency_org_id ?? null,
-      agencyName: agencyName ?? null,
-      agencyLogoUrl: g.lead.agency_logo_url ?? null,
-      projectId: g.lead.project_id,
-      projectName: g.lead.project_name ?? null,
-      refCode: g.lead.ref_code ?? null,
-      status: aggregateStatus(items, 'supplier'),
-      total: items.reduce((s, it) => s + Number(it.price_current ?? it.price_ref ?? 0), 0),
-      originalTotal: items.reduce((s, it) => s + Number(it.price_ref ?? 0), 0),
-      revisedTotal: items.reduce((s, it) => s + Number(it.price_current ?? it.price_ref ?? 0), 0),
-      items: items.map(toThreadItem),
-      // Empty-body rows carry no conversation (e.g. a legacy action-only
-      // reply) — never render a blank bubble.
-      messages: g.messages
-        .filter((m) => (m.body || '').trim())
-        .map((m) => toBubble(m, agencyName)),
-    });
+    threads.push(makeThread(g.lead, g.messages, items, 'supplier'));
   }
+  sortThreads(threads);
+  const project = await getProjectSummary(projectId, threads);
+  return { project, threads };
+}
 
-  // Newest-active thread first.
+/** Build one thread object from the VIEWER's perspective. Carries both the
+ *  agency and supplier identities (the client picks the counterparty); the
+ *  bubbles + aggregate status are mapped for the viewer. */
+function makeThread(lead, msgs, items, viewer) {
+  const counterpartyName = viewer === 'supplier' ? lead.agency_name : lead.supplier_name;
+  return {
+    id: lead.id,
+    categoryId: lead.category_id ?? null,
+    categoryName: lead.category_name || null,
+    agencyOrgId: lead.agency_org_id ?? null,
+    agencyName: lead.agency_name ?? null,
+    agencyLogoUrl: lead.agency_logo_url ?? null,
+    supplierOrgId: lead.supplier_org_id ?? null,
+    supplierName: lead.supplier_name ?? null,
+    supplierLogoUrl: lead.supplier_logo_url ?? null,
+    projectId: lead.project_id,
+    projectName: lead.project_name ?? null,
+    refCode: lead.ref_code ?? null,
+    status: aggregateStatus(items, viewer === 'supplier' ? 'supplier' : 'agent'),
+    total: items.reduce((s, it) => s + Number(it.price_current ?? it.price_ref ?? 0), 0),
+    originalTotal: items.reduce((s, it) => s + Number(it.price_ref ?? 0), 0),
+    revisedTotal: items.reduce((s, it) => s + Number(it.price_current ?? it.price_ref ?? 0), 0),
+    items: items.map(toThreadItem),
+    // Empty-body rows carry no conversation (e.g. an action-only reply) —
+    // never render a blank bubble.
+    messages: msgs.filter((m) => (m.body || '').trim()).map((m) => toBubble(m, viewer, counterpartyName)),
+  };
+}
+
+/** Newest-active thread first. */
+function sortThreads(threads) {
   threads.sort((a, b) => {
     const am = a.messages[a.messages.length - 1]?.createdAt ?? 0;
     const bm = b.messages[b.messages.length - 1]?.createdAt ?? 0;
     return new Date(bm) - new Date(am);
   });
+}
 
-  // Project summary for the rail context card. Original = the agency's
-  // reference price; Revised = the current (post-adjustment) price.
+/** The project summary card (client · event date · location · agency ·
+ *  original/revised totals across the supplier's items). */
+async function getProjectSummary(projectId, threads) {
   const allItems = threads.flatMap((t) => t.items);
-  const originalTotal = allItems.reduce((s, it) => s + Number(it.priceRef ?? 0), 0);
-  const revisedTotal = allItems.reduce((s, it) => s + Number(it.priceCurrent ?? it.priceRef ?? 0), 0);
-
   const ctx = await pool.query(
     `SELECT COALESCE(p.event_name, p.name) AS project_name,
             p.event_date, p.venue_city, p.venue_name,
@@ -270,7 +283,7 @@ async function getSupplierThreads(supplierOrgId, projectId) {
     [projectId]
   );
   const row = ctx.rows[0] || {};
-  const project = {
+  return {
     id: projectId,
     name: row.project_name ?? threads[0]?.projectName ?? null,
     clientName: row.client_name ?? null,
@@ -279,10 +292,40 @@ async function getSupplierThreads(supplierOrgId, projectId) {
     agencyName: row.agency_name ?? threads[0]?.agencyName ?? null,
     agencyLogoUrl: row.agency_logo_url ?? null,
     itemCount: allItems.length,
-    originalTotal,
-    revisedTotal,
+    originalTotal: allItems.reduce((s, it) => s + Number(it.priceRef ?? 0), 0),
+    revisedTotal: allItems.reduce((s, it) => s + Number(it.priceCurrent ?? it.priceRef ?? 0), 0),
   };
+}
 
+/** pV2-INBOX-03 — the agent inbox for one project: every supplier thread
+ *  (per supplier × category), agent perspective. org from JWT — we verify
+ *  the caller's agency owns the project (RP-INB1). */
+async function getAgentThreads(agencyOrgId, projectId) {
+  const proj = await pool.query(
+    `SELECT org_id FROM projects WHERE id = $1 AND deleted_at IS NULL`,
+    [projectId]
+  );
+  if (!proj.rows.length || proj.rows[0].org_id !== agencyOrgId) throw httpErr('Project not found', 404);
+
+  const all = await messageService.getAll(projectId);
+  const groups = new Map();
+  for (const m of all) {
+    const key = `${m.supplier_org_id ?? ''}|${m.category_id ?? ''}`;
+    let g = groups.get(key);
+    if (!g) {
+      g = { lead: m, messages: [] };
+      groups.set(key, g);
+    }
+    g.messages.push(m);
+  }
+
+  const threads = [];
+  for (const g of groups.values()) {
+    const items = await getByMessage(g.lead.id);
+    threads.push(makeThread(g.lead, g.messages, items, 'agency'));
+  }
+  sortThreads(threads);
+  const project = await getProjectSummary(projectId, threads);
   return { project, threads };
 }
 
@@ -388,4 +431,4 @@ async function reply({ supplierOrgId, userId, threadId, text, itemActions }) {
   });
 }
 
-module.exports = { listSupplierProjects, sendOutreach, getSupplierThreads, reply };
+module.exports = { listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads, reply };

@@ -23,9 +23,10 @@ import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.compon
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
 import { ProjectOutreachStore } from './project-outreach.store';
+import { InboxProjectComponent } from '../inbox/inbox-project.component';
 
-type Tab = 'marketplace' | 'estimate' | 'details';
-const TABS: Tab[] = ['marketplace', 'estimate', 'details'];
+type Tab = 'marketplace' | 'estimate' | 'details' | 'inbox';
+const TABS: Tab[] = ['marketplace', 'estimate', 'details', 'inbox'];
 
 /** The editable Details sections (v1 parity + per-project Financials). */
 type Section = 'event' | 'type' | 'logistics' | 'financials';
@@ -68,6 +69,7 @@ interface DetailForm {
     EntityIconComponent,
     ProjectMarketplaceComponent,
     ProjectEstimateComponent,
+    InboxProjectComponent,
   ],
   providers: [MessageService],
   /* Viewport-fit on EVERY tab (universal rule: the hero never scrolls).
@@ -208,6 +210,9 @@ interface DetailForm {
               <app-project-estimate [projectId]="p.id" [project]="p" (goToMarketplace)="goToMarketplace()" (messageSuppliers)="onMessageSuppliers()" />
             </div>
           }
+          @case ('inbox') {
+            <app-inbox-project [viewer]="'agency'" [projectId]="p.id" [embedded]="true" />
+          }
           @default {
             <app-project-marketplace [projectId]="p.id" />
           }
@@ -269,6 +274,7 @@ export class ProjectDetailComponent {
     { key: 'details', label: 'About ' + this.label() },
     { key: 'marketplace', label: 'Marketplace' },
     { key: 'estimate', label: this.label() + ' Quote' },
+    { key: 'inbox', label: 'Inbox' },
   ]);
 
   protected readonly detail = resource<ProjectDetail, string>({

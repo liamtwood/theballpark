@@ -22,9 +22,10 @@ export class InboxService {
     return this.api.post<OutreachSendResult>('/api/inbox/send', { projectId, roster });
   }
 
-  /** The caller-supplier's inbox for one project: a project summary card +
-   *  the per-category conversation threads. */
-  supplierInbox(projectId: string): Observable<InboxProjectView> {
+  /** The caller's inbox for one project — role-aware server-side: a
+   *  supplier gets their own threads; an agency gets every supplier's
+   *  threads on a project it owns. Same response shape. */
+  projectInbox(projectId: string): Observable<InboxProjectView> {
     return this.api.get<InboxProjectView>(`/api/inbox/projects/${projectId}/threads`);
   }
 
@@ -95,6 +96,9 @@ export interface InboxThread {
   agencyOrgId: string | null;
   agencyName: string | null;
   agencyLogoUrl: string | null;
+  supplierOrgId: string | null;
+  supplierName: string | null;
+  supplierLogoUrl: string | null;
   projectId: string;
   projectName: string | null;
   refCode: string | null;

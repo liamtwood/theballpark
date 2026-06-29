@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, linkedSignal, resource, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, input, linkedSignal, resource, signal, viewChild } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
@@ -9,22 +9,25 @@ import { PageConfigService } from '../../core/config/page-config.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
 
-/** pV2-INBOX-01 — the supplier's per-project conversation surface
- *  (/inbox/:projectId). Left rail = THEIR items, grouped by category and
- *  collapsed to a flat list when there's only one (the single-category
- *  rule); right pane = the conversation with the reaching-out agency
- *  (counterparty · project · status · total header, gradient/white
- *  bubbles, compose). Read-only first — compose + per-item Accept/Propose
- *  land in the next slices. */
+/** pV2-INBOX-01/03 — the per-project conversation surface, viewer-aware.
+ *  Supplier (standalone /inbox/:projectId): the left rail is THEIR items
+ *  (category tree, "PROJECT ITEMS" when single); they get compose + the
+ *  Accept/Suggest/Request actions. Agency (embedded in the project Inbox
+ *  tab): the rail groups by SUPPLIER → their items; read-only for now
+ *  (agent compose + actions are the next slice). Right pane = the
+ *  conversation (project/counterparty + original/revised header,
+ *  gradient/white bubbles). */
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CurrencyPipe, DatePipe, LucideAngularModule, PageHeroComponent],
-  host: { class: 'block bp-vpfit' },
+  host: { '[class]': 'hostClass()' },
   template: `
-    <app-page-hero [back]="{ label: 'Back', href: '/projects', history: true }" title="Inbox" [subtitle]="heroSubtitle()" />
+    @if (!embedded()) {
+      <app-page-hero [back]="{ label: 'Back', href: '/projects', history: true }" title="Inbox" [subtitle]="heroSubtitle()" />
+    }
 
-    <div class="bp-page-body">
+    <div [class]="embedded() ? 'flex min-h-0 flex-1 flex-col px-4 pt-4' : 'bp-page-body'">
       @if (threadsRes.isLoading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
       } @else if (threadsRes.error()) {
@@ -49,20 +52,20 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                 <div class="mt-2 bp-meta">{{ p.agencyName }}</div>
               </div>
             }
-            <!-- Always a tree header: the category name when there are
-                 several, else "PROJECT ITEMS". Expand to reveal the items. -->
-            @for (t of threads(); track t.id) {
+            <!-- Tree header: per supplier (agency view) or per category /
+                 "PROJECT ITEMS" (supplier view). Expand to reveal items. -->
+            @for (g of railGroups(); track g.id) {
               <button
                 type="button"
                 class="flex w-full items-center gap-1.5 px-2 pb-1 pt-3 text-left first:pt-1"
-                (click)="toggle(t.id)"
+                (click)="toggle(g.id)"
               >
-                <lucide-icon [name]="isExpanded(t.id) ? 'chevron-down' : 'chevron-right'" [size]="15" class="shrink-0 text-muted" />
-                <span class="bp-field-label flex-1 uppercase tracking-wide">{{ headerLabel(t) }}</span>
-                <span class="bp-meta">{{ t.items.length }}</span>
+                <lucide-icon [name]="isExpanded(g.id) ? 'chevron-down' : 'chevron-right'" [size]="15" class="shrink-0 text-muted" />
+                <span class="bp-field-label flex-1 uppercase tracking-wide">{{ g.label }}</span>
+                <span class="bp-meta">{{ g.items.length }}</span>
               </button>
-              @if (isExpanded(t.id)) {
-                @for (it of t.items; track it.id) {
+              @if (isExpanded(g.id)) {
+                @for (it of g.items; track it.id) {
                   <button
                     type="button"
                     class="flex w-full flex-col items-start gap-1.5 rounded-lg px-3 py-2.5 text-left hover:bg-fill"
@@ -84,7 +87,7 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                    (no agency line / status pill / category·items; that
                    context lives in the rail card). -->
               <div class="border-b border-hairline px-5 py-4">
-                <h2 class="bp-card-title text-lg">{{ t.projectName }}</h2>
+                <h2 class="bp-card-title text-lg">{{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}</h2>
                 <div class="mt-1.5 flex items-center gap-6">
                   <span>
                     <span class="bp-caption">Original</span>
@@ -111,6 +114,9 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                 }
               </div>
 
+              <!-- Supplier-side compose + per-item actions. Agency view is
+                   read-only for now (agent compose + actions = next slice). -->
+              @if (!isAgency()) {
               <!-- Per-item actions — the selected item, when it's still
                    actionable (not terminal). Accept at the current price, or
                    propose a new one. -->
@@ -171,6 +177,7 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                   <lucide-icon name="send" [size]="15" /> Send
                 </button>
               </div>
+              }
             </div>
           }
         </div>
@@ -302,17 +309,47 @@ export class InboxProjectComponent {
   private readonly pageConfig = inject(PageConfigService);
   private readonly auth = inject(AuthService);
 
-  private readonly projectId = toSignal(this.route.paramMap.pipe(map((p) => p.get('projectId') ?? '')), {
-    initialValue: '',
-  });
+  /** Supplier (standalone page) or agency (embedded project Inbox tab). */
+  readonly viewer = input<'supplier' | 'agency'>('supplier');
+  /** Embedded (agency tab) gets the project as an input; the supplier page
+   *  reads it from the route. */
+  readonly projectIdInput = input<string | null>(null, { alias: 'projectId' });
+  readonly embedded = input(false);
+
+  protected readonly isAgency = computed(() => this.viewer() === 'agency');
+  protected readonly hostClass = computed(() =>
+    this.embedded() ? 'flex min-h-0 flex-1 flex-col' : 'block bp-vpfit'
+  );
+
+  private readonly routeProjectId = toSignal(
+    this.route.paramMap.pipe(map((p) => p.get('projectId') ?? '')),
+    { initialValue: '' }
+  );
+  private readonly projectId = computed(() => this.projectIdInput() || this.routeProjectId());
 
   protected readonly threadsRes = resource({
     params: () => this.projectId() || undefined,
-    loader: ({ params }) => firstValueFrom(this.inbox.supplierInbox(params)),
+    loader: ({ params }) => firstValueFrom(this.inbox.projectInbox(params)),
   });
   protected readonly project = computed<InboxProjectSummary | null>(() => this.threadsRes.value()?.project ?? null);
   protected readonly threads = computed<InboxThread[]>(() => this.threadsRes.value()?.threads ?? []);
   protected readonly singleCategory = computed(() => this.threads().length <= 1);
+
+  /** Rail groups: agency view groups by supplier → their items; supplier
+   *  view is the category tree ("PROJECT ITEMS" when single). */
+  protected readonly railGroups = computed<{ id: string; label: string; items: InboxThreadItem[] }[]>(() => {
+    if (!this.isAgency()) {
+      return this.threads().map((t) => ({ id: t.id, label: this.headerLabel(t), items: t.items }));
+    }
+    const bySupplier = new Map<string, { id: string; label: string; items: InboxThreadItem[] }>();
+    for (const t of this.threads()) {
+      const key = t.supplierOrgId ?? t.id;
+      const g = bySupplier.get(key) ?? { id: key, label: t.supplierName ?? 'Supplier', items: [] };
+      g.items.push(...t.items);
+      bySupplier.set(key, g);
+    }
+    return [...bySupplier.values()];
+  });
 
   /** Selected item drives the visible thread; defaults to the first item,
    *  resetting whenever the loaded threads change. */
@@ -420,9 +457,10 @@ export class InboxProjectComponent {
     }
   }
 
-  /** Supplier-perspective status pill — label + soft colour tone. */
+  /** Status pill — viewer-perspective label + soft colour tone. */
   protected sv(status: string): { label: string; tone: 'green' | 'yellow' | 'gray' | 'red' } {
-    return STATUS_VIEW[status] ?? { label: status, tone: 'gray' };
+    const map = this.isAgency() ? STATUS_VIEW_AGENCY : STATUS_VIEW;
+    return map[status] ?? { label: status, tone: 'gray' };
   }
 
   // Tree expansion — collapsed-by-id (default expanded so items show).
@@ -455,6 +493,19 @@ const STATUS_VIEW: Record<string, { label: string; tone: 'green' | 'yellow' | 'g
   booked: { label: 'Booked', tone: 'green' },
   declined_by_supplier: { label: 'You declined', tone: 'red' },
   declined_by_agent: { label: 'Agency declined', tone: 'red' },
+};
+
+/** Same statuses, AGENCY perspective. */
+const STATUS_VIEW_AGENCY: Record<string, { label: string; tone: 'green' | 'yellow' | 'gray' | 'red' }> = {
+  brief_sent: { label: 'Quote requested', tone: 'gray' },
+  holding: { label: 'On hold', tone: 'gray' },
+  quoted: { label: 'Quoted', tone: 'gray' },
+  adjusted_by_supplier: { label: 'New cost suggested', tone: 'yellow' },
+  adjusted_by_agent: { label: 'You revised', tone: 'yellow' },
+  accepted: { label: 'Supplier accepted', tone: 'green' },
+  booked: { label: 'Booked', tone: 'green' },
+  declined_by_supplier: { label: 'Supplier declined', tone: 'red' },
+  declined_by_agent: { label: 'You declined', tone: 'red' },
 };
 
 /** Whole-pound GBP for the action chat lines ("Cost Accepted £10,000"). */
