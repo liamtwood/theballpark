@@ -89,7 +89,8 @@ router.post('/threads/:threadId/reply', canReply, async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
     }
     const result = await inbox.reply({
-      supplierOrgId: req.user.org_id,
+      viewer: req.user.org_type === 'agency' ? 'agency' : 'supplier',
+      orgId: req.user.org_id,
       userId: req.user.id,
       threadId: req.params.threadId,
       text: parsed.data.text,

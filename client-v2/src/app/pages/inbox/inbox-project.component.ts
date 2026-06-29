@@ -114,12 +114,10 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                 }
               </div>
 
-              <!-- Supplier-side compose + per-item actions. Agency view is
-                   read-only for now (agent compose + actions = next slice). -->
-              @if (!isAgency()) {
               <!-- Per-item actions — the selected item, when it's still
-                   actionable (not terminal). Accept at the current price, or
-                   propose a new one. -->
+                   actionable (not terminal). Accept the current cost, or
+                   propose a new one. Both viewers act; the server maps the
+                   side (supplier vs agency). -->
               @if (selectedItem(); as it) {
                 @if (!isTerminal(it.status)) {
                   <div class="flex flex-wrap items-center gap-2 border-t border-hairline px-4 py-2.5">
@@ -177,7 +175,6 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                   <lucide-icon name="send" [size]="15" /> Send
                 </button>
               </div>
-              }
             </div>
           }
         </div>
@@ -502,7 +499,7 @@ const STATUS_VIEW_AGENCY: Record<string, { label: string; tone: 'green' | 'yello
   quoted: { label: 'Quoted', tone: 'gray' },
   adjusted_by_supplier: { label: 'New cost suggested', tone: 'yellow' },
   adjusted_by_agent: { label: 'You revised', tone: 'yellow' },
-  accepted: { label: 'Supplier accepted', tone: 'green' },
+  accepted: { label: 'Accepted', tone: 'green' },
   booked: { label: 'Booked', tone: 'green' },
   declined_by_supplier: { label: 'Supplier declined', tone: 'red' },
   declined_by_agent: { label: 'You declined', tone: 'red' },

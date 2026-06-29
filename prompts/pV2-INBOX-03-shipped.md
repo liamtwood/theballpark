@@ -56,6 +56,42 @@ actions (accept a supplier's suggested cost, counter, book) need the reply
 endpoint extended for agency viewers (direction outbound + ownership check)
 — the next slice. **Severity:** info
 
+## Slice 2 — agent compose + per-item actions
+
+**Shipped:** 2026-06-29, chip `[Dev v2] v2.36b`
+
+### What landed
+- **`reply()` is now viewer-aware.** Agency replies: participation verified
+  by **project ownership** (not the supplier check), message `outbound` /
+  `sent` / read, actor `agent`, decisions on the **buyer** side, `adjust` →
+  `adjusted_by_agent` (and clears the supplier's prior accept), `decline` →
+  `declined_by_agent`. Supplier path unchanged. The route passes
+  `viewer` from `org_type`.
+- The agent inbox is **no longer read-only** — the compose box + the
+  **Accept Cost / Suggest New Cost / Request Information** action bar now
+  render for the agency view too (same component, server maps the side). The
+  agency `accepted` pill reads a neutral "Accepted" (either side can reach
+  it).
+
+### Files touched
+| File | Notes |
+|---|---|
+| server/src/services/inbox.service.js | `reply()` viewer-aware (direction/actor/side/status) |
+| server/src/routes/inbox.js | reply passes `viewer` from org_type |
+| client-v2/.../pages/inbox/inbox-project.component.ts | un-gate actions+compose; neutral agency `accepted` |
+| client-v2/src/environments/environment.ts | chip → v2.36b |
+
+### Concerns not in spec
+#### `accepted`/`declined` pill attribution is status-only
+**What:** the pill maps from `status`, which doesn't say WHICH side acted
+(the `message_item_decisions` satellite does). So "Accepted" is neutral on
+the agency side, and the supplier side's "You accepted" is correct only when
+the supplier accepted. Per-side accuracy would read buyer/seller decisions.
+**Severity:** LOW
+#### No Book/Pay action yet
+**What:** the agent's terminal "book/pay on accepted" (v1) isn't wired —
+Accept/Suggest/Request only. Follow-up. **Severity:** info
+
 ## QC notes
 (Liam)
 

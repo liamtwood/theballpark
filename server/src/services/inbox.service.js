@@ -335,7 +335,8 @@ async function getAgentThreads(agencyOrgId, projectId) {
  *  supplier (RP-INB1). Reuses message-item.service transitions + decisions;
  *  one transaction (Hygiene Rule 1). Item state lives on the lead's
  *  message_items — the reply row is just the bubble (v1 model). */
-async function reply({ supplierOrgId, userId, threadId, text, itemActions }) {
+async function reply({ viewer, orgId, userId, threadId, text, itemActions }) {
+  const isSupplier = viewer !== 'agency';
   const lead = await pool.query(
     `SELECT id, project_id, supplier_org_id, category_id, category_name,
             supplier_name, subject, ref_code
@@ -344,29 +345,46 @@ async function reply({ supplierOrgId, userId, threadId, text, itemActions }) {
   );
   if (!lead.rows.length) throw httpErr('Thread not found', 404);
   const lm = lead.rows[0];
-  // Participation: not-found and not-yours are the same 404 (no disclosure).
-  if (lm.supplier_org_id !== supplierOrgId) throw httpErr('Thread not found', 404);
+  // Participation (RP-INB1): supplier owns the thread; agency owns the
+  // project. Not-found and not-yours are the same 404 (no disclosure).
+  if (isSupplier) {
+    if (lm.supplier_org_id !== orgId) throw httpErr('Thread not found', 404);
+  } else {
+    const proj = await pool.query(`SELECT org_id FROM projects WHERE id = $1 AND deleted_at IS NULL`, [lm.project_id]);
+    if (!proj.rows.length || proj.rows[0].org_id !== orgId) throw httpErr('Thread not found', 404);
+  }
 
   const actions = Array.isArray(itemActions) ? itemActions : [];
   const hasText = !!(text && String(text).trim());
   if (!hasText && !actions.length) throw httpErr('reply needs text or item actions', 400);
 
+  // Viewer-specific shaping (mirrors v1's /:id/reply): supplier replies are
+  // inbound + unread; agency replies are outbound + sent. Item transitions
+  // record the actor's side; an adjust clears the OTHER side's prior accept.
+  const direction = isSupplier ? 'inbound' : 'outbound';
+  const msgStatus = isSupplier ? 'unread' : 'sent';
+  const readFlag = isSupplier ? false : true;
+  const actorType = isSupplier ? 'supplier' : 'agent';
+  const mySide = isSupplier ? 'seller' : 'buyer';
+  const otherSide = isSupplier ? 'buyer' : 'seller';
+  const adjustStatus = isSupplier ? 'adjusted_by_supplier' : 'adjusted_by_agent';
+  const declineStatus = isSupplier ? 'declined_by_supplier' : 'declined_by_agent';
+
   return withTransaction(async (db) => {
     // Only a message with real text becomes a bubble — an action-only reply
-    // does its item transitions without leaving a blank "You" bubble. The
-    // supplier's reply is inbound (supplier → agency), unread to them.
+    // does its item transitions without leaving a blank bubble.
     let replyId = null;
     if (hasText) {
       const ins = await db.query(
         `INSERT INTO messages
            (project_id, user_id, supplier_org_id, category_id, category_name,
             supplier_name, subject, body, direction, msg_status, read, next_action_by, ref_code)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'inbound', 'unread', false, NULL, $9)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NULL, $12)
          RETURNING id`,
         [lm.project_id, userId || null, lm.supplier_org_id, lm.category_id,
          lm.category_name, lm.supplier_name,
          `Re: ${lm.subject || lm.ref_code || ''}`,
-         text, lm.ref_code]
+         text, direction, msgStatus, readFlag, lm.ref_code]
       );
       replyId = ins.rows[0].id;
     }
@@ -388,15 +406,15 @@ async function reply({ supplierOrgId, userId, threadId, text, itemActions }) {
       let extra = null;
       switch (action) {
         case 'accept':  toStatus = 'accepted'; break;
-        case 'adjust':  toStatus = 'adjusted_by_supplier'; extra = { price }; break;
-        case 'decline': toStatus = 'declined_by_supplier'; break;
+        case 'adjust':  toStatus = adjustStatus; extra = { price }; break;
+        case 'decline': toStatus = declineStatus; break;
         default: continue;
       }
 
       const result = await transitionItem({
         itemId,
         toStatus,
-        actor: { type: 'supplier', id: userId || null },
+        actor: { type: actorType, id: userId || null },
         note: note || null,
         priceBefore: b.price_current,
         priceAfter: action === 'adjust' && price != null ? price : null,
@@ -407,20 +425,20 @@ async function reply({ supplierOrgId, userId, threadId, text, itemActions }) {
       if (action === 'accept' || action === 'decline') {
         await recordDecision({
           messageItemId: itemId,
-          side: 'seller',
+          side: mySide,
           decision: action === 'accept' ? 'accepted' : 'declined',
           userId: userId || null,
           note: note || null,
           executor: db,
         });
       } else if (action === 'adjust') {
-        // A material edit clears the agency's prior accept — they re-accept.
+        // A material edit clears the OTHER side's prior accept — they re-accept.
         await recordDecision({
           messageItemId: itemId,
-          side: 'buyer',
+          side: otherSide,
           decision: 'cleared',
           userId: userId || null,
-          note: 'auto-cleared — supplier edited',
+          note: `auto-cleared — ${actorType} edited`,
           executor: db,
         });
       }
