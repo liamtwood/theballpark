@@ -436,7 +436,17 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions }) {
           executor: db,
         });
       } else if (action === 'adjust') {
-        // A material edit clears the OTHER side's prior accept — they re-accept.
+        // Proposing a new cost IS accepting it — record the proposer's side
+        // as accepted (Liam 2026-06-29). The OTHER side's prior accept is
+        // cleared; they must accept the new cost (then it's BOTH ACCEPTED).
+        await recordDecision({
+          messageItemId: itemId,
+          side: mySide,
+          decision: 'accepted',
+          userId: userId || null,
+          note: 'auto-accepted own proposed cost',
+          executor: db,
+        });
         await recordDecision({
           messageItemId: itemId,
           side: otherSide,
