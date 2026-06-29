@@ -437,7 +437,7 @@ const TERMINAL_STATUSES = new Set(['declined_by_supplier', 'declined_by_agent', 
 /** message_item_status → the supplier-perspective pill (label + tone). The
  *  pill text-transforms to uppercase, so "You accepted" → "YOU ACCEPTED". */
 const STATUS_VIEW: Record<string, { label: string; tone: 'green' | 'yellow' | 'gray' | 'red' }> = {
-  brief_sent: { label: 'Action needed', tone: 'gray' },
+  brief_sent: { label: 'Quote requested', tone: 'gray' },
   holding: { label: 'On hold', tone: 'gray' },
   quoted: { label: 'Quoted', tone: 'gray' },
   adjusted_by_supplier: { label: 'New cost suggested', tone: 'yellow' },
