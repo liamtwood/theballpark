@@ -7,7 +7,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../core/auth/auth.service';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
-import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
+import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
 
 /** pV2-INBOX-01/03 — the per-project conversation surface, viewer-aware.
  *  Supplier (standalone /inbox/:projectId): the left rail is THEIR items
@@ -52,30 +52,42 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                 <div class="mt-2 bp-meta">{{ p.agencyName }}</div>
               </div>
             }
-            <!-- Tree header: per supplier (agency view) or per category /
-                 "PROJECT ITEMS" (supplier view). Expand to reveal items. -->
+            <!-- One card per thread: top row selects the whole conversation
+                 (clears any item filter); "N Items" expands to the items.
+                 The card stays active (breadcrumb) while a child item is
+                 selected — click it to unfilter. -->
             @for (g of railGroups(); track g.id) {
-              <button
-                type="button"
-                class="flex w-full items-center gap-1.5 px-2 pb-1 pt-3 text-left first:pt-1"
-                (click)="toggle(g.id)"
-              >
-                <lucide-icon [name]="isExpanded(g.id) ? 'chevron-down' : 'chevron-right'" [size]="15" class="shrink-0 text-muted" />
-                <span class="bp-field-label flex-1 uppercase tracking-wide">{{ g.label }}</span>
-                <span class="bp-meta">{{ g.items.length }}</span>
-              </button>
+              <div class="bp-card overflow-hidden" [class.bp-item--selected]="g.threadId === selectedThreadId()">
+                <button
+                  type="button"
+                  class="block w-full px-3 pt-2.5 pb-1 text-left"
+                  (click)="selectThread(g.threadId)"
+                >
+                  <span class="bp-list-title block truncate">{{ g.label }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-1.5 px-3 pb-2.5 text-left text-muted hover:text-text"
+                  (click)="toggle(g.id)"
+                >
+                  <lucide-icon [name]="isExpanded(g.id) ? 'chevron-down' : 'chevron-right'" [size]="14" />
+                  <span class="bp-meta">{{ g.items.length }} item{{ g.items.length === 1 ? '' : 's' }}</span>
+                </button>
+              </div>
               @if (isExpanded(g.id)) {
-                @for (it of g.items; track it.id) {
-                  <button
-                    type="button"
-                    class="flex w-full flex-col items-start gap-1.5 rounded-lg px-3 py-2.5 text-left hover:bg-fill"
-                    [class.bp-item--selected]="it.id === selectedId()"
-                    (click)="selectItem(it.id)"
-                  >
-                    <span class="bp-list-title w-full truncate">{{ it.name }}</span>
-                    <span [class]="'bp-spill bp-spill--' + pill(it).tone">{{ pill(it).label }}</span>
-                  </button>
-                }
+                <div class="mb-1 flex flex-col gap-0.5 pl-2">
+                  @for (it of g.items; track it.id) {
+                    <button
+                      type="button"
+                      class="flex w-full flex-col items-start gap-1.5 rounded-lg px-3 py-2.5 text-left hover:bg-fill"
+                      [class.bp-item--selected]="it.id === selectedId()"
+                      (click)="selectItem(it.id)"
+                    >
+                      <span class="bp-list-title w-full truncate">{{ it.name }}</span>
+                      <span [class]="'bp-spill bp-spill--' + pill(it).tone">{{ pill(it).label }}</span>
+                    </button>
+                  }
+                </div>
               }
             }
           </div>
@@ -87,7 +99,13 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                    (no agency line / status pill / category·items; that
                    context lives in the rail card). -->
               <div class="border-b border-hairline px-5 py-4">
-                <h2 class="bp-card-title text-lg">{{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}</h2>
+                <h2 class="bp-card-title text-lg">
+                  @if (selectedItem(); as it) {
+                    {{ it.name }} <span class="text-muted">· {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}</span>
+                  } @else {
+                    {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}
+                  }
+                </h2>
                 <div class="mt-1.5 flex items-center gap-6">
                   <span>
                     <span class="bp-caption">Original</span>
@@ -101,12 +119,18 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
               </div>
 
               <!-- Bubbles — on the page (parchment) ground so the white
-                   agency bubbles read as cards; "You" stays gradient. -->
+                   agency bubbles read as cards; "You" stays gradient. In a
+                   filtered (item) view, broadcasts fade + carry a General tag. -->
               <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg px-5 py-4">
-                @for (m of t.messages; track m.id) {
+                @for (m of visibleMessages(); track m.id) {
                   <div class="flex flex-col" [class.items-end]="m.mine" [class.items-start]="!m.mine">
-                    <div class="bp-bubble" [class.bp-bubble--mine]="m.mine">
-                      <span class="bp-bubble__author">{{ m.author }}</span>
+                    <div class="bp-bubble" [class.bp-bubble--mine]="m.mine" [class.bp-bubble--general]="isGeneral(m)">
+                      <span class="bp-bubble__author">
+                        {{ m.author }}
+                        @if (isGeneral(m)) {
+                          <span class="bp-bubble__general">General</span>
+                        }
+                      </span>
                       <span class="bp-bubble__body">{{ m.body }}</span>
                     </div>
                     <span class="bp-meta mt-1 px-1">{{ m.createdAt | date: 'shortTime' }}</span>
@@ -250,6 +274,21 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
         line-height: 1.5;
         white-space: pre-line;
       }
+      /* Broadcast shown inside a filtered item view — faded, with a tag. */
+      .bp-bubble--general {
+        opacity: 0.62;
+      }
+      .bp-bubble__general {
+        margin-left: 6px;
+        padding: 0 6px;
+        border-radius: var(--radius-pill);
+        background: var(--color-fill);
+        color: var(--color-text-secondary);
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: var(--tracking-wide);
+      }
       /* Gradient Send button. */
       .bp-send-btn {
         display: inline-flex;
@@ -332,21 +371,18 @@ export class InboxProjectComponent {
   protected readonly threads = computed<InboxThread[]>(() => this.threadsRes.value()?.threads ?? []);
   protected readonly singleCategory = computed(() => this.threads().length <= 1);
 
-  /** Rail groups: agency view groups by supplier → their items; supplier
-   *  view is the category tree ("PROJECT ITEMS" when single). */
-  protected readonly railGroups = computed<{ id: string; label: string; items: InboxThreadItem[] }[]>(() => {
-    if (!this.isAgency()) {
-      return this.threads().map((t) => ({ id: t.id, label: this.headerLabel(t), items: t.items }));
-    }
-    const bySupplier = new Map<string, { id: string; label: string; items: InboxThreadItem[] }>();
-    for (const t of this.threads()) {
-      const key = t.supplierOrgId ?? t.id;
-      const g = bySupplier.get(key) ?? { id: key, label: t.supplierName ?? 'Supplier', items: [] };
-      g.items.push(...t.items);
-      bySupplier.set(key, g);
-    }
-    return [...bySupplier.values()];
-  });
+  /** One rail card per thread. Agency view labels by supplier; supplier
+   *  view is the category tree ("PROJECT ITEMS" when single). The card's
+   *  top row selects the whole thread; "N Items" expands. (Multi-category
+   *  suppliers show one card per category — punted edge.) */
+  protected readonly railGroups = computed(() =>
+    this.threads().map((t) => ({
+      id: t.id,
+      threadId: t.id,
+      label: this.isAgency() ? t.supplierName ?? 'Supplier' : this.headerLabel(t),
+      items: t.items,
+    }))
+  );
 
   /** No item is auto-selected — you land on thread-level chat (action bar
    *  hidden). Selecting an item arms its actions; clicking it again
@@ -372,6 +408,13 @@ export class InboxProjectComponent {
     return this.selectedThread()?.items.find((i) => i.id === id) ?? null;
   });
 
+  /** Click a thread card's top row: view the whole thread (clears any item
+   *  filter — also the "back to all" gesture). */
+  protected selectThread(threadId: string): void {
+    this.selectedThreadId.set(threadId);
+    this.selectedId.set(null);
+  }
+
   /** Click an item: arm it (and switch to its thread); clicking the armed
    *  item again clears it back to thread-level chat. */
   protected selectItem(itemId: string): void {
@@ -382,6 +425,22 @@ export class InboxProjectComponent {
     const t = this.threads().find((th) => th.items.some((i) => i.id === itemId));
     if (t) this.selectedThreadId.set(t.id);
     this.selectedId.set(itemId);
+  }
+
+  /** The bubbles to render: the whole thread at parent level; when an item
+   *  is selected, its tagged messages PLUS the untagged broadcasts. */
+  protected readonly visibleMessages = computed(() => {
+    const t = this.selectedThread();
+    if (!t) return [];
+    const itemId = this.selectedItem()?.itemId;
+    if (!itemId) return t.messages;
+    return t.messages.filter((m) => m.taggedItemIds.length === 0 || m.taggedItemIds.includes(itemId));
+  });
+
+  /** A broadcast shown inside a filtered (item) view — gets the faded
+   *  "general" treatment so it doesn't read as misplaced. */
+  protected isGeneral(m: InboxBubble): boolean {
+    return !!this.selectedItem() && m.taggedItemIds.length === 0;
   }
 
   /** "<Project> conversations" — tracks the configurable event label. */

@@ -48,6 +48,43 @@ per-item threads. Design locked with Liam + chat (2026-06-29):
 so they read as broadcasts (show in every item filter). New messages tag
 correctly. Acceptable for dev data; no backfill. **Severity:** LOW
 
+## Slice 2 — rail card + per-item filter (UI)
+
+**Shipped:** 2026-06-29, chip `[Dev v2] v2.36f`
+
+### What landed (all the locked details)
+- **Two-row thread card:** top row = the label (supplier / "PROJECT ITEMS" /
+  category) → **selects the whole thread**; "▾ N items" row → **expands** to
+  the items. Two gestures, one card.
+- **Per-item filter:** selecting an item shows its tagged messages **plus the
+  untagged broadcasts**; selecting the card (parent) shows **everything**.
+  (`visibleMessages`.)
+- **Untagged "(general)" treatment:** a broadcast shown inside a filtered
+  view fades + carries a small **General** tag, so it doesn't read as
+  misplaced.
+- **Scoped header breadcrumb:** `DJ Booth · Studio Build Co` (agency) /
+  `DJ Booth · <project>` (supplier) when filtered; just the
+  supplier/project at parent.
+- **Parent stays active when a child is selected** (the card keeps its
+  highlight); clicking the card top row clears the item = **back to all** (no
+  separate "Show all").
+
+### Files touched
+| File | Notes |
+|---|---|
+| client-v2/.../pages/inbox/inbox-project.component.ts | two-row card, `selectThread`, `visibleMessages`, `isGeneral`, breadcrumb header, general styles |
+| client-v2/src/environments/environment.ts | chip → v2.36f |
+
+### Concerns not in spec
+#### Parent card always highlighted with one thread
+**What:** since a thread is always selected, the single-thread card is always
+highlighted. Reads fine as "you're here"; could be subtler than the item's
+selected tint if it feels heavy. **Severity:** LOW
+#### Multi-category supplier = multiple cards
+**What:** the agent rail is one card per (supplier × category); a supplier
+spanning categories shows multiple same-named cards. Punted edge per the
+locked design. **Severity:** LOW
+
 ## QC notes
 (Liam)
 
