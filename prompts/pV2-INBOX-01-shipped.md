@@ -230,6 +230,24 @@ inbox gets a MessageService. **Severity:** LOW
 - **Request Information** focuses the compose box for now (a dedicated
   request-info action/state can come later).
 
+### Iteration — v2.35t (2026-06-29)
+**Triggered by QC (Liam):** more supplier-surface polish + action semantics.
+- **Send** is now a real gradient button (label + icon), beside the input
+  (was an in-field circle).
+- **Conversation area** sits on the page **parchment** ground (`--theme-bg`)
+  so the white agency bubbles read as cards; "You" stays gradient.
+- **Accept Cost** now posts a **"Cost Accepted £X"** chat line + the accept;
+  **Suggest New Cost** posts **"New Cost Suggested £X"** + the adjust.
+- **Item pills** are now **supplier-perspective** with the standard soft
+  tones (custom pill, replaces the codelist pill): `accepted` → **YOU
+  ACCEPTED** (green), `adjusted_by_supplier` → **NEW COST SUGGESTED**
+  (yellow), declines → red, others gray. Action colours saved as the
+  standard.
+- **Request Information** is chat-only — **no status change**; the item stays
+  in its current status (there is no "info requested" status in the model).
+  Flagged for Liam: add one (or reuse `holding`) if a distinct pill is
+  wanted.
+
 ## QC notes
 (Liam)
 

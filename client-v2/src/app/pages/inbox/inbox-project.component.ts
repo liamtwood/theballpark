@@ -6,7 +6,6 @@ import { firstValueFrom, map } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
-import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
 
 /** pV2-INBOX-01 — the supplier's per-project conversation surface
@@ -19,7 +18,7 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, LucideAngularModule, PageHeroComponent, StatusPillComponent],
+  imports: [CurrencyPipe, DatePipe, LucideAngularModule, PageHeroComponent],
   host: { class: 'block bp-vpfit' },
   template: `
     <app-page-hero [back]="{ label: 'Back', href: '/projects', history: true }" title="Inbox" [subtitle]="heroSubtitle()" />
@@ -70,7 +69,7 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                     (click)="selectedId.set(it.id)"
                   >
                     <span class="bp-list-title w-full truncate">{{ it.name }}</span>
-                    <app-status-pill list="message_item_status" [code]="it.status" />
+                    <span [class]="'bp-spill bp-spill--' + sv(it.status).tone">{{ sv(it.status).label }}</span>
                   </button>
                 }
               }
@@ -97,8 +96,9 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                 </div>
               </div>
 
-              <!-- Bubbles -->
-              <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">
+              <!-- Bubbles — on the page (parchment) ground so the white
+                   agency bubbles read as cards; "You" stays gradient. -->
+              <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg px-5 py-4">
                 @for (m of t.messages; track m.id) {
                   <div class="flex flex-col" [class.items-end]="m.mine" [class.items-start]="!m.mine">
                     <div class="bp-bubble" [class.bp-bubble--mine]="m.mine">
@@ -147,9 +147,9 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                 }
               }
 
-              <!-- Compose — the standard field chrome (catalogue-search rhythm). -->
-              <div class="border-t border-hairline px-4 py-3">
-                <div class="flex h-[42px] items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 shadow-[var(--shadow-xs)] focus-within:border-accent">
+              <!-- Compose — standard field chrome + a gradient Send button. -->
+              <div class="flex items-center gap-2 border-t border-hairline px-4 py-3">
+                <div class="flex h-[42px] flex-1 items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 shadow-[var(--shadow-xs)] focus-within:border-accent">
                   <button type="button" class="shrink-0 text-muted hover:text-text" aria-label="Attach a file" disabled>
                     <lucide-icon name="paperclip" [size]="16" />
                   </button>
@@ -162,17 +162,15 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                     (input)="draft.set($any($event.target).value)"
                     (keydown.enter)="send(t.id)"
                   />
-                  <button
-                    type="button"
-                    class="bp-send-circle shrink-0"
-                    [class.opacity-50]="!draft().trim() || sending()"
-                    aria-label="Send"
-                    [disabled]="!draft().trim() || sending()"
-                    (click)="send(t.id)"
-                  >
-                    <lucide-icon name="send" [size]="15" />
-                  </button>
                 </div>
+                <button
+                  type="button"
+                  class="bp-send-btn shrink-0"
+                  [disabled]="!draft().trim() || sending()"
+                  (click)="send(t.id)"
+                >
+                  <lucide-icon name="send" [size]="15" /> Send
+                </button>
               </div>
             </div>
           }
@@ -223,12 +221,13 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
         background: var(--color-fill);
         color: var(--color-text-secondary);
       }
+      /* White agency bubble — reads as a card on the parchment ground. */
       .bp-bubble {
         max-width: 78%;
         border-radius: 14px;
         padding: 8px 12px;
         background: var(--color-surface);
-        border: 1px solid var(--color-hairline);
+        border: 1px solid var(--color-border-hairline);
         display: flex;
         flex-direction: column;
         gap: 2px;
@@ -248,15 +247,52 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
         line-height: 1.5;
         white-space: pre-line;
       }
-      .bp-send-circle {
+      /* Gradient Send button. */
+      .bp-send-btn {
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        width: 30px;
-        height: 30px;
-        border-radius: 9999px;
+        gap: 6px;
+        height: 42px;
+        padding: 0 18px;
+        border-radius: var(--radius-pill);
+        border: none;
         background: var(--bp-gradient);
         color: var(--bp-text-on-gradient);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .bp-send-btn:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      /* Per-item status pill — supplier perspective, soft colour tones. */
+      .bp-spill {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 9px;
+        border-radius: var(--radius-pill);
+        font-size: var(--text-2xs);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: var(--tracking-wide);
+        white-space: nowrap;
+      }
+      .bp-spill--green {
+        background: var(--color-success-soft);
+        color: var(--color-success);
+      }
+      .bp-spill--yellow {
+        background: var(--color-warn-soft);
+        color: var(--color-warn);
+      }
+      .bp-spill--gray {
+        background: var(--color-fill);
+        color: var(--color-text-secondary);
+      }
+      .bp-spill--red {
+        background: var(--color-danger-soft);
+        color: var(--color-danger);
       }
     `,
   ],
@@ -338,7 +374,8 @@ export class InboxProjectComponent {
   }
 
   protected accept(it: InboxThreadItem): void {
-    void this.itemAction(it.id, 'accept');
+    const cost = it.priceCurrent ?? it.priceRef ?? 0;
+    void this.itemAction(it.id, 'accept', undefined, `Cost Accepted ${gbp(cost)}`);
   }
   protected startPropose(it: InboxThreadItem): void {
     this.proposePrice.set(it.priceCurrent ?? it.priceRef ?? 0);
@@ -354,22 +391,29 @@ export class InboxProjectComponent {
   protected async submitPropose(it: InboxThreadItem): Promise<void> {
     const price = this.proposePrice();
     if (price == null || price < 0) return;
-    await this.itemAction(it.id, 'adjust', price);
+    await this.itemAction(it.id, 'adjust', price, `New Cost Suggested ${gbp(price)}`);
     this.proposing.set(false);
   }
 
-  private async itemAction(itemId: string, action: 'accept' | 'adjust', price?: number): Promise<void> {
+  /** A per-item action posts a matching chat line + the state change, then
+   *  refreshes so the bubble + the item's pill update together. */
+  private async itemAction(itemId: string, action: 'accept' | 'adjust', price?: number, text?: string): Promise<void> {
     const thread = this.selectedThread();
     if (!thread || this.sending()) return;
     this.sending.set(true);
     try {
-      await firstValueFrom(this.inbox.reply(thread.id, { itemActions: [{ itemId, action, price }] }));
+      await firstValueFrom(this.inbox.reply(thread.id, { text, itemActions: [{ itemId, action, price }] }));
       this.threadsRes.reload();
     } catch {
       // Retry on the next click; shared toast surface lands later.
     } finally {
       this.sending.set(false);
     }
+  }
+
+  /** Supplier-perspective status pill — label + soft colour tone. */
+  protected sv(status: string): { label: string; tone: 'green' | 'yellow' | 'gray' | 'red' } {
+    return STATUS_VIEW[status] ?? { label: status, tone: 'gray' };
   }
 
   // Tree expansion — collapsed-by-id (default expanded so items show).
@@ -389,3 +433,22 @@ export class InboxProjectComponent {
 
 /** Terminal item statuses — no further supplier action. */
 const TERMINAL_STATUSES = new Set(['declined_by_supplier', 'declined_by_agent', 'booked']);
+
+/** message_item_status → the supplier-perspective pill (label + tone). The
+ *  pill text-transforms to uppercase, so "You accepted" → "YOU ACCEPTED". */
+const STATUS_VIEW: Record<string, { label: string; tone: 'green' | 'yellow' | 'gray' | 'red' }> = {
+  brief_sent: { label: 'Action needed', tone: 'gray' },
+  holding: { label: 'On hold', tone: 'gray' },
+  quoted: { label: 'Quoted', tone: 'gray' },
+  adjusted_by_supplier: { label: 'New cost suggested', tone: 'yellow' },
+  adjusted_by_agent: { label: 'Agency revised', tone: 'yellow' },
+  accepted: { label: 'You accepted', tone: 'green' },
+  booked: { label: 'Booked', tone: 'green' },
+  declined_by_supplier: { label: 'You declined', tone: 'red' },
+  declined_by_agent: { label: 'Agency declined', tone: 'red' },
+};
+
+/** Whole-pound GBP for the action chat lines ("Cost Accepted £10,000"). */
+function gbp(n: number): string {
+  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(n);
+}
