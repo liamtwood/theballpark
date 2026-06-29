@@ -218,6 +218,18 @@ surface when wiring slice C actions. **Severity:** LOW
 failure (no toast yet — same gap as slice B). Wire the shared toast when the
 inbox gets a MessageService. **Severity:** LOW
 
+### Iteration — v2.35r (2026-06-29)
+**Triggered by QC (Liam):** supplier surface cleanups.
+- Selected item card now uses a **soft brand-gradient tint**
+  (`--bp-gradient-soft`, new translucent token) instead of the flat
+  `bg-fill` — lower intensity.
+- Action buttons relabelled with Lucide icons: **Accept Cost**
+  (`circle-check-big`), **Suggest New Cost** (`circle-dollar-sign`), and a
+  new **Request Information** (`info`). Registered `CircleCheckBig` /
+  `CircleDollarSign` in the icon pick. Propose field label → "New cost".
+- **Request Information** focuses the compose box for now (a dedicated
+  request-info action/state can come later).
+
 ## QC notes
 (Liam)
 

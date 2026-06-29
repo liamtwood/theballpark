@@ -11,6 +11,9 @@
      text reads cleanly on it. The soft pastel use case (row tints, soft
      surfaces) stays on --theme-soft; --bp-gradient is brand-mark territory. */
   --bp-gradient: linear-gradient(135deg, #d63384 0%, #16a34a 100%);
+  /* Soft, translucent brand gradient — selection/row tints over any
+     surface (pV2-INBOX-01: the selected item card). */
+  --bp-gradient-soft: linear-gradient(135deg, rgba(214, 51, 132, 0.12) 0%, rgba(22, 163, 74, 0.12) 100%);
   /* Text color that sits ON the gradient (avatar initials, brand buttons). */
   --bp-text-on-gradient: #ffffff;
   /* Master brand font + text color (DB-driven from pV2-01e onwards). */

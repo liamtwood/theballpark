@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, linkedSignal, resource, signal, viewChild } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
@@ -66,7 +66,7 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                   <button
                     type="button"
                     class="flex w-full flex-col items-start gap-1.5 rounded-lg px-3 py-2.5 text-left hover:bg-fill"
-                    [class.bg-fill]="it.id === selectedId()"
+                    [class.bp-item--selected]="it.id === selectedId()"
                     (click)="selectedId.set(it.id)"
                   >
                     <span class="bp-list-title w-full truncate">{{ it.name }}</span>
@@ -126,15 +126,22 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                         class="h-8 w-28 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-md outline-none focus:border-accent"
                         [value]="proposePrice() ?? ''"
                         [disabled]="sending()"
-                        placeholder="New price"
+                        placeholder="New cost"
                         (input)="proposePrice.set($any($event.target).valueAsNumber)"
                         (keydown.enter)="submitPropose(it)"
                       />
                       <button type="button" class="bp-btn-outline" [disabled]="sending()" (click)="proposing.set(false)">Cancel</button>
-                      <button type="button" class="bp-btn-grad" [disabled]="sending() || proposePrice() == null" (click)="submitPropose(it)">Send price</button>
+                      <button type="button" class="bp-btn-grad" [disabled]="sending() || proposePrice() == null" (click)="submitPropose(it)">Send cost</button>
                     } @else {
-                      <button type="button" class="bp-btn-outline" [disabled]="sending()" (click)="startPropose(it)">Propose new price</button>
-                      <button type="button" class="bp-btn-grad" [disabled]="sending()" (click)="accept(it)">Accept</button>
+                      <button type="button" class="bp-btn-grad" [disabled]="sending()" (click)="accept(it)">
+                        <lucide-icon name="circle-check-big" [size]="15" /> Accept Cost
+                      </button>
+                      <button type="button" class="bp-btn-outline" [disabled]="sending()" (click)="startPropose(it)">
+                        <lucide-icon name="circle-dollar-sign" [size]="15" /> Suggest New Cost
+                      </button>
+                      <button type="button" class="bp-btn-outline" [disabled]="sending()" (click)="requestInfo()">
+                        <lucide-icon name="info" [size]="15" /> Request Information
+                      </button>
                     }
                   </div>
                 }
@@ -147,6 +154,7 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                     <lucide-icon name="paperclip" [size]="16" />
                   </button>
                   <input
+                    #composeInput
                     class="w-full border-none bg-transparent p-0 text-md outline-none ring-0 placeholder:text-muted focus:ring-0"
                     placeholder="Type your message…"
                     [value]="draft()"
@@ -174,6 +182,11 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
   `,
   styles: [
     `
+      /* Selected item card — soft brand-gradient tint (not the full
+         intensity). */
+      .bp-item--selected {
+        background: var(--bp-gradient-soft);
+      }
       .bp-bubble {
         max-width: 78%;
         border-radius: 14px;
@@ -294,6 +307,13 @@ export class InboxProjectComponent {
   protected startPropose(it: InboxThreadItem): void {
     this.proposePrice.set(it.priceCurrent ?? it.priceRef ?? 0);
     this.proposing.set(true);
+  }
+
+  /** "Request Information" — drop the supplier into the compose box to ask
+   *  the agency (a dedicated request-info action can come later). */
+  private readonly composeInput = viewChild<ElementRef<HTMLInputElement>>('composeInput');
+  protected requestInfo(): void {
+    this.composeInput()?.nativeElement.focus();
   }
   protected async submitPropose(it: InboxThreadItem): Promise<void> {
     const price = this.proposePrice();
