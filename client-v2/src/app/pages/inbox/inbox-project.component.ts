@@ -148,12 +148,10 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                 }
               }
 
-              <!-- Compose — standard field chrome + a gradient Send button. -->
-              <div class="flex items-center gap-2 border-t border-hairline px-4 py-3">
+              <!-- Compose — on the parchment ground, standard field chrome +
+                   a gradient Send button. -->
+              <div class="flex items-center gap-2 border-t border-hairline bg-bg px-4 py-3">
                 <div class="flex h-[42px] flex-1 items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 shadow-[var(--shadow-xs)] focus-within:border-accent">
-                  <button type="button" class="shrink-0 text-muted hover:text-text" aria-label="Attach a file" disabled>
-                    <lucide-icon name="paperclip" [size]="16" />
-                  </button>
                   <input
                     #composeInput
                     class="w-full border-none bg-transparent p-0 text-md outline-none ring-0 placeholder:text-muted focus:ring-0"
