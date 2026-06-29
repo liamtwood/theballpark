@@ -115,7 +115,7 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                    propose a new one. -->
               @if (selectedItem(); as it) {
                 @if (!isTerminal(it.status)) {
-                  <div class="flex items-center gap-2 border-t border-hairline px-4 py-2.5">
+                  <div class="flex flex-wrap items-center gap-2 border-t border-hairline px-4 py-2.5">
                     <span class="bp-body-small min-w-0 flex-1 truncate text-secondary">
                       <span class="font-semibold text-text">{{ it.name }}</span>
                       · {{ (it.priceCurrent ?? it.priceRef) | currency: 'GBP' : 'symbol' : '1.0-0' }}
@@ -133,13 +133,13 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                       <button type="button" class="bp-btn-outline" [disabled]="sending()" (click)="proposing.set(false)">Cancel</button>
                       <button type="button" class="bp-btn-grad" [disabled]="sending() || proposePrice() == null" (click)="submitPropose(it)">Send cost</button>
                     } @else {
-                      <button type="button" class="bp-btn-grad" [disabled]="sending()" (click)="accept(it)">
+                      <button type="button" class="bp-act bp-act--green" [disabled]="sending()" (click)="accept(it)">
                         <lucide-icon name="circle-check-big" [size]="15" /> Accept Cost
                       </button>
-                      <button type="button" class="bp-btn-outline" [disabled]="sending()" (click)="startPropose(it)">
+                      <button type="button" class="bp-act bp-act--yellow" [disabled]="sending()" (click)="startPropose(it)">
                         <lucide-icon name="circle-dollar-sign" [size]="15" /> Suggest New Cost
                       </button>
-                      <button type="button" class="bp-btn-outline" [disabled]="sending()" (click)="requestInfo()">
+                      <button type="button" class="bp-act bp-act--gray" [disabled]="sending()" (click)="requestInfo()">
                         <lucide-icon name="info" [size]="15" /> Request Information
                       </button>
                     }
@@ -186,6 +186,42 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
          intensity). */
       .bp-item--selected {
         background: var(--bp-gradient-soft);
+      }
+      /* Per-item action buttons — soft colour fills, all forced to one
+         (Request-Information) width so the three line up. */
+      .bp-act {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-width: 12rem;
+        white-space: nowrap;
+        padding: 8px 14px;
+        border-radius: var(--radius-pill);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: box-shadow 0.15s, background 0.15s;
+      }
+      .bp-act:hover:not(:disabled) {
+        box-shadow: var(--shadow-xs);
+      }
+      .bp-act:disabled {
+        opacity: 0.55;
+        cursor: default;
+      }
+      .bp-act--green {
+        background: var(--color-success-soft);
+        color: var(--color-success);
+      }
+      .bp-act--yellow {
+        background: var(--color-warn-soft);
+        color: var(--color-warn);
+      }
+      .bp-act--gray {
+        background: var(--color-fill);
+        color: var(--color-text-secondary);
       }
       .bp-bubble {
         max-width: 78%;
