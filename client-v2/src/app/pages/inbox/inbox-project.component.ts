@@ -375,7 +375,7 @@ export class InboxProjectComponent {
 
   protected accept(it: InboxThreadItem): void {
     const cost = it.priceCurrent ?? it.priceRef ?? 0;
-    void this.itemAction(it.id, 'accept', undefined, `Cost Accepted ${gbp(cost)}`);
+    void this.itemAction(it.id, 'accept', undefined, `${it.name} — Cost Accepted ${gbp(cost)}`);
   }
   protected startPropose(it: InboxThreadItem): void {
     this.proposePrice.set(it.priceCurrent ?? it.priceRef ?? 0);
@@ -391,7 +391,7 @@ export class InboxProjectComponent {
   protected async submitPropose(it: InboxThreadItem): Promise<void> {
     const price = this.proposePrice();
     if (price == null || price < 0) return;
-    await this.itemAction(it.id, 'adjust', price, `New Cost Suggested ${gbp(price)}`);
+    await this.itemAction(it.id, 'adjust', price, `${it.name} — New Cost Suggested ${gbp(price)}`);
     this.proposing.set(false);
   }
 
