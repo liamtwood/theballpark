@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom, map } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
+import { AuthService } from '../../core/auth/auth.service';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
@@ -301,6 +302,7 @@ export class InboxProjectComponent {
   private readonly inbox = inject(InboxService);
   private readonly route = inject(ActivatedRoute);
   private readonly pageConfig = inject(PageConfigService);
+  private readonly auth = inject(AuthService);
 
   private readonly projectId = toSignal(this.route.paramMap.pipe(map((p) => p.get('projectId') ?? '')), {
     initialValue: '',
@@ -375,7 +377,7 @@ export class InboxProjectComponent {
 
   protected accept(it: InboxThreadItem): void {
     const cost = it.priceCurrent ?? it.priceRef ?? 0;
-    void this.itemAction(it.id, 'accept', undefined, `${it.name} — Cost Accepted ${gbp(cost)}`);
+    void this.itemAction(it.id, 'accept', undefined, `${it.name} ${gbp(cost)} Cost Accepted by ${this.actorName()}`);
   }
   protected startPropose(it: InboxThreadItem): void {
     this.proposePrice.set(it.priceCurrent ?? it.priceRef ?? 0);
@@ -391,8 +393,15 @@ export class InboxProjectComponent {
   protected async submitPropose(it: InboxThreadItem): Promise<void> {
     const price = this.proposePrice();
     if (price == null || price < 0) return;
-    await this.itemAction(it.id, 'adjust', price, `${it.name} — New Cost Suggested ${gbp(price)}`);
+    const from = it.priceCurrent ?? it.priceRef ?? 0;
+    await this.itemAction(it.id, 'adjust', price, `${it.name} ${gbp(from)} New Cost Suggested ${gbp(price)} by ${this.actorName()}`);
     this.proposing.set(false);
+  }
+
+  /** The acting user's name for the action chat line ("… by Ryan"). */
+  private actorName(): string {
+    const u = this.auth.user();
+    return u?.displayName || u?.email || 'you';
   }
 
   /** A per-item action posts a matching chat line + the state change, then
