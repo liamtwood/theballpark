@@ -140,7 +140,7 @@ import { InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from 
                       <button type="button" class="bp-act bp-act--yellow" [disabled]="sending()" (click)="startPropose(it)">
                         <lucide-icon name="circle-dollar-sign" [size]="15" /> Suggest New Cost
                       </button>
-                      <button type="button" class="bp-act bp-act--gray" [disabled]="sending()" (click)="requestInfo()">
+                      <button type="button" class="bp-act bp-act--gray" [disabled]="sending()" (click)="requestInfo(it)">
                         <lucide-icon name="info" [size]="15" /> Request Information
                       </button>
                     }
@@ -384,10 +384,12 @@ export class InboxProjectComponent {
     this.proposing.set(true);
   }
 
-  /** "Request Information" — drop the supplier into the compose box to ask
-   *  the agency (a dedicated request-info action can come later). */
+  /** "Request Information" — seed the compose box with the item + cost so
+   *  the supplier edits/adds detail, then send (chat-only; no status change). */
   private readonly composeInput = viewChild<ElementRef<HTMLInputElement>>('composeInput');
-  protected requestInfo(): void {
+  protected requestInfo(it: InboxThreadItem): void {
+    const cost = it.priceCurrent ?? it.priceRef ?? 0;
+    this.draft.set(`${it.name} ${gbp(cost)} `);
     this.composeInput()?.nativeElement.focus();
   }
   protected async submitPropose(it: InboxThreadItem): Promise<void> {
