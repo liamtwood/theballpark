@@ -237,7 +237,11 @@ async function getSupplierThreads(supplierOrgId, projectId) {
       originalTotal: items.reduce((s, it) => s + Number(it.price_ref ?? 0), 0),
       revisedTotal: items.reduce((s, it) => s + Number(it.price_current ?? it.price_ref ?? 0), 0),
       items: items.map(toThreadItem),
-      messages: g.messages.map((m) => toBubble(m, agencyName)),
+      // Empty-body rows carry no conversation (e.g. a legacy action-only
+      // reply) — never render a blank bubble.
+      messages: g.messages
+        .filter((m) => (m.body || '').trim())
+        .map((m) => toBubble(m, agencyName)),
     });
   }
 
@@ -305,19 +309,24 @@ async function reply({ supplierOrgId, userId, threadId, text, itemActions }) {
   if (!hasText && !actions.length) throw httpErr('reply needs text or item actions', 400);
 
   return withTransaction(async (db) => {
-    // The supplier's reply is inbound (supplier → agency), unread to them.
-    const ins = await db.query(
-      `INSERT INTO messages
-         (project_id, user_id, supplier_org_id, category_id, category_name,
-          supplier_name, subject, body, direction, msg_status, read, next_action_by, ref_code)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'inbound', 'unread', false, NULL, $9)
-       RETURNING id`,
-      [lm.project_id, userId || null, lm.supplier_org_id, lm.category_id,
-       lm.category_name, lm.supplier_name,
-       `Re: ${lm.subject || lm.ref_code || ''}`,
-       hasText ? text : '', lm.ref_code]
-    );
-    const replyId = ins.rows[0].id;
+    // Only a message with real text becomes a bubble — an action-only reply
+    // does its item transitions without leaving a blank "You" bubble. The
+    // supplier's reply is inbound (supplier → agency), unread to them.
+    let replyId = null;
+    if (hasText) {
+      const ins = await db.query(
+        `INSERT INTO messages
+           (project_id, user_id, supplier_org_id, category_id, category_name,
+            supplier_name, subject, body, direction, msg_status, read, next_action_by, ref_code)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'inbound', 'unread', false, NULL, $9)
+         RETURNING id`,
+        [lm.project_id, userId || null, lm.supplier_org_id, lm.category_id,
+         lm.category_name, lm.supplier_name,
+         `Re: ${lm.subject || lm.ref_code || ''}`,
+         text, lm.ref_code]
+      );
+      replyId = ins.rows[0].id;
+    }
 
     const changes = [];
     for (const a of actions) {
