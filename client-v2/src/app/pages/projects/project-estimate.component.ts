@@ -168,19 +168,15 @@ import { ProjectOutreachStore } from './project-outreach.store';
                            greyed + disabled when it doesn't. -->
                       <div class="min-w-0 flex-1">
                         <div class="bp-list-title truncate">{{ l.name }}</div>
-                        <!-- Installed? + Quantity: auto-width label column so the
-                             controls sit right beside the labels AND line up across
-                             both rows. -->
-                        <div class="mt-1.5 grid w-fit grid-cols-[auto_1fr] items-center gap-x-2.5 gap-y-1.5">
-                          <span class="bp-meta" [class.opacity-40]="!hasInstall(l)">Installed?</span>
-                          <label class="flex items-center" [class.opacity-40]="!hasInstall(l)"
-                                 [title]="hasInstall(l) ? 'Include installation' : 'No install price'">
-                            <input type="checkbox" class="bp-check" [checked]="isInstalled(l)" [disabled]="!hasInstall(l)" (change)="toggleInstall(l)" />
-                          </label>
-                          <span class="bp-meta">Quantity</span>
-                          <app-qty-input [value]="l.quantity" [label]="l.name" (qtyCommit)="onQtyChange(l.itemId, $event)" />
-                        </div>
+                        <!-- Installed?: assumed on when the line has an install price;
+                             greyed + disabled when it doesn't. -->
+                        <label class="mt-1.5 flex w-fit items-center gap-2.5" [class.opacity-40]="!hasInstall(l)"
+                               [title]="hasInstall(l) ? 'Include installation' : 'No install price'">
+                          <span class="bp-meta">Installed?</span>
+                          <input type="checkbox" class="bp-check" [checked]="isInstalled(l)" [disabled]="!hasInstall(l)" (change)="toggleInstall(l)" />
+                        </label>
                       </div>
+                      <app-qty-input class="shrink-0" [value]="l.quantity" [label]="l.name" (qtyCommit)="onQtyChange(l.itemId, $event)" />
                       <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ lineCost(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
                       <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
                               (click)="removeLine(l)" [attr.aria-label]="'Remove ' + l.name" title="Remove item">
