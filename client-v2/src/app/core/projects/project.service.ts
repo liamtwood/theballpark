@@ -37,9 +37,12 @@ export class ProjectService {
   }
 
   /** The server-computed estimate breakdown (the ONE cascade). The Estimate
-   *  tab consumes this instead of recomputing client-side. */
-  estimate(projectId: string): Observable<EstimateBreakdown> {
-    return this.api.get<EstimateBreakdown>(`/api/projects-v2/${projectId}/estimate`);
+   *  tab consumes this instead of recomputing client-side. `uninstalledItemIds`
+   *  are lines the agent opted out of install on (install is otherwise
+   *  assumed). */
+  estimate(projectId: string, uninstalledItemIds: string[] = []): Observable<EstimateBreakdown> {
+    const qs = uninstalledItemIds.length ? `?uninstalled=${uninstalledItemIds.join(',')}` : '';
+    return this.api.get<EstimateBreakdown>(`/api/projects-v2/${projectId}/estimate${qs}`);
   }
 
   addQuoteItem(projectId: string, itemId: string): Observable<QuoteLine> {

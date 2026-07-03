@@ -20,6 +20,19 @@ import { ProjectOutreachStore } from './project-outreach.store';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CurrencyPipe, LucideAngularModule, QtyInputComponent],
   host: { class: 'block' },
+  styles: [
+    `
+      .bp-check {
+        width: 1rem;
+        height: 1rem;
+        accent-color: var(--theme-accent);
+        cursor: pointer;
+      }
+      .bp-check:disabled {
+        cursor: not-allowed;
+      }
+    `,
+  ],
   template: `
     <div>
       <h2 class="bp-page-title pt-2 text-center">Project Quote</h2>
@@ -128,6 +141,13 @@ import { ProjectOutreachStore } from './project-outreach.store';
                         <span class="bp-icon-block h-9 w-9 shrink-0"><lucide-icon name="store" [size]="14" /></span>
                       }
                       <span class="bp-body min-w-0 flex-1 truncate">{{ l.name }}</span>
+                      <!-- Install: assumed on when the line has an install price;
+                           greyed + disabled when it doesn't. -->
+                      <label class="flex shrink-0 items-center gap-1.5" [class.opacity-40]="!hasInstall(l)"
+                             [title]="hasInstall(l) ? 'Include installation' : 'No install price'">
+                        <input type="checkbox" class="bp-check" [checked]="isInstalled(l)" [disabled]="!hasInstall(l)" (change)="toggleInstall(l)" />
+                        <span class="bp-meta">Install</span>
+                      </label>
                       <app-qty-input class="shrink-0" [value]="l.quantity" [label]="l.name" (qtyCommit)="onQtyChange(l.itemId, $event)" />
                       <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ lineCost(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
@@ -179,20 +199,22 @@ import { ProjectOutreachStore } from './project-outreach.store';
 
         <p class="bp-caption mt-4">Indicative — based on marketplace base prices. Final supplier quotes and the priced rollup land with checkout.</p>
 
-        <!-- Forward action. With suppliers picked, this IS the final quote
-             view: send the brief out. Otherwise, go pick suppliers. -->
+        <!-- Add more items (primary) + supplier actions. -->
+        <button type="button" class="bp-btn-grad mt-5 w-full" (click)="addItems.emit()">
+          <lucide-icon name="plus" [size]="16" />
+          Add more items
+        </button>
         @if (outreach.supplierCount(); as n) {
-          <button type="button" class="bp-btn-grad mt-5 w-full" (click)="messageSuppliers.emit()">
+          <button type="button" class="bp-btn-outline mt-2 w-full" (click)="messageSuppliers.emit()">
             <lucide-icon name="send" [size]="16" />
-            Message {{ n }} supplier{{ n === 1 ? '' : 's' }}
+            Message {{ n }} Supplier{{ n === 1 ? '' : 's' }}
           </button>
           <button type="button" class="bp-btn-outline mt-2 w-full" (click)="goToMarketplace.emit()">
-            Add more suppliers
+            Add more Suppliers
           </button>
         } @else {
-          <button type="button" class="bp-btn-grad mt-5 w-full" (click)="goToMarketplace.emit()">
-            Go with this Ballpark
-            <lucide-icon name="arrow-right" [size]="16" />
+          <button type="button" class="bp-btn-outline mt-2 w-full" (click)="goToMarketplace.emit()">
+            Add Suppliers
           </button>
         }
       }
@@ -207,8 +229,10 @@ export class ProjectEstimateComponent {
 
   readonly projectId = input.required<string>();
   readonly project = input.required<ProjectDetail>();
-  /** "Go with this Ballpark" — hand off to the in-project Marketplace's
-   *  supplier fan-out (project-detail switches the tab + supplier mode). */
+  /** "Add more items" — the Marketplace tab in item-browse mode. */
+  readonly addItems = output<void>();
+  /** "Add suppliers" — hand off to the in-project Marketplace's supplier
+   *  fan-out (project-detail switches the tab + supplier mode). */
   readonly goToMarketplace = output<void>();
   /** "Message suppliers" — fire the outreach send (wired in slice 4). */
   readonly messageSuppliers = output<void>();
@@ -264,8 +288,37 @@ export class ProjectEstimateComponent {
     });
   }
 
+  /** Lines the agent opted OUT of install on. Install is ASSUMED when a line
+   *  has an install price (Liam 2026-07-03); this in-session set tracks the
+   *  exceptions. The server breakdown reloads with it; the project card shows
+   *  the default all-installed Ballpark. */
+  protected readonly uninstalled = signal<ReadonlySet<string>>(new Set());
+
+  /** Whether this line has an install price to offer (else the checkbox is
+   *  greyed + disabled). */
+  protected hasInstall(l: QuoteLine): boolean {
+    return (l.installCost ?? 0) > 0;
+  }
+  /** Installed = has an install price AND not opted out. */
+  protected isInstalled(l: QuoteLine): boolean {
+    return this.hasInstall(l) && !this.uninstalled().has(l.itemId);
+  }
+  /** Toggle a line's install in/out — updates the opt-out set and pulls the
+   *  fresh server breakdown (install feeds the cascade). */
+  protected toggleInstall(l: QuoteLine): void {
+    if (!this.hasInstall(l)) return;
+    this.uninstalled.update((set) => {
+      const next = new Set(set);
+      if (next.has(l.itemId)) next.delete(l.itemId);
+      else next.add(l.itemId);
+      return next;
+    });
+    this.est.reload();
+  }
+
   protected lineCost(l: QuoteLine): number {
-    return (l.basePrice ?? 0) * (l.quantity ?? 1);
+    const inst = this.isInstalled(l) ? (l.installCost ?? 0) : 0;
+    return ((l.basePrice ?? 0) + inst) * (l.quantity ?? 1);
   }
   protected readonly cur = computed(() => this.project().currency || 'GBP');
   protected readonly budget = computed(() => this.project().projectBudget ?? 0);
@@ -275,7 +328,7 @@ export class ProjectEstimateComponent {
    *  edit (qtyCommit → onQtyChange). */
   protected readonly est = resource<EstimateBreakdown, string>({
     params: () => this.projectId(),
-    loader: ({ params }) => firstValueFrom(this.projects.estimate(params)),
+    loader: ({ params }) => firstValueFrom(this.projects.estimate(params, [...this.uninstalled()])),
   });
 
   /** The breakdown the template renders: the server value once loaded, else a

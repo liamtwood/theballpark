@@ -57,11 +57,14 @@ const LIST_SELECT = `
             FROM project_items pi
             JOIN items i ON i.id = pi.item_id
            WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS supplier_count,
-         -- Live quote subtotal (qty × base price) — the card's Ballpark
-         -- total is this run through the estimate cascade below, so it
-         -- matches the Estimate tab (total_client_cost is stale/unused).
-         (SELECT COALESCE(SUM(pi.quantity * COALESCE(pi.base_price, 0)), 0)
+         -- Live quote subtotal — qty × (base + install). "Assume installed":
+         -- an item's install cost is included by default when the catalogue
+         -- item has one (the Estimate tab lets the agent opt a line out; the
+         -- card shows the default all-installed Ballpark). Run through the
+         -- cascade below → matches getEstimate + the Estimate tab.
+         (SELECT COALESCE(SUM(pi.quantity * (COALESCE(pi.base_price, 0) + COALESCE(i.install_cost, 0))), 0)
             FROM project_items pi
+            LEFT JOIN items i ON i.id = pi.item_id
            WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS quote_subtotal
     FROM projects p
     LEFT JOIN clients c ON c.id = p.client_id
@@ -382,18 +385,26 @@ async function listItems(orgId, projectId) {
 
 /** The project's estimate breakdown — the SINGLE server-computed cascade the
  *  Estimate tab consumes (it no longer recomputes client-side). Subtotal is
- *  the live SUM of qty × base_price over the quote's items, run through the
- *  one cascade (services/estimate.js) with the project's rates. Returns null
- *  if the project isn't the org's (→ 404). */
-async function getEstimate(orgId, projectId) {
+ *  the live SUM of qty × (base + install) over the quote's items — install is
+ *  included by default ("assume installed"); `uninstalledItemIds` are the
+ *  lines the agent opted out of install on (Estimate tab checkboxes). Run
+ *  through the one cascade (services/estimate.js) with the project's rates.
+ *  Returns null if the project isn't the org's (→ 404). */
+async function getEstimate(orgId, projectId, uninstalledItemIds = []) {
+  const uninstalled = Array.isArray(uninstalledItemIds) ? uninstalledItemIds : [];
   const r = await pool.query(
     `SELECT p.default_contingency_pct, p.default_margin_pct, p.default_vat_pct,
-            (SELECT COALESCE(SUM(pi.quantity * COALESCE(pi.base_price, 0)), 0)
+            (SELECT COALESCE(SUM(pi.quantity * (
+                       COALESCE(pi.base_price, 0)
+                       + CASE WHEN pi.item_id = ANY($3::uuid[]) THEN 0
+                              ELSE COALESCE(i.install_cost, 0) END
+                     )), 0)
                FROM project_items pi
+               LEFT JOIN items i ON i.id = pi.item_id
               WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS quote_subtotal
        FROM projects p
       WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
-    [projectId, orgId]
+    [projectId, orgId, uninstalled]
   );
   if (!r.rows.length) return null;
   const row = r.rows[0];

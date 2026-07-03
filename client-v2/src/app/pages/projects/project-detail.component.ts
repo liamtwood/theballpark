@@ -209,7 +209,7 @@ interface DetailForm {
           }
           @case ('estimate') {
             <div class="min-h-0 flex-1 overflow-y-auto">
-              <app-project-estimate [projectId]="p.id" [project]="p" (goToMarketplace)="goToMarketplace()" (messageSuppliers)="onMessageSuppliers()" />
+              <app-project-estimate [projectId]="p.id" [project]="p" (addItems)="addItems()" (goToMarketplace)="goToMarketplace()" (messageSuppliers)="onMessageSuppliers()" />
             </div>
           }
           @case ('final') {
@@ -325,9 +325,16 @@ export class ProjectDetailComponent {
       .catch((err) => console.warn('[ProjectDetail] nav failed', err));
   }
 
-  /** "Go with this Ballpark" (Estimate tab) → the Marketplace tab in
-   *  supplier mode, where the agent fans the quote's categories out to
-   *  suppliers. */
+  /** "Add more items" (Estimate tab) → the Marketplace tab in item-browse
+   *  mode (mode:null — the marketplace store treats absence as items). */
+  protected addItems(): void {
+    this.router
+      .navigate([], { relativeTo: this.route, queryParams: { tab: 'marketplace', mode: null }, queryParamsHandling: 'merge' })
+      .catch((err) => console.warn('[ProjectDetail] nav failed', err));
+  }
+
+  /** "Add suppliers" (Estimate tab) → the Marketplace tab in supplier mode,
+   *  where the agent fans the quote's categories out to suppliers. */
   protected goToMarketplace(): void {
     this.router
       .navigate([], { relativeTo: this.route, queryParams: { tab: 'marketplace', mode: 'suppliers' }, queryParamsHandling: 'merge' })

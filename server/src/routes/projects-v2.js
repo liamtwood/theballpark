@@ -107,10 +107,16 @@ router.get('/:id/items', async (req, res, next) => {
 });
 
 // GET /:id/estimate — the server-computed estimate breakdown (the ONE
-// cascade; the Estimate tab consumes this instead of recomputing).
+// cascade; the Estimate tab consumes this instead of recomputing). Optional
+// ?uninstalled=<uuid,uuid> — lines the agent opted out of install on (install
+// is otherwise assumed). Non-uuid entries are dropped.
 router.get('/:id/estimate', async (req, res, next) => {
   try {
-    const breakdown = await projects.getEstimate(req.user.org_id, req.params.id);
+    const uninstalled = String(req.query.uninstalled ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => z.string().uuid().safeParse(s).success);
+    const breakdown = await projects.getEstimate(req.user.org_id, req.params.id, uninstalled);
     if (breakdown === null) return res.status(404).json({ error: 'Project not found' });
     res.json(breakdown);
   } catch (err) {
