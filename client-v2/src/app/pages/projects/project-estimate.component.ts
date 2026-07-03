@@ -133,11 +133,11 @@ import { ProjectOutreachStore } from './project-outreach.store';
         <p class="bp-field-label uppercase tracking-wide">Categories</p>
         <div class="mt-2 flex flex-col gap-2.5">
           @for (g of groups(); track g.id) {
-            <!-- Category = just its icon + name, cat total right, a chevron
-                 that expands the items underneath (no card chrome). -->
-            <div>
+            <!-- Category card — bare icon (no block around it) + name, cat
+                 total right, a chevron that expands the items underneath. -->
+            <div class="bp-card overflow-hidden">
               <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggle(g.id)">
-                <lucide-icon [name]="g.iconName || 'folder-open'" [size]="26" [strokeWidth]="1.5" class="shrink-0 text-secondary" />
+                <lucide-icon [name]="g.iconName || 'folder-open'" [size]="26" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
                 <span class="min-w-0 flex-1">
                   <span class="bp-list-title block truncate">{{ g.name }}</span>
                   <span class="bp-meta">{{ g.items.length }} item{{ g.items.length === 1 ? '' : 's' }}</span>
