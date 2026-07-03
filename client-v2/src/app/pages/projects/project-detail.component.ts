@@ -281,7 +281,7 @@ export class ProjectDetailComponent {
     { key: 'details', label: 'About ' + this.label() },
     { key: 'marketplace', label: 'Marketplace' },
     { key: 'estimate', label: this.label() + ' Quote' },
-    { key: 'final', label: 'Final' },
+    { key: 'final', label: 'Final Quote' },
     { key: 'inbox', label: 'Inbox' },
   ]);
 
