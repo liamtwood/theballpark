@@ -22,11 +22,34 @@ import { ProjectOutreachStore } from './project-outreach.store';
   host: { class: 'block' },
   styles: [
     `
+      /* Custom checkbox — accent tick, no browser-default (blue) fill. */
       .bp-check {
+        appearance: none;
+        -webkit-appearance: none;
         width: 1rem;
         height: 1rem;
-        accent-color: var(--theme-accent);
+        margin: 0;
+        border: 1.5px solid var(--color-border-hairline);
+        border-radius: 4px;
+        background: var(--color-surface);
         cursor: pointer;
+        display: inline-grid;
+        place-content: center;
+      }
+      .bp-check::before {
+        content: '';
+        width: 0.6rem;
+        height: 0.6rem;
+        transform: scale(0);
+        transition: transform 0.1s ease;
+        background: var(--theme-accent);
+        clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0, 43% 62%);
+      }
+      .bp-check:checked {
+        border-color: var(--theme-accent);
+      }
+      .bp-check:checked::before {
+        transform: scale(1);
       }
       .bp-check:disabled {
         cursor: not-allowed;
@@ -134,21 +157,23 @@ import { ProjectOutreachStore } from './project-outreach.store';
                 <div class="border-t border-hairline">
                   @for (l of g.items; track l.id) {
                     <!-- Item row — the marketplace list-view shape (thumb + name + price). -->
-                    <div class="flex items-center gap-3 border-b border-hairline px-3 py-2 last:border-b-0">
+                    <div class="flex items-center gap-3 border-b border-hairline px-3 py-2.5 last:border-b-0">
                       @if (l.imageUrl) {
-                        <img [src]="l.imageUrl" alt="" class="h-9 w-9 shrink-0 rounded-md object-cover" />
+                        <img [src]="l.imageUrl" alt="" class="h-12 w-12 shrink-0 rounded-md object-cover" />
                       } @else {
-                        <span class="bp-icon-block h-9 w-9 shrink-0"><lucide-icon name="store" [size]="14" /></span>
+                        <span class="bp-icon-block h-12 w-12 shrink-0"><lucide-icon name="store" [size]="18" /></span>
                       }
                       <span class="bp-body min-w-0 flex-1 truncate">{{ l.name }}</span>
-                      <!-- Install: assumed on when the line has an install price;
-                           greyed + disabled when it doesn't. -->
-                      <label class="flex shrink-0 items-center gap-1.5" [class.opacity-40]="!hasInstall(l)"
-                             [title]="hasInstall(l) ? 'Include installation' : 'No install price'">
-                        <input type="checkbox" class="bp-check" [checked]="isInstalled(l)" [disabled]="!hasInstall(l)" (change)="toggleInstall(l)" />
-                        <span class="bp-meta">Install</span>
-                      </label>
-                      <app-qty-input class="shrink-0" [value]="l.quantity" [label]="l.name" (qtyCommit)="onQtyChange(l.itemId, $event)" />
+                      <!-- Quantity + Installed? stacked. Install is assumed on when
+                           the line has an install price; greyed + disabled when not. -->
+                      <div class="flex shrink-0 flex-col items-center gap-1.5">
+                        <app-qty-input [value]="l.quantity" [label]="l.name" (qtyCommit)="onQtyChange(l.itemId, $event)" />
+                        <label class="flex items-center gap-1.5" [class.opacity-40]="!hasInstall(l)"
+                               [title]="hasInstall(l) ? 'Include installation' : 'No install price'">
+                          <input type="checkbox" class="bp-check" [checked]="isInstalled(l)" [disabled]="!hasInstall(l)" (change)="toggleInstall(l)" />
+                          <span class="bp-meta">Installed?</span>
+                        </label>
+                      </div>
                       <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ lineCost(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
                       <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
                               (click)="removeLine(l)" [attr.aria-label]="'Remove ' + l.name" title="Remove item">
