@@ -40,8 +40,15 @@ export class ProjectService {
    *  tab consumes this instead of recomputing client-side. `uninstalledItemIds`
    *  are lines the agent opted out of install on (install is otherwise
    *  assumed). */
-  estimate(projectId: string, uninstalledItemIds: string[] = []): Observable<EstimateBreakdown> {
-    const qs = uninstalledItemIds.length ? `?uninstalled=${uninstalledItemIds.join(',')}` : '';
+  estimate(
+    projectId: string,
+    uninstalledItemIds: string[] = [],
+    scope: 'all' | 'cart' = 'all'
+  ): Observable<EstimateBreakdown> {
+    const p = new URLSearchParams();
+    if (uninstalledItemIds.length) p.set('uninstalled', uninstalledItemIds.join(','));
+    if (scope === 'cart') p.set('scope', 'cart');
+    const qs = p.toString() ? `?${p}` : '';
     return this.api.get<EstimateBreakdown>(`/api/projects-v2/${projectId}/estimate${qs}`);
   }
 

@@ -209,12 +209,12 @@ interface DetailForm {
           }
           @case ('estimate') {
             <div class="min-h-0 flex-1 overflow-y-auto">
-              <app-project-estimate [projectId]="p.id" [project]="p" (addItems)="addItems()" (goToMarketplace)="goToMarketplace()" (messageSuppliers)="onMessageSuppliers()" />
+              <app-project-estimate [projectId]="p.id" [project]="p" (addItems)="addItems()" (goToFinal)="goToTab('final')" />
             </div>
           }
           @case ('final') {
             <div class="min-h-0 flex-1 overflow-y-auto">
-              <app-project-final-quote [projectId]="p.id" [project]="p" />
+              <app-project-final-quote [projectId]="p.id" [project]="p" (addSuppliers)="goToMarketplace()" />
             </div>
           }
           @case ('inbox') {
@@ -280,7 +280,7 @@ export class ProjectDetailComponent {
   protected readonly tabs = computed<TabBandTab[]>(() => [
     { key: 'details', label: 'About ' + this.label() },
     { key: 'marketplace', label: 'Marketplace' },
-    { key: 'estimate', label: this.label() + ' Quote' },
+    { key: 'estimate', label: 'Project Cart' },
     { key: 'final', label: 'Final Quote' },
     { key: 'inbox', label: 'Inbox' },
   ]);
@@ -333,8 +333,15 @@ export class ProjectDetailComponent {
       .catch((err) => console.warn('[ProjectDetail] nav failed', err));
   }
 
-  /** "Add suppliers" (Estimate tab) → the Marketplace tab in supplier mode,
-   *  where the agent fans the quote's categories out to suppliers. */
+  /** Switch to another tab (e.g. "Go with this Ballpark" → Final Quote). */
+  protected goToTab(tab: string): void {
+    this.router
+      .navigate([], { relativeTo: this.route, queryParams: { tab }, queryParamsHandling: 'merge' })
+      .catch((err) => console.warn('[ProjectDetail] nav failed', err));
+  }
+
+  /** "Add suppliers" → the Marketplace tab in supplier mode, where the agent
+   *  fans the quote's categories out to suppliers. */
   protected goToMarketplace(): void {
     this.router
       .navigate([], { relativeTo: this.route, queryParams: { tab: 'marketplace', mode: 'suppliers' }, queryParamsHandling: 'merge' })

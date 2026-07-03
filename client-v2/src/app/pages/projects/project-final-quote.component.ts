@@ -1,11 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, resource, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { MessageService } from 'primeng/api';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
-import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
+import { ProjectDetail, QuoteLine, QuoteLineStatus } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
 import { ProjectOutreachStore } from './project-outreach.store';
 import { QtyInputComponent } from './qty-input.component';
@@ -22,6 +22,21 @@ interface CustomLine {
   install: boolean;
   notes: string;
 }
+
+const STATUS_LABELS: Record<QuoteLineStatus, string> = {
+  to_send: 'To send',
+  out_for_quote: 'Out for quote',
+  quoted: 'Quoted',
+  booked: 'Booked',
+  declined: 'Declined',
+};
+const STATUS_PILL: Record<QuoteLineStatus, string> = {
+  to_send: 'bp-pill--muted',
+  out_for_quote: 'bp-pill--warn',
+  quoted: 'bp-pill--warn',
+  booked: 'bp-pill--success',
+  declined: 'bp-pill--danger',
+};
 
 /** pV2-FINAL-01 — the Final Project Quote. The supplier-facing review the
  *  agent checks before sending: a summary card + line items with a per-line
@@ -83,7 +98,10 @@ interface CustomLine {
             <div class="bp-card p-4">
               <div class="flex flex-col gap-4 md:flex-row md:items-center">
                 <div class="min-w-0 flex-1">
-                  <span class="bp-field-label">{{ l.categoryName || 'Item' }}</span>
+                  <div class="flex items-center gap-2">
+                    <span class="bp-field-label">{{ l.categoryName || 'Item' }}</span>
+                    <span [class]="statusPill(l)">{{ statusLabel(l) }}</span>
+                  </div>
                   <div class="bp-list-title truncate">{{ l.name }}</div>
                   @if (l.description) {
                     <div class="bp-body-small text-secondary">{{ l.description }}</div>
@@ -136,9 +154,17 @@ interface CustomLine {
             </div>
           }
 
-          <!-- Add your own -->
-          <button type="button" class="flex w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border border-dashed border-hairline px-4 py-4 text-secondary hover:bg-fill hover:text-text" (click)="openAdd()">
-            <lucide-icon name="plus" [size]="16" /> Add Your Own Line Item
+        </div>
+
+        <!-- Add Your Own Line Item + Add Suppliers, side by side. -->
+        <div class="mt-5 flex gap-2.5">
+          <button type="button" class="bp-btn-outline flex-1" (click)="openAdd()">
+            <lucide-icon name="plus" [size]="16" />
+            Add Your Own Line Item
+          </button>
+          <button type="button" class="bp-btn-grad flex-1" (click)="addSuppliers.emit()">
+            Add Suppliers
+            <lucide-icon name="arrow-right" [size]="16" />
           </button>
         </div>
       }
@@ -228,6 +254,32 @@ interface CustomLine {
       select.bp-input-field {
         appearance: auto;
       }
+      /* Per-item send-state badge. */
+      .bp-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px 9px;
+        border-radius: var(--radius-pill);
+        font-size: var(--text-2xs);
+        font-weight: 500;
+        line-height: 1.5;
+      }
+      .bp-pill--muted {
+        background: var(--color-fill);
+        color: var(--color-text-secondary);
+      }
+      .bp-pill--warn {
+        background: var(--color-warn-soft);
+        color: var(--color-warn);
+      }
+      .bp-pill--success {
+        background: var(--color-success-soft);
+        color: var(--color-success);
+      }
+      .bp-pill--danger {
+        background: var(--color-danger-soft);
+        color: var(--color-danger);
+      }
     `,
   ],
 })
@@ -238,8 +290,18 @@ export class ProjectFinalQuoteComponent {
 
   readonly projectId = input.required<string>();
   readonly project = input.required<ProjectDetail>();
+  /** "Add Suppliers" → the Marketplace tab in supplier mode. */
+  readonly addSuppliers = output<void>();
 
   protected readonly cur = computed(() => this.project().currency || 'GBP');
+
+  /** Per-item send-state badge (pV2-CART-01). */
+  protected statusLabel(l: QuoteLine): string {
+    return STATUS_LABELS[l.status] ?? '';
+  }
+  protected statusPill(l: QuoteLine): string {
+    return `bp-pill ${STATUS_PILL[l.status] ?? 'bp-pill--muted'}`;
+  }
 
   protected readonly rows = signal<QuoteLine[]>([]);
   protected readonly lines = resource<QuoteLine[], string>({

@@ -116,7 +116,8 @@ router.get('/:id/estimate', async (req, res, next) => {
       .split(',')
       .map((s) => s.trim())
       .filter((s) => z.string().uuid().safeParse(s).success);
-    const breakdown = await projects.getEstimate(req.user.org_id, req.params.id, uninstalled);
+    const scope = req.query.scope === 'cart' ? 'cart' : 'all';
+    const breakdown = await projects.getEstimate(req.user.org_id, req.params.id, uninstalled, scope);
     if (breakdown === null) return res.status(404).json({ error: 'Project not found' });
     res.json(breakdown);
   } catch (err) {

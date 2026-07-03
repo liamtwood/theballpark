@@ -7,7 +7,19 @@ import { ProjectService } from '../../core/projects/project.service';
 import { EstimateBreakdown, ProjectDetail, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
 import { QtyInputComponent } from './qty-input.component';
-import { ProjectOutreachStore } from './project-outreach.store';
+
+/** "N items from <supplier>" rows for a category — one per distinct catalogue
+ *  owner, busiest first. A null supplier name renders as a plain count. */
+function supplierBreakdown(items: QuoteLine[]): { name: string | null; count: number }[] {
+  const by = new Map<string, { name: string | null; count: number }>();
+  for (const l of items) {
+    const key = l.supplierName ?? '';
+    const e = by.get(key) ?? { name: l.supplierName ?? null, count: 0 };
+    e.count++;
+    by.set(key, e);
+  }
+  return [...by.values()].sort((a, b) => b.count - a.count);
+}
 
 /** pV2-PROJECTS-02 slice 3 — the Estimate tab. Ports the v1 estimate
  *  breakdown (Subtotal → Contingency → Your cost → Margin → VAT → Client
@@ -58,7 +70,7 @@ import { ProjectOutreachStore } from './project-outreach.store';
   ],
   template: `
     <div>
-      <h2 class="bp-page-title pt-2 text-center">Project Quote</h2>
+      <h2 class="bp-page-title pt-2 text-center">Project Cart</h2>
 
       <!-- Summary tiles span the full page width as one row (Liam 2026-06-14):
            5 cards — Date / Location / Duration / Guest count / Budget. The rest
@@ -127,8 +139,11 @@ import { ProjectOutreachStore } from './project-outreach.store';
         <p class="bp-body-small text-secondary">Loading…</p>
       } @else if (lines.error()) {
         <p class="bp-body-small text-warn">Couldn't load the quote — please refresh.</p>
-      } @else if (rows().length === 0) {
-        <p class="bp-body-small text-secondary">No items in the quote yet — add some from the Marketplace tab.</p>
+      } @else if (cartRows().length === 0) {
+        <p class="bp-body-small text-secondary">
+          @if (rows().length === 0) { Nothing in the cart yet — add items from the marketplace. }
+          @else { Everything's out for quote — nothing left to send. }
+        </p>
       } @else {
         <p class="bp-field-label uppercase tracking-wide">Categories</p>
         <div class="mt-2 flex flex-col gap-2.5">
@@ -140,7 +155,9 @@ import { ProjectOutreachStore } from './project-outreach.store';
                 <lucide-icon [name]="g.iconName || 'folder-open'" [size]="30" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
                 <span class="min-w-0 flex-1">
                   <span class="bp-list-title block truncate text-[length:var(--text-lg)]">{{ g.name }}</span>
-                  <span class="bp-meta">{{ g.items.length }} item{{ g.items.length === 1 ? '' : 's' }}</span>
+                  @for (s of g.suppliers; track s.name) {
+                    <span class="bp-meta block truncate">{{ s.count }} item{{ s.count === 1 ? '' : 's' }}@if (s.name) { from "{{ s.name }}" }</span>
+                  }
                 </span>
                 <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
                 <lucide-icon [name]="expanded().has(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
@@ -230,7 +247,7 @@ import { ProjectOutreachStore } from './project-outreach.store';
             <lucide-icon name="store" [size]="16" />
             Edit in marketplace
           </button>
-          <button type="button" class="bp-btn-outline flex-1" (click)="goToMarketplace.emit()">
+          <button type="button" class="bp-btn-outline flex-1" (click)="goToFinal.emit()">
             Go with this Ballpark
             <lucide-icon name="arrow-right" [size]="16" />
           </button>
@@ -243,17 +260,13 @@ import { ProjectOutreachStore } from './project-outreach.store';
 export class ProjectEstimateComponent {
   private readonly projects = inject(ProjectService);
   private readonly toast = inject(MessageService);
-  protected readonly outreach = inject(ProjectOutreachStore);
 
   readonly projectId = input.required<string>();
   readonly project = input.required<ProjectDetail>();
-  /** "Add more items" — the Marketplace tab in item-browse mode. */
+  /** "Edit in marketplace" — the Marketplace tab in item-browse mode. */
   readonly addItems = output<void>();
-  /** "Add suppliers" — hand off to the in-project Marketplace's supplier
-   *  fan-out (project-detail switches the tab + supplier mode). */
-  readonly goToMarketplace = output<void>();
-  /** "Message suppliers" — fire the outreach send (wired in slice 4). */
-  readonly messageSuppliers = output<void>();
+  /** "Go with this Ballpark" — jump to the Final Quote tab. */
+  readonly goToFinal = output<void>();
 
   /** Quote lines as writable state (seeded from the resource load) so qty
    *  edits can update optimistically + revert on failure. */
@@ -299,14 +312,18 @@ export class ProjectEstimateComponent {
 
   /** Quote lines grouped by category — one card per category, with its
    *  summed total + the first item's image as the cover. */
+  /** The cart = only the still-to-send items (pV2-CART-01). Sent items live
+   *  on the Final Quote view with their status badge; the cart is the editable
+   *  pre-send slice. */
+  protected readonly cartRows = computed(() => this.rows().filter((l) => l.status === 'to_send'));
+
   protected readonly groups = computed(() =>
-    groupByCategory(this.rows()).map((g) => ({
+    groupByCategory(this.cartRows()).map((g) => ({
       ...g,
       total: g.items.reduce((s, l) => s + this.lineCost(l), 0),
-      // Category card icon: the category's cover image, else its Lucide
-      // icon (Liam 2026-06-14). All lines in a group share the category.
-      image: g.items[0]?.categoryCoverUrl ?? null,
       iconName: g.items[0]?.categoryIconName ?? null,
+      // "N items from <supplier>" — one row per distinct catalogue owner.
+      suppliers: supplierBreakdown(g.items),
     }))
   );
 
@@ -360,7 +377,7 @@ export class ProjectEstimateComponent {
    *  edit (qtyCommit → onQtyChange). */
   protected readonly est = resource<EstimateBreakdown, string>({
     params: () => this.projectId(),
-    loader: ({ params }) => firstValueFrom(this.projects.estimate(params, [...this.uninstalled()])),
+    loader: ({ params }) => firstValueFrom(this.projects.estimate(params, [...this.uninstalled()], 'cart')),
   });
 
   /** The breakdown the template renders: the server value once loaded, else a

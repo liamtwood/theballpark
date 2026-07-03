@@ -342,6 +342,10 @@ function toQuoteLine(row) {
     categoryName: row.category_name ?? null,
     categoryIconName: row.category_icon_name || null,
     categoryCoverUrl: row.category_cover_url || null, // '' → null (clean contract)
+    // Supplier the item comes from (catalogue owner) + coarse send-state.
+    supplierId: row.supplier_id ?? null,
+    supplierName: row.supplier_name ?? null,
+    status: quoteStatus(row.sent_status),
   };
 }
 
@@ -356,10 +360,33 @@ const QUOTE_LINE_JOIN = `
   SELECT pi.id, pi.item_id, pi.name, pi.description, pi.base_price, pi.unit, pi.image_url, pi.quantity,
          pi.category_id, c.name AS category_name,
          c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url,
-         i.install_cost, i.install_description
+         i.install_cost, i.install_description,
+         -- Supplier = the item's catalogue owner (marketplace source), so the
+         -- cart cat card can say "N items from <supplier>" pre-outreach.
+         i.org_id AS supplier_id, o.name AS supplier_name,
+         -- Send-state: the item's latest OUTBOUND brief line status for this
+         -- project (NULL = never sent = still in the cart). Drives the
+         -- cart/final split + the per-item badge (pV2-CART-01).
+         (SELECT mi.status
+            FROM message_items mi
+            JOIN messages m ON m.id = mi.message_id
+           WHERE m.project_id = pi.project_id AND m.direction = 'outbound'
+             AND mi.item_id = pi.item_id AND mi.deleted_at IS NULL
+           ORDER BY mi.created_at DESC LIMIT 1) AS sent_status
     FROM project_items pi
     LEFT JOIN categories c ON c.id = pi.category_id
-    LEFT JOIN items i ON i.id = pi.item_id`;
+    LEFT JOIN items i ON i.id = pi.item_id
+    LEFT JOIN orgs o ON o.id = i.org_id`;
+
+/** Collapse a message_item send-status into the quote line's coarse status:
+ *  to_send (never sent) → out_for_quote → quoted → booked / declined. */
+function quoteStatus(sentStatus) {
+  if (!sentStatus) return 'to_send';
+  if (sentStatus === 'brief_sent' || sentStatus === 'holding') return 'out_for_quote';
+  if (sentStatus === 'accepted' || sentStatus === 'booked') return 'booked';
+  if (String(sentStatus).startsWith('declined')) return 'declined';
+  return 'quoted'; // quoted / adjusted_by_supplier / adjusted_by_agent
+}
 
 async function lineById(db, id) {
   const r = await db.query(`${QUOTE_LINE_JOIN} WHERE pi.id = $1`, [id]);
@@ -390,8 +417,9 @@ async function listItems(orgId, projectId) {
  *  lines the agent opted out of install on (Estimate tab checkboxes). Run
  *  through the one cascade (services/estimate.js) with the project's rates.
  *  Returns null if the project isn't the org's (→ 404). */
-async function getEstimate(orgId, projectId, uninstalledItemIds = []) {
+async function getEstimate(orgId, projectId, uninstalledItemIds = [], scope = 'all') {
   const uninstalled = Array.isArray(uninstalledItemIds) ? uninstalledItemIds : [];
+  const cartOnly = scope === 'cart';
   const r = await pool.query(
     `SELECT p.default_contingency_pct, p.default_margin_pct, p.default_vat_pct,
             (SELECT COALESCE(SUM(pi.quantity * (
@@ -401,10 +429,17 @@ async function getEstimate(orgId, projectId, uninstalledItemIds = []) {
                      )), 0)
                FROM project_items pi
                LEFT JOIN items i ON i.id = pi.item_id
-              WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS quote_subtotal
+              WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
+                -- scope=cart → only still-in-cart (never-sent) items.
+                AND ($4 = false OR NOT EXISTS (
+                      SELECT 1 FROM message_items mi
+                        JOIN messages m ON m.id = mi.message_id
+                       WHERE m.project_id = pi.project_id AND m.direction = 'outbound'
+                         AND mi.item_id = pi.item_id AND mi.deleted_at IS NULL))
+            ) AS quote_subtotal
        FROM projects p
       WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
-    [projectId, orgId, uninstalled]
+    [projectId, orgId, uninstalled, cartOnly]
   );
   if (!r.rows.length) return null;
   const row = r.rows[0];

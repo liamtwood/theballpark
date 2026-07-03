@@ -52,7 +52,17 @@ export interface QuoteLine {
   categoryName: string | null;
   categoryIconName: string | null;
   categoryCoverUrl: string | null;
+  /** Supplier the item comes from (its catalogue owner) — the cart cat card
+   *  groups "N items from <supplier>". */
+  supplierId: string | null;
+  supplierName: string | null;
+  /** Coarse send-state (pV2-CART-01): to_send (in cart) → out_for_quote →
+   *  quoted → booked / declined. Cart shows to_send; Final shows all + badge. */
+  status: QuoteLineStatus;
 }
+
+/** Per-item send-state — the single switch between the cart and final views. */
+export type QuoteLineStatus = 'to_send' | 'out_for_quote' | 'quoted' | 'booked' | 'declined';
 
 /** The server-computed estimate cascade (server: services/estimate.js →
  *  GET /:id/estimate). The Estimate tab renders this directly — the cascade
