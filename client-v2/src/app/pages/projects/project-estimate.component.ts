@@ -137,9 +137,9 @@ import { ProjectOutreachStore } from './project-outreach.store';
                  total right, a chevron that expands the items underneath. -->
             <div class="bp-card overflow-hidden">
               <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggle(g.id)">
-                <lucide-icon [name]="g.iconName || 'folder-open'" [size]="26" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
+                <lucide-icon [name]="g.iconName || 'folder-open'" [size]="30" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
                 <span class="min-w-0 flex-1">
-                  <span class="bp-list-title block truncate">{{ g.name }}</span>
+                  <span class="bp-list-title block truncate text-[length:var(--text-lg)]">{{ g.name }}</span>
                   <span class="bp-meta">{{ g.items.length }} item{{ g.items.length === 1 ? '' : 's' }}</span>
                 </span>
                 <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
