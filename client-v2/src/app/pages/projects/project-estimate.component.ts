@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, resource, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { MessageService } from 'primeng/api';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
-import { EstimateBreakdown, ProjectDetail, QuoteLine, groupByCategory } from '../../core/projects/project.types';
+import { EstimateBreakdown, ProjectDetail, QuoteLine, QuoteLineStatus, groupByCategory } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
 import { QtyInputComponent } from './qty-input.component';
 
@@ -21,6 +22,34 @@ function supplierBreakdown(items: QuoteLine[]): { name: string | null; count: nu
   return [...by.values()].sort((a, b) => b.count - a.count);
 }
 
+/** Per-item send-state badge (Final view). */
+const STATUS_LABELS: Record<QuoteLineStatus, string> = {
+  to_send: 'To send',
+  out_for_quote: 'Out for quote',
+  quoted: 'Quoted',
+  booked: 'Booked',
+  declined: 'Declined',
+};
+const STATUS_PILL: Record<QuoteLineStatus, string> = {
+  to_send: 'bp-pill--muted',
+  out_for_quote: 'bp-pill--warn',
+  quoted: 'bp-pill--warn',
+  booked: 'bp-pill--success',
+  declined: 'bp-pill--danger',
+};
+
+/** A custom (ad-hoc) line the agent adds on the Final view — in-session only
+ *  (persisting needs a project_items column; flagged). */
+interface CustomLine {
+  id: string;
+  category: string;
+  description: string;
+  cost: number;
+  quantity: number;
+  install: boolean;
+  notes: string;
+}
+
 /** pV2-PROJECTS-02 slice 3 — the Estimate tab. Ports the v1 estimate
  *  breakdown (Subtotal → Contingency → Your cost → Margin → VAT → Client
  *  total + budget bar) computed from the project's quote items + its
@@ -30,10 +59,38 @@ function supplierBreakdown(items: QuoteLine[]): { name: string | null; count: nu
 @Component({
   selector: 'app-project-estimate',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule, QtyInputComponent],
+  imports: [CurrencyPipe, FormsModule, LucideAngularModule, QtyInputComponent],
   host: { class: 'block' },
   styles: [
     `
+      /* Per-item send-state badge (Final view). */
+      .bp-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px 9px;
+        border-radius: var(--radius-pill);
+        font-size: var(--text-2xs);
+        font-weight: 500;
+        line-height: 1.5;
+      }
+      .bp-pill--muted { background: var(--color-fill); color: var(--color-text-secondary); }
+      .bp-pill--warn { background: var(--color-warn-soft); color: var(--color-warn); }
+      .bp-pill--success { background: var(--color-success-soft); color: var(--color-success); }
+      .bp-pill--danger { background: var(--color-danger-soft); color: var(--color-danger); }
+      /* Add-custom modal fields. */
+      .bp-input-field {
+        height: 38px;
+        width: 100%;
+        border-radius: var(--radius-field);
+        border: 1px solid var(--color-border-hairline);
+        background: var(--color-fill);
+        padding: 0 12px;
+        font-size: var(--text-md);
+        color: var(--color-text);
+        outline: none;
+      }
+      .bp-input-field:focus { border-color: var(--theme-accent); }
+      select.bp-input-field { appearance: auto; }
       /* Custom checkbox — accent tick, no browser-default (blue) fill. */
       .bp-check {
         appearance: none;
@@ -70,7 +127,7 @@ function supplierBreakdown(items: QuoteLine[]): { name: string | null; count: nu
   ],
   template: `
     <div>
-      <h2 class="bp-page-title pt-2 text-center">Project Cart</h2>
+      <h2 class="bp-page-title pt-2 text-center">{{ isFinal() ? 'Final Project Quote' : 'Project Cart' }}</h2>
 
       <!-- Summary tiles span the full page width as one row (Liam 2026-06-14):
            5 cards — Date / Location / Duration / Guest count / Budget. The rest
@@ -129,8 +186,8 @@ function supplierBreakdown(items: QuoteLine[]): { name: string | null; count: nu
 
       <!-- Estimated Ballpark Cost banner (the headline = client total). -->
       <div class="bp-quote-banner mt-5 px-6 py-7 text-center">
-        <div class="bp-body-small">Estimated Ballpark Cost</div>
-        <div class="bp-amount-hero mt-1">{{ bd().clientTotal | currency: cur() : 'symbol' : '1.0-0' }}</div>
+        <div class="bp-body-small">Estimated Ballpark {{ isFinal() ? 'Total' : 'Cost' }}</div>
+        <div class="bp-amount-hero mt-1">{{ bannerTotal() | currency: cur() : 'symbol' : '1.0-0' }}</div>
       </div>
 
       <div class="mt-5"></div>
@@ -139,7 +196,7 @@ function supplierBreakdown(items: QuoteLine[]): { name: string | null; count: nu
         <p class="bp-body-small text-secondary">Loading…</p>
       } @else if (lines.error()) {
         <p class="bp-body-small text-warn">Couldn't load the quote — please refresh.</p>
-      } @else if (cartRows().length === 0) {
+      } @else if (!isFinal() && cartRows().length === 0) {
         <p class="bp-body-small text-secondary">
           @if (rows().length === 0) { Nothing in the cart yet — add items from the marketplace. }
           @else { Everything's out for quote — nothing left to send. }
@@ -177,7 +234,12 @@ function supplierBreakdown(items: QuoteLine[]): { name: string | null; count: nu
                            Install is assumed on when the line has an install price;
                            greyed + disabled when it doesn't. -->
                       <div class="min-w-0 flex-1">
-                        <div class="bp-list-title truncate">{{ l.name }}</div>
+                        <div class="flex items-center gap-2">
+                          <span class="bp-list-title truncate">{{ l.name }}</span>
+                          @if (isFinal()) {
+                            <span [class]="statusPill(l)">{{ statusLabel(l) }}</span>
+                          }
+                        </div>
                         <!-- Installed?: assumed on when the line has an install price;
                              greyed + disabled when it doesn't. -->
                         <label class="mt-1.5 flex w-fit items-center gap-2.5" [class.opacity-40]="!hasInstall(l)"
@@ -199,6 +261,26 @@ function supplierBreakdown(items: QuoteLine[]): { name: string | null; count: nu
             </div>
           }
         </div>
+
+        <!-- Custom (ad-hoc) lines — Final view only. -->
+        @if (isFinal() && customLines().length) {
+          <div class="mt-2.5 flex flex-col gap-2.5">
+            @for (cl of customLines(); track cl.id) {
+              <div class="bp-card flex items-center gap-3 p-3">
+                <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="plus" [size]="22" /></span>
+                <div class="min-w-0 flex-1">
+                  <div class="bp-list-title truncate">{{ cl.description }}</div>
+                  <div class="bp-meta">{{ cl.category || 'Custom' }} · {{ cl.install ? 'Install' : 'Deliverable' }}{{ cl.notes ? ' · ' + cl.notes : '' }}</div>
+                </div>
+                <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ cl.cost * cl.quantity | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
+                        (click)="removeCustom(cl.id)" [attr.aria-label]="'Remove ' + cl.description" title="Remove line">
+                  <lucide-icon name="trash-2" [size]="15" />
+                </button>
+              </div>
+            }
+          </div>
+        }
 
         <!-- Subtotal → contingency → your cost (v1 layout). -->
         <div class="mt-5 flex flex-col gap-1.5">
@@ -241,20 +323,80 @@ function supplierBreakdown(items: QuoteLine[]): { name: string | null; count: nu
 
         <p class="bp-caption mt-4">Indicative — based on marketplace base prices. Final supplier quotes and the priced rollup land with checkout.</p>
 
-        <!-- Edit in marketplace (primary) + Go with this Ballpark, side by side. -->
+        <!-- Footer — cart: Edit in marketplace + Go with this Ballpark;
+             final: Add Your Own Line Item + Add Suppliers. -->
         <div class="mt-5 flex gap-2.5">
-          <button type="button" class="bp-btn-grad flex-1" (click)="addItems.emit()">
-            <lucide-icon name="store" [size]="16" />
-            Edit in marketplace
-          </button>
-          <button type="button" class="bp-btn-outline flex-1" (click)="goToFinal.emit()">
-            Go with this Ballpark
-            <lucide-icon name="arrow-right" [size]="16" />
-          </button>
+          @if (isFinal()) {
+            <button type="button" class="bp-btn-outline flex-1" (click)="openAdd()">
+              <lucide-icon name="plus" [size]="16" />
+              Add Your Own Line Item
+            </button>
+            <button type="button" class="bp-btn-grad flex-1" (click)="addSuppliers.emit()">
+              Add Suppliers
+              <lucide-icon name="arrow-right" [size]="16" />
+            </button>
+          } @else {
+            <button type="button" class="bp-btn-grad flex-1" (click)="addItems.emit()">
+              <lucide-icon name="store" [size]="16" />
+              Edit in marketplace
+            </button>
+            <button type="button" class="bp-btn-outline flex-1" (click)="goToFinal.emit()">
+              Go with this Ballpark
+              <lucide-icon name="arrow-right" [size]="16" />
+            </button>
+          }
         </div>
       }
       </div>
     </div>
+
+    <!-- Add Custom Line Item modal (Final view). -->
+    @if (adding()) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" (click)="adding.set(false)">
+        <div class="bp-card w-full max-w-md p-6" (click)="$event.stopPropagation()">
+          <div class="flex items-start justify-between">
+            <h3 class="bp-card-title text-lg">Add Your Own Line Item</h3>
+            <button type="button" class="text-muted hover:text-text" aria-label="Close" (click)="adding.set(false)">
+              <lucide-icon name="x" [size]="18" />
+            </button>
+          </div>
+          <div class="mt-4 flex flex-col gap-3">
+            <label class="block">
+              <span class="bp-field-label">Category</span>
+              <input class="bp-input-field" placeholder="e.g. Security Staff" [(ngModel)]="form.category" />
+            </label>
+            <label class="block">
+              <span class="bp-field-label">Description</span>
+              <input class="bp-input-field" placeholder="e.g. On-site security team" [(ngModel)]="form.description" />
+            </label>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="block">
+                <span class="bp-field-label">Estimated Cost</span>
+                <input type="number" class="bp-input-field" placeholder="2000" [(ngModel)]="form.cost" />
+              </label>
+              <label class="block">
+                <span class="bp-field-label">Quantity</span>
+                <input type="number" class="bp-input-field" placeholder="1" [(ngModel)]="form.quantity" />
+              </label>
+            </div>
+            <label class="block">
+              <span class="bp-field-label">Type</span>
+              <select class="bp-input-field" [(ngModel)]="form.type">
+                <option value="deliverable">Deliverable</option>
+                <option value="install">Install</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="bp-field-label">Notes (optional)</span>
+              <input class="bp-input-field" placeholder="Any additional details" [(ngModel)]="form.notes" />
+            </label>
+          </div>
+          <button type="button" class="bp-btn-grad mt-5 w-full" [disabled]="!form.description.trim() || (form.cost || 0) <= 0" (click)="addCustom()">
+            Add Line Item
+          </button>
+        </div>
+      </div>
+    }
   `,
 })
 export class ProjectEstimateComponent {
@@ -263,10 +405,24 @@ export class ProjectEstimateComponent {
 
   readonly projectId = input.required<string>();
   readonly project = input.required<ProjectDetail>();
-  /** "Edit in marketplace" — the Marketplace tab in item-browse mode. */
+  /** cart = editable "To Send" slice; final = everything + status badges +
+   *  custom lines. Same layout, one switch. */
+  readonly view = input<'cart' | 'final'>('cart');
+  /** "Edit in marketplace" — the Marketplace tab in item-browse mode (cart). */
   readonly addItems = output<void>();
-  /** "Go with this Ballpark" — jump to the Final Quote tab. */
+  /** "Go with this Ballpark" — jump to the Final Quote tab (cart). */
   readonly goToFinal = output<void>();
+  /** "Add Suppliers" — the Marketplace tab in supplier mode (final). */
+  readonly addSuppliers = output<void>();
+
+  protected readonly isFinal = computed(() => this.view() === 'final');
+
+  protected statusLabel(l: QuoteLine): string {
+    return STATUS_LABELS[l.status] ?? '';
+  }
+  protected statusPill(l: QuoteLine): string {
+    return `bp-pill ${STATUS_PILL[l.status] ?? 'bp-pill--muted'}`;
+  }
 
   /** Quote lines as writable state (seeded from the resource load) so qty
    *  edits can update optimistically + revert on failure. */
@@ -316,9 +472,11 @@ export class ProjectEstimateComponent {
    *  on the Final Quote view with their status badge; the cart is the editable
    *  pre-send slice. */
   protected readonly cartRows = computed(() => this.rows().filter((l) => l.status === 'to_send'));
+  /** Final shows everything; cart shows only the To Send slice. */
+  protected readonly visibleRows = computed(() => (this.isFinal() ? this.rows() : this.cartRows()));
 
   protected readonly groups = computed(() =>
-    groupByCategory(this.cartRows()).map((g) => ({
+    groupByCategory(this.visibleRows()).map((g) => ({
       ...g,
       total: g.items.reduce((s, l) => s + this.lineCost(l), 0),
       iconName: g.items[0]?.categoryIconName ?? null,
@@ -377,7 +535,8 @@ export class ProjectEstimateComponent {
    *  edit (qtyCommit → onQtyChange). */
   protected readonly est = resource<EstimateBreakdown, string>({
     params: () => this.projectId(),
-    loader: ({ params }) => firstValueFrom(this.projects.estimate(params, [...this.uninstalled()], 'cart')),
+    loader: ({ params }) =>
+      firstValueFrom(this.projects.estimate(params, [...this.uninstalled()], this.isFinal() ? 'all' : 'cart')),
   });
 
   /** The breakdown the template renders: the server value once loaded, else a
@@ -403,4 +562,44 @@ export class ProjectEstimateComponent {
   protected readonly barPct = computed(() =>
     this.budget() > 0 ? Math.min((this.bd().clientTotal / this.budget()) * 100, 100) : 0
   );
+
+  // ── Custom (ad-hoc) line items — Final view only, in-session ───────────
+  protected readonly customLines = signal<CustomLine[]>([]);
+  protected readonly adding = signal(false);
+  protected form = { category: '', description: '', cost: 0, quantity: 1, type: 'deliverable', notes: '' };
+
+  /** Custom lines are raw (unpersisted) — added to the headline on top of the
+   *  server-cascaded item total. */
+  protected readonly customTotal = computed(() =>
+    this.customLines().reduce((s, c) => s + c.cost * c.quantity, 0)
+  );
+  /** Banner headline: the server client total, plus raw custom lines on Final. */
+  protected readonly bannerTotal = computed(
+    () => this.bd().clientTotal + (this.isFinal() ? this.customTotal() : 0)
+  );
+
+  protected openAdd(): void {
+    this.form = { category: '', description: '', cost: 0, quantity: 1, type: 'deliverable', notes: '' };
+    this.adding.set(true);
+  }
+  protected addCustom(): void {
+    const f = this.form;
+    if (!f.description.trim() || (f.cost || 0) <= 0) return;
+    this.customLines.update((ls) => [
+      ...ls,
+      {
+        id: `c${ls.length}-${f.description.slice(0, 6)}`,
+        category: f.category.trim(),
+        description: f.description.trim(),
+        cost: Number(f.cost) || 0,
+        quantity: Math.max(1, Number(f.quantity) || 1),
+        install: f.type === 'install',
+        notes: f.notes.trim(),
+      },
+    ]);
+    this.adding.set(false);
+  }
+  protected removeCustom(id: string): void {
+    this.customLines.update((ls) => ls.filter((c) => c.id !== id));
+  }
 }

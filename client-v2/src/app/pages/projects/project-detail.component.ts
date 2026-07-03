@@ -22,7 +22,6 @@ import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.
 import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.component';
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
-import { ProjectFinalQuoteComponent } from './project-final-quote.component';
 import { ProjectOutreachStore } from './project-outreach.store';
 import { InboxProjectComponent } from '../inbox/inbox-project.component';
 
@@ -70,7 +69,6 @@ interface DetailForm {
     EntityIconComponent,
     ProjectMarketplaceComponent,
     ProjectEstimateComponent,
-    ProjectFinalQuoteComponent,
     InboxProjectComponent,
   ],
   providers: [MessageService],
@@ -214,7 +212,7 @@ interface DetailForm {
           }
           @case ('final') {
             <div class="min-h-0 flex-1 overflow-y-auto">
-              <app-project-final-quote [projectId]="p.id" [project]="p" (addSuppliers)="goToMarketplace()" />
+              <app-project-estimate [projectId]="p.id" [project]="p" view="final" (addItems)="addItems()" (addSuppliers)="goToMarketplace()" />
             </div>
           }
           @case ('inbox') {

@@ -52,6 +52,17 @@ only switch between the two views.
   wanted.
 - **Cart/custom persistence** (Install choice, custom lines) still in-session.
 
+## Iteration — one component, both views (chip v2.39a)
+Merged the two components into one: `app-project-estimate` now takes a
+`view` input (`'cart' | 'final'`) and renders the **Cart layout for both**
+(Liam: "Project Cart layout should be what we use for both"). `view="final"`
+→ shows all items, per-item status badge on each row, custom lines + Add
+Your Own Line Item modal, footer = Add Your Own Line Item + Add Suppliers.
+Deleted `project-final-quote.component.ts`. Custom lines are raw-added to the
+headline on top of the server cascade (unpersisted; flagged). Dropped Final's
+old flat card-per-item layout + its "Suppliers N Selected" summary tile (the
+merged summary is the Cart's Date/Location/Duration/Guests/Budget tiles).
+
 ## QC notes
 (Liam)
 
