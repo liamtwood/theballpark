@@ -37,7 +37,12 @@ export interface QuoteLine {
   id: string;
   itemId: string;
   name: string | null;
+  description: string | null;
   basePrice: number | null;
+  /** Installed-price extras (from the catalogue item) — the Final Quote's
+   *  Install / Deliverable toggle. */
+  installCost: number | null;
+  installDescription: string | null;
   unit: string | null;
   imageUrl: string | null;
   quantity: number;

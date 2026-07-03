@@ -321,7 +321,12 @@ function toQuoteLine(row) {
     id: row.id, // project_items row id
     itemId: row.item_id,
     name: row.name,
+    description: row.description ?? null,
     basePrice: row.base_price === null ? null : Number(row.base_price),
+    // Installed-price extras (from the catalogue item) — drive the Final
+    // Quote's Install / Deliverable toggle (pV2-FINAL-01).
+    installCost: row.install_cost == null ? null : Number(row.install_cost),
+    installDescription: row.install_description ?? null,
     unit: row.unit,
     imageUrl: row.image_url,
     quantity: Number(row.quantity ?? 1),
@@ -342,11 +347,13 @@ function toQuoteLine(row) {
 // NAME/visuals live-join from categories so a category RENAME still
 // propagates. (Relies on categories being soft-delete-only.)
 const QUOTE_LINE_JOIN = `
-  SELECT pi.id, pi.item_id, pi.name, pi.base_price, pi.unit, pi.image_url, pi.quantity,
+  SELECT pi.id, pi.item_id, pi.name, pi.description, pi.base_price, pi.unit, pi.image_url, pi.quantity,
          pi.category_id, c.name AS category_name,
-         c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url
+         c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url,
+         i.install_cost, i.install_description
     FROM project_items pi
-    LEFT JOIN categories c ON c.id = pi.category_id`;
+    LEFT JOIN categories c ON c.id = pi.category_id
+    LEFT JOIN items i ON i.id = pi.item_id`;
 
 async function lineById(db, id) {
   const r = await db.query(`${QUOTE_LINE_JOIN} WHERE pi.id = $1`, [id]);

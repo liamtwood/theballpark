@@ -22,11 +22,12 @@ import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.
 import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.component';
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
+import { ProjectFinalQuoteComponent } from './project-final-quote.component';
 import { ProjectOutreachStore } from './project-outreach.store';
 import { InboxProjectComponent } from '../inbox/inbox-project.component';
 
-type Tab = 'marketplace' | 'estimate' | 'details' | 'inbox';
-const TABS: Tab[] = ['marketplace', 'estimate', 'details', 'inbox'];
+type Tab = 'marketplace' | 'estimate' | 'final' | 'details' | 'inbox';
+const TABS: Tab[] = ['marketplace', 'estimate', 'final', 'details', 'inbox'];
 
 /** The editable Details sections (v1 parity + per-project Financials). */
 type Section = 'event' | 'type' | 'logistics' | 'financials';
@@ -69,6 +70,7 @@ interface DetailForm {
     EntityIconComponent,
     ProjectMarketplaceComponent,
     ProjectEstimateComponent,
+    ProjectFinalQuoteComponent,
     InboxProjectComponent,
   ],
   providers: [MessageService],
@@ -210,6 +212,11 @@ interface DetailForm {
               <app-project-estimate [projectId]="p.id" [project]="p" (goToMarketplace)="goToMarketplace()" (messageSuppliers)="onMessageSuppliers()" />
             </div>
           }
+          @case ('final') {
+            <div class="min-h-0 flex-1 overflow-y-auto">
+              <app-project-final-quote [projectId]="p.id" [project]="p" />
+            </div>
+          }
           @case ('inbox') {
             <app-inbox-project [viewer]="'agency'" [projectId]="p.id" [embedded]="true" />
           }
@@ -274,6 +281,7 @@ export class ProjectDetailComponent {
     { key: 'details', label: 'About ' + this.label() },
     { key: 'marketplace', label: 'Marketplace' },
     { key: 'estimate', label: this.label() + ' Quote' },
+    { key: 'final', label: 'Final' },
     { key: 'inbox', label: 'Inbox' },
   ]);
 
