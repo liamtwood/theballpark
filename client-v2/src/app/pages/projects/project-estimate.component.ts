@@ -133,18 +133,11 @@ import { ProjectOutreachStore } from './project-outreach.store';
         <p class="bp-field-label uppercase tracking-wide">Categories</p>
         <div class="mt-2 flex flex-col gap-2.5">
           @for (g of groups(); track g.id) {
-            <!-- Category card (add-project-2 style): cat image left in the
-                 home action-card rounded square, name, cat total right, a
-                 chevron that expands the items underneath. -->
-            <div class="bp-card overflow-hidden">
+            <!-- Category = just its icon + name, cat total right, a chevron
+                 that expands the items underneath (no card chrome). -->
+            <div>
               <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggle(g.id)">
-                @if (g.image) {
-                  <img [src]="g.image" alt="" class="bp-est-thumb shrink-0 object-cover" />
-                } @else {
-                  <span class="bp-icon-block bp-est-thumb shrink-0">
-                    <lucide-icon [name]="g.iconName || 'folder-open'" [size]="20" [strokeWidth]="1.5" />
-                  </span>
-                }
+                <lucide-icon [name]="g.iconName || 'folder-open'" [size]="26" [strokeWidth]="1.5" class="shrink-0 text-secondary" />
                 <span class="min-w-0 flex-1">
                   <span class="bp-list-title block truncate">{{ g.name }}</span>
                   <span class="bp-meta">{{ g.items.length }} item{{ g.items.length === 1 ? '' : 's' }}</span>
@@ -159,7 +152,7 @@ import { ProjectOutreachStore } from './project-outreach.store';
                     <!-- Item row — the marketplace list-view shape (thumb + name + price). -->
                     <div class="flex items-center gap-3 border-b border-hairline px-3 py-3 last:border-b-0">
                       @if (l.imageUrl) {
-                        <img [src]="l.imageUrl" alt="" class="h-16 w-16 shrink-0 rounded-md object-cover" />
+                        <img [src]="l.imageUrl" alt="" class="h-16 w-16 shrink-0 rounded-[var(--radius-card)] object-cover" />
                       } @else {
                         <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="store" [size]="22" /></span>
                       }
