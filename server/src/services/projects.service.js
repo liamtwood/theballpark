@@ -13,6 +13,7 @@
 const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
 const taxonomy = require('./taxonomy.service');
+const { computeEstimate } = require('./estimate');
 
 /** The project_status codelist default — used when a code is unknown/absent. */
 const DEFAULT_STATUS = 'draft';
@@ -67,16 +68,18 @@ const LIST_SELECT = `
    WHERE p.org_id = $1 AND p.deleted_at IS NULL
    ORDER BY p.created_at DESC`;
 
-/** The card's headline Ballpark = the live quote's client total, matching
- *  the Estimate tab's cascade (defaults 10/20/20). null when unquoted so the
- *  card reads "£0" rather than a fake figure. */
+/** The card's headline Ballpark = the live quote's client total, via the ONE
+ *  cascade (services/estimate.js) the Estimate tab also uses — so the two can
+ *  never drift. null when unquoted so the card reads "£0" rather than a fake
+ *  figure (computeEstimate would return 0). */
 function cardBallpark(row) {
   const subtotal = Number(row.quote_subtotal ?? 0);
   if (subtotal <= 0) return null;
-  const cont = Number(row.default_contingency_pct ?? 10);
-  const margin = Number(row.default_margin_pct ?? 20);
-  const vat = Number(row.default_vat_pct ?? 20);
-  return subtotal * (1 + cont / 100) * (1 + margin / 100) * (1 + vat / 100);
+  return computeEstimate(subtotal, {
+    contingencyPct: row.default_contingency_pct,
+    marginPct: row.default_margin_pct,
+    vatPct: row.default_vat_pct,
+  }).clientTotal;
 }
 
 function toCard(row) {
@@ -377,6 +380,30 @@ async function listItems(orgId, projectId) {
   return r.rows.map(toQuoteLine);
 }
 
+/** The project's estimate breakdown — the SINGLE server-computed cascade the
+ *  Estimate tab consumes (it no longer recomputes client-side). Subtotal is
+ *  the live SUM of qty × base_price over the quote's items, run through the
+ *  one cascade (services/estimate.js) with the project's rates. Returns null
+ *  if the project isn't the org's (→ 404). */
+async function getEstimate(orgId, projectId) {
+  const r = await pool.query(
+    `SELECT p.default_contingency_pct, p.default_margin_pct, p.default_vat_pct,
+            (SELECT COALESCE(SUM(pi.quantity * COALESCE(pi.base_price, 0)), 0)
+               FROM project_items pi
+              WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS quote_subtotal
+       FROM projects p
+      WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
+    [projectId, orgId]
+  );
+  if (!r.rows.length) return null;
+  const row = r.rows[0];
+  return computeEstimate(row.quote_subtotal, {
+    contingencyPct: row.default_contingency_pct,
+    marginPct: row.default_margin_pct,
+    vatPct: row.default_vat_pct,
+  });
+}
+
 /** pV2-QUANTITY-01 — smart auto-fill: the item's unit can map (via the
  *  item_unit codelist's auto_fill_field) to a project field, so adding it
  *  seeds a sensible default quantity (per-head → guest_count, per-day →
@@ -604,6 +631,6 @@ async function recommend(orgId, projectId) {
 
 module.exports = {
   listForOrg, getDetail, updateDetail, create,
-  listItems, addItem, removeItem, updateItemQuantity, recommend,
+  listItems, getEstimate, addItem, removeItem, updateItemQuantity, recommend,
   resolveStatus, DEFAULT_STATUS, toCard,
 };

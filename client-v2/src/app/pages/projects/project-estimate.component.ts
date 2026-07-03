@@ -4,7 +4,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { MessageService } from 'primeng/api';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
-import { ProjectDetail, QuoteLine, groupByCategory } from '../../core/projects/project.types';
+import { EstimateBreakdown, ProjectDetail, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
 import { QtyInputComponent } from './qty-input.component';
 import { ProjectOutreachStore } from './project-outreach.store';
@@ -82,7 +82,7 @@ import { ProjectOutreachStore } from './project-outreach.store';
       <!-- Estimated Ballpark Cost banner (the headline = client total). -->
       <div class="bp-quote-banner mt-5 px-6 py-7 text-center">
         <div class="bp-body-small">Estimated Ballpark Cost</div>
-        <div class="bp-amount-hero mt-1">{{ clientTotal() | currency: cur() : 'symbol' : '1.0-0' }}</div>
+        <div class="bp-amount-hero mt-1">{{ bd().clientTotal | currency: cur() : 'symbol' : '1.0-0' }}</div>
       </div>
 
       <div class="mt-5"></div>
@@ -140,40 +140,40 @@ import { ProjectOutreachStore } from './project-outreach.store';
 
         <!-- Subtotal → contingency → your cost (v1 layout). -->
         <div class="mt-5 flex flex-col gap-1.5">
-          <div class="flex justify-between bp-body-small text-secondary"><span>Subtotal</span><span>{{ subtotal() | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
-          @if (contingencyPct() > 0) {
-            <div class="flex justify-between bp-body-small text-secondary"><span>Contingency ({{ contingencyPct() }}%)</span><span>{{ contingency() | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
+          <div class="flex justify-between bp-body-small text-secondary"><span>Subtotal</span><span>{{ bd().subtotal | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
+          @if (bd().contingencyPct > 0) {
+            <div class="flex justify-between bp-body-small text-secondary"><span>Contingency ({{ bd().contingencyPct }}%)</span><span>{{ bd().contingency | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
           }
         </div>
         <div class="mt-3 flex items-baseline justify-between border-t border-hairline pt-3">
           <span class="bp-field-label">Your cost</span>
-          <span class="bp-amount text-text">{{ ourCost() | currency: cur() : 'symbol' : '1.0-0' }}</span>
+          <span class="bp-amount text-text">{{ bd().ourCost | currency: cur() : 'symbol' : '1.0-0' }}</span>
         </div>
 
         <!-- Margin → VAT → client total. -->
         <div class="mt-3 flex flex-col gap-1.5">
-          <div class="flex justify-between bp-body-small text-secondary"><span>Margin ({{ marginPct() }}%)</span><span>{{ marginAmount() | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
-          @if (vatPct() > 0) {
-            <div class="flex justify-between bp-body-small text-secondary"><span>VAT ({{ vatPct() }}%)</span><span>{{ vatAmount() | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
+          <div class="flex justify-between bp-body-small text-secondary"><span>Margin ({{ bd().marginPct }}%)</span><span>{{ bd().marginAmount | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
+          @if (bd().vatPct > 0) {
+            <div class="flex justify-between bp-body-small text-secondary"><span>VAT ({{ bd().vatPct }}%)</span><span>{{ bd().vatAmount | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
           }
         </div>
         <div class="mt-3 flex items-baseline justify-between border-t border-hairline pt-3">
           <span class="bp-list-title">Client total</span>
-          <span class="bp-price-large">{{ clientTotal() | currency: cur() : 'symbol' : '1.0-0' }}</span>
+          <span class="bp-price-large">{{ bd().clientTotal | currency: cur() : 'symbol' : '1.0-0' }}</span>
         </div>
 
         @if (budget() > 0) {
           <div class="bp-card mt-5 p-4">
             <div class="flex items-center justify-between">
-              <span class="bp-field-label">{{ clientTotal() <= budget() ? 'Within budget' : 'Over budget' }}</span>
-              <span class="bp-amount" [class.text-success]="clientTotal() <= budget()" [class.text-danger]="clientTotal() > budget()">
+              <span class="bp-field-label">{{ bd().clientTotal <= budget() ? 'Within budget' : 'Over budget' }}</span>
+              <span class="bp-amount" [class.text-success]="bd().clientTotal <= budget()" [class.text-danger]="bd().clientTotal > budget()">
                 {{ budgetDiff() | currency: cur() : 'symbol' : '1.0-0' }}
               </span>
             </div>
             <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-fill">
-              <div class="h-full rounded-full" [class.bg-success]="clientTotal() <= budget()" [class.bg-danger]="clientTotal() > budget()" [style.width.%]="barPct()"></div>
+              <div class="h-full rounded-full" [class.bg-success]="bd().clientTotal <= budget()" [class.bg-danger]="bd().clientTotal > budget()" [style.width.%]="barPct()"></div>
             </div>
-            <div class="mt-1.5 flex justify-between"><span class="bp-meta">Client total {{ clientTotal() | currency: cur() : 'symbol' : '1.0-0' }}</span><span class="bp-meta">Budget {{ budget() | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
+            <div class="mt-1.5 flex justify-between"><span class="bp-meta">Client total {{ bd().clientTotal | currency: cur() : 'symbol' : '1.0-0' }}</span><span class="bp-meta">Budget {{ budget() | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
           </div>
         }
 
@@ -233,6 +233,8 @@ export class ProjectEstimateComponent {
     this.rows.update((ls) => ls.map((l) => (l.itemId === itemId ? { ...l, quantity } : l)));
     try {
       await firstValueFrom(this.projects.setQuoteItemQuantity(this.projectId(), itemId, quantity));
+      // The cascade is server-authoritative — pull the fresh breakdown.
+      this.est.reload();
     } catch (err) {
       this.rows.set(before);
       this.toast.add({ severity: 'error', summary: "Couldn't update the quantity — please try again.", detail: errorDetail(err), life: 4000 });
@@ -266,25 +268,37 @@ export class ProjectEstimateComponent {
     return (l.basePrice ?? 0) * (l.quantity ?? 1);
   }
   protected readonly cur = computed(() => this.project().currency || 'GBP');
-
-  // v1 defaults when the project's are unset: margin 20 / contingency 10 / vat 20.
-  protected readonly marginPct = computed(() => this.project().defaultMarginPct ?? 20);
-  protected readonly contingencyPct = computed(() => this.project().defaultContingencyPct ?? 10);
-  protected readonly vatPct = computed(() => this.project().defaultVatPct ?? 20);
   protected readonly budget = computed(() => this.project().projectBudget ?? 0);
 
-  // v1 recalc(), verbatim.
-  protected readonly subtotal = computed(() =>
-    this.rows().reduce((s, l) => s + this.lineCost(l), 0)
-  );
-  protected readonly contingency = computed(() => this.subtotal() * (this.contingencyPct() / 100));
-  protected readonly ourCost = computed(() => this.subtotal() + this.contingency());
-  protected readonly marginAmount = computed(() => this.ourCost() * (this.marginPct() / 100));
-  private readonly preVat = computed(() => this.ourCost() + this.marginAmount());
-  protected readonly vatAmount = computed(() => this.preVat() * (this.vatPct() / 100));
-  protected readonly clientTotal = computed(() => this.preVat() + this.vatAmount());
-  protected readonly budgetDiff = computed(() => (this.budget() > 0 ? this.clientTotal() - this.budget() : 0));
+  /** The estimate cascade — SERVER-computed (services/estimate.js), consumed
+   *  as-is so this tab and the project card can't drift. Reloaded after a qty
+   *  edit (qtyCommit → onQtyChange). */
+  protected readonly est = resource<EstimateBreakdown, string>({
+    params: () => this.projectId(),
+    loader: ({ params }) => firstValueFrom(this.projects.estimate(params)),
+  });
+
+  /** The breakdown the template renders: the server value once loaded, else a
+   *  zeroed placeholder seeded with the project's rates so the "%" labels don't
+   *  flash before the first load. */
+  protected readonly bd = computed<EstimateBreakdown>(() => {
+    const v = this.est.value();
+    if (v) return v;
+    return {
+      subtotal: 0,
+      contingencyPct: this.project().defaultContingencyPct ?? 10,
+      marginPct: this.project().defaultMarginPct ?? 20,
+      vatPct: this.project().defaultVatPct ?? 20,
+      contingency: 0,
+      ourCost: 0,
+      marginAmount: 0,
+      vatAmount: 0,
+      clientTotal: 0,
+    };
+  });
+
+  protected readonly budgetDiff = computed(() => (this.budget() > 0 ? this.bd().clientTotal - this.budget() : 0));
   protected readonly barPct = computed(() =>
-    this.budget() > 0 ? Math.min((this.clientTotal() / this.budget()) * 100, 100) : 0
+    this.budget() > 0 ? Math.min((this.bd().clientTotal / this.budget()) * 100, 100) : 0
   );
 }

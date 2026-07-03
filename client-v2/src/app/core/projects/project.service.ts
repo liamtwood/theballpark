@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../api.service';
-import { ProjectCard, ProjectCreatePayload, ProjectDetail, ProjectUpdate, QuoteLine } from './project.types';
+import { EstimateBreakdown, ProjectCard, ProjectCreatePayload, ProjectDetail, ProjectUpdate, QuoteLine } from './project.types';
 
 /** pV2-PROJECTS-01 — the v2 projects read path. INTERIM base
  *  `/api/projects-v2`: v1 owns the live ungated `/api/projects` until
@@ -34,6 +34,12 @@ export class ProjectService {
   // ── Project Quote (slice 2) — minimal add/remove ──────────────────────
   quoteItems(projectId: string): Observable<QuoteLine[]> {
     return this.api.get<QuoteLine[]>(`/api/projects-v2/${projectId}/items`);
+  }
+
+  /** The server-computed estimate breakdown (the ONE cascade). The Estimate
+   *  tab consumes this instead of recomputing client-side. */
+  estimate(projectId: string): Observable<EstimateBreakdown> {
+    return this.api.get<EstimateBreakdown>(`/api/projects-v2/${projectId}/estimate`);
   }
 
   addQuoteItem(projectId: string, itemId: string): Observable<QuoteLine> {

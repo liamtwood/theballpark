@@ -54,6 +54,21 @@ export interface QuoteLine {
   categoryCoverUrl: string | null;
 }
 
+/** The server-computed estimate cascade (server: services/estimate.js →
+ *  GET /:id/estimate). The Estimate tab renders this directly — the cascade
+ *  math lives ONLY on the server so the tab and the project card can't drift. */
+export interface EstimateBreakdown {
+  subtotal: number;
+  contingencyPct: number;
+  marginPct: number;
+  vatPct: number;
+  contingency: number;
+  ourCost: number;
+  marginAmount: number;
+  vatAmount: number;
+  clientTotal: number;
+}
+
 /** A quote's lines grouped by category. */
 export interface QuoteGroup {
   id: string;

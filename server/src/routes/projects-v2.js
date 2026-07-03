@@ -106,6 +106,18 @@ router.get('/:id/items', async (req, res, next) => {
   }
 });
 
+// GET /:id/estimate — the server-computed estimate breakdown (the ONE
+// cascade; the Estimate tab consumes this instead of recomputing).
+router.get('/:id/estimate', async (req, res, next) => {
+  try {
+    const breakdown = await projects.getEstimate(req.user.org_id, req.params.id);
+    if (breakdown === null) return res.status(404).json({ error: 'Project not found' });
+    res.json(breakdown);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /:id/items — add an item to the quote (idempotent). org from JWT.
 router.post('/:id/items', async (req, res, next) => {
   try {
