@@ -49,17 +49,35 @@ const LIST_SELECT = `
          p.cover_image_url, p.client_logo_url,
          p.cover_focal_x, p.cover_focal_y, p.icon_name, p.icon_color,
          p.unsplash_photographer_name, p.unsplash_photo_url,
-         p.total_client_cost, p.currency,
+         p.currency, p.default_contingency_pct, p.default_margin_pct, p.default_vat_pct,
          p.created_at, p.updated_at,
          c.name AS client_name,
          (SELECT COUNT(DISTINCT i.org_id)
             FROM project_items pi
             JOIN items i ON i.id = pi.item_id
-           WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS supplier_count
+           WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS supplier_count,
+         -- Live quote subtotal (qty × base price) — the card's Ballpark
+         -- total is this run through the estimate cascade below, so it
+         -- matches the Estimate tab (total_client_cost is stale/unused).
+         (SELECT COALESCE(SUM(pi.quantity * COALESCE(pi.base_price, 0)), 0)
+            FROM project_items pi
+           WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS quote_subtotal
     FROM projects p
     LEFT JOIN clients c ON c.id = p.client_id
    WHERE p.org_id = $1 AND p.deleted_at IS NULL
    ORDER BY p.created_at DESC`;
+
+/** The card's headline Ballpark = the live quote's client total, matching
+ *  the Estimate tab's cascade (defaults 10/20/20). null when unquoted so the
+ *  card reads "£0" rather than a fake figure. */
+function cardBallpark(row) {
+  const subtotal = Number(row.quote_subtotal ?? 0);
+  if (subtotal <= 0) return null;
+  const cont = Number(row.default_contingency_pct ?? 10);
+  const margin = Number(row.default_margin_pct ?? 20);
+  const vat = Number(row.default_vat_pct ?? 20);
+  return subtotal * (1 + cont / 100) * (1 + margin / 100) * (1 + vat / 100);
+}
 
 function toCard(row) {
   return {
@@ -77,8 +95,10 @@ function toCard(row) {
     unsplashPhotoUrl: row.unsplash_photo_url ?? null,
     clientName: row.client_name ?? null,
     clientLogoUrl: row.client_logo_url ?? null,
-    // The headline "Ballpark" total — v1 uses total_client_cost.
-    ballparkCost: row.total_client_cost === null ? null : Number(row.total_client_cost),
+    // The headline "Ballpark" total — the live quote's client total (same
+    // cascade as the Estimate tab: subtotal → +contingency → +margin →
+    // +VAT). null when nothing's quoted yet.
+    ballparkCost: cardBallpark(row),
     currency: row.currency ?? 'GBP',
     supplierCount: Number(row.supplier_count ?? 0),
     // v1 card relative-time is off updated_at (created_at fallback).
