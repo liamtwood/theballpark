@@ -150,6 +150,10 @@ import { ProjectOutreachStore } from './project-outreach.store';
                       </label>
                       <app-qty-input class="shrink-0" [value]="l.quantity" [label]="l.name" (qtyCommit)="onQtyChange(l.itemId, $event)" />
                       <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ lineCost(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                      <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
+                              (click)="removeLine(l)" [attr.aria-label]="'Remove ' + l.name" title="Remove item">
+                        <lucide-icon name="trash-2" [size]="15" />
+                      </button>
                     </div>
                   }
                 </div>
@@ -262,6 +266,20 @@ export class ProjectEstimateComponent {
     } catch (err) {
       this.rows.set(before);
       this.toast.add({ severity: 'error', summary: "Couldn't update the quantity — please try again.", detail: errorDetail(err), life: 4000 });
+    }
+  }
+
+  /** Remove a line from the quote — optimistic, revert + toast on failure.
+   *  Reloads the server cascade so the Ballpark drops with it. */
+  protected async removeLine(l: QuoteLine): Promise<void> {
+    const before = this.rows();
+    this.rows.update((ls) => ls.filter((x) => x.itemId !== l.itemId));
+    try {
+      await firstValueFrom(this.projects.removeQuoteItem(this.projectId(), l.itemId));
+      this.est.reload();
+    } catch (err) {
+      this.rows.set(before);
+      this.toast.add({ severity: 'error', summary: "Couldn't remove the item — please try again.", detail: errorDetail(err), life: 4000 });
     }
   }
 

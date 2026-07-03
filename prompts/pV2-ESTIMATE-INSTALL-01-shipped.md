@@ -52,6 +52,12 @@ Two ways to go, your call:
 I did **not** unilaterally change the already-QC'd Final Quote formula — say A
 or B and I'll apply it in one commit.
 
+## Iteration — delete/trash icon (chip v2.38a)
+Added a **trash-2 icon button** to each quote line (right of the cost).
+Removes the line via `removeQuoteItem` — optimistic drop from `rows`, revert +
+toast on failure, then `est.reload()` so the Ballpark drops with it. Hover →
+danger colour. Uses the already-registered `Trash2` icon.
+
 ## QC notes
 (Liam)
 
