@@ -224,24 +224,17 @@ import { ProjectOutreachStore } from './project-outreach.store';
 
         <p class="bp-caption mt-4">Indicative — based on marketplace base prices. Final supplier quotes and the priced rollup land with checkout.</p>
 
-        <!-- Add more items (primary) + supplier actions. -->
-        <button type="button" class="bp-btn-grad mt-5 w-full" (click)="addItems.emit()">
-          <lucide-icon name="plus" [size]="16" />
-          Add more items
-        </button>
-        @if (outreach.supplierCount(); as n) {
-          <button type="button" class="bp-btn-outline mt-2 w-full" (click)="messageSuppliers.emit()">
-            <lucide-icon name="send" [size]="16" />
-            Message {{ n }} Supplier{{ n === 1 ? '' : 's' }}
+        <!-- Edit in marketplace (primary) + Go with this Ballpark, side by side. -->
+        <div class="mt-5 flex gap-2.5">
+          <button type="button" class="bp-btn-grad flex-1" (click)="addItems.emit()">
+            <lucide-icon name="store" [size]="16" />
+            Edit in marketplace
           </button>
-          <button type="button" class="bp-btn-outline mt-2 w-full" (click)="goToMarketplace.emit()">
-            Add more Suppliers
+          <button type="button" class="bp-btn-outline flex-1" (click)="goToMarketplace.emit()">
+            Go with this Ballpark
+            <lucide-icon name="arrow-right" [size]="16" />
           </button>
-        } @else {
-          <button type="button" class="bp-btn-outline mt-2 w-full" (click)="goToMarketplace.emit()">
-            Add Suppliers
-          </button>
-        }
+        </div>
       }
       </div>
     </div>
