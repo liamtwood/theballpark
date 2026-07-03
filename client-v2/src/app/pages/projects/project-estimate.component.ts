@@ -157,22 +157,26 @@ import { ProjectOutreachStore } from './project-outreach.store';
                 <div class="border-t border-hairline">
                   @for (l of g.items; track l.id) {
                     <!-- Item row — the marketplace list-view shape (thumb + name + price). -->
-                    <div class="flex items-center gap-3 border-b border-hairline px-3 py-2.5 last:border-b-0">
+                    <div class="flex items-center gap-3 border-b border-hairline px-3 py-3 last:border-b-0">
                       @if (l.imageUrl) {
-                        <img [src]="l.imageUrl" alt="" class="h-12 w-12 shrink-0 rounded-md object-cover" />
+                        <img [src]="l.imageUrl" alt="" class="h-16 w-16 shrink-0 rounded-md object-cover" />
                       } @else {
-                        <span class="bp-icon-block h-12 w-12 shrink-0"><lucide-icon name="store" [size]="18" /></span>
+                        <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="store" [size]="22" /></span>
                       }
-                      <span class="bp-body min-w-0 flex-1 truncate">{{ l.name }}</span>
-                      <!-- Quantity + Installed? stacked. Install is assumed on when
-                           the line has an install price; greyed + disabled when not. -->
-                      <div class="flex shrink-0 flex-col items-center gap-1.5">
-                        <app-qty-input [value]="l.quantity" [label]="l.name" (qtyCommit)="onQtyChange(l.itemId, $event)" />
-                        <label class="flex items-center gap-1.5" [class.opacity-40]="!hasInstall(l)"
+                      <!-- Name, then Installed? + Quantity as label→control rows.
+                           Install is assumed on when the line has an install price;
+                           greyed + disabled when it doesn't. -->
+                      <div class="min-w-0 flex-1">
+                        <div class="bp-list-title truncate">{{ l.name }}</div>
+                        <label class="mt-1.5 flex items-center gap-2" [class.opacity-40]="!hasInstall(l)"
                                [title]="hasInstall(l) ? 'Include installation' : 'No install price'">
+                          <span class="bp-meta w-20 shrink-0">Installed?</span>
                           <input type="checkbox" class="bp-check" [checked]="isInstalled(l)" [disabled]="!hasInstall(l)" (change)="toggleInstall(l)" />
-                          <span class="bp-meta">Installed?</span>
                         </label>
+                        <div class="mt-1.5 flex items-center gap-2">
+                          <span class="bp-meta w-20 shrink-0">Quantity</span>
+                          <app-qty-input [value]="l.quantity" [label]="l.name" (qtyCommit)="onQtyChange(l.itemId, $event)" />
+                        </div>
                       </div>
                       <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ lineCost(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
                       <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
