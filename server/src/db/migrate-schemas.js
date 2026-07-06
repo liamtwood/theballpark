@@ -2004,6 +2004,12 @@ const migrate = async () => {
       ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS image_url TEXT;
       ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS image_url TEXT;
       ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+      -- pV2-CART-01: per-line Install choice. NULL = default (assumed on when
+      -- the catalogue item carries an install_cost); true/false = explicit.
+      ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS installed BOOLEAN;
+      ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS installed BOOLEAN;
+      ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS installed BOOLEAN;
     `);
     console.log('  v1.65f* project_items column back-port ensured.');
 

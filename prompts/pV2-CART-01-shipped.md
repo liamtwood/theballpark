@@ -63,6 +63,22 @@ headline on top of the server cascade (unpersisted; flagged). Dropped Final's
 old flat card-per-item layout + its "Suppliers N Selected" summary tile (the
 merged summary is the Cart's Date/Location/Duration/Guests/Budget tiles).
 
+## Iteration — persist the Install choice (chip v2.39b)
+QC: toggling Installed? didn't survive leaving the page. Added
+**`project_items.installed BOOLEAN`** (nullable — NULL = default "on when the
+item has an install cost", true/false = explicit). Liam OK'd the additive
+column (NULL for existing rows).
+- `migrate-schemas.js` + a surgical `ADD COLUMN IF NOT EXISTS` across
+  public/preview/master (applied to the shared DB).
+- Server: quote line returns `installed`; card subtotal + `getEstimate` read
+  `COALESCE(pi.installed, true)`; `updateItemQuantity` generalised to
+  `updateItem({ quantity?, installed? })`; PATCH body accepts both. Dropped the
+  old `?uninstalled=` query param.
+- Client: the checkbox now writes through (`setQuoteItemInstalled`, optimistic +
+  revert) and seeds from the persisted value — the in-session `uninstalled` set
+  is gone.
+- Verified live: null→false persists, cart total reflects it, reset to null works.
+
 ## QC notes
 (Liam)
 

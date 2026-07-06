@@ -40,15 +40,8 @@ export class ProjectService {
    *  tab consumes this instead of recomputing client-side. `uninstalledItemIds`
    *  are lines the agent opted out of install on (install is otherwise
    *  assumed). */
-  estimate(
-    projectId: string,
-    uninstalledItemIds: string[] = [],
-    scope: 'all' | 'cart' = 'all'
-  ): Observable<EstimateBreakdown> {
-    const p = new URLSearchParams();
-    if (uninstalledItemIds.length) p.set('uninstalled', uninstalledItemIds.join(','));
-    if (scope === 'cart') p.set('scope', 'cart');
-    const qs = p.toString() ? `?${p}` : '';
+  estimate(projectId: string, scope: 'all' | 'cart' = 'all'): Observable<EstimateBreakdown> {
+    const qs = scope === 'cart' ? '?scope=cart' : '';
     return this.api.get<EstimateBreakdown>(`/api/projects-v2/${projectId}/estimate${qs}`);
   }
 
@@ -63,6 +56,12 @@ export class ProjectService {
   /** pV2-QUANTITY-01 — set a quote line's quantity (positive integer). */
   setQuoteItemQuantity(projectId: string, itemId: string, quantity: number): Observable<QuoteLine> {
     return this.api.patch<QuoteLine>(`/api/projects-v2/${projectId}/items/${itemId}`, { quantity });
+  }
+
+  /** pV2-CART-01 — persist a line's Install choice (true/false, or null to
+   *  reset to the default). */
+  setQuoteItemInstalled(projectId: string, itemId: string, installed: boolean | null): Observable<QuoteLine> {
+    return this.api.patch<QuoteLine>(`/api/projects-v2/${projectId}/items/${itemId}`, { installed });
   }
 
   /** Recommend + add items from the project's stored brief (v1 matcher per

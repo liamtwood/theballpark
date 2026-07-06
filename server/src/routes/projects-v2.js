@@ -112,12 +112,8 @@ router.get('/:id/items', async (req, res, next) => {
 // is otherwise assumed). Non-uuid entries are dropped.
 router.get('/:id/estimate', async (req, res, next) => {
   try {
-    const uninstalled = String(req.query.uninstalled ?? '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter((s) => z.string().uuid().safeParse(s).success);
     const scope = req.query.scope === 'cart' ? 'cart' : 'all';
-    const breakdown = await projects.getEstimate(req.user.org_id, req.params.id, uninstalled, scope);
+    const breakdown = await projects.getEstimate(req.user.org_id, req.params.id, scope);
     if (breakdown === null) return res.status(404).json({ error: 'Project not found' });
     res.json(breakdown);
   } catch (err) {
@@ -140,16 +136,24 @@ router.post('/:id/items', async (req, res, next) => {
   }
 });
 
-// PATCH /:id/items/:itemId — set the line quantity (positive integer).
-const QuoteQtySchema = z.object({ quantity: z.number().int().positive() });
+// PATCH /:id/items/:itemId — update the line: quantity (positive int) and/or
+// installed (bool, or null to reset to default). At least one required.
+const QuotePatchSchema = z
+  .object({
+    quantity: z.number().int().positive().optional(),
+    installed: z.boolean().nullable().optional(),
+  })
+  .refine((b) => b.quantity !== undefined || b.installed !== undefined, {
+    message: 'quantity or installed is required',
+  });
 router.patch('/:id/items/:itemId', async (req, res, next) => {
   try {
-    const parsed = QuoteQtySchema.safeParse(req.body);
+    const parsed = QuotePatchSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
     }
-    const line = await projects.updateItemQuantity(
-      req.user.org_id, req.params.id, req.params.itemId, parsed.data.quantity
+    const line = await projects.updateItem(
+      req.user.org_id, req.params.id, req.params.itemId, parsed.data
     );
     if (line === null) return res.status(404).json({ error: 'Project not found' });
     if (line === false) return res.status(404).json({ error: 'Item not in quote' });

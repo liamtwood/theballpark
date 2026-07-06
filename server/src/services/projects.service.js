@@ -62,7 +62,8 @@ const LIST_SELECT = `
          -- item has one (the Estimate tab lets the agent opt a line out; the
          -- card shows the default all-installed Ballpark). Run through the
          -- cascade below → matches getEstimate + the Estimate tab.
-         (SELECT COALESCE(SUM(pi.quantity * (COALESCE(pi.base_price, 0) + COALESCE(i.install_cost, 0))), 0)
+         (SELECT COALESCE(SUM(pi.quantity * (COALESCE(pi.base_price, 0)
+                   + CASE WHEN COALESCE(pi.installed, true) THEN COALESCE(i.install_cost, 0) ELSE 0 END)), 0)
             FROM project_items pi
             LEFT JOIN items i ON i.id = pi.item_id
            WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS quote_subtotal
@@ -333,6 +334,9 @@ function toQuoteLine(row) {
     // Quote's Install / Deliverable toggle (pV2-FINAL-01).
     installCost: row.install_cost == null ? null : Number(row.install_cost),
     installDescription: row.install_description ?? null,
+    // Persisted Install choice: null = default (on when there's an install
+    // cost), true/false = explicit (pV2-CART-01).
+    installed: row.installed ?? null,
     unit: row.unit,
     imageUrl: row.image_url,
     quantity: Number(row.quantity ?? 1),
@@ -358,6 +362,7 @@ function toQuoteLine(row) {
 // propagates. (Relies on categories being soft-delete-only.)
 const QUOTE_LINE_JOIN = `
   SELECT pi.id, pi.item_id, pi.name, pi.description, pi.base_price, pi.unit, pi.image_url, pi.quantity,
+         pi.installed,
          pi.category_id, c.name AS category_name,
          c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url,
          i.install_cost, i.install_description,
@@ -417,21 +422,21 @@ async function listItems(orgId, projectId) {
  *  lines the agent opted out of install on (Estimate tab checkboxes). Run
  *  through the one cascade (services/estimate.js) with the project's rates.
  *  Returns null if the project isn't the org's (→ 404). */
-async function getEstimate(orgId, projectId, uninstalledItemIds = [], scope = 'all') {
-  const uninstalled = Array.isArray(uninstalledItemIds) ? uninstalledItemIds : [];
+async function getEstimate(orgId, projectId, scope = 'all') {
   const cartOnly = scope === 'cart';
   const r = await pool.query(
     `SELECT p.default_contingency_pct, p.default_margin_pct, p.default_vat_pct,
             (SELECT COALESCE(SUM(pi.quantity * (
                        COALESCE(pi.base_price, 0)
-                       + CASE WHEN pi.item_id = ANY($3::uuid[]) THEN 0
-                              ELSE COALESCE(i.install_cost, 0) END
+                       -- Install added unless explicitly opted out (persisted
+                       -- pi.installed; NULL = default on).
+                       + CASE WHEN COALESCE(pi.installed, true) THEN COALESCE(i.install_cost, 0) ELSE 0 END
                      )), 0)
                FROM project_items pi
                LEFT JOIN items i ON i.id = pi.item_id
               WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
                 -- scope=cart → only still-in-cart (never-sent) items.
-                AND ($4 = false OR NOT EXISTS (
+                AND ($3 = false OR NOT EXISTS (
                       SELECT 1 FROM message_items mi
                         JOIN messages m ON m.id = mi.message_id
                        WHERE m.project_id = pi.project_id AND m.direction = 'outbound'
@@ -439,7 +444,7 @@ async function getEstimate(orgId, projectId, uninstalledItemIds = [], scope = 'a
             ) AS quote_subtotal
        FROM projects p
       WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
-    [projectId, orgId, uninstalled, cartOnly]
+    [projectId, orgId, cartOnly]
   );
   if (!r.rows.length) return null;
   const row = r.rows[0];
@@ -539,17 +544,28 @@ async function addItem(orgId, projectId, itemId) {
  *  Single write (the ownership SELECT + the UPDATE) — no transaction needed
  *  (Rule 1): the UPDATE re-scopes by project_id, so the ownership check can't
  *  be raced into a cross-org write. */
-async function updateItemQuantity(orgId, projectId, itemId, quantity) {
+async function updateItem(orgId, projectId, itemId, patch) {
   const owns = await pool.query(
     `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
     [projectId, orgId]
   );
   if (!owns.rows.length) return null;
+  const sets = [];
+  const vals = [projectId, itemId];
+  if (patch.quantity !== undefined) {
+    vals.push(patch.quantity);
+    sets.push(`quantity = $${vals.length}`);
+  }
+  if (patch.installed !== undefined) {
+    vals.push(patch.installed); // boolean | null
+    sets.push(`installed = $${vals.length}`);
+  }
+  if (!sets.length) return false; // nothing to change
   const r = await pool.query(
-    `UPDATE project_items SET quantity = $3
+    `UPDATE project_items SET ${sets.join(', ')}
       WHERE project_id = $1 AND item_id = $2 AND deleted_at IS NULL
       RETURNING id`,
-    [projectId, itemId, quantity]
+    vals
   );
   if (!r.rows.length) return false; // no live line for this item
   return lineById(pool, r.rows[0].id);
@@ -677,6 +693,6 @@ async function recommend(orgId, projectId) {
 
 module.exports = {
   listForOrg, getDetail, updateDetail, create,
-  listItems, getEstimate, addItem, removeItem, updateItemQuantity, recommend,
+  listItems, getEstimate, addItem, removeItem, updateItem, recommend,
   resolveStatus, DEFAULT_STATUS, toCard,
 };

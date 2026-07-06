@@ -495,32 +495,30 @@ export class ProjectEstimateComponent {
     });
   }
 
-  /** Lines the agent opted OUT of install on. Install is ASSUMED when a line
-   *  has an install price (Liam 2026-07-03); this in-session set tracks the
-   *  exceptions. The server breakdown reloads with it; the project card shows
-   *  the default all-installed Ballpark. */
-  protected readonly uninstalled = signal<ReadonlySet<string>>(new Set());
-
   /** Whether this line has an install price to offer (else the checkbox is
    *  greyed + disabled). */
   protected hasInstall(l: QuoteLine): boolean {
     return (l.installCost ?? 0) > 0;
   }
-  /** Installed = has an install price AND not opted out. */
+  /** Installed = has an install price AND not explicitly opted out (persisted
+   *  `installed`; null/true = on, false = off). */
   protected isInstalled(l: QuoteLine): boolean {
-    return this.hasInstall(l) && !this.uninstalled().has(l.itemId);
+    return this.hasInstall(l) && l.installed !== false;
   }
-  /** Toggle a line's install in/out — updates the opt-out set and pulls the
-   *  fresh server breakdown (install feeds the cascade). */
-  protected toggleInstall(l: QuoteLine): void {
+  /** Persist the Install choice — optimistic on the row, revert + toast on
+   *  failure, then reload the server cascade. */
+  protected async toggleInstall(l: QuoteLine): Promise<void> {
     if (!this.hasInstall(l)) return;
-    this.uninstalled.update((set) => {
-      const next = new Set(set);
-      if (next.has(l.itemId)) next.delete(l.itemId);
-      else next.add(l.itemId);
-      return next;
-    });
-    this.est.reload();
+    const next = !this.isInstalled(l);
+    const before = this.rows();
+    this.rows.update((ls) => ls.map((x) => (x.itemId === l.itemId ? { ...x, installed: next } : x)));
+    try {
+      await firstValueFrom(this.projects.setQuoteItemInstalled(this.projectId(), l.itemId, next));
+      this.est.reload();
+    } catch (err) {
+      this.rows.set(before);
+      this.toast.add({ severity: 'error', summary: "Couldn't save the install option — please try again.", detail: errorDetail(err), life: 4000 });
+    }
   }
 
   protected lineCost(l: QuoteLine): number {
@@ -535,8 +533,7 @@ export class ProjectEstimateComponent {
    *  edit (qtyCommit → onQtyChange). */
   protected readonly est = resource<EstimateBreakdown, string>({
     params: () => this.projectId(),
-    loader: ({ params }) =>
-      firstValueFrom(this.projects.estimate(params, [...this.uninstalled()], this.isFinal() ? 'all' : 'cart')),
+    loader: ({ params }) => firstValueFrom(this.projects.estimate(params, this.isFinal() ? 'all' : 'cart')),
   });
 
   /** The breakdown the template renders: the server value once loaded, else a

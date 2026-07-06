@@ -43,6 +43,9 @@ export interface QuoteLine {
    *  Install / Deliverable toggle. */
   installCost: number | null;
   installDescription: string | null;
+  /** Persisted Install choice: null = default (on when there's an install
+   *  cost), true/false = explicit. */
+  installed: boolean | null;
   unit: string | null;
   imageUrl: string | null;
   quantity: number;
