@@ -387,10 +387,14 @@ interface CustomLine {
         <aside class="absolute inset-y-0 right-0 left-[calc(50%_+_21rem)] hidden justify-center lg:flex">
           <div class="sticky top-4 w-80">
             @if (previewHidden()) {
-              <button type="button" class="bp-card flex w-full items-center justify-center gap-2 p-3 text-secondary transition-colors hover:text-text"
-                      (click)="previewHidden.set(false)" title="Show item preview">
-                <lucide-icon name="eye" [size]="16" /> Show preview
-              </button>
+              <!-- Hidden: just the eye, in the same top-right spot as the
+                   preview card's eye (matches the card's p-4 inset). -->
+              <div class="flex justify-end px-4 pt-4">
+                <button type="button" class="bp-itemprev-close" (click)="previewHidden.set(false)"
+                        title="Show item preview" aria-label="Show item preview">
+                  <lucide-icon name="eye" [size]="14" />
+                </button>
+              </div>
             } @else {
               <div class="bp-card p-4">
                 <app-item-preview [item]="previewItem()!" [categoryName]="selectedLine()!.categoryName"
