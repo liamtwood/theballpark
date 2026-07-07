@@ -59,6 +59,7 @@ export interface QuoteLine {
    *  groups "N items from <supplier>". */
   supplierId: string | null;
   supplierName: string | null;
+  supplierCity: string | null;
   /** Coarse send-state (pV2-CART-01): to_send (in cart) → out_for_quote →
    *  quoted → booked / declined. Cart shows to_send; Final shows all + badge. */
   status: QuoteLineStatus;

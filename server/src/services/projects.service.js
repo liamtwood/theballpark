@@ -349,6 +349,7 @@ function toQuoteLine(row) {
     // Supplier the item comes from (catalogue owner) + coarse send-state.
     supplierId: row.supplier_id ?? null,
     supplierName: row.supplier_name ?? null,
+    supplierCity: row.supplier_city ?? null,
     status: quoteStatus(row.sent_status),
   };
 }
@@ -368,7 +369,7 @@ const QUOTE_LINE_JOIN = `
          i.install_cost, i.install_description,
          -- Supplier = the item's catalogue owner (marketplace source), so the
          -- cart cat card can say "N items from <supplier>" pre-outreach.
-         i.org_id AS supplier_id, o.name AS supplier_name,
+         i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
          -- Send-state: the item's latest OUTBOUND brief line status for this
          -- project (NULL = never sent = still in the cart). Drives the
          -- cart/final split + the per-item badge (pV2-CART-01).

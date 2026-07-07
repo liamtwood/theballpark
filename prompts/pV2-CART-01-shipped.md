@@ -108,6 +108,13 @@ Final view:
 "1 Ball" is aspirational, no Ball actually debited yet. sendOutreach still
 briefs the whole category (the double-send seam, already parked).
 
+## Iteration — supplier group bands (chip v2.39f)
+Within each expanded category, items are now sub-grouped by supplier under a
+**thin "«Supplier» · «City»" band** (option 2 — one header per supplier vs
+repeating the name on every row). Quote line gains `supplierCity` (orgs.city
+join). first-appearance order; applies to both Cart and Final. Category header
+keeps its "N items from X" collapsed summary.
+
 ## QC notes
 (Liam)
 

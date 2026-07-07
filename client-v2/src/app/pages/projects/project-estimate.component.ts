@@ -26,6 +26,30 @@ function supplierBreakdown(items: QuoteLine[]): { name: string | null; count: nu
   return [...by.values()].sort((a, b) => b.count - a.count);
 }
 
+interface SupplierGroup {
+  supplierId: string;
+  supplierName: string | null;
+  supplierCity: string | null;
+  items: QuoteLine[];
+}
+/** Sub-group a category's items by supplier, in first-appearance order — each
+ *  becomes a thin "<Supplier> · <City>" band over its items. */
+function bySupplier(items: QuoteLine[]): SupplierGroup[] {
+  const out: SupplierGroup[] = [];
+  const idx = new Map<string, SupplierGroup>();
+  for (const l of items) {
+    const key = l.supplierId ?? '';
+    let g = idx.get(key);
+    if (!g) {
+      g = { supplierId: key, supplierName: l.supplierName ?? null, supplierCity: l.supplierCity ?? null, items: [] };
+      idx.set(key, g);
+      out.push(g);
+    }
+    g.items.push(l);
+  }
+  return out;
+}
+
 /** Per-item send-state badge (Final view). */
 const STATUS_LABELS: Record<QuoteLineStatus, string> = {
   to_send: 'To send',
@@ -232,9 +256,15 @@ interface CustomLine {
 
               @if (expanded().has(g.id)) {
                 <div class="border-t border-hairline">
-                  @for (l of g.items; track l.id) {
+                  @for (sg of g.supplierGroups; track sg.supplierId) {
+                    <!-- Thin supplier band grouping this category's items. -->
+                    <div class="flex items-center gap-2 border-b border-hairline bg-fill px-3 py-2">
+                      <lucide-icon name="store" [size]="13" class="shrink-0 text-muted" />
+                      <span class="bp-meta truncate font-medium text-text">{{ sg.supplierName || 'Supplier' }}@if (sg.supplierCity) { · {{ sg.supplierCity }} }</span>
+                    </div>
+                    @for (l of sg.items; track l.id) {
                     <!-- Item row — the marketplace list-view shape (thumb + name + price). -->
-                    <div class="flex cursor-pointer items-center gap-3 border-b border-hairline px-3 py-3 last:border-b-0"
+                    <div class="flex cursor-pointer items-center gap-3 border-b border-hairline px-3 py-3"
                          [class.bg-fill]="selectedItemId() === l.itemId" (click)="selectLine(l)">
                       @if (l.imageUrl) {
                         <img [src]="l.imageUrl" alt="" class="h-16 w-16 shrink-0 rounded-[var(--radius-card)] object-cover" />
@@ -266,6 +296,7 @@ interface CustomLine {
                         <lucide-icon name="trash-2" [size]="15" />
                       </button>
                     </div>
+                    }
                   }
 
                   @if (isFinal()) {
@@ -551,8 +582,10 @@ export class ProjectEstimateComponent {
       ...g,
       total: g.items.reduce((s, l) => s + this.lineCost(l), 0),
       iconName: g.items[0]?.categoryIconName ?? null,
-      // "N items from <supplier>" — one row per distinct catalogue owner.
+      // "N items from <supplier>" — collapsed-header summary.
       suppliers: supplierBreakdown(g.items),
+      // Expanded list: items grouped under a thin supplier band.
+      supplierGroups: bySupplier(g.items),
     }))
   );
 
