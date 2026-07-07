@@ -385,7 +385,7 @@ interface CustomLine {
              (50% + half of max-w-2xl = 21rem) and the screen edge; the card is
              centered in it. Full-height so the inner sticky card stays put. -->
         <aside class="absolute inset-y-0 right-0 left-[calc(50%_+_21rem)] hidden justify-center lg:flex">
-          <div class="sticky top-4 w-80">
+          <div class="sticky top-32 w-80">
             @if (previewHidden()) {
               <!-- Hidden: just the eye, in the same top-right spot as the
                    preview card's eye (matches the card's p-4 inset). -->
