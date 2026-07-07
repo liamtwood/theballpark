@@ -381,18 +381,22 @@ interface CustomLine {
       <!-- Right rail: the selected line's marketplace card. The eye hides it
            for ALL selections until clicked again (Liam 2026-07-07). -->
       @if (selectedLine()) {
-        <aside class="absolute right-0 top-0 hidden w-80 lg:block">
-          @if (previewHidden()) {
-            <button type="button" class="bp-card flex w-full items-center justify-center gap-2 p-3 text-secondary transition-colors hover:text-text"
-                    (click)="previewHidden.set(false)" title="Show item preview">
-              <lucide-icon name="eye" [size]="16" /> Show preview
-            </button>
-          } @else {
-            <div class="bp-card p-4">
-              <app-item-preview [item]="previewItem()!" [categoryName]="selectedLine()!.categoryName"
-                                closeIcon="eye" closeLabel="Hide preview" (closed)="previewHidden.set(true)" />
-            </div>
-          }
+        <!-- Full-height rail (inset-y-0) so the inner sticky card stays put as
+             the quote scrolls. -->
+        <aside class="absolute inset-y-0 right-0 hidden w-80 lg:block">
+          <div class="sticky top-4">
+            @if (previewHidden()) {
+              <button type="button" class="bp-card flex w-full items-center justify-center gap-2 p-3 text-secondary transition-colors hover:text-text"
+                      (click)="previewHidden.set(false)" title="Show item preview">
+                <lucide-icon name="eye" [size]="16" /> Show preview
+              </button>
+            } @else {
+              <div class="bp-card p-4">
+                <app-item-preview [item]="previewItem()!" [categoryName]="selectedLine()!.categoryName"
+                                  closeIcon="eye" closeLabel="Hide preview" (closed)="previewHidden.set(true)" />
+              </div>
+            }
+          </div>
         </aside>
       }
       </div>
