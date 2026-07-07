@@ -115,6 +115,27 @@ repeating the name on every row). Quote line gains `supplierCity` (orgs.city
 join). first-appearance order; applies to both Cart and Final. Category header
 keeps its "N items from X" collapsed summary.
 
+## Iteration — "who quotes what" supplier dialog (chip v2.40)
+Message Suppliers now opens a **separate dialog** (new
+`message-suppliers-dialog.component`) instead of the plain confirm, to nudge
+**one supplier per category**:
+- Per category, lists the suppliers whose items are in it (with counts).
+  Single-supplier categories show a green "1 supplier" pill (resolved);
+  multi-supplier ones show an amber "N suppliers" pill + a **primary radio**
+  (defaulting to the **majority** owner) + an opt-in "also get competing
+  quotes from the other N".
+- CTA "**Send N briefs**" reflects the live thread count; "This will spend
+  1 Ball." note kept.
+- Emits an `OutreachRosterEntry[]`; the parent sends via the existing
+  `/api/inbox/send`. **Consolidation model A**: the chosen primary is briefed
+  the whole category (existing sendOutreach behaviour) — items from
+  non-chosen suppliers ride along to the primary.
+
+**Not done:** the "only «Supplier» offers «Item X» — keep them?" leftover-item
+flag isn't built yet (all category items just go to the primary). Still on
+skip_balls (no Ball debited). Meg/Beth to settle the 1-vs-many principle +
+whether base is priced ex-works (delivery/pickup thread, parked).
+
 ## QC notes
 (Liam)
 

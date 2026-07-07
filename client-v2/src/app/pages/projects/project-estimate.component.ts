@@ -10,8 +10,8 @@ import { errorDetail } from '../../core/http-error';
 import { QtyInputComponent } from './qty-input.component';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
-import { ConfirmService } from '../../shared/confirm/confirm.service';
 import { InboxService, OutreachRosterEntry } from '../../core/inbox/inbox.service';
+import { MessageSuppliersDialogComponent, MsgSupplierCategory } from './message-suppliers-dialog.component';
 
 interface SupplierGroup {
   supplierId: string;
@@ -77,7 +77,7 @@ interface CustomLine {
 @Component({
   selector: 'app-project-estimate',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, FormsModule, LucideAngularModule, QtyInputComponent, ItemPreviewComponent],
+  imports: [CurrencyPipe, FormsModule, LucideAngularModule, QtyInputComponent, ItemPreviewComponent, MessageSuppliersDialogComponent],
   host: { class: 'block' },
   styles: [
     `
@@ -454,12 +454,19 @@ interface CustomLine {
         </div>
       </div>
     }
+
+    <!-- "Who quotes what" step (Final view Message Suppliers). -->
+    @if (messagingOpen()) {
+      <app-message-suppliers-dialog
+        [categories]="messagingCategories()"
+        (send)="onSendBriefs($event)"
+        (cancel)="messagingOpen.set(false)" />
+    }
   `,
 })
 export class ProjectEstimateComponent {
   private readonly projects = inject(ProjectService);
   private readonly toast = inject(MessageService);
-  private readonly confirm = inject(ConfirmService);
   private readonly inbox = inject(InboxService);
 
   readonly projectId = input.required<string>();
@@ -708,27 +715,45 @@ export class ProjectEstimateComponent {
 
   // ── Message suppliers (Final view) ────────────────────────────────────
   protected readonly sending = signal(false);
+  protected readonly messagingOpen = signal(false);
 
-  /** Confirm, then send the brief to every supplier on the quote (the item
-   *  owners of the still-to-send lines, one thread per category × supplier).
-   *  On success the lines flip to out_for_quote (server-derived) — reload. */
-  protected async messageSuppliers(): Promise<void> {
+  /** The still-to-send lines grouped by category → suppliers (with item
+   *  counts, majority first) — feeds the "who quotes what" dialog. */
+  protected readonly messagingCategories = computed<MsgSupplierCategory[]>(() => {
+    const byCat = new Map<string, MsgSupplierCategory>();
+    for (const l of this.rows()) {
+      if (l.status !== 'to_send' || !l.categoryId || !l.supplierId) continue;
+      let c = byCat.get(l.categoryId);
+      if (!c) {
+        c = { categoryId: l.categoryId, categoryName: l.categoryName ?? 'Category', suppliers: [] };
+        byCat.set(l.categoryId, c);
+      }
+      let s = c.suppliers.find((x) => x.supplierId === l.supplierId);
+      if (!s) {
+        s = { supplierId: l.supplierId, supplierName: l.supplierName ?? 'Supplier', supplierCity: l.supplierCity ?? null, count: 0 };
+        c.suppliers.push(s);
+      }
+      s.count++;
+    }
+    for (const c of byCat.values()) c.suppliers.sort((a, b) => b.count - a.count);
+    return [...byCat.values()];
+  });
+
+  /** Open the "who quotes what" dialog (nothing to send → toast instead). */
+  protected messageSuppliers(): void {
     if (this.sending()) return;
-    const roster = this.quoteRoster();
-    if (!roster.length) {
+    if (!this.messagingCategories().length) {
       this.toast.add({ severity: 'warn', summary: 'Nothing to send — no unsent items with a supplier.', life: 4000 });
       return;
     }
-    const ok = await this.confirm.ask({
-      title: 'Ready to message suppliers?',
-      message:
-        "We'll send your project brief, selected line items, quantities, dates and requirements to every supplier on this quote.\n\nThis will spend 1 Ball.",
-      confirmLabel: 'Message Suppliers',
-      cancelLabel: 'Cancel',
-      danger: false,
-      icon: 'send',
-    });
-    if (!ok) return;
+    this.messagingOpen.set(true);
+  }
+
+  /** Dialog confirmed with the chosen roster → send the briefs. On success the
+   *  lines flip to out_for_quote (server-derived) — reload. */
+  protected async onSendBriefs(roster: OutreachRosterEntry[]): Promise<void> {
+    this.messagingOpen.set(false);
+    if (!roster.length || this.sending()) return;
     this.sending.set(true);
     try {
       const res = await firstValueFrom(this.inbox.send(this.projectId(), roster));
@@ -744,18 +769,5 @@ export class ProjectEstimateComponent {
     } finally {
       this.sending.set(false);
     }
-  }
-
-  /** The still-to-send lines grouped into an outreach roster: one entry per
-   *  category with the distinct catalogue-owner suppliers in it. */
-  private quoteRoster(): OutreachRosterEntry[] {
-    const byCat = new Map<string, Set<string>>();
-    for (const l of this.rows()) {
-      if (l.status !== 'to_send' || !l.categoryId || !l.supplierId) continue;
-      const set = byCat.get(l.categoryId) ?? new Set<string>();
-      set.add(l.supplierId);
-      byCat.set(l.categoryId, set);
-    }
-    return [...byCat].map(([categoryId, s]) => ({ categoryId, supplierIds: [...s] }));
   }
 }
