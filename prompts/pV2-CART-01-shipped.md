@@ -79,6 +79,15 @@ column (NULL for existing rows).
   is gone.
 - Verified live: null→false persists, cart total reflects it, reset to null works.
 
+## Iteration — right-rail item preview + eye toggle (chip v2.39c)
+Selecting a line (click its row) shows the **marketplace item card** in a
+right rail on both views — reuses `app-item-preview` (the rail card, mapped
+from the quote line; no fetch). Its `x` is swapped for an **eye** (new
+`closeIcon`/`closeLabel` inputs; marketplace keeps its x). Clicking the eye
+sets `previewHidden` → the card is suppressed for **all** selections (shows a
+compact "Show preview" eye button instead) until the eye is clicked again.
+Rail is `lg:` only (desktop). Selected row gets a `bg-fill` highlight.
+
 ## QC notes
 (Liam)
 

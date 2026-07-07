@@ -37,10 +37,11 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
         <button
           type="button"
           class="bp-itemprev-close"
-          aria-label="Close preview"
+          [attr.aria-label]="closeLabel()"
+          [title]="closeLabel()"
           (click)="closed.emit()"
         >
-          <lucide-icon name="x" [size]="14" />
+          <lucide-icon [name]="closeIcon()" [size]="14" />
         </button>
       </div>
     </div>
@@ -91,6 +92,10 @@ export class ItemPreviewComponent {
   readonly item = input.required<CatalogueItem>();
   /** Resolved category name (the store has the rail list — no fetch). */
   readonly categoryName = input<string | null>(null);
+  /** Header close/toggle affordance — the marketplace rail closes (x); the
+   *  quote views hide the preview (eye). */
+  readonly closeIcon = input<string>('x');
+  readonly closeLabel = input<string>('Close preview');
   readonly closed = output<void>();
 
   /** Ballpark admins get a Review entry on items they don't own (moderation). */

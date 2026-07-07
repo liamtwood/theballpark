@@ -8,6 +8,8 @@ import { ProjectService } from '../../core/projects/project.service';
 import { EstimateBreakdown, ProjectDetail, QuoteLine, QuoteLineStatus, groupByCategory } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
 import { QtyInputComponent } from './qty-input.component';
+import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
+import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 
 /** "N items from <supplier>" rows for a category — one per distinct catalogue
  *  owner, busiest first. A null supplier name renders as a plain count. */
@@ -59,7 +61,7 @@ interface CustomLine {
 @Component({
   selector: 'app-project-estimate',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, FormsModule, LucideAngularModule, QtyInputComponent],
+  imports: [CurrencyPipe, FormsModule, LucideAngularModule, QtyInputComponent, ItemPreviewComponent],
   host: { class: 'block' },
   styles: [
     `
@@ -181,8 +183,10 @@ interface CustomLine {
         </div>
       </div>
 
-      <!-- The rest of the quote keeps the narrower reading column. -->
-      <div class="mx-auto max-w-2xl">
+      <!-- Reading column + right-rail item preview (shown when a line is
+           selected). The column stays max-w-2xl; the rail sits beside it. -->
+      <div class="mx-auto flex max-w-5xl justify-center gap-6">
+      <div class="w-full min-w-0 max-w-2xl">
 
       <!-- Estimated Ballpark Cost banner (the headline = client total). -->
       <div class="bp-quote-banner mt-5 px-6 py-7 text-center">
@@ -224,7 +228,8 @@ interface CustomLine {
                 <div class="border-t border-hairline">
                   @for (l of g.items; track l.id) {
                     <!-- Item row — the marketplace list-view shape (thumb + name + price). -->
-                    <div class="flex items-center gap-3 border-b border-hairline px-3 py-3 last:border-b-0">
+                    <div class="flex cursor-pointer items-center gap-3 border-b border-hairline px-3 py-3 last:border-b-0"
+                         [class.bg-fill]="selectedItemId() === l.itemId" (click)="selectLine(l)">
                       @if (l.imageUrl) {
                         <img [src]="l.imageUrl" alt="" class="h-16 w-16 shrink-0 rounded-[var(--radius-card)] object-cover" />
                       } @else {
@@ -348,6 +353,27 @@ interface CustomLine {
         </div>
       }
       </div>
+
+      <!-- Right rail: the selected line's marketplace card. The eye hides it
+           for ALL selections until clicked again (Liam 2026-07-07). -->
+      @if (selectedLine()) {
+        <aside class="hidden w-80 shrink-0 lg:block">
+          <div class="sticky top-4">
+            @if (previewHidden()) {
+              <button type="button" class="bp-card flex w-full items-center justify-center gap-2 p-3 text-secondary transition-colors hover:text-text"
+                      (click)="previewHidden.set(false)" title="Show item preview">
+                <lucide-icon name="eye" [size]="16" /> Show preview
+              </button>
+            } @else {
+              <div class="bp-card p-4">
+                <app-item-preview [item]="previewItem()!" [categoryName]="selectedLine()!.categoryName"
+                                  closeIcon="eye" closeLabel="Hide preview" (closed)="previewHidden.set(true)" />
+              </div>
+            }
+          </div>
+        </aside>
+      }
+      </div>
     </div>
 
     <!-- Add Custom Line Item modal (Final view). -->
@@ -416,6 +442,44 @@ export class ProjectEstimateComponent {
   readonly addSuppliers = output<void>();
 
   protected readonly isFinal = computed(() => this.view() === 'final');
+
+  // ── Right-rail item preview (marketplace card) ────────────────────────
+  /** The line the user last clicked — its card shows in the right rail. */
+  protected readonly selectedItemId = signal<string | null>(null);
+  /** Eye toggle: when true the preview is suppressed for ALL selections until
+   *  toggled back on (session-local). */
+  protected readonly previewHidden = signal(false);
+
+  protected readonly selectedLine = computed(
+    () => this.rows().find((l) => l.itemId === this.selectedItemId()) ?? null
+  );
+  /** The selected line mapped to the marketplace preview's CatalogueItem
+   *  shape (the quote line already carries everything the preview renders). */
+  protected readonly previewItem = computed<CatalogueItem | null>(() => {
+    const l = this.selectedLine();
+    if (!l) return null;
+    return {
+      id: l.itemId,
+      name: l.name ?? '',
+      description: l.description,
+      basePrice: l.basePrice,
+      unit: l.unit,
+      coverUrl: l.imageUrl,
+      categoryId: l.categoryId ?? '',
+      subcategoryId: null,
+      supplierId: l.supplierId ?? '',
+      supplierName: l.supplierName ?? '',
+      supplierCity: null,
+      categoryName: l.categoryName,
+      subcategoryName: null,
+      ownedByActiveOrg: false,
+      approvalStatus: 'approved',
+      isActive: true,
+    };
+  });
+  protected selectLine(l: QuoteLine): void {
+    this.selectedItemId.set(l.itemId);
+  }
 
   protected statusLabel(l: QuoteLine): string {
     return STATUS_LABELS[l.status] ?? '';
