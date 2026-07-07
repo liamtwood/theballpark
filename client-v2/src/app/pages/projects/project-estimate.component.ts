@@ -10,6 +10,8 @@ import { errorDetail } from '../../core/http-error';
 import { QtyInputComponent } from './qty-input.component';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
+import { ConfirmService } from '../../shared/confirm/confirm.service';
+import { InboxService, OutreachRosterEntry } from '../../core/inbox/inbox.service';
 
 /** "N items from <supplier>" rows for a category — one per distinct catalogue
  *  owner, busiest first. A null supplier name renders as a plain count. */
@@ -44,6 +46,9 @@ const STATUS_PILL: Record<QuoteLineStatus, string> = {
  *  (persisting needs a project_items column; flagged). */
 interface CustomLine {
   id: string;
+  /** The category the line was added under (its dashed button) — groups it
+   *  into that category's list. */
+  categoryId: string | null;
   category: string;
   description: string;
   cost: number;
@@ -262,31 +267,37 @@ interface CustomLine {
                       </button>
                     </div>
                   }
+
+                  @if (isFinal()) {
+                    <!-- Custom (ad-hoc) lines added under this category. -->
+                    @for (cl of customLinesFor(g.id); track cl.id) {
+                      <div class="flex items-center gap-3 border-b border-hairline px-3 py-3">
+                        <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="plus" [size]="22" /></span>
+                        <div class="min-w-0 flex-1">
+                          <div class="bp-list-title truncate">{{ cl.description }}</div>
+                          <div class="bp-meta">Custom · {{ cl.install ? 'Install' : 'Deliverable' }}{{ cl.notes ? ' · ' + cl.notes : '' }}</div>
+                        </div>
+                        <span class="bp-body-small w-16 shrink-0 text-center text-secondary">× {{ cl.quantity }}</span>
+                        <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ cl.cost * cl.quantity | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                        <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
+                                (click)="removeCustom(cl.id)" [attr.aria-label]="'Remove ' + cl.description" title="Remove line">
+                          <lucide-icon name="trash-2" [size]="15" />
+                        </button>
+                      </div>
+                    }
+                    <!-- Dashed add card at the bottom of the category's items. -->
+                    <div class="p-3">
+                      <button type="button" class="flex w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border border-dashed border-hairline px-3 py-3 text-secondary transition-colors hover:bg-fill hover:text-text"
+                              (click)="openAdd(g)">
+                        <lucide-icon name="plus" [size]="15" /> Add Your Own Line Item
+                      </button>
+                    </div>
+                  }
                 </div>
               }
             </div>
           }
         </div>
-
-        <!-- Custom (ad-hoc) lines — Final view only. -->
-        @if (isFinal() && customLines().length) {
-          <div class="mt-2.5 flex flex-col gap-2.5">
-            @for (cl of customLines(); track cl.id) {
-              <div class="bp-card flex items-center gap-3 p-3">
-                <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="plus" [size]="22" /></span>
-                <div class="min-w-0 flex-1">
-                  <div class="bp-list-title truncate">{{ cl.description }}</div>
-                  <div class="bp-meta">{{ cl.category || 'Custom' }} · {{ cl.install ? 'Install' : 'Deliverable' }}{{ cl.notes ? ' · ' + cl.notes : '' }}</div>
-                </div>
-                <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ cl.cost * cl.quantity | currency: cur() : 'symbol' : '1.0-0' }}</span>
-                <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
-                        (click)="removeCustom(cl.id)" [attr.aria-label]="'Remove ' + cl.description" title="Remove line">
-                  <lucide-icon name="trash-2" [size]="15" />
-                </button>
-              </div>
-            }
-          </div>
-        }
 
         <!-- Subtotal → contingency → your cost (v1 layout). -->
         <div class="mt-5 flex flex-col gap-1.5">
@@ -330,18 +341,15 @@ interface CustomLine {
         <p class="bp-caption mt-4">Indicative — based on marketplace base prices. Final supplier quotes and the priced rollup land with checkout.</p>
 
         <!-- Footer — cart: Edit in marketplace + Go with this Ballpark;
-             final: Add Your Own Line Item + Add Suppliers. -->
-        <div class="mt-5 flex gap-2.5">
-          @if (isFinal()) {
-            <button type="button" class="bp-btn-outline flex-1" (click)="openAdd()">
-              <lucide-icon name="plus" [size]="16" />
-              Add Your Own Line Item
-            </button>
-            <button type="button" class="bp-btn-grad flex-1" (click)="addSuppliers.emit()">
-              Add Suppliers
-              <lucide-icon name="arrow-right" [size]="16" />
-            </button>
-          } @else {
+             final: Message Suppliers (spends a Ball). -->
+        @if (isFinal()) {
+          <button type="button" class="bp-btn-grad mt-5 w-full" [disabled]="sending()" (click)="messageSuppliers()">
+            <lucide-icon name="send" [size]="16" />
+            Message Suppliers
+          </button>
+          <p class="bp-caption mt-2 text-center">Spend a Ball, firm up cost and let's get this show on the road</p>
+        } @else {
+          <div class="mt-5 flex gap-2.5">
             <button type="button" class="bp-btn-grad flex-1" (click)="addItems.emit()">
               <lucide-icon name="store" [size]="16" />
               Edit in marketplace
@@ -350,8 +358,8 @@ interface CustomLine {
               Go with this Ballpark
               <lucide-icon name="arrow-right" [size]="16" />
             </button>
-          }
-        </div>
+          </div>
+        }
       }
       </div>
 
@@ -427,6 +435,8 @@ interface CustomLine {
 export class ProjectEstimateComponent {
   private readonly projects = inject(ProjectService);
   private readonly toast = inject(MessageService);
+  private readonly confirm = inject(ConfirmService);
+  private readonly inbox = inject(InboxService);
 
   readonly projectId = input.required<string>();
   readonly project = input.required<ProjectDetail>();
@@ -437,8 +447,6 @@ export class ProjectEstimateComponent {
   readonly addItems = output<void>();
   /** "Go with this Ballpark" — jump to the Final Quote tab (cart). */
   readonly goToFinal = output<void>();
-  /** "Add Suppliers" — the Marketplace tab in supplier mode (final). */
-  readonly addSuppliers = output<void>();
 
   protected readonly isFinal = computed(() => this.view() === 'final');
 
@@ -626,7 +634,14 @@ export class ProjectEstimateComponent {
   // ── Custom (ad-hoc) line items — Final view only, in-session ───────────
   protected readonly customLines = signal<CustomLine[]>([]);
   protected readonly adding = signal(false);
+  /** The category the pending add belongs to (its dashed button). */
+  private addingCategoryId: string | null = null;
   protected form = { category: '', description: '', cost: 0, quantity: 1, type: 'deliverable', notes: '' };
+
+  /** Custom lines added under a given category (its dashed add button). */
+  protected customLinesFor(categoryId: string | null): CustomLine[] {
+    return this.customLines().filter((c) => c.categoryId === categoryId);
+  }
 
   /** Custom lines are raw (unpersisted) — added to the headline on top of the
    *  server-cascaded item total. */
@@ -638,8 +653,11 @@ export class ProjectEstimateComponent {
     () => this.bd().clientTotal + (this.isFinal() ? this.customTotal() : 0)
   );
 
-  protected openAdd(): void {
-    this.form = { category: '', description: '', cost: 0, quantity: 1, type: 'deliverable', notes: '' };
+  /** Open the add-custom modal, seeded with the category whose dashed button
+   *  was clicked. */
+  protected openAdd(group?: { id: string; name: string }): void {
+    this.addingCategoryId = group?.id ?? null;
+    this.form = { category: group?.name ?? '', description: '', cost: 0, quantity: 1, type: 'deliverable', notes: '' };
     this.adding.set(true);
   }
   protected addCustom(): void {
@@ -649,6 +667,7 @@ export class ProjectEstimateComponent {
       ...ls,
       {
         id: `c${ls.length}-${f.description.slice(0, 6)}`,
+        categoryId: this.addingCategoryId,
         category: f.category.trim(),
         description: f.description.trim(),
         cost: Number(f.cost) || 0,
@@ -661,5 +680,58 @@ export class ProjectEstimateComponent {
   }
   protected removeCustom(id: string): void {
     this.customLines.update((ls) => ls.filter((c) => c.id !== id));
+  }
+
+  // ── Message suppliers (Final view) ────────────────────────────────────
+  protected readonly sending = signal(false);
+
+  /** Confirm, then send the brief to every supplier on the quote (the item
+   *  owners of the still-to-send lines, one thread per category × supplier).
+   *  On success the lines flip to out_for_quote (server-derived) — reload. */
+  protected async messageSuppliers(): Promise<void> {
+    if (this.sending()) return;
+    const roster = this.quoteRoster();
+    if (!roster.length) {
+      this.toast.add({ severity: 'warn', summary: 'Nothing to send — no unsent items with a supplier.', life: 4000 });
+      return;
+    }
+    const ok = await this.confirm.ask({
+      title: 'Ready to message suppliers?',
+      message:
+        "We'll send your project brief, selected line items, quantities, dates and requirements to every supplier on this quote.\n\nThis will spend 1 Ball.",
+      confirmLabel: 'Message Suppliers',
+      cancelLabel: 'Cancel',
+      danger: false,
+      icon: 'send',
+    });
+    if (!ok) return;
+    this.sending.set(true);
+    try {
+      const res = await firstValueFrom(this.inbox.send(this.projectId(), roster));
+      this.toast.add({
+        severity: 'success',
+        summary: `Brief sent — ${res.threads} supplier ${res.threads === 1 ? 'thread' : 'threads'} across ${res.categories} ${res.categories === 1 ? 'category' : 'categories'}.`,
+        life: 5000,
+      });
+      this.lines.reload();
+      this.est.reload();
+    } catch (err) {
+      this.toast.add({ severity: 'error', summary: "Couldn't send the brief — please try again.", detail: errorDetail(err), life: 5000 });
+    } finally {
+      this.sending.set(false);
+    }
+  }
+
+  /** The still-to-send lines grouped into an outreach roster: one entry per
+   *  category with the distinct catalogue-owner suppliers in it. */
+  private quoteRoster(): OutreachRosterEntry[] {
+    const byCat = new Map<string, Set<string>>();
+    for (const l of this.rows()) {
+      if (l.status !== 'to_send' || !l.categoryId || !l.supplierId) continue;
+      const set = byCat.get(l.categoryId) ?? new Set<string>();
+      set.add(l.supplierId);
+      byCat.set(l.categoryId, set);
+    }
+    return [...byCat].map(([categoryId, s]) => ({ categoryId, supplierIds: [...s] }));
   }
 }

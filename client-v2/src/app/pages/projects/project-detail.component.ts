@@ -212,7 +212,7 @@ interface DetailForm {
           }
           @case ('final') {
             <div class="min-h-0 flex-1 overflow-y-auto">
-              <app-project-estimate [projectId]="p.id" [project]="p" view="final" (addItems)="addItems()" (addSuppliers)="goToMarketplace()" />
+              <app-project-estimate [projectId]="p.id" [project]="p" view="final" />
             </div>
           }
           @case ('inbox') {

@@ -88,6 +88,26 @@ sets `previewHidden` → the card is suppressed for **all** selections (shows a
 compact "Show preview" eye button instead) until the eye is clicked again.
 Rail is `lg:` only (desktop). Selected row gets a `bg-fill` highlight.
 
+## Iteration — Message Suppliers + per-category custom add (chip v2.39e)
+Final view:
+- Footer is now a single **Message Suppliers** button (gradient) + subtext
+  *"Spend a Ball, firm up cost and let's get this show on the road"*. Removed
+  **Add Suppliers**.
+- Click → confirm dialog (ConfirmService): *"Ready to message suppliers? We'll
+  send your project brief, selected line items, quantities, dates and
+  requirements to every supplier on this quote. This will spend 1 Ball."* On
+  confirm → builds an outreach roster from the **to-send** lines (category →
+  distinct catalogue-owner suppliers) and POSTs the existing
+  `/api/inbox/send`; items flip to out_for_quote → reload.
+- **Add Your Own Line Item** moved out of the footer into a **dashed card
+  button at the bottom of each category's items** (expanded, Final only).
+  Custom lines now carry a `categoryId` and render inside their category; the
+  modal seeds its Category from the one clicked.
+
+**Caveats:** the send reuses v1 `sendOutreach` with `skip_balls:true` — the
+"1 Ball" is aspirational, no Ball actually debited yet. sendOutreach still
+briefs the whole category (the double-send seam, already parked).
+
 ## QC notes
 (Liam)
 
