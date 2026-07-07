@@ -275,11 +275,11 @@ export class ProjectMarketplaceComponent {
     }
   }
 
-  /** Rail's "See Final Project Quote" → the Estimate tab, which shows the
-   *  priced breakdown + the "Message suppliers" action (pV2-INBOX-02). */
+  /** Rail's "See Final Project Quote" → the Final Quote tab (matches the CTA
+   *  label; the Message Suppliers action lives there). */
   protected onCheckout(): void {
     this.router
-      .navigate([], { relativeTo: this.route, queryParams: { tab: 'estimate' }, queryParamsHandling: 'merge' })
+      .navigate([], { relativeTo: this.route, queryParams: { tab: 'final' }, queryParamsHandling: 'merge' })
       .catch((err) => console.warn('[ProjectMarketplace] nav failed', err));
   }
 }
