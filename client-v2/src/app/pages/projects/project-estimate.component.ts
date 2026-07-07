@@ -183,10 +183,11 @@ interface CustomLine {
         </div>
       </div>
 
-      <!-- Reading column + right-rail item preview (shown when a line is
-           selected). The column stays max-w-2xl; the rail sits beside it. -->
-      <div class="mx-auto flex max-w-5xl justify-center gap-6">
-      <div class="w-full min-w-0 max-w-2xl">
+      <!-- Reading column stays page-centered; the preview rail floats
+           absolutely — top aligned with the banner, right aligned with the
+           budget tile / content edge (Liam 2026-07-07). -->
+      <div class="relative">
+      <div class="mx-auto max-w-2xl">
 
       <!-- Estimated Ballpark Cost banner (the headline = client total). -->
       <div class="bp-quote-banner mt-5 px-6 py-7 text-center">
@@ -357,20 +358,18 @@ interface CustomLine {
       <!-- Right rail: the selected line's marketplace card. The eye hides it
            for ALL selections until clicked again (Liam 2026-07-07). -->
       @if (selectedLine()) {
-        <aside class="hidden w-80 shrink-0 lg:block">
-          <div class="sticky top-4">
-            @if (previewHidden()) {
-              <button type="button" class="bp-card flex w-full items-center justify-center gap-2 p-3 text-secondary transition-colors hover:text-text"
-                      (click)="previewHidden.set(false)" title="Show item preview">
-                <lucide-icon name="eye" [size]="16" /> Show preview
-              </button>
-            } @else {
-              <div class="bp-card p-4">
-                <app-item-preview [item]="previewItem()!" [categoryName]="selectedLine()!.categoryName"
-                                  closeIcon="eye" closeLabel="Hide preview" (closed)="previewHidden.set(true)" />
-              </div>
-            }
-          </div>
+        <aside class="absolute right-0 top-0 hidden w-80 lg:block">
+          @if (previewHidden()) {
+            <button type="button" class="bp-card flex w-full items-center justify-center gap-2 p-3 text-secondary transition-colors hover:text-text"
+                    (click)="previewHidden.set(false)" title="Show item preview">
+              <lucide-icon name="eye" [size]="16" /> Show preview
+            </button>
+          } @else {
+            <div class="bp-card p-4">
+              <app-item-preview [item]="previewItem()!" [categoryName]="selectedLine()!.categoryName"
+                                closeIcon="eye" closeLabel="Hide preview" (closed)="previewHidden.set(true)" />
+            </div>
+          }
         </aside>
       }
       </div>
