@@ -127,12 +127,23 @@ async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
   // Participation: only the owning agency may fan its own project out.
   if (proj.rows[0].org_id !== agencyOrgId) throw httpErr('Project not found', 404);
 
-  // The quote's item ids grouped by catalogue category.
+  // The quote's item ids grouped by catalogue category — but only items not
+  // already out for quote. Without this, a second send (after adding items)
+  // re-sweeps the whole category and re-briefs an already-sent item to a
+  // different supplier (e.g. Supplier B's Catering brief picking up Supplier
+  // A's already-sent dish). The dialog scopes to "to send"; the server must too.
   const itemsRes = await pool.query(
     `SELECT i.category_id, pi.item_id
        FROM project_items pi
        JOIN items i ON i.id = pi.item_id
-      WHERE pi.project_id = $1 AND pi.deleted_at IS NULL`,
+      WHERE pi.project_id = $1 AND pi.deleted_at IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM message_items mi
+            JOIN messages m ON m.id = mi.message_id
+           WHERE m.project_id = pi.project_id
+             AND m.direction = 'outbound'
+             AND mi.item_id = pi.item_id
+             AND mi.deleted_at IS NULL)`,
     [projectId]
   );
   const itemsByCat = new Map();
