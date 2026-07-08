@@ -28,6 +28,8 @@ const StoreItemCreateSchema = z
     base_price: z.coerce.number().min(0).max(100_000_000).nullable().optional(),
     // pV2-STORE-01 (data model) — the installation cost (separate line).
     install_cost: z.coerce.number().min(0).max(100_000_000).nullable().optional(),
+    // pV2-CART-01 — how install_cost applies (null = per_item).
+    install_unit: z.enum(['per_order', 'per_item', 'percentage']).nullable().optional(),
     // "Included Services" blurb + free-text location coverage.
     install_description: z.string().trim().max(5000).nullable().optional(),
     location_coverage: z.string().trim().max(2000).nullable().optional(),

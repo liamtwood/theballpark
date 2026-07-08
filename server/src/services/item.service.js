@@ -129,7 +129,7 @@ async function create(data) {
     // pV2-STORE-01 (data model) — install_description = "Included Services";
     // location_coverage = free text; currency defaults to the supplier's org
     // currency when not supplied (the COALESCE below).
-    install_description, location_coverage, currency
+    install_description, location_coverage, currency, install_unit
   } = data;
   // Keep image_url in sync with the hero image on the new array, so existing
   // cards / detail surfaces continue to render the same primary image
@@ -144,9 +144,9 @@ async function create(data) {
        image_url, image_display, external_url,
        derived_from_id, parent_item_id, attributes, images,
        approval_status, is_active,
-       install_description, location_coverage, currency)
+       install_description, location_coverage, currency, install_unit)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
-       COALESCE($25, (SELECT default_currency FROM orgs WHERE id = $1)))
+       COALESCE($25, (SELECT default_currency FROM orgs WHERE id = $1)), $26)
      RETURNING *`,
     [org_id, category_id, subcategory_id || null, name, description,
      unit, time_unit || null, base_price, install_cost ?? null,
@@ -155,7 +155,8 @@ async function create(data) {
      derived_from_id || null, parent_item_id || null, attributes || {},
      JSON.stringify(images || []),
      approval_status ?? 'approved', is_active ?? true,
-     install_description ?? null, location_coverage ?? null, currency ?? null]
+     install_description ?? null, location_coverage ?? null, currency ?? null,
+     install_unit ?? null]
   );
   return result.rows[0];
 }
