@@ -1554,3 +1554,65 @@ body {
   background: var(--color-fill);
   color: var(--color-text-muted);
 }
+
+/* ═══ Quote (Cart/Final) shared bits — pV2-CART-01 (audit M1/RP-05:
+   promoted from project-estimate component styles to the one-definition
+   global layer). Consumed by project-estimate rows/badges + the
+   custom-line dialog. ═══ */
+
+/* Per-item send-state badge. */
+.bp-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 9px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  line-height: 1.5;
+}
+.bp-pill--muted { background: var(--color-fill); color: var(--color-text-secondary); }
+.bp-pill--warn { background: var(--color-warn-soft); color: var(--color-warn); }
+.bp-pill--success { background: var(--color-success-soft); color: var(--color-success); }
+.bp-pill--danger { background: var(--color-danger-soft); color: var(--color-danger); }
+
+/* Add-custom / edit modal fields. */
+.bp-input-field {
+  height: 38px;
+  width: 100%;
+  border-radius: var(--radius-field);
+  border: 1px solid var(--color-border-hairline);
+  background: var(--color-fill);
+  padding: 0 12px;
+  font-size: var(--text-md);
+  color: var(--color-text);
+  outline: none;
+}
+.bp-input-field:focus { border-color: var(--theme-accent); }
+select.bp-input-field { appearance: auto; }
+
+/* Custom checkbox — accent tick, no browser-default (blue) fill. */
+.bp-check {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  border: 1.5px solid var(--color-border-hairline);
+  border-radius: 4px;
+  background: var(--color-surface);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+}
+.bp-check::before {
+  content: '';
+  width: 0.6rem;
+  height: 0.6rem;
+  transform: scale(0);
+  transition: transform 0.1s ease;
+  background: var(--theme-accent);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0, 43% 62%);
+}
+.bp-check:checked { border-color: var(--theme-accent); }
+.bp-check:checked::before { transform: scale(1); }
+.bp-check:disabled { cursor: not-allowed; }
