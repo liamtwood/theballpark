@@ -395,7 +395,9 @@ export class ItemEditComponent {
       lead_time_days: f.lead_time_days === '' ? null : Number(f.lead_time_days),
       image_url: this.imageUrl(),
       images: this.images(),
-      approval_status: status,
+      // Approved edits don't set a status — the server keeps it approved and
+      // the schema only accepts draft|pending anyway.
+      ...(status === 'approved' ? {} : { approval_status: status }),
     };
     this.saving.set(true);
     try {
