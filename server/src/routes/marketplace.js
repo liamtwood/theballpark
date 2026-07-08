@@ -216,7 +216,7 @@ router.get('/items', async (req, res, next) => {
     }
     vals.push(PAGE_SIZE, offset);
     const r = await pool.query(
-      `SELECT i.id, i.name, i.description, i.base_price, i.unit, i.image_url,
+      `SELECT i.id, i.name, i.description, i.install_description, i.base_price, i.unit, i.image_url,
               i.category_id, i.subcategory_id, i.approval_status, i.is_active,
               i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
               c.name AS category_name, sc.name AS subcategory_name,
@@ -236,6 +236,7 @@ router.get('/items', async (req, res, next) => {
       id: row.id,
       name: row.name,
       description: row.description,
+      installDescription: row.install_description,
       basePrice: row.base_price === null ? null : Number(row.base_price),
       unit: row.unit,
       coverUrl: row.image_url,

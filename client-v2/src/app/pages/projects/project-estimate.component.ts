@@ -269,6 +269,13 @@ interface CustomLine {
                         @if (l.basePrice != null || l.unit) {
                           <div class="bp-meta mt-0.5">{{ l.basePrice != null ? (l.basePrice | currency: cur() : 'symbol' : '1.0-0') : '' }}@if (l.unit) { / {{ unitPlain(l.unit) }} }</div>
                         }
+                        <!-- Description, then the included services. -->
+                        @if (l.description) {
+                          <div class="bp-caption mt-1 line-clamp-2">{{ l.description }}</div>
+                        }
+                        @if (l.installDescription) {
+                          <div class="bp-caption line-clamp-2 text-secondary"><span class="font-medium">Includes:</span> {{ l.installDescription }}</div>
+                        }
                         <!-- Installed?: assumed on when the line has an install price;
                              greyed + disabled when it doesn't. -->
                         <label class="mt-1.5 flex w-fit items-center gap-2.5" [class.opacity-40]="!hasInstall(l) || !editable(l)"
@@ -512,6 +519,7 @@ export class ProjectEstimateComponent {
       id: l.itemId,
       name: l.name ?? '',
       description: l.description,
+      installDescription: l.installDescription,
       basePrice: l.basePrice,
       unit: l.unit,
       coverUrl: l.imageUrl,

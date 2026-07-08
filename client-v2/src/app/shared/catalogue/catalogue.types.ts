@@ -27,6 +27,8 @@ export interface CatalogueItem {
   id: string;
   name: string;
   description: string | null;
+  /** "Included Services" — what the install covers (install_description). */
+  installDescription: string | null;
   basePrice: number | null;
   unit: string | null;
   coverUrl: string | null;

@@ -49,6 +49,12 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
               <span class="min-w-0">
                 <span class="block truncate text-md font-medium text-text">{{ item.name }}</span>
                 <span class="bp-caption block truncate">{{ item.supplierName }}</span>
+                @if (item.description) {
+                  <span class="bp-caption mt-0.5 line-clamp-2">{{ item.description }}</span>
+                }
+                @if (item.installDescription) {
+                  <span class="bp-caption line-clamp-2 text-secondary"><span class="font-medium">Includes:</span> {{ item.installDescription }}</span>
+                }
               </span>
               <span class="text-md font-medium text-text">
                 {{ item.basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}
@@ -68,11 +74,19 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
           @for (item of items(); track item.id) {
             <button
               type="button"
-              class="grid w-full cursor-pointer grid-cols-[1.6fr_1fr_90px_110px] gap-x-4 border-b border-hairline px-4 py-2 text-left last:border-b-0 hover:bg-fill"
+              class="grid w-full cursor-pointer grid-cols-[1.6fr_1fr_90px_110px] items-start gap-x-4 border-b border-hairline px-4 py-2 text-left last:border-b-0 hover:bg-fill"
               [class.bg-fill]="item.id === selectedId()"
               (click)="entitySelected.emit(item.id)"
             >
-              <span class="truncate text-base text-text">{{ item.name }}</span>
+              <span class="min-w-0">
+                <span class="block truncate text-base text-text">{{ item.name }}</span>
+                @if (item.description) {
+                  <span class="bp-caption line-clamp-2">{{ item.description }}</span>
+                }
+                @if (item.installDescription) {
+                  <span class="bp-caption line-clamp-2 text-secondary"><span class="font-medium">Includes:</span> {{ item.installDescription }}</span>
+                }
+              </span>
               <span class="bp-body-small truncate text-secondary">{{ item.supplierName }}</span>
               <span class="bp-body-small text-secondary">{{ item.unit ?? '—' }}</span>
               <span class="text-right text-base text-text">
