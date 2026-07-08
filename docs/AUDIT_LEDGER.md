@@ -22,6 +22,30 @@ by Claude Code; `both` = audited and re-verified.
 
 ---
 
+## INBOX + CART-01 arc audit (2026-07-08, `cc` + `chat`)
+
+Full report: `docs/audits/2026-07-08-inbox-cart-arc-architect-audit.md`.
+Audited at `v2.41g`; **all H/M/L + RP findings remediated same session** in
+four commits. Verdict: healthy + idiomatic; no correctness/security risk.
+
+| File | Before | After (SHA) | Status | Notes |
+|---|---|---|---|---|
+| `client-v2/.../projects/project-estimate.component.ts` | 805 | **444** (`8ac0a6cb`) | ✓ clean | M1 — 5 children + `quote-line.util`; `.bp-*` → global (RP-05) |
+| `client-v2/.../inbox/inbox-project.component.ts` | 600 | **360** (`64e8153a`) | ✓ clean | M2/M5 — `app-inbox-rail` + `inbox-status`; `.bp-*` → global |
+| `client-v2/.../store/item-edit.component.ts` | 438 | **398** (`5072e519`) | ✓ clean | M3 — `app-item-edit-actions` |
+| `client-v2/.../projects/project-detail.component.ts` | — | (`23586099`) | ✓ clean | H1/H2 — dead send path + `ProjectOutreachStore` retired |
+
+New extracted units (all under caps): `project-summary-tiles`,
+`estimate-breakdown`, `estimate-preview-rail`, `estimate-item-row`,
+`custom-line-dialog`, `quote-line.util`, `inbox-rail`, `inbox-status`,
+`item-edit-actions`. Deleted: `project-outreach.store.ts`.
+
+Open (product backlog, not audit debt): custom-line persistence (needs a
+`project_items` column); Message-Suppliers Ball debit (`skip_balls`); the
+"only «Supplier» offers «Item X»" leftover flag.
+
+---
+
 ## Diagnostic learnings — read before every audit
 
 Patterns where chat's initial hypothesis turned out wrong; root cause was
@@ -51,6 +75,27 @@ out any pattern it disproves.
 | RP-09 | v1-inherited codelist meta carries LITERAL hex colors (`#22c55e`-style) instead of token refs — a deliberate transition state (the metaColor fn passes hex through; net-new lists seed token refs like `--color-info`). If CODELISTS-02 forgets the sweep, status pills on v1-era lists bypass the token system permanently. | codelists-seed.js comment + chat audit pass (2026-06-12, pV2-CODELISTS-01) | **CLOSED** v2.19a (pV2-CODELISTS-02): 13 hex rows migrated to `--color-state-*` refs (idempotent HEX_TO_TOKEN sweep + token-native seed INSERTs + a seed-time warn if any hex survives). Tokens defined in BOTH apps' styles.css with the original v1 hex — zero visual change; v1's 4 raw consumers wrapped with `resolveMetaColor()` (v1.70b). Verified live: the SQL check returns 0 rows. | `SELECT list_name, code, meta->>'color' FROM shared.reference_codelist_values WHERE meta->>'color' LIKE '#%'` — 0 rows (re-check whenever a list is seeded). |
 
 | RP-06 | Engine features wired in the STORE but not mounted on every consumer surface — marketplace gets the UI, supplier-detail (same store, same data) silently lacks it. Three instances in one arc: view-toggle (v2.15a), layout shell (v2.15b), subcat strip (v2.16a). | subcat strip missing on supplier Store tab (Liam QC + chat audit 2026-06-12) | **CLOSED BY EXTRACTION** v2.16b — `<app-subcategory-strip>` shared primitive mounted on both surfaces (joins view-toggle + catalogue-layout). Standing rule: any store-fed UI feature ships as a shared/catalogue primitive and is mounted on EVERY page that provides MarketplaceStore, same commit. | When adding any marketplace UI feature: grep `providers: [MarketplaceStore]` and verify each provider page mounts it. |
+| RP-10 | Back-link drops sticky context — leaf page's Back uses a fixed `href` (e.g. `/marketplace`, `/projects`) instead of browser history, OR uses a contextual label (`Marketplace`, `Project`) instead of `Back`. Returning user lands at a generic surface with category/filter/scroll state lost. Both shapes are the same bug class — the entry path is the source of truth, not the developer's guess at where the user "should" return. | Supplier-detail `/suppliers/:id` Back wired as fixed `href: '/marketplace'` — dropped project + Catering filter context when entered from project fan-out (Liam QC 2026-06-24, pV2-INBOX-01 producer slice 1). | OPEN — first occurrence. | Per DESIGN.md §7 Back-link convention (LOCKED 2026-06-24): every `<app-page-hero [back]>` renders the literal label `Back` and navigates via `Location.back()` with `href` as direct-load fallback only. Audit grep: `[back]=\{.*label:` (any `label:` on `[back]` is a violation); `[back]=\{.*href:.*\}` without a corresponding history-back path in the component (verify `<app-page-hero>` is the only owner of the click handler — consumers must not bypass with their own `<a routerLink>`). |
+| RP-04 | Hardcoded status-label / enum-option arrays in components instead of codelist lookup. Second sighting confirms this is a pattern, not a one-off. Every re-audit finds new instances as arcs ship. | Third occurrence pass 2026-06-29: `inbox-project.component.ts:568,572` (`TERMINAL_STATUSES` + `STATUS_VIEW`); `project-estimate.component.ts:41-46` (`STATUS_LABELS` for `to_send`/`out_for_quote`/`quoted`/`booked`/`declined`); `item-edit.component.ts:295-299` (`installUnitOptions`). | OPEN — pattern reconfirmed. | Grep app-wide: `Record<.*, string>\s*=\s*\{` inside .ts components as the shape signature; every hit that mirrors a stored enum should be codelist-driven. Fixed sets that are truly closed (three-value install_unit) can be documented as intentional-inline in the row; sets that carry customer-facing labels or grow over time (status codes, unit codes) must migrate. |
+
+### 2026-06-29 audit pass — INBOX + CART-01 + FINAL + STORE v2.41 arcs (auditor: chat)
+
+Auditor grounded in the four arcs shipped since the 2026-06-24 STORE-01 architect audit. Findings recorded per-arc; 1-pagers (INBOX.md, STORE.md, PROJECTS.md, ITEMS.md) updated same day to close the doc-lag. Overall: **security + correctness solid; documentation drift and behemoth alarms are the recurring themes.**
+
+| Arc | Ships | Verdict | Behemoth | RP hits | Docs updated |
+|---|---|---|---|---|---|
+| **INBOX** (INBOX-01/02/03/04) | v2.34v–v2.36f | Ship-quality — RP-INB1 (participant-scoping), decision #15 (decisions-as-messages format) both implemented correctly. Locked decision #4 drifted supplier-only → per-category during INBOX-04; INBOX.md rewritten to match reality (2026-06-29). Chip handler writes chat bubble + `message_item_decisions` row in one txn. | ALARM — `inbox-project.component.ts` 600 lines. Split thread pane / action-chip bar / compose on next touch. | RP-04 (TERMINAL_STATUSES + STATUS_VIEW), RP-05 (9 component-local `.bp-*` classes) | INBOX.md §Locked decisions #4 rewritten + risk-patterns section extended with RP-04 / RP-05 / behemoth notes |
+| **CART-01** (Cart/Final split, install fields, supplier bands) | v2.38–v2.41g | Ship-quality — unified `<app-project-estimate>` driven by `view` input avoids RP-06. Server + UI read-only-after-sent guards both present. Cart/Final split predicate is `status === 'to_send'`. Custom lines in-session only (flagged intentional). | ALARM — `project-estimate.component.ts` 806 lines. Extract custom-line modal on next touch. | RP-04 (`STATUS_LABELS` in-file) | PROJECTS.md §Layout rewritten — 5 tabs, Cart/Final subsections, install choice + basis, read-only-after-sent, Message Suppliers dialog |
+| **FINAL-01 + single-source cascade** | v2.36i, v2.37 | Ship-quality — math single-source (`server/src/services/estimate.js`); both card + estimate consume same compute path; client renders pre-computed `EstimateBreakdown`, no re-math. `LINE_TOTAL_SQL` centralises install-basis formula. | (project-estimate.component.ts covered above) | — | PROJECTS.md §Final Quote tab + §Install choice & install basis + §Single-source Ballpark cascade sections added |
+| **STORE v2.41a** (approved editability + install_unit) | v2.41a (schema in v2.34p) | Ship-quality — approved items become editable (fields only; photos lock) — material UX reversal from prior spec. Five new fields (`unit`, `install_cost`/renamed, `install_unit`, `install_description`, `location_coverage`, `currency`) all in schema + form + service. | — | RP-04 (`installUnitOptions` fixed set; acceptable inline per §RP-04 row notes) | STORE.md Fields table rewritten + decision #11 added (approved editability reversal); ITEMS.md `install_unit` row added + Unit "not editable" audit gap flipped to RESOLVED |
+
+**Cross-arc themes:**
+
+- **RP-04 pattern reconfirmed** — three new inline enum-shaped arrays across three ships. Standing rule updated: `Record<.*, string> = {` inside components is the grep signature. The `install_unit` fixed set is acceptable (documented intent); status-label arrays are not (customer-facing, growable) and should migrate.
+- **Behemoth alarms in the two arcs with the most UX iteration** — INBOX (600) + Cart/Final (806). Both natural candidates for child-component extraction on next touch. Neither blocks ship but both go on the next-touch shortlist.
+- **No RP-INB1, RP-INB2, RP-INB6 hits.** Message ownership scoping consistently derives org from JWT; no client-supplied org filters trusted. Attachment path deferred (out of scope this arc).
+- **No RP-06 hits.** CART-01's biggest RP-06 risk (Cart-vs-Final drift) was pre-empted by the one-component-two-views design; INBOX's supplier-vs-agent variant is also one component with role-conditional rendering.
+- **Doc drift is the biggest single finding.** All four arcs had material undocumented behaviour in their 1-pagers before this pass. Landing 1-pager updates in the same PR as the ship (or immediately after) would close this gap; the current post-hoc audit sweep is expensive.
 
 Each future audit pass reads this section first and verifies every open
 row's check against the current ship's surface area.
