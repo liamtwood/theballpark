@@ -476,6 +476,13 @@ const migrate = async () => {
       ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS location_coverage   TEXT;
       ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS location_coverage   TEXT;
 
+      -- pV2-CART-01: how install_cost applies. NULL = per_item (× qty; the
+      -- prior behaviour), 'per_order' = one-off flat, 'percentage' = % of the
+      -- line's base total. Lets the supplier control the install basis.
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS install_unit VARCHAR(20);
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS install_unit VARCHAR(20);
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS install_unit VARCHAR(20);
+
       -- v1.29: projects.currency — ISO-4217 code (drives Event drawer
       -- Currency dropdown via shared.codelists list_name='currency').
       ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';

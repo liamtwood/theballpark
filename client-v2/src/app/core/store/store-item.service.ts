@@ -17,6 +17,8 @@ export interface StoreItem {
   install_cost: number | string | null;
   /** "Included Services" — what the install covers. */
   install_description: string | null;
+  /** How install_cost applies: per_order | per_item | percentage (null = per_item). */
+  install_unit: string | null;
   /** Free-text location coverage. */
   location_coverage: string | null;
   /** ISO-4217 — defaults to the supplier's org currency. */
@@ -45,6 +47,7 @@ export interface StoreItemWrite {
   /** The installation cost (separate line from base_price). */
   install_cost?: number | null;
   install_description?: string | null;
+  install_unit?: string | null;
   location_coverage?: string | null;
   /** ISO-4217 — server defaults to the supplier's org currency if omitted. */
   currency?: string | null;

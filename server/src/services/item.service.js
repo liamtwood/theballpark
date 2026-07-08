@@ -173,7 +173,7 @@ const UPDATABLE_COLS = [
   'derived_from_id', 'parent_item_id', 'attributes', 'images',
   // pV2-STORE-01 (data model) — install cost / included services / coverage /
   // currency.
-  'install_description', 'location_coverage', 'currency',
+  'install_description', 'location_coverage', 'currency', 'install_unit',
   // v1.68b — is_active is the publish/hide toggle (distinct from the
   // deleted_at soft-delete). The supplier store's eye/eye-off action
   // PUTs { is_active } through update() to hide/show an item.

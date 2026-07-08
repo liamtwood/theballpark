@@ -43,6 +43,8 @@ export interface QuoteLine {
    *  Install / Deliverable toggle. */
   installCost: number | null;
   installDescription: string | null;
+  /** How installCost applies: per_order | per_item | percentage (null = per_item). */
+  installUnit: string | null;
   /** Persisted Install choice: null = default (on when there's an install
    *  cost), true/false = explicit. */
   installed: boolean | null;

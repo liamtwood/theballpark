@@ -25,6 +25,7 @@ interface ItemForm {
   unit: string;                // item_unit code (per head / day / each…)
   base_price: string;          // "Ballpark cost"
   install_cost: string;        // installation cost (separate line)
+  install_unit: string;        // how install_cost applies (per_item/order/percentage)
   install_description: string; // "Included Services"
   location_coverage: string;   // free text
   lead_time_days: string;
@@ -104,6 +105,8 @@ interface ItemForm {
               <app-edit-field [label]="'Ballpark Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
 
               <app-edit-field [label]="'Install Cost (Optional)' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().install_cost" (valueChange)="patch({ install_cost: $event })" />
+
+              <app-edit-field label="Install Cost Applies" type="select" density="page" [options]="installUnitOptions" [editing]="editing()" [value]="form().install_unit" (valueChange)="patch({ install_unit: $event })" />
 
               <app-edit-field label="Lead Time (days)" type="number" density="page" [editing]="editing()" [value]="form().lead_time_days" (valueChange)="patch({ lead_time_days: $event })" />
 
@@ -214,7 +217,7 @@ export class ItemEditComponent {
   protected readonly deciding = signal(false);
 
   protected readonly form = signal<ItemForm>({
-    name: '', category_id: '', unit: '', base_price: '', install_cost: '',
+    name: '', category_id: '', unit: '', base_price: '', install_cost: '', install_unit: '',
     install_description: '', location_coverage: '', lead_time_days: '', description: '',
   });
   protected readonly imageUrl = signal<string | null>(null);
@@ -279,6 +282,13 @@ export class ItemEditComponent {
     () => (this.unitsRes.value() ?? []).map((u) => ({ label: u.label, value: u.code }))
   );
 
+  /** How the install cost is applied (fixed set — not a codelist). */
+  protected readonly installUnitOptions: EditFieldOption[] = [
+    { label: 'Per item (× quantity)', value: 'per_item' },
+    { label: 'Per order (one-off)', value: 'per_order' },
+    { label: 'Percentage of cost', value: 'percentage' },
+  ];
+
   protected readonly itemRes = resource({
     params: () => this.itemId ?? undefined,
     loader: async ({ params }) => {
@@ -302,6 +312,7 @@ export class ItemEditComponent {
         unit: item.unit ?? '',
         base_price: base != null ? String(base) : '',
         install_cost: install != null ? String(install) : '',
+        install_unit: item.install_unit ?? '',
         install_description: item.install_description ?? '',
         location_coverage: item.location_coverage ?? '',
         lead_time_days: item.lead_time_days != null ? String(item.lead_time_days) : '',
@@ -363,6 +374,7 @@ export class ItemEditComponent {
       description: f.description.trim() || null,
       base_price: f.base_price === '' ? null : Number(f.base_price),
       install_cost: f.install_cost === '' ? null : Number(f.install_cost),
+      install_unit: f.install_unit || null,
       install_description: f.install_description.trim() || null,
       location_coverage: f.location_coverage.trim() || null,
       lead_time_days: f.lead_time_days === '' ? null : Number(f.lead_time_days),

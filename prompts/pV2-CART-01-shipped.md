@@ -136,6 +136,18 @@ flag isn't built yet (all category items just go to the primary). Still on
 skip_balls (no Ball debited). Meg/Beth to settle the 1-vs-many principle +
 whether base is priced ex-works (delivery/pickup thread, parked).
 
+## Iteration — install unit (per order / item / %) (chip v2.41)
+Suppliers now control how install_cost applies. New nullable
+`items.install_unit`:
+- **per_item** (or NULL) — install_cost × qty (prior behaviour)
+- **per_order** — install_cost once, flat
+- **percentage** — install_cost% of the line's base total
+Wired everywhere: one `LINE_TOTAL_SQL` fragment drives the card subtotal +
+getEstimate (server); client `lineCost` mirrors it; quote line carries
+`installUnit`; item edit page gets an "Install Cost Applies" select. Verified
+all three bases (+£300k / +£6k / +£126k on the £2,100 test line). Item still
+installed-or-not (boolean) per [[#4]] — this only changes the *basis* of the cost.
+
 ## QC notes
 (Liam)
 

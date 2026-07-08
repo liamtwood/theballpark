@@ -637,8 +637,16 @@ export class ProjectEstimateComponent {
   }
 
   protected lineCost(l: QuoteLine): number {
-    const inst = this.isInstalled(l) ? (l.installCost ?? 0) : 0;
-    return ((l.basePrice ?? 0) + inst) * (l.quantity ?? 1);
+    const qty = l.quantity ?? 1;
+    const base = (l.basePrice ?? 0) * qty;
+    if (!this.isInstalled(l) || l.installCost == null) return base;
+    const ic = l.installCost;
+    // Install basis mirrors the server (services LINE_TOTAL_SQL).
+    switch (l.installUnit) {
+      case 'per_order': return base + ic;
+      case 'percentage': return base + base * (ic / 100);
+      default: return base + ic * qty; // per_item (null)
+    }
   }
   /** Quote rows are read-only once the item is out for quote — edits happen
    *  in the inbox thread (Liam 2026-07-08). */

@@ -45,6 +45,19 @@ async function resolveStatus(code) {
  *  excludes soft-deleted. Suppliers count = distinct supplier orgs across
  *  the project's quote items (correlated subquery — fine for an org's
  *  project count). */
+// Per-line total honouring the install basis (pV2-CART-01). Aliases: pi
+// (project_items) + i (items). base × qty, plus install when installed —
+// per_order = flat once, percentage = % of the base line, else (NULL) per_item
+// (× qty). Reused by the card subtotal + getEstimate so they can't drift.
+const LINE_TOTAL_SQL = `
+  COALESCE(pi.base_price, 0) * pi.quantity
+  + CASE
+      WHEN NOT COALESCE(pi.installed, true) OR i.install_cost IS NULL THEN 0
+      WHEN i.install_unit = 'per_order'  THEN i.install_cost
+      WHEN i.install_unit = 'percentage' THEN COALESCE(pi.base_price, 0) * pi.quantity * (i.install_cost / 100.0)
+      ELSE i.install_cost * pi.quantity
+    END`;
+
 const LIST_SELECT = `
   SELECT p.id, p.name, p.event_name, p.ref, p.status,
          p.cover_image_url, p.client_logo_url,
@@ -62,8 +75,7 @@ const LIST_SELECT = `
          -- item has one (the Estimate tab lets the agent opt a line out; the
          -- card shows the default all-installed Ballpark). Run through the
          -- cascade below → matches getEstimate + the Estimate tab.
-         (SELECT COALESCE(SUM(pi.quantity * (COALESCE(pi.base_price, 0)
-                   + CASE WHEN COALESCE(pi.installed, true) THEN COALESCE(i.install_cost, 0) ELSE 0 END)), 0)
+         (SELECT COALESCE(SUM(${LINE_TOTAL_SQL}), 0)
             FROM project_items pi
             LEFT JOIN items i ON i.id = pi.item_id
            WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS quote_subtotal
@@ -334,6 +346,7 @@ function toQuoteLine(row) {
     // Quote's Install / Deliverable toggle (pV2-FINAL-01).
     installCost: row.install_cost == null ? null : Number(row.install_cost),
     installDescription: row.install_description ?? null,
+    installUnit: row.install_unit ?? null, // per_order | per_item | percentage (null = per_item)
     // Persisted Install choice: null = default (on when there's an install
     // cost), true/false = explicit (pV2-CART-01).
     installed: row.installed ?? null,
@@ -366,7 +379,7 @@ const QUOTE_LINE_JOIN = `
          pi.installed,
          pi.category_id, c.name AS category_name,
          c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url,
-         i.install_cost, i.install_description,
+         i.install_cost, i.install_description, i.install_unit,
          -- Supplier = the item's catalogue owner (marketplace source), so the
          -- cart cat card can say "N items from <supplier>" pre-outreach.
          i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
@@ -427,12 +440,7 @@ async function getEstimate(orgId, projectId, scope = 'all') {
   const cartOnly = scope === 'cart';
   const r = await pool.query(
     `SELECT p.default_contingency_pct, p.default_margin_pct, p.default_vat_pct,
-            (SELECT COALESCE(SUM(pi.quantity * (
-                       COALESCE(pi.base_price, 0)
-                       -- Install added unless explicitly opted out (persisted
-                       -- pi.installed; NULL = default on).
-                       + CASE WHEN COALESCE(pi.installed, true) THEN COALESCE(i.install_cost, 0) ELSE 0 END
-                     )), 0)
+            (SELECT COALESCE(SUM(${LINE_TOTAL_SQL}), 0)
                FROM project_items pi
                LEFT JOIN items i ON i.id = pi.item_id
               WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
