@@ -39,7 +39,7 @@ import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThrea
           <!-- Left rail: project context card + their items. -->
           <div class="hidden min-h-0 xl:flex xl:flex-col xl:gap-3 xl:overflow-y-auto">
             @if (project(); as p) {
-              <div class="bp-card p-4">
+              <div class="bp-card shrink-0 p-4">
                 <h3 class="bp-list-title leading-snug">{{ p.clientName ? p.clientName + ' — ' : '' }}{{ p.name }}</h3>
                 <div class="mt-2.5 flex items-center gap-1.5 text-secondary">
                   <lucide-icon name="calendar" [size]="14" [strokeWidth]="1.75" />
@@ -57,7 +57,7 @@ import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThrea
                  The card stays active (breadcrumb) while a child item is
                  selected — click it to unfilter. -->
             @for (g of railGroups(); track g.id) {
-              <div class="bp-card overflow-hidden" [class.bp-item--selected]="g.threadId === selectedThreadId()">
+              <div class="bp-card shrink-0 overflow-hidden" [class.bp-item--selected]="g.threadId === selectedThreadId()">
                 <button
                   type="button"
                   class="block w-full px-3 pt-2.5 pb-1 text-left"
@@ -75,7 +75,7 @@ import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThrea
                 </button>
               </div>
               @if (isExpanded(g.id)) {
-                <div class="mb-1 flex flex-col gap-0.5 pl-2">
+                <div class="mb-1 flex shrink-0 flex-col gap-0.5 pl-2">
                   @for (it of g.items; track it.id) {
                     <button
                       type="button"
