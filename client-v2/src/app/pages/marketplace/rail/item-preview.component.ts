@@ -84,6 +84,13 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
         {{ item().description }}
       </p>
     }
+
+    @if (item().installDescription) {
+      <div class="mt-3 border-t border-hairline pt-3">
+        <span class="bp-field-label">Includes</span>
+        <p class="bp-body-small mt-1 whitespace-pre-line text-secondary">{{ item().installDescription }}</p>
+      </div>
+    }
   `,
 })
 export class ItemPreviewComponent {
