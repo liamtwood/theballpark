@@ -8,6 +8,8 @@ import { AuthService } from '../../core/auth/auth.service';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
+import { TERMINAL_STATUSES, gbp } from './inbox-status';
+import { InboxRailComponent } from './inbox-rail.component';
 
 /** pV2-INBOX-01/03 — the per-project conversation surface, viewer-aware.
  *  Supplier (standalone /inbox/:projectId): the left rail is THEIR items
@@ -20,7 +22,7 @@ import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThrea
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, LucideAngularModule, PageHeroComponent],
+  imports: [CurrencyPipe, DatePipe, LucideAngularModule, PageHeroComponent, InboxRailComponent],
   host: { '[class]': 'hostClass()' },
   template: `
     @if (!embedded()) {
@@ -36,61 +38,15 @@ import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThrea
         <p class="bp-body-small text-secondary">No quote requests in this project yet.</p>
       } @else {
         <div class="grid min-h-0 flex-1 grid-cols-1 gap-6 xl:grid-cols-[300px_1fr]">
-          <!-- Left rail: project context card + their items. -->
-          <div class="hidden min-h-0 xl:flex xl:flex-col xl:gap-3 xl:overflow-y-auto">
-            @if (project(); as p) {
-              <div class="bp-card shrink-0 p-4">
-                <h3 class="bp-list-title leading-snug">{{ p.clientName ? p.clientName + ' — ' : '' }}{{ p.name }}</h3>
-                <div class="mt-2.5 flex items-center gap-1.5 text-secondary">
-                  <lucide-icon name="calendar" [size]="14" [strokeWidth]="1.75" />
-                  <span class="bp-body-small">{{ p.eventDate || 'Date TBC' }}</span>
-                </div>
-                <div class="mt-1.5 flex items-center gap-1.5 text-secondary">
-                  <lucide-icon name="map-pin" [size]="14" [strokeWidth]="1.75" />
-                  <span class="bp-body-small">{{ p.location || '—' }}</span>
-                </div>
-                <div class="mt-2 bp-meta">{{ p.agencyName }}</div>
-              </div>
-            }
-            <!-- One card per thread: top row selects the whole conversation
-                 (clears any item filter); "N Items" expands to the items.
-                 The card stays active (breadcrumb) while a child item is
-                 selected — click it to unfilter. -->
-            @for (g of railGroups(); track g.id) {
-              <div class="bp-card shrink-0 overflow-hidden" [class.bp-item--selected]="g.threadId === selectedThreadId()">
-                <button
-                  type="button"
-                  class="block w-full px-3 pt-2.5 pb-1 text-left"
-                  (click)="selectThread(g.threadId)"
-                >
-                  <span class="bp-list-title block truncate">{{ g.label }}</span>
-                </button>
-                <button
-                  type="button"
-                  class="flex w-full items-center justify-between px-3 pb-2.5 text-left text-muted hover:text-text"
-                  (click)="toggle(g.id)"
-                >
-                  <span class="bp-meta">{{ g.items.length }} item{{ g.items.length === 1 ? '' : 's' }}</span>
-                  <lucide-icon [name]="isExpanded(g.id) ? 'chevron-down' : 'chevron-right'" [size]="14" />
-                </button>
-              </div>
-              @if (isExpanded(g.id)) {
-                <div class="mb-1 flex shrink-0 flex-col gap-0.5 pl-2">
-                  @for (it of g.items; track it.id) {
-                    <button
-                      type="button"
-                      class="flex w-full flex-col items-start gap-1.5 rounded-lg px-3 py-2.5 text-left hover:bg-fill"
-                      [class.bp-item--selected]="it.id === selectedId()"
-                      (click)="selectItem(it.id)"
-                    >
-                      <span class="bp-list-title w-full truncate">{{ it.name }}</span>
-                      <span [class]="'bp-spill bp-spill--' + pill(it).tone">{{ pill(it).label }}</span>
-                    </button>
-                  }
-                </div>
-              }
-            }
-          </div>
+          <!-- Left rail: project context card + thread cards + their items. -->
+          <app-inbox-rail
+            [project]="project()"
+            [groups]="railGroups()"
+            [selectedThreadId]="selectedThreadId()"
+            [selectedId]="selectedId()"
+            [isAgency]="isAgency()"
+            (selectThread)="selectThread($event)"
+            (selectItem)="selectItem($event)" />
 
           <!-- Right pane: the selected item's category conversation. -->
           @if (selectedThread(); as t) {
@@ -205,139 +161,6 @@ import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThrea
       }
     </div>
   `,
-  styles: [
-    `
-      /* Selected item card — soft brand-gradient tint (not the full
-         intensity). */
-      .bp-item--selected {
-        background: var(--bp-gradient-soft);
-      }
-      /* Per-item action buttons — soft colour fills, all forced to one
-         (Request-Information) width so the three line up. */
-      .bp-act {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        min-width: 12rem;
-        white-space: nowrap;
-        padding: 8px 14px;
-        border-radius: var(--radius-pill);
-        font-size: var(--text-sm);
-        font-weight: 500;
-        border: 1px solid transparent;
-        cursor: pointer;
-        transition: box-shadow 0.15s, background 0.15s;
-      }
-      .bp-act:hover:not(:disabled) {
-        box-shadow: var(--shadow-xs);
-      }
-      .bp-act:disabled {
-        opacity: 0.55;
-        cursor: default;
-      }
-      .bp-act--green {
-        background: var(--color-success-soft);
-        color: var(--color-success);
-      }
-      .bp-act--yellow {
-        background: var(--color-warn-soft);
-        color: var(--color-warn);
-      }
-      .bp-act--gray {
-        background: var(--color-fill);
-        color: var(--color-text-secondary);
-      }
-      /* White agency bubble — reads as a card on the parchment ground. */
-      .bp-bubble {
-        max-width: 78%;
-        border-radius: 14px;
-        padding: 8px 12px;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border-hairline);
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-      .bp-bubble--mine {
-        background: var(--bp-gradient);
-        border: none;
-        color: var(--bp-text-on-gradient);
-      }
-      .bp-bubble__author {
-        font-size: 11px;
-        font-weight: 600;
-        opacity: 0.85;
-      }
-      .bp-bubble__body {
-        font-size: 14px;
-        line-height: 1.5;
-        white-space: pre-line;
-      }
-      /* Broadcast shown inside a filtered item view — faded, with a tag. */
-      .bp-bubble--general {
-        opacity: 0.62;
-      }
-      .bp-bubble__general {
-        margin-left: 6px;
-        padding: 0 6px;
-        border-radius: var(--radius-pill);
-        background: var(--color-fill);
-        color: var(--color-text-secondary);
-        font-size: 9px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: var(--tracking-wide);
-      }
-      /* Gradient Send button. */
-      .bp-send-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        height: 42px;
-        padding: 0 18px;
-        border-radius: var(--radius-pill);
-        border: none;
-        background: var(--bp-gradient);
-        color: var(--bp-text-on-gradient);
-        font-size: var(--text-sm);
-        font-weight: 600;
-        cursor: pointer;
-      }
-      .bp-send-btn:disabled {
-        opacity: 0.5;
-        cursor: default;
-      }
-      /* Per-item status pill — supplier perspective, soft colour tones. */
-      .bp-spill {
-        display: inline-flex;
-        align-items: center;
-        padding: 2px 9px;
-        border-radius: var(--radius-pill);
-        font-size: var(--text-2xs);
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: var(--tracking-wide);
-        white-space: nowrap;
-      }
-      .bp-spill--green {
-        background: var(--color-success-soft);
-        color: var(--color-success);
-      }
-      .bp-spill--yellow {
-        background: var(--color-warn-soft);
-        color: var(--color-warn);
-      }
-      .bp-spill--gray {
-        background: var(--color-fill);
-        color: var(--color-text-secondary);
-      }
-      .bp-spill--red {
-        background: var(--color-danger-soft);
-        color: var(--color-danger);
-      }
-    `,
-  ],
 })
 export class InboxProjectComponent {
   private readonly inbox = inject(InboxService);
@@ -533,68 +356,5 @@ export class InboxProjectComponent {
     }
   }
 
-  /** Status pill — viewer-perspective label + soft tone. `accepted` is
-   *  resolved from the per-side decisions (YOU / THEY / BOTH accepted);
-   *  every other status reads from the viewer's label map. */
-  protected pill(it: InboxThreadItem): { label: string; tone: 'green' | 'yellow' | 'gray' | 'red' } {
-    if (it.status === 'accepted') {
-      const mine = this.isAgency() ? it.buyerAccepted : it.sellerAccepted;
-      const theirs = this.isAgency() ? it.sellerAccepted : it.buyerAccepted;
-      if (mine && theirs) return { label: 'Both accepted', tone: 'green' };
-      if (mine) return { label: 'You accepted', tone: 'green' };
-      if (theirs) return { label: 'They accepted', tone: 'green' };
-      return { label: 'Accepted', tone: 'green' };
-    }
-    const map = this.isAgency() ? STATUS_VIEW_AGENCY : STATUS_VIEW;
-    return map[it.status] ?? { label: it.status, tone: 'gray' };
-  }
-
-  // Tree expansion — collapsed-by-id (default expanded so items show).
-  private readonly collapsed = signal<ReadonlySet<string>>(new Set());
-  protected isExpanded(id: string): boolean {
-    return !this.collapsed().has(id);
-  }
-  protected toggle(id: string): void {
-    this.collapsed.update((s) => {
-      const next = new Set(s);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
 }
 
-/** Terminal item statuses — no further supplier action. */
-const TERMINAL_STATUSES = new Set(['declined_by_supplier', 'declined_by_agent', 'booked']);
-
-/** message_item_status → the supplier-perspective pill (label + tone). The
- *  pill text-transforms to uppercase, so "You accepted" → "YOU ACCEPTED". */
-const STATUS_VIEW: Record<string, { label: string; tone: 'green' | 'yellow' | 'gray' | 'red' }> = {
-  brief_sent: { label: 'Quote requested', tone: 'gray' },
-  holding: { label: 'On hold', tone: 'gray' },
-  quoted: { label: 'Quoted', tone: 'gray' },
-  adjusted_by_supplier: { label: 'New cost suggested', tone: 'yellow' },
-  adjusted_by_agent: { label: 'Agency revised', tone: 'yellow' },
-  accepted: { label: 'You accepted', tone: 'green' },
-  booked: { label: 'Booked', tone: 'green' },
-  declined_by_supplier: { label: 'You declined', tone: 'red' },
-  declined_by_agent: { label: 'Agency declined', tone: 'red' },
-};
-
-/** Same statuses, AGENCY perspective. */
-const STATUS_VIEW_AGENCY: Record<string, { label: string; tone: 'green' | 'yellow' | 'gray' | 'red' }> = {
-  brief_sent: { label: 'Quote requested', tone: 'gray' },
-  holding: { label: 'On hold', tone: 'gray' },
-  quoted: { label: 'Quoted', tone: 'gray' },
-  adjusted_by_supplier: { label: 'New cost suggested', tone: 'yellow' },
-  adjusted_by_agent: { label: 'You revised', tone: 'yellow' },
-  accepted: { label: 'Accepted', tone: 'green' },
-  booked: { label: 'Booked', tone: 'green' },
-  declined_by_supplier: { label: 'Supplier declined', tone: 'red' },
-  declined_by_agent: { label: 'You declined', tone: 'red' },
-};
-
-/** Whole-pound GBP for the action chat lines ("Cost Accepted £10,000"). */
-function gbp(n: number): string {
-  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(n);
-}

@@ -1616,3 +1616,94 @@ select.bp-input-field { appearance: auto; }
 .bp-check:checked { border-color: var(--theme-accent); }
 .bp-check:checked::before { transform: scale(1); }
 .bp-check:disabled { cursor: not-allowed; }
+
+/* ═══ Inbox conversation surface — pV2-INBOX (audit M2/RP-05: promoted from
+   inbox-project component styles to the one-definition global layer). ═══ */
+
+/* Selected item card — soft brand-gradient tint. */
+.bp-item--selected { background: var(--bp-gradient-soft); }
+
+/* Per-item action buttons — soft fills, one (Request-Information) width so the
+   three line up. */
+.bp-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 12rem;
+  white-space: nowrap;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: box-shadow 0.15s, background 0.15s;
+}
+.bp-act:hover:not(:disabled) { box-shadow: var(--shadow-xs); }
+.bp-act:disabled { opacity: 0.55; cursor: default; }
+.bp-act--green { background: var(--color-success-soft); color: var(--color-success); }
+.bp-act--yellow { background: var(--color-warn-soft); color: var(--color-warn); }
+.bp-act--gray { background: var(--color-fill); color: var(--color-text-secondary); }
+
+/* White agency bubble — reads as a card on the parchment ground. */
+.bp-bubble {
+  max-width: 78%;
+  border-radius: 14px;
+  padding: 8px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bp-bubble--mine { background: var(--bp-gradient); border: none; color: var(--bp-text-on-gradient); }
+.bp-bubble__author { font-size: 11px; font-weight: 600; opacity: 0.85; }
+.bp-bubble__body { font-size: 14px; line-height: 1.5; white-space: pre-line; }
+/* Broadcast shown inside a filtered item view — faded, with a tag. */
+.bp-bubble--general { opacity: 0.62; }
+.bp-bubble__general {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-fill);
+  color: var(--color-text-secondary);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+/* Gradient Send button. */
+.bp-send-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--bp-gradient);
+  color: var(--bp-text-on-gradient);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.bp-send-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* Per-item status pill — supplier perspective, soft colour tones. */
+.bp-spill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  white-space: nowrap;
+}
+.bp-spill--green { background: var(--color-success-soft); color: var(--color-success); }
+.bp-spill--yellow { background: var(--color-warn-soft); color: var(--color-warn); }
+.bp-spill--gray { background: var(--color-fill); color: var(--color-text-secondary); }
+.bp-spill--red { background: var(--color-danger-soft); color: var(--color-danger); }
