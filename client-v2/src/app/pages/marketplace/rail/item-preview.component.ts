@@ -80,14 +80,15 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
     </dl>
 
     @if (item().description) {
-      <p class="bp-body-small mt-3 whitespace-pre-line border-t border-hairline pt-3 text-secondary">
-        {{ item().description }}
-      </p>
+      <div class="mt-3 border-t border-hairline pt-3">
+        <span class="bp-field-label">Description</span>
+        <p class="bp-body-small mt-1 whitespace-pre-line text-secondary">{{ item().description }}</p>
+      </div>
     }
 
     @if (item().installDescription) {
       <div class="mt-3 border-t border-hairline pt-3">
-        <span class="bp-field-label">Includes</span>
+        <span class="bp-field-label">Services</span>
         <p class="bp-body-small mt-1 whitespace-pre-line text-secondary">{{ item().installDescription }}</p>
       </div>
     }
