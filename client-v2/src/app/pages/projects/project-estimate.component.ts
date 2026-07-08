@@ -270,18 +270,26 @@ interface CustomLine {
                         </div>
                         <!-- Installed?: assumed on when the line has an install price;
                              greyed + disabled when it doesn't. -->
-                        <label class="mt-1.5 flex w-fit items-center gap-2.5" [class.opacity-40]="!hasInstall(l)"
+                        <label class="mt-1.5 flex w-fit items-center gap-2.5" [class.opacity-40]="!hasInstall(l) || !editable(l)"
                                [title]="hasInstall(l) ? 'Include installation' : 'No install price'">
                           <span class="bp-meta">Installed?</span>
-                          <input type="checkbox" class="bp-check" [checked]="isInstalled(l)" [disabled]="!hasInstall(l)" (change)="toggleInstall(l)" />
+                          <input type="checkbox" class="bp-check" [checked]="isInstalled(l)" [disabled]="!hasInstall(l) || !editable(l)" (change)="toggleInstall(l)" />
                         </label>
                       </div>
-                      <app-qty-input class="shrink-0" [value]="l.quantity" [label]="l.name" (qtyCommit)="onQtyChange(l.itemId, $event)" />
+                      @if (editable(l)) {
+                        <app-qty-input class="shrink-0" [value]="l.quantity" [label]="l.name" (qtyCommit)="onQtyChange(l.itemId, $event)" />
+                      } @else {
+                        <span class="bp-body-small shrink-0 text-center text-secondary" title="Out for quote — change it in the inbox">× {{ l.quantity }}</span>
+                      }
                       <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ lineCost(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
-                      <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
-                              (click)="removeLine(l)" [attr.aria-label]="'Remove ' + l.name" title="Remove item">
-                        <lucide-icon name="trash-2" [size]="15" />
-                      </button>
+                      @if (editable(l)) {
+                        <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
+                                (click)="removeLine(l)" [attr.aria-label]="'Remove ' + l.name" title="Remove item">
+                          <lucide-icon name="trash-2" [size]="15" />
+                        </button>
+                      } @else {
+                        <span class="shrink-0 p-1 text-muted" title="Out for quote — locked"><lucide-icon name="lock" [size]="14" /></span>
+                      }
                     </div>
                     }
                   }
@@ -560,6 +568,7 @@ export class ProjectEstimateComponent {
   /** Remove a line from the quote — optimistic, revert + toast on failure.
    *  Reloads the server cascade so the Ballpark drops with it. */
   protected async removeLine(l: QuoteLine): Promise<void> {
+    if (!this.editable(l)) return;
     const before = this.rows();
     this.rows.update((ls) => ls.filter((x) => x.itemId !== l.itemId));
     try {
@@ -613,7 +622,7 @@ export class ProjectEstimateComponent {
   /** Persist the Install choice — optimistic on the row, revert + toast on
    *  failure, then reload the server cascade. */
   protected async toggleInstall(l: QuoteLine): Promise<void> {
-    if (!this.hasInstall(l)) return;
+    if (!this.hasInstall(l) || !this.editable(l)) return;
     const next = !this.isInstalled(l);
     const before = this.rows();
     this.rows.update((ls) => ls.map((x) => (x.itemId === l.itemId ? { ...x, installed: next } : x)));
@@ -629,6 +638,11 @@ export class ProjectEstimateComponent {
   protected lineCost(l: QuoteLine): number {
     const inst = this.isInstalled(l) ? (l.installCost ?? 0) : 0;
     return ((l.basePrice ?? 0) + inst) * (l.quantity ?? 1);
+  }
+  /** Quote rows are read-only once the item is out for quote — edits happen
+   *  in the inbox thread (Liam 2026-07-08). */
+  protected editable(l: QuoteLine): boolean {
+    return l.status === 'to_send';
   }
   /** The unit code ('head', 'linear_m') as a readable label. */
   protected unitLabel(unit: string | null): string {

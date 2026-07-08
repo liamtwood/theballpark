@@ -156,6 +156,7 @@ router.patch('/:id/items/:itemId', async (req, res, next) => {
       req.user.org_id, req.params.id, req.params.itemId, parsed.data
     );
     if (line === null) return res.status(404).json({ error: 'Project not found' });
+    if (line === 'locked') return res.status(409).json({ error: 'Item is out for quote — change it in the inbox.' });
     if (line === false) return res.status(404).json({ error: 'Item not in quote' });
     res.json(line);
   } catch (err) {
@@ -168,6 +169,7 @@ router.delete('/:id/items/:itemId', async (req, res, next) => {
   try {
     const result = await projects.removeItem(req.user.org_id, req.params.id, req.params.itemId);
     if (result === null) return res.status(404).json({ error: 'Project not found' });
+    if (result === 'locked') return res.status(409).json({ error: 'Item is out for quote — change it in the inbox.' });
     res.json({ removed: result });
   } catch (err) {
     next(err);

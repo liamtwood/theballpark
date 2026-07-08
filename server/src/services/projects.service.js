@@ -540,8 +540,24 @@ async function addItem(orgId, projectId, itemId) {
   });
 }
 
+/** Has this item been sent for a quote on this project (an outbound brief
+ *  line)? Once sent the quote row is READ-ONLY — edits happen in the inbox
+ *  thread, not the quote (Liam 2026-07-08, pV2-CART-01). */
+async function isItemSent(projectId, itemId) {
+  const r = await pool.query(
+    `SELECT 1 FROM message_items mi
+       JOIN messages m ON m.id = mi.message_id
+      WHERE m.project_id = $1 AND m.direction = 'outbound'
+        AND mi.item_id = $2 AND mi.deleted_at IS NULL
+      LIMIT 1`,
+    [projectId, itemId]
+  );
+  return r.rows.length > 0;
+}
+
 /** pV2-QUANTITY-01 — set the quantity on a live quote line. Returns the
- *  updated line, false if no such live line, null if not the org's.
+ *  updated line, false if no such live line, null if not the org's, 'locked'
+ *  if the item is out for quote (read-only in the quote).
  *  Single write (the ownership SELECT + the UPDATE) — no transaction needed
  *  (Rule 1): the UPDATE re-scopes by project_id, so the ownership check can't
  *  be raced into a cross-org write. */
@@ -551,6 +567,7 @@ async function updateItem(orgId, projectId, itemId, patch) {
     [projectId, orgId]
   );
   if (!owns.rows.length) return null;
+  if (await isItemSent(projectId, itemId)) return 'locked';
   const sets = [];
   const vals = [projectId, itemId];
   if (patch.quantity !== undefined) {
@@ -573,13 +590,15 @@ async function updateItem(orgId, projectId, itemId, patch) {
 }
 
 /** Soft-remove an item from the project's quote. Returns true if a row was
- *  removed, false if none, null if the project isn't the org's. */
+ *  removed, false if none, null if the project isn't the org's, 'locked' if
+ *  the item is out for quote (read-only in the quote). */
 async function removeItem(orgId, projectId, itemId) {
   const owns = await pool.query(
     `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
     [projectId, orgId]
   );
   if (!owns.rows.length) return null;
+  if (await isItemSent(projectId, itemId)) return 'locked';
   const r = await pool.query(
     `UPDATE project_items SET deleted_at = NOW()
       WHERE project_id = $1 AND item_id = $2 AND deleted_at IS NULL

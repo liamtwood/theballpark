@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   Check,
   ChevronLeft,
+  Lock,
   ChevronDown,
   ChevronRight,
   CircleUser,
@@ -135,7 +136,7 @@ export const appConfig: ApplicationConfig = {
         // pV2-04b home: cog, drawer close, launcher tiles, Back link
         Settings, X, FolderPlus, FolderOpen, Inbox, Store, CircleUser, ArrowLeft,
         // Profile: section edit lifecycle
-        SquarePen, Check,
+        SquarePen, Check, Lock,
         // v2.13a supplier sub-hubs: projects-hub stages + storefront trio
         FileText, Zap, CircleCheck, Package, Building2,
         // pV2-MARKET-00 — admin Categories tile
