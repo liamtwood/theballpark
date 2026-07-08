@@ -109,18 +109,14 @@ import { AuthService } from '../../core/auth/auth.service';
         <!-- pV2-STORE-01 — owner manages their own item from the card:
              Edit, Duplicate, Show/Hide (is_active), Trash (soft delete). -->
         <div class="mt-3 flex items-center gap-2">
-          @if (item().approvalStatus !== 'approved') {
-            <!-- Approved items are locked (duplicate to change) — no Edit. -->
-            <a
-              [routerLink]="['/store/items', item().id]"
-              class="bp-btn-outline flex flex-1 items-center justify-center gap-1.5"
-              (click)="onEditClick($event)"
-            >
-              <lucide-icon name="square-pen" [size]="14" /> Edit
-            </a>
-          } @else {
-            <span class="flex-1"></span>
-          }
+          <!-- Approved items are editable too now (photos locked in the editor). -->
+          <a
+            [routerLink]="['/store/items', item().id]"
+            class="bp-btn-outline flex flex-1 items-center justify-center gap-1.5"
+            (click)="onEditClick($event)"
+          >
+            <lucide-icon name="square-pen" [size]="14" /> Edit
+          </a>
           <button type="button" class="bp-item-card__act" [disabled]="busy()" title="Duplicate" aria-label="Duplicate" (click)="onDuplicate($event)">
             <lucide-icon name="copy" [size]="15" />
           </button>

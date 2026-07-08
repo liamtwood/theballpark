@@ -56,7 +56,7 @@ export interface StoreItemWrite {
   image_url?: string | null;
   images?: GalleryImage[];
   tags?: string[];
-  approval_status?: 'draft' | 'pending';
+  approval_status?: 'draft' | 'pending' | 'approved';
 }
 
 /** pV2-STORE-01 — supplier item editor client. Hits the gated

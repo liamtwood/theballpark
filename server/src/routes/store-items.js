@@ -54,17 +54,25 @@ router.put('/:id', async (req, res, next) => {
     if (!existing || existing.deleted_at || existing.org_id !== req.user.org_id) {
       return res.status(404).json({ error: 'Not found' });
     }
-    // Approved items are locked — editing would change what was approved. The
-    // supplier duplicates to make changes (the copy re-enters the draft flow).
-    if (existing.approval_status === 'approved') {
-      return res.status(409).json({ error: 'Approved items can’t be edited — duplicate to make changes' });
-    }
     const parsed = StoreItemUpdateSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid item' });
     }
-    // Editing re-enters the draft/pending flow; an item goes offline until a
-    // ballpark admin re-approves it.
+    // Approved items ARE editable (Liam 2026-07-08) but photos are locked —
+    // only the field values change; the item stays approved + live (no
+    // re-review) and its photos/status are untouched. New images need
+    // moderation, so they can't be added to a live item.
+    if (existing.approval_status === 'approved') {
+      const fields = { ...parsed.data };
+      delete fields.image_url;
+      delete fields.images;
+      delete fields.approval_status;
+      delete fields.is_active;
+      const item = await ItemService.update(req.params.id, fields);
+      return res.json(item);
+    }
+    // Non-approved: editing re-enters the draft/pending flow; an item goes
+    // offline until a ballpark admin re-approves it.
     const item = await ItemService.update(req.params.id, {
       ...parsed.data,
       approval_status: parsed.data.approval_status || 'draft',

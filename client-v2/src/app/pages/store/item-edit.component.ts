@@ -71,18 +71,21 @@ interface ItemForm {
                 <label class="bp-field-label">Main Image</label>
                 <div
                   class="bp-item-banner mt-2"
-                  [class.bp-item-banner--readonly]="!editing()"
-                  [attr.role]="editing() ? 'button' : null"
-                  [attr.tabindex]="editing() ? 0 : null"
-                  (click)="editing() && imageDrawer.set(true)"
-                  (keydown.enter)="editing() && imageDrawer.set(true)"
+                  [class.bp-item-banner--readonly]="!canEditPhotos()"
+                  [attr.role]="canEditPhotos() ? 'button' : null"
+                  [attr.tabindex]="canEditPhotos() ? 0 : null"
+                  (click)="canEditPhotos() && imageDrawer.set(true)"
+                  (keydown.enter)="canEditPhotos() && imageDrawer.set(true)"
                 >
                   @if (imageUrl()) {
                     <img [src]="imageUrl()" alt="" />
                   } @else {
-                    <span class="bp-caption">{{ editing() ? 'Click to upload main image' : 'No image' }}</span>
+                    <span class="bp-caption">{{ canEditPhotos() ? 'Click to upload main image' : 'No image' }}</span>
                   }
                 </div>
+                @if (editing() && isApproved()) {
+                  <p class="bp-caption mt-1 text-secondary">Photos are locked on approved items — duplicate to change them.</p>
+                }
               </div>
 
               <div>
@@ -93,7 +96,7 @@ interface ItemForm {
                     [images]="images()"
                     [primaryUrl]="imageUrl()"
                     [searchSeed]="form().name"
-                    [editable]="editing()"
+                    [editable]="canEditPhotos()"
                     (imagesChange)="images.set($event)"
                     (primarySet)="onSetPrimary($event)"
                   />
@@ -143,10 +146,12 @@ interface ItemForm {
               <button type="button" class="bp-btn-outline" (click)="cancel()">Cancel</button>
             </div>
           } @else if (isApproved()) {
-            <!-- Owner, approved — locked. Duplicate from the store to change it. -->
-            <p class="bp-caption">Approved items are locked. Duplicate it from your store to make changes.</p>
-            <div class="mt-3 flex flex-wrap gap-3">
-              <button type="button" class="bp-btn-outline" (click)="cancel()">Back to store</button>
+            <!-- Owner, approved — editable (fields), photos locked. Stays live. -->
+            <div class="mt-4 flex flex-wrap gap-3">
+              <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="saveApproved()">
+                {{ saving() ? 'Saving…' : 'Save Changes' }}
+              </button>
+              <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="cancel()">Back to store</button>
             </div>
           } @else {
             <div class="mt-4 flex flex-wrap gap-3">
@@ -209,11 +214,15 @@ export class ItemEditComponent {
    *  so a supplier viewing someone else's item lands here too. Moderator wins. */
   private readonly viewParam = this.route.snapshot.queryParamMap.get('view') === '1';
   protected readonly isViewer = computed(() => this.viewParam && !this.isModerator());
-  /** Fields are editable only for the owning supplier on a NON-approved item.
-   *  Approved items are locked (duplicate to change) → read-only. */
+  /** Fields are editable for the owning supplier (incl. approved items —
+   *  Liam 2026-07-08: approved items CAN be edited). Moderators/viewers are
+   *  read-only. */
   protected readonly editing = computed(
-    () => !this.isModerator() && !this.isViewer() && !this.isApproved()
+    () => !this.isModerator() && !this.isViewer()
   );
+  /** Photos are the one exception: you can't ADD/change photos on an approved
+   *  (live) item — new images need moderation. Editable only on non-approved. */
+  protected readonly canEditPhotos = computed(() => this.editing() && !this.isApproved());
   protected readonly deciding = signal(false);
 
   protected readonly form = signal<ItemForm>({
@@ -346,6 +355,12 @@ export class ItemEditComponent {
     return this.persist(status, status === 'pending' ? 'Submitted for approval.' : 'Draft saved.');
   }
 
+  /** Owner edits an already-approved item — field changes persist and it stays
+   *  live (photos are locked separately). */
+  protected saveApproved(): Promise<void> {
+    return this.persist('approved', 'Changes saved.');
+  }
+
   /** Supplier withdraws a pending submission — reverts the item to draft so the
    *  approval queue no longer holds it (the Submit button becomes this). */
   protected cancelRequest(): Promise<void> {
@@ -357,7 +372,7 @@ export class ItemEditComponent {
     void this.router.navigateByUrl(this.heroBack().href);
   }
 
-  private async persist(status: 'draft' | 'pending', successMsg: string): Promise<void> {
+  private async persist(status: 'draft' | 'pending' | 'approved', successMsg: string): Promise<void> {
     const f = this.form();
     if (!f.name.trim()) {
       this.toast.add({ severity: 'warn', summary: 'Product Name is required', life: 3000 });
