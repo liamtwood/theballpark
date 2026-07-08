@@ -375,7 +375,11 @@ function toQuoteLine(row) {
 // NAME/visuals live-join from categories so a category RENAME still
 // propagates. (Relies on categories being soft-delete-only.)
 const QUOTE_LINE_JOIN = `
-  SELECT pi.id, pi.item_id, pi.name, pi.description, pi.base_price, pi.unit, pi.image_url, pi.quantity,
+  SELECT pi.id, pi.item_id, pi.name,
+         -- Prefer the snapshot description, else the live catalogue item's
+         -- (project_items.description is often empty; the preview needs one).
+         COALESCE(pi.description, i.description) AS description,
+         pi.base_price, pi.unit, pi.image_url, pi.quantity,
          pi.installed,
          pi.category_id, c.name AS category_name,
          c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url,
