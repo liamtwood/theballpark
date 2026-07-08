@@ -1,9 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { QtyInputComponent } from './qty-input.component';
-import { ProjectOutreachStore } from './project-outreach.store';
 
 /** pV2-PROJECTS-02 slice 2 — the Project Quote rail: a simple list of the
  *  items added to this project (thumb + name + price + remove), a running
@@ -28,22 +27,6 @@ import { ProjectOutreachStore } from './project-outreach.store';
         @for (g of groups(); track g.id) {
           <div>
             <div class="bp-cart-cat-band">{{ g.name }}</div>
-            <!-- pV2-INBOX-02: suppliers added to quote this category (the
-                 ephemeral roster). Removable; nothing persists until send. -->
-            @if (outreach.pickedFor(g.id); as picks) {
-              @if (picks.length) {
-                <div class="mt-1.5 flex flex-wrap gap-1.5">
-                  @for (s of picks; track s.id) {
-                    <span class="inline-flex items-center gap-1 rounded-full border border-hairline bg-fill px-2 py-0.5 text-sm text-text">
-                      {{ s.name }}
-                      <button type="button" class="text-muted hover:text-text" [attr.aria-label]="'Remove ' + s.name" (click)="outreach.remove(g.id, s.id)">
-                        <lucide-icon name="x" [size]="12" />
-                      </button>
-                    </span>
-                  }
-                </div>
-              }
-            }
             <ul class="flex flex-col">
               @for (l of g.items; track l.id) {
                 <!-- Name gets the full column width on its own row (no thumb —
@@ -83,8 +66,6 @@ import { ProjectOutreachStore } from './project-outreach.store';
   `,
 })
 export class ProjectQuoteRailComponent {
-  protected readonly outreach = inject(ProjectOutreachStore);
-
   readonly lines = input.required<QuoteLine[]>();
   readonly removed = output<string>();
   readonly qtyChanged = output<{ itemId: string; quantity: number }>();

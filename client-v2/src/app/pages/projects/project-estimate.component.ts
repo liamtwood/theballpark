@@ -520,7 +520,7 @@ export class ProjectEstimateComponent {
       subcategoryId: null,
       supplierId: l.supplierId ?? '',
       supplierName: l.supplierName ?? '',
-      supplierCity: null,
+      supplierCity: l.supplierCity,
       categoryName: l.categoryName,
       subcategoryName: null,
       ownedByActiveOrg: false,
@@ -665,9 +665,12 @@ export class ProjectEstimateComponent {
   /** The estimate cascade — SERVER-computed (services/estimate.js), consumed
    *  as-is so this tab and the project card can't drift. Reloaded after a qty
    *  edit (qtyCommit → onQtyChange). */
-  protected readonly est = resource<EstimateBreakdown, string>({
-    params: () => this.projectId(),
-    loader: ({ params }) => firstValueFrom(this.projects.estimate(params, this.isFinal() ? 'all' : 'cart')),
+  protected readonly est = resource<EstimateBreakdown, { projectId: string; scope: 'all' | 'cart' }>({
+    // scope is part of params (reactive) — never read from a signal inside the
+    // loader (M4). Today `view` is fixed per mounted instance, but this keeps
+    // the resource correct if that ever changes.
+    params: () => ({ projectId: this.projectId(), scope: this.isFinal() ? 'all' : 'cart' }),
+    loader: ({ params }) => firstValueFrom(this.projects.estimate(params.projectId, params.scope)),
   });
 
   /** The breakdown the template renders: the server value once loaded, else a

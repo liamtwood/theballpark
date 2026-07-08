@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
@@ -8,7 +8,6 @@ import { LucideAngularModule } from 'lucide-angular';
 import { CodelistService } from '../../core/codelists/codelist.service';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { ProjectService } from '../../core/projects/project.service';
-import { InboxService } from '../../core/inbox/inbox.service';
 import { ProjectDetail, ProjectUpdate } from '../../core/projects/project.types';
 import { GalleryImage, PickerResult } from '../../core/media/media.types';
 import { errorDetail } from '../../core/http-error';
@@ -22,7 +21,6 @@ import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.
 import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.component';
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
-import { ProjectOutreachStore } from './project-outreach.store';
 import { InboxProjectComponent } from '../inbox/inbox-project.component';
 
 type Tab = 'marketplace' | 'estimate' | 'final' | 'details' | 'inbox';
@@ -255,16 +253,10 @@ export class ProjectDetailComponent {
   private readonly codelists = inject(CodelistService);
   private readonly pageConfig = inject(PageConfigService);
   private readonly toast = inject(MessageService);
-  private readonly outreach = inject(ProjectOutreachStore);
-  private readonly inbox = inject(InboxService);
 
   private readonly params = toSignal(this.route.paramMap, { initialValue: this.route.snapshot.paramMap });
   private readonly query = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
   protected readonly id = computed(() => this.params().get('id') ?? '');
-
-  // Point the (root-singleton) outreach store at this project so its
-  // supplier roster is retained across leaving and returning (pV2-INBOX-02).
-  private readonly _bindOutreach = effect(() => this.outreach.setProject(this.id()));
 
   /** Marketplace is the default tab (PROJECTS.md) — it's where you build
    *  the project's quote. */
@@ -337,39 +329,6 @@ export class ProjectDetailComponent {
       .navigate([], { relativeTo: this.route, queryParams: { tab }, queryParamsHandling: 'merge' })
       .catch((err) => console.warn('[ProjectDetail] nav failed', err));
   }
-
-  /** "Add suppliers" → the Marketplace tab in supplier mode, where the agent
-   *  fans the quote's categories out to suppliers. */
-  protected goToMarketplace(): void {
-    this.router
-      .navigate([], { relativeTo: this.route, queryParams: { tab: 'marketplace', mode: 'suppliers' }, queryParamsHandling: 'merge' })
-      .catch((err) => console.warn('[ProjectDetail] nav failed', err));
-  }
-
-  /** "Message suppliers" — fan the quote out to the picked suppliers (one
-   *  thread per category × supplier). On success the ephemeral roster is
-   *  cleared (the threads are now the record) and the categories flip to
-   *  "out for quote" server-side. */
-  protected async onMessageSuppliers(): Promise<void> {
-    const roster = this.outreach.rosterPayload();
-    if (!roster.length || this.sending()) return;
-    this.sending.set(true);
-    try {
-      const res = await firstValueFrom(this.inbox.send(this.id(), roster));
-      this.outreach.clear();
-      this.toast.add({
-        severity: 'success',
-        summary: `Brief sent — ${res.threads} supplier ${res.threads === 1 ? 'thread' : 'threads'} across ${res.categories} ${res.categories === 1 ? 'category' : 'categories'}.`,
-        life: 5000,
-      });
-    } catch (err) {
-      this.toast.add({ severity: 'error', summary: "Couldn't send the brief — please try again.", detail: errorDetail(err), life: 5000 });
-    } finally {
-      this.sending.set(false);
-    }
-  }
-
-  protected readonly sending = signal(false);
 
   protected patch(p: Partial<DetailForm>): void {
     this.form.update((f) => ({ ...f, ...p }));
