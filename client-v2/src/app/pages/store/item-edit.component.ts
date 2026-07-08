@@ -18,6 +18,7 @@ import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
 import { ItemApprovalPanelComponent } from './item-approval-panel.component';
+import { ItemEditActionsComponent } from './item-edit-actions.component';
 
 interface ItemForm {
   name: string;
@@ -44,6 +45,7 @@ interface ItemForm {
   imports: [
     FormsModule, ToastModule, PageHeroComponent, EditFieldComponent,
     ImageGalleryComponent, ImagePickerComponent, DrawerComponent, ItemApprovalPanelComponent,
+    ItemEditActionsComponent,
   ],
   providers: [MessageService],
   template: `
@@ -127,49 +129,12 @@ interface ItemForm {
             </div>
           </div>
 
-          @if (isModerator()) {
-            <!-- View (read-only) — ballpark admins Approve/Reject; everyone Cancels. -->
-            <div class="mt-4 flex flex-wrap gap-3">
-              <button type="button" class="bp-btn-grad" [disabled]="deciding()" (click)="decide('approve')">
-                {{ deciding() ? 'Saving…' : 'Approve' }}
-              </button>
-              <button type="button" class="bp-btn-outline" [disabled]="deciding()" (click)="decide('reject')">
-                {{ deciding() ? 'Saving…' : 'Reject' }}
-              </button>
-              <button type="button" class="bp-btn-outline" [disabled]="deciding()" (click)="cancel()">
-                Cancel
-              </button>
-            </div>
-          } @else if (isViewer()) {
-            <!-- Pure viewer (e.g. an agent) — read-only, back out only. -->
-            <div class="mt-4 flex flex-wrap gap-3">
-              <button type="button" class="bp-btn-outline" (click)="cancel()">Cancel</button>
-            </div>
-          } @else if (isApproved()) {
-            <!-- Owner, approved — editable (fields), photos locked. Stays live. -->
-            <div class="mt-4 flex flex-wrap gap-3">
-              <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="saveApproved()">
-                {{ saving() ? 'Saving…' : 'Save Changes' }}
-              </button>
-              <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="cancel()">Back to store</button>
-            </div>
-          } @else {
-            <div class="mt-4 flex flex-wrap gap-3">
-              <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="save('draft')">
-                {{ saving() ? 'Saving…' : 'Save Draft' }}
-              </button>
-              @if (currentStatus() === 'pending') {
-                <!-- Submitted — withdraw the request instead of re-submitting. -->
-                <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="cancelRequest()">
-                  {{ saving() ? 'Saving…' : 'Cancel approval request' }}
-                </button>
-              } @else {
-                <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="save('pending')">
-                  {{ saving() ? 'Saving…' : 'Submit for Approval' }}
-                </button>
-              }
-            </div>
-          }
+          <app-item-edit-actions
+            [isModerator]="isModerator()" [isViewer]="isViewer()" [isApproved]="isApproved()"
+            [currentStatus]="currentStatus()" [deciding]="deciding()" [saving]="saving()"
+            (approve)="decide('approve')" (reject)="decide('reject')" (cancel)="cancel()"
+            (saveApproved)="saveApproved()" (saveDraft)="save('draft')" (submit)="save('pending')"
+            (cancelRequest)="cancelRequest()" />
           </div>
 
           <app-item-approval-panel [status]="currentStatus()" [statusAt]="statusAt()" />
@@ -287,11 +252,9 @@ export class ItemEditComponent {
   );
 
   private readonly unitsRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/item_unit/values');
-  protected readonly unitOptions = computed<EditFieldOption[]>(
-    () => (this.unitsRes.value() ?? []).map((u) => ({ label: u.label, value: u.code }))
-  );
+  protected readonly unitOptions = computed<EditFieldOption[]>(() => (this.unitsRes.value() ?? []).map((u) => ({ label: u.label, value: u.code })));
 
-  /** How the install cost is applied (fixed set — not a codelist). */
+  /** How install_cost applies (fixed set — not a codelist). */
   protected readonly installUnitOptions: EditFieldOption[] = [
     { label: 'Per item (× quantity)', value: 'per_item' },
     { label: 'Per order (one-off)', value: 'per_order' },
@@ -301,13 +264,10 @@ export class ItemEditComponent {
   protected readonly itemRes = resource({
     params: () => this.itemId ?? undefined,
     loader: async ({ params }) => {
-      // Pick the read path by mode: moderators read cross-org (admin endpoint),
-      // viewers read the public approved item (marketplace endpoint), owners
-      // read their own (ownership-gated supplier endpoint).
-      // NOTE: mode (isModerator/isViewer) is read here in the loader, NOT in
-      // `params` — it is intentionally NOT a reactive dep. Mode is stable for
-      // the page's lifetime (a role/org switch reloads the app; toggling ?view
-      // re-navigates), so the resource never needs to re-fetch on a mode change.
+      // Read path by mode: moderator → admin, viewer → public, owner → own.
+      // Mode is read here (NOT in params) on purpose — it's stable for the
+      // page's lifetime (role/org switch reloads; ?view re-navigates), so it's
+      // intentionally not a reactive dep.
       const item = await firstValueFrom(
         this.isModerator() ? this.store.getForReview(params)
         : this.isViewer() ? this.store.getPublic(params)
