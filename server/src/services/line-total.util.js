@@ -6,16 +6,20 @@
 //
 // A line = price × qty, plus install when the line is installed: per_order is a
 // flat charge once, percentage scales with the (price × qty) base, else per_item
-// (× qty). Aliases: pi (project_items) + i (items). Callers embed the returned
-// fragment inside a SELECT that joins those two tables under those aliases.
+// (× qty). The install cost is negotiable per line — a `project_items` override
+// wins over the catalogue `items` value (pV2-UNIFY-01 QC), mirroring how
+// base_price is already snapshotted on project_items. Aliases: pi
+// (project_items) + i (items). Callers embed the fragment inside a SELECT that
+// joins those two tables under those aliases.
 function lineTotalSql(priceExpr) {
+  const ic = 'COALESCE(pi.install_cost, i.install_cost)';
   return `
   COALESCE(${priceExpr}, 0) * pi.quantity
   + CASE
-      WHEN NOT COALESCE(pi.installed, true) OR i.install_cost IS NULL THEN 0
-      WHEN i.install_unit = 'per_order'  THEN i.install_cost
-      WHEN i.install_unit = 'percentage' THEN COALESCE(${priceExpr}, 0) * pi.quantity * (i.install_cost / 100.0)
-      ELSE i.install_cost * pi.quantity
+      WHEN NOT COALESCE(pi.installed, true) OR ${ic} IS NULL THEN 0
+      WHEN i.install_unit = 'per_order'  THEN ${ic}
+      WHEN i.install_unit = 'percentage' THEN COALESCE(${priceExpr}, 0) * pi.quantity * (${ic} / 100.0)
+      ELSE ${ic} * pi.quantity
     END`;
 }
 

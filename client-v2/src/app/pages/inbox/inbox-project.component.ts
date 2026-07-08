@@ -121,6 +121,19 @@ import { InboxRailComponent } from './inbox-rail.component';
                         (keydown.enter)="submitPropose(it)"
                       />
                       <span class="bp-body-small text-muted">/ {{ unitLabel(it) }}</span>
+                      @if (canInstall(it)) {
+                        <span class="bp-body-small text-muted">+ install</span>
+                        <input
+                          type="number"
+                          class="h-8 w-20 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-md outline-none focus:border-accent"
+                          [value]="proposeInstall() ?? ''"
+                          [disabled]="sending()"
+                          placeholder="install"
+                          (input)="proposeInstall.set($any($event.target).valueAsNumber)"
+                          (keydown.enter)="submitPropose(it)"
+                        />
+                        <span class="bp-body-small text-muted">{{ it.installUnit === 'percentage' ? '%' : (it.installUnit === 'per_order' ? '/ order' : '/ ' + unitLabel(it)) }}</span>
+                      }
                       @if (proposedTotal() != null) {
                         <span class="bp-body-small text-secondary">= <span class="font-semibold text-text">{{ proposedTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span></span>
                       }
@@ -312,6 +325,8 @@ export class InboxProjectComponent {
   // ── Per-item actions (Accept / Propose new price) ──────────────────────
   protected readonly proposing = signal(false);
   protected readonly proposePrice = signal<number | null>(null);
+  /** The proposed per-line install cost (raw value under the item's basis). */
+  protected readonly proposeInstall = signal<number | null>(null);
 
   /** Terminal items are read-only (no actions). */
   protected isTerminal(status: string): boolean {
@@ -323,8 +338,10 @@ export class InboxProjectComponent {
     void this.itemAction(it.id, 'accept', undefined, `${it.name} ${gbp(cost)} Cost Accepted by ${this.actorName()}`);
   }
   protected startPropose(it: InboxThreadItem): void {
-    // Negotiate the per-unit RATE (pV2-UNIFY-01) — the line total derives.
+    // Negotiate the per-unit RATE + the install cost (pV2-UNIFY-01) — the line
+    // total derives from both.
     this.proposePrice.set(it.unitPriceCurrent ?? it.unitPriceRef ?? 0);
+    this.proposeInstall.set(it.installCost ?? null);
     this.proposing.set(true);
   }
 
@@ -343,25 +360,32 @@ export class InboxProjectComponent {
     }
   }
 
-  /** Line total at a given per-unit rate — mirrors the server formula
-   *  (rate × qty + install: per_order flat, percentage of subtotal, else per_item). */
-  protected lineTotalAt(it: InboxThreadItem, rate: number): number {
+  /** Line total at a given per-unit rate + install cost — mirrors the server
+   *  formula (rate × qty + install: per_order flat, percentage of subtotal,
+   *  else per_item). `install` defaults to the line's current install cost. */
+  protected lineTotalAt(it: InboxThreadItem, rate: number, install?: number | null): number {
     const qty = it.quantity ?? 1;
     const base = rate * qty;
-    if (it.installed === false || !it.installCost) return base;
+    const ic = install === undefined ? it.installCost : install;
+    if (it.installed === false || !ic) return base;
     switch (it.installUnit) {
-      case 'per_order': return base + it.installCost;
-      case 'percentage': return base + base * (it.installCost / 100);
-      default: return base + it.installCost * qty;
+      case 'per_order': return base + ic;
+      case 'percentage': return base + base * (ic / 100);
+      default: return base + ic * qty;
     }
   }
 
-  /** Live line total for the rate being typed in the propose box. */
+  /** Live line total for the rate + install being typed in the propose box. */
   protected readonly proposedTotal = computed<number | null>(() => {
     const it = this.selectedItem();
     const rate = this.proposePrice();
-    return it && rate != null && rate >= 0 ? this.lineTotalAt(it, rate) : null;
+    return it && rate != null && rate >= 0 ? this.lineTotalAt(it, rate, this.proposeInstall()) : null;
   });
+
+  /** Whether the selected line has an install charge to negotiate. */
+  protected canInstall(it: InboxThreadItem): boolean {
+    return it.installed !== false && it.installCost != null;
+  }
 
   /** "Request Information" — seed the compose box with the item + cost so
    *  the supplier edits/adds detail, then send (chat-only; no status change). */
@@ -376,9 +400,10 @@ export class InboxProjectComponent {
     // bubble + header show the derived line total so the money reads clearly.
     const rate = this.proposePrice();
     if (rate == null || rate < 0) return;
+    const install = this.proposeInstall();
     const fromTotal = it.priceCurrent ?? it.priceRef ?? 0;
-    const newTotal = this.lineTotalAt(it, rate);
-    await this.itemAction(it.id, 'adjust', rate, `${it.name} ${gbp(fromTotal)} New Cost Suggested ${gbp(newTotal)} by ${this.actorName()}`);
+    const newTotal = this.lineTotalAt(it, rate, install);
+    await this.itemAction(it.id, 'adjust', rate, `${it.name} ${gbp(fromTotal)} New Cost Suggested ${gbp(newTotal)} by ${this.actorName()}`, install ?? undefined);
     this.proposing.set(false);
   }
 
@@ -390,12 +415,12 @@ export class InboxProjectComponent {
 
   /** A per-item action posts a matching chat line + the state change, then
    *  refreshes so the bubble + the item's pill update together. */
-  private async itemAction(itemId: string, action: 'accept' | 'adjust', price?: number, text?: string): Promise<void> {
+  private async itemAction(itemId: string, action: 'accept' | 'adjust', price?: number, text?: string, installCost?: number): Promise<void> {
     const thread = this.selectedThread();
     if (!thread || this.sending()) return;
     this.sending.set(true);
     try {
-      await firstValueFrom(this.inbox.reply(thread.id, { text, itemActions: [{ itemId, action, price }] }));
+      await firstValueFrom(this.inbox.reply(thread.id, { text, itemActions: [{ itemId, action, price, installCost }] }));
       this.threadsRes.reload();
     } catch {
       // Retry on the next click; shared toast surface lands later.

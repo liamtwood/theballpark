@@ -35,6 +35,16 @@ import { editable, hasInstall, isInstalled, lineCost, statusLabel, statusPill, u
       }
       <label class="mt-1.5 flex w-fit items-center gap-2.5" [class.opacity-40]="!canInstall() || !canEdit()"
              [title]="canInstall() ? 'Include installation' : 'No install price'">
+        @if (canInstall()) {
+          <!-- Install price + basis, so the agent sees what install costs. -->
+          <span class="bp-meta text-secondary">
+            @if (line().installUnit === 'percentage') {
+              {{ line().installCost }}% install
+            } @else {
+              {{ line().installCost | currency: cur() : 'symbol' : '1.0-2' }} install@if (line().installUnit === 'per_order') { / order } @else { / {{ unitText() }} }
+            }
+          </span>
+        }
         <span class="bp-meta">Installed?</span>
         <input type="checkbox" class="bp-check" [checked]="installed()" [disabled]="!canInstall() || !canEdit()" (change)="installToggle.emit()" />
       </label>

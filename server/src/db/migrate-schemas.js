@@ -2115,6 +2115,10 @@ const migrate = async () => {
         ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS price_ref      NUMERIC(12,2);
         ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS price_current  NUMERIC(12,2);
         ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS decline_reason TEXT;
+        -- Negotiable install cost/basis, per line — NULL falls back to the
+        -- catalogue items.install_cost/unit (mirrors the base_price snapshot).
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS install_cost   NUMERIC(12,2);
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS install_unit   VARCHAR(30);
       `);
       // The stripped tag join keeps the shared audit columns — the audit.*
       // BEFORE INSERT/UPDATE trigger stamps created_by/updated_*/deleted_* and

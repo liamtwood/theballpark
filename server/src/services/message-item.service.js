@@ -84,6 +84,10 @@ async function transitionItem({
   const sets = ['status = $2', 'updated_at = NOW()'];
   const params = [itemId, toStatus];
   if (finalPriceAfter != null) { sets.push(`price_current = $${params.length + 1}`); params.push(finalPriceAfter); }
+  // Negotiated install cost/basis override (pV2-UNIFY-01 QC) — the line's own
+  // install price, winning over the catalogue value in the shared formula.
+  if (extra && extra.installCost != null) { sets.push(`install_cost = $${params.length + 1}`); params.push(extra.installCost); }
+  if (extra && extra.installUnit != null) { sets.push(`install_unit = $${params.length + 1}`); params.push(extra.installUnit); }
   const reasonText = reasonCode || note;
   if (reasonText) { sets.push(`decline_reason = $${params.length + 1}`); params.push(reasonText); }
   if (extra && extra.name != null)        { sets.push(`name        = $${params.length + 1}`); params.push(extra.name); }
@@ -169,7 +173,8 @@ async function getByMessage(messageId, { executor = null } = {}) {
             COALESCE(pi.description, i.description) AS description,
             pi.quantity, pi.unit, pi.installed, pi.status,
             pi.price_ref, pi.price_current,
-            i.install_cost, i.install_unit,
+            COALESCE(pi.install_cost, i.install_cost) AS install_cost,
+            COALESCE(pi.install_unit, i.install_unit) AS install_unit,
             i.image_url       AS item_image_url,
             i.image_display   AS item_image_display,
             o.id              AS supplier_org_id,

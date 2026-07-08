@@ -46,11 +46,14 @@ async function resolveStatus(code) {
  *  excludes soft-deleted. Suppliers count = distinct supplier orgs across
  *  the project's quote items (correlated subquery — fine for an org's
  *  project count). */
-// Per-line total honouring the install basis (pV2-CART-01) — the estimate's
-// base_price binding of the ONE shared formula (pV2-UNIFY-01). The inbox binds
-// the same formula to price_ref / price_current, so cart, quote, final, and
-// inbox can't drift. Aliases: pi (project_items) + i (items).
-const LINE_TOTAL_SQL = lineTotalSql('pi.base_price');
+// Per-line total honouring the install basis (pV2-CART-01) — the estimate binds
+// the ONE shared formula (pV2-UNIFY-01) to the line's CURRENT price:
+// price_current once negotiated, else the original base_price. The inbox binds
+// the same formula to price_ref (Original) / price_current (Revised), and
+// price_ref = base_price at send — so a negotiated line reads identically on the
+// Final Quote and the inbox. Cart / Quote / Final / Inbox can't drift. Aliases:
+// pi (project_items) + i (items).
+const LINE_TOTAL_SQL = lineTotalSql('COALESCE(pi.price_current, pi.base_price)');
 
 const LIST_SELECT = `
   SELECT p.id, p.name, p.event_name, p.ref, p.status,
@@ -373,11 +376,17 @@ const QUOTE_LINE_JOIN = `
          -- Prefer the snapshot description, else the live catalogue item's
          -- (project_items.description is often empty; the preview needs one).
          COALESCE(pi.description, i.description) AS description,
-         pi.base_price, pi.unit, pi.image_url, pi.quantity,
+         -- CURRENT per-unit price + install (pV2-UNIFY-01 QC): a negotiated line
+         -- reads price_current / its install override; else the original
+         -- base_price / catalogue install. So the quote card matches the inbox.
+         COALESCE(pi.price_current, pi.base_price)  AS base_price,
+         pi.unit, pi.image_url, pi.quantity,
          pi.installed,
          pi.category_id, c.name AS category_name,
          c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url,
-         i.install_cost, i.install_description, i.install_unit,
+         COALESCE(pi.install_cost, i.install_cost)  AS install_cost,
+         i.install_description,
+         COALESCE(pi.install_unit, i.install_unit)  AS install_unit,
          -- Supplier = the item's catalogue owner (marketplace source), so the
          -- cart cat card can say "N items from <supplier>" pre-outreach.
          i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,

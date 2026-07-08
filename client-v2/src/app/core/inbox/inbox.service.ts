@@ -38,7 +38,10 @@ export class InboxService {
 export interface InboxItemAction {
   itemId: string;
   action: 'accept' | 'adjust' | 'decline';
+  /** Adjust: the new per-unit rate. */
   price?: number;
+  /** Adjust: the new per-line install cost (raw value under the item's basis). */
+  installCost?: number;
   note?: string;
 }
 

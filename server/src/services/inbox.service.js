@@ -464,7 +464,7 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions, tagge
 
     const changes = [];
     for (const a of actions) {
-      const { itemId, action, price, note } = a || {};
+      const { itemId, action, price, installCost, note } = a || {};
       if (!itemId || !action) continue;
       // itemId is a project_items.id; it must belong to THIS thread — i.e. be
       // tagged by the lead brief message (pV2-UNIFY-01).
@@ -484,7 +484,7 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions, tagge
       let extra = null;
       switch (action) {
         case 'accept':  toStatus = 'accepted'; break;
-        case 'adjust':  toStatus = adjustStatus; extra = { price }; break;
+        case 'adjust':  toStatus = adjustStatus; extra = { price, installCost }; break;
         case 'decline': toStatus = declineStatus; break;
         default: continue;
       }

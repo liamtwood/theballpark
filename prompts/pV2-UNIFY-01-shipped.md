@@ -134,6 +134,42 @@ builds clean.
 `core/inbox/inbox.service.ts` (type), `inbox-project.component.ts`
 (per-unit propose + breakdown display + live total), chip v2.48.
 
+## Iteration — v2.49 (2026-07-08)
+**Triggered by QC (Liam):** three follow-ups — (1) the Final Quote showed the
+original price after a negotiated line was accepted (should match the inbox);
+(2) "Suggest New Cost" should let the supplier revise the install cost too, not
+just the rate; (3) the estimate card should show the install cost + basis so
+the agent sees what install costs.
+
+**Fixes:**
+1. **Price drift closed.** The estimate bound `base_price`; the inbox bound
+   `price_current`. `LINE_TOTAL_SQL` + `QUOTE_LINE_JOIN` now use
+   `COALESCE(price_current, base_price)`, so a negotiated line reads identically
+   on the Final Quote and the inbox. Same row, same formula.
+2. **Negotiable install cost.** New `project_items.install_cost` / `install_unit`
+   (nullable overrides; NULL → catalogue) — migration + live-applied to
+   public/preview. The shared formula + reader COALESCE the override over the
+   catalogue value. Propose box gains an install input (seeded from the current
+   install, shown under the item's basis: `%` / `/ order` / `/ unit`);
+   `transitionItem` writes the override; the live total + bubble reflect it.
+3. **Estimate card** now renders the install price + basis next to Installed?
+   (`10% install` / `£10.50 install / head`).
+
+**Verified:** propose £90/head + install 5% on a ×100 line → inbox revised
+**£9,450** (90×100 + 5%) AND the Final Quote card reads cost £90/head, install
+5%, matching. Client builds clean.
+
+**Regression note:** editing the shared formula to reference `install_cost`
+before creating the column briefly 500'd every estimate/inbox query (looked
+like "DB down"). Column added; guardrail learned — add the column before
+touching shared SQL.
+
+**Files:** `line-total.util.js`, `projects.service.js` (LINE_TOTAL_SQL +
+QUOTE_LINE_JOIN), `message-item.service.js` (getByMessage + transitionItem),
+`inbox.service.js` (reply extra), `migrate-schemas.js` (+2 cols),
+`core/inbox/inbox.service.ts`, `inbox-project.component.ts`,
+`estimate-item-row.component.ts`, chip v2.49.
+
 ## QC notes
 (Liam)
 
