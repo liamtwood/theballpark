@@ -2093,6 +2093,91 @@ const migrate = async () => {
     `);
     console.log('  v1.65fW message_item_decisions table ensured.');
 
+    // ── pV2-UNIFY-01: one line-state table ───────────────────────────────
+    // The same conceptual line lived in two tables (project_items = cart:
+    // qty/install/base_price; message_items = brief: price_ref/current/status)
+    // read by two formulas — an inevitable drift class (the inbox rendered
+    // £/head where the Final Quote rendered £/head × qty + install). Merge:
+    //   • project_items GAINS the negotiation state (status/price_ref/
+    //     price_current/decline_reason) → one row per (project, item) since an
+    //     item has exactly one owner-supplier (items.org_id).
+    //   • message_items DEMOTES to a stripped tag join (message_id +
+    //     project_item_id) — "which items this message references".
+    //   • the audit satellites (events + decisions) REPOINT to project_items(id).
+    // Dev-mode: no backfill, one-time wipe of the negotiation graph. project_items
+    // rows (the cart) survive; only their negotiation state resets. The wipe +
+    // rename is guarded on the OLD shape (message_items.status still present) so
+    // re-runs are no-ops and a future deploy never re-wipes live threads.
+    for (const s of ['public', 'preview', 'master']) {
+      // Additive on project_items — idempotent.
+      await client.query(`
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS status         VARCHAR(40);
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS price_ref      NUMERIC(12,2);
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS price_current  NUMERIC(12,2);
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS decline_reason TEXT;
+      `);
+      // The stripped tag join keeps the shared audit columns — the audit.*
+      // BEFORE INSERT/UPDATE trigger stamps created_by/updated_*/deleted_* and
+      // errors if they're missing. Re-add is idempotent (also restores them on
+      // a schema where an earlier draft over-dropped them).
+      await client.query(`
+        ALTER TABLE ${s}.message_items ADD COLUMN IF NOT EXISTS created_by UUID;
+        ALTER TABLE ${s}.message_items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+        ALTER TABLE ${s}.message_items ADD COLUMN IF NOT EXISTS updated_by UUID;
+        ALTER TABLE ${s}.message_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+        ALTER TABLE ${s}.message_items ADD COLUMN IF NOT EXISTS deleted_by UUID;
+      `);
+      // One-time destructive slim-down + FK repoint (guarded on old shape).
+      await client.query(`
+        DO $unify$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_schema='${s}' AND table_name='message_items'
+                         AND column_name='status') THEN
+            -- Dev wipe: the rename swaps a catalogue-item ref for a project_item
+            -- ref; existing rows can't convert, so clear the negotiation graph.
+            TRUNCATE ${s}.messages, ${s}.message_items, ${s}.message_item_events,
+                     ${s}.message_item_decisions, ${s}.quote_requests
+                     RESTART IDENTITY CASCADE;
+            UPDATE ${s}.project_items
+               SET status = NULL, price_ref = NULL, price_current = NULL, decline_reason = NULL;
+
+            -- message_items → tag join: keep id/message_id/project_item_id +
+            -- the audit columns (trigger-stamped); drop only the state columns.
+            ALTER TABLE ${s}.message_items RENAME COLUMN item_id TO project_item_id;
+            ALTER TABLE ${s}.message_items
+              DROP COLUMN IF EXISTS name,           DROP COLUMN IF EXISTS description,
+              DROP COLUMN IF EXISTS price,          DROP COLUMN IF EXISTS accepted,
+              DROP COLUMN IF EXISTS accepted_at,    DROP COLUMN IF EXISTS price_ref,
+              DROP COLUMN IF EXISTS price_current,  DROP COLUMN IF EXISTS unit,
+              DROP COLUMN IF EXISTS status,         DROP COLUMN IF EXISTS adjusted_by,
+              DROP COLUMN IF EXISTS decline_reason, DROP COLUMN IF EXISTS decline_note,
+              DROP COLUMN IF EXISTS next_action_by, DROP COLUMN IF EXISTS metadata;
+            ALTER TABLE ${s}.message_items
+              ADD CONSTRAINT message_items_project_item_id_fkey
+              FOREIGN KEY (project_item_id) REFERENCES ${s}.project_items(id) ON DELETE CASCADE;
+
+            -- Audit satellites repoint message_items(id) → project_items(id).
+            ALTER TABLE ${s}.message_item_events
+              DROP CONSTRAINT IF EXISTS message_item_events_message_item_id_fkey;
+            ALTER TABLE ${s}.message_item_events RENAME COLUMN message_item_id TO project_item_id;
+            ALTER TABLE ${s}.message_item_events
+              ADD CONSTRAINT message_item_events_project_item_id_fkey
+              FOREIGN KEY (project_item_id) REFERENCES ${s}.project_items(id) ON DELETE CASCADE;
+
+            ALTER TABLE ${s}.message_item_decisions
+              DROP CONSTRAINT IF EXISTS message_item_decisions_message_item_id_fkey;
+            ALTER TABLE ${s}.message_item_decisions RENAME COLUMN message_item_id TO project_item_id;
+            ALTER TABLE ${s}.message_item_decisions
+              ADD CONSTRAINT message_item_decisions_project_item_id_fkey
+              FOREIGN KEY (project_item_id) REFERENCES ${s}.project_items(id) ON DELETE CASCADE;
+          END IF;
+        END
+        $unify$;
+      `);
+    }
+    console.log('  pV2-UNIFY-01: project_items unified (message_items → tag join).');
+
     // ── 10. RLS / grant hardening (v1.65gZ27) ────────────────────────────
     // Supabase Linter flagged public-schema tables as RLS-disabled +
     // anon-grantable (rls_disabled_in_public + sensitive_columns_exposed).

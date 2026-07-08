@@ -2,15 +2,18 @@
  * v1.65cu (p0008) — message_items service.
  *
  * Single source of truth for per-item lifecycle transitions. Every
- * write path that mutates a message_items.status (cart `requestQuotes`,
- * agent reply endpoint, public supplier reply endpoint) goes through
+ * write path that mutates a line's status (cart `requestQuotes`, agent
+ * reply endpoint, public supplier reply endpoint) goes through
  * `transitionItem()` so we never branch the audit log.
  *
- * The companion `message_item_events` table is append-only — the row
- * is the durable history; the `message_items` row is the projection.
+ * pV2-UNIFY-01: the line IS a `project_items` row now (status / price_ref /
+ * price_current live there). The companion `message_item_events` table is
+ * append-only (FK `project_item_id`) — the row is the durable history; the
+ * `project_items` row is the projection.
  */
 
 const pool = require('../db/pool');
+const { lineTotalSql } = require('./line-total.util');
 
 /** Codelist semantic info — drives the computed aggregate thread
     status. Mirrors the migration's meta JSONB. */
@@ -60,9 +63,10 @@ async function transitionItem({
 
   // Snapshot the current row so we know `from_status` + the previous
   // price for the event row. Caller-owned txn lets the read see the
-  // row created earlier in the same transaction.
-  const cur = await db.query('SELECT status, price_current FROM message_items WHERE id = $1', [itemId]);
-  if (!cur.rows.length) throw new Error(`message_item not found: ${itemId}`);
+  // row created earlier in the same transaction. pV2-UNIFY-01: `itemId`
+  // is a project_items.id now — the single line-state table.
+  const cur = await db.query('SELECT status, price_current FROM project_items WHERE id = $1', [itemId]);
+  if (!cur.rows.length) throw new Error(`project_item not found: ${itemId}`);
   const fromStatus = cur.rows[0].status;
   const curPrice   = cur.rows[0].price_current;
 
@@ -71,27 +75,27 @@ async function transitionItem({
   const finalPriceAfter = priceAfter != null ? priceAfter
     : (extra && extra.price != null ? extra.price : null);
 
-  // Build the UPDATE — only touch columns the caller passed.
+  // Build the UPDATE — only touch columns the caller passed. pV2-UNIFY-01:
+  // project_items' projection columns are status / price_current /
+  // decline_reason (+ the name/description/unit snapshot an Adjust overrides).
+  // adjusted_by / decline_note / next_action_by were message_items-only — the
+  // status code already encodes the side, and the append-only event row keeps
+  // the full reason_code + note.
   const sets = ['status = $2', 'updated_at = NOW()'];
   const params = [itemId, toStatus];
   if (finalPriceAfter != null) { sets.push(`price_current = $${params.length + 1}`); params.push(finalPriceAfter); }
-  if (toStatus === 'adjusted_by_supplier') { sets.push(`adjusted_by = 'supplier'`); }
-  else if (toStatus === 'adjusted_by_agent') { sets.push(`adjusted_by = 'agent'`); }
-  if (reasonCode) { sets.push(`decline_reason = $${params.length + 1}`); params.push(reasonCode); }
-  if (note)       { sets.push(`decline_note   = $${params.length + 1}`); params.push(note); }
-  if (nextActionBy !== undefined) {
-    sets.push(`next_action_by = $${params.length + 1}`); params.push(nextActionBy);
-  }
+  const reasonText = reasonCode || note;
+  if (reasonText) { sets.push(`decline_reason = $${params.length + 1}`); params.push(reasonText); }
   if (extra && extra.name != null)        { sets.push(`name        = $${params.length + 1}`); params.push(extra.name); }
   if (extra && extra.description != null) { sets.push(`description = $${params.length + 1}`); params.push(extra.description); }
   if (extra && extra.unit != null)        { sets.push(`unit        = $${params.length + 1}`); params.push(extra.unit); }
 
-  await db.query(`UPDATE message_items SET ${sets.join(', ')} WHERE id = $1`, params);
+  await db.query(`UPDATE project_items SET ${sets.join(', ')} WHERE id = $1`, params);
 
-  // Event row — append-only audit.
+  // Event row — append-only audit, keyed to the project_items line.
   await db.query(
     `INSERT INTO message_item_events
-       (message_item_id, from_status, to_status, actor_type, actor_id,
+       (project_item_id, from_status, to_status, actor_type, actor_id,
         reason_code, note, price_before, price_after)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [
@@ -102,74 +106,13 @@ async function transitionItem({
     ]
   );
 
-  // v1.65et (p0015) — catalogue fork. When a supplier adjusts (or
-  // quotes) an ad-hoc item that the agency created as a pending
-  // placeholder, fork a NEW items row owned by the supplier seeded
-  // from their adjustment (price, name, description, unit, image).
-  // The fork links the message_item to the supplier-owned items
-  // row, simultaneously: (1) recording the supplier's quote and
-  // (2) promoting the ad-hoc ask into the supplier's catalogue.
-  //
-  // Catalogue items (already owned by the supplier) skip the fork —
-  // the adjustment is treated as a one-off override on the
-  // message_item, not a catalogue update. A separate "Sync to
-  // catalogue" action would handle that.
-  const isSupplierQuote = actor.type === 'supplier'
-    && (toStatus === 'adjusted_by_supplier' || toStatus === 'quoted');
-  if (isSupplierQuote) {
-    await maybeForkCatalogueItem(db, itemId, extra, finalPriceAfter);
-  }
+  // NOTE(pV2-UNIFY-01): the v1 ad-hoc "catalogue fork" (agency creates a
+  // pending placeholder → the winning supplier's Adjust forks a supplier-owned
+  // item) is not reachable in the unified model — a cart line is always owned
+  // by exactly one supplier (items.org_id), so an adjusting supplier already
+  // owns it and the fork was always a no-op here. Dropped with the merge.
 
   return { fromStatus, toStatus };
-}
-
-/** v1.65et — when a supplier adjusts an ad-hoc (agency-pending) item,
-    create a new items row owned by them seeded from their quote +
-    re-link the message_item. No-op for catalogue items (supplier
-    already owns them) or for missing/null linkage. */
-async function maybeForkCatalogueItem(db, messageItemId, extra, finalPriceAfter) {
-  const ctx = await db.query(
-    `SELECT mi.id, mi.item_id, mi.name        AS mi_name,
-            mi.description AS mi_description,
-            mi.unit        AS mi_unit,
-            mi.price_current,
-            m.supplier_org_id,
-            m.category_id  AS msg_category_id,
-            i.org_id       AS item_org_id,
-            i.is_active    AS item_is_active,
-            i.category_id  AS item_category_id,
-            i.name         AS item_name,
-            i.description  AS item_description
-       FROM message_items mi
-       JOIN messages m ON m.id = mi.message_id
-       LEFT JOIN items i ON i.id = mi.item_id
-      WHERE mi.id = $1`,
-    [messageItemId]
-  );
-  const row = ctx.rows[0];
-  if (!row || !row.supplier_org_id || !row.item_id) return;
-  // Already owned by the supplier? No fork.
-  if (row.item_org_id === row.supplier_org_id) return;
-
-  const newPrice = finalPriceAfter != null ? finalPriceAfter : row.price_current;
-  const newName  = (extra && extra.name        != null) ? extra.name        : (row.mi_name        || row.item_name);
-  const newDesc  = (extra && extra.description != null) ? extra.description : (row.mi_description || row.item_description);
-  const newUnit  = (extra && extra.unit        != null) ? extra.unit        : row.mi_unit;
-  const newImage = (extra && extra.imageUrl    != null) ? extra.imageUrl    : null;
-  const categoryId = row.item_category_id || row.msg_category_id || null;
-
-  const ins = await db.query(
-    `INSERT INTO items (org_id, category_id, name, description, unit,
-                        base_price, image_url, is_active, approval_status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, true, 'approved')
-     RETURNING id`,
-    [row.supplier_org_id, categoryId, newName, newDesc, newUnit, newPrice, newImage]
-  );
-
-  await db.query(
-    'UPDATE message_items SET item_id = $1 WHERE id = $2',
-    [ins.rows[0].id, messageItemId]
-  );
 }
 
 /**
@@ -207,49 +150,56 @@ function aggregateStatus(items, viewer) {
   return 'waiting';
 }
 
-/** Fetch all message_items for a message, ordered for display.
-    v1.65dc (p0013 follow-up) — JOIN items + orgs so the conversation
-    surface can render the catalogue item's image_url + supplier_name
-    in the marketplace-card shape (mirrors project-item.service which
-    already does the same join). Columns prefixed with `item_` /
-    `supplier_` are pulled-through; the existing message_items columns
-    stay untouched.
+/** Fetch a message's line items for display. pV2-UNIFY-01: message_items is a
+    stripped tag join (message_id + project_item_id) now, so this resolves the
+    referenced project_items — the single line-state table — and returns each
+    line's per-unit prices (price_ref / price_current), its status, and BOTH
+    the "Original" and "Revised" line totals via the ONE shared formula
+    (price × qty + install). The inbox renders those totals directly, so the
+    per-head → line-total fix falls out of the reader pointing here.
 
-    v1.65fW — also returns buyer_status / seller_status derived from
-    the message_item_decisions satellite (latest row per side). The
-    UI uses these to drive the two-sided handshake badges. */
+    JOINs items + orgs for the catalogue image + owning supplier; buyer_status
+    / seller_status come from the message_item_decisions satellite (latest per
+    side), now keyed by project_item_id. */
 async function getByMessage(messageId, { executor = null } = {}) {
   const db = executor || pool;
   const r = await db.query(
-    `SELECT mi.*,
+    `SELECT pi.id, pi.item_id,
+            COALESCE(pi.name, i.name)              AS name,
+            COALESCE(pi.description, i.description) AS description,
+            pi.quantity, pi.unit, pi.installed, pi.status,
+            pi.price_ref, pi.price_current,
             i.image_url       AS item_image_url,
             i.image_display   AS item_image_display,
             o.id              AS supplier_org_id,
             o.name            AS supplier_name,
             o.logo_url        AS supplier_logo_url,
+            (${lineTotalSql('pi.price_ref')})                            AS original_total,
+            (${lineTotalSql('COALESCE(pi.price_current, pi.price_ref)')}) AS revised_total,
             buyer.decision    AS buyer_status,
             buyer.user_id     AS buyer_user_id,
             buyer.created_at  AS buyer_at,
             seller.decision   AS seller_status,
             seller.user_id    AS seller_user_id,
             seller.created_at AS seller_at
-       FROM message_items mi
-       LEFT JOIN items i ON i.id = mi.item_id
+       FROM message_items mtag
+       JOIN project_items pi ON pi.id = mtag.project_item_id
+       LEFT JOIN items i ON i.id = pi.item_id
        LEFT JOIN orgs  o ON o.id = i.org_id
        LEFT JOIN LATERAL (
          SELECT d.decision, d.user_id, d.created_at
            FROM message_item_decisions d
-          WHERE d.message_item_id = mi.id AND d.side = 'buyer'
+          WHERE d.project_item_id = pi.id AND d.side = 'buyer'
           ORDER BY d.created_at DESC LIMIT 1
        ) buyer ON TRUE
        LEFT JOIN LATERAL (
          SELECT d.decision, d.user_id, d.created_at
            FROM message_item_decisions d
-          WHERE d.message_item_id = mi.id AND d.side = 'seller'
+          WHERE d.project_item_id = pi.id AND d.side = 'seller'
           ORDER BY d.created_at DESC LIMIT 1
        ) seller ON TRUE
-      WHERE mi.message_id = $1
-      ORDER BY mi.created_at ASC`,
+      WHERE mtag.message_id = $1 AND pi.deleted_at IS NULL
+      ORDER BY pi.created_at ASC`,
     [messageId]
   );
   return r.rows;
@@ -279,7 +229,7 @@ async function recordDecision({ messageItemId, side, decision, userId, note, exe
   }
   const r = await db.query(
     `INSERT INTO message_item_decisions
-       (message_item_id, side, decision, user_id, note)
+       (project_item_id, side, decision, user_id, note)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING *`,
     [messageItemId, side, decision, userId || null, note || null]
@@ -294,7 +244,7 @@ async function listDecisions(messageItemId) {
     `SELECT d.*, u.email AS user_email, u.name AS user_name
        FROM message_item_decisions d
        LEFT JOIN users u ON u.id = d.user_id
-      WHERE d.message_item_id = $1
+      WHERE d.project_item_id = $1
       ORDER BY d.created_at DESC`,
     [messageItemId]
   );

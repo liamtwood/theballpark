@@ -77,13 +77,78 @@ All chrome via `.bp-card` foundation; zero per-component CSS (RP-07 enforced).
 
 ## Layout — inside-project view (`/projects/:id`)
 
-Three tabs anchored to the project entity:
+**Five tabs anchored to the project entity (as-shipped):**
 
 | Tab | What it shows | URL state | Implementation |
 |---|---|---|---|
-| **Marketplace** (default) | Same as global marketplace card view — right rail shows the project's cart | `?tab=marketplace` | Reuse marketplace engine; cart rail shows `<app-item-card>` in list-view |
-| **Estimate** | The project's full quote/cost breakdown — line items, totals, supplier-by-supplier | `?tab=estimate` | Direct port of v1 estimate page |
-| **Project Details** | Configurable project metadata — name, dates, budget range, location, brief text | `?tab=details` | Port v1 drawer to a page; reuses `<app-edit-section>` + `<app-edit-field>` from Profile (same locked edit-form pattern) |
+| **Marketplace** | Global marketplace scoped to project — click cards to add to Cart | `?tab=marketplace` | `<app-catalogue-layout>` third consumer |
+| **Cart** (formerly Estimate for pre-send) | Editable quote — only lines with `status = 'to_send'`. Qty, install checkbox, remove | `?tab=estimate&scope=cart` | `<app-project-estimate view="cart">` |
+| **Final Quote** | Full send-ready view — all lines with status badges (To send / Out for quote / Quoted / Booked / Declined), plus custom ad-hoc lines | `?tab=final` | Same `<app-project-estimate view="final">` |
+| **Inbox** (new v2.34v) | Supplier conversations for this project — item-tagged messages, per-item action chips | `?tab=inbox` | `<app-inbox-project>` — see INBOX.md |
+| **Project Details** | Project metadata — name, dates, budget range, location, brief | `?tab=details` | `<app-edit-section>` + `<app-edit-field>` |
+
+**One component, two views.** Cart and Final Quote are the **same** `<app-project-estimate>` component driven by a `view` input (`'cart' | 'final'`). Cart filters to `to_send`-only lines; Final shows all lines with status badges. The unified component avoids the RP-06 trap of two consumers of the same engine drifting.
+
+**The eventLabel is everywhere user-visible.** "Project" / "Event" / "Job" — whatever the org chose in `/settings/pages`. Hero, tabs, card labels, dialogs, button text — all configurable. No hardcoded "Project" strings in component templates.
+
+### Cart tab (`view="cart"`)
+
+Rendered as a bespoke list layout — **not** `<app-item-card>` — because quote lines carry per-line editable qty + install choice + supplier band, which the item card can't express. Lines are grouped by supplier with a thin "Supplier · City" band above each group.
+
+Per-line controls: **quantity** (number input), **install checkbox** (when the item has an `install_cost`), **delete** (trash icon). All three lock when `status !== 'to_send'` — see "Read-only after sent" below.
+
+### Final Quote tab (`view="final"`, v2.36i / FINAL-01)
+
+Send-ready view showing every line (Cart + already-sent) with status badges. Adds two things Cart doesn't have:
+
+- **Custom lines.** Agent can add ad-hoc lines (category / description / cost / qty / install-or-deliverable type) via a modal. Rendered in the totals but **stored in-session only** — not persisted to `project_items`. Reload loses them. Flagged as intentional today; persist column when the customer asks.
+- **Status badges per line.** `to_send`, `out_for_quote`, `quoted`, `booked`, `declined` — decoded from `message_items` join. **RP-04 open:** `STATUS_LABELS` hardcoded in `project-estimate.component.ts:41-46` — move to codelist lookup on next touch.
+
+### Install choice & install basis (v2.38+)
+
+Every quote line with an `install_cost > 0` gets an **install checkbox**. Three states:
+
+- `installed: null` (default) — assume-on when `install_cost > 0`
+- `installed: true` — explicit on
+- `installed: false` — explicit off (line is deliverable-only)
+
+Persistence: **new column `project_items.installed BOOLEAN NULL`** (migration in `server/src/db/migrate-schemas.js:2015-2019`, three schemas).
+
+**Install basis** — how `install_cost` applies to a line — driven by `items.install_unit` (per-item / per-order / percentage; see STORE.md Fields table). The ONE formula lives in `server/src/services/line-total.util.js` (`lineTotalSql(priceExpr)`), price-parametrised (pV2-UNIFY-01) so every surface shares it:
+
+```
+price × qty + CASE install_unit
+  WHEN 'per_order'  THEN install_cost
+  WHEN 'percentage' THEN price × qty × (install_cost / 100)
+  ELSE                    install_cost × qty  (per_item default)
+END
+```
+
+- Estimate / Cart / Final Quote bind `price = base_price` (`LINE_TOTAL_SQL` in `projects.service.js`).
+- Inbox "Original" binds `price = price_ref`; "Revised" binds `price = price_current`.
+
+Client mirrors this in `lineCost()` for display only — the server SUM is the source of truth. No math-in-two-places.
+
+**Negotiation state on the line (pV2-UNIFY-01, 2026-07-08).** `project_items` is the single line-state table — beyond the cart columns (qty / base_price / installed / unit / name / description) it carries the negotiation projection: `status` (the 9 v1 codes: brief_sent / quoted / accepted / holding / adjusted_by_* / declined_by_* / booked), `price_ref` (briefed per-unit), `price_current` (negotiated per-unit), `decline_reason`, plus `deleted_at` (soft-delete cart removal). `message_items` is a stripped tag join now (`message_id + project_item_id`). Send-state (cart vs out-for-quote) is `project_items.status` (NULL = still in cart). Columns added in `migrate-schemas.js` (pV2-UNIFY-01 block, three schemas).
+
+### Read-only after sent
+
+Once an item leaves the Cart (`project_items.status IS NOT NULL` — pV2-UNIFY-01), the quote line becomes locked in the UI and on the server:
+
+- **Server guard** — `isItemSent()` in `projects.service.js` (checks `project_items.status`). PATCH / DELETE return `409 Conflict` + "Item is out for quote — change it in the inbox."
+- **UI lock** — qty input disabled, install checkbox disabled, delete hidden, lock icon shown (`project-estimate.component.ts:281-293`).
+
+Changes to sent items happen through the inbox thread (accept new cost, propose adjustment), never through the Cart. This is the seam between the two surfaces: Cart owns intent, Inbox owns negotiation.
+
+### Message Suppliers dialog
+
+Triggered from Final Quote's "Message Suppliers" CTA. `<app-message-suppliers-dialog>` — a category/supplier grid with a primary-picker per category + a "get competing quotes from other suppliers" toggle. Fans out one thread per (category × picked supplier); reuses v1's `TaxonomyService.requestQuotes` writes.
+
+### Single-source Ballpark cascade (v2.37)
+
+The `Estimated Ballpark Cost` on project cards and the totals in Cart/Final all come from **one server compute** — `computeEstimate()` in `server/src/services/estimate.js`. Both consumers call the same endpoint and render what comes back; the client never re-does the math. Formula: `subtotal → +contingency% → ourCost → +margin% → preVat → +VAT% → clientTotal`.
+
+**Behemoth ALARM** — `project-estimate.component.ts` shipped at 806 lines (threshold 400). Cart + Final + custom-lines modal + install toggle + Message Suppliers integration in one file. Extract the custom-line modal on next touch; consider `<app-cart-view>` / `<app-final-view>` splits if the file grows further.
 
 **The eventLabel is everywhere user-visible.** "Project" / "Event" / "Job" — whatever the org chose in `/settings/pages`. Hero, tabs, card labels, dialogs, button text — all configurable. No hardcoded "Project" strings in component templates.
 
@@ -92,21 +157,9 @@ Three tabs anchored to the project entity:
 **Functionally identical to the global `/marketplace` browse — same engine, same cards, same chrome.** The only difference is what the right rail shows:
 
 - **Same engine** — `<app-catalogue-layout>` + `<app-catalogue-grid>` + `<app-item-card>` (RP-06 architectural inheritance — third surface; the rail-drop-in-card-view + narrow-left-rail decisions were partly designed-forward for this)
-- **Right rail = Project Quote (pinned to Quote mode)** — shows the project's cart. **Cart contents render as `<app-item-card>` in list-view mode** (reuse, no new component). Plus "See Final Project Quote" gradient CTA at the bottom.
-- **Card chrome unchanged** — same + icon overlay with "Add to Quote" tooltip. Tapping adds the item to THIS project's quote.
+- **Right rail = Project Quote (pinned to Quote mode)** — a compact preview of the current Cart lines. Tap "See Final Project Quote" to switch to the Final Quote tab. See §Cart tab / §Final Quote tab above for the editable surfaces.
+- **Card chrome unchanged** — same + icon overlay with "Add to Quote" tooltip. Tapping adds the item to THIS project's Cart.
 - **Category rail unchanged** — same `<app-category-strip>`
-
-**Card chrome is UNCHANGED** between global marketplace and inside-project marketplace. Same `<app-item-card>` everywhere:
-
-- Same image + title + chip + price + pin row
-- Same **+ icon overlay** top-right (v2.20q) with "Add to Quote" tooltip on hover
-- Same **heart icon** for Wishlist
-
-The card-foot gradient "Add to Quote" button visible in the
-`add-project-3.png` screenshot is **out-of-date** — it predates the v2.20q
-decision to ditch the gradient foot CTA. The inside-project marketplace
-uses the current cards as-is. One card chrome, two contexts, one
-implementation.
 
 ## Layout — Add Project flow (`/projects/new`)
 

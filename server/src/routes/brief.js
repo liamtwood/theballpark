@@ -178,8 +178,10 @@ router.post('/:token/reply', async (req, res, next) => {
           default:        continue;
         }
 
+        // pV2-UNIFY-01: `message_item_id` now carries the project_items.id the
+        // reader emits (the unified line-state row).
         const before = await db.query(
-          `SELECT name, price_current, status FROM message_items WHERE id = $1`,
+          `SELECT name, price_current, status FROM project_items WHERE id = $1`,
           [message_item_id]
         );
         if (!before.rows.length) continue;

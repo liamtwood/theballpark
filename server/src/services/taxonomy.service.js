@@ -1138,6 +1138,17 @@ async function requestQuotes(body) {
       }
     }
 
+    // pV2-UNIFY-01: map each briefed line to its project_items row — the
+    // unified line-state table. Every v2 line sent from the cart has one; a
+    // v1 ad-hoc 'new' brief (item never carted) may not, so its tag + state
+    // writes below are skipped when absent.
+    const piLookup = await client.query(
+      `SELECT id, item_id FROM project_items
+        WHERE project_id = $1 AND item_id = ANY($2::uuid[]) AND deleted_at IS NULL`,
+      [project_id, resolved.map((r) => r.item_id)]
+    );
+    const projectItemIdByItem = new Map(piLookup.rows.map((r) => [r.item_id, r.id]));
+
     // ONE Ball debit for the whole outreach (project-level). Skipped by the
     // gated v2 inbox send (skip_balls) — no Balls economy in v2 yet.
     let ballTxId = null;
@@ -1197,24 +1208,17 @@ async function requestQuotes(body) {
 
       const supplierItems = [];
       for (const rq of resolved) {
-        // v1.65cu (p0008) — rich message_items schema: price_ref +
-        // price_current both seed from the reference price; status
-        // starts at brief_sent.
-        const mi = await client.query(
-          `INSERT INTO message_items
-             (message_id, name, description, item_id,
-              price, price_ref, price_current, status)
-           VALUES ($1, $2, $3, $4, $5, $5, $5, 'brief_sent')
-           RETURNING id`,
-          [msgId, rq.name, rq.description || '', rq.item_id, rq.price]
-        );
-        const miId = mi.rows[0].id;
-        await client.query(
-          `INSERT INTO message_item_events
-             (message_item_id, from_status, to_status, actor_type, actor_id, price_after)
-           VALUES ($1, NULL, 'brief_sent', 'agent', $2, $3)`,
-          [miId, user_id || null, rq.price]
-        );
+        // pV2-UNIFY-01: message_items is a stripped tag join now — one row
+        // per (message, project_item) meaning "this brief references this
+        // line". Negotiation state (price_ref/current/status) lives on
+        // project_items, flipped once per line after the supplier loop.
+        const piId = projectItemIdByItem.get(rq.item_id);
+        if (piId) {
+          await client.query(
+            `INSERT INTO message_items (message_id, project_item_id) VALUES ($1, $2)`,
+            [msgId, piId]
+          );
+        }
         supplierItems.push({
           name: rq.name, description: rq.description,
           price_ref: rq.price, unit: null
@@ -1235,6 +1239,26 @@ async function requestQuotes(body) {
       // Stash items on the created entry so the post-commit email send
       // doesn't need to re-query.
       createdMessages[createdMessages.length - 1].items = supplierItems;
+    }
+
+    // pV2-UNIFY-01: flip each briefed line to brief_sent + seed its per-unit
+    // negotiation prices on project_items (the single line-state table). One
+    // write per line regardless of supplier count — the item has one owner.
+    for (const rq of resolved) {
+      const piId = projectItemIdByItem.get(rq.item_id);
+      if (!piId) continue;
+      await client.query(
+        `UPDATE project_items
+            SET status = 'brief_sent', price_ref = $2, price_current = $2, updated_at = NOW()
+          WHERE id = $1`,
+        [piId, rq.price]
+      );
+      await client.query(
+        `INSERT INTO message_item_events
+           (project_item_id, from_status, to_status, actor_type, actor_id, price_after)
+         VALUES ($1, NULL, 'brief_sent', 'agent', $2, $3)`,
+        [piId, user_id || null, rq.price]
+      );
     }
 
     // v1.53 — sending a category out for competitive quotes moves it to

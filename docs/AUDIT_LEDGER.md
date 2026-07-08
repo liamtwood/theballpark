@@ -44,6 +44,20 @@ Open (product backlog, not audit debt): custom-line persistence (needs a
 `project_items` column); Message-Suppliers Ball debit (`skip_balls`); the
 "only «Supplier» offers «Item X»" leftover flag.
 
+### Follow-on — pV2-UNIFY-01 (2026-07-08)
+
+A live drift bug surfaced post-audit: the inbox rendered per-head price
+(£105) where the Final Quote rendered £105 × qty + install (£17,325). Root
+cause = the same conceptual line stored in two tables (`project_items` +
+`message_items`) read by two formulas. Fixed by **unifying onto
+`project_items`** (single line-state table; one price-parametrised formula in
+`server/src/services/line-total.util.js`); `message_items` demoted to a
+`(message_id, project_item_id)` tag join; `message_item_events` +
+`message_item_decisions` FKs repointed to `project_items(id)`. Dev-mode
+destructive migration (no backfill). **Closes RP-INB6** — no second
+representation can drift when there's one table. Client: zero component
+changes (the render corrects itself when the reader source flips).
+
 ---
 
 ## Diagnostic learnings — read before every audit

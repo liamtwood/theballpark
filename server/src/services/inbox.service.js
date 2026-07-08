@@ -14,6 +14,7 @@
 
 const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
+const { lineTotalSql } = require('./line-total.util');
 const TaxonomyService = require('./taxonomy.service');
 const messageService = require('./message.service');
 const { getByMessage, aggregateStatus, transitionItem, recordDecision } = require('./message-item.service');
@@ -64,6 +65,10 @@ function toSupplierProjectCard(row) {
  *  Items hang off the brief message; replies only transition them, so
  *  SUM/COUNT across the project's messages is the project total. */
 async function listSupplierProjects(supplierOrgId) {
+  // pV2-UNIFY-01: the supplier's projects + running quote value come straight
+  // off project_items now (the line-state table). Their lines are the ones
+  // they own (items.org_id) that have been briefed (status not null); the
+  // running total is the SUM of revised line-totals via the ONE formula.
   const r = await pool.query(
     `SELECT p.id, p.name, p.event_name, p.ref, p.status,
             p.cover_image_url, p.cover_focal_x, p.cover_focal_y,
@@ -72,18 +77,19 @@ async function listSupplierProjects(supplierOrgId) {
             p.currency, p.created_at,
             ao.name      AS agency_name,
             ao.logo_url  AS agency_logo_url,
-            MAX(m.updated_at)                  AS updated_at,
-            COUNT(DISTINCT mi.id)              AS item_count,
-            COALESCE(SUM(mi.price_current), 0) AS quote_total
-       FROM messages m
-       JOIN projects p   ON p.id  = m.project_id
+            MAX(pi.updated_at)  AS updated_at,
+            COUNT(*)            AS item_count,
+            COALESCE(SUM(${lineTotalSql('COALESCE(pi.price_current, pi.price_ref)')}), 0) AS quote_total
+       FROM project_items pi
+       JOIN items i      ON i.id  = pi.item_id
+       JOIN projects p   ON p.id  = pi.project_id
        LEFT JOIN orgs ao ON ao.id = p.org_id
-       LEFT JOIN message_items mi
-              ON mi.message_id = m.id AND mi.deleted_at IS NULL
-      WHERE m.supplier_org_id = $1
-        AND m.deleted_at IS NULL
+      WHERE i.org_id = $1
+        AND pi.status IS NOT NULL
+        AND pi.deleted_at IS NULL
+        AND p.deleted_at IS NULL
       GROUP BY p.id, ao.name, ao.logo_url
-      ORDER BY MAX(m.updated_at) DESC NULLS LAST`,
+      ORDER BY MAX(pi.updated_at) DESC NULLS LAST`,
     [supplierOrgId]
   );
   return r.rows.map(toSupplierProjectCard);
@@ -127,23 +133,16 @@ async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
   // Participation: only the owning agency may fan its own project out.
   if (proj.rows[0].org_id !== agencyOrgId) throw httpErr('Project not found', 404);
 
-  // The quote's item ids grouped by catalogue category — but only items not
-  // already out for quote. Without this, a second send (after adding items)
-  // re-sweeps the whole category and re-briefs an already-sent item to a
-  // different supplier (e.g. Supplier B's Catering brief picking up Supplier
-  // A's already-sent dish). The dialog scopes to "to send"; the server must too.
+  // The quote's item ids grouped by catalogue category — but only lines still
+  // in the cart (never sent). A second send (after adding items) must not
+  // re-brief an already-sent line to a different supplier. Send-state is the
+  // line's own status now (pV2-UNIFY-01): NULL = to_send.
   const itemsRes = await pool.query(
     `SELECT i.category_id, pi.item_id
        FROM project_items pi
        JOIN items i ON i.id = pi.item_id
       WHERE pi.project_id = $1 AND pi.deleted_at IS NULL
-        AND NOT EXISTS (
-          SELECT 1 FROM message_items mi
-            JOIN messages m ON m.id = mi.message_id
-           WHERE m.project_id = pi.project_id
-             AND m.direction = 'outbound'
-             AND mi.item_id = pi.item_id
-             AND mi.deleted_at IS NULL)`,
+        AND pi.status IS NULL`,
     [projectId]
   );
   const itemsByCat = new Map();
@@ -204,9 +203,14 @@ function toBubble(m, viewer, counterpartyName, taggedItemIds) {
  *  row for (the brief's real items + the pure-tag rows on replies). */
 async function fetchTags(messageIds) {
   if (!messageIds.length) return new Map();
+  // pV2-UNIFY-01: message_items is a (message_id, project_item_id) tag join
+  // now; resolve back to the catalogue item_id so the client's per-item
+  // message filter (which keys on catalogue item_id) is unchanged.
   const r = await pool.query(
-    `SELECT message_id, item_id FROM message_items
-      WHERE message_id = ANY($1::uuid[]) AND item_id IS NOT NULL AND deleted_at IS NULL`,
+    `SELECT mtag.message_id, pi.item_id
+       FROM message_items mtag
+       JOIN project_items pi ON pi.id = mtag.project_item_id
+      WHERE mtag.message_id = ANY($1::uuid[]) AND pi.item_id IS NOT NULL`,
     [messageIds]
   );
   const map = new Map();
@@ -220,14 +224,24 @@ async function fetchTags(messageIds) {
 
 function toThreadItem(it) {
   return {
+    // pV2-UNIFY-01: the line's own id is the project_items.id now (what the
+    // client sends back in item actions).
     id: it.id,
     // The catalogue item_id — the tag-match key for filtering messages.
     itemId: it.item_id ?? null,
     name: it.name,
     description: it.description || null,
     status: it.status,
-    priceRef: it.price_ref == null ? null : Number(it.price_ref),
-    priceCurrent: it.price_current == null ? null : Number(it.price_current),
+    // pV2-UNIFY-01: priceRef / priceCurrent now carry the LINE totals
+    // (per-unit × qty + install) via the one shared formula — so the inbox
+    // renders £105 × 150 + install = £17,325, matching the Final Quote,
+    // with no client change. The raw per-unit prices ride along for callers
+    // that want the rate.
+    priceRef: it.original_total == null ? null : Number(it.original_total),
+    priceCurrent: it.revised_total == null ? null : Number(it.revised_total),
+    unitPriceRef: it.price_ref == null ? null : Number(it.price_ref),
+    unitPriceCurrent: it.price_current == null ? null : Number(it.price_current),
+    quantity: it.quantity == null ? null : Number(it.quantity),
     imageUrl: it.item_image_url ?? null,
     // Latest decision per side (from message_item_decisions) — drives the
     // YOU / THEY / BOTH accepted pill (buyer = agency, seller = supplier).
@@ -288,9 +302,11 @@ function makeThread(lead, msgs, items, viewer, tagsByMessage) {
     projectName: lead.project_name ?? null,
     refCode: lead.ref_code ?? null,
     status: aggregateStatus(items, viewer === 'supplier' ? 'supplier' : 'agent'),
-    total: items.reduce((s, it) => s + Number(it.price_current ?? it.price_ref ?? 0), 0),
-    originalTotal: items.reduce((s, it) => s + Number(it.price_ref ?? 0), 0),
-    revisedTotal: items.reduce((s, it) => s + Number(it.price_current ?? it.price_ref ?? 0), 0),
+    // pV2-UNIFY-01: thread totals are sums of LINE totals now (qty + install
+    // honoured), not per-unit prices.
+    total: items.reduce((s, it) => s + Number(it.revised_total ?? it.original_total ?? 0), 0),
+    originalTotal: items.reduce((s, it) => s + Number(it.original_total ?? 0), 0),
+    revisedTotal: items.reduce((s, it) => s + Number(it.revised_total ?? it.original_total ?? 0), 0),
     items: items.map(toThreadItem),
     // Empty-body rows carry no conversation (e.g. an action-only reply) —
     // never render a blank bubble.
@@ -436,21 +452,27 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions, tagge
     // (item_id only; INBOX.md #10, no schema change). Actions tag their
     // item; an item-selected chat tags via taggedItemId. catalogue item_id
     // → display name.
-    const tagItems = new Map();
+    // pV2-UNIFY-01: reply tags reference project_items now — collect the
+    // project_item ids this reply touches to tag its bubble.
+    const tagPiIds = new Set();
 
     const changes = [];
     for (const a of actions) {
       const { itemId, action, price, note } = a || {};
       if (!itemId || !action) continue;
-      // The item must belong to THIS thread's brief (lead message).
+      // itemId is a project_items.id; it must belong to THIS thread — i.e. be
+      // tagged by the lead brief message (pV2-UNIFY-01).
       const before = await db.query(
-        `SELECT name, price_current, status, item_id FROM message_items
-          WHERE id = $1 AND message_id = $2`,
+        `SELECT pi.name, pi.price_current, pi.status
+           FROM project_items pi
+           JOIN message_items mtag ON mtag.project_item_id = pi.id
+          WHERE pi.id = $1 AND mtag.message_id = $2 AND pi.deleted_at IS NULL
+          LIMIT 1`,
         [itemId, lm.id]
       );
       if (!before.rows.length) continue;
       const b = before.rows[0];
-      if (b.item_id) tagItems.set(b.item_id, b.name);
+      tagPiIds.add(itemId);
 
       let toStatus = null;
       let extra = null;
@@ -506,21 +528,26 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions, tagge
     }
 
     // A chat message composed with an item selected (no action) tags that
-    // item too.
-    if (taggedItemId && !tagItems.has(taggedItemId)) {
+    // line too. taggedItemId is the catalogue item_id → resolve to the
+    // thread's project_item (pV2-UNIFY-01).
+    if (taggedItemId) {
       const nm = await db.query(
-        `SELECT name FROM message_items WHERE message_id = $1 AND item_id = $2 LIMIT 1`,
+        `SELECT pi.id
+           FROM project_items pi
+           JOIN message_items mtag ON mtag.project_item_id = pi.id
+          WHERE mtag.message_id = $1 AND pi.item_id = $2 AND pi.deleted_at IS NULL
+          LIMIT 1`,
         [lm.id, taggedItemId]
       );
-      if (nm.rows.length) tagItems.set(taggedItemId, nm.rows[0].name);
+      if (nm.rows.length) tagPiIds.add(nm.rows[0].id);
     }
 
     // Write the tag rows on the reply bubble (skip if no bubble was made).
     if (replyId) {
-      for (const [itemId, name] of tagItems) {
+      for (const piId of tagPiIds) {
         await db.query(
-          `INSERT INTO message_items (message_id, item_id, name) VALUES ($1, $2, $3)`,
-          [replyId, itemId, name]
+          `INSERT INTO message_items (message_id, project_item_id) VALUES ($1, $2)`,
+          [replyId, piId]
         );
       }
     }

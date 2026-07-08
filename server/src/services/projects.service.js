@@ -14,6 +14,7 @@ const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
 const taxonomy = require('./taxonomy.service');
 const { computeEstimate } = require('./estimate');
+const { lineTotalSql } = require('./line-total.util');
 
 /** The project_status codelist default — used when a code is unknown/absent. */
 const DEFAULT_STATUS = 'draft';
@@ -45,18 +46,11 @@ async function resolveStatus(code) {
  *  excludes soft-deleted. Suppliers count = distinct supplier orgs across
  *  the project's quote items (correlated subquery — fine for an org's
  *  project count). */
-// Per-line total honouring the install basis (pV2-CART-01). Aliases: pi
-// (project_items) + i (items). base × qty, plus install when installed —
-// per_order = flat once, percentage = % of the base line, else (NULL) per_item
-// (× qty). Reused by the card subtotal + getEstimate so they can't drift.
-const LINE_TOTAL_SQL = `
-  COALESCE(pi.base_price, 0) * pi.quantity
-  + CASE
-      WHEN NOT COALESCE(pi.installed, true) OR i.install_cost IS NULL THEN 0
-      WHEN i.install_unit = 'per_order'  THEN i.install_cost
-      WHEN i.install_unit = 'percentage' THEN COALESCE(pi.base_price, 0) * pi.quantity * (i.install_cost / 100.0)
-      ELSE i.install_cost * pi.quantity
-    END`;
+// Per-line total honouring the install basis (pV2-CART-01) — the estimate's
+// base_price binding of the ONE shared formula (pV2-UNIFY-01). The inbox binds
+// the same formula to price_ref / price_current, so cart, quote, final, and
+// inbox can't drift. Aliases: pi (project_items) + i (items).
+const LINE_TOTAL_SQL = lineTotalSql('pi.base_price');
 
 const LIST_SELECT = `
   SELECT p.id, p.name, p.event_name, p.ref, p.status,
@@ -387,15 +381,10 @@ const QUOTE_LINE_JOIN = `
          -- Supplier = the item's catalogue owner (marketplace source), so the
          -- cart cat card can say "N items from <supplier>" pre-outreach.
          i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
-         -- Send-state: the item's latest OUTBOUND brief line status for this
-         -- project (NULL = never sent = still in the cart). Drives the
-         -- cart/final split + the per-item badge (pV2-CART-01).
-         (SELECT mi.status
-            FROM message_items mi
-            JOIN messages m ON m.id = mi.message_id
-           WHERE m.project_id = pi.project_id AND m.direction = 'outbound'
-             AND mi.item_id = pi.item_id AND mi.deleted_at IS NULL
-           ORDER BY mi.created_at DESC LIMIT 1) AS sent_status
+         -- Send-state: the line's negotiation status, now on project_items
+         -- itself (pV2-UNIFY-01). NULL = never sent = still in the cart.
+         -- Drives the cart/final split + the per-item badge (pV2-CART-01).
+         pi.status AS sent_status
     FROM project_items pi
     LEFT JOIN categories c ON c.id = pi.category_id
     LEFT JOIN items i ON i.id = pi.item_id
@@ -448,12 +437,9 @@ async function getEstimate(orgId, projectId, scope = 'all') {
                FROM project_items pi
                LEFT JOIN items i ON i.id = pi.item_id
               WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
-                -- scope=cart → only still-in-cart (never-sent) items.
-                AND ($3 = false OR NOT EXISTS (
-                      SELECT 1 FROM message_items mi
-                        JOIN messages m ON m.id = mi.message_id
-                       WHERE m.project_id = pi.project_id AND m.direction = 'outbound'
-                         AND mi.item_id = pi.item_id AND mi.deleted_at IS NULL))
+                -- scope=cart → only still-in-cart (never-sent) lines
+                -- (pV2-UNIFY-01: send-state is now project_items.status).
+                AND ($3 = false OR pi.status IS NULL)
             ) AS quote_subtotal
        FROM projects p
       WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
@@ -552,15 +538,15 @@ async function addItem(orgId, projectId, itemId) {
   });
 }
 
-/** Has this item been sent for a quote on this project (an outbound brief
- *  line)? Once sent the quote row is READ-ONLY — edits happen in the inbox
- *  thread, not the quote (Liam 2026-07-08, pV2-CART-01). */
+/** Has this item been sent for a quote on this project? Once sent the quote
+ *  row is READ-ONLY — edits happen in the inbox thread, not the quote (Liam
+ *  2026-07-08, pV2-CART-01). Send-state is project_items.status now: NULL =
+ *  still in cart, anything else = briefed/negotiating (pV2-UNIFY-01). */
 async function isItemSent(projectId, itemId) {
   const r = await pool.query(
-    `SELECT 1 FROM message_items mi
-       JOIN messages m ON m.id = mi.message_id
-      WHERE m.project_id = $1 AND m.direction = 'outbound'
-        AND mi.item_id = $2 AND mi.deleted_at IS NULL
+    `SELECT 1 FROM project_items
+      WHERE project_id = $1 AND item_id = $2
+        AND status IS NOT NULL AND deleted_at IS NULL
       LIMIT 1`,
     [projectId, itemId]
   );
