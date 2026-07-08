@@ -261,13 +261,14 @@ interface CustomLine {
                       <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2">
                           <span class="bp-list-title truncate">{{ l.name }}</span>
-                          @if (l.unit) {
-                            <span class="bp-meta shrink-0">/ {{ unitLabel(l.unit) }}</span>
-                          }
                           @if (isFinal()) {
                             <span [class]="statusPill(l)">{{ statusLabel(l) }}</span>
                           }
                         </div>
+                        <!-- Per-unit cost + unit (marketplace treatment). -->
+                        @if (l.basePrice != null || l.unit) {
+                          <div class="bp-meta mt-0.5">{{ l.basePrice != null ? (l.basePrice | currency: cur() : 'symbol' : '1.0-0') : '' }}@if (l.unit) { / {{ unitPlain(l.unit) }} }</div>
+                        }
                         <!-- Installed?: assumed on when the line has an install price;
                              greyed + disabled when it doesn't. -->
                         <label class="mt-1.5 flex w-fit items-center gap-2.5" [class.opacity-40]="!hasInstall(l) || !editable(l)"
@@ -644,11 +645,10 @@ export class ProjectEstimateComponent {
   protected editable(l: QuoteLine): boolean {
     return l.status === 'to_send';
   }
-  /** The unit code ('head', 'linear_m') as a readable label. */
-  protected unitLabel(unit: string | null): string {
-    if (!unit) return '';
-    const t = unit.replace(/_/g, ' ');
-    return t.charAt(0).toUpperCase() + t.slice(1);
+  /** The unit code ('head', 'linear_m') as a plain label ("head", "linear m")
+   *  — reads naturally after the cost ("£42 / head"). */
+  protected unitPlain(unit: string | null): string {
+    return unit ? unit.replace(/_/g, ' ') : '';
   }
   protected readonly cur = computed(() => this.project().currency || 'GBP');
   protected readonly budget = computed(() => this.project().projectBudget ?? 0);
