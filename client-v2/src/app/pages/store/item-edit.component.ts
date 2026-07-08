@@ -22,6 +22,7 @@ import { ItemApprovalPanelComponent } from './item-approval-panel.component';
 interface ItemForm {
   name: string;
   category_id: string;
+  unit: string;                // item_unit code (per head / day / each…)
   base_price: string;          // "Ballpark cost"
   install_cost: string;        // installation cost (separate line)
   install_description: string; // "Included Services"
@@ -97,6 +98,8 @@ interface ItemForm {
                   />
                 </div>
               </div>
+
+              <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="editing()" [value]="form().unit" (valueChange)="patch({ unit: $event })" />
 
               <app-edit-field [label]="'Ballpark Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
 
@@ -211,7 +214,7 @@ export class ItemEditComponent {
   protected readonly deciding = signal(false);
 
   protected readonly form = signal<ItemForm>({
-    name: '', category_id: '', base_price: '', install_cost: '',
+    name: '', category_id: '', unit: '', base_price: '', install_cost: '',
     install_description: '', location_coverage: '', lead_time_days: '', description: '',
   });
   protected readonly imageUrl = signal<string | null>(null);
@@ -271,6 +274,11 @@ export class ItemEditComponent {
     () => (this.categoriesRes.value() ?? []).map((c) => ({ label: c.name, value: c.id }))
   );
 
+  private readonly unitsRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/item_unit/values');
+  protected readonly unitOptions = computed<EditFieldOption[]>(
+    () => (this.unitsRes.value() ?? []).map((u) => ({ label: u.label, value: u.code }))
+  );
+
   protected readonly itemRes = resource({
     params: () => this.itemId ?? undefined,
     loader: async ({ params }) => {
@@ -291,6 +299,7 @@ export class ItemEditComponent {
       this.form.set({
         name: item.name ?? '',
         category_id: item.category_id ?? '',
+        unit: item.unit ?? '',
         base_price: base != null ? String(base) : '',
         install_cost: install != null ? String(install) : '',
         install_description: item.install_description ?? '',
@@ -350,6 +359,7 @@ export class ItemEditComponent {
     const body: StoreItemWrite = {
       name: f.name.trim(),
       category_id: f.category_id,
+      unit: f.unit || null,
       description: f.description.trim() || null,
       base_price: f.base_price === '' ? null : Number(f.base_price),
       install_cost: f.install_cost === '' ? null : Number(f.install_cost),
