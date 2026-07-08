@@ -80,8 +80,17 @@ export interface InboxThreadItem {
   name: string;
   description: string | null;
   status: string;
+  /** pV2-UNIFY-01: LINE totals (per-unit rate × qty + install). */
   priceRef: number | null;
   priceCurrent: number | null;
+  /** The per-unit rate being negotiated (Cost), plus the breakdown basis. */
+  unitPriceRef: number | null;
+  unitPriceCurrent: number | null;
+  quantity: number | null;
+  unit: string | null;
+  installed: boolean | null;
+  installCost: number | null;
+  installUnit: string | null;
   imageUrl: string | null;
   /** Latest accept per side (buyer = agency, seller = supplier). */
   buyerAccepted: boolean;

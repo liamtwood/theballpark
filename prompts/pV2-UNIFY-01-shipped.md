@@ -108,6 +108,32 @@ UNIFY render fix; flag for the "who quotes what" routing review.
   `master` schema — the auto-mode classifier blocks the destructive master
   DDL. `public`/`preview` are already migrated; master is empty.
 
+## Iteration — v2.48 (2026-07-08)
+**Triggered by QC (Liam):** proposing a new cost on the inbox thread blew up —
+countered £30,000 on a £34,650 line, got a **£9,900,000** revised total.
+
+**Root cause:** UNIFY made `priceRef`/`priceCurrent` LINE totals, but the
+propose dialog seeded the line total (£34,650) and sent it as a **per-unit**
+`price`, which the server re-ran through `× qty + install` (30,000 × 300 +
+10% = £9.9M). Unit-scale mismatch.
+
+**Fix (Option A — negotiate the per-unit rate; Liam's call):** the propose box
+now operates on the **rate** (seeded from `unitPriceCurrent`), shows the
+Cost · Unit · Install · Qty · Total breakdown, and previews the derived line
+total live as you type; the bubble logs the derived totals (#15 format
+preserved). Server exposes the breakdown fields (`unit` / `installCost` /
+`installUnit` / `installed` + per-unit rate + qty) on the thread item; the
+line total derives once from the stored rate.
+
+**Verified:** propose £90/head on a ×100 line with 10% install → stored rate
+£90, revised line total **£9,900** (90×100 + 10%), single multiply. Client
+builds clean.
+
+**Files:** `message-item.service.js` (getByMessage +install cols),
+`inbox.service.js` (toThreadItem +breakdown fields),
+`core/inbox/inbox.service.ts` (type), `inbox-project.component.ts`
+(per-unit propose + breakdown display + live total), chip v2.48.
+
 ## QC notes
 (Liam)
 

@@ -242,6 +242,12 @@ function toThreadItem(it) {
     unitPriceRef: it.price_ref == null ? null : Number(it.price_ref),
     unitPriceCurrent: it.price_current == null ? null : Number(it.price_current),
     quantity: it.quantity == null ? null : Number(it.quantity),
+    // The install basis, so the negotiation card can show the full breakdown
+    // (Cost · Unit · Install · Total) and recompute the total from a new rate.
+    unit: it.unit ?? null,
+    installed: it.installed,
+    installCost: it.install_cost == null ? null : Number(it.install_cost),
+    installUnit: it.install_unit ?? null,
     imageUrl: it.item_image_url ?? null,
     // Latest decision per side (from message_item_decisions) — drives the
     // YOU / THEY / BOTH accepted pill (buyer = agency, seller = supplier).

@@ -169,6 +169,7 @@ async function getByMessage(messageId, { executor = null } = {}) {
             COALESCE(pi.description, i.description) AS description,
             pi.quantity, pi.unit, pi.installed, pi.status,
             pi.price_ref, pi.price_current,
+            i.install_cost, i.install_unit,
             i.image_url       AS item_image_url,
             i.image_display   AS item_image_display,
             o.id              AS supplier_org_id,
