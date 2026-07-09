@@ -110,9 +110,9 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                     </div>
                     @for (l of sg.items; track l.id) {
                       <app-estimate-item-row
-                        [line]="l" [isFinal]="isFinal()" [selected]="selectedItemId() === l.itemId" [cur]="cur()"
+                        [line]="l" [isFinal]="isFinal()" [selected]="selectedItemId() === l.id" [cur]="cur()"
                         (select)="selectLine(l)"
-                        (qtyChange)="onQtyChange(l.itemId, $event)"
+                        (qtyChange)="onQtyChange(l.id, $event)"
                         (installToggle)="toggleInstall(l)"
                         (remove)="removeLine(l)" />
                     }
@@ -206,12 +206,14 @@ export class ProjectEstimateComponent {
 
   // ── Right-rail item preview (the rail component owns the card + eye) ───
   /** The line the user last clicked — passed to the preview rail. */
+  // The project_items ROW id — the only stable key across all lines
+  // (custom lines have no catalogue itemId — pV2-CUSTOMS-01 / audit H-1).
   protected readonly selectedItemId = signal<string | null>(null);
   protected readonly selectedLine = computed(
-    () => this.rows().find((l) => l.itemId === this.selectedItemId()) ?? null
+    () => this.rows().find((l) => l.id === this.selectedItemId()) ?? null
   );
   protected selectLine(l: QuoteLine): void {
-    this.selectedItemId.set(l.itemId);
+    this.selectedItemId.set(l.id);
   }
 
   /** Quote lines as writable state (seeded from the resource load) so qty
@@ -229,11 +231,11 @@ export class ProjectEstimateComponent {
   /** Inline quantity edit on a quote line — optimistic, revert + toast on
    *  failure. The cascade (subtotal → … → client total) and the category
    *  totals are qty-weighted via lineCost(), so they recompute automatically. */
-  protected async onQtyChange(itemId: string, quantity: number): Promise<void> {
+  protected async onQtyChange(lineId: string, quantity: number): Promise<void> {
     const before = this.rows();
-    this.rows.update((ls) => ls.map((l) => (l.itemId === itemId ? { ...l, quantity } : l)));
+    this.rows.update((ls) => ls.map((l) => (l.id === lineId ? { ...l, quantity } : l)));
     try {
-      await firstValueFrom(this.projects.setQuoteItemQuantity(this.projectId(), itemId, quantity));
+      await firstValueFrom(this.projects.setQuoteItemQuantity(this.projectId(), lineId, quantity));
       // The cascade is server-authoritative — pull the fresh breakdown.
       this.est.reload();
     } catch (err) {
@@ -247,9 +249,9 @@ export class ProjectEstimateComponent {
   protected async removeLine(l: QuoteLine): Promise<void> {
     if (!editable(l)) return;
     const before = this.rows();
-    this.rows.update((ls) => ls.filter((x) => x.itemId !== l.itemId));
+    this.rows.update((ls) => ls.filter((x) => x.id !== l.id));
     try {
-      await firstValueFrom(this.projects.removeQuoteItem(this.projectId(), l.itemId));
+      await firstValueFrom(this.projects.removeQuoteItem(this.projectId(), l.id));
       this.est.reload();
     } catch (err) {
       this.rows.set(before);
@@ -292,9 +294,9 @@ export class ProjectEstimateComponent {
     if (!hasInstall(l) || !editable(l)) return;
     const next = !isInstalled(l);
     const before = this.rows();
-    this.rows.update((ls) => ls.map((x) => (x.itemId === l.itemId ? { ...x, installed: next } : x)));
+    this.rows.update((ls) => ls.map((x) => (x.id === l.id ? { ...x, installed: next } : x)));
     try {
-      await firstValueFrom(this.projects.setQuoteItemInstalled(this.projectId(), l.itemId, next));
+      await firstValueFrom(this.projects.setQuoteItemInstalled(this.projectId(), l.id, next));
       this.est.reload();
     } catch (err) {
       this.rows.set(before);

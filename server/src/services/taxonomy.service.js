@@ -1245,11 +1245,11 @@ async function requestQuotes(body) {
           } else {
             const clone = await client.query(
               `INSERT INTO project_items
-                 (project_id, item_id, project_category_id, category_id, selection_type,
+                 (project_id, item_id, is_custom, project_category_id, category_id, selection_type,
                   source, name, description, base_price, unit, image_url, quantity,
                   installed, install_cost, install_unit, logical_line_id,
                   supplier_org_id, status, price_ref, price_current)
-               SELECT project_id, item_id, project_category_id, category_id, selection_type,
+               SELECT project_id, item_id, is_custom, project_category_id, category_id, selection_type,
                   source, name, description, base_price, unit, image_url, quantity,
                   installed, install_cost, install_unit, logical_line_id,
                   $2, 'brief_sent', $3, $3

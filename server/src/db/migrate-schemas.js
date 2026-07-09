@@ -2144,6 +2144,22 @@ const migrate = async () => {
         -- better in code + audits).
         ALTER TABLE ${s}.project_items ALTER COLUMN item_id DROP NOT NULL;
         ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS is_custom BOOLEAN NOT NULL DEFAULT false;
+        -- audit trigger columns — the shared audit.stamp_audit trigger stamps
+        -- these on every INSERT/UPDATE and ERRORS if absent. Ensure them here so
+        -- project_items writes don't break on a drifted schema (preview lacked
+        -- these — surfaced pre-preview-promotion, 2026-07-09).
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS created_by UUID;
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS updated_by UUID;
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS deleted_by UUID;
+        -- audit M-5: restore double-add safety for addItem's revive without
+        -- blocking the per-supplier fan-out clones (supplier_org_id set) or
+        -- custom lines (item_id NULL) — a PARTIAL unique index over just the
+        -- live, canonical, catalogue rows.
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_project_items_canonical
+          ON ${s}.project_items(project_id, item_id)
+          WHERE supplier_org_id IS NULL AND item_id IS NOT NULL AND deleted_at IS NULL;
       `);
       // The stripped tag join keeps the shared audit columns — the audit.*
       // BEFORE INSERT/UPDATE trigger stamps created_by/updated_*/deleted_* and

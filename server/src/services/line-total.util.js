@@ -13,12 +13,13 @@
 // joins those two tables under those aliases.
 function lineTotalSql(priceExpr) {
   const ic = 'COALESCE(pi.install_cost, i.install_cost)';
+  const iu = 'COALESCE(pi.install_unit, i.install_unit)';
   return `
   COALESCE(${priceExpr}, 0) * pi.quantity
   + CASE
       WHEN NOT COALESCE(pi.installed, true) OR ${ic} IS NULL THEN 0
-      WHEN i.install_unit = 'per_order'  THEN ${ic}
-      WHEN i.install_unit = 'percentage' THEN COALESCE(${priceExpr}, 0) * pi.quantity * (${ic} / 100.0)
+      WHEN ${iu} = 'per_order'  THEN ${ic}
+      WHEN ${iu} = 'percentage' THEN COALESCE(${priceExpr}, 0) * pi.quantity * (${ic} / 100.0)
       ELSE ${ic} * pi.quantity
     END`;
 }

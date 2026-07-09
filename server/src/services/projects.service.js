@@ -78,7 +78,8 @@ const LIST_SELECT = `
               LEFT JOIN items i ON i.id = pi.item_id
              WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
              ORDER BY pi.logical_line_id,
-                      (pi.status IN ('accepted','booked')) DESC NULLS LAST, pi.id
+                      (pi.status IN ('accepted','booked')) DESC NULLS LAST,
+                      pi.created_at ASC, pi.id
           ) x) AS quote_subtotal
     FROM projects p
     LEFT JOIN clients c ON c.id = p.client_id
@@ -440,7 +441,8 @@ async function listItems(orgId, projectId) {
          FROM (${QUOTE_LINE_JOIN}
                 WHERE pi.project_id = $1 AND pi.deleted_at IS NULL) sub
         ORDER BY sub.logical_line_id,
-                 (sub.sent_status IN ('accepted','booked')) DESC NULLS LAST, sub.created_at ASC
+                 (sub.sent_status IN ('accepted','booked')) DESC NULLS LAST,
+                 sub.created_at ASC, sub.id
      ) picked
      ORDER BY picked.category_name NULLS LAST, picked.created_at ASC`,
     [projectId]
@@ -469,8 +471,12 @@ async function getEstimate(orgId, projectId, scope = 'all') {
                 WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
                   -- scope=cart → only still-in-cart (never-sent) lines.
                   AND ($3 = false OR pi.status IS NULL)
+                -- pV2-UNIFY-01a (audit M-2): deterministic tiebreak, IDENTICAL
+                -- across getEstimate / LIST_SELECT / listItems so the banner
+                -- total and the line list can't pick different competing clones.
                 ORDER BY pi.logical_line_id,
-                         (pi.status IN ('accepted','booked')) DESC NULLS LAST, pi.id
+                         (pi.status IN ('accepted','booked')) DESC NULLS LAST,
+                         pi.created_at ASC, pi.id
              ) x) AS quote_subtotal
        FROM projects p
       WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
@@ -525,12 +531,14 @@ async function addItem(orgId, projectId, itemId) {
       [projectId, orgId]
     );
     if (!owns.rows.length) return null;
-    // Look at ANY row for this (project, item) — incl. soft-deleted. The
-    // unique index spans deleted rows, so a previously-removed item must be
-    // REVIVED, not re-inserted (else duplicate-key on re-add).
+    // Look at the CANONICAL row for this (project, item) — incl. soft-deleted.
+    // supplier_org_id IS NULL excludes the per-supplier fan-out clones
+    // (pV2-UNIFY-01a). A previously-removed item is REVIVED, not re-inserted;
+    // the partial unique index uq_project_items_canonical (audit M-5) also
+    // stops a concurrent double-add from inserting two canonicals.
     const existing = await client.query(
       `SELECT id, deleted_at FROM project_items
-        WHERE project_id = $1 AND item_id = $2
+        WHERE project_id = $1 AND item_id = $2 AND supplier_org_id IS NULL
         FOR UPDATE`,
       [projectId, itemId]
     );
@@ -618,13 +626,15 @@ async function addCustomItem(orgId, projectId, body) {
  *  row is READ-ONLY — edits happen in the inbox thread, not the quote (Liam
  *  2026-07-08, pV2-CART-01). Send-state is project_items.status now: NULL =
  *  still in cart, anything else = briefed/negotiating (pV2-UNIFY-01). */
-async function isItemSent(projectId, itemId) {
+async function isItemSent(projectId, lineId) {
+  // `lineId` is the project_items ROW id (pV2-CUSTOMS-01: custom lines have no
+  // catalogue item_id, so the row id is the only stable key across all lines).
   const r = await pool.query(
     `SELECT 1 FROM project_items
-      WHERE project_id = $1 AND item_id = $2
+      WHERE project_id = $1 AND id = $2
         AND status IS NOT NULL AND deleted_at IS NULL
       LIMIT 1`,
-    [projectId, itemId]
+    [projectId, lineId]
   );
   return r.rows.length > 0;
 }
@@ -635,15 +645,17 @@ async function isItemSent(projectId, itemId) {
  *  Single write (the ownership SELECT + the UPDATE) — no transaction needed
  *  (Rule 1): the UPDATE re-scopes by project_id, so the ownership check can't
  *  be raced into a cross-org write. */
-async function updateItem(orgId, projectId, itemId, patch) {
+async function updateItem(orgId, projectId, lineId, patch) {
+  // `lineId` is the project_items ROW id (pV2-CUSTOMS-01) — the only key that
+  // works for custom lines (no catalogue item_id).
   const owns = await pool.query(
     `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
     [projectId, orgId]
   );
   if (!owns.rows.length) return null;
-  if (await isItemSent(projectId, itemId)) return 'locked';
+  if (await isItemSent(projectId, lineId)) return 'locked';
   const sets = [];
-  const vals = [projectId, itemId];
+  const vals = [projectId, lineId];
   if (patch.quantity !== undefined) {
     vals.push(patch.quantity);
     sets.push(`quantity = $${vals.length}`);
@@ -655,29 +667,30 @@ async function updateItem(orgId, projectId, itemId, patch) {
   if (!sets.length) return false; // nothing to change
   const r = await pool.query(
     `UPDATE project_items SET ${sets.join(', ')}
-      WHERE project_id = $1 AND item_id = $2 AND deleted_at IS NULL
+      WHERE project_id = $1 AND id = $2 AND deleted_at IS NULL
       RETURNING id`,
     vals
   );
-  if (!r.rows.length) return false; // no live line for this item
+  if (!r.rows.length) return false; // no live line for this id
   return lineById(pool, r.rows[0].id);
 }
 
 /** Soft-remove an item from the project's quote. Returns true if a row was
  *  removed, false if none, null if the project isn't the org's, 'locked' if
  *  the item is out for quote (read-only in the quote). */
-async function removeItem(orgId, projectId, itemId) {
+async function removeItem(orgId, projectId, lineId) {
+  // `lineId` is the project_items ROW id (pV2-CUSTOMS-01).
   const owns = await pool.query(
     `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
     [projectId, orgId]
   );
   if (!owns.rows.length) return null;
-  if (await isItemSent(projectId, itemId)) return 'locked';
+  if (await isItemSent(projectId, lineId)) return 'locked';
   const r = await pool.query(
     `UPDATE project_items SET deleted_at = NOW()
-      WHERE project_id = $1 AND item_id = $2 AND deleted_at IS NULL
+      WHERE project_id = $1 AND id = $2 AND deleted_at IS NULL
       RETURNING id`,
-    [projectId, itemId]
+    [projectId, lineId]
   );
   return r.rows.length > 0;
 }

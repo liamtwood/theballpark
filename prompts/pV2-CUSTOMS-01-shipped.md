@@ -100,6 +100,50 @@ to Wine (not General); selecting Wine filters to its messages. Server-only.
 **Files:** `inbox.service.js` (`fetchTags`, `toThreadItem`, reply lookup), chip
 v2.54.
 
+## Iteration — v2.55 (2026-07-09) — architect audit triage
+
+Full report: `docs/audits/2026-07-09-unify-arc-architect-audit.md` (independent
+read-only pass over the UNIFY-01 / 01a / CUSTOMS-01 arc). Triage:
+
+**Fixed (blockers / correctness):**
+- **H-1 (HIGH) — custom lines couldn't be edited/removed; multi-custom ops hit
+  the wrong row.** Line identity keyed on catalogue `item_id` (NULL for custom).
+  Rekeyed the whole select/qty/install/remove path to the `project_items` ROW
+  id — server (`isItemSent`/`updateItem`/`removeItem` → `WHERE id`) + client
+  (`selectLine`/`onQtyChange`/`toggleInstall`/`removeLine` + template). Verified:
+  two custom lines, editing/removing one leaves the other untouched.
+- **M-2 — `DISTINCT ON` tiebreak diverged** (getEstimate/LIST_SELECT on `id`,
+  listItems on `created_at`) → banner vs line-list could pick different
+  competing clones. Aligned all three: accepted/booked → `created_at` → `id`.
+- **M-4 — shared formula ignored negotiable `install_unit`.** Now
+  `COALESCE(pi.install_unit, i.install_unit)` in `line-total.util.js`.
+- **M-5 — `addItem` revive relied on the dropped unique index.** Added a
+  PARTIAL unique index `uq_project_items_canonical` (live canonical catalogue
+  rows only — doesn't block fan-out clones or custom lines) + scoped the revive
+  lookup to the canonical row (`supplier_org_id IS NULL`).
+- **L-6 — fan-out clone dropped `is_custom`** → accepted custom clone lost its
+  tag. Clone now copies `is_custom`.
+- **Preview schema drift (found while adding M-5's index):**
+  `preview.project_items` was missing all 5 audit columns
+  (`created_by`/`updated_*`/`deleted_*`) — writes would have errored on the
+  audit trigger. Added them + ensured them in `migrate-schemas.js` for all
+  schemas. **A full `migrate-schemas` run on preview is still recommended
+  before promotion to catch any other drift.**
+
+**Deferred (accepted, follow-up — not promotion blockers):**
+- **M-3** money formula in 3 places (`lineTotalSql`/`lineCost`/`lineTotalAt`),
+  no parity test (Rule 7). Verified numerically equal; consolidate + add a
+  parity test in a follow-up.
+- **L-8** `getProjectSummary` sums across per-supplier threads (double-counts
+  competing) — currently unrendered by the rail.
+- **L-9** inbox action failures swallowed (minor UX; retry-on-click today).
+- **L-10** re-send can't add a new supplier to an already-briefed line (known;
+  needs an explicit "add supplier" flow — backlog).
+
+**Rejected:**
+- **L-7** hand-rolled BEGIN/COMMIT in `requestQuotes` (Rule 1 attribution gap)
+  — pre-existing v1 pattern, out of this arc's scope; the gap predates UNIFY.
+
 ## QC notes
 (Liam)
 
