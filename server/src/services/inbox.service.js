@@ -81,10 +81,10 @@ async function listSupplierProjects(supplierOrgId) {
             COUNT(*)            AS item_count,
             COALESCE(SUM(${lineTotalSql('COALESCE(pi.price_current, pi.price_ref)')}), 0) AS quote_total
        FROM project_items pi
-       JOIN items i      ON i.id  = pi.item_id
+       LEFT JOIN items i ON i.id  = pi.item_id
        JOIN projects p   ON p.id  = pi.project_id
        LEFT JOIN orgs ao ON ao.id = p.org_id
-      WHERE i.org_id = $1
+      WHERE pi.supplier_org_id = $1
         AND pi.status IS NOT NULL
         AND pi.deleted_at IS NULL
         AND p.deleted_at IS NULL

@@ -2119,6 +2119,24 @@ const migrate = async () => {
         -- catalogue items.install_cost/unit (mirrors the base_price snapshot).
         ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS install_cost   NUMERIC(12,2);
         ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS install_unit   VARCHAR(30);
+        -- pV2-UNIFY-01a: restore the per-supplier row model (UNIFY-01 locked
+        -- decision #1 — one row per (project, line, supplier) — was collapsed to
+        -- (project, item), which breaks competing quotes: N suppliers asked to
+        -- quote one line each need their own price_current). supplier_org_id =
+        -- who we asked (source of truth for a row's supplier post-send; NULL
+        -- pre-send). logical_line_id groups the N supplier rows for one logical
+        -- line; the cart/estimate collapse to one entry per group, the inbox
+        -- shows the per-supplier rows. Backfill each existing row to its own id
+        -- (every current row is its own single-supplier group).
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS supplier_org_id UUID REFERENCES ${s}.orgs(id);
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS logical_line_id UUID;
+        UPDATE ${s}.project_items SET logical_line_id = id WHERE logical_line_id IS NULL;
+        CREATE INDEX IF NOT EXISTS ix_project_items_logical_line
+          ON ${s}.project_items(logical_line_id);
+        -- The old (project_id, item_id) uniqueness is incompatible with the
+        -- per-supplier row model (N rows per item) AND with CUSTOMS-01's NULL
+        -- item_id. addItem's SELECT ... FOR UPDATE revive doesn't need it.
+        DROP INDEX IF EXISTS ${s}.uq_project_items_project_item;
       `);
       // The stripped tag join keeps the shared audit columns — the audit.*
       // BEFORE INSERT/UPDATE trigger stamps created_by/updated_*/deleted_* and

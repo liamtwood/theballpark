@@ -72,10 +72,14 @@ const LIST_SELECT = `
          -- item has one (the Estimate tab lets the agent opt a line out; the
          -- card shows the default all-installed Ballpark). Run through the
          -- cascade below → matches getEstimate + the Estimate tab.
-         (SELECT COALESCE(SUM(${LINE_TOTAL_SQL}), 0)
-            FROM project_items pi
-            LEFT JOIN items i ON i.id = pi.item_id
-           WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS quote_subtotal
+         (SELECT COALESCE(SUM(lt), 0) FROM (
+            SELECT DISTINCT ON (pi.logical_line_id) (${LINE_TOTAL_SQL}) AS lt
+              FROM project_items pi
+              LEFT JOIN items i ON i.id = pi.item_id
+             WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
+             ORDER BY pi.logical_line_id,
+                      (pi.status IN ('accepted','booked')) DESC NULLS LAST, pi.id
+          ) x) AS quote_subtotal
     FROM projects p
     LEFT JOIN clients c ON c.id = p.client_id
    WHERE p.org_id = $1 AND p.deleted_at IS NULL
@@ -381,15 +385,18 @@ const QUOTE_LINE_JOIN = `
          -- base_price / catalogue install. So the quote card matches the inbox.
          COALESCE(pi.price_current, pi.base_price)  AS base_price,
          pi.unit, pi.image_url, pi.quantity,
-         pi.installed,
+         pi.installed, pi.logical_line_id, pi.created_at,
          pi.category_id, c.name AS category_name,
          c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url,
          COALESCE(pi.install_cost, i.install_cost)  AS install_cost,
          i.install_description,
          COALESCE(pi.install_unit, i.install_unit)  AS install_unit,
-         -- Supplier = the item's catalogue owner (marketplace source), so the
-         -- cart cat card can say "N items from <supplier>" pre-outreach.
-         i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
+         -- Supplier (pV2-UNIFY-01a): the ASKED supplier (supplier_org_id) once
+         -- sent — the source of truth for who's quoting THIS row; pre-send it's
+         -- NULL so we fall back to the item's catalogue owner (the default the
+         -- cart cat card shows, "N items from <supplier>").
+         COALESCE(pi.supplier_org_id, i.org_id) AS supplier_id,
+         o.name AS supplier_name, o.city AS supplier_city,
          -- Send-state: the line's negotiation status, now on project_items
          -- itself (pV2-UNIFY-01). NULL = never sent = still in the cart.
          -- Drives the cart/final split + the per-item badge (pV2-CART-01).
@@ -397,7 +404,7 @@ const QUOTE_LINE_JOIN = `
     FROM project_items pi
     LEFT JOIN categories c ON c.id = pi.category_id
     LEFT JOIN items i ON i.id = pi.item_id
-    LEFT JOIN orgs o ON o.id = i.org_id`;
+    LEFT JOIN orgs o ON o.id = COALESCE(pi.supplier_org_id, i.org_id)`;
 
 /** Collapse a message_item send-status into the quote line's coarse status:
  *  to_send (never sent) → out_for_quote → quoted → booked / declined. */
@@ -422,10 +429,19 @@ async function listItems(orgId, projectId) {
     [projectId, orgId]
   );
   if (!owns.rows.length) return null;
+  // pV2-UNIFY-01a: the Cart / Final Quote show ONE entry per logical line even
+  // when it fanned out to N supplier rows — pick the accepted/booked row if any
+  // (its negotiated price/supplier), else the canonical row. The inbox is where
+  // the per-supplier rows are shown separately.
   const r = await pool.query(
-    `${QUOTE_LINE_JOIN}
-      WHERE pi.project_id = $1 AND pi.deleted_at IS NULL
-      ORDER BY c.name NULLS LAST, pi.created_at ASC`,
+    `SELECT * FROM (
+       SELECT DISTINCT ON (sub.logical_line_id) sub.*
+         FROM (${QUOTE_LINE_JOIN}
+                WHERE pi.project_id = $1 AND pi.deleted_at IS NULL) sub
+        ORDER BY sub.logical_line_id,
+                 (sub.sent_status IN ('accepted','booked')) DESC NULLS LAST, sub.created_at ASC
+     ) picked
+     ORDER BY picked.category_name NULLS LAST, picked.created_at ASC`,
     [projectId]
   );
   return r.rows.map(toQuoteLine);
@@ -442,14 +458,19 @@ async function getEstimate(orgId, projectId, scope = 'all') {
   const cartOnly = scope === 'cart';
   const r = await pool.query(
     `SELECT p.default_contingency_pct, p.default_margin_pct, p.default_vat_pct,
-            (SELECT COALESCE(SUM(${LINE_TOTAL_SQL}), 0)
-               FROM project_items pi
-               LEFT JOIN items i ON i.id = pi.item_id
-              WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
-                -- scope=cart → only still-in-cart (never-sent) lines
-                -- (pV2-UNIFY-01: send-state is now project_items.status).
-                AND ($3 = false OR pi.status IS NULL)
-            ) AS quote_subtotal
+            -- pV2-UNIFY-01a: a logical line can fan out to N supplier rows;
+            -- count ONE per logical_line_id — the accepted/booked row if any
+            -- (its negotiated price_current), else the canonical row (base_price).
+            (SELECT COALESCE(SUM(lt), 0) FROM (
+               SELECT DISTINCT ON (pi.logical_line_id) (${LINE_TOTAL_SQL}) AS lt
+                 FROM project_items pi
+                 LEFT JOIN items i ON i.id = pi.item_id
+                WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
+                  -- scope=cart → only still-in-cart (never-sent) lines.
+                  AND ($3 = false OR pi.status IS NULL)
+                ORDER BY pi.logical_line_id,
+                         (pi.status IN ('accepted','booked')) DESC NULLS LAST, pi.id
+             ) x) AS quote_subtotal
        FROM projects p
       WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
     [projectId, orgId, cartOnly]
@@ -543,6 +564,12 @@ async function addItem(orgId, projectId, itemId) {
       );
       rowId = ins.rows[0].id;
     }
+    // pV2-UNIFY-01a: a fresh cart line is its own logical line (one supplier
+    // group of one until the send fans it out). Seed logical_line_id = id.
+    await client.query(
+      `UPDATE project_items SET logical_line_id = id WHERE id = $1 AND logical_line_id IS NULL`,
+      [rowId]
+    );
     return lineById(client, rowId);
   });
 }

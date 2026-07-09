@@ -191,7 +191,7 @@ async function getByMessage(messageId, { executor = null } = {}) {
        FROM message_items mtag
        JOIN project_items pi ON pi.id = mtag.project_item_id
        LEFT JOIN items i ON i.id = pi.item_id
-       LEFT JOIN orgs  o ON o.id = i.org_id
+       LEFT JOIN orgs  o ON o.id = COALESCE(pi.supplier_org_id, i.org_id)
        LEFT JOIN LATERAL (
          SELECT d.decision, d.user_id, d.created_at
            FROM message_item_decisions d

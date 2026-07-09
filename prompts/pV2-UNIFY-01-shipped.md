@@ -170,6 +170,46 @@ QUOTE_LINE_JOIN), `message-item.service.js` (getByMessage + transitionItem),
 `core/inbox/inbox.service.ts`, `inbox-project.component.ts`,
 `estimate-item-row.component.ts`, chip v2.49.
 
+## Iteration — v2.52 (2026-07-09) — UNIFY-01a: restore per-supplier rows
+
+**Triggered by (pre-build catch):** UNIFY-01 shipped with one `project_items`
+row per `(project, item)`, collapsing the prompt's **locked decision #1** (one
+row per `(project, item, supplier)`). With the v2.50 multi-select supplier
+checkboxes that broke competing quotes — two suppliers asked to quote one line
+would overwrite each other's `price_current` on the shared row.
+
+**Fix (per-supplier row model):**
+- Schema: `project_items` gains **`supplier_org_id`** (who was asked — the
+  source of truth for a row's supplier post-send) + **`logical_line_id`**
+  (groups the N supplier rows for one logical line). Dropped the
+  `(project_id, item_id)` unique index (incompatible with N-per-item + future
+  NULL `item_id`). Applied to public + preview; master pending the full run.
+- Send fan-out (`requestQuotes`): the first picked supplier **claims** the
+  canonical pre-send row; each additional supplier gets a **clone** sharing
+  `logical_line_id`. Each row carries its own `price_ref`/`price_current`.
+- Supplier derivation flips to `COALESCE(supplier_org_id, items.org_id)` — the
+  asked supplier once sent, the item owner as the pre-send default — in the
+  quote-line join + inbox reader.
+- Estimate + Cart/Final collapse to **one entry per `logical_line_id`**
+  (`DISTINCT ON`, accepted/booked row wins else canonical) so fanned rows
+  aren't double-counted; the inbox shows the per-supplier rows.
+- `addItem` seeds `logical_line_id = id`; `listSupplierProjects` keys off
+  `supplier_org_id`.
+
+**Verified:** Catering fanned to 2 supplier rows/line (3 logical lines, 5
+rows); Final Quote shows 3 lines £42,530 (not doubled); each supplier sees
+their own thread; Ballpark's adjusting a line to £999 left Rocket Food's row
+untouched — competing quotes independent. Server-only; no client change.
+
+**Files:** `migrate-schemas.js` (+2 cols, drop uq index), `taxonomy.service.js`
+(fan-out), `projects.service.js` (addItem seed, getEstimate/LIST_SELECT/
+listItems dedup, QUOTE_LINE_JOIN supplier), `inbox.service.js`
+(listSupplierProjects), `message-item.service.js` (getByMessage supplier),
+chip v2.52.
+
+**Next:** pV2-CUSTOMS-01 lands on top (custom line = one `logical_line_id`
+group, `item_id = NULL`, `is_custom`).
+
 ## QC notes
 (Liam)
 
