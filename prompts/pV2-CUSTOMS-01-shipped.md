@@ -81,6 +81,25 @@ Custom stays `item_id = NULL` even after acceptance; promoting a quoted custom
 line into a supplier's catalogue is a future explicit `promote-to-catalogue`
 action (out of scope, per the prompt).
 
+## Iteration — v2.54 (2026-07-09)
+**Triggered by QC (Liam):** a custom line's brief showed as **"General"** in the
+inbox (untagged) instead of tagged to the item.
+
+**Root cause:** the inbox item-tag/filter keys on the catalogue `item_id`, which
+is NULL for a custom line — so `fetchTags` dropped it (`WHERE item_id IS NOT
+NULL`) and the message fell through as an untagged broadcast.
+
+**Fix:** key the tag on `COALESCE(item_id, project_items.id)` so custom lines
+get a stable, non-null filter key. `toThreadItem.itemId` mirrors it
+(`item_id ?? id`), and the reply `taggedItemId` lookup matches either
+`item_id` or `id`. Catalogue lines unchanged.
+
+**Verified:** custom "Wine" briefed to a supplier → its brief bubble is tagged
+to Wine (not General); selecting Wine filters to its messages. Server-only.
+
+**Files:** `inbox.service.js` (`fetchTags`, `toThreadItem`, reply lookup), chip
+v2.54.
+
 ## QC notes
 (Liam)
 

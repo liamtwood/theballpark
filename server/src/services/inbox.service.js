@@ -206,24 +206,23 @@ function toBubble(m, viewer, counterpartyName, taggedItemIds) {
   };
 }
 
-/** Per-message tags: catalogue item_ids each message carries a message_items
- *  row for (the brief's real items + the pure-tag rows on replies). */
+/** Per-message tags: the filter key each message carries a message_items row
+ *  for. pV2-CUSTOMS-01: key on COALESCE(item_id, project_item_id) so custom
+ *  lines (item_id NULL) still get a stable tag — matching toThreadItem's itemId
+ *  — instead of falling through as an untagged "General" broadcast. */
 async function fetchTags(messageIds) {
   if (!messageIds.length) return new Map();
-  // pV2-UNIFY-01: message_items is a (message_id, project_item_id) tag join
-  // now; resolve back to the catalogue item_id so the client's per-item
-  // message filter (which keys on catalogue item_id) is unchanged.
   const r = await pool.query(
-    `SELECT mtag.message_id, pi.item_id
+    `SELECT mtag.message_id, COALESCE(pi.item_id, pi.id) AS tag_key
        FROM message_items mtag
        JOIN project_items pi ON pi.id = mtag.project_item_id
-      WHERE mtag.message_id = ANY($1::uuid[]) AND pi.item_id IS NOT NULL`,
+      WHERE mtag.message_id = ANY($1::uuid[])`,
     [messageIds]
   );
   const map = new Map();
   for (const row of r.rows) {
     const arr = map.get(row.message_id) ?? [];
-    arr.push(row.item_id);
+    arr.push(row.tag_key);
     map.set(row.message_id, arr);
   }
   return map;
@@ -234,8 +233,9 @@ function toThreadItem(it) {
     // pV2-UNIFY-01: the line's own id is the project_items.id now (what the
     // client sends back in item actions).
     id: it.id,
-    // The catalogue item_id — the tag-match key for filtering messages.
-    itemId: it.item_id ?? null,
+    // The message-filter key: the catalogue item_id, or the project_items row
+    // id for a custom line (item_id NULL) so its tag still matches (CUSTOMS-01).
+    itemId: it.item_id ?? it.id,
     name: it.name,
     description: it.description || null,
     status: it.status,
@@ -544,11 +544,14 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions, tagge
     // line too. taggedItemId is the catalogue item_id → resolve to the
     // thread's project_item (pV2-UNIFY-01).
     if (taggedItemId) {
+      // taggedItemId is the filter key toThreadItem emits: the catalogue
+      // item_id, or the project_items row id for a custom line (CUSTOMS-01).
       const nm = await db.query(
         `SELECT pi.id
            FROM project_items pi
            JOIN message_items mtag ON mtag.project_item_id = pi.id
-          WHERE mtag.message_id = $1 AND pi.item_id = $2 AND pi.deleted_at IS NULL
+          WHERE mtag.message_id = $1 AND (pi.item_id = $2 OR pi.id = $2)
+            AND pi.deleted_at IS NULL
           LIMIT 1`,
         [lm.id, taggedItemId]
       );
