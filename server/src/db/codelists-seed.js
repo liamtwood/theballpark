@@ -94,10 +94,14 @@ const NEW_VALUES = {
     { code: 'other',      label: 'Other',          sort: 10, def: false },
   ],
   item_approval_status: [
+    // pV2-STORE-01 — supplier's pre-submit state. draft → (submit) → pending.
+    { code: 'draft',    label: 'Draft',    sort: 0, def: false, meta: { color: '--color-text-muted', color_soft: '--color-fill', icon: 'pencil-line', is_terminal: false, allowed_next_codes: ['pending'] } },
     { code: 'pending',  label: 'Pending',  sort: 1, def: true,  meta: { color: '--color-warn',    color_soft: '--color-warn-soft',    icon: 'clock',  is_terminal: false, allowed_next_codes: ['approved', 'rejected'] } },
     { code: 'approved', label: 'Approved', sort: 2, def: false, meta: { color: '--color-success', color_soft: '--color-success-soft', icon: 'check',  is_terminal: false, allowed_next_codes: ['rejected'] } },
-    // No consumer writes 'rejected' yet — seeded INACTIVE per the prompt.
-    { code: 'rejected', label: 'Rejected', sort: 3, def: false, active: false, meta: { color: '--color-danger', color_soft: '--color-danger-soft', icon: 'x', is_terminal: true, allowed_next_codes: [] } },
+    // pV2-STORE-01: the admin moderation route writes 'rejected' now, so it must
+    // be ACTIVE or its status pill can't resolve (GET /values is active-only).
+    // Existing inactive rows are flipped by the UPDATE in seedCodelists().
+    { code: 'rejected', label: 'Rejected', sort: 3, def: false, meta: { color: '--color-danger', color_soft: '--color-danger-soft', icon: 'x', is_terminal: true, allowed_next_codes: [] } },
   ],
 };
 
@@ -144,6 +148,40 @@ async function seedCodelists(client) {
         [list, v.code, v.label, v.sort, v.active !== false, v.def, JSON.stringify(v.meta ?? {})]
       );
     }
+  }
+
+  // pV2-STORE-01 — the v1-seeded `item_approval_status.rejected` was INACTIVE
+  // (no writer at seed time); the admin moderation route writes it now, so its
+  // pill must resolve. ON CONFLICT DO NOTHING never updates an existing row, so
+  // flip it explicitly (idempotent).
+  await client.query(
+    `UPDATE shared.reference_codelist_values SET is_active = true
+       WHERE list_name = 'item_approval_status' AND code = 'rejected' AND is_active = false`
+  );
+
+  // pV2-INBOX-01 — message_item_status was seeded label + semantic only (no
+  // color/icon → grey pills in the inbox). Enrich the DISPLAY meta so the
+  // status pills render like every other status pill. Idempotent jsonb
+  // merge (preserves semantic/terminal); token color refs + Lucide icons
+  // already in the app's pick set.
+  const ITEM_STATUS_META = {
+    brief_sent:           { color: '--color-warn',    icon: 'mail' },
+    holding:              { color: '--color-warn',    icon: 'clock' },
+    quoted:               { color: '--color-info',    icon: 'pencil-line' },
+    adjusted_by_supplier: { color: '--color-info',    icon: 'pencil-line' },
+    adjusted_by_agent:    { color: '--color-warn',    icon: 'pencil-line' },
+    accepted:             { color: '--color-success', icon: 'check' },
+    booked:               { color: '--color-success', icon: 'check-check' },
+    declined_by_supplier: { color: '--color-danger',  icon: 'x' },
+    declined_by_agent:    { color: '--color-danger',  icon: 'x' },
+  };
+  for (const [code, m] of Object.entries(ITEM_STATUS_META)) {
+    await client.query(
+      `UPDATE shared.reference_codelist_values
+          SET meta = COALESCE(meta, '{}'::jsonb) || $2::jsonb, updated_at = NOW()
+        WHERE list_name = 'message_item_status' AND code = $1`,
+      [code, JSON.stringify(m)]
+    );
   }
 
   // country — codes constant, labels via Intl (never hand-typed).

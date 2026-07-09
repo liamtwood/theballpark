@@ -76,6 +76,15 @@ export const BALLPARK_TILES: readonly LauncherTile[] = [
     href: '/settings/early-access',
   },
   {
+    // pV2-STORE-01 — item moderation. Lands on the standard marketplace, but
+    // defaults Status to Pending so admins see the approval queue first.
+    icon: 'store',
+    label: 'Marketplace',
+    subtitle: 'Review and approve items suppliers have submitted.',
+    href: '/marketplace',
+    query: { status: 'pending' },
+  },
+  {
     icon: 'settings',
     label: 'Page Settings',
     subtitle: 'Edit page heroes and labels per customer role.',

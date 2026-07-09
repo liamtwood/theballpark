@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
 import { WordmarkComponent } from '../shared/wordmark/wordmark.component';
 import { UserMenuComponent } from './user-menu/user-menu.component';
+import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.component';
 
 /** Chrome around every authenticated route: transparent fixed header
  *  (wordmark left, user menu right) above the routed page. The pV2-04b1 cog
@@ -13,7 +14,7 @@ import { UserMenuComponent } from './user-menu/user-menu.component';
 @Component({
   selector: 'app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, WordmarkComponent, UserMenuComponent],
+  imports: [RouterOutlet, WordmarkComponent, UserMenuComponent, ConfirmDialogComponent],
   host: { class: 'block min-h-screen' },
   template: `
     <header
@@ -33,6 +34,10 @@ import { UserMenuComponent } from './user-menu/user-menu.component';
     <main class="px-6 pb-[var(--shell-pb)] pt-[var(--shell-pt)]">
       <router-outlet />
     </main>
+
+    <!-- One app-wide confirmation modal (DIALOGS.md) — any destructive action
+         resolves through ConfirmService. -->
+    <app-confirm-dialog />
   `,
 })
 export class AppShellComponent {

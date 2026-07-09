@@ -1,8 +1,14 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { Router, RouterLink } from '@angular/router';
+import { firstValueFrom, Observable } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { TooltipModule } from 'primeng/tooltip';
 import { CatalogueItem, sizedImage } from './catalogue.types';
+import { StatusPillComponent } from '../status-pill/status-pill.component';
+import { StoreItemService } from '../../core/store/store-item.service';
+import { ConfirmService } from '../confirm/confirm.service';
+import { AuthService } from '../../core/auth/auth.service';
 
 /** pV2-CARDS-01 — the catalog item card per CARDS.md image 2 (Converted
  *  Railway Arch): image top, name, category `.bp-tag-chip`, prominent
@@ -14,14 +20,14 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
 @Component({
   selector: 'app-item-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule, TooltipModule],
+  imports: [CurrencyPipe, RouterLink, LucideAngularModule, TooltipModule, StatusPillComponent],
   host: {
     class: 'bp-card bp-card--zoom cursor-pointer',
     '[class.bp-card--selected]': 'selected()',
-    '(click)': 'clicked.emit(item().id)',
+    '(click)': 'open()',
     tabindex: '0',
     role: 'button',
-    '(keydown.enter)': 'clicked.emit(item().id)',
+    '(keydown.enter)': 'open()',
   },
   template: `
     @if (item().coverUrl) {
@@ -40,39 +46,49 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
         <lucide-icon name="store" [size]="22" [strokeWidth]="1.5" />
       </div>
     }
-    <button
-      type="button"
-      class="bp-fav-btn"
-      [class.bp-fav-btn--on]="favourited()"
-      [attr.aria-label]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
-      [pTooltip]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
-      tooltipStyleClass="bp-tooltip"
-      tooltipPosition="top"
-      (click)="onFavClick($event)"
-    >
-      <lucide-icon name="heart" [size]="15" />
-    </button>
-    <!-- The customer-proposed "+" (v1 lineage) — replaced the gradient
-         foot CTA (v2.20q). OWN state, independent of the heart (QC: one
-         click was lighting both). TRANSITIONAL: session-local draft mark
-         until pV2-06f lands the real quote flow. -->
-    <button
-      type="button"
-      class="bp-fav-btn bp-fav-btn--second"
-      [class.bp-fav-btn--on]="quoted()"
-      [attr.aria-label]="quoted() ? 'Added to Quote' : 'Add to Quote'"
-      [pTooltip]="quoted() ? 'Added to Quote' : 'Add to Quote'"
-      tooltipStyleClass="bp-tooltip"
-      tooltipPosition="top"
-      (click)="onQuoteClick($event)"
-    >
-      <!-- Always a plus (QC: the check read as a Nike swoosh at 15px) —
-           the gradient circle alone carries the added state. -->
-      <lucide-icon name="plus" [size]="15" />
-    </button>
+    @if (!item().isActive) {
+      <!-- pV2-STORE-01 — inactive items (owner/admin view) carry their status. -->
+      <span class="absolute left-2.5 top-2.5 z-10">
+        <app-status-pill list="item_approval_status" [code]="item().approvalStatus" />
+      </span>
+    }
+    <!-- Wishlist + Add-to-Quote are BUYER actions — agents only. Suppliers and
+         ballpark admins don't favourite/quote (they manage/moderate). -->
+    @if (isAgent()) {
+      <button
+        type="button"
+        class="bp-fav-btn"
+        [class.bp-fav-btn--on]="favourited()"
+        [attr.aria-label]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
+        [pTooltip]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
+        tooltipStyleClass="bp-tooltip"
+        tooltipPosition="top"
+        (click)="onFavClick($event)"
+      >
+        <lucide-icon name="heart" [size]="15" />
+      </button>
+      <!-- The customer-proposed "+" (v1 lineage) — replaced the gradient
+           foot CTA (v2.20q). OWN state, independent of the heart (QC: one
+           click was lighting both). TRANSITIONAL: session-local draft mark
+           until pV2-06f lands the real quote flow. -->
+      <button
+        type="button"
+        class="bp-fav-btn bp-fav-btn--second"
+        [class.bp-fav-btn--on]="quoted()"
+        [attr.aria-label]="quoted() ? 'Added to Quote' : 'Add to Quote'"
+        [pTooltip]="quoted() ? 'Added to Quote' : 'Add to Quote'"
+        tooltipStyleClass="bp-tooltip"
+        tooltipPosition="top"
+        (click)="onQuoteClick($event)"
+      >
+        <!-- Always a plus (QC: the check read as a Nike swoosh at 15px) —
+             the gradient circle alone carries the added state. -->
+        <lucide-icon name="plus" [size]="15" />
+      </button>
+    }
 
     <div class="min-w-0 px-3.5 pb-3.5 pt-3">
-      <div class="truncate text-md font-semibold text-text">{{ item().name }}</div>
+      <div class="bp-list-title truncate">{{ item().name }}</div>
       @if (item().subcategoryName || item().categoryName; as chip) {
         <span class="bp-tag-chip mt-1.5">{{ chip }}</span>
       }
@@ -89,10 +105,70 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
         <lucide-icon name="map-pin" [size]="13" [strokeWidth]="1.75" />
         <span class="bp-caption truncate">{{ item().supplierCity || item().supplierName }}</span>
       </div>
+      @if (item().ownedByActiveOrg) {
+        <!-- pV2-STORE-01 — owner manages their own item from the card:
+             Edit, Duplicate, Show/Hide (is_active), Trash (soft delete). -->
+        <div class="mt-3 flex items-center gap-2">
+          <!-- Approved items are editable too now (photos locked in the editor). -->
+          <a
+            [routerLink]="['/store/items', item().id]"
+            class="bp-btn-outline flex flex-1 items-center justify-center gap-1.5"
+            (click)="onEditClick($event)"
+          >
+            <lucide-icon name="square-pen" [size]="14" /> Edit
+          </a>
+          <button type="button" class="bp-item-card__act" [disabled]="busy()" title="Duplicate" aria-label="Duplicate" (click)="onDuplicate($event)">
+            <lucide-icon name="copy" [size]="15" />
+          </button>
+          <button
+            type="button"
+            class="bp-item-card__act"
+            [disabled]="busy() || (!item().isActive && item().approvalStatus !== 'approved')"
+            [title]="item().isActive ? 'Deactivate (make unavailable)' : (item().approvalStatus === 'approved' ? 'Activate (make available)' : 'Only approved items can be activated')"
+            [attr.aria-label]="item().isActive ? 'Deactivate' : 'Activate'"
+            (click)="onToggleActive($event)"
+          >
+            <lucide-icon [name]="item().isActive ? 'eye-off' : 'eye'" [size]="15" />
+          </button>
+          <button type="button" class="bp-item-card__act bp-item-card__act--danger" [disabled]="busy()" title="Move to trash" aria-label="Move to trash" (click)="onTrash($event)">
+            <lucide-icon name="trash-2" [size]="15" />
+          </button>
+        </div>
+      }
     </div>
+  `,
+  styles: `
+    .bp-item-card__act {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      flex: none;
+      border: 1px solid var(--color-border-hairline);
+      border-radius: var(--radius-input, 8px);
+      background: var(--color-surface);
+      color: var(--color-text-secondary, var(--color-text));
+      cursor: pointer;
+    }
+    .bp-item-card__act:hover { background: var(--color-fill); }
+    .bp-item-card__act:disabled { opacity: 0.5; cursor: default; }
+    .bp-item-card__act--danger:hover {
+      background: var(--color-danger-soft, var(--color-fill));
+      color: var(--color-danger, var(--color-text));
+      border-color: var(--color-danger, var(--color-border-hairline));
+    }
   `,
 })
 export class ItemCardComponent {
+  private readonly router = inject(Router);
+  private readonly store = inject(StoreItemService);
+  private readonly confirm = inject(ConfirmService);
+  private readonly auth = inject(AuthService);
+
+  /** Wishlist / Add-to-Quote are buyer actions — agency users only. */
+  protected readonly isAgent = computed(() => this.auth.user()?.activeOrgType === 'agency');
+
   readonly item = input.required<CatalogueItem>();
   readonly selected = input<boolean>(false);
   /** Above-the-fold cards load eagerly (LCP); the grid sets this. */
@@ -116,5 +192,91 @@ export class ItemCardComponent {
   protected onQuoteClick(e: Event): void {
     e.stopPropagation();
     this.quoteToggled.emit(this.item().id);
+  }
+
+  /** Clicking the card opens the item page (pV2-STORE-01). Owners land on the
+   *  editor (works for their own drafts); everyone else opens the read-only
+   *  view (`?view=1`) — which the page resolves to moderate for ballpark admins
+   *  and view for agents. The Edit button below is the owner's explicit edit. */
+  protected open(): void {
+    const owned = this.item().ownedByActiveOrg;
+    void this.router.navigate(
+      ['/store/items', this.item().id],
+      owned ? {} : { queryParams: { view: 1 } }
+    );
+  }
+
+  /** The Edit link navigates itself — don't also trigger the card open. */
+  protected onEditClick(e: Event): void {
+    e.stopPropagation();
+  }
+
+  // ── Owner item management (pV2-STORE-01) ──────────────────────────────────
+  /** Emitted after a mutation so the host grid can refresh its list. */
+  readonly changed = output<void>();
+  /** Guards against double-submits while a mutation is in flight. */
+  protected readonly busy = signal(false);
+
+  protected onDuplicate(e: Event): void {
+    e.stopPropagation();
+    if (this.busy()) return;
+    this.busy.set(true);
+    firstValueFrom(this.store.duplicate(this.item().id))
+      .then((copy) => {
+        // Open the new copy in the editor so the owner can tweak it + save.
+        void this.router.navigate(['/store/items', copy.id]);
+      })
+      .catch(() => { /* host keeps the row; a toast lands with the dialog work */ })
+      .finally(() => this.busy.set(false));
+  }
+  protected async onToggleActive(e: Event): Promise<void> {
+    e.stopPropagation();
+    if (this.busy()) return;
+    const item = this.item();
+    const activating = !item.isActive;
+    // Only approved items can go live (the button is also disabled otherwise).
+    if (activating && item.approvalStatus !== 'approved') return;
+    const ok = await this.confirm.ask(
+      activating
+        ? {
+            title: 'Activate item?',
+            message: 'This will make this item available for purchase.',
+            confirmLabel: 'Activate',
+            cancelLabel: 'Cancel',
+            danger: false,
+            icon: 'eye',
+          }
+        : {
+            title: 'Deactivate item?',
+            message: 'This will make this item unavailable for purchase.',
+            confirmLabel: 'Deactivate',
+            cancelLabel: 'Cancel',
+            danger: false,
+            icon: 'eye-off',
+          }
+    );
+    if (!ok) return;
+    this.run(this.store.setActive(item.id, activating));
+  }
+  protected async onTrash(e: Event): Promise<void> {
+    e.stopPropagation();
+    if (this.busy()) return;
+    const ok = await this.confirm.ask({
+      title: `Delete “${this.item().name}”?`,
+      message: 'This removes it from your store.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+    });
+    if (!ok) return;
+    this.run(this.store.remove(this.item().id));
+  }
+
+  private run(op: Observable<unknown>): void {
+    if (this.busy()) return;
+    this.busy.set(true);
+    firstValueFrom(op)
+      .then(() => this.changed.emit())
+      .catch(() => { /* host keeps the row; a toast lands with the dialog work */ })
+      .finally(() => this.busy.set(false));
   }
 }

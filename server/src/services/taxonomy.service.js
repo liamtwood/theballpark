@@ -1007,7 +1007,10 @@ async function requestQuotes(body) {
   const {
     project_id, project_category_id, category_id,
     requirements, supplier_ids, user_id,
-    subject: composedSubject, body: composedBody
+    subject: composedSubject, body: composedBody,
+    // pV2-INBOX-02: the gated v2 inbox send passes skip_balls — v2 has no
+    // Balls economy yet, so the outreach must not debit / gate on Balls.
+    skip_balls = false,
   } = body || {};
 
   if (!project_id)  throw httpErr('project_id is required', 400);
@@ -1055,7 +1058,7 @@ async function requestQuotes(body) {
   // One Ball per outreach — verify the agency can afford it.
   const bal = await pool.query('SELECT balls_balance FROM orgs WHERE id = $1', [agencyOrgId]);
   const balance = bal.rows.length ? Number(bal.rows[0].balls_balance) || 0 : 0;
-  if (balance < 1) {
+  if (!skip_balls && balance < 1) {
     throw httpErr('Not enough Balls to send this outreach — top up to continue.', 402);
   }
 
@@ -1076,7 +1079,18 @@ async function requestQuotes(body) {
     //    its own; it only goes live if a supplier wins the quote.
     const resolved = [];
     for (const r of reqs) {
-      if (r && r.kind === 'new') {
+      if (r && r.project_item_id) {
+        // pV2-CUSTOMS-01: a cart line passed by id — its data (name/price/
+        // item_id, possibly NULL for a custom line) already lives on the
+        // project_items row; no catalogue lookup needed.
+        resolved.push({
+          project_item_id: r.project_item_id,
+          item_id: r.item_id || null,
+          name: r.name,
+          description: r.description || '',
+          price: Number(r.price) || 0,
+        });
+      } else if (r && r.kind === 'new') {
         if (!r.name) throw httpErr('a new requirement needs a name', 400);
         const price = Math.max(0, Number(r.estimated_price) || 0);
         // v1.51f — items has a UNIQUE(org_id, name) index; re-sending a
@@ -1135,20 +1149,40 @@ async function requestQuotes(body) {
       }
     }
 
-    // ONE Ball debit for the whole outreach (project-level).
-    const ballTx = await client.query(
-      `INSERT INTO balls_transactions
-         (org_id, project_id, supplier_org_id, user_id, amount, direction, reason, description)
-       VALUES ($1, $2, NULL, $3, 1, 'debit', 'spend', $4)
-       RETURNING id`,
-      [agencyOrgId, project_id, user_id || null,
-       `Quote outreach — ${categoryName}: ${supplierIds.length} supplier(s)`]
+    // pV2-UNIFY-01a: the canonical (pre-send) row per briefed line — status
+    // NULL, supplier_org_id NULL, logical_line_id = its own id. The send loop
+    // claims it for the first supplier and clones it (same logical_line_id) for
+    // each additional supplier, so competing quotes each get their own row.
+    const canonIds = resolved.map((r) => r.project_item_id).filter(Boolean);
+    const canonRes = canonIds.length
+      ? await client.query(
+          `SELECT id, logical_line_id FROM project_items
+            WHERE id = ANY($1::uuid[]) AND status IS NULL AND deleted_at IS NULL`,
+          [canonIds]
+        )
+      : { rows: [] };
+    const canonById = new Map(
+      canonRes.rows.map((r) => [r.id, { id: r.id, logicalLineId: r.logical_line_id, claimed: false }])
     );
-    const ballTxId = ballTx.rows[0].id;
-    await client.query(
-      'UPDATE orgs SET balls_balance = balls_balance - 1, updated_at = NOW() WHERE id = $1',
-      [agencyOrgId]
-    );
+
+    // ONE Ball debit for the whole outreach (project-level). Skipped by the
+    // gated v2 inbox send (skip_balls) — no Balls economy in v2 yet.
+    let ballTxId = null;
+    if (!skip_balls) {
+      const ballTx = await client.query(
+        `INSERT INTO balls_transactions
+           (org_id, project_id, supplier_org_id, user_id, amount, direction, reason, description)
+         VALUES ($1, $2, NULL, $3, 1, 'debit', 'spend', $4)
+         RETURNING id`,
+        [agencyOrgId, project_id, user_id || null,
+         `Quote outreach — ${categoryName}: ${supplierIds.length} supplier(s)`]
+      );
+      ballTxId = ballTx.rows[0].id;
+      await client.query(
+        'UPDATE orgs SET balls_balance = balls_balance - 1, updated_at = NOW() WHERE id = $1',
+        [agencyOrgId]
+      );
+    }
 
     // Per supplier: one outbound message (the conversation anchor), its
     // line items, and a quote_requests row per requirement.
@@ -1190,39 +1224,71 @@ async function requestQuotes(body) {
 
       const supplierItems = [];
       for (const rq of resolved) {
-        // v1.65cu (p0008) — rich message_items schema: price_ref +
-        // price_current both seed from the reference price; status
-        // starts at brief_sent.
-        const mi = await client.query(
-          `INSERT INTO message_items
-             (message_id, name, description, item_id,
-              price, price_ref, price_current, status)
-           VALUES ($1, $2, $3, $4, $5, $5, $5, 'brief_sent')
-           RETURNING id`,
-          [msgId, rq.name, rq.description || '', rq.item_id, rq.price]
-        );
-        const miId = mi.rows[0].id;
-        await client.query(
-          `INSERT INTO message_item_events
-             (message_item_id, from_status, to_status, actor_type, actor_id, price_after)
-           VALUES ($1, NULL, 'brief_sent', 'agent', $2, $3)`,
-          [miId, user_id || null, rq.price]
-        );
+        // pV2-UNIFY-01a: fan out a per-supplier row per line. The FIRST supplier
+        // claims the canonical (pre-send) row; each additional supplier gets a
+        // CLONE sharing the same logical_line_id (so competing quotes hold their
+        // own price_current). The row's own supplier_org_id is the source of
+        // truth for who was asked. message_items tags THIS supplier's row.
+        const canon = canonById.get(rq.project_item_id);
+        let piId = null;
+        if (canon) {
+          if (!canon.claimed) {
+            await client.query(
+              `UPDATE project_items
+                  SET supplier_org_id = $2, status = 'brief_sent',
+                      price_ref = $3, price_current = $3, updated_at = NOW()
+                WHERE id = $1`,
+              [canon.id, sid, rq.price]
+            );
+            piId = canon.id;
+            canon.claimed = true;
+          } else {
+            const clone = await client.query(
+              `INSERT INTO project_items
+                 (project_id, item_id, is_custom, project_category_id, category_id, selection_type,
+                  source, name, description, base_price, unit, image_url, quantity,
+                  installed, install_cost, install_unit, logical_line_id,
+                  supplier_org_id, status, price_ref, price_current)
+               SELECT project_id, item_id, is_custom, project_category_id, category_id, selection_type,
+                  source, name, description, base_price, unit, image_url, quantity,
+                  installed, install_cost, install_unit, logical_line_id,
+                  $2, 'brief_sent', $3, $3
+                 FROM project_items WHERE id = $1
+               RETURNING id`,
+              [canon.id, sid, rq.price]
+            );
+            piId = clone.rows[0].id;
+          }
+          await client.query(
+            `INSERT INTO message_items (message_id, project_item_id) VALUES ($1, $2)`,
+            [msgId, piId]
+          );
+          await client.query(
+            `INSERT INTO message_item_events
+               (project_item_id, from_status, to_status, actor_type, actor_id, price_after)
+             VALUES ($1, NULL, 'brief_sent', 'agent', $2, $3)`,
+            [piId, user_id || null, rq.price]
+          );
+        }
         supplierItems.push({
           name: rq.name, description: rq.description,
           price_ref: rq.price, unit: null
         });
 
-        const qr = await client.query(
-          `INSERT INTO quote_requests
-             (project_id, project_category_id, category_id, item_id,
-              supplier_org_id, status, message_thread_id, ball_transaction_id)
-           VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7)
-           RETURNING id`,
-          [project_id, project_category_id || null, category_id, rq.item_id,
-           sid, msgId, ballTxId]
-        );
-        createdIds.push(qr.rows[0].id);
+        // quote_requests is v1 catalogue-item tracking (v2 inbox doesn't read
+        // it) — skip for custom lines, which have no catalogue item_id.
+        if (rq.item_id) {
+          const qr = await client.query(
+            `INSERT INTO quote_requests
+               (project_id, project_category_id, category_id, item_id,
+                supplier_org_id, status, message_thread_id, ball_transaction_id)
+             VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7)
+             RETURNING id`,
+            [project_id, project_category_id || null, category_id, rq.item_id,
+             sid, msgId, ballTxId]
+          );
+          createdIds.push(qr.rows[0].id);
+        }
       }
 
       // Stash items on the created entry so the post-commit email send
@@ -1282,7 +1348,7 @@ async function requestQuotes(body) {
       suppliers: supplierIds.length,
       requirements: resolved.length,
       ball_transaction_id: ballTxId,
-      balls_balance: balance - 1
+      balls_balance: skip_balls ? null : balance - 1
     };
   } catch (err) {
     await client.query('ROLLBACK');

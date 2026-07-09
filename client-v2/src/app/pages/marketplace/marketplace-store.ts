@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, linkedSignal, resource, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { AuthService } from '../../core/auth/auth.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import {
   BrowseMode,
@@ -28,6 +29,7 @@ export class MarketplaceStore {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly catalogue = inject(CatalogueService);
+  private readonly auth = inject(AuthService);
 
   private readonly query = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
@@ -69,10 +71,33 @@ export class MarketplaceStore {
     () => !!(this.priceBracket() || this.tier() || this.supplierId())
   );
 
+  /** Owner store (pV2-STORE-01) — the viewer's OWN pinned store. */
+  readonly isOwnerStore = computed(() => {
+    const id = this.pinnedSupplierId();
+    return !!id && this.auth.user()?.activeOrgId === id;
+  });
+  /** Ballpark admin — moderates the marketplace (sees pending/all cross-org). */
+  readonly isBallparkAdmin = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
+  /** The status/active filters show for the owner of a pinned store AND for
+   *  ballpark admins (moderation); elsewhere they stay null (public grid). */
+  readonly showStatusFilters = computed(() => this.isOwnerStore() || this.isBallparkAdmin());
+  /** Approval-status filter: all|draft|pending|approved|rejected. Admins (when
+   *  not on their own store) default to Pending — the approval queue. */
+  readonly statusFilter = computed(() => {
+    if (!this.showStatusFilters()) return null;
+    const fromUrl = this.query().get('status');
+    if (fromUrl) return fromUrl;
+    return this.isBallparkAdmin() && !this.isOwnerStore() ? 'pending' : 'all';
+  });
+  /** Publish-state filter. Defaults to `all` — the whole catalogue, then narrow. */
+  readonly activeFilter = computed(() =>
+    this.showStatusFilters() ? this.query().get('active') || 'all' : null
+  );
+
   /** The filter signature — offset + accumulation reset on ANY change. */
   private readonly filterKey = computed(
     () =>
-      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}`
+      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}|${this.statusFilter() ?? ''}|${this.activeFilter() ?? ''}`
   );
 
   /** Local page offset; snaps back to 0 when the filters change. */
@@ -130,6 +155,9 @@ export class MarketplaceStore {
         priceMax: bracket?.max ?? null,
         tier: this.tier(),
         supplier: this.pinnedSupplierId() ?? this.supplierId(),
+        // Owner-only — null elsewhere, so the public grid is unaffected.
+        status: this.statusFilter() === 'all' ? null : this.statusFilter(),
+        active: this.activeFilter() === 'all' ? null : this.activeFilter(),
         offset: this.offset(),
       };
     },
@@ -217,8 +245,23 @@ export class MarketplaceStore {
   setSupplier(id: string | null): void {
     this.merge({ sup: id, item: null });
   }
+  /** Owner store filters (pV2-STORE-01). Clear the param only when the choice
+   *  equals the CONTEXT default — otherwise an admin (whose default is
+   *  `pending`) could never pick `all`: clearing would snap back to pending. */
+  setStatusFilter(status: string | null): void {
+    const def = this.isBallparkAdmin() && !this.isOwnerStore() ? 'pending' : 'all';
+    this.merge({ status: status && status !== def ? status : null, item: null });
+  }
+  setActiveFilter(active: string | null): void {
+    this.merge({ active: active && active !== 'all' ? active : null, item: null });
+  }
   clearFilters(): void {
     this.merge({ price: null, tier: null, sup: null, item: null });
+  }
+  /** Refetch the current items page (after an owner card mutation: duplicate,
+   *  show/hide, trash). Offset stays; page 0 replaces the accumulated list. */
+  reloadItems(): void {
+    this.itemsRes.reload();
   }
   showMore(): void {
     // Next page starts where the accumulated list ends (per mode).

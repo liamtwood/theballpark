@@ -22,6 +22,44 @@ by Claude Code; `both` = audited and re-verified.
 
 ---
 
+## INBOX + CART-01 arc audit (2026-07-08, `cc` + `chat`)
+
+Full report: `docs/audits/2026-07-08-inbox-cart-arc-architect-audit.md`.
+Audited at `v2.41g`; **all H/M/L + RP findings remediated same session** in
+four commits. Verdict: healthy + idiomatic; no correctness/security risk.
+
+| File | Before | After (SHA) | Status | Notes |
+|---|---|---|---|---|
+| `client-v2/.../projects/project-estimate.component.ts` | 805 | **444** (`8ac0a6cb`) | ✓ clean | M1 — 5 children + `quote-line.util`; `.bp-*` → global (RP-05) |
+| `client-v2/.../inbox/inbox-project.component.ts` | 600 | **360** (`64e8153a`) | ✓ clean | M2/M5 — `app-inbox-rail` + `inbox-status`; `.bp-*` → global |
+| `client-v2/.../store/item-edit.component.ts` | 438 | **398** (`5072e519`) | ✓ clean | M3 — `app-item-edit-actions` |
+| `client-v2/.../projects/project-detail.component.ts` | — | (`23586099`) | ✓ clean | H1/H2 — dead send path + `ProjectOutreachStore` retired |
+
+New extracted units (all under caps): `project-summary-tiles`,
+`estimate-breakdown`, `estimate-preview-rail`, `estimate-item-row`,
+`custom-line-dialog`, `quote-line.util`, `inbox-rail`, `inbox-status`,
+`item-edit-actions`. Deleted: `project-outreach.store.ts`.
+
+Open (product backlog, not audit debt): custom-line persistence (needs a
+`project_items` column); Message-Suppliers Ball debit (`skip_balls`); the
+"only «Supplier» offers «Item X»" leftover flag.
+
+### Follow-on — pV2-UNIFY-01 (2026-07-08)
+
+A live drift bug surfaced post-audit: the inbox rendered per-head price
+(£105) where the Final Quote rendered £105 × qty + install (£17,325). Root
+cause = the same conceptual line stored in two tables (`project_items` +
+`message_items`) read by two formulas. Fixed by **unifying onto
+`project_items`** (single line-state table; one price-parametrised formula in
+`server/src/services/line-total.util.js`); `message_items` demoted to a
+`(message_id, project_item_id)` tag join; `message_item_events` +
+`message_item_decisions` FKs repointed to `project_items(id)`. Dev-mode
+destructive migration (no backfill). **Closes RP-INB6** — no second
+representation can drift when there's one table. Client: zero component
+changes (the render corrects itself when the reader source flips).
+
+---
+
 ## Diagnostic learnings — read before every audit
 
 Patterns where chat's initial hypothesis turned out wrong; root cause was
@@ -31,6 +69,8 @@ something else. Captured so future audits don't repeat the misdiagnosis.
 |---|---|---|---|
 | First request slow with pg/Supabase | non-indexed ILIKE / missing trigram index | pool `min: 0` + grow-on-demand → second concurrent request paid TCP+TLS+auth | When seeing "first request slow" with pg, check pool `min:` / growth before reaching for index hypotheses. Closed v2.14c (pool `min: 2` + warm-up pair). |
 | Dropdown opens UNDER the table (`p-select` in /settings/codelists) | overlay z-index — preset-level fix | overflow clipping (`overflow-hidden` on rounded wrapper + `opacity-60` stacking contexts on rows) — z-index can't escape clipping or stacking contexts | When an overlay "renders below" a container with `overflow-hidden` ancestors, the answer is usually portaling (`appendTo="body"`), not z-index. Fix lives at the equivalent "one place" though — `<app-edit-field>` is the choke for every dropdown app-wide. Closed v2.18d. |
+| Specced sessionStorage secret-entry UI for ballpark admin (EA arc) | v2 has no working ballpark_admin auth → need an interim secret-entry pattern | v2 ALREADY had `ballpark_admin` role check working on existing settings pages (Page Settings / Categories / Codelists). Spec assumed "no auth exists yet" without auditing what's actually there | **Before specifying interim auth (or any interim infrastructure), audit what already exists.** Cost of over-spec: built a secret-entry UI nobody needed; CC had to retire it; spec-writing chat got pushback. Banked 2026-06-22 (pV2-EA-02). |
+| Drawer flicker + dual-render on first MEDIA picker (welcome → MEDIA-01b QC) | focus trap fighting body scroll lock; backdrop click handler bug | content projection / portal issue with PrimeNG p-drawer wrapper — drawer content rendered in TWO places (overlay + original page DOM) because of missing `appendTo="body"` | When wrapping a PrimeNG primitive (p-drawer, p-dialog), verify `appendTo="body"` is set OR equivalent portal mechanism — without it, content stays in original DOM position AND gets cloned into overlay = dual render + focus chaos. Fix at primitive level so every consumer inherits. Closed MEDIA-01b. |
 
 ## Risk patterns — read before every audit
 
@@ -49,6 +89,27 @@ out any pattern it disproves.
 | RP-09 | v1-inherited codelist meta carries LITERAL hex colors (`#22c55e`-style) instead of token refs — a deliberate transition state (the metaColor fn passes hex through; net-new lists seed token refs like `--color-info`). If CODELISTS-02 forgets the sweep, status pills on v1-era lists bypass the token system permanently. | codelists-seed.js comment + chat audit pass (2026-06-12, pV2-CODELISTS-01) | **CLOSED** v2.19a (pV2-CODELISTS-02): 13 hex rows migrated to `--color-state-*` refs (idempotent HEX_TO_TOKEN sweep + token-native seed INSERTs + a seed-time warn if any hex survives). Tokens defined in BOTH apps' styles.css with the original v1 hex — zero visual change; v1's 4 raw consumers wrapped with `resolveMetaColor()` (v1.70b). Verified live: the SQL check returns 0 rows. | `SELECT list_name, code, meta->>'color' FROM shared.reference_codelist_values WHERE meta->>'color' LIKE '#%'` — 0 rows (re-check whenever a list is seeded). |
 
 | RP-06 | Engine features wired in the STORE but not mounted on every consumer surface — marketplace gets the UI, supplier-detail (same store, same data) silently lacks it. Three instances in one arc: view-toggle (v2.15a), layout shell (v2.15b), subcat strip (v2.16a). | subcat strip missing on supplier Store tab (Liam QC + chat audit 2026-06-12) | **CLOSED BY EXTRACTION** v2.16b — `<app-subcategory-strip>` shared primitive mounted on both surfaces (joins view-toggle + catalogue-layout). Standing rule: any store-fed UI feature ships as a shared/catalogue primitive and is mounted on EVERY page that provides MarketplaceStore, same commit. | When adding any marketplace UI feature: grep `providers: [MarketplaceStore]` and verify each provider page mounts it. |
+| RP-10 | Back-link drops sticky context — leaf page's Back uses a fixed `href` (e.g. `/marketplace`, `/projects`) instead of browser history, OR uses a contextual label (`Marketplace`, `Project`) instead of `Back`. Returning user lands at a generic surface with category/filter/scroll state lost. Both shapes are the same bug class — the entry path is the source of truth, not the developer's guess at where the user "should" return. | Supplier-detail `/suppliers/:id` Back wired as fixed `href: '/marketplace'` — dropped project + Catering filter context when entered from project fan-out (Liam QC 2026-06-24, pV2-INBOX-01 producer slice 1). | OPEN — first occurrence. | Per DESIGN.md §7 Back-link convention (LOCKED 2026-06-24): every `<app-page-hero [back]>` renders the literal label `Back` and navigates via `Location.back()` with `href` as direct-load fallback only. Audit grep: `[back]=\{.*label:` (any `label:` on `[back]` is a violation); `[back]=\{.*href:.*\}` without a corresponding history-back path in the component (verify `<app-page-hero>` is the only owner of the click handler — consumers must not bypass with their own `<a routerLink>`). |
+| RP-04 | Hardcoded status-label / enum-option arrays in components instead of codelist lookup. Second sighting confirms this is a pattern, not a one-off. Every re-audit finds new instances as arcs ship. | Third occurrence pass 2026-06-29: `inbox-project.component.ts:568,572` (`TERMINAL_STATUSES` + `STATUS_VIEW`); `project-estimate.component.ts:41-46` (`STATUS_LABELS` for `to_send`/`out_for_quote`/`quoted`/`booked`/`declined`); `item-edit.component.ts:295-299` (`installUnitOptions`). | OPEN — pattern reconfirmed. | Grep app-wide: `Record<.*, string>\s*=\s*\{` inside .ts components as the shape signature; every hit that mirrors a stored enum should be codelist-driven. Fixed sets that are truly closed (three-value install_unit) can be documented as intentional-inline in the row; sets that carry customer-facing labels or grow over time (status codes, unit codes) must migrate. |
+
+### 2026-06-29 audit pass — INBOX + CART-01 + FINAL + STORE v2.41 arcs (auditor: chat)
+
+Auditor grounded in the four arcs shipped since the 2026-06-24 STORE-01 architect audit. Findings recorded per-arc; 1-pagers (INBOX.md, STORE.md, PROJECTS.md, ITEMS.md) updated same day to close the doc-lag. Overall: **security + correctness solid; documentation drift and behemoth alarms are the recurring themes.**
+
+| Arc | Ships | Verdict | Behemoth | RP hits | Docs updated |
+|---|---|---|---|---|---|
+| **INBOX** (INBOX-01/02/03/04) | v2.34v–v2.36f | Ship-quality — RP-INB1 (participant-scoping), decision #15 (decisions-as-messages format) both implemented correctly. Locked decision #4 drifted supplier-only → per-category during INBOX-04; INBOX.md rewritten to match reality (2026-06-29). Chip handler writes chat bubble + `message_item_decisions` row in one txn. | ALARM — `inbox-project.component.ts` 600 lines. Split thread pane / action-chip bar / compose on next touch. | RP-04 (TERMINAL_STATUSES + STATUS_VIEW), RP-05 (9 component-local `.bp-*` classes) | INBOX.md §Locked decisions #4 rewritten + risk-patterns section extended with RP-04 / RP-05 / behemoth notes |
+| **CART-01** (Cart/Final split, install fields, supplier bands) | v2.38–v2.41g | Ship-quality — unified `<app-project-estimate>` driven by `view` input avoids RP-06. Server + UI read-only-after-sent guards both present. Cart/Final split predicate is `status === 'to_send'`. Custom lines in-session only (flagged intentional). | ALARM — `project-estimate.component.ts` 806 lines. Extract custom-line modal on next touch. | RP-04 (`STATUS_LABELS` in-file) | PROJECTS.md §Layout rewritten — 5 tabs, Cart/Final subsections, install choice + basis, read-only-after-sent, Message Suppliers dialog |
+| **FINAL-01 + single-source cascade** | v2.36i, v2.37 | Ship-quality — math single-source (`server/src/services/estimate.js`); both card + estimate consume same compute path; client renders pre-computed `EstimateBreakdown`, no re-math. `LINE_TOTAL_SQL` centralises install-basis formula. | (project-estimate.component.ts covered above) | — | PROJECTS.md §Final Quote tab + §Install choice & install basis + §Single-source Ballpark cascade sections added |
+| **STORE v2.41a** (approved editability + install_unit) | v2.41a (schema in v2.34p) | Ship-quality — approved items become editable (fields only; photos lock) — material UX reversal from prior spec. Five new fields (`unit`, `install_cost`/renamed, `install_unit`, `install_description`, `location_coverage`, `currency`) all in schema + form + service. | — | RP-04 (`installUnitOptions` fixed set; acceptable inline per §RP-04 row notes) | STORE.md Fields table rewritten + decision #11 added (approved editability reversal); ITEMS.md `install_unit` row added + Unit "not editable" audit gap flipped to RESOLVED |
+
+**Cross-arc themes:**
+
+- **RP-04 pattern reconfirmed** — three new inline enum-shaped arrays across three ships. Standing rule updated: `Record<.*, string> = {` inside components is the grep signature. The `install_unit` fixed set is acceptable (documented intent); status-label arrays are not (customer-facing, growable) and should migrate.
+- **Behemoth alarms in the two arcs with the most UX iteration** — INBOX (600) + Cart/Final (806). Both natural candidates for child-component extraction on next touch. Neither blocks ship but both go on the next-touch shortlist.
+- **No RP-INB1, RP-INB2, RP-INB6 hits.** Message ownership scoping consistently derives org from JWT; no client-supplied org filters trusted. Attachment path deferred (out of scope this arc).
+- **No RP-06 hits.** CART-01's biggest RP-06 risk (Cart-vs-Final drift) was pre-empted by the one-component-two-views design; INBOX's supplier-vs-agent variant is also one component with role-conditional rendering.
+- **Doc drift is the biggest single finding.** All four arcs had material undocumented behaviour in their 1-pagers before this pass. Landing 1-pager updates in the same PR as the ship (or immediately after) would close this gap; the current post-hoc audit sweep is expensive.
 
 Each future audit pass reads this section first and verifies every open
 row's check against the current ship's surface area.
@@ -62,6 +123,7 @@ someday," they are load-bearing-until-X and a liability past X.
 | # | What | Where | Introduced | Sunset condition |
 |---|---|---|---|---|
 | TECH-DEBT-02 | **Signup PII capture — `ip_address` + `user_agent`.** `marketing.guestlist_signup` has captured `ip_address` + `user_agent` server-side on every signup since v1 — PII beyond the name + email a registrant knowingly provides. Not surfaced anywhere and not used, but collected + retained indefinitely. Needs: (a) a privacy-policy mention of what's captured, (b) a retention decision (how long / auto-purge), (c) potentially stop collecting it entirely if there's no analytics/anti-abuse use. Not blocking — bookmarking now so it isn't lost. | `server/src/services/marketing.service.js` (`createSignup` INSERT) + `server/src/db/migrate-schemas.js` (`marketing.guestlist_signup.ip_address` / `user_agent`) | 2026-06-22, pV2-EA-01 (pre-existing since v1; logged now) | **Address in a dedicated pV2-PRIVACY-01 ship** — decide collect/retain/purge + privacy-policy copy. Not gated to a single milestone; resolve before any public-marketing privacy review. |
+| SUNSET-01 | **Vestigial `users` columns — `name` + `role` + `org_id`.** Three columns no longer architecturally meaningful but still load-bearing: `users.name` (NOT NULL, written by v2 `auth.service.js` (Google SSO) + `team.js` (invite) + `user.service.js` + all seeds — can't drop without first relaxing NOT NULL + stopping writes); `users.role` (still read by v1 client-angular admin UI — `app-shell.component.ts:752` + `top-nav.component.ts:439` do `users[0].role === 'admin'` — dropping would break v1 visually); `users.org_id` (written by seeds + `user.service.js`, read by v1 `item-detail` + persona — superseded by `default_org_id`/`user_orgs` but not unreferenced). Removing now = destructive migration on shared preview/prod DB + NOT NULL conflict + v1 still live = churn + risk for zero functional gain. | `server/src/db/migrate-schemas.js` (`users` table); writers in `server/src/services/auth.service.js`, `server/src/routes/team.js`, `server/src/services/user.service.js`, seeds; readers in `client-angular/src/app/shell/app-shell.component.ts`, `client-angular/src/app/.../top-nav.component.ts` | 2026-06-23, logged during STORE-01 doc sweep | **Fold into pV2-11 v1 retirement sweep.** Sequence: (1) v1 client off → nothing reads `role`/`org_id`; (2) update v2 inserts in auth.service.js + team.js + user.service.js + seeds to stop writing name/role/org_id; backfill any null `display_name` from `name`; (3) DROP three columns via `migrate-schemas.js` across all schemas, relax `name` to nullable or drop. **MUST NOT remain past pV2-11.** |
 | TECH-DEBT-01 | **[`/api/admin/*` secret gate RETIRED 2026-06-22 / pV2-EA-02b — now gates on `authenticate` + `requireActiveMembership('admin.cross_org_view')`, the verified session role; `middleware/admin.js` deleted. The residual `GET /api/org/users` PII exposure below is the remaining open item until AUTH-01.]** **Interim admin gate — shared secret over forgeable header.** `/api/admin/*` is gated by an `x-bp-admin-secret` header matched against the `ADMIN_API_SECRET` env (constant-time compare); when the env is unset (local dev) it falls back to the legacy `x-bp-user-id` role lookup as an explicit dev-only bypass. Replaces the prior gate that trusted `x-bp-user-id` alone — which was forgeable because `GET /api/org/users` hands any anonymous caller every user's id + role, so knowing an admin UUID granted full read/write over the guestlist (PII) + welcome content/settings + Resend test-sends. The secret defangs that. **Residual (NOT closed here):** `GET /api/org/users` still returns `SELECT *` (incl. name/email/role) to anonymous callers — a v1-era dev-shim the v1 client depends on to self-identify (`users[0].id` → header) and that `user-context.js` audit attribution reads. It can't be hardened without breaking v1's identity bootstrap, and it's not part of the v2/welcome surface. The secret gate removes its value as an *escalation* vector; the remaining `users`-table PII exposure retires with v1 / at AUTH-01. | `server/src/middleware/admin.js`; consumed by `server/src/routes/adminMarketing.js`; residual at `server/src/index.js` (`GET /api/org/users`) + `server/src/services/user.service.js` (`getByOrg`) | 2026-06-18, interim welcome prod-gate fix | **Replace with v2 Supabase JWT auth at pV2-AUTH-01; MUST NOT remain past that ship.** At AUTH-01: delete the secret/header bypass in `admin.js` and gate `/api/admin/*` on the verified JWT subject + admin role; gate or scope `GET /api/org/users` so it no longer returns user PII to anonymous callers; retire `x-bp-user-id` everywhere it is still trusted. |
 
 ## How to use this ledger
@@ -174,9 +236,14 @@ someday," they are load-bearing-until-X and a liability past X.
 | `client-v2/src/app/pages/settings/codelists/codelists-settings.component.ts` | ~~248~~ → 216 → **254** | 250 (component) | Resolved at v2.19b (value-row extraction, 248 → 216), drifted back over warning at v2.21b (toast outcome wiring → 254; dialogs audit F-6). Just over warning. Next growth → extract a values-grid subcomponent or a shared toast-message helper. |
 | `client-v2/src/app/pages/settings/pages/pages-settings.component.ts` | 223 | 250 (component) | At warning (grew 162 → 223 in CODELISTS-02 sweep — codelist resources + computeds). Watch next touch; if title/subtitle for other pages multiply, extract a per-role-block component. |
 | `client-v2/src/app/shared/edit-field/edit-field.component.ts` | 204 | 250 (component) | Stable in warning band. Architect's F-7 (CODELISTS-02 audit) restated: extract type-specific bodies (text / select / number) when next touched. |
-| `client-v2/src/app/pages/settings/profile/profile.component.ts` | 218 | 250 (component) | Below warning after v2.21a toast wiring (dialogs audit F-7) — watch item; opportunistic extraction if financial-section controls multiply. |
+| `client-v2/src/app/pages/settings/profile/profile.component.ts` | ~~218~~ → ~~660~~ → **274** | 250 warn / 400 alarm | **Resolved** v2.34u — extracted `ProfileEditService` (the org form/save/media state machine, 194), `<app-profile-team-section>` (142), `<app-profile-shopfront>` (59); shell now binds to the service + mounts the children. Under alarm; just over warn (template is the section layout). |
+| `client-v2/src/app/pages/store/item-edit.component.ts` | ~~454~~ → **399** | 250 warn / 400 alarm | **Resolved** v2.34t (STORE-01 audit F-2): extracted `<app-item-approval-panel>` (39) + moved `.bp-*` styles to styles.css. Now just under alarm — watch on next touch. |
+| `server/src/routes/marketplace.js` | ~~456~~ → **280** | 200 warn / 300 alarm | **Resolved** v2.34t (F-2): `/suppliers*` (4 endpoints) split to `marketplace-suppliers.js` (190). Under alarm. |
+| `client-v2/src/app/shared/catalogue/item-card.component.ts` | 286 | 250 warn / 400 alarm | Warning band (97 → 286 across STORE-01 — owner actions + confirm flows). Watch; if a 4th action lands, extract the action row. |
+| `client-v2/src/app/pages/marketplace/marketplace-store.ts` | 280 | 250 warn / 400 alarm | Warning band (owner/admin filters added). Watch. |
+| `server/src/services/item.service.js` | 293 | 200 warn / 350 alarm | Warning band (data-model + duplicate). Watch. |
 
-(None at Alarm.)
+**At Alarm:** none. (`profile.component.ts` resolved at v2.34u — 660 → 274.)
 
 ## Bonus — styles.css
 

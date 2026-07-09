@@ -21,9 +21,10 @@ import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.
 import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.component';
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
+import { InboxProjectComponent } from '../inbox/inbox-project.component';
 
-type Tab = 'marketplace' | 'estimate' | 'details';
-const TABS: Tab[] = ['marketplace', 'estimate', 'details'];
+type Tab = 'marketplace' | 'estimate' | 'final' | 'details' | 'inbox';
+const TABS: Tab[] = ['marketplace', 'estimate', 'final', 'details', 'inbox'];
 
 /** The editable Details sections (v1 parity + per-project Financials). */
 type Section = 'event' | 'type' | 'logistics' | 'financials';
@@ -66,6 +67,7 @@ interface DetailForm {
     EntityIconComponent,
     ProjectMarketplaceComponent,
     ProjectEstimateComponent,
+    InboxProjectComponent,
   ],
   providers: [MessageService],
   /* Viewport-fit on EVERY tab (universal rule: the hero never scrolls).
@@ -203,8 +205,16 @@ interface DetailForm {
           }
           @case ('estimate') {
             <div class="min-h-0 flex-1 overflow-y-auto">
-              <app-project-estimate [projectId]="p.id" [project]="p" />
+              <app-project-estimate [projectId]="p.id" [project]="p" (addItems)="addItems()" (goToFinal)="goToTab('final')" />
             </div>
+          }
+          @case ('final') {
+            <div class="min-h-0 flex-1 overflow-y-auto">
+              <app-project-estimate [projectId]="p.id" [project]="p" view="final" />
+            </div>
+          }
+          @case ('inbox') {
+            <app-inbox-project [viewer]="'agency'" [projectId]="p.id" [embedded]="true" />
           }
           @default {
             <app-project-marketplace [projectId]="p.id" />
@@ -258,9 +268,11 @@ export class ProjectDetailComponent {
   protected readonly label = computed(() => this.pageConfig.eventLabel());
   protected readonly labelPlural = computed(() => `${this.label()}s`);
   protected readonly tabs = computed<TabBandTab[]>(() => [
+    { key: 'details', label: 'About ' + this.label() },
     { key: 'marketplace', label: 'Marketplace' },
-    { key: 'estimate', label: 'Estimate' },
-    { key: 'details', label: this.label() + ' details' },
+    { key: 'estimate', label: 'Project Cart' },
+    { key: 'final', label: 'Final Quote' },
+    { key: 'inbox', label: 'Inbox' },
   ]);
 
   protected readonly detail = resource<ProjectDetail, string>({
@@ -300,6 +312,21 @@ export class ProjectDetailComponent {
   protected setTab(t: string): void {
     this.router
       .navigate([], { relativeTo: this.route, queryParams: { tab: t }, queryParamsHandling: 'merge' })
+      .catch((err) => console.warn('[ProjectDetail] nav failed', err));
+  }
+
+  /** "Add more items" (Estimate tab) → the Marketplace tab in item-browse
+   *  mode (mode:null — the marketplace store treats absence as items). */
+  protected addItems(): void {
+    this.router
+      .navigate([], { relativeTo: this.route, queryParams: { tab: 'marketplace', mode: null }, queryParamsHandling: 'merge' })
+      .catch((err) => console.warn('[ProjectDetail] nav failed', err));
+  }
+
+  /** Switch to another tab (e.g. "Go with this Ballpark" → Final Quote). */
+  protected goToTab(tab: string): void {
+    this.router
+      .navigate([], { relativeTo: this.route, queryParams: { tab }, queryParamsHandling: 'merge' })
       .catch((err) => console.warn('[ProjectDetail] nav failed', err));
   }
 

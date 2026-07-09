@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../api.service';
-import { ProjectCard, ProjectCreatePayload, ProjectDetail, ProjectUpdate, QuoteLine } from './project.types';
+import { EstimateBreakdown, ProjectCard, ProjectCreatePayload, ProjectDetail, ProjectUpdate, QuoteLine } from './project.types';
 
 /** pV2-PROJECTS-01 — the v2 projects read path. INTERIM base
  *  `/api/projects-v2`: v1 owns the live ungated `/api/projects` until
@@ -36,8 +36,26 @@ export class ProjectService {
     return this.api.get<QuoteLine[]>(`/api/projects-v2/${projectId}/items`);
   }
 
+  /** The server-computed estimate breakdown (the ONE cascade). The Estimate
+   *  tab consumes this instead of recomputing client-side. `uninstalledItemIds`
+   *  are lines the agent opted out of install on (install is otherwise
+   *  assumed). */
+  estimate(projectId: string, scope: 'all' | 'cart' = 'all'): Observable<EstimateBreakdown> {
+    const qs = scope === 'cart' ? '?scope=cart' : '';
+    return this.api.get<EstimateBreakdown>(`/api/projects-v2/${projectId}/estimate${qs}`);
+  }
+
   addQuoteItem(projectId: string, itemId: string): Observable<QuoteLine> {
     return this.api.post<QuoteLine>(`/api/projects-v2/${projectId}/items`, { itemId });
+  }
+
+  /** pV2-CUSTOMS-01 — add a custom (ad-hoc) line with no catalogue backing. */
+  addCustomItem(projectId: string, body: {
+    categoryId: string | null; name: string; description?: string | null;
+    cost?: number | null; quantity?: number; installed?: boolean | null;
+    installCost?: number | null; installUnit?: string | null;
+  }): Observable<QuoteLine> {
+    return this.api.post<QuoteLine>(`/api/projects-v2/${projectId}/items/custom`, body);
   }
 
   removeQuoteItem(projectId: string, itemId: string): Observable<{ removed: boolean }> {
@@ -47,6 +65,12 @@ export class ProjectService {
   /** pV2-QUANTITY-01 — set a quote line's quantity (positive integer). */
   setQuoteItemQuantity(projectId: string, itemId: string, quantity: number): Observable<QuoteLine> {
     return this.api.patch<QuoteLine>(`/api/projects-v2/${projectId}/items/${itemId}`, { quantity });
+  }
+
+  /** pV2-CART-01 — persist a line's Install choice (true/false, or null to
+   *  reset to the default). */
+  setQuoteItemInstalled(projectId: string, itemId: string, installed: boolean | null): Observable<QuoteLine> {
+    return this.api.patch<QuoteLine>(`/api/projects-v2/${projectId}/items/${itemId}`, { installed });
   }
 
   /** Recommend + add items from the project's stored brief (v1 matcher per

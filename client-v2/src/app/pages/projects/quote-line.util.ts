@@ -1,0 +1,61 @@
+import { QuoteLine, QuoteLineStatus } from '../../core/projects/project.types';
+
+/** Per-item send-state badge labels + soft-token pill classes (Final view). */
+export const STATUS_LABELS: Record<QuoteLineStatus, string> = {
+  to_send: 'To send',
+  out_for_quote: 'Out for quote',
+  quoted: 'Quoted',
+  booked: 'Booked',
+  declined: 'Declined',
+};
+const STATUS_PILL: Record<QuoteLineStatus, string> = {
+  to_send: 'bp-pill--muted',
+  out_for_quote: 'bp-pill--warn',
+  quoted: 'bp-pill--warn',
+  booked: 'bp-pill--success',
+  declined: 'bp-pill--danger',
+};
+
+export function statusLabel(l: QuoteLine): string {
+  return STATUS_LABELS[l.status] ?? '';
+}
+export function statusPill(l: QuoteLine): string {
+  return `bp-pill ${STATUS_PILL[l.status] ?? 'bp-pill--muted'}`;
+}
+
+/** Quote rows are read-only once the item is out for quote — edits move to the
+ *  inbox thread (pV2-CART-01). */
+export function editable(l: QuoteLine): boolean {
+  return l.status === 'to_send';
+}
+
+/** Whether the line has an install price to offer (else the checkbox is
+ *  greyed + disabled). */
+export function hasInstall(l: QuoteLine): boolean {
+  return (l.installCost ?? 0) > 0;
+}
+/** Installed = has an install price AND not explicitly opted out (persisted
+ *  `installed`; null/true = on, false = off). */
+export function isInstalled(l: QuoteLine): boolean {
+  return hasInstall(l) && l.installed !== false;
+}
+
+/** Line total honouring the install basis — mirrors the server LINE_TOTAL_SQL
+ *  exactly (base × qty; per_order flat; percentage of base; else per_item). */
+export function lineCost(l: QuoteLine): number {
+  const qty = l.quantity ?? 1;
+  const base = (l.basePrice ?? 0) * qty;
+  if (!isInstalled(l) || l.installCost == null) return base;
+  const ic = l.installCost;
+  switch (l.installUnit) {
+    case 'per_order': return base + ic;
+    case 'percentage': return base + base * (ic / 100);
+    default: return base + ic * qty; // per_item (null)
+  }
+}
+
+/** The unit code ('head', 'linear_m') as a plain label ("head", "linear m")
+ *  — reads naturally after the cost ("£42 / head"). */
+export function unitPlain(unit: string | null): string {
+  return unit ? unit.replace(/_/g, ' ') : '';
+}

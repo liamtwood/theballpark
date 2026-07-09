@@ -18,6 +18,12 @@ const ItemsQuerySchema = z
     priceMax: z.coerce.number().min(0).max(1000000).optional(),
     tier: z.enum(['basic', 'mid', 'premium']).optional(),
     supplier: z.uuid().optional(),
+    // pV2-STORE-01 — owner store filters. These ONLY take effect when the
+    // caller owns the `supplier` org (server-enforced); for everyone else the
+    // grid stays active+approved. `status` filters approval_status; `active`
+    // filters the publish toggle (inactive = draft/hidden).
+    status: z.enum(['draft', 'pending', 'approved', 'rejected', 'all']).optional(),
+    active: z.enum(['active', 'inactive', 'all']).optional(),
     offset: z.coerce.number().int().min(0).max(100000).default(0),
   })
   .strip();

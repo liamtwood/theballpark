@@ -128,6 +128,13 @@ export const routes: Routes = [
         data: { feature: 'Inbox' },
       },
       {
+        // pV2-INBOX-01 — a project's Inbox: the supplier's per-project
+        // conversation surface (their items + the agency thread).
+        path: 'inbox/:projectId',
+        loadComponent: () =>
+          import('./pages/inbox/inbox-project.component').then((m) => m.InboxProjectComponent),
+      },
+      {
         // pV2-06d — supplier storefront + store.
         path: 'suppliers/:id',
         loadComponent: () =>
@@ -157,11 +164,24 @@ export const routes: Routes = [
           import('./pages/supplier/storefront.component').then((m) => m.StorefrontComponent),
       },
       {
-        // Storefront hub tile target — the catalogue stub (§14 internal name
-        // /store; "My Shop" is UI copy only).
+        // "My Shop" (§14 internal /store) — resolves to the supplier's OWN
+        // storefront (/suppliers/:id), where they manage their catalogue with
+        // owner affordances. Was a coming-soon stub (pV2-STORE).
         path: 'store',
-        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { feature: 'My Shop' },
+        loadComponent: () =>
+          import('./pages/supplier/store-redirect.component').then((m) => m.StoreRedirectComponent),
+      },
+      {
+        // pV2-STORE-01 — supplier Add product (must precede :id).
+        path: 'store/items/new',
+        loadComponent: () =>
+          import('./pages/store/item-edit.component').then((m) => m.ItemEditComponent),
+      },
+      {
+        // pV2-STORE-01 — supplier Edit product.
+        path: 'store/items/:id',
+        loadComponent: () =>
+          import('./pages/store/item-edit.component').then((m) => m.ItemEditComponent),
       },
       {
         // Profile — the org's own profile + financial defaults (the v2 port

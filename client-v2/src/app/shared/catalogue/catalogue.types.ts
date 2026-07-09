@@ -27,6 +27,8 @@ export interface CatalogueItem {
   id: string;
   name: string;
   description: string | null;
+  /** "Included Services" — what the install covers (install_description). */
+  installDescription: string | null;
   basePrice: number | null;
   unit: string | null;
   coverUrl: string | null;
@@ -44,6 +46,10 @@ export interface CatalogueItem {
   /** Server-derived ownership flag (MARKETPLACE.md model) — unlocks
    *  edit/delete affordances in later arcs. Never computed client-side. */
   ownedByActiveOrg: boolean;
+  /** pV2-STORE-01 — moderation surfacing: the approval_status code (for the
+   *  status pill) and the publish flag. Inactive items show a status pill. */
+  approvalStatus: string;
+  isActive: boolean;
 }
 
 /** The shared paginated list envelope — stable contract regardless of
@@ -63,6 +69,10 @@ export interface ItemsQuery {
   priceMax?: number | null;
   tier?: ItemTier | null;
   supplier?: string | null;
+  /** Owner store filters (pV2-STORE-01) — server honours these only when the
+   *  caller owns `supplier`. status = approval_status; active = publish state. */
+  status?: string | null;
+  active?: string | null;
   offset?: number;
 }
 

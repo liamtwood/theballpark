@@ -7,6 +7,8 @@ import { GalleryImage } from './media/media.types';
 export interface OrgProfile {
   id: string;
   name: string;
+  /** "About Us" blurb (pV2-STORE-01) — also rendered on the shopfront. */
+  description: string | null;
   address: string | null;
   city: string | null;
   /** ISO 3166-1 alpha-2 — fed by the `country` codelist (pV2-CODELISTS-02). */

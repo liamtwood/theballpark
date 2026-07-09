@@ -106,6 +106,21 @@ router.get('/:id/items', async (req, res, next) => {
   }
 });
 
+// GET /:id/estimate — the server-computed estimate breakdown (the ONE
+// cascade; the Estimate tab consumes this instead of recomputing). Optional
+// ?uninstalled=<uuid,uuid> — lines the agent opted out of install on (install
+// is otherwise assumed). Non-uuid entries are dropped.
+router.get('/:id/estimate', async (req, res, next) => {
+  try {
+    const scope = req.query.scope === 'cart' ? 'cart' : 'all';
+    const breakdown = await projects.getEstimate(req.user.org_id, req.params.id, scope);
+    if (breakdown === null) return res.status(404).json({ error: 'Project not found' });
+    res.json(breakdown);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /:id/items — add an item to the quote (idempotent). org from JWT.
 router.post('/:id/items', async (req, res, next) => {
   try {
@@ -121,18 +136,53 @@ router.post('/:id/items', async (req, res, next) => {
   }
 });
 
-// PATCH /:id/items/:itemId — set the line quantity (positive integer).
-const QuoteQtySchema = z.object({ quantity: z.number().int().positive() });
-router.patch('/:id/items/:itemId', async (req, res, next) => {
+// POST /:id/items/custom — add a custom (ad-hoc) line with no catalogue backing
+// (pV2-CUSTOMS-01). org from JWT. Cost optional (TBC until a supplier quotes).
+const CustomAddSchema = z.object({
+  categoryId: z.string().uuid().nullish(),
+  name: z.string().trim().min(1),
+  description: z.string().nullish(),
+  cost: z.number().nonnegative().nullish(),
+  quantity: z.number().int().positive().optional(),
+  installed: z.boolean().nullish(),
+  installCost: z.number().nonnegative().nullish(),
+  installUnit: z.string().nullish(),
+}).strip();
+router.post('/:id/items/custom', async (req, res, next) => {
   try {
-    const parsed = QuoteQtySchema.safeParse(req.body);
+    const parsed = CustomAddSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
     }
-    const line = await projects.updateItemQuantity(
-      req.user.org_id, req.params.id, req.params.itemId, parsed.data.quantity
+    const line = await projects.addCustomItem(req.user.org_id, req.params.id, parsed.data);
+    if (line === null) return res.status(404).json({ error: 'Project not found' });
+    res.status(201).json(line);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /:id/items/:itemId — update the line: quantity (positive int) and/or
+// installed (bool, or null to reset to default). At least one required.
+const QuotePatchSchema = z
+  .object({
+    quantity: z.number().int().positive().optional(),
+    installed: z.boolean().nullable().optional(),
+  })
+  .refine((b) => b.quantity !== undefined || b.installed !== undefined, {
+    message: 'quantity or installed is required',
+  });
+router.patch('/:id/items/:itemId', async (req, res, next) => {
+  try {
+    const parsed = QuotePatchSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const line = await projects.updateItem(
+      req.user.org_id, req.params.id, req.params.itemId, parsed.data
     );
     if (line === null) return res.status(404).json({ error: 'Project not found' });
+    if (line === 'locked') return res.status(409).json({ error: 'Item is out for quote — change it in the inbox.' });
     if (line === false) return res.status(404).json({ error: 'Item not in quote' });
     res.json(line);
   } catch (err) {
@@ -145,6 +195,7 @@ router.delete('/:id/items/:itemId', async (req, res, next) => {
   try {
     const result = await projects.removeItem(req.user.org_id, req.params.id, req.params.itemId);
     if (result === null) return res.status(404).json({ error: 'Project not found' });
+    if (result === 'locked') return res.status(409).json({ error: 'Item is out for quote — change it in the inbox.' });
     res.json({ removed: result });
   } catch (err) {
     next(err);

@@ -23,7 +23,7 @@ import { CategoryInfo } from './catalogue.types';
         [class.bp-catstrip-row--active]="!activeId()"
         (click)="categorySelected.emit(null)"
       >
-        <span class="truncate">All Categories</span>
+        <span class="truncate">{{ allLabel() }}</span>
         <span class="bp-meta">{{ totalCount() }}</span>
       </button>
 
@@ -80,6 +80,10 @@ export class CategoryStripComponent {
   readonly categories = input.required<readonly CategoryInfo[]>();
   readonly activeId = input<string | null>(null);
   readonly totalCount = input<number>(0);
+  /** Label for the top "all" row. Defaults to "All Categories"; the
+   *  in-project supplier fan-out scopes the list to the quote's categories
+   *  so it keeps the same label over a narrowed set. */
+  readonly allLabel = input<string>('All Categories');
   /** The active category's subcategories (the shared store loads them). */
   readonly subcategories = input<readonly CategoryInfo[]>([]);
   readonly activeSubId = input<string | null>(null);

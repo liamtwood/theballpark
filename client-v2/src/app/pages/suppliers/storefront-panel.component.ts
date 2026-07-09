@@ -15,23 +15,30 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
   imports: [LucideAngularModule, SubcatCardComponent, OrgMediaComponent],
   host: { class: 'mx-auto flex w-full max-w-4xl flex-col gap-8' },
   template: `
-    <!-- 1. Hero banner + logo pill (pV2-MEDIA-01e), at the top of the page. -->
+    <!-- 1. Hero banner — cover photo alone, full-width (logo moved to Company
+         Information below, v2.34s). -->
     <app-org-media
       show="banner"
       mode="view"
       [name]="supplier().name"
       [coverUrl]="supplier().coverUrl"
-      [logoUrl]="supplier().logoUrl"
     />
 
-    <!-- 2. Company Information — bordered card, left-aligned. -->
+    <!-- 2. Company Information — logo + name + description, left-aligned. -->
     <section class="rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
       <h3 class="bp-edit-section-title">Company Information</h3>
-      <p class="mt-2 text-md font-medium text-text">{{ supplier().name }}</p>
-      <p class="bp-caption">{{ location() }}</p>
-      @if (supplier().description) {
-        <p class="bp-body mt-3 text-secondary">{{ supplier().description }}</p>
-      }
+      <div class="mt-3 flex items-start gap-4">
+        @if (supplier().logoUrl) {
+          <img class="h-16 w-16 shrink-0 rounded-[var(--radius-card)] border border-hairline object-cover" [src]="supplier().logoUrl" alt="" />
+        }
+        <div class="min-w-0">
+          <p class="text-md font-medium text-text">{{ supplier().name }}</p>
+          <p class="bp-caption">{{ location() }}</p>
+          @if (supplier().description) {
+            <p class="bp-body mt-3 text-secondary">{{ supplier().description }}</p>
+          }
+        </div>
+      </div>
     </section>
 
     <!-- 3. Contact — bordered card, left-aligned. -->

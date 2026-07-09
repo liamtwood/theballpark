@@ -13,6 +13,8 @@
 const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
 const taxonomy = require('./taxonomy.service');
+const { computeEstimate } = require('./estimate');
+const { lineTotalSql } = require('./line-total.util');
 
 /** The project_status codelist default — used when a code is unknown/absent. */
 const DEFAULT_STATUS = 'draft';
@@ -44,22 +46,59 @@ async function resolveStatus(code) {
  *  excludes soft-deleted. Suppliers count = distinct supplier orgs across
  *  the project's quote items (correlated subquery — fine for an org's
  *  project count). */
+// Per-line total honouring the install basis (pV2-CART-01) — the estimate binds
+// the ONE shared formula (pV2-UNIFY-01) to the line's CURRENT price:
+// price_current once negotiated, else the original base_price. The inbox binds
+// the same formula to price_ref (Original) / price_current (Revised), and
+// price_ref = base_price at send — so a negotiated line reads identically on the
+// Final Quote and the inbox. Cart / Quote / Final / Inbox can't drift. Aliases:
+// pi (project_items) + i (items).
+const LINE_TOTAL_SQL = lineTotalSql('COALESCE(pi.price_current, pi.base_price)');
+
 const LIST_SELECT = `
   SELECT p.id, p.name, p.event_name, p.ref, p.status,
          p.cover_image_url, p.client_logo_url,
          p.cover_focal_x, p.cover_focal_y, p.icon_name, p.icon_color,
          p.unsplash_photographer_name, p.unsplash_photo_url,
-         p.total_client_cost, p.currency,
+         p.currency, p.default_contingency_pct, p.default_margin_pct, p.default_vat_pct,
          p.created_at, p.updated_at,
          c.name AS client_name,
          (SELECT COUNT(DISTINCT i.org_id)
             FROM project_items pi
             JOIN items i ON i.id = pi.item_id
-           WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS supplier_count
+           WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS supplier_count,
+         -- Live quote subtotal — qty × (base + install). "Assume installed":
+         -- an item's install cost is included by default when the catalogue
+         -- item has one (the Estimate tab lets the agent opt a line out; the
+         -- card shows the default all-installed Ballpark). Run through the
+         -- cascade below → matches getEstimate + the Estimate tab.
+         (SELECT COALESCE(SUM(lt), 0) FROM (
+            SELECT DISTINCT ON (pi.logical_line_id) (${LINE_TOTAL_SQL}) AS lt
+              FROM project_items pi
+              LEFT JOIN items i ON i.id = pi.item_id
+             WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
+             ORDER BY pi.logical_line_id,
+                      (pi.status IN ('accepted','booked')) DESC NULLS LAST,
+                      pi.created_at ASC, pi.id
+          ) x) AS quote_subtotal
     FROM projects p
     LEFT JOIN clients c ON c.id = p.client_id
    WHERE p.org_id = $1 AND p.deleted_at IS NULL
    ORDER BY p.created_at DESC`;
+
+/** The card's headline Ballpark = the live quote's client total, via the ONE
+ *  cascade (services/estimate.js) the Estimate tab also uses — so the two can
+ *  never drift. null when unquoted so the card reads "£0" rather than a fake
+ *  figure (computeEstimate would return 0). */
+function cardBallpark(row) {
+  const subtotal = Number(row.quote_subtotal ?? 0);
+  if (subtotal <= 0) return null;
+  return computeEstimate(subtotal, {
+    contingencyPct: row.default_contingency_pct,
+    marginPct: row.default_margin_pct,
+    vatPct: row.default_vat_pct,
+  }).clientTotal;
+}
 
 function toCard(row) {
   return {
@@ -77,8 +116,10 @@ function toCard(row) {
     unsplashPhotoUrl: row.unsplash_photo_url ?? null,
     clientName: row.client_name ?? null,
     clientLogoUrl: row.client_logo_url ?? null,
-    // The headline "Ballpark" total — v1 uses total_client_cost.
-    ballparkCost: row.total_client_cost === null ? null : Number(row.total_client_cost),
+    // The headline "Ballpark" total — the live quote's client total (same
+    // cascade as the Estimate tab: subtotal → +contingency → +margin →
+    // +VAT). null when nothing's quoted yet.
+    ballparkCost: cardBallpark(row),
     currency: row.currency ?? 'GBP',
     supplierCount: Number(row.supplier_count ?? 0),
     // v1 card relative-time is off updated_at (created_at fallback).
@@ -299,9 +340,19 @@ async function create(orgId, data) {
 function toQuoteLine(row) {
   return {
     id: row.id, // project_items row id
+    isCustom: row.is_custom ?? false, // pV2-CUSTOMS-01: no catalogue backing
     itemId: row.item_id,
     name: row.name,
+    description: row.description ?? null,
     basePrice: row.base_price === null ? null : Number(row.base_price),
+    // Installed-price extras (from the catalogue item) — drive the Final
+    // Quote's Install / Deliverable toggle (pV2-FINAL-01).
+    installCost: row.install_cost == null ? null : Number(row.install_cost),
+    installDescription: row.install_description ?? null,
+    installUnit: row.install_unit ?? null, // per_order | per_item | percentage (null = per_item)
+    // Persisted Install choice: null = default (on when there's an install
+    // cost), true/false = explicit (pV2-CART-01).
+    installed: row.installed ?? null,
     unit: row.unit,
     imageUrl: row.image_url,
     quantity: Number(row.quantity ?? 1),
@@ -311,6 +362,11 @@ function toQuoteLine(row) {
     categoryName: row.category_name ?? null,
     categoryIconName: row.category_icon_name || null,
     categoryCoverUrl: row.category_cover_url || null, // '' → null (clean contract)
+    // Supplier the item comes from (catalogue owner) + coarse send-state.
+    supplierId: row.supplier_id ?? null,
+    supplierName: row.supplier_name ?? null,
+    supplierCity: row.supplier_city ?? null,
+    status: quoteStatus(row.sent_status),
   };
 }
 
@@ -322,11 +378,45 @@ function toQuoteLine(row) {
 // NAME/visuals live-join from categories so a category RENAME still
 // propagates. (Relies on categories being soft-delete-only.)
 const QUOTE_LINE_JOIN = `
-  SELECT pi.id, pi.item_id, pi.name, pi.base_price, pi.unit, pi.image_url, pi.quantity,
+  SELECT pi.id, pi.item_id, pi.name,
+         -- Prefer the snapshot description, else the live catalogue item's
+         -- (project_items.description is often empty; the preview needs one).
+         COALESCE(pi.description, i.description) AS description,
+         -- CURRENT per-unit price + install (pV2-UNIFY-01 QC): a negotiated line
+         -- reads price_current / its install override; else the original
+         -- base_price / catalogue install. So the quote card matches the inbox.
+         COALESCE(pi.price_current, pi.base_price)  AS base_price,
+         pi.unit, pi.image_url, pi.quantity,
+         pi.installed, pi.logical_line_id, pi.created_at, pi.is_custom,
          pi.category_id, c.name AS category_name,
-         c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url
+         c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url,
+         COALESCE(pi.install_cost, i.install_cost)  AS install_cost,
+         i.install_description,
+         COALESCE(pi.install_unit, i.install_unit)  AS install_unit,
+         -- Supplier (pV2-UNIFY-01a): the ASKED supplier (supplier_org_id) once
+         -- sent — the source of truth for who's quoting THIS row; pre-send it's
+         -- NULL so we fall back to the item's catalogue owner (the default the
+         -- cart cat card shows, "N items from <supplier>").
+         COALESCE(pi.supplier_org_id, i.org_id) AS supplier_id,
+         o.name AS supplier_name, o.city AS supplier_city,
+         -- Send-state: the line's negotiation status, now on project_items
+         -- itself (pV2-UNIFY-01). NULL = never sent = still in the cart.
+         -- Drives the cart/final split + the per-item badge (pV2-CART-01).
+         pi.status AS sent_status
     FROM project_items pi
-    LEFT JOIN categories c ON c.id = pi.category_id`;
+    LEFT JOIN categories c ON c.id = pi.category_id
+    LEFT JOIN items i ON i.id = pi.item_id
+    LEFT JOIN orgs o ON o.id = COALESCE(pi.supplier_org_id, i.org_id)`;
+
+/** Collapse a message_item send-status into the quote line's coarse status:
+ *  to_send (never sent) → out_for_quote → quoted → booked / declined. */
+function quoteStatus(sentStatus) {
+  if (!sentStatus) return 'to_send';
+  if (sentStatus === 'brief_sent' || sentStatus === 'holding') return 'out_for_quote';
+  if (sentStatus === 'accepted' || sentStatus === 'booked') return 'booked';
+  if (String(sentStatus).startsWith('declined')) return 'declined';
+  return 'quoted'; // quoted / adjusted_by_supplier / adjusted_by_agent
+}
 
 async function lineById(db, id) {
   const r = await db.query(`${QUOTE_LINE_JOIN} WHERE pi.id = $1`, [id]);
@@ -341,13 +431,64 @@ async function listItems(orgId, projectId) {
     [projectId, orgId]
   );
   if (!owns.rows.length) return null;
+  // pV2-UNIFY-01a: the Cart / Final Quote show ONE entry per logical line even
+  // when it fanned out to N supplier rows — pick the accepted/booked row if any
+  // (its negotiated price/supplier), else the canonical row. The inbox is where
+  // the per-supplier rows are shown separately.
   const r = await pool.query(
-    `${QUOTE_LINE_JOIN}
-      WHERE pi.project_id = $1 AND pi.deleted_at IS NULL
-      ORDER BY c.name NULLS LAST, pi.created_at ASC`,
+    `SELECT * FROM (
+       SELECT DISTINCT ON (sub.logical_line_id) sub.*
+         FROM (${QUOTE_LINE_JOIN}
+                WHERE pi.project_id = $1 AND pi.deleted_at IS NULL) sub
+        ORDER BY sub.logical_line_id,
+                 (sub.sent_status IN ('accepted','booked')) DESC NULLS LAST,
+                 sub.created_at ASC, sub.id
+     ) picked
+     ORDER BY picked.category_name NULLS LAST, picked.created_at ASC`,
     [projectId]
   );
   return r.rows.map(toQuoteLine);
+}
+
+/** The project's estimate breakdown — the SINGLE server-computed cascade the
+ *  Estimate tab consumes (it no longer recomputes client-side). Subtotal is
+ *  the live SUM of qty × (base + install) over the quote's items — install is
+ *  included by default ("assume installed"); `uninstalledItemIds` are the
+ *  lines the agent opted out of install on (Estimate tab checkboxes). Run
+ *  through the one cascade (services/estimate.js) with the project's rates.
+ *  Returns null if the project isn't the org's (→ 404). */
+async function getEstimate(orgId, projectId, scope = 'all') {
+  const cartOnly = scope === 'cart';
+  const r = await pool.query(
+    `SELECT p.default_contingency_pct, p.default_margin_pct, p.default_vat_pct,
+            -- pV2-UNIFY-01a: a logical line can fan out to N supplier rows;
+            -- count ONE per logical_line_id — the accepted/booked row if any
+            -- (its negotiated price_current), else the canonical row (base_price).
+            (SELECT COALESCE(SUM(lt), 0) FROM (
+               SELECT DISTINCT ON (pi.logical_line_id) (${LINE_TOTAL_SQL}) AS lt
+                 FROM project_items pi
+                 LEFT JOIN items i ON i.id = pi.item_id
+                WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
+                  -- scope=cart → only still-in-cart (never-sent) lines.
+                  AND ($3 = false OR pi.status IS NULL)
+                -- pV2-UNIFY-01a (audit M-2): deterministic tiebreak, IDENTICAL
+                -- across getEstimate / LIST_SELECT / listItems so the banner
+                -- total and the line list can't pick different competing clones.
+                ORDER BY pi.logical_line_id,
+                         (pi.status IN ('accepted','booked')) DESC NULLS LAST,
+                         pi.created_at ASC, pi.id
+             ) x) AS quote_subtotal
+       FROM projects p
+      WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
+    [projectId, orgId, cartOnly]
+  );
+  if (!r.rows.length) return null;
+  const row = r.rows[0];
+  return computeEstimate(row.quote_subtotal, {
+    contingencyPct: row.default_contingency_pct,
+    marginPct: row.default_margin_pct,
+    vatPct: row.default_vat_pct,
+  });
 }
 
 /** pV2-QUANTITY-01 — smart auto-fill: the item's unit can map (via the
@@ -390,12 +531,14 @@ async function addItem(orgId, projectId, itemId) {
       [projectId, orgId]
     );
     if (!owns.rows.length) return null;
-    // Look at ANY row for this (project, item) — incl. soft-deleted. The
-    // unique index spans deleted rows, so a previously-removed item must be
-    // REVIVED, not re-inserted (else duplicate-key on re-add).
+    // Look at the CANONICAL row for this (project, item) — incl. soft-deleted.
+    // supplier_org_id IS NULL excludes the per-supplier fan-out clones
+    // (pV2-UNIFY-01a). A previously-removed item is REVIVED, not re-inserted;
+    // the partial unique index uq_project_items_canonical (audit M-5) also
+    // stops a concurrent double-add from inserting two canonicals.
     const existing = await client.query(
       `SELECT id, deleted_at FROM project_items
-        WHERE project_id = $1 AND item_id = $2
+        WHERE project_id = $1 AND item_id = $2 AND supplier_org_id IS NULL
         FOR UPDATE`,
       [projectId, itemId]
     );
@@ -430,44 +573,124 @@ async function addItem(orgId, projectId, itemId) {
       );
       rowId = ins.rows[0].id;
     }
+    // pV2-UNIFY-01a: a fresh cart line is its own logical line (one supplier
+    // group of one until the send fans it out). Seed logical_line_id = id.
+    await client.query(
+      `UPDATE project_items SET logical_line_id = id WHERE id = $1 AND logical_line_id IS NULL`,
+      [rowId]
+    );
     return lineById(client, rowId);
   });
 }
 
+/** pV2-CUSTOMS-01 — add a custom (ad-hoc) line: a pure project_items row with
+ *  NO catalogue backing (item_id NULL, is_custom = true). All the line's data
+ *  lives on the row; the estimate reads it directly (no items join). It rides
+ *  along in its category's brief like any line, and shows "Custom" where the
+ *  supplier chip would be until a supplier quotes it. Cost is optional (NULL =
+ *  TBC, contributes £0 until quoted). Returns the line, or null if not the org's. */
+async function addCustomItem(orgId, projectId, body) {
+  return withTransaction(async (client) => {
+    const owns = await client.query(
+      `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+      [projectId, orgId]
+    );
+    if (!owns.rows.length) return null;
+    const qty = Math.max(1, Math.round(Number(body.quantity) || 1));
+    const ins = await client.query(
+      `INSERT INTO project_items
+         (project_id, item_id, is_custom, category_id, selection_type, source,
+          name, description, base_price, unit, quantity,
+          installed, install_cost, install_unit)
+       VALUES ($1, NULL, true, $2, 'selected', 'custom',
+          $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING id`,
+      [projectId, body.categoryId || null, body.name,
+       body.description || null,
+       body.cost == null ? null : Number(body.cost),
+       body.unit || null, qty,
+       body.installed ?? null,
+       body.installCost == null ? null : Number(body.installCost),
+       body.installUnit || null]
+    );
+    const rowId = ins.rows[0].id;
+    await client.query(
+      `UPDATE project_items SET logical_line_id = id WHERE id = $1 AND logical_line_id IS NULL`,
+      [rowId]
+    );
+    return lineById(client, rowId);
+  });
+}
+
+/** Has this item been sent for a quote on this project? Once sent the quote
+ *  row is READ-ONLY — edits happen in the inbox thread, not the quote (Liam
+ *  2026-07-08, pV2-CART-01). Send-state is project_items.status now: NULL =
+ *  still in cart, anything else = briefed/negotiating (pV2-UNIFY-01). */
+async function isItemSent(projectId, lineId) {
+  // `lineId` is the project_items ROW id (pV2-CUSTOMS-01: custom lines have no
+  // catalogue item_id, so the row id is the only stable key across all lines).
+  const r = await pool.query(
+    `SELECT 1 FROM project_items
+      WHERE project_id = $1 AND id = $2
+        AND status IS NOT NULL AND deleted_at IS NULL
+      LIMIT 1`,
+    [projectId, lineId]
+  );
+  return r.rows.length > 0;
+}
+
 /** pV2-QUANTITY-01 — set the quantity on a live quote line. Returns the
- *  updated line, false if no such live line, null if not the org's.
+ *  updated line, false if no such live line, null if not the org's, 'locked'
+ *  if the item is out for quote (read-only in the quote).
  *  Single write (the ownership SELECT + the UPDATE) — no transaction needed
  *  (Rule 1): the UPDATE re-scopes by project_id, so the ownership check can't
  *  be raced into a cross-org write. */
-async function updateItemQuantity(orgId, projectId, itemId, quantity) {
+async function updateItem(orgId, projectId, lineId, patch) {
+  // `lineId` is the project_items ROW id (pV2-CUSTOMS-01) — the only key that
+  // works for custom lines (no catalogue item_id).
   const owns = await pool.query(
     `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
     [projectId, orgId]
   );
   if (!owns.rows.length) return null;
+  if (await isItemSent(projectId, lineId)) return 'locked';
+  const sets = [];
+  const vals = [projectId, lineId];
+  if (patch.quantity !== undefined) {
+    vals.push(patch.quantity);
+    sets.push(`quantity = $${vals.length}`);
+  }
+  if (patch.installed !== undefined) {
+    vals.push(patch.installed); // boolean | null
+    sets.push(`installed = $${vals.length}`);
+  }
+  if (!sets.length) return false; // nothing to change
   const r = await pool.query(
-    `UPDATE project_items SET quantity = $3
-      WHERE project_id = $1 AND item_id = $2 AND deleted_at IS NULL
+    `UPDATE project_items SET ${sets.join(', ')}
+      WHERE project_id = $1 AND id = $2 AND deleted_at IS NULL
       RETURNING id`,
-    [projectId, itemId, quantity]
+    vals
   );
-  if (!r.rows.length) return false; // no live line for this item
+  if (!r.rows.length) return false; // no live line for this id
   return lineById(pool, r.rows[0].id);
 }
 
 /** Soft-remove an item from the project's quote. Returns true if a row was
- *  removed, false if none, null if the project isn't the org's. */
-async function removeItem(orgId, projectId, itemId) {
+ *  removed, false if none, null if the project isn't the org's, 'locked' if
+ *  the item is out for quote (read-only in the quote). */
+async function removeItem(orgId, projectId, lineId) {
+  // `lineId` is the project_items ROW id (pV2-CUSTOMS-01).
   const owns = await pool.query(
     `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
     [projectId, orgId]
   );
   if (!owns.rows.length) return null;
+  if (await isItemSent(projectId, lineId)) return 'locked';
   const r = await pool.query(
     `UPDATE project_items SET deleted_at = NOW()
-      WHERE project_id = $1 AND item_id = $2 AND deleted_at IS NULL
+      WHERE project_id = $1 AND id = $2 AND deleted_at IS NULL
       RETURNING id`,
-    [projectId, itemId]
+    [projectId, lineId]
   );
   return r.rows.length > 0;
 }
@@ -577,6 +800,6 @@ async function recommend(orgId, projectId) {
 
 module.exports = {
   listForOrg, getDetail, updateDetail, create,
-  listItems, addItem, removeItem, updateItemQuantity, recommend,
+  listItems, getEstimate, addItem, addCustomItem, removeItem, updateItem, recommend,
   resolveStatus, DEFAULT_STATUS, toCard,
 };

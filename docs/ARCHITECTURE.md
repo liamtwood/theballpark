@@ -550,6 +550,23 @@ Security   → Helmet (security headers — coming in pV2-AUDIT-03)
 
 ## 9. Environment variables
 
+### Supabase connection — use the SESSION pooler (port **5432**), not 6543
+
+`DATABASE_URL` points at the Supabase pooler host
+(`...pooler.supabase.com`). **Always use port `5432` (session mode)** for our
+persistent Express server — NOT port `6543` (transaction mode / pgbouncer).
+
+Transaction mode (6543) hands out a backend per *transaction* and drops idle
+client connections; a long-lived `pg` pool against it periodically loses
+connections ("Connection terminated unexpectedly") and pays cold reconnects,
+which surface as **intermittent slow page paints** (diagnosed 2026-07-09 —
+queries were 30–80ms, but the pooler churn added ~260ms+ reconnect stalls).
+Session mode (5432) keeps each pooled connection stable for the server's
+lifetime and also allows prepared statements. Same host / user / password —
+only the port differs. This applies to **dev, preview, AND prod** — set the
+port to 5432 in every `DATABASE_URL` (local `.env*` files and the Railway env
+vars for each deployed service).
+
 ### Local `.env`
 
 ```

@@ -12,7 +12,7 @@ const { requireActiveMembership } = require('../middleware/require-active-member
 const { OrganisationUpdateSchema } = require('../schemas/organisation.schema');
 
 /** Shared projection — explicit columns, camelCase out. */
-const SELECT = `SELECT id, name, address, city, country, email, phone, ref_prefix, ref_counter,
+const SELECT = `SELECT id, name, description, address, city, country, email, phone, ref_prefix, ref_counter,
        default_vat_pct, default_margin_pct, default_contingency_pct, default_currency,
        logo_url, cover_image_url, images
   FROM orgs WHERE id = $1 AND deleted_at IS NULL`;
@@ -21,6 +21,7 @@ function toProfile(row) {
   return {
     id: row.id,
     name: row.name,
+    description: row.description ?? null,
     address: row.address,
     city: row.city,
     email: row.email,
@@ -62,6 +63,7 @@ router.put('/', requireActiveMembership('org.manage_billing'), async (req, res, 
     const p = parsed.data;
     const map = {
       name: p.name,
+      description: p.description === '' ? null : p.description,
       address: p.address,
       city: p.city,
       email: p.email,

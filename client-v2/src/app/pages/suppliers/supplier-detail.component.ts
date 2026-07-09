@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { LucideAngularModule } from 'lucide-angular';
+import { AuthService } from '../../core/auth/auth.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { MarketplaceStore } from '../marketplace/marketplace-store';
@@ -26,6 +27,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
   selector: 'app-supplier-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    RouterLink,
     LucideAngularModule,
     PageHeroComponent,
     TabBandComponent,
@@ -47,22 +49,33 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
     @if (detail.value(); as sup) {
       <app-page-hero [back]="heroBack()" [title]="sup.name" [subtitle]="sup.city ?? ''">
         <div hero-actions class="flex items-center gap-3">
-          <button
-            type="button"
-            class="bp-fav-btn !static"
-            [class.bp-fav-btn--on]="favs.suppliers().has(sup.id)"
-            [attr.aria-label]="'Favourite ' + sup.name"
-            (click)="favs.toggle('supplier', sup.id)"
-          >
-            <lucide-icon name="heart" [size]="15" />
-          </button>
+          @if (isOwner()) {
+            <!-- pV2-STORE-01 — owner manages their own shop here. -->
+            <a routerLink="/store/items/new" class="bp-btn-grad">
+              <lucide-icon name="plus" [size]="15" /> Add product
+            </a>
+          } @else {
+            <button
+              type="button"
+              class="bp-fav-btn !static"
+              [class.bp-fav-btn--on]="favs.suppliers().has(sup.id)"
+              [attr.aria-label]="'Favourite ' + sup.name"
+              (click)="favs.toggle('supplier', sup.id)"
+            >
+              <lucide-icon name="heart" [size]="15" />
+            </button>
+          }
         </div>
       </app-page-hero>
 
-      <!-- Storefront / Store toggle — above the banner, centred (pV2-MEDIA-01e QC). -->
-      <div class="flex justify-center px-6 pt-4">
-        <app-tab-band [tabs]="tabs" [active]="tab()" (activeChange)="setTab($event)" />
-      </div>
+      <!-- Storefront / Store toggle — above the banner, centred (pV2-MEDIA-01e QC).
+           The OWNER's shop is items-only (pV2-STORE-01): their shopfront now
+           lives on /settings/profile, so the toggle hides and Store shows. -->
+      @if (!isOwner()) {
+        <div class="flex justify-center px-6 pt-4">
+          <app-tab-band [tabs]="tabs" [active]="tab()" (activeChange)="setTab($event)" />
+        </div>
+      }
 
       <div class="bp-page-body" [class.overflow-y-auto]="tab() === 'storefront'">
         @if (tab() === 'storefront') {
@@ -100,6 +113,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
                 (entitySelected)="toggleItem($event)"
                 (favouriteToggled)="favs.toggle('item', $event)"
                 (quoteToggled)="favs.toggleQuoteDraft($event)"
+                (changed)="store.reloadItems()"
               />
               @if (store.hasMore()) {
                 <div class="mt-6 flex justify-center">
@@ -125,6 +139,7 @@ export class SupplierDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly catalogue = inject(CatalogueService);
+  private readonly auth = inject(AuthService);
   protected readonly favs = inject(FavouritesStore);
   /** The SAME store class the marketplace provides — pinned via :id. */
   protected readonly store = inject(MarketplaceStore);
@@ -138,20 +153,35 @@ export class SupplierDetailComponent {
     initialValue: this.route.snapshot.queryParamMap,
   });
 
-  protected readonly tab = computed(() => (this.query().get('tab') === 'store' ? 'store' : 'storefront'));
+  /** The owner has no Storefront tab — their shop is items-only, so force Store. */
+  protected readonly tab = computed(() =>
+    this.isOwner() || this.query().get('tab') === 'store' ? 'store' : 'storefront'
+  );
 
   /** Back walks the drill in reverse (QC): Store → Storefront (same route,
-   *  params cleared by the hero's plain routerLink) → Marketplace. */
-  protected readonly heroBack = computed(() =>
-    this.tab() === 'store'
-      ? { label: 'Storefront', href: `/suppliers/${this.store.pinnedSupplierId() ?? ''}` }
-      : { label: 'Marketplace', href: '/marketplace' }
-  );
+   *  params cleared by the hero's plain routerLink) → wherever you came from.
+   *  The storefront leaf pops history so it returns to the actual entry point
+   *  — the project supplier fan-out (with its category selected) or the
+   *  global marketplace — rather than always /marketplace (INBOX-02 QC). The
+   *  owner (no storefront tab) goes straight back Home. */
+  protected readonly heroBack = computed(() => {
+    if (this.isOwner()) return { label: 'Back', href: '/home', history: true };
+    return this.tab() === 'store'
+      ? { label: 'Back', href: `/suppliers/${this.store.pinnedSupplierId() ?? ''}`, history: true }
+      : { label: 'Back', href: '/marketplace', history: true };
+  });
 
   /** Skips entirely until :id resolves — no empty-id fetch (audit C1). */
   protected readonly detail = resource({
     params: () => this.store.pinnedSupplierId() ?? undefined,
     loader: ({ params }) => this.catalogue.supplierDetail(params),
+  });
+
+  /** Owner mode (pV2-STORE-01) — the viewer's own-org storefront. Unlocks
+   *  "Add product" + per-item Edit; hides the favourite heart. */
+  protected readonly isOwner = computed(() => {
+    const id = this.store.pinnedSupplierId();
+    return !!id && this.auth.user()?.activeOrgId === id;
   });
 
   /** The storefront's subcat-card grid rows (pV2-CARDS-01 QC #5). */

@@ -64,7 +64,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
   : ['http://localhost:4200'];
 app.use(cors({ origin: allowedOrigins, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' })); // explicit cap (ENGINEERING Rule 10); gallery payloads sit well under
 app.use(require('cookie-parser')());
 // Audit attribution (Item 1): resolve the acting user into AsyncLocalStorage so
 // pool.js can SET LOCAL app.current_user_id on writes. Must run before routes.
@@ -226,6 +226,14 @@ app.use(
   require('./middleware/require-active-membership').requireActiveMembership('admin.cross_org_view'),
   require('./routes/adminMarketing')
 );
+// pV2-STORE-01 — ballpark-admin item moderation (approve/reject). Same
+// admin.cross_org_view gate; mounted alongside adminMarketing.
+app.use(
+  '/api/admin',
+  require('./middleware/authenticate').authenticate,
+  require('./middleware/require-active-membership').requireActiveMembership('admin.cross_org_view'),
+  require('./routes/admin-items')
+);
 
 // Unsplash image search proxy
 app.get('/api/unsplash/search', async (req, res) => {
@@ -281,6 +289,9 @@ app.get('/api/unsplash/search', async (req, res) => {
   // Favourites extracted from marketplace.js (cards-audit F-8) — mounted
   // BEFORE /marketplace so the more-specific path matches first.
   v2.use('/marketplace/favourites', require('./routes/marketplace-favourites'));
+  // Suppliers endpoints extracted from marketplace.js (STORE-01 audit F-2);
+  // mounted BEFORE the main router so /suppliers* matches here first.
+  v2.use('/marketplace', require('./routes/marketplace-suppliers'));
   v2.use('/marketplace', require('./routes/marketplace'));
   // pV2-CODELISTS-01 — reference codelists (reads any member; value
   // curation platform admins; DELETE always 405 — locked rule 2).
@@ -290,6 +301,10 @@ app.get('/api/unsplash/search', async (req, res) => {
   // (client-angular until pV2-11); reclaim the clean path at v1 retirement.
   v2.use('/projects-v2', require('./routes/projects-v2'));
   v2.use('/media', require('./routes/media')); // pV2-MEDIA-01 — gated image upload
+  // pV2-STORE-01 — supplier item editor (create/update own items, draft→submit).
+  v2.use('/store/items', require('./routes/store-items'));
+  // pV2-INBOX-01 — gated inbox façade over v1's message data (RP-INB1).
+  v2.use('/inbox', require('./routes/inbox'));
   // future v2 endpoints: v2.use('/home', ...) — they inherit the gate
   // automatically by being mounted here.
   app.use('/api', v2);

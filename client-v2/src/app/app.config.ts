@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   Check,
   ChevronLeft,
+  Lock,
   ChevronDown,
   ChevronRight,
   CircleUser,
@@ -37,14 +38,20 @@ import {
   FileText,
   Zap,
   CircleCheck,
+  CircleCheckBig,
+  CircleDollarSign,
   Package,
   Building2,
   Store,
   Trash2,
+  Copy,
+  Eye,
+  EyeOff,
   X,
   ListChecks,
   PencilLine,
   Send,
+  Paperclip,
   CheckCheck,
   CircleOff,
   Clock,
@@ -129,7 +136,7 @@ export const appConfig: ApplicationConfig = {
         // pV2-04b home: cog, drawer close, launcher tiles, Back link
         Settings, X, FolderPlus, FolderOpen, Inbox, Store, CircleUser, ArrowLeft,
         // Profile: section edit lifecycle
-        SquarePen, Check,
+        SquarePen, Check, Lock,
         // v2.13a supplier sub-hubs: projects-hub stages + storefront trio
         FileText, Zap, CircleCheck, Package, Building2,
         // pV2-MARKET-00 — admin Categories tile
@@ -142,12 +149,14 @@ export const appConfig: ApplicationConfig = {
         ChevronDown, ChevronRight,
         // pV2-CODELISTS-01 — admin Codelists tile + status-pill meta icons
         // (icons referenced by value meta in shared.reference_codelist_values)
-        ListChecks, PencilLine, Send, CheckCheck, CircleOff, Clock,
+        ListChecks, PencilLine, Send, Paperclip, CheckCheck, CircleOff, Clock,
         // pV2-CARDS-01 — card foot CTAs (Add/Added, View supplier) +
         // storefront category-group headers
         Plus, Minus, ArrowRight, Folder,
         // pV2-DIALOGS-01 — inline alert severity icons
         Info, CircleAlert, TriangleAlert,
+        // pV2-INBOX-01 — supplier per-item actions
+        CircleCheckBig, CircleDollarSign,
         // pV2-PROJECTS-03 — add-project brief page (upload + AI build CTA)
         Upload, Sparkles,
         // pV2-PROJECTS-02 — Estimate category-card icons (event categories)
@@ -158,6 +167,8 @@ export const appConfig: ApplicationConfig = {
         GripVertical, Star,
         // pV2-EA-02 — early-access admin
         ExternalLink, ChevronUp, Download,
+        // pV2-STORE-01 — owner item-card actions (duplicate / show-hide / trash)
+        Copy, Eye, EyeOff,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees

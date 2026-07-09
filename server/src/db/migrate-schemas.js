@@ -434,6 +434,55 @@ const migrate = async () => {
       ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS images          JSONB DEFAULT '[]';
       ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS images          JSONB DEFAULT '[]';
 
+      -- pV2-STORE-01 (Liam): drop the legacy per-org UNIQUE(org_id, name) on
+      -- items. The item identity is the UUID id (items_pkey) — name must NOT be
+      -- a uniqueness key. It was a table CONSTRAINT (index-backed), and covered
+      -- soft-deleted rows too, so a trashed item still reserved its name and
+      -- blocked re-create/duplicate.
+      ALTER TABLE public.items  DROP CONSTRAINT IF EXISTS items_org_name_unique_public;
+      ALTER TABLE preview.items DROP CONSTRAINT IF EXISTS items_org_name_unique_preview;
+      ALTER TABLE master.items  DROP CONSTRAINT IF EXISTS items_org_name_unique_master;
+
+      -- pV2-STORE-01 (Liam): item pricing/detail model. Rename max_price →
+      -- install_cost (the installation cost), drop min_price, add currency
+      -- (defaults to the supplier's org currency on insert — see item.service),
+      -- install_description (UI label "Included Services") and location_coverage
+      -- (free text). The rename is guarded so the migration stays idempotent.
+      DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='items' AND column_name='max_price')
+           AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='items' AND column_name='install_cost')
+        THEN ALTER TABLE public.items RENAME COLUMN max_price TO install_cost; END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='preview' AND table_name='items' AND column_name='max_price')
+           AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='preview' AND table_name='items' AND column_name='install_cost')
+        THEN ALTER TABLE preview.items RENAME COLUMN max_price TO install_cost; END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='master' AND table_name='items' AND column_name='max_price')
+           AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='master' AND table_name='items' AND column_name='install_cost')
+        THEN ALTER TABLE master.items RENAME COLUMN max_price TO install_cost; END IF;
+      END $$;
+
+      ALTER TABLE public.items  DROP COLUMN IF EXISTS min_price;
+      ALTER TABLE preview.items DROP COLUMN IF EXISTS min_price;
+      ALTER TABLE master.items  DROP COLUMN IF EXISTS min_price;
+
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS currency            VARCHAR(10);
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS currency            VARCHAR(10);
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS currency            VARCHAR(10);
+
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS install_description TEXT;
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS install_description TEXT;
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS install_description TEXT;
+
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS location_coverage   TEXT;
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS location_coverage   TEXT;
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS location_coverage   TEXT;
+
+      -- pV2-CART-01: how install_cost applies. NULL = per_item (× qty; the
+      -- prior behaviour), 'per_order' = one-off flat, 'percentage' = % of the
+      -- line's base total. Lets the supplier control the install basis.
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS install_unit VARCHAR(20);
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS install_unit VARCHAR(20);
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS install_unit VARCHAR(20);
+
       -- v1.29: projects.currency — ISO-4217 code (drives Event drawer
       -- Currency dropdown via shared.codelists list_name='currency').
       ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
@@ -1962,6 +2011,12 @@ const migrate = async () => {
       ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS image_url TEXT;
       ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS image_url TEXT;
       ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+      -- pV2-CART-01: per-line Install choice. NULL = default (assumed on when
+      -- the catalogue item carries an install_cost); true/false = explicit.
+      ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS installed BOOLEAN;
+      ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS installed BOOLEAN;
+      ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS installed BOOLEAN;
     `);
     console.log('  v1.65f* project_items column back-port ensured.');
 
@@ -2037,6 +2092,136 @@ const migrate = async () => {
         ON master.message_item_decisions(message_item_id, side, created_at DESC);
     `);
     console.log('  v1.65fW message_item_decisions table ensured.');
+
+    // ── pV2-UNIFY-01: one line-state table ───────────────────────────────
+    // The same conceptual line lived in two tables (project_items = cart:
+    // qty/install/base_price; message_items = brief: price_ref/current/status)
+    // read by two formulas — an inevitable drift class (the inbox rendered
+    // £/head where the Final Quote rendered £/head × qty + install). Merge:
+    //   • project_items GAINS the negotiation state (status/price_ref/
+    //     price_current/decline_reason) → one row per (project, item) since an
+    //     item has exactly one owner-supplier (items.org_id).
+    //   • message_items DEMOTES to a stripped tag join (message_id +
+    //     project_item_id) — "which items this message references".
+    //   • the audit satellites (events + decisions) REPOINT to project_items(id).
+    // Dev-mode: no backfill, one-time wipe of the negotiation graph. project_items
+    // rows (the cart) survive; only their negotiation state resets. The wipe +
+    // rename is guarded on the OLD shape (message_items.status still present) so
+    // re-runs are no-ops and a future deploy never re-wipes live threads.
+    for (const s of ['public', 'preview', 'master']) {
+      // Additive on project_items — idempotent.
+      await client.query(`
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS status         VARCHAR(40);
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS price_ref      NUMERIC(12,2);
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS price_current  NUMERIC(12,2);
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS decline_reason TEXT;
+        -- Negotiable install cost/basis, per line — NULL falls back to the
+        -- catalogue items.install_cost/unit (mirrors the base_price snapshot).
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS install_cost   NUMERIC(12,2);
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS install_unit   VARCHAR(30);
+        -- pV2-UNIFY-01a: restore the per-supplier row model (UNIFY-01 locked
+        -- decision #1 — one row per (project, line, supplier) — was collapsed to
+        -- (project, item), which breaks competing quotes: N suppliers asked to
+        -- quote one line each need their own price_current). supplier_org_id =
+        -- who we asked (source of truth for a row's supplier post-send; NULL
+        -- pre-send). logical_line_id groups the N supplier rows for one logical
+        -- line; the cart/estimate collapse to one entry per group, the inbox
+        -- shows the per-supplier rows. Backfill each existing row to its own id
+        -- (every current row is its own single-supplier group).
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS supplier_org_id UUID REFERENCES ${s}.orgs(id);
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS logical_line_id UUID;
+        UPDATE ${s}.project_items SET logical_line_id = id WHERE logical_line_id IS NULL;
+        CREATE INDEX IF NOT EXISTS ix_project_items_logical_line
+          ON ${s}.project_items(logical_line_id);
+        -- The old (project_id, item_id) uniqueness is incompatible with the
+        -- per-supplier row model (N rows per item) AND with CUSTOMS-01's NULL
+        -- item_id. addItem's SELECT ... FOR UPDATE revive doesn't need it.
+        DROP INDEX IF EXISTS ${s}.uq_project_items_project_item;
+        -- pV2-CUSTOMS-01: a custom "Add Your Own Line Item" is a pure
+        -- project_items row with NO catalogue backing — item_id NULL, all data
+        -- (name/price/unit/install/description) on the row. is_custom is the
+        -- explicit marker (item_id IS NULL is equivalent; the column reads
+        -- better in code + audits).
+        ALTER TABLE ${s}.project_items ALTER COLUMN item_id DROP NOT NULL;
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS is_custom BOOLEAN NOT NULL DEFAULT false;
+        -- audit trigger columns — the shared audit.stamp_audit trigger stamps
+        -- these on every INSERT/UPDATE and ERRORS if absent. Ensure them here so
+        -- project_items writes don't break on a drifted schema (preview lacked
+        -- these — surfaced pre-preview-promotion, 2026-07-09).
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS created_by UUID;
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS updated_by UUID;
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS deleted_by UUID;
+        -- audit M-5: restore double-add safety for addItem's revive without
+        -- blocking the per-supplier fan-out clones (supplier_org_id set) or
+        -- custom lines (item_id NULL) — a PARTIAL unique index over just the
+        -- live, canonical, catalogue rows.
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_project_items_canonical
+          ON ${s}.project_items(project_id, item_id)
+          WHERE supplier_org_id IS NULL AND item_id IS NOT NULL AND deleted_at IS NULL;
+      `);
+      // The stripped tag join keeps the shared audit columns — the audit.*
+      // BEFORE INSERT/UPDATE trigger stamps created_by/updated_*/deleted_* and
+      // errors if they're missing. Re-add is idempotent (also restores them on
+      // a schema where an earlier draft over-dropped them).
+      await client.query(`
+        ALTER TABLE ${s}.message_items ADD COLUMN IF NOT EXISTS created_by UUID;
+        ALTER TABLE ${s}.message_items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+        ALTER TABLE ${s}.message_items ADD COLUMN IF NOT EXISTS updated_by UUID;
+        ALTER TABLE ${s}.message_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+        ALTER TABLE ${s}.message_items ADD COLUMN IF NOT EXISTS deleted_by UUID;
+      `);
+      // One-time destructive slim-down + FK repoint (guarded on old shape).
+      await client.query(`
+        DO $unify$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_schema='${s}' AND table_name='message_items'
+                         AND column_name='status') THEN
+            -- Dev wipe: the rename swaps a catalogue-item ref for a project_item
+            -- ref; existing rows can't convert, so clear the negotiation graph.
+            TRUNCATE ${s}.messages, ${s}.message_items, ${s}.message_item_events,
+                     ${s}.message_item_decisions, ${s}.quote_requests
+                     RESTART IDENTITY CASCADE;
+            UPDATE ${s}.project_items
+               SET status = NULL, price_ref = NULL, price_current = NULL, decline_reason = NULL;
+
+            -- message_items → tag join: keep id/message_id/project_item_id +
+            -- the audit columns (trigger-stamped); drop only the state columns.
+            ALTER TABLE ${s}.message_items RENAME COLUMN item_id TO project_item_id;
+            ALTER TABLE ${s}.message_items
+              DROP COLUMN IF EXISTS name,           DROP COLUMN IF EXISTS description,
+              DROP COLUMN IF EXISTS price,          DROP COLUMN IF EXISTS accepted,
+              DROP COLUMN IF EXISTS accepted_at,    DROP COLUMN IF EXISTS price_ref,
+              DROP COLUMN IF EXISTS price_current,  DROP COLUMN IF EXISTS unit,
+              DROP COLUMN IF EXISTS status,         DROP COLUMN IF EXISTS adjusted_by,
+              DROP COLUMN IF EXISTS decline_reason, DROP COLUMN IF EXISTS decline_note,
+              DROP COLUMN IF EXISTS next_action_by, DROP COLUMN IF EXISTS metadata;
+            ALTER TABLE ${s}.message_items
+              ADD CONSTRAINT message_items_project_item_id_fkey
+              FOREIGN KEY (project_item_id) REFERENCES ${s}.project_items(id) ON DELETE CASCADE;
+
+            -- Audit satellites repoint message_items(id) → project_items(id).
+            ALTER TABLE ${s}.message_item_events
+              DROP CONSTRAINT IF EXISTS message_item_events_message_item_id_fkey;
+            ALTER TABLE ${s}.message_item_events RENAME COLUMN message_item_id TO project_item_id;
+            ALTER TABLE ${s}.message_item_events
+              ADD CONSTRAINT message_item_events_project_item_id_fkey
+              FOREIGN KEY (project_item_id) REFERENCES ${s}.project_items(id) ON DELETE CASCADE;
+
+            ALTER TABLE ${s}.message_item_decisions
+              DROP CONSTRAINT IF EXISTS message_item_decisions_message_item_id_fkey;
+            ALTER TABLE ${s}.message_item_decisions RENAME COLUMN message_item_id TO project_item_id;
+            ALTER TABLE ${s}.message_item_decisions
+              ADD CONSTRAINT message_item_decisions_project_item_id_fkey
+              FOREIGN KEY (project_item_id) REFERENCES ${s}.project_items(id) ON DELETE CASCADE;
+          END IF;
+        END
+        $unify$;
+      `);
+    }
+    console.log('  pV2-UNIFY-01: project_items unified (message_items → tag join).');
 
     // ── 10. RLS / grant hardening (v1.65gZ27) ────────────────────────────
     // Supabase Linter flagged public-schema tables as RLS-disabled +

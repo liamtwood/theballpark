@@ -36,8 +36,20 @@ export const COMPLETED_STATUSES = new Set(['completed', 'archived']);
 export interface QuoteLine {
   id: string;
   itemId: string;
+  /** pV2-CUSTOMS-01: a custom line has no catalogue backing / supplier. */
+  isCustom: boolean;
   name: string | null;
+  description: string | null;
   basePrice: number | null;
+  /** Installed-price extras (from the catalogue item) — the Final Quote's
+   *  Install / Deliverable toggle. */
+  installCost: number | null;
+  installDescription: string | null;
+  /** How installCost applies: per_order | per_item | percentage (null = per_item). */
+  installUnit: string | null;
+  /** Persisted Install choice: null = default (on when there's an install
+   *  cost), true/false = explicit. */
+  installed: boolean | null;
   unit: string | null;
   imageUrl: string | null;
   quantity: number;
@@ -47,6 +59,32 @@ export interface QuoteLine {
   categoryName: string | null;
   categoryIconName: string | null;
   categoryCoverUrl: string | null;
+  /** Supplier the item comes from (its catalogue owner) — the cart cat card
+   *  groups "N items from <supplier>". */
+  supplierId: string | null;
+  supplierName: string | null;
+  supplierCity: string | null;
+  /** Coarse send-state (pV2-CART-01): to_send (in cart) → out_for_quote →
+   *  quoted → booked / declined. Cart shows to_send; Final shows all + badge. */
+  status: QuoteLineStatus;
+}
+
+/** Per-item send-state — the single switch between the cart and final views. */
+export type QuoteLineStatus = 'to_send' | 'out_for_quote' | 'quoted' | 'booked' | 'declined';
+
+/** The server-computed estimate cascade (server: services/estimate.js →
+ *  GET /:id/estimate). The Estimate tab renders this directly — the cascade
+ *  math lives ONLY on the server so the tab and the project card can't drift. */
+export interface EstimateBreakdown {
+  subtotal: number;
+  contingencyPct: number;
+  marginPct: number;
+  vatPct: number;
+  contingency: number;
+  ourCost: number;
+  marginAmount: number;
+  vatAmount: number;
+  clientTotal: number;
 }
 
 /** A quote's lines grouped by category. */

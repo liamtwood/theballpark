@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { AuthService } from '../../../core/auth/auth.service';
 import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
 
 /** pV2-06b — the rail's ITEM mode: image, name, supplier, price + unit,
@@ -10,19 +12,38 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
 @Component({
   selector: 'app-item-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule],
+  imports: [CurrencyPipe, RouterLink, LucideAngularModule],
   host: { class: 'block' },
   template: `
     <div class="mb-3 flex items-start justify-between gap-2">
-      <h3 class="text-md font-medium leading-snug text-text">{{ item().name }}</h3>
-      <button
-        type="button"
-        class="bp-itemprev-close"
-        aria-label="Close preview"
-        (click)="closed.emit()"
-      >
-        <lucide-icon name="x" [size]="14" />
-      </button>
+      <h3 class="bp-list-title">{{ item().name }}</h3>
+      <div class="flex items-center gap-2">
+        @if (item().ownedByActiveOrg) {
+          <!-- pV2-STORE-01 — owner edits their own item. -->
+          <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Edit product" aria-label="Edit product">
+            <lucide-icon name="square-pen" [size]="14" />
+          </a>
+        } @else if (canModerate()) {
+          <!-- pV2-STORE-01 — ballpark admin reviews / approves the item. -->
+          <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Review product" aria-label="Review product">
+            <lucide-icon name="circle-check" [size]="14" />
+          </a>
+        } @else {
+          <!-- pV2-STORE-01 — anyone else (e.g. an agent) opens the read-only view. -->
+          <a [routerLink]="['/store/items', item().id]" [queryParams]="{ view: 1 }" class="bp-itemprev-close" title="View product" aria-label="View product">
+            <lucide-icon name="external-link" [size]="14" />
+          </a>
+        }
+        <button
+          type="button"
+          class="bp-itemprev-close"
+          [attr.aria-label]="closeLabel()"
+          [title]="closeLabel()"
+          (click)="closed.emit()"
+        >
+          <lucide-icon [name]="closeIcon()" [size]="14" />
+        </button>
+      </div>
     </div>
 
     @if (item().coverUrl) {
@@ -59,15 +80,32 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
     </dl>
 
     @if (item().description) {
-      <p class="bp-body-small mt-3 whitespace-pre-line border-t border-hairline pt-3 text-secondary">
-        {{ item().description }}
-      </p>
+      <div class="mt-3 border-t border-hairline pt-3">
+        <span class="bp-field-label">Description</span>
+        <p class="bp-body-small mt-1 whitespace-pre-line text-secondary">{{ item().description }}</p>
+      </div>
+    }
+
+    @if (item().installDescription) {
+      <div class="mt-3 border-t border-hairline pt-3">
+        <span class="bp-field-label">Services</span>
+        <p class="bp-body-small mt-1 whitespace-pre-line text-secondary">{{ item().installDescription }}</p>
+      </div>
     }
   `,
 })
 export class ItemPreviewComponent {
+  private readonly auth = inject(AuthService);
+
   readonly item = input.required<CatalogueItem>();
   /** Resolved category name (the store has the rail list — no fetch). */
   readonly categoryName = input<string | null>(null);
+  /** Header close/toggle affordance — the marketplace rail closes (x); the
+   *  quote views hide the preview (eye). */
+  readonly closeIcon = input<string>('x');
+  readonly closeLabel = input<string>('Close preview');
   readonly closed = output<void>();
+
+  /** Ballpark admins get a Review entry on items they don't own (moderation). */
+  protected readonly canModerate = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
 }
