@@ -26,6 +26,9 @@ import { editable, hasInstall, isInstalled, lineCost, statusLabel, statusPill, u
     <div class="min-w-0 flex-1">
       <div class="flex items-center gap-2">
         <span class="bp-list-title truncate">{{ line().name }}</span>
+        @if (line().isCustom) {
+          <span class="bp-pill bp-pill--muted shrink-0" title="Custom line — no catalogue backing until a supplier quotes it">Custom</span>
+        }
         @if (isFinal()) {
           <span [class]="pill()">{{ label() }}</span>
         }

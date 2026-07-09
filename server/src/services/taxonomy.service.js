@@ -1079,7 +1079,18 @@ async function requestQuotes(body) {
     //    its own; it only goes live if a supplier wins the quote.
     const resolved = [];
     for (const r of reqs) {
-      if (r && r.kind === 'new') {
+      if (r && r.project_item_id) {
+        // pV2-CUSTOMS-01: a cart line passed by id — its data (name/price/
+        // item_id, possibly NULL for a custom line) already lives on the
+        // project_items row; no catalogue lookup needed.
+        resolved.push({
+          project_item_id: r.project_item_id,
+          item_id: r.item_id || null,
+          name: r.name,
+          description: r.description || '',
+          price: Number(r.price) || 0,
+        });
+      } else if (r && r.kind === 'new') {
         if (!r.name) throw httpErr('a new requirement needs a name', 400);
         const price = Math.max(0, Number(r.estimated_price) || 0);
         // v1.51f — items has a UNIQUE(org_id, name) index; re-sending a
@@ -1142,14 +1153,16 @@ async function requestQuotes(body) {
     // NULL, supplier_org_id NULL, logical_line_id = its own id. The send loop
     // claims it for the first supplier and clones it (same logical_line_id) for
     // each additional supplier, so competing quotes each get their own row.
-    const canonRes = await client.query(
-      `SELECT id, item_id, logical_line_id FROM project_items
-        WHERE project_id = $1 AND item_id = ANY($2::uuid[])
-          AND status IS NULL AND deleted_at IS NULL`,
-      [project_id, resolved.map((r) => r.item_id)]
-    );
-    const canonByItem = new Map(
-      canonRes.rows.map((r) => [r.item_id, { id: r.id, logicalLineId: r.logical_line_id, claimed: false }])
+    const canonIds = resolved.map((r) => r.project_item_id).filter(Boolean);
+    const canonRes = canonIds.length
+      ? await client.query(
+          `SELECT id, logical_line_id FROM project_items
+            WHERE id = ANY($1::uuid[]) AND status IS NULL AND deleted_at IS NULL`,
+          [canonIds]
+        )
+      : { rows: [] };
+    const canonById = new Map(
+      canonRes.rows.map((r) => [r.id, { id: r.id, logicalLineId: r.logical_line_id, claimed: false }])
     );
 
     // ONE Ball debit for the whole outreach (project-level). Skipped by the
@@ -1216,7 +1229,7 @@ async function requestQuotes(body) {
         // CLONE sharing the same logical_line_id (so competing quotes hold their
         // own price_current). The row's own supplier_org_id is the source of
         // truth for who was asked. message_items tags THIS supplier's row.
-        const canon = canonByItem.get(rq.item_id);
+        const canon = canonById.get(rq.project_item_id);
         let piId = null;
         if (canon) {
           if (!canon.claimed) {
@@ -1262,16 +1275,20 @@ async function requestQuotes(body) {
           price_ref: rq.price, unit: null
         });
 
-        const qr = await client.query(
-          `INSERT INTO quote_requests
-             (project_id, project_category_id, category_id, item_id,
-              supplier_org_id, status, message_thread_id, ball_transaction_id)
-           VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7)
-           RETURNING id`,
-          [project_id, project_category_id || null, category_id, rq.item_id,
-           sid, msgId, ballTxId]
-        );
-        createdIds.push(qr.rows[0].id);
+        // quote_requests is v1 catalogue-item tracking (v2 inbox doesn't read
+        // it) — skip for custom lines, which have no catalogue item_id.
+        if (rq.item_id) {
+          const qr = await client.query(
+            `INSERT INTO quote_requests
+               (project_id, project_category_id, category_id, item_id,
+                supplier_org_id, status, message_thread_id, ball_transaction_id)
+             VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7)
+             RETURNING id`,
+            [project_id, project_category_id || null, category_id, rq.item_id,
+             sid, msgId, ballTxId]
+          );
+          createdIds.push(qr.rows[0].id);
+        }
       }
 
       // Stash items on the created entry so the post-commit email send

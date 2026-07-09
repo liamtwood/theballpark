@@ -36,6 +36,8 @@ export const COMPLETED_STATUSES = new Set(['completed', 'archived']);
 export interface QuoteLine {
   id: string;
   itemId: string;
+  /** pV2-CUSTOMS-01: a custom line has no catalogue backing / supplier. */
+  isCustom: boolean;
   name: string | null;
   description: string | null;
   basePrice: number | null;

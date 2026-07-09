@@ -133,39 +133,46 @@ async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
   // Participation: only the owning agency may fan its own project out.
   if (proj.rows[0].org_id !== agencyOrgId) throw httpErr('Project not found', 404);
 
-  // The quote's item ids grouped by catalogue category — but only lines still
-  // in the cart (never sent). A second send (after adding items) must not
-  // re-brief an already-sent line to a different supplier. Send-state is the
-  // line's own status now (pV2-UNIFY-01): NULL = to_send.
-  const itemsRes = await pool.query(
-    `SELECT i.category_id, pi.item_id
+  // pV2-CUSTOMS-01: fan out per LINE, not per item_id — the cart's still-to-send
+  // canonical rows grouped by their own category_id (project_items.category_id,
+  // set for catalogue AND custom lines). Custom lines (item_id NULL) ride along
+  // with catalogue lines in the same category. Send-state is the line's status
+  // (pV2-UNIFY-01): NULL = to_send.
+  const linesRes = await pool.query(
+    `SELECT pi.category_id, pi.id AS project_item_id, pi.item_id,
+            pi.name, pi.description, pi.base_price
        FROM project_items pi
-       JOIN items i ON i.id = pi.item_id
       WHERE pi.project_id = $1 AND pi.deleted_at IS NULL
         AND pi.status IS NULL`,
     [projectId]
   );
-  const itemsByCat = new Map();
-  for (const r of itemsRes.rows) {
-    const arr = itemsByCat.get(r.category_id) ?? [];
-    arr.push(r.item_id);
-    itemsByCat.set(r.category_id, arr);
+  const linesByCat = new Map();
+  for (const r of linesRes.rows) {
+    const arr = linesByCat.get(r.category_id) ?? [];
+    arr.push(r);
+    linesByCat.set(r.category_id, arr);
   }
 
   const results = [];
   for (const entry of roster) {
     const categoryId = entry.categoryId;
     const supplierIds = [...new Set((entry.supplierIds || []).filter(Boolean))];
-    const itemIds = itemsByCat.get(categoryId) || [];
+    const lines = linesByCat.get(categoryId) || [];
     // Nothing to ask, or no one to ask — skip (e.g. a stale roster category).
-    if (!supplierIds.length || !itemIds.length) continue;
+    if (!supplierIds.length || !lines.length) continue;
 
     const projectCategoryId = await resolveProjectCategoryId(pool, projectId, categoryId);
     const res = await TaxonomyService.requestQuotes({
       project_id: projectId,
       category_id: categoryId,
       project_category_id: projectCategoryId,
-      requirements: itemIds.map((item_id) => ({ item_id })),
+      requirements: lines.map((l) => ({
+        project_item_id: l.project_item_id,
+        item_id: l.item_id,
+        name: l.name,
+        description: l.description,
+        price: l.base_price,
+      })),
       supplier_ids: supplierIds,
       user_id: userId,
       skip_balls: true,

@@ -49,6 +49,15 @@ export class ProjectService {
     return this.api.post<QuoteLine>(`/api/projects-v2/${projectId}/items`, { itemId });
   }
 
+  /** pV2-CUSTOMS-01 — add a custom (ad-hoc) line with no catalogue backing. */
+  addCustomItem(projectId: string, body: {
+    categoryId: string | null; name: string; description?: string | null;
+    cost?: number | null; quantity?: number; installed?: boolean | null;
+    installCost?: number | null; installUnit?: string | null;
+  }): Observable<QuoteLine> {
+    return this.api.post<QuoteLine>(`/api/projects-v2/${projectId}/items/custom`, body);
+  }
+
   removeQuoteItem(projectId: string, itemId: string): Observable<{ removed: boolean }> {
     return this.api.delete<{ removed: boolean }>(`/api/projects-v2/${projectId}/items/${itemId}`);
   }

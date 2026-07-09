@@ -339,6 +339,7 @@ async function create(orgId, data) {
 function toQuoteLine(row) {
   return {
     id: row.id, // project_items row id
+    isCustom: row.is_custom ?? false, // pV2-CUSTOMS-01: no catalogue backing
     itemId: row.item_id,
     name: row.name,
     description: row.description ?? null,
@@ -385,7 +386,7 @@ const QUOTE_LINE_JOIN = `
          -- base_price / catalogue install. So the quote card matches the inbox.
          COALESCE(pi.price_current, pi.base_price)  AS base_price,
          pi.unit, pi.image_url, pi.quantity,
-         pi.installed, pi.logical_line_id, pi.created_at,
+         pi.installed, pi.logical_line_id, pi.created_at, pi.is_custom,
          pi.category_id, c.name AS category_name,
          c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url,
          COALESCE(pi.install_cost, i.install_cost)  AS install_cost,
@@ -574,6 +575,45 @@ async function addItem(orgId, projectId, itemId) {
   });
 }
 
+/** pV2-CUSTOMS-01 — add a custom (ad-hoc) line: a pure project_items row with
+ *  NO catalogue backing (item_id NULL, is_custom = true). All the line's data
+ *  lives on the row; the estimate reads it directly (no items join). It rides
+ *  along in its category's brief like any line, and shows "Custom" where the
+ *  supplier chip would be until a supplier quotes it. Cost is optional (NULL =
+ *  TBC, contributes £0 until quoted). Returns the line, or null if not the org's. */
+async function addCustomItem(orgId, projectId, body) {
+  return withTransaction(async (client) => {
+    const owns = await client.query(
+      `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+      [projectId, orgId]
+    );
+    if (!owns.rows.length) return null;
+    const qty = Math.max(1, Math.round(Number(body.quantity) || 1));
+    const ins = await client.query(
+      `INSERT INTO project_items
+         (project_id, item_id, is_custom, category_id, selection_type, source,
+          name, description, base_price, unit, quantity,
+          installed, install_cost, install_unit)
+       VALUES ($1, NULL, true, $2, 'selected', 'custom',
+          $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING id`,
+      [projectId, body.categoryId || null, body.name,
+       body.description || null,
+       body.cost == null ? null : Number(body.cost),
+       body.unit || null, qty,
+       body.installed ?? null,
+       body.installCost == null ? null : Number(body.installCost),
+       body.installUnit || null]
+    );
+    const rowId = ins.rows[0].id;
+    await client.query(
+      `UPDATE project_items SET logical_line_id = id WHERE id = $1 AND logical_line_id IS NULL`,
+      [rowId]
+    );
+    return lineById(client, rowId);
+  });
+}
+
 /** Has this item been sent for a quote on this project? Once sent the quote
  *  row is READ-ONLY — edits happen in the inbox thread, not the quote (Liam
  *  2026-07-08, pV2-CART-01). Send-state is project_items.status now: NULL =
@@ -747,6 +787,6 @@ async function recommend(orgId, projectId) {
 
 module.exports = {
   listForOrg, getDetail, updateDetail, create,
-  listItems, getEstimate, addItem, removeItem, updateItem, recommend,
+  listItems, getEstimate, addItem, addCustomItem, removeItem, updateItem, recommend,
   resolveStatus, DEFAULT_STATUS, toCard,
 };

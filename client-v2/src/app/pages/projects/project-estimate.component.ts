@@ -119,23 +119,10 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                   }
 
                   @if (isFinal()) {
-                    <!-- Custom (ad-hoc) lines added under this category. -->
-                    @for (cl of customLinesFor(g.id); track cl.id) {
-                      <div class="flex items-center gap-3 border-b border-hairline px-3 py-3">
-                        <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="plus" [size]="22" /></span>
-                        <div class="min-w-0 flex-1">
-                          <div class="bp-list-title truncate">{{ cl.description }}</div>
-                          <div class="bp-meta">Custom · {{ cl.install ? 'Install' : 'Deliverable' }}{{ cl.notes ? ' · ' + cl.notes : '' }}</div>
-                        </div>
-                        <span class="bp-body-small w-16 shrink-0 text-center text-secondary">× {{ cl.quantity }}</span>
-                        <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ cl.cost * cl.quantity | currency: cur() : 'symbol' : '1.0-0' }}</span>
-                        <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
-                                (click)="removeCustom(cl.id)" [attr.aria-label]="'Remove ' + cl.description" title="Remove line">
-                          <lucide-icon name="trash-2" [size]="15" />
-                        </button>
-                      </div>
-                    }
-                    <!-- Dashed add card at the bottom of the category's items. -->
+                    <!-- Dashed add card at the bottom of the category's items.
+                         Custom lines persist as real project_items now
+                         (pV2-CUSTOMS-01), so they render above via the normal
+                         row with a "Custom" tag. -->
                     <div class="p-3">
                       <button type="button" class="flex w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border border-dashed border-hairline px-3 py-3 text-secondary transition-colors hover:bg-fill hover:text-text"
                               (click)="openAdd(g)">
@@ -349,26 +336,15 @@ export class ProjectEstimateComponent {
   });
 
   // ── Custom (ad-hoc) line items — Final view only, in-session ───────────
-  protected readonly customLines = signal<CustomLine[]>([]);
   protected readonly adding = signal(false);
+  protected readonly savingCustom = signal(false);
   /** The category whose dashed button was clicked — seeds the dialog. */
   protected readonly pendingCategoryId = signal<string | null>(null);
   protected readonly pendingCategoryName = signal<string>('');
 
-  /** Custom lines added under a given category (its dashed add button). */
-  protected customLinesFor(categoryId: string | null): CustomLine[] {
-    return this.customLines().filter((c) => c.categoryId === categoryId);
-  }
-
-  /** Custom lines are raw (unpersisted) — added to the headline on top of the
-   *  server-cascaded item total. */
-  protected readonly customTotal = computed(() =>
-    this.customLines().reduce((s, c) => s + c.cost * c.quantity, 0)
-  );
-  /** Banner headline: the server client total, plus raw custom lines on Final. */
-  protected readonly bannerTotal = computed(
-    () => this.bd().clientTotal + (this.isFinal() ? this.customTotal() : 0)
-  );
+  /** Banner headline: the server client total. Custom lines are real
+   *  project_items now (pV2-CUSTOMS-01), already in the cascade. */
+  protected readonly bannerTotal = computed(() => this.bd().clientTotal);
 
   /** Open the add-custom modal, seeded with the category whose dashed button
    *  was clicked (the dialog owns the form). */
@@ -377,13 +353,28 @@ export class ProjectEstimateComponent {
     this.pendingCategoryName.set(group?.name ?? '');
     this.adding.set(true);
   }
-  /** The dialog emits the fully-built custom line. */
-  protected addCustom(line: CustomLine): void {
-    this.customLines.update((ls) => [...ls, line]);
-    this.adding.set(false);
-  }
-  protected removeCustom(id: string): void {
-    this.customLines.update((ls) => ls.filter((c) => c.id !== id));
+  /** Persist the custom line (pV2-CUSTOMS-01) — it becomes a real cart line
+   *  that rides along in the category's brief. Reload so it renders like any
+   *  line (with a "Custom" tag; no supplier until one quotes it). */
+  protected async addCustom(line: CustomLine): Promise<void> {
+    if (this.savingCustom()) return;
+    this.savingCustom.set(true);
+    try {
+      await firstValueFrom(this.projects.addCustomItem(this.projectId(), {
+        categoryId: line.categoryId,
+        name: line.description,
+        description: line.notes || null,
+        cost: line.cost,
+        quantity: line.quantity,
+      }));
+      this.adding.set(false);
+      this.lines.reload();
+      this.est.reload();
+    } catch (err) {
+      this.toast.add({ severity: 'error', summary: "Couldn't add the line — please try again.", detail: errorDetail(err), life: 5000 });
+    } finally {
+      this.savingCustom.set(false);
+    }
   }
 
   // ── Message suppliers (Final view) ────────────────────────────────────

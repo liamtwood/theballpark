@@ -2137,6 +2137,13 @@ const migrate = async () => {
         -- per-supplier row model (N rows per item) AND with CUSTOMS-01's NULL
         -- item_id. addItem's SELECT ... FOR UPDATE revive doesn't need it.
         DROP INDEX IF EXISTS ${s}.uq_project_items_project_item;
+        -- pV2-CUSTOMS-01: a custom "Add Your Own Line Item" is a pure
+        -- project_items row with NO catalogue backing — item_id NULL, all data
+        -- (name/price/unit/install/description) on the row. is_custom is the
+        -- explicit marker (item_id IS NULL is equivalent; the column reads
+        -- better in code + audits).
+        ALTER TABLE ${s}.project_items ALTER COLUMN item_id DROP NOT NULL;
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS is_custom BOOLEAN NOT NULL DEFAULT false;
       `);
       // The stripped tag join keeps the shared audit columns — the audit.*
       // BEFORE INSERT/UPDATE trigger stamps created_by/updated_*/deleted_* and
