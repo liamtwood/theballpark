@@ -43,8 +43,8 @@ export interface CustomLine {
           </label>
           <div class="grid grid-cols-2 gap-3">
             <label class="block">
-              <span class="bp-field-label">Estimated Cost</span>
-              <input type="number" class="bp-input-field" placeholder="2000" [(ngModel)]="form.cost" />
+              <span class="bp-field-label">Estimated Cost <span class="text-muted">(optional)</span></span>
+              <input type="number" class="bp-input-field" placeholder="TBC — supplier quotes" [(ngModel)]="form.cost" />
             </label>
             <label class="block">
               <span class="bp-field-label">Quantity</span>
@@ -63,7 +63,7 @@ export interface CustomLine {
             <input class="bp-input-field" placeholder="Any additional details" [(ngModel)]="form.notes" />
           </label>
         </div>
-        <button type="button" class="bp-btn-grad mt-5 w-full" [disabled]="!form.description.trim() || (form.cost || 0) <= 0" (click)="submit()">
+        <button type="button" class="bp-btn-grad mt-5 w-full" [disabled]="!form.description.trim()" (click)="submit()">
           Add Line Item
         </button>
       </div>
@@ -77,7 +77,7 @@ export class CustomLineDialogComponent implements OnInit {
   readonly add = output<CustomLine>();
   readonly cancel = output<void>();
 
-  protected form = { category: '', description: '', cost: 0, quantity: 1, type: 'deliverable', notes: '' };
+  protected form = { category: '', description: '', cost: null as number | null, quantity: 1, type: 'deliverable', notes: '' };
 
   /** Seed the Category field from the input (available by ngOnInit; the modal
    *  is recreated per open, so a fresh instance seeds each time). */
@@ -87,7 +87,7 @@ export class CustomLineDialogComponent implements OnInit {
 
   protected submit(): void {
     const f = this.form;
-    if (!f.description.trim() || (f.cost || 0) <= 0) return;
+    if (!f.description.trim()) return;
     this.add.emit({
       id: `c-${f.description.slice(0, 6)}-${f.quantity}`,
       categoryId: this.categoryId(),

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { OutreachRosterEntry } from '../../core/inbox/inbox.service';
 
@@ -35,8 +35,8 @@ export interface MsgSupplierCategory {
           </button>
         </div>
         <p class="bp-body-small mt-1 text-secondary">
-          One supplier per category keeps quotes comparable and gives you a single point of
-          contact. Ask more than one only where it's worth it.
+          Check the suppliers you want to quote each category. One keeps quotes comparable;
+          add more to compare.
         </p>
 
         <div class="mt-4 flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
@@ -60,19 +60,14 @@ export interface MsgSupplierCategory {
                 <div class="mt-2 flex flex-col gap-1.5">
                   @for (s of c.suppliers; track s.supplierId) {
                     <label class="flex cursor-pointer items-center gap-2.5">
-                      <input type="radio" class="bp-radio" [name]="'primary-' + c.categoryId"
-                             [checked]="primary()[c.categoryId] === s.supplierId"
-                             (change)="setPrimary(c.categoryId, s.supplierId)" />
+                      <input type="checkbox" class="bp-check"
+                             [checked]="isSelected(c.categoryId, s.supplierId)"
+                             (change)="toggleSupplier(c.categoryId, s.supplierId)" />
                       <span class="bp-body-small text-text">{{ s.supplierName }}@if (s.supplierCity) { · {{ s.supplierCity }} }</span>
                       <span class="bp-meta">{{ s.count }} item{{ s.count === 1 ? '' : 's' }}</span>
                     </label>
                   }
                 </div>
-                <label class="mt-2 flex cursor-pointer items-center gap-2 border-t border-hairline pt-2">
-                  <input type="checkbox" class="bp-check" [checked]="!!competing()[c.categoryId]"
-                         (change)="toggleCompeting(c.categoryId)" />
-                  <span class="bp-meta">Also get competing quotes from the other {{ c.suppliers.length - 1 }} supplier{{ c.suppliers.length - 1 === 1 ? '' : 's' }}</span>
-                </label>
               }
             </div>
           }
@@ -90,12 +85,6 @@ export interface MsgSupplierCategory {
   `,
   styles: [
     `
-      .bp-radio {
-        width: 1rem;
-        height: 1rem;
-        accent-color: var(--theme-accent);
-        cursor: pointer;
-      }
       .bp-check {
         width: 1rem;
         height: 1rem;
@@ -123,21 +112,29 @@ export class MessageSuppliersDialogComponent {
   readonly send = output<OutreachRosterEntry[]>();
   readonly cancel = output<void>();
 
-  /** Primary per category, defaulting to the majority owner (suppliers arrive
-   *  sorted by count desc, so [0] is the biggest). */
-  protected readonly primary = linkedSignal<Record<string, string>>(() => {
-    const m: Record<string, string> = {};
-    for (const c of this.categories()) m[c.categoryId] = c.suppliers[0]?.supplierId ?? '';
+  /** Selected suppliers per category (multi-select). Defaults to the majority
+   *  owner (suppliers arrive sorted by count desc, so [0] is the biggest);
+   *  single-supplier categories default to their one supplier. */
+  protected readonly selected = linkedSignal<Record<string, string[]>>(() => {
+    const m: Record<string, string[]> = {};
+    for (const c of this.categories()) {
+      const first = c.suppliers[0]?.supplierId;
+      m[c.categoryId] = first ? [first] : [];
+    }
     return m;
   });
-  /** Categories the agent opted to also ask the other suppliers in. */
-  protected readonly competing = signal<Record<string, boolean>>({});
 
-  protected setPrimary(categoryId: string, supplierId: string): void {
-    this.primary.update((m) => ({ ...m, [categoryId]: supplierId }));
+  protected isSelected(categoryId: string, supplierId: string): boolean {
+    return (this.selected()[categoryId] ?? []).includes(supplierId);
   }
-  protected toggleCompeting(categoryId: string): void {
-    this.competing.update((m) => ({ ...m, [categoryId]: !m[categoryId] }));
+  protected toggleSupplier(categoryId: string, supplierId: string): void {
+    this.selected.update((m) => {
+      const cur = m[categoryId] ?? [];
+      const next = cur.includes(supplierId)
+        ? cur.filter((id) => id !== supplierId)
+        : [...cur, supplierId];
+      return { ...m, [categoryId]: next };
+    });
   }
 
   /** Total supplier threads across all categories (the CTA count). */
@@ -145,16 +142,10 @@ export class MessageSuppliersDialogComponent {
     this.buildRoster().reduce((n, e) => n + e.supplierIds.length, 0)
   );
 
-  /** One roster entry per category: the primary, or every supplier when the
-   *  agent asked for competing quotes. */
+  /** One roster entry per category → its checked suppliers. */
   protected buildRoster(): OutreachRosterEntry[] {
     return this.categories()
-      .map((c) => {
-        const ids = this.competing()[c.categoryId]
-          ? c.suppliers.map((s) => s.supplierId)
-          : [this.primary()[c.categoryId] || c.suppliers[0]?.supplierId].filter(Boolean);
-        return { categoryId: c.categoryId, supplierIds: [...new Set(ids)] };
-      })
+      .map((c) => ({ categoryId: c.categoryId, supplierIds: [...new Set(this.selected()[c.categoryId] ?? [])] }))
       .filter((e) => e.supplierIds.length);
   }
 }
