@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output, re
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { MessageService } from 'primeng/api';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { EstimateBreakdown, ProjectDetail, QuoteLine, groupByCategory } from '../../core/projects/project.types';
@@ -202,6 +203,7 @@ export class ProjectEstimateComponent {
   private readonly projects = inject(ProjectService);
   private readonly toast = inject(MessageService);
   private readonly inbox = inject(InboxService);
+  private readonly router = inject(Router);
 
   readonly projectId = input.required<string>();
   readonly project = input.required<ProjectDetail>();
@@ -435,6 +437,8 @@ export class ProjectEstimateComponent {
       });
       this.lines.reload();
       this.est.reload();
+      // Take the agent straight to the inbox to watch for replies (Liam QC).
+      void this.router.navigate(['/inbox', this.projectId()]);
     } catch (err) {
       this.toast.add({ severity: 'error', summary: "Couldn't send the brief — please try again.", detail: errorDetail(err), life: 5000 });
     } finally {
