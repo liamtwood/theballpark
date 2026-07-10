@@ -40,6 +40,7 @@ interface DetailForm {
   guestCount: string;
   durationDays: string;
   tier: string;
+  budget: string;
   marginPct: string;
   contingencyPct: string;
   vatPct: string;
@@ -150,6 +151,7 @@ interface DetailForm {
                 (save)="save('financials')"
               >
                 <div class="bp-field-grid-2">
+                  <app-edit-field label="Budget (£)" type="number" density="page" [editing]="editingFinancials()" [value]="form().budget" (valueChange)="patch({ budget: $event })" />
                   <app-edit-field label="Margin (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().marginPct" (valueChange)="patch({ marginPct: $event })" />
                   <app-edit-field label="Contingency (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().contingencyPct" (valueChange)="patch({ contingencyPct: $event })" />
                   <app-edit-field label="VAT (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().vatPct" (valueChange)="patch({ vatPct: $event })" />
@@ -373,6 +375,7 @@ export class ProjectDetailComponent {
                 guestCount: numOrNull(f.guestCount),
               }
             : {
+                projectBudget: numOrNull(f.budget),
                 defaultMarginPct: numOrNull(f.marginPct),
                 defaultContingencyPct: numOrNull(f.contingencyPct),
                 defaultVatPct: numOrNull(f.vatPct),
@@ -482,6 +485,7 @@ function toForm(d: ProjectDetail | null): DetailForm {
     guestCount: d?.guestCount != null ? String(d.guestCount) : '',
     durationDays: d?.durationDays != null ? String(d.durationDays) : '',
     tier: d?.tier ?? '',
+    budget: d?.projectBudget != null ? String(d.projectBudget) : '',
     marginPct: d?.defaultMarginPct != null ? String(d.defaultMarginPct) : '',
     contingencyPct: d?.defaultContingencyPct != null ? String(d.defaultContingencyPct) : '',
     vatPct: d?.defaultVatPct != null ? String(d.defaultVatPct) : '',
