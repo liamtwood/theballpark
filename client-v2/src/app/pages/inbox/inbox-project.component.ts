@@ -8,8 +8,12 @@ import { AuthService } from '../../core/auth/auth.service';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
+import { QuoteLine } from '../../core/projects/project.types';
+import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { TERMINAL_STATUSES, gbp } from './inbox-status';
-import { InboxRailComponent } from './inbox-rail.component';
+import { InboxRailComponent, RailOuter } from './inbox-rail.component';
+import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
+import { quoteLineToCatalogueItem } from '../projects/quote-line.util';
 
 /** pV2-INBOX-01/03 — the per-project conversation surface, viewer-aware.
  *  Supplier (standalone /inbox/:projectId): the left rail is THEIR items
@@ -22,7 +26,7 @@ import { InboxRailComponent } from './inbox-rail.component';
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, LucideAngularModule, PageHeroComponent, InboxRailComponent],
+  imports: [CurrencyPipe, DatePipe, LucideAngularModule, PageHeroComponent, InboxRailComponent, ItemPreviewComponent],
   host: { '[class]': 'hostClass()' },
   template: `
     @if (!embedded()) {
@@ -91,6 +95,32 @@ import { InboxRailComponent } from './inbox-rail.component';
                     </div>
                     <span class="bp-meta mt-1 px-1">{{ m.createdAt | date: 'shortTime' }}</span>
                   </div>
+                  <!-- The item(s) this quote request covers, as attachments:
+                       collapsed to a name bar, expanding in place to the SAME
+                       preview card the Estimate rail renders. Fixed w-80 in both
+                       states so expanding never changes the width. -->
+                  @for (line of cardsFor(m); track line.id) {
+                    <!-- Align to the sender's side — the brief is the agent's
+                         own message, so in the agent inbox the attachment sits
+                         right (mine); on the supplier side it sits left. -->
+                    <div class="w-80 max-w-full" [class.self-end]="m.mine">
+                      @if (isAttachmentOpen(m.id, line.id)) {
+                        <div class="bp-card p-4">
+                          <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName"
+                                            closeIcon="chevron-up" closeLabel="Minimise"
+                                            (closed)="toggleAttachment(m.id, line.id)" />
+                        </div>
+                      } @else {
+                        <button type="button"
+                                class="flex w-full items-center gap-2 rounded-[var(--radius-card)] border border-hairline bg-surface px-3 py-2.5 text-left shadow-[var(--shadow-xs)] transition-colors hover:bg-fill"
+                                (click)="toggleAttachment(m.id, line.id)">
+                          <lucide-icon name="paperclip" [size]="14" class="shrink-0 text-muted" />
+                          <span class="bp-list-title min-w-0 flex-1 truncate">{{ line.name }}</span>
+                          <lucide-icon name="chevron-down" [size]="15" class="shrink-0 text-muted" />
+                        </button>
+                      }
+                    </div>
+                  }
                 }
               </div>
 
@@ -148,6 +178,13 @@ import { InboxRailComponent } from './inbox-rail.component';
                       </button>
                       <button type="button" class="bp-act bp-act--gray" [disabled]="sending()" (click)="requestInfo(it)">
                         <lucide-icon name="info" [size]="15" /> Request Information
+                      </button>
+                      <!-- Item exit — marks the line declined (never removed):
+                           the supplier Declines it, the agent Cancels their
+                           request. Server records declined_by_supplier /
+                           declined_by_agent by side, which is terminal. -->
+                      <button type="button" class="bp-act bp-act--red" [disabled]="sending()" (click)="decline(it)">
+                        <lucide-icon [name]="isAgency() ? 'x' : 'circle-off'" [size]="15" /> {{ isAgency() ? 'Cancel' : 'Decline' }}
                       </button>
                     }
                   </div>
@@ -220,14 +257,40 @@ export class InboxProjectComponent {
    *  view is the category tree ("PROJECT ITEMS" when single). The card's
    *  top row selects the whole thread; "N Items" expands. (Multi-category
    *  suppliers show one card per category — punted edge.) */
-  protected readonly railGroups = computed(() =>
-    this.threads().map((t) => ({
-      id: t.id,
-      threadId: t.id,
-      label: this.isAgency() ? t.supplierName ?? 'Supplier' : this.headerLabel(t),
-      items: t.items,
-    }))
-  );
+  /** The nested rail tree — the Final-Quote containment pattern applied to the
+   *  inbox hierarchy. Outer card = the counterparty (agency view groups by
+   *  SUPPLIER; supplier view groups by the AGENCY); each thread becomes a
+   *  category band with its items. Threads arrive newest-first, so the outers
+   *  and their cats keep that order. */
+  protected readonly railGroups = computed<RailOuter[]>(() => {
+    const outers = new Map<string, RailOuter>();
+    for (const t of this.threads()) {
+      const key = (this.isAgency() ? t.supplierOrgId : t.agencyOrgId) ?? t.id;
+      let o = outers.get(key);
+      if (!o) {
+        o = {
+          id: key,
+          label: (this.isAgency() ? t.supplierName : t.agencyName) ?? (this.isAgency() ? 'Supplier' : 'Agency'),
+          // Agency view = the supplier's logo (else a store glyph); supplier
+          // view = the agency's logo (else a building glyph).
+          iconUrl: (this.isAgency() ? t.supplierLogoUrl : t.agencyLogoUrl) ?? null,
+          iconName: this.isAgency() ? 'store' : 'building-2',
+          total: 0,
+          cats: [],
+        };
+        outers.set(key, o);
+      }
+      o.cats.push({
+        threadId: t.id,
+        categoryName: t.categoryName ?? 'Project items',
+        // Same category icon the Final Quote card uses (from the QuoteLine).
+        iconName: t.items[0]?.line?.categoryIconName ?? 'folder',
+        items: t.items,
+      });
+      o.total += t.revisedTotal;
+    }
+    return [...outers.values()];
+  });
 
   /** No item is auto-selected — you land on thread-level chat (action bar
    *  hidden). Selecting an item arms its actions; clicking it again
@@ -258,11 +321,13 @@ export class InboxProjectComponent {
   protected selectThread(threadId: string): void {
     this.selectedThreadId.set(threadId);
     this.selectedId.set(null);
+    this.decliningId.set(null);
   }
 
   /** Click an item: arm it (and switch to its thread); clicking the armed
    *  item again clears it back to thread-level chat. */
   protected selectItem(itemId: string): void {
+    this.decliningId.set(null); // switching items abandons a pending decline
     if (this.selectedId() === itemId) {
       this.selectedId.set(null);
       return;
@@ -288,6 +353,52 @@ export class InboxProjectComponent {
     return !!this.selectedItem() && m.taggedItemIds.length === 0;
   }
 
+  /** The item attachments hang under the INITIAL quote-request (brief) message —
+   *  the thread's first bubble ("review the item(s) below"). Each mounts the
+   *  SAME preview card the Estimate rail uses, collapsed to a name bar by
+   *  default. In a filtered (item-selected) view only that one line shows. */
+  private readonly briefMessageId = computed(() => this.selectedThread()?.messages[0]?.id ?? null);
+  protected readonly cardsByMessage = computed(() => {
+    const t = this.selectedThread();
+    const briefId = this.briefMessageId();
+    const map = new Map<string, QuoteLine[]>();
+    if (!t || !briefId) return map;
+    const selKey = this.selectedItem()?.itemId ?? null;
+    const lines: QuoteLine[] = [];
+    for (const it of t.items) {
+      if (selKey && it.itemId !== selKey) continue;
+      if (it.line) lines.push(it.line);
+    }
+    if (lines.length) map.set(briefId, lines);
+    return map;
+  });
+
+  protected cardsFor(m: InboxBubble): QuoteLine[] {
+    return this.cardsByMessage().get(m.id) ?? [];
+  }
+
+  /** The quote line as the preview card's CatalogueItem (shared mapper — the
+   *  same shape the Estimate right-rail renders). */
+  protected asPreview(line: QuoteLine): CatalogueItem {
+    return quoteLineToCatalogueItem(line);
+  }
+
+  /** Per-attachment expand state, keyed `<messageId>:<lineId>` so the same item
+   *  can be open under one message and closed under another. */
+  private readonly openAttachments = signal<ReadonlySet<string>>(new Set());
+  protected isAttachmentOpen(messageId: string, lineId: string): boolean {
+    return this.openAttachments().has(`${messageId}:${lineId}`);
+  }
+  protected toggleAttachment(messageId: string, lineId: string): void {
+    const key = `${messageId}:${lineId}`;
+    this.openAttachments.update((s) => {
+      const next = new Set(s);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   /** "<Project> conversations" — tracks the configurable event label. */
   protected readonly heroSubtitle = computed(() => `${this.pageConfig.eventLabel()} conversations`);
 
@@ -300,19 +411,31 @@ export class InboxProjectComponent {
   // ── Compose ───────────────────────────────────────────────────────────
   protected readonly draft = signal('');
   protected readonly sending = signal(false);
+  /** When set, the composed message ALSO declines this item id on send — armed
+   *  by the Decline/Cancel action, which seeds the box with a reason to finish
+   *  (mirrors Request Info). Cleared on send or when the selection changes. */
+  protected readonly decliningId = signal<string | null>(null);
 
   /** Send the composed message in the given thread, then refresh so the new
-   *  bubble appears. */
+   *  bubble appears. When a decline is armed, the reason is posted AND the item
+   *  is marked declined in the same reply. */
   protected async send(threadId: string): Promise<void> {
     const text = this.draft().trim();
     if (!text || this.sending()) return;
     this.sending.set(true);
     try {
-      // A message composed with an item selected tags it; otherwise it's a
-      // thread-level broadcast.
-      const taggedItemId = this.selectedItem()?.itemId ?? undefined;
-      await firstValueFrom(this.inbox.reply(threadId, { text, taggedItemId }));
+      const decId = this.decliningId();
+      if (decId) {
+        // The typed reason becomes the bubble; the action marks it declined.
+        await firstValueFrom(this.inbox.reply(threadId, { text, itemActions: [{ itemId: decId, action: 'decline' }] }));
+      } else {
+        // A message composed with an item selected tags it; otherwise it's a
+        // thread-level broadcast.
+        const taggedItemId = this.selectedItem()?.itemId ?? undefined;
+        await firstValueFrom(this.inbox.reply(threadId, { text, taggedItemId }));
+      }
       this.draft.set('');
+      this.decliningId.set(null);
       this.threadsRes.reload();
     } catch {
       // Keep the draft so the user can retry; a toast lands with the
@@ -336,6 +459,16 @@ export class InboxProjectComponent {
   protected accept(it: InboxThreadItem): void {
     const cost = it.priceCurrent ?? it.priceRef ?? 0;
     void this.itemAction(it.id, 'accept', undefined, `${it.name} ${gbp(cost)} Cost Accepted by ${this.actorName()}`);
+  }
+  /** Decline the item — marks it declined (never removed). Like Request Info,
+   *  seed the compose box with the item + reason stem and focus it; the user
+   *  finishes the reason and Sends, which posts it AND declines the line. The
+   *  server maps `decline` to declined_by_supplier / declined_by_agent. */
+  protected decline(it: InboxThreadItem): void {
+    const verb = this.isAgency() ? 'Cancel' : 'Decline';
+    this.decliningId.set(it.id);
+    this.draft.set(`${it.name} — ${verb} because `);
+    this.composeInput()?.nativeElement.focus();
   }
   protected startPropose(it: InboxThreadItem): void {
     // Negotiate the per-unit RATE + the install cost (pV2-UNIFY-01) — the line

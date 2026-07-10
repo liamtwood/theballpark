@@ -77,6 +77,9 @@ const LIST_SELECT = `
               FROM project_items pi
               LEFT JOIN items i ON i.id = pi.item_id
              WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
+               -- Declined/cancelled lines drop out of the card total too, so it
+               -- matches getEstimate + the Estimate tab (pV2-INBOX-05).
+               AND (pi.status IS NULL OR pi.status NOT IN ('declined_by_supplier', 'declined_by_agent'))
              ORDER BY pi.logical_line_id,
                       (pi.status IN ('accepted','booked')) DESC NULLS LAST,
                       pi.created_at ASC, pi.id
@@ -423,6 +426,18 @@ async function lineById(db, id) {
   return r.rows.length ? toQuoteLine(r.rows[0]) : null;
 }
 
+/** Batch of quote lines by project_items row id → Map<id, QuoteLine>. Keyed on
+ *  the ROW id (not logical_line_id) so each per-supplier line resolves to its
+ *  own QuoteLine — the inbox reuses this to render the SAME card the Final
+ *  Quote shows under a message (pV2-INBOX-05). */
+async function linesByIds(db, ids) {
+  const map = new Map();
+  if (!ids.length) return map;
+  const r = await db.query(`${QUOTE_LINE_JOIN} WHERE pi.id = ANY($1::uuid[])`, [ids]);
+  for (const row of r.rows) map.set(row.id, toQuoteLine(row));
+  return map;
+}
+
 /** The project's quote lines (snapshot fields on project_items). Returns
  *  null if the project isn't the org's (→ 404). */
 async function listItems(orgId, projectId) {
@@ -471,6 +486,10 @@ async function getEstimate(orgId, projectId, scope = 'all') {
                 WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
                   -- scope=cart → only still-in-cart (never-sent) lines.
                   AND ($3 = false OR pi.status IS NULL)
+                  -- Declined/cancelled lines drop out of the cost (the Final
+                  -- Quote still LISTS them with the red pill; they just don't
+                  -- count toward the subtotal / client total). NULL = in cart.
+                  AND (pi.status IS NULL OR pi.status NOT IN ('declined_by_supplier', 'declined_by_agent'))
                 -- pV2-UNIFY-01a (audit M-2): deterministic tiebreak, IDENTICAL
                 -- across getEstimate / LIST_SELECT / listItems so the banner
                 -- total and the line list can't pick different competing clones.
@@ -801,5 +820,5 @@ async function recommend(orgId, projectId) {
 module.exports = {
   listForOrg, getDetail, updateDetail, create,
   listItems, getEstimate, addItem, addCustomItem, removeItem, updateItem, recommend,
-  resolveStatus, DEFAULT_STATUS, toCard,
+  resolveStatus, DEFAULT_STATUS, toCard, linesByIds,
 };

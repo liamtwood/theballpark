@@ -1,4 +1,5 @@
 import { QuoteLine, QuoteLineStatus } from '../../core/projects/project.types';
+import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 
 /** Per-item send-state badge labels + soft-token pill classes (Final view). */
 export const STATUS_LABELS: Record<QuoteLineStatus, string> = {
@@ -58,4 +59,30 @@ export function lineCost(l: QuoteLine): number {
  *  — reads naturally after the cost ("£42 / head"). */
 export function unitPlain(unit: string | null): string {
   return unit ? unit.replace(/_/g, ' ') : '';
+}
+
+/** Map a quote line to the marketplace preview's CatalogueItem shape — the line
+ *  already carries everything the preview card renders. Shared by the Estimate
+ *  right-rail and the inbox attachment so the SAME card renders in both (no
+ *  duplicated mapping). */
+export function quoteLineToCatalogueItem(l: QuoteLine): CatalogueItem {
+  return {
+    id: l.itemId,
+    name: l.name ?? '',
+    description: l.description,
+    installDescription: l.installDescription,
+    basePrice: l.basePrice,
+    unit: l.unit,
+    coverUrl: l.imageUrl,
+    categoryId: l.categoryId ?? '',
+    subcategoryId: null,
+    supplierId: l.supplierId ?? '',
+    supplierName: l.supplierName ?? '',
+    supplierCity: l.supplierCity,
+    categoryName: l.categoryName,
+    subcategoryName: null,
+    ownedByActiveOrg: false,
+    approvalStatus: 'approved',
+    isActive: true,
+  };
 }

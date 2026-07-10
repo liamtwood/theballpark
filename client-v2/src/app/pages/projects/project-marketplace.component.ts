@@ -12,7 +12,7 @@ import { SupplierGridComponent } from '../../shared/catalogue/supplier-grid.comp
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { ProjectService } from '../../core/projects/project.service';
-import { QuoteLine } from '../../core/projects/project.types';
+import { EstimateBreakdown, QuoteLine } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
 import { ProjectQuoteRailComponent } from './project-quote-rail.component';
 
@@ -115,6 +115,7 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
       <div class="min-h-0 xl:overflow-y-auto">
         <app-project-quote-rail
           [lines]="quoteLines()"
+          [breakdown]="est.value() ?? null"
           (removed)="onQuoteToggle($event)"
           (qtyChanged)="onQtyChange($event.itemId, $event.quantity)"
           (checkout)="onCheckout()"
@@ -202,6 +203,14 @@ export class ProjectMarketplaceComponent {
     },
   });
 
+  /** The SAME server cascade the Final Quote uses (scope 'all') — so the
+   *  Project Quote total is always identical: install, contingency, margin and
+   *  VAT, declined lines excluded. Reloaded after every add / remove / qty. */
+  protected readonly est = resource<EstimateBreakdown, string>({
+    params: () => this.projectId(),
+    loader: ({ params }) => firstValueFrom(this.projects.estimate(params, 'all')),
+  });
+
   /** + on a card, or the rail's remove — toggles the item in this project's
    *  quote (optimistic, revert on failure). */
   protected async onQuoteToggle(itemId: string): Promise<void> {
@@ -216,6 +225,7 @@ export class ProjectMarketplaceComponent {
         const line = await firstValueFrom(this.projects.addQuoteItem(id, itemId));
         this.quoteLines.update((ls) => [...ls, line]);
       }
+      this.est.reload();
     } catch (err) {
       this.quoteLines.set(before);
       this.toast.add({ severity: 'error', summary: "Couldn't update the quote — please try again.", detail: errorDetail(err), life: 4000 });
@@ -230,6 +240,7 @@ export class ProjectMarketplaceComponent {
     this.quoteLines.update((ls) => ls.map((l) => (l.itemId === itemId ? { ...l, quantity } : l)));
     try {
       await firstValueFrom(this.projects.setQuoteItemQuantity(id, itemId, quantity));
+      this.est.reload();
     } catch (err) {
       this.quoteLines.set(before);
       this.toast.add({ severity: 'error', summary: "Couldn't update the quantity — please try again.", detail: errorDetail(err), life: 4000 });

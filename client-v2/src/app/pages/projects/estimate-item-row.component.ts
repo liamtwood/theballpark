@@ -15,6 +15,9 @@ import { editable, hasInstall, isInstalled, lineCost, statusLabel, statusPill, u
   host: {
     class: 'flex cursor-pointer items-center gap-3 border-b border-hairline px-3 py-3',
     '[class.bg-fill]': 'selected()',
+    // Declined/cancelled lines dim — they stay on the Final Quote for the
+    // record but are excluded from every total (pV2-INBOX-05).
+    '[class.opacity-55]': 'isDeclined()',
     '(click)': 'select.emit()',
   },
   template: `
@@ -57,7 +60,8 @@ import { editable, hasInstall, isInstalled, lineCost, statusLabel, statusPill, u
     } @else {
       <span class="bp-body-small shrink-0 text-center text-secondary" title="Out for quote — change it in the inbox">× {{ line().quantity }}</span>
     }
-    <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ cost() | currency: cur() : 'symbol' : '1.0-0' }}</span>
+    <span class="bp-body-small w-20 shrink-0 text-right text-secondary" [class.line-through]="isDeclined()" [class.text-muted]="isDeclined()"
+          [title]="isDeclined() ? 'Declined — not included in the total' : ''">{{ cost() | currency: cur() : 'symbol' : '1.0-0' }}</span>
     @if (canEdit()) {
       <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
               (click)="$event.stopPropagation(); remove.emit()" [attr.aria-label]="'Remove ' + line().name" title="Remove item">
@@ -82,6 +86,7 @@ export class EstimateItemRowComponent {
   protected readonly canInstall = computed(() => hasInstall(this.line()));
   protected readonly installed = computed(() => isInstalled(this.line()));
   protected readonly cost = computed(() => lineCost(this.line()));
+  protected readonly isDeclined = computed(() => this.line().status === 'declined');
   protected label(): string { return statusLabel(this.line()); }
   protected pill(): string { return statusPill(this.line()); }
   protected unitText(): string { return unitPlain(this.line().unit); }

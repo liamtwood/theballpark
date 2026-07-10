@@ -17,6 +17,7 @@ const { withTransaction } = require('../db/with-transaction');
 const { lineTotalSql } = require('./line-total.util');
 const TaxonomyService = require('./taxonomy.service');
 const messageService = require('./message.service');
+const projectsService = require('./projects.service');
 const { getByMessage, aggregateStatus, transitionItem, recordDecision } = require('./message-item.service');
 
 function httpErr(message, status) {
@@ -228,7 +229,7 @@ async function fetchTags(messageIds) {
   return map;
 }
 
-function toThreadItem(it) {
+function toThreadItem(it, line) {
   return {
     // pV2-UNIFY-01: the line's own id is the project_items.id now (what the
     // client sends back in item actions).
@@ -260,6 +261,10 @@ function toThreadItem(it) {
     // YOU / THEY / BOTH accepted pill (buyer = agency, seller = supplier).
     buyerAccepted: it.buyer_status === 'accepted',
     sellerAccepted: it.seller_status === 'accepted',
+    // pV2-INBOX-05: the SAME QuoteLine the Final Quote renders (keyed on this
+    // row's project_items.id) — the inbox mounts the identical item-preview
+    // card under the message rather than a bespoke copy. null if not found.
+    line: line ?? null,
   };
 }
 
@@ -289,7 +294,8 @@ async function getSupplierThreads(supplierOrgId, projectId) {
   const threads = [];
   for (const g of groups.values()) {
     const items = await getByMessage(g.lead.id);
-    threads.push(makeThread(g.lead, g.messages, items, 'supplier', tags));
+    const lines = await projectsService.linesByIds(pool, items.map((i) => i.id));
+    threads.push(makeThread(g.lead, g.messages, items, 'supplier', tags, lines));
   }
   sortThreads(threads);
   const project = await getProjectSummary(projectId, threads);
@@ -299,7 +305,7 @@ async function getSupplierThreads(supplierOrgId, projectId) {
 /** Build one thread object from the VIEWER's perspective. Carries both the
  *  agency and supplier identities (the client picks the counterparty); the
  *  bubbles + aggregate status are mapped for the viewer. */
-function makeThread(lead, msgs, items, viewer, tagsByMessage) {
+function makeThread(lead, msgs, items, viewer, tagsByMessage, linesById) {
   const counterpartyName = viewer === 'supplier' ? lead.agency_name : lead.supplier_name;
   return {
     id: lead.id,
@@ -320,7 +326,7 @@ function makeThread(lead, msgs, items, viewer, tagsByMessage) {
     total: items.reduce((s, it) => s + Number(it.revised_total ?? it.original_total ?? 0), 0),
     originalTotal: items.reduce((s, it) => s + Number(it.original_total ?? 0), 0),
     revisedTotal: items.reduce((s, it) => s + Number(it.revised_total ?? it.original_total ?? 0), 0),
-    items: items.map(toThreadItem),
+    items: items.map((it) => toThreadItem(it, linesById?.get(it.id))),
     // Empty-body rows carry no conversation (e.g. an action-only reply) —
     // never render a blank bubble.
     messages: msgs
@@ -394,7 +400,8 @@ async function getAgentThreads(agencyOrgId, projectId) {
   const threads = [];
   for (const g of groups.values()) {
     const items = await getByMessage(g.lead.id);
-    threads.push(makeThread(g.lead, g.messages, items, 'agency', tags));
+    const lines = await projectsService.linesByIds(pool, items.map((i) => i.id));
+    threads.push(makeThread(g.lead, g.messages, items, 'agency', tags, lines));
   }
   sortThreads(threads);
   const project = await getProjectSummary(projectId, threads);

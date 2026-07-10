@@ -1645,6 +1645,7 @@ select.bp-input-field { appearance: auto; }
 .bp-act--green { background: var(--color-success-soft); color: var(--color-success); }
 .bp-act--yellow { background: var(--color-warn-soft); color: var(--color-warn); }
 .bp-act--gray { background: var(--color-fill); color: var(--color-text-secondary); }
+.bp-act--red { background: var(--color-danger-soft); color: var(--color-danger); }
 
 /* White agency bubble — reads as a card on the parchment ground. */
 .bp-bubble {

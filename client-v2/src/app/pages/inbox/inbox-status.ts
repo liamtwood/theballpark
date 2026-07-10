@@ -6,8 +6,10 @@ export interface PillView {
   tone: PillTone;
 }
 
-/** Terminal item statuses — no further supplier action. */
-export const TERMINAL_STATUSES = new Set(['declined_by_supplier', 'declined_by_agent', 'booked']);
+/** Terminal item statuses — no further action. Only `booked` is truly final;
+ *  a declined/cancelled line keeps the action bar so either side can change
+ *  their mind (re-accept, suggest a new cost) or undo a mis-click. */
+export const TERMINAL_STATUSES = new Set(['booked']);
 
 /** message_item_status → the pill (label + tone). Supplier perspective is the
  *  base; the agency view only overrides the four perspective-sensitive rows
@@ -21,14 +23,14 @@ const STATUS_VIEW: Record<string, PillView> = {
   accepted: { label: 'You accepted', tone: 'green' },
   booked: { label: 'Booked', tone: 'green' },
   declined_by_supplier: { label: 'You declined', tone: 'red' },
-  declined_by_agent: { label: 'Agency declined', tone: 'red' },
+  declined_by_agent: { label: 'Agency cancelled', tone: 'red' },
 };
 const STATUS_VIEW_AGENCY: Record<string, PillView> = {
   ...STATUS_VIEW,
   adjusted_by_agent: { label: 'You revised', tone: 'yellow' },
   accepted: { label: 'Accepted', tone: 'green' },
   declined_by_supplier: { label: 'Supplier declined', tone: 'red' },
-  declined_by_agent: { label: 'You declined', tone: 'red' },
+  declined_by_agent: { label: 'You cancelled', tone: 'red' },
 };
 
 /** The per-item status pill from the viewer's perspective. `accepted` resolves
