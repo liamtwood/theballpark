@@ -82,6 +82,11 @@ import {
   ExternalLink,
   ChevronUp,
   Download,
+  // Category icons used by the DB category seed but previously unregistered —
+  // an unresolved <lucide-icon> blanked the category card (and, in a zoneless
+  // @for, the cards after it). These complete the 24-icon category set.
+  Bug, Camera, CircleHelp, ClipboardPen, FlaskConical, Lightbulb, Monitor,
+  PersonStanding, ShoppingBag, Signature, Ticket, Wrench,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -161,6 +166,9 @@ export const appConfig: ApplicationConfig = {
         Upload, Sparkles,
         // pV2-PROJECTS-02 — Estimate category-card icons (event categories)
         Car, Flower2, MessageSquare, Music, Spotlight, Tv, User, Utensils,
+        // Remaining DB category-seed icons (were unregistered → blank cards)
+        Bug, Camera, CircleHelp, ClipboardPen, FlaskConical, Lightbulb, Monitor,
+        PersonStanding, ShoppingBag, Signature, Ticket, Wrench,
         // pV2-PROJECTS-02 — Estimate summary cards (Date/Location/Duration/Guests/Budget)
         Calendar, Users, Wallet,
         // pV2-MEDIA-01c — gallery tile actions
