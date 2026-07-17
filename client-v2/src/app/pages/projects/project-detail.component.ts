@@ -19,6 +19,8 @@ import { DrawerComponent } from '../../shared/drawer/drawer.component';
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
 import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.component';
 import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.component';
+import { CompletenessCardComponent } from '../../shared/completeness/completeness-card.component';
+import { CompletenessConfig } from '../../shared/completeness/completeness.types';
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
 import { InboxProjectComponent } from '../inbox/inbox-project.component';
@@ -33,6 +35,7 @@ type Section = 'event' | 'type' | 'logistics' | 'financials';
  *  and Client are read-only (rendered from the loaded detail, not here). */
 interface DetailForm {
   name: string;
+  clientName: string;
   eventType: string;
   eventDate: string;
   venueName: string;
@@ -40,6 +43,7 @@ interface DetailForm {
   guestCount: string;
   durationDays: string;
   tier: string;
+  budget: string;
   marginPct: string;
   contingencyPct: string;
   vatPct: string;
@@ -61,6 +65,7 @@ interface DetailForm {
     TabBandComponent,
     EditSectionComponent,
     EditFieldComponent,
+    CompletenessCardComponent,
     DrawerComponent,
     ImagePickerComponent,
     ImageGalleryComponent,
@@ -86,6 +91,16 @@ interface DetailForm {
         @switch (tab()) {
           @case ('details') {
             <div class="bp-settings-body min-h-0 flex-1 overflow-y-auto">
+              <!-- Weighted "% complete" over the project's fields; each unmet
+                   item deep-links into its edit section (mirrors Profile). -->
+              <app-completeness-card
+                [entity]="p"
+                [config]="completenessConfig"
+                title="Project completeness"
+                entityLabel="project"
+                (actionClicked)="handleCompletenessAction($event)"
+              />
+
               <!-- Event details (v1 parity): Ref + Status read-only header,
                    then editable name / venue / city. Client is read-only
                    (changing it needs a picker — out of this slice). -->
@@ -101,7 +116,7 @@ interface DetailForm {
                 <div class="bp-field-grid-2">
                   <app-edit-field label="Ref" density="page" [readonlyAlways]="true" [value]="p.ref ?? '—'" />
                   <app-edit-field label="Event name" density="page" [editing]="editingEvent()" [value]="form().name" (valueChange)="patch({ name: $event })" />
-                  <app-edit-field label="Client" density="page" [readonlyAlways]="true" [value]="p.clientName ?? '—'" />
+                  <app-edit-field label="Client" density="page" [editing]="editingEvent()" [value]="form().clientName" [suggestions]="clientNames()" (valueChange)="patch({ clientName: $event })" />
                   <app-edit-field label="Venue" density="page" [editing]="editingEvent()" [value]="form().venueName" (valueChange)="patch({ venueName: $event })" />
                   <app-edit-field label="City" density="page" [editing]="editingEvent()" [value]="form().venueCity" (valueChange)="patch({ venueCity: $event })" />
                 </div>
@@ -150,6 +165,7 @@ interface DetailForm {
                 (save)="save('financials')"
               >
                 <div class="bp-field-grid-2">
+                  <app-edit-field label="Budget (£)" type="number" [grouping]="true" density="page" [editing]="editingFinancials()" [value]="form().budget" (valueChange)="patch({ budget: $event })" />
                   <app-edit-field label="Margin (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().marginPct" (valueChange)="patch({ marginPct: $event })" />
                   <app-edit-field label="Contingency (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().contingencyPct" (valueChange)="patch({ contingencyPct: $event })" />
                   <app-edit-field label="VAT (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().vatPct" (valueChange)="patch({ vatPct: $event })" />
@@ -309,6 +325,12 @@ export class ProjectDetailComponent {
     () => this.eventTypeRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
   );
 
+  /** Distinct client names this org has used — the Client field's type-ahead. */
+  private readonly clientNamesRes = resource({
+    loader: () => firstValueFrom(this.projects.clientNames()),
+  });
+  protected readonly clientNames = computed<string[]>(() => this.clientNamesRes.value() ?? []);
+
   protected setTab(t: string): void {
     this.router
       .navigate([], { relativeTo: this.route, queryParams: { tab: t }, queryParamsHandling: 'merge' })
@@ -350,6 +372,36 @@ export class ProjectDetailComponent {
     financials: this.editingFinancials,
   };
 
+  /** Weighted "% complete" over the project's key fields — mirrors the Profile
+   *  completeness card. Each unmet item deep-links into its edit section. */
+  protected readonly completenessConfig: CompletenessConfig<ProjectDetail> = [
+    { weight: 15, label: 'Add a cover image', action: 'image', done: (p) => !!p.coverUrl || !!p.iconName },
+    { weight: 10, label: 'Add the client', action: 'event', done: (p) => !!p.clientName },
+    { weight: 10, label: 'Set the event type', action: 'type', done: (p) => !!p.eventType },
+    { weight: 15, label: 'Set the event date', action: 'logistics', done: (p) => !!p.eventDate },
+    { weight: 10, label: 'Add the venue', action: 'event', done: (p) => !!p.venueName },
+    { weight: 10, label: 'Add the venue city', action: 'event', done: (p) => !!p.venueCity },
+    { weight: 10, label: 'Set the guest count', action: 'logistics', done: (p) => p.guestCount != null },
+    { weight: 5, label: 'Set the duration', action: 'logistics', done: (p) => p.durationDays != null },
+    { weight: 15, label: 'Set the budget', action: 'financials', done: (p) => p.projectBudget != null },
+    { weight: 10, label: 'Set margin, contingency & VAT', action: 'financials',
+      done: (p) => p.defaultMarginPct != null && p.defaultContingencyPct != null && p.defaultVatPct != null },
+  ];
+
+  /** Deep-link a completeness suggestion into its editor: open the image
+   *  drawer, else snapshot + open the matching edit section. */
+  protected handleCompletenessAction(action: string): void {
+    if (action === 'image') {
+      this.imgDrawer.set(true);
+      return;
+    }
+    const flag = this.editingFlags[action as Section];
+    if (flag) {
+      this.snapshot(action as Section);
+      flag.set(true);
+    }
+  }
+
   /** Per-section save (audit 02-F-2 lesson) — only the edited section's
    *  fields travel. Match v1's three sections. */
   protected async save(section: Section): Promise<void> {
@@ -361,6 +413,7 @@ export class ProjectDetailComponent {
       section === 'event'
         ? {
             name: f.name.trim() || undefined,
+            clientName: nullable(f.clientName),
             venueName: nullable(f.venueName),
             venueCity: nullable(f.venueCity),
           }
@@ -373,6 +426,7 @@ export class ProjectDetailComponent {
                 guestCount: numOrNull(f.guestCount),
               }
             : {
+                projectBudget: numOrNull(f.budget),
                 defaultMarginPct: numOrNull(f.marginPct),
                 defaultContingencyPct: numOrNull(f.contingencyPct),
                 defaultVatPct: numOrNull(f.vatPct),
@@ -382,6 +436,8 @@ export class ProjectDetailComponent {
       this.form.set(toForm(fresh));
       this.detail.set(fresh);
       this.editingFlags[section].set(false);
+      // A newly-typed client name joins the type-ahead pool.
+      if (section === 'event') this.clientNamesRes.reload();
       this.toast.add({ severity: 'success', summary: 'Saved.', life: 3000 });
     } catch (err) {
       this.toast.add({ severity: 'error', summary: "Couldn't save — please try again.", detail: errorDetail(err), life: 5000 });
@@ -475,6 +531,7 @@ function asTier(v: string): ProjectUpdate['tier'] {
 function toForm(d: ProjectDetail | null): DetailForm {
   return {
     name: d?.name ?? '',
+    clientName: d?.clientName ?? '',
     eventType: d?.eventType ?? '',
     eventDate: d?.eventDate ?? '',
     venueName: d?.venueName ?? '',
@@ -482,6 +539,7 @@ function toForm(d: ProjectDetail | null): DetailForm {
     guestCount: d?.guestCount != null ? String(d.guestCount) : '',
     durationDays: d?.durationDays != null ? String(d.durationDays) : '',
     tier: d?.tier ?? '',
+    budget: d?.projectBudget != null ? String(d.projectBudget) : '',
     marginPct: d?.defaultMarginPct != null ? String(d.defaultMarginPct) : '',
     contingencyPct: d?.defaultContingencyPct != null ? String(d.defaultContingencyPct) : '',
     vatPct: d?.defaultVatPct != null ? String(d.defaultVatPct) : '',

@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
-import { QuoteLine, groupByCategory } from '../../core/projects/project.types';
+import { EstimateBreakdown, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { QtyInputComponent } from './qty-input.component';
+import { EstimateBreakdownComponent } from './estimate-breakdown.component';
+import { isDeclined } from './quote-line.util';
 
 /** pV2-PROJECTS-02 slice 2 — the Project Quote rail: a simple list of the
  *  items added to this project (thumb + name + price + remove), a running
@@ -12,15 +14,15 @@ import { QtyInputComponent } from './qty-input.component';
 @Component({
   selector: 'app-project-quote-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule, QtyInputComponent],
+  imports: [CurrencyPipe, LucideAngularModule, QtyInputComponent, EstimateBreakdownComponent],
   host: { class: 'bp-card block p-4' },
   template: `
     <div class="flex items-baseline justify-between">
       <h3 class="bp-card-title text-md">Project Quote</h3>
-      <span class="bp-meta">{{ lines().length }} item{{ lines().length === 1 ? '' : 's' }}</span>
+      <span class="bp-meta">{{ visibleLines().length }} item{{ visibleLines().length === 1 ? '' : 's' }}</span>
     </div>
 
-    @if (lines().length === 0) {
+    @if (visibleLines().length === 0) {
       <p class="bp-caption mt-3">No items yet — add from the marketplace with the + on a card.</p>
     } @else {
       <div class="mt-3 flex flex-col gap-3">
@@ -54,10 +56,18 @@ import { QtyInputComponent } from './qty-input.component';
         }
       </div>
 
-      <div class="mt-3 flex items-baseline justify-between border-t border-hairline pt-3">
-        <span class="bp-field-label">Indicative subtotal</span>
-        <span class="text-md font-semibold text-text">{{ subtotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-      </div>
+      <!-- The SAME server cascade the Final Quote shows (subtotal →
+           contingency → your cost → margin → VAT → client total), so the two
+           quotes always agree. Falls back to a base-price subtotal only until
+           the cascade has loaded. -->
+      @if (breakdown(); as bd) {
+        <app-estimate-breakdown [bd]="bd" [cur]="'GBP'" />
+      } @else {
+        <div class="mt-3 flex items-baseline justify-between border-t border-hairline pt-3">
+          <span class="bp-field-label">Subtotal</span>
+          <span class="text-md font-semibold text-text">{{ subtotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+        </div>
+      }
       <button type="button" class="bp-btn-grad mt-3 w-full" (click)="checkout.emit()">
         <lucide-icon name="arrow-right" [size]="16" />
         See Final Project Quote
@@ -67,16 +77,23 @@ import { QtyInputComponent } from './qty-input.component';
 })
 export class ProjectQuoteRailComponent {
   readonly lines = input.required<QuoteLine[]>();
+  /** The server estimate cascade — null until loaded. When present the rail
+   *  shows the full breakdown (matches the Final Quote); else a base subtotal. */
+  readonly breakdown = input<EstimateBreakdown | null>(null);
   readonly removed = output<string>();
   readonly qtyChanged = output<{ itemId: string; quantity: number }>();
   readonly checkout = output<void>();
 
+  /** Declined/cancelled lines drop off the Project Quote entirely (not just the
+   *  total) — they're resolved out of scope. */
+  protected readonly visibleLines = computed(() => this.lines().filter((l) => !isDeclined(l)));
+
   /** Cart lines grouped by category (shared helper — same grouping as the
    *  Estimate tab). Server returns lines category-ordered → display order. */
-  protected readonly groups = computed(() => groupByCategory(this.lines()));
+  protected readonly groups = computed(() => groupByCategory(this.visibleLines()));
 
   /** Indicative only — real pricing (margin/contingency/VAT) is 06f. */
   protected readonly subtotal = computed(() =>
-    this.lines().reduce((sum, l) => sum + (l.basePrice ?? 0) * (l.quantity ?? 1), 0)
+    this.visibleLines().reduce((sum, l) => sum + (l.basePrice ?? 0) * (l.quantity ?? 1), 0)
   );
 }

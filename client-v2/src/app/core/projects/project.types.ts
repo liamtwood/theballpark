@@ -158,6 +158,7 @@ export type ProjectUpdate = Partial<{
   venueAddress: string | null;
   guestCount: number | null;
   durationDays: number | null;
+  clientName: string | null;
   projectBudget: number | null;
   currency: string;
   tier: 'starter' | 'professional' | 'premium' | null;

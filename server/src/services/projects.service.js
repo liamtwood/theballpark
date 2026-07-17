@@ -14,7 +14,7 @@ const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
 const taxonomy = require('./taxonomy.service');
 const { computeEstimate } = require('./estimate');
-const { lineTotalSql } = require('./line-total.util');
+const { lineTotalSql, isDeclinedSql, notDeclinedSql } = require('./line-total.util');
 
 /** The project_status codelist default — used when a code is unknown/absent. */
 const DEFAULT_STATUS = 'draft';
@@ -62,7 +62,7 @@ const LIST_SELECT = `
          p.unsplash_photographer_name, p.unsplash_photo_url,
          p.currency, p.default_contingency_pct, p.default_margin_pct, p.default_vat_pct,
          p.created_at, p.updated_at,
-         c.name AS client_name,
+         COALESCE(p.client_name, c.name) AS client_name,
          (SELECT COUNT(DISTINCT i.org_id)
             FROM project_items pi
             JOIN items i ON i.id = pi.item_id
@@ -77,6 +77,10 @@ const LIST_SELECT = `
               FROM project_items pi
               LEFT JOIN items i ON i.id = pi.item_id
              WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
+               -- Declined/cancelled lines drop out of the card total too, so it
+               -- matches getEstimate + the Estimate tab (pV2-INBOX-05). ONE rule,
+               -- line-total.util (audit 2026-07-17 B2).
+               AND ${notDeclinedSql()}
              ORDER BY pi.logical_line_id,
                       (pi.status IN ('accepted','booked')) DESC NULLS LAST,
                       pi.created_at ASC, pi.id
@@ -133,6 +137,19 @@ async function listForOrg(orgId) {
   return r.rows.map(toCard);
 }
 
+/** Distinct client names this org has used across its projects — feeds the
+ *  About Project client type-ahead (self-populating, no codelist). */
+async function listClientNames(orgId) {
+  const r = await pool.query(
+    `SELECT DISTINCT client_name
+       FROM projects
+      WHERE org_id = $1 AND deleted_at IS NULL AND NULLIF(TRIM(client_name), '') IS NOT NULL
+      ORDER BY client_name ASC`,
+    [orgId]
+  );
+  return r.rows.map((x) => x.client_name);
+}
+
 /** The full editable detail projection (PROJECTS-02 — Project Details tab). */
 function toDetail(row) {
   return {
@@ -179,7 +196,7 @@ function toDetail(row) {
  *  client name (read-only display in the Details tab). */
 async function getDetail(orgId, id) {
   const r = await pool.query(
-    `SELECT p.*, c.name AS client_name
+    `SELECT p.*, COALESCE(p.client_name, c.name) AS client_name
        FROM projects p
        LEFT JOIN clients c ON c.id = p.client_id
       WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
@@ -200,6 +217,7 @@ const EDITABLE = {
   venueAddress: 'venue_address',
   guestCount: 'guest_count',
   durationDays: 'duration_days',
+  clientName: 'client_name',
   projectBudget: 'project_budget',
   currency: 'currency',
   tier: 'tier',
@@ -423,6 +441,18 @@ async function lineById(db, id) {
   return r.rows.length ? toQuoteLine(r.rows[0]) : null;
 }
 
+/** Batch of quote lines by project_items row id → Map<id, QuoteLine>. Keyed on
+ *  the ROW id (not logical_line_id) so each per-supplier line resolves to its
+ *  own QuoteLine — the inbox reuses this to render the SAME card the Final
+ *  Quote shows under a message (pV2-INBOX-05). */
+async function linesByIds(db, ids) {
+  const map = new Map();
+  if (!ids.length) return map;
+  const r = await db.query(`${QUOTE_LINE_JOIN} WHERE pi.id = ANY($1::uuid[])`, [ids]);
+  for (const row of r.rows) map.set(row.id, toQuoteLine(row));
+  return map;
+}
+
 /** The project's quote lines (snapshot fields on project_items). Returns
  *  null if the project isn't the org's (→ 404). */
 async function listItems(orgId, projectId) {
@@ -442,6 +472,14 @@ async function listItems(orgId, projectId) {
                 WHERE pi.project_id = $1 AND pi.deleted_at IS NULL) sub
         ORDER BY sub.logical_line_id,
                  (sub.sent_status IN ('accepted','booked')) DESC NULLS LAST,
+                 -- Declined rows sort LAST so this pick lands on the same row
+                 -- getEstimate/LIST_SELECT count (they filter declined out
+                 -- entirely). We must NOT filter here — a declined line still has
+                 -- to LIST with its pill — so we de-prioritise instead. Without
+                 -- this, a logical line fanned out to two suppliers (one declined,
+                 -- one live) could list the declined row at £0 while the banner
+                 -- counted the live row (audit 2026-07-17 B2).
+                 ${isDeclinedSql('sub.sent_status')} ASC,
                  sub.created_at ASC, sub.id
      ) picked
      ORDER BY picked.category_name NULLS LAST, picked.created_at ASC`,
@@ -471,6 +509,11 @@ async function getEstimate(orgId, projectId, scope = 'all') {
                 WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
                   -- scope=cart → only still-in-cart (never-sent) lines.
                   AND ($3 = false OR pi.status IS NULL)
+                  -- Declined/cancelled lines drop out of the cost (the Final
+                  -- Quote still LISTS them with the red pill; they just don't
+                  -- count toward the subtotal / client total). NULL = in cart.
+                  -- ONE rule, line-total.util (audit 2026-07-17 B2).
+                  AND ${notDeclinedSql()}
                 -- pV2-UNIFY-01a (audit M-2): deterministic tiebreak, IDENTICAL
                 -- across getEstimate / LIST_SELECT / listItems so the banner
                 -- total and the line list can't pick different competing clones.
@@ -799,7 +842,7 @@ async function recommend(orgId, projectId) {
 }
 
 module.exports = {
-  listForOrg, getDetail, updateDetail, create,
+  listForOrg, listClientNames, getDetail, updateDetail, create,
   listItems, getEstimate, addItem, addCustomItem, removeItem, updateItem, recommend,
-  resolveStatus, DEFAULT_STATUS, toCard,
+  resolveStatus, DEFAULT_STATUS, toCard, linesByIds,
 };

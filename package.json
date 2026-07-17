@@ -11,6 +11,7 @@
     "install:all": "npm install && cd server && npm install && cd ../client-v2 && npm install",
     "db:migrate": "cd server && node src/db/migrate.js",
     "db:migrate:schemas": "cd server && node src/db/migrate-schemas.js",
+    "changelog": "node scripts/gen-changelog.js",
     "db:seed": "cd server && node src/db/seed.js"
   },
   "devDependencies": {

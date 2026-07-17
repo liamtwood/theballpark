@@ -28,10 +28,14 @@ describe('requiresOrgGuard', () => {
     expect(runGuard(true, true)).toBe(true);
   });
 
-  it('redirects a signed-out user to /login', () => {
+  // Signed-out goes to the public /welcome deck, NOT /login — there is no real
+  // auth yet (pV2-AUTH-01), so /welcome is the front door for the prod-promote
+  // window. This expectation said /login and had been failing since the guard
+  // changed; the spec was simply never updated. Revisit when AUTH-01 lands.
+  it('redirects a signed-out user to /welcome', () => {
     const result = runGuard(false, false);
     expect(result).toBeInstanceOf(UrlTree);
-    expect(String(result)).toBe('/login');
+    expect(String(result)).toBe('/welcome');
   });
 
   it('redirects a signed-in but orgless user to /onboarding', () => {

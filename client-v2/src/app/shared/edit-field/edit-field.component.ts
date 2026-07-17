@@ -7,6 +7,9 @@ import { SelectModule } from 'primeng/select';
 export type EditFieldType = 'text' | 'email' | 'tel' | 'number' | 'select';
 export type EditFieldDensity = 'drawer' | 'page';
 
+/** Per-instance counter so each field's <datalist> gets a unique id. */
+let editFieldUid = 0;
+
 /** Option shape for type="select". */
 export interface EditFieldOption {
   label: string;
@@ -70,7 +73,7 @@ export interface EditFieldOption {
             [maxFractionDigits]="2"
           />
         } @else {
-          <div class="bp-fld bp-edit-field__value">{{ value() }}{{ suffix() }}</div>
+          <div class="bp-fld bp-edit-field__value">{{ displayValue() }}{{ suffix() }}</div>
         }
       }
       @default {
@@ -84,9 +87,19 @@ export interface EditFieldOption {
             [attr.placeholder]="placeholder()"
             [attr.maxlength]="maxLength()"
             [attr.aria-label]="label()"
+            [attr.list]="suggestions().length ? listId : null"
             (blur)="commitText($event)"
             (keydown.enter)="commitText($event)"
           />
+          @if (suggestions().length) {
+            <!-- Native type-ahead: predicts from prior values, free text still
+                 allowed (no forced selection). -->
+            <datalist [id]="listId">
+              @for (s of suggestions(); track s) {
+                <option [value]="s"></option>
+              }
+            </datalist>
+          }
         } @else {
           <div class="bp-fld bp-edit-field__value">{{ value() || placeholder() }}</div>
         }
@@ -187,6 +200,13 @@ export class EditFieldComponent {
   readonly readonlyAlways = input<boolean>(false);
   /** Numeric suffix, e.g. "%" (type="number"). */
   readonly suffix = input<string>('');
+  /** Read-mode thousands grouping for large numbers (e.g. Budget → "50,000"). */
+  readonly grouping = input<boolean>(false);
+  /** Type-ahead suggestions (text fields) — a native <datalist>; free text is
+   *  still allowed (predicts, never forces). */
+  readonly suggestions = input<string[]>([]);
+  /** Unique datalist id linking the input to its <datalist>. */
+  protected readonly listId = `bp-edit-dl-${editFieldUid++}`;
   /** Spans both columns of a bp-field-grid-2. */
   readonly span2 = input<boolean>(false);
   readonly valueChange = output<string>();
@@ -206,6 +226,16 @@ export class EditFieldComponent {
   protected readonly numberValue = computed(() => {
     const n = Number(this.value());
     return Number.isFinite(n) ? n : null;
+  });
+
+  /** The read-mode display: grouped with thousands separators when `grouping`
+   *  is on and the value is numeric; otherwise the raw value. */
+  protected readonly displayValue = computed(() => {
+    const v = this.value();
+    if (this.grouping() && v !== '' && Number.isFinite(Number(v))) {
+      return Number(v).toLocaleString('en-GB');
+    }
+    return v;
   });
 
   protected readonly selectedLabel = computed(() => {

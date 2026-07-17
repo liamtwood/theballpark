@@ -26,6 +26,12 @@ export class ProjectService {
     return this.api.get<ProjectDetail>(`/api/projects-v2/${id}`);
   }
 
+  /** Distinct client names this org has used — feeds the About Project client
+   *  type-ahead (self-populating suggestions, free text still allowed). */
+  clientNames(): Observable<string[]> {
+    return this.api.get<string[]>('/api/projects-v2/client-names');
+  }
+
   /** Partial update (Project Details tab). Returns the fresh detail. */
   update(id: string, patch: ProjectUpdate): Observable<ProjectDetail> {
     return this.api.put<ProjectDetail>(`/api/projects-v2/${id}`, patch);

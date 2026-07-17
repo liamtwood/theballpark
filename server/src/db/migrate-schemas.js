@@ -489,6 +489,14 @@ const migrate = async () => {
       ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
       ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
 
+      -- v2.59 (pV2-PROJECTS): projects.client_name — free-text client label
+      -- (v2 does not use the legacy clients FK; the client was baked into the
+      -- project name). Type-ahead in the About Project form self-populates
+      -- suggestions from the org's distinct past client_name values.
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS client_name TEXT;
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS client_name TEXT;
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS client_name TEXT;
+
       -- v2.22a (pV2-PROJECTS-01): projects.status — the project_status
       -- CODELIST code (draft/active/completed/archived). Dual-model with
       -- the legacy status_id FK (kept for v1 compat until pV2-11): the v2

@@ -7,7 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { EstimateBreakdown, ProjectDetail, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
-import { editable, hasInstall, isInstalled, lineCost } from './quote-line.util';
+import { editable, hasInstall, isDeclined, isInstalled, lineCost } from './quote-line.util';
 import { EstimateItemRowComponent } from './estimate-item-row.component';
 import { InboxService, OutreachRosterEntry } from '../../core/inbox/inbox.service';
 import { MessageSuppliersDialogComponent, MsgSupplierCategory } from './message-suppliers-dialog.component';
@@ -271,7 +271,9 @@ export class ProjectEstimateComponent {
   protected readonly groups = computed(() =>
     groupByCategory(this.visibleRows()).map((g) => ({
       ...g,
-      total: g.items.reduce((s, l) => s + lineCost(l), 0),
+      // Declined/cancelled lines still show in the list but are excluded from
+      // the category total (matches the server subtotal — pV2-INBOX-05).
+      total: g.items.reduce((s, l) => s + (isDeclined(l) ? 0 : lineCost(l)), 0),
       iconName: g.items[0]?.categoryIconName ?? null,
       // Expanded list: items grouped under a thin supplier band.
       supplierGroups: bySupplier(g.items),

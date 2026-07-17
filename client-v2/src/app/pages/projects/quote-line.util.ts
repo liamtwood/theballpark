@@ -1,4 +1,5 @@
 import { QuoteLine, QuoteLineStatus } from '../../core/projects/project.types';
+import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 
 /** Per-item send-state badge labels + soft-token pill classes (Final view). */
 export const STATUS_LABELS: Record<QuoteLineStatus, string> = {
@@ -27,6 +28,17 @@ export function statusPill(l: QuoteLine): string {
  *  inbox thread (pV2-CART-01). */
 export function editable(l: QuoteLine): boolean {
   return l.status === 'to_send';
+}
+
+/** The ONE client-side "is this line declined?" rule (audit 2026-07-17 B2).
+ *  A declined line never counts toward a total; the surfaces then differ on
+ *  PRESENTATION by design — the Final Quote lists it struck-through at £0, the
+ *  Project Quote rail drops it entirely — but they must agree on the predicate.
+ *  The server mirrors this in SQL (line-total.util `notDeclinedSql`), matching on
+ *  the same `declined` prefix `quoteStatus()` collapses to, so a new `declined_*`
+ *  code can't be seen by one side and missed by the other. */
+export function isDeclined(l: QuoteLine): boolean {
+  return l.status === 'declined';
 }
 
 /** Whether the line has an install price to offer (else the checkbox is
@@ -58,4 +70,30 @@ export function lineCost(l: QuoteLine): number {
  *  — reads naturally after the cost ("£42 / head"). */
 export function unitPlain(unit: string | null): string {
   return unit ? unit.replace(/_/g, ' ') : '';
+}
+
+/** Map a quote line to the marketplace preview's CatalogueItem shape — the line
+ *  already carries everything the preview card renders. Shared by the Estimate
+ *  right-rail and the inbox attachment so the SAME card renders in both (no
+ *  duplicated mapping). */
+export function quoteLineToCatalogueItem(l: QuoteLine): CatalogueItem {
+  return {
+    id: l.itemId,
+    name: l.name ?? '',
+    description: l.description,
+    installDescription: l.installDescription,
+    basePrice: l.basePrice,
+    unit: l.unit,
+    coverUrl: l.imageUrl,
+    categoryId: l.categoryId ?? '',
+    subcategoryId: null,
+    supplierId: l.supplierId ?? '',
+    supplierName: l.supplierName ?? '',
+    supplierCity: l.supplierCity,
+    categoryName: l.categoryName,
+    subcategoryName: null,
+    ownedByActiveOrg: false,
+    approvalStatus: 'approved',
+    isActive: true,
+  };
 }

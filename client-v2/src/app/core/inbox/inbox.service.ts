@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../api.service';
-import { ProjectCard } from '../projects/project.types';
+import { ProjectCard, QuoteLine } from '../projects/project.types';
 
 /** pV2-INBOX-01 — the v2 inbox read path (gated `/api/inbox/*`; org from
  *  JWT, RP-INB1). Slice 1: the supplier's quote-request projects, shaped
@@ -98,6 +98,10 @@ export interface InboxThreadItem {
   /** Latest accept per side (buyer = agency, seller = supplier). */
   buyerAccepted: boolean;
   sellerAccepted: boolean;
+  /** pV2-INBOX-05: the SAME QuoteLine the Final Quote renders (keyed on this
+   *  line's project_items.id) — the inbox mounts the identical item-preview
+   *  card under the message. null if the server couldn't resolve it. */
+  line: QuoteLine | null;
 }
 
 export interface InboxBubble {

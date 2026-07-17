@@ -3,6 +3,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { QuoteLine } from '../../core/projects/project.types';
+import { quoteLineToCatalogueItem } from './quote-line.util';
 
 /** pV2-CART-01 — the right-rail marketplace preview for the selected quote
  *  line. Owns the eye toggle (hides the card for ALL selections until clicked
@@ -48,25 +49,6 @@ export class EstimatePreviewRailComponent {
    *  (the quote line already carries everything the preview renders). */
   protected readonly previewItem = computed<CatalogueItem | null>(() => {
     const l = this.line();
-    if (!l) return null;
-    return {
-      id: l.itemId,
-      name: l.name ?? '',
-      description: l.description,
-      installDescription: l.installDescription,
-      basePrice: l.basePrice,
-      unit: l.unit,
-      coverUrl: l.imageUrl,
-      categoryId: l.categoryId ?? '',
-      subcategoryId: null,
-      supplierId: l.supplierId ?? '',
-      supplierName: l.supplierName ?? '',
-      supplierCity: l.supplierCity,
-      categoryName: l.categoryName,
-      subcategoryName: null,
-      ownedByActiveOrg: false,
-      approvalStatus: 'approved',
-      isActive: true,
-    };
+    return l ? quoteLineToCatalogueItem(l) : null;
   });
 }
