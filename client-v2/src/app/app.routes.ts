@@ -42,6 +42,13 @@ export const routes: Routes = [
           import('./pages/home/home-agent.component').then((m) => m.HomeAgentComponent),
       },
       {
+        // Version history (user menu → above Sign out). Renders
+        // public/changelog.json — what's on dev vs already on preview.
+        path: 'whats-new',
+        loadComponent: () =>
+          import('./pages/whats-new/whats-new.component').then((m) => m.WhatsNewComponent),
+      },
+      {
         // Settings → Team (pV2-03). Admin-only on top of the shell's requiresOrgGuard.
         path: 'settings/team',
         canActivate: [adminGuard],

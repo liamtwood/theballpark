@@ -11,21 +11,62 @@ These are live on **dev** only — the demo list. Promoting `dev` → `preview` 
 
 ### v2.59 — 2026-07-17
 
+**Project > About Project**
+
+- Project completeness added — a weighted "% complete" card at the top of About Project, matching the one on Profile. It scores the key project fields (cover image, client, event type, date, venue, city, guests, duration, budget and rates) and lists what's missing. Each suggestion is a link that opens the right section ready to edit.
+- Client is now a real field on the project, and editable. Previously the client was only part of the project name, so it couldn't be reported on or reused.
+- Client type-ahead — as you type a client name it predicts from clients you've used before, but you can still type anything. New names are added to the suggestions automatically, so there's no list to set up or maintain.
+- Budget now displays with thousands separators (50,000 rather than 50000).
+
+**Platform**
+
+- Version history — a "What's new" link in the account menu (above Sign out) showing what's on dev and not yet released to preview, and what preview already has.
+
+<details><summary>Commits</summary>
+
 **Features**
 
 - About Project — completeness card, client name + type-ahead, budget formatting `5aea2d75`
 
+**Chore**
+
+- generated CHANGELOG.md — dev-vs-preview release delta `3e8c0227`
+
+</details>
+
 ### v2.58 — 2026-07-10
+
+**Project > About Project**
+
+- Budget is now shown and editable in the Financials section, alongside Margin, Contingency and VAT. The budget feeds the Estimate's budget bar, so the Project Quote and Final Quote show whether you're within or over budget.
+
+<details><summary>Commits</summary>
 
 **Features**
 
 - surface project Budget in the Details > Financials section `3bad3de3`
 
+</details>
+
 ### v2.57 — 2026-07-10
+
+**Project > Inbox**
+
+- Item cards added to thread — item cards are displayed in the conversation thread. This allows each user to review the details of each item being quoted. We reused the standard item card used on the quotes pages for consistency.
+- The left rail styling was changed to be consistent with the Project and Final Quote that also show items, nested by Category. We reused the standard nested items used on the quotes pages for consistency.
+- For Inbox items we added Decline/Cancel (in addition to Accept, Suggest New Cost and Request Information). The decline option allows suppliers to reject a requested item (maybe out of stock or can't be delivered as requested) and for Agents to decline an item. Each party must provide a reason for decline. Sellers see "Decline" and buyers see "Cancel".
+
+**Project > Final Quote**
+
+- When items are declined they are excluded from the totals on the Final Quote, and declined items are styled to show they were declined with a strikethrough. Declined items are not displayed at all in the Project Quote.
+
+<details><summary>Commits</summary>
 
 **Features**
 
 - pV2-INBOX-05 — inbox item cards + nested rail + Decline/Cancel + declined excluded from totals `5421dca6`
+
+</details>
 
 ---
 

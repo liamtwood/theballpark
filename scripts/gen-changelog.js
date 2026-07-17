@@ -16,7 +16,7 @@
  * integration branch. So "pending" == `origin/preview..dev`.
  */
 const { execSync } = require('child_process');
-const { writeFileSync } = require('fs');
+const { writeFileSync, readFileSync, existsSync } = require('fs');
 const { join } = require('path');
 
 const REPO = join(__dirname, '..');
@@ -53,18 +53,72 @@ function byVersion(list) {
   return [...groups.values()];
 }
 
+/**
+ * Curated, customer-facing notes for a version: `docs/release-notes/<version>.md`.
+ * Commit subjects are engineering shorthand — fine as a fallback, but not what
+ * you read to a customer. When a notes file exists it becomes the version's
+ * headline content; the commit list stays underneath as the detail.
+ *
+ * Deliberately a 5-line parser over a tiny format (no markdown dep):
+ *   ## Area heading
+ *   - bullet
+ */
+function readNotes(version) {
+  const path = join(REPO, 'docs', 'release-notes', `${version}.md`);
+  if (!existsSync(path)) return null;
+  const areas = [];
+  for (const raw of readFileSync(path, 'utf8').split('\n')) {
+    const line = raw.trim();
+    const heading = /^#{1,6}\s+(.+)$/.exec(line);
+    if (heading) {
+      areas.push({ area: heading[1].trim(), items: [] });
+      continue;
+    }
+    const bullet = /^[-*]\s+(.+)$/.exec(line);
+    if (bullet && areas.length) areas[areas.length - 1].items.push(bullet[1].trim());
+  }
+  const withItems = areas.filter((a) => a.items.length);
+  return withItems.length ? withItems : null;
+}
+
+/** A version's commits bucketed by type — Features first, then Fixes, then the
+ *  rest (unknown types last). Shared by the markdown + JSON renderers so the
+ *  in-app "What's new" page and CHANGELOG.md can never disagree. */
+function groupTypes(g) {
+  const rank = (t) => (TYPE_ORDER.indexOf(t) < 0 ? 99 : TYPE_ORDER.indexOf(t));
+  return [...new Set(g.items.map((i) => i.type))]
+    .sort((a, b) => rank(a) - rank(b))
+    .map((t) => ({
+      type: t,
+      label: TYPE_LABEL[t] ?? t[0].toUpperCase() + t.slice(1),
+      items: g.items.filter((i) => i.type === t).map((i) => ({ subject: i.subject, hash: i.hash })),
+    }));
+}
+
 function renderVersion(g) {
   const lines = [`### ${g.version} — ${g.date}`, ''];
-  // Features first, then Fixes, then the rest; unknown types sort last.
-  const rank = (t) => (TYPE_ORDER.indexOf(t) < 0 ? 99 : TYPE_ORDER.indexOf(t));
-  const types = [...new Set(g.items.map((i) => i.type))].sort((a, b) => rank(a) - rank(b));
-  for (const t of types) {
-    const items = g.items.filter((i) => i.type === t);
-    lines.push(`**${TYPE_LABEL[t] ?? t[0].toUpperCase() + t.slice(1)}**`, '');
-    for (const i of items) lines.push(`- ${i.subject} \`${i.hash}\``);
+  const notes = readNotes(g.version);
+  if (notes) {
+    for (const a of notes) {
+      lines.push(`**${a.area}**`, '');
+      for (const item of a.items) lines.push(`- ${item}`);
+      lines.push('');
+    }
+    lines.push('<details><summary>Commits</summary>', '');
+  }
+  for (const grp of groupTypes(g)) {
+    lines.push(`**${grp.label}**`, '');
+    for (const i of grp.items) lines.push(`- ${i.subject} \`${i.hash}\``);
     lines.push('');
   }
+  if (notes) lines.push('</details>', '');
   return lines.join('\n');
+}
+
+/** The shape the in-app What's new page renders. `notes` (curated) is the
+ *  headline when present; `groups` (commit-derived) is always there. */
+function toJson(g) {
+  return { version: g.version, date: g.date, notes: readNotes(g.version), groups: groupTypes(g) };
 }
 
 function main() {
@@ -109,8 +163,19 @@ function main() {
   ].join('\n');
 
   writeFileSync(join(REPO, 'CHANGELOG.md'), out.replace(/\n{3,}/g, '\n\n'), 'utf8');
+
+  // The in-app "What's new" page (user menu → above Sign out) reads this from
+  // the client's static assets — same data as CHANGELOG.md, rendered natively
+  // so we don't ship a markdown parser.
+  const json = {
+    previewVersion,
+    pending: pending.map(toJson),
+    released: released.map(toJson),
+  };
+  writeFileSync(join(REPO, 'client-v2', 'public', 'changelog.json'), JSON.stringify(json, null, 2), 'utf8');
+
   console.log(
-    `[changelog] preview=${previewVersion} · pending=${pending.length ? pending.map((p) => p.version).join(', ') : 'none'} · wrote CHANGELOG.md`
+    `[changelog] preview=${previewVersion} · pending=${pending.length ? pending.map((p) => p.version).join(', ') : 'none'} · wrote CHANGELOG.md + client-v2/public/changelog.json`
   );
 }
 

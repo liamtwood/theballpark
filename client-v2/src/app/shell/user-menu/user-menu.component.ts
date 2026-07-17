@@ -73,6 +73,15 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
                footer — Liam, 2026-06-12). -->
           <div class="mt-2 border-t border-hairline pt-2">
             <div class="bp-meta px-1 pb-1">{{ versionChip }}</div>
+            <!-- Version history — what's on dev vs already on preview
+                 (the demo list). Liam, 2026-07-17. -->
+            <a
+              routerLink="/whats-new"
+              class="block w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md text-text no-underline hover:bg-fill"
+              (click)="menu.hide()"
+            >
+              What's new
+            </a>
             <button
               type="button"
               class="w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md text-text hover:bg-fill"
