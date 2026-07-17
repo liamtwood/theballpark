@@ -1,5 +1,26 @@
 {
-  "dev": [
+  "dev": [],
+  "preview": [
+    {
+      "version": "v2.61",
+      "date": "2026-07-17",
+      "notes": [
+        {
+          "area": "Project > Inbox",
+          "items": [
+            "Fixed: declining an item, then changing your mind and choosing Accept, Suggest New Cost or Request Information instead, could still decline the item on your next message. Those actions now cancel the pending decline.",
+            "Fixed: the conversation no longer reloads and lose your place after every message — the item you had selected stays selected, collapsed suppliers stay collapsed, and the cursor stays in the message box so you can keep typing.",
+            "The client name now shows on the supplier's inbox card, matching the project."
+          ]
+        },
+        {
+          "area": "Project > Final Quote",
+          "items": [
+            "Fixed: where an item was sent to two suppliers and one declined, the Final Quote could show the declined supplier's line while the totals counted the other supplier's live quote. The quote and the totals now always agree on the same line."
+          ]
+        }
+      ]
+    },
     {
       "version": "v2.60",
       "date": "2026-07-17",
@@ -59,6 +80,5 @@
         }
       ]
     }
-  ],
-  "preview": []
+  ]
 }

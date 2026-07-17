@@ -7,7 +7,36 @@
 
 ## 🚧 On dev — NOT yet on preview
 
-These are live on **dev** only — the demo list. Promoting `dev` → `preview` ships 4 versions.
+_Nothing pending — dev and preview are level._
+
+---
+
+## ✅ On preview — currently `v2.61`
+
+### v2.61 — 2026-07-17
+
+**Project > Inbox**
+
+- Fixed: declining an item, then changing your mind and choosing Accept, Suggest New Cost or Request Information instead, could still decline the item on your next message. Those actions now cancel the pending decline.
+- Fixed: the conversation no longer reloads and lose your place after every message — the item you had selected stays selected, collapsed suppliers stay collapsed, and the cursor stays in the message box so you can keep typing.
+- The client name now shows on the supplier's inbox card, matching the project.
+
+**Project > Final Quote**
+
+- Fixed: where an item was sent to two suppliers and one declined, the Final Quote could show the declined supplier's line while the totals counted the other supplier's live quote. The quote and the totals now always agree on the same line.
+
+<details><summary>Commits</summary>
+
+**Fixes**
+
+- pre-preview audit remediation — armed-decline, declined-pick parity, changelog trim `19af78d7`
+
+**Chore**
+
+- regenerate What's new for promote — v2.57-v2.61 now on preview `8f144bae`
+- bump staging chip for preview promote (inbox + About Project + What's new) `a88aeb88`
+
+</details>
 
 ### v2.60 — 2026-07-17
 
@@ -77,10 +106,6 @@ These are live on **dev** only — the demo list. Promoting `dev` → `preview` 
 - pV2-INBOX-05 — inbox item cards + nested rail + Decline/Cancel + declined excluded from totals `5421dca6`
 
 </details>
-
----
-
-## ✅ On preview — currently `v2.56`
 
 ### v2.56 — 2026-07-10
 
