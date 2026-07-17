@@ -62,7 +62,7 @@ const LIST_SELECT = `
          p.unsplash_photographer_name, p.unsplash_photo_url,
          p.currency, p.default_contingency_pct, p.default_margin_pct, p.default_vat_pct,
          p.created_at, p.updated_at,
-         c.name AS client_name,
+         COALESCE(p.client_name, c.name) AS client_name,
          (SELECT COUNT(DISTINCT i.org_id)
             FROM project_items pi
             JOIN items i ON i.id = pi.item_id
@@ -136,6 +136,19 @@ async function listForOrg(orgId) {
   return r.rows.map(toCard);
 }
 
+/** Distinct client names this org has used across its projects — feeds the
+ *  About Project client type-ahead (self-populating, no codelist). */
+async function listClientNames(orgId) {
+  const r = await pool.query(
+    `SELECT DISTINCT client_name
+       FROM projects
+      WHERE org_id = $1 AND deleted_at IS NULL AND NULLIF(TRIM(client_name), '') IS NOT NULL
+      ORDER BY client_name ASC`,
+    [orgId]
+  );
+  return r.rows.map((x) => x.client_name);
+}
+
 /** The full editable detail projection (PROJECTS-02 — Project Details tab). */
 function toDetail(row) {
   return {
@@ -182,7 +195,7 @@ function toDetail(row) {
  *  client name (read-only display in the Details tab). */
 async function getDetail(orgId, id) {
   const r = await pool.query(
-    `SELECT p.*, c.name AS client_name
+    `SELECT p.*, COALESCE(p.client_name, c.name) AS client_name
        FROM projects p
        LEFT JOIN clients c ON c.id = p.client_id
       WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
@@ -203,6 +216,7 @@ const EDITABLE = {
   venueAddress: 'venue_address',
   guestCount: 'guest_count',
   durationDays: 'duration_days',
+  clientName: 'client_name',
   projectBudget: 'project_budget',
   currency: 'currency',
   tier: 'tier',
@@ -818,7 +832,7 @@ async function recommend(orgId, projectId) {
 }
 
 module.exports = {
-  listForOrg, getDetail, updateDetail, create,
+  listForOrg, listClientNames, getDetail, updateDetail, create,
   listItems, getEstimate, addItem, addCustomItem, removeItem, updateItem, recommend,
   resolveStatus, DEFAULT_STATUS, toCard, linesByIds,
 };

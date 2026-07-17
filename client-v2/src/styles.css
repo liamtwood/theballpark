@@ -6,6 +6,14 @@
 @tailwind utilities;
 
 :root {
+  /* v2 is a LIGHT-only app (PrimeNG runs with darkModeSelector: false, and
+     there is no dark theme). Declare it so the browser renders NATIVE controls
+     (autofill, date pickers, scrollbars) light rather than inheriting the OS
+     dark mode. NOTE: this does NOT fix the <datalist> suggestion popup, which
+     Chrome/Windows still paints from the OS theme — that one is unsolved in
+     CSS (see BACKLOG: client type-ahead dropdown). */
+  color-scheme: light;
+
   /* ── Ballpark brand tokens — single source of truth ───────────────────── */
   /* Brand mark (pV2-01f): vivid pink→green "logo circle" gradient — white
      text reads cleanly on it. The soft pastel use case (row tints, soft

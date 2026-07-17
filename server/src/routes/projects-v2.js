@@ -37,6 +37,16 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// GET /client-names — distinct client names this org has used (About Project
+// type-ahead). Declared before /:id so it isn't captured as a project id.
+router.get('/client-names', async (req, res, next) => {
+  try {
+    res.json(await projects.listClientNames(req.user.org_id));
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST / — create a project from an AI-parsed brief (no items). org_id
 // from JWT, NEVER the body; status dual-written 'draft'.
 router.post('/', async (req, res, next) => {

@@ -36,6 +36,7 @@ const ProjectUpdateSchema = z.object({
   venueAddress: z.string().trim().max(400).nullable().optional(),
   guestCount: z.number().int().nonnegative().nullable().optional(),
   durationDays: z.number().int().nonnegative().nullable().optional(),
+  clientName: z.string().trim().max(200).nullable().optional(),
   projectBudget: z.number().nonnegative().nullable().optional(),
   currency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
   tier: z.enum(['starter', 'professional', 'premium']).nullable().optional(),
