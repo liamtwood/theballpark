@@ -14,7 +14,7 @@ const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
 const taxonomy = require('./taxonomy.service');
 const { computeEstimate } = require('./estimate');
-const { lineTotalSql } = require('./line-total.util');
+const { lineTotalSql, isDeclinedSql, notDeclinedSql } = require('./line-total.util');
 
 /** The project_status codelist default — used when a code is unknown/absent. */
 const DEFAULT_STATUS = 'draft';
@@ -78,8 +78,9 @@ const LIST_SELECT = `
               LEFT JOIN items i ON i.id = pi.item_id
              WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
                -- Declined/cancelled lines drop out of the card total too, so it
-               -- matches getEstimate + the Estimate tab (pV2-INBOX-05).
-               AND (pi.status IS NULL OR pi.status NOT IN ('declined_by_supplier', 'declined_by_agent'))
+               -- matches getEstimate + the Estimate tab (pV2-INBOX-05). ONE rule,
+               -- line-total.util (audit 2026-07-17 B2).
+               AND ${notDeclinedSql()}
              ORDER BY pi.logical_line_id,
                       (pi.status IN ('accepted','booked')) DESC NULLS LAST,
                       pi.created_at ASC, pi.id
@@ -471,6 +472,14 @@ async function listItems(orgId, projectId) {
                 WHERE pi.project_id = $1 AND pi.deleted_at IS NULL) sub
         ORDER BY sub.logical_line_id,
                  (sub.sent_status IN ('accepted','booked')) DESC NULLS LAST,
+                 -- Declined rows sort LAST so this pick lands on the same row
+                 -- getEstimate/LIST_SELECT count (they filter declined out
+                 -- entirely). We must NOT filter here — a declined line still has
+                 -- to LIST with its pill — so we de-prioritise instead. Without
+                 -- this, a logical line fanned out to two suppliers (one declined,
+                 -- one live) could list the declined row at £0 while the banner
+                 -- counted the live row (audit 2026-07-17 B2).
+                 ${isDeclinedSql('sub.sent_status')} ASC,
                  sub.created_at ASC, sub.id
      ) picked
      ORDER BY picked.category_name NULLS LAST, picked.created_at ASC`,
@@ -503,7 +512,8 @@ async function getEstimate(orgId, projectId, scope = 'all') {
                   -- Declined/cancelled lines drop out of the cost (the Final
                   -- Quote still LISTS them with the red pill; they just don't
                   -- count toward the subtotal / client total). NULL = in cart.
-                  AND (pi.status IS NULL OR pi.status NOT IN ('declined_by_supplier', 'declined_by_agent'))
+                  -- ONE rule, line-total.util (audit 2026-07-17 B2).
+                  AND ${notDeclinedSql()}
                 -- pV2-UNIFY-01a (audit M-2): deterministic tiebreak, IDENTICAL
                 -- across getEstimate / LIST_SELECT / listItems so the banner
                 -- total and the line list can't pick different competing clones.

@@ -3,7 +3,7 @@ import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { QuoteLine } from '../../core/projects/project.types';
 import { QtyInputComponent } from './qty-input.component';
-import { editable, hasInstall, isInstalled, lineCost, statusLabel, statusPill, unitPlain } from './quote-line.util';
+import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, statusPill, unitPlain } from './quote-line.util';
 
 /** pV2-CART-01 — one quote line row (thumb + name/status + cost·unit +
  *  Installed? + qty + line total + trash/lock). Read-only once out for quote.
@@ -86,7 +86,7 @@ export class EstimateItemRowComponent {
   protected readonly canInstall = computed(() => hasInstall(this.line()));
   protected readonly installed = computed(() => isInstalled(this.line()));
   protected readonly cost = computed(() => lineCost(this.line()));
-  protected readonly isDeclined = computed(() => this.line().status === 'declined');
+  protected readonly isDeclined = computed(() => isDeclined(this.line()));
   protected label(): string { return statusLabel(this.line()); }
   protected pill(): string { return statusPill(this.line()); }
   protected unitText(): string { return unitPlain(this.line().unit); }

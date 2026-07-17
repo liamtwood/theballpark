@@ -7,7 +7,21 @@
 
 ## 🚧 On dev — NOT yet on preview
 
-These are live on **dev** only — the demo list. Promoting `dev` → `preview` ships 3 versions.
+These are live on **dev** only — the demo list. Promoting `dev` → `preview` ships 4 versions.
+
+### v2.60 — 2026-07-17
+
+**Platform**
+
+- Version history — a "What's new" link in the account menu (above Sign out), showing what's on dev and not yet released to preview, and what preview already has.
+
+<details><summary>Commits</summary>
+
+**Features**
+
+- What's new page + curated release notes `fec6c607`
+
+</details>
 
 ### v2.59 — 2026-07-17
 
@@ -17,10 +31,6 @@ These are live on **dev** only — the demo list. Promoting `dev` → `preview` 
 - Client is now a real field on the project, and editable. Previously the client was only part of the project name, so it couldn't be reported on or reused.
 - Client type-ahead — as you type a client name it predicts from clients you've used before, but you can still type anything. New names are added to the suggestions automatically, so there's no list to set up or maintain.
 - Budget now displays with thousands separators (50,000 rather than 50000).
-
-**Platform**
-
-- Version history — a "What's new" link in the account menu (above Sign out) showing what's on dev and not yet released to preview, and what preview already has.
 
 <details><summary>Commits</summary>
 

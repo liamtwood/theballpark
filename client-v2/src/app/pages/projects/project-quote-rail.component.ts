@@ -4,6 +4,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { EstimateBreakdown, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { QtyInputComponent } from './qty-input.component';
 import { EstimateBreakdownComponent } from './estimate-breakdown.component';
+import { isDeclined } from './quote-line.util';
 
 /** pV2-PROJECTS-02 slice 2 — the Project Quote rail: a simple list of the
  *  items added to this project (thumb + name + price + remove), a running
@@ -85,7 +86,7 @@ export class ProjectQuoteRailComponent {
 
   /** Declined/cancelled lines drop off the Project Quote entirely (not just the
    *  total) — they're resolved out of scope. */
-  protected readonly visibleLines = computed(() => this.lines().filter((l) => l.status !== 'declined'));
+  protected readonly visibleLines = computed(() => this.lines().filter((l) => !isDeclined(l)));
 
   /** Cart lines grouped by category (shared helper — same grouping as the
    *  Estimate tab). Server returns lines category-ordered → display order. */

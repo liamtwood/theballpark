@@ -351,7 +351,11 @@ async function getProjectSummary(projectId, threads) {
   const ctx = await pool.query(
     `SELECT COALESCE(p.event_name, p.name) AS project_name,
             p.event_date, p.venue_city, p.venue_name,
-            cl.name AS client_name,
+            -- v2 sets projects.client_name (free text); the legacy clients FK is
+            -- never written, so a bare cl.name is always NULL on v2 projects and
+            -- the supplier's card showed no client at all. Same COALESCE as
+            -- LIST_SELECT / getDetail (audit 2026-07-17 S2).
+            COALESCE(p.client_name, cl.name) AS client_name,
             ag.name AS agency_name, ag.logo_url AS agency_logo_url
        FROM projects p
        LEFT JOIN clients cl ON cl.id = p.client_id

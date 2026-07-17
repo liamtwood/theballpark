@@ -30,6 +30,17 @@ export function editable(l: QuoteLine): boolean {
   return l.status === 'to_send';
 }
 
+/** The ONE client-side "is this line declined?" rule (audit 2026-07-17 B2).
+ *  A declined line never counts toward a total; the surfaces then differ on
+ *  PRESENTATION by design — the Final Quote lists it struck-through at £0, the
+ *  Project Quote rail drops it entirely — but they must agree on the predicate.
+ *  The server mirrors this in SQL (line-total.util `notDeclinedSql`), matching on
+ *  the same `declined` prefix `quoteStatus()` collapses to, so a new `declined_*`
+ *  code can't be seen by one side and missed by the other. */
+export function isDeclined(l: QuoteLine): boolean {
+  return l.status === 'declined';
+}
+
 /** Whether the line has an install price to offer (else the checkbox is
  *  greyed + disabled). */
 export function hasInstall(l: QuoteLine): boolean {

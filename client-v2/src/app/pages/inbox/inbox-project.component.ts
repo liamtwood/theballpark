@@ -34,7 +34,11 @@ import { quoteLineToCatalogueItem } from '../projects/quote-line.util';
     }
 
     <div [class]="embedded() ? 'flex min-h-0 flex-1 flex-col px-4 pt-4' : 'bp-page-body'">
-      @if (threadsRes.isLoading()) {
+      <!-- FIRST load only. isLoading() is also true while RELOADING, and every
+           send/accept/decline reloads — so gating on it alone tore the whole pane
+           down each time: the rail's collapse state reset and the compose input
+           was destroyed, losing focus after every message (audit 2026-07-17 S1). -->
+      @if (threadsRes.isLoading() && !threadsRes.hasValue()) {
         <p class="bp-body-small text-secondary">Loading…</p>
       } @else if (threadsRes.error()) {
         <p class="bp-body-small text-warn">Couldn't load this conversation — please refresh.</p>
@@ -457,6 +461,7 @@ export class InboxProjectComponent {
   }
 
   protected accept(it: InboxThreadItem): void {
+    this.disarmDecline(); // superseding action — see disarmDecline()
     const cost = it.priceCurrent ?? it.priceRef ?? 0;
     void this.itemAction(it.id, 'accept', undefined, `${it.name} ${gbp(cost)} Cost Accepted by ${this.actorName()}`);
   }
@@ -471,11 +476,28 @@ export class InboxProjectComponent {
     this.composeInput()?.nativeElement.focus();
   }
   protected startPropose(it: InboxThreadItem): void {
+    this.disarmDecline(); // superseding action — see disarmDecline()
     // Negotiate the per-unit RATE + the install cost (pV2-UNIFY-01) — the line
     // total derives from both.
     this.proposePrice.set(it.unitPriceCurrent ?? it.unitPriceRef ?? 0);
     this.proposeInstall.set(it.installCost ?? null);
     this.proposing.set(true);
+  }
+
+  /** Cancel a pending decline.
+   *
+   *  ARMED-STATE HYGIENE (audit 2026-07-17 B1): `decline()` arms `decliningId` and
+   *  the NEXT send() posts the decline. Every sibling action a user could
+   *  plausibly reach instead — Accept, Suggest New Cost, Request Information —
+   *  therefore has to disarm it, or clicking Decline then changing your mind
+   *  silently declines the line on your next message. Request Info was the sharp
+   *  one: it OVERWRITES the seeded reason text, so the only visible clue was gone
+   *  and the user believed they'd asked a question.
+   *
+   *  Rule for anything added here later: any `xxxId` signal that one action arms
+   *  must be cleared by every sibling action that can follow it. */
+  private disarmDecline(): void {
+    this.decliningId.set(null);
   }
 
   /** The item's unit as a plain label ("head", "linear m"). */
@@ -524,6 +546,7 @@ export class InboxProjectComponent {
    *  the supplier edits/adds detail, then send (chat-only; no status change). */
   private readonly composeInput = viewChild<ElementRef<HTMLInputElement>>('composeInput');
   protected requestInfo(it: InboxThreadItem): void {
+    this.disarmDecline(); // superseding action — this OVERWRITES the decline stem
     const cost = it.priceCurrent ?? it.priceRef ?? 0;
     this.draft.set(`${it.name} ${gbp(cost)} `);
     this.composeInput()?.nativeElement.focus();

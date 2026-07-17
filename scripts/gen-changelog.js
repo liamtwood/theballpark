@@ -115,10 +115,21 @@ function renderVersion(g) {
   return lines.join('\n');
 }
 
-/** The shape the in-app What's new page renders. `notes` (curated) is the
- *  headline when present; `groups` (commit-derived) is always there. */
+/**
+ * One version as the in-app What's new page renders it — CURATED NOTES ONLY.
+ *
+ * Deliberately NOT the commit list: `client-v2/public/` is served flat and
+ * unauthenticated, so anything here is world-readable on preview. Shipping the
+ * commit groups meant 726 commit subjects + hashes at `/changelog.json`,
+ * including a map of the admin surface and its interim gates (audit 2026-07-17
+ * S3). The full history stays in CHANGELOG.md, which is never deployed.
+ *
+ * null for versions with no notes file — they're simply absent from the page.
+ * The page shows what the author chose to say, not a git-log projection.
+ */
 function toJson(g) {
-  return { version: g.version, date: g.date, notes: readNotes(g.version), groups: groupTypes(g) };
+  const notes = readNotes(g.version);
+  return notes ? { version: g.version, date: g.date, notes } : null;
 }
 
 function main() {
@@ -164,13 +175,19 @@ function main() {
 
   writeFileSync(join(REPO, 'CHANGELOG.md'), out.replace(/\n{3,}/g, '\n\n'), 'utf8');
 
-  // The in-app "What's new" page (user menu → above Sign out) reads this from
-  // the client's static assets — same data as CHANGELOG.md, rendered natively
-  // so we don't ship a markdown parser.
+  // The in-app "What's new" page (user menu → above Sign out) reads this from the
+  // client's static assets.
+  //
+  // Two EXPLICIT sections, not a list + a "current version" marker: the page
+  // renders `dev` and `preview` verbatim and computes nothing. Whatever branch
+  // this runs on bakes in the split — on `dev`, `dev[]` is the demo list; run it
+  // on `preview` at promote time and `origin/preview..dev` is empty, so `dev[]`
+  // empties and those versions appear under `preview[]`. There is no
+  // `previewVersion` pill left to be stale, so the page can't invert itself the
+  // way it would have on the last promote (audit 2026-07-17 B3).
   const json = {
-    previewVersion,
-    pending: pending.map(toJson),
-    released: released.map(toJson),
+    dev: pending.map(toJson).filter(Boolean),
+    preview: released.map(toJson).filter(Boolean),
   };
   writeFileSync(join(REPO, 'client-v2', 'public', 'changelog.json'), JSON.stringify(json, null, 2), 'utf8');
 
