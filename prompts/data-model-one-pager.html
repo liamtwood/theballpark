@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ballpark — Data Model (1-pager)</title>
+<style>
+  :root {
+    --bg: #fbf7f4;
+    --surface: #ffffff;
+    --text: #1f2937;
+    --text-secondary: #6b7280;
+    --border: 1px solid #e5e7eb;
+    --radius: 12px;
+    --accent: #d63384;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+    --entity: #0ea5e9;
+    --junction: #b45309;
+    --audit: #047857;
+    --tx: #8b5cf6;
+  }
+  body {
+    margin: 0; padding: 28px 36px;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    line-height: 1.45;
+  }
+  .page { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; font-weight: 700; }
+  .lead { color: var(--text-secondary); margin: 0 0 24px; font-size: 13px; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+
+  .card {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .card h2 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin: 0 0 10px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table th, table td { text-align: left; padding: 6px 8px; }
+  table thead th {
+    color: var(--text-secondary);
+    font-weight: 600;
+    border-bottom: var(--border);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  table tbody tr { border-bottom: 1px solid #f3f4f6; }
+  table tbody tr:last-child { border-bottom: none; }
+  .layer-name { font-weight: 600; font-size: 12px; }
+
+  ul.compact { margin: 0; padding-left: 16px; font-size: 12px; }
+  ul.compact li { margin-bottom: 4px; }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    background: #f3f4f6;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 4px;
+  }
+  .pill--entity   { background: rgba(14,165,233,0.12); color: var(--entity); }
+  .pill--junction { background: rgba(180,83,9,0.12);   color: var(--junction); }
+  .pill--audit    { background: rgba(4,120,87,0.12);   color: var(--audit); }
+  .pill--tx       { background: rgba(139,92,246,0.12); color: var(--tx); }
+
+  /* ERD diagram */
+  .erd {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 18px;
+  }
+  .erd-svg { width: 100%; height: auto; max-height: 380px; display: block; }
+
+  .note {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #fafafa;
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+  }
+  .note strong { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Ballpark — Data Model</h1>
+  <p class="lead">Tables, relationships, audit pattern, and the three-schema environment split.</p>
+
+  <!-- ERD -->
+  <div class="erd">
+    <h2 style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin: 0 0 12px;">Core entity relationships</h2>
+    <svg class="erd-svg" viewBox="0 0 960 380" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- orgs (top center) -->
+      <g>
+        <rect x="420" y="20" width="130" height="44" rx="6" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="485" y="38" text-anchor="middle" font-size="12" font-weight="700" fill="#0ea5e9">orgs</text>
+        <text x="485" y="54" text-anchor="middle" font-size="10" fill="#6b7280">agencies + suppliers</text>
+      </g>
+
+      <!-- users (top left) -->
+      <g>
+        <rect x="230" y="20" width="120" height="44" rx="6" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="290" y="38" text-anchor="middle" font-size="12" font-weight="700" fill="#0ea5e9">users</text>
+        <text x="290" y="54" text-anchor="middle" font-size="10" fill="#6b7280">authenticated identity</text>
+      </g>
+
+      <!-- user_orgs junction (between users and orgs) -->
+      <g>
+        <rect x="365" y="90" width="120" height="40" rx="6" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+        <text x="425" y="108" text-anchor="middle" font-size="11" font-weight="600" fill="#b45309">user_orgs</text>
+        <text x="425" y="122" text-anchor="middle" font-size="9" fill="#6b7280">membership + role</text>
+      </g>
+      <line x1="290" y1="64" x2="395" y2="90" stroke="#9ca3af" stroke-width="1"/>
+      <line x1="485" y1="64" x2="455" y2="90" stroke="#9ca3af" stroke-width="1"/>
+
+      <!-- clients (left side, under users) -->
+      <g>
+        <rect x="40" y="170" width="130" height="44" rx="6" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="105" y="188" text-anchor="middle" font-size="12" font-weight="700" fill="#0ea5e9">clients</text>
+        <text x="105" y="204" text-anchor="middle" font-size="10" fill="#6b7280">agency's customers</text>
+      </g>
+
+      <!-- projects -->
+      <g>
+        <rect x="200" y="170" width="130" height="44" rx="6" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="265" y="188" text-anchor="middle" font-size="12" font-weight="700" fill="#0ea5e9">projects</text>
+        <text x="265" y="204" text-anchor="middle" font-size="10" fill="#6b7280">events</text>
+      </g>
+      <line x1="170" y1="192" x2="200" y2="192" stroke="#9ca3af" stroke-width="1"/>
+
+      <!-- categories -->
+      <g>
+        <rect x="365" y="170" width="130" height="44" rx="6" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="430" y="188" text-anchor="middle" font-size="12" font-weight="700" fill="#0ea5e9">categories</text>
+        <text x="430" y="204" text-anchor="middle" font-size="10" fill="#6b7280">florals · catering · ...</text>
+      </g>
+
+      <!-- items -->
+      <g>
+        <rect x="525" y="170" width="130" height="44" rx="6" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="590" y="188" text-anchor="middle" font-size="12" font-weight="700" fill="#0ea5e9">items</text>
+        <text x="590" y="204" text-anchor="middle" font-size="10" fill="#6b7280">supplier's catalogue</text>
+      </g>
+      <line x1="495" y1="192" x2="525" y2="192" stroke="#9ca3af" stroke-width="1"/>
+
+      <!-- balls_transactions -->
+      <g>
+        <rect x="690" y="170" width="170" height="44" rx="6" fill="#fff" stroke="#8b5cf6" stroke-width="1.5"/>
+        <text x="775" y="188" text-anchor="middle" font-size="12" font-weight="700" fill="#8b5cf6">balls_transactions</text>
+        <text x="775" y="204" text-anchor="middle" font-size="10" fill="#6b7280">credit ledger</text>
+      </g>
+
+      <!-- project_categories (junction) -->
+      <g>
+        <rect x="280" y="240" width="140" height="34" rx="6" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+        <text x="350" y="261" text-anchor="middle" font-size="11" font-weight="600" fill="#b45309">project_categories</text>
+      </g>
+      <line x1="265" y1="214" x2="320" y2="240" stroke="#9ca3af" stroke-width="1"/>
+      <line x1="430" y1="214" x2="385" y2="240" stroke="#9ca3af" stroke-width="1"/>
+
+      <!-- project_items (junction = the cart + buildup tree) -->
+      <g>
+        <rect x="450" y="240" width="140" height="34" rx="6" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+        <text x="520" y="261" text-anchor="middle" font-size="11" font-weight="600" fill="#b45309">project_items</text>
+        <text x="520" y="289" text-anchor="middle" font-size="9" fill="#6b7280">cart · buildup tree</text>
+        <!-- self-loop: parent_id recursive nesting -->
+        <path d="M590,248 C622,244 622,268 592,264" fill="none" stroke="#b45309" stroke-width="1.2"/>
+        <polygon points="592,264 599,261 598,268" fill="#b45309"/>
+        <text x="626" y="259" font-size="8.5" fill="#b45309">parent_id ↻</text>
+      </g>
+      <line x1="265" y1="214" x2="475" y2="240" stroke="#9ca3af" stroke-width="1"/>
+      <line x1="590" y1="214" x2="560" y2="240" stroke="#9ca3af" stroke-width="1"/>
+
+      <!-- estimates -->
+      <g>
+        <rect x="40" y="240" width="130" height="34" rx="6" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="105" y="261" text-anchor="middle" font-size="11" font-weight="700" fill="#0ea5e9">estimates</text>
+      </g>
+      <line x1="200" y1="214" x2="170" y2="240" stroke="#9ca3af" stroke-width="1"/>
+
+      <!-- estimate_items -->
+      <g>
+        <rect x="40" y="290" width="130" height="34" rx="6" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+        <text x="105" y="311" text-anchor="middle" font-size="11" font-weight="600" fill="#b45309">estimate_items</text>
+      </g>
+      <line x1="105" y1="274" x2="105" y2="290" stroke="#9ca3af" stroke-width="1"/>
+
+      <!-- messages -->
+      <g>
+        <rect x="600" y="290" width="130" height="44" rx="6" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="665" y="308" text-anchor="middle" font-size="12" font-weight="700" fill="#0ea5e9">messages</text>
+        <text x="665" y="324" text-anchor="middle" font-size="10" fill="#6b7280">thread per (project, supplier)</text>
+      </g>
+      <line x1="265" y1="214" x2="600" y2="312" stroke="#9ca3af" stroke-width="1"/>
+
+      <!-- message_items + message_item_decisions -->
+      <g>
+        <rect x="760" y="240" width="160" height="34" rx="6" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+        <text x="840" y="261" text-anchor="middle" font-size="11" font-weight="600" fill="#b45309">message_items</text>
+      </g>
+      <line x1="730" y1="312" x2="800" y2="274" stroke="#9ca3af" stroke-width="1"/>
+      <line x1="590" y1="214" x2="800" y2="240" stroke="#9ca3af" stroke-width="1"/>
+
+      <g>
+        <rect x="760" y="290" width="160" height="34" rx="6" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+        <text x="840" y="311" text-anchor="middle" font-size="11" font-weight="600" fill="#047857">message_item_decisions</text>
+      </g>
+      <line x1="840" y1="274" x2="840" y2="290" stroke="#9ca3af" stroke-width="1"/>
+
+      <!-- favourites -->
+      <g>
+        <rect x="690" y="20" width="130" height="44" rx="6" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+        <text x="755" y="38" text-anchor="middle" font-size="12" font-weight="600" fill="#b45309">favourites</text>
+        <text x="755" y="54" text-anchor="middle" font-size="10" fill="#6b7280">user ↔ item wishlist</text>
+      </g>
+
+      <!-- Legend -->
+      <g transform="translate(40, 350)">
+        <rect x="0" y="0" width="14" height="14" rx="2" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="20" y="11" font-size="10" fill="#374151">Entity</text>
+        <rect x="80" y="0" width="14" height="14" rx="2" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+        <text x="100" y="11" font-size="10" fill="#374151">Junction (no soft-delete)</text>
+        <rect x="240" y="0" width="14" height="14" rx="2" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+        <text x="260" y="11" font-size="10" fill="#374151">Append-only audit</text>
+        <rect x="380" y="0" width="14" height="14" rx="2" fill="#fff" stroke="#8b5cf6" stroke-width="1.5"/>
+        <text x="400" y="11" font-size="10" fill="#374151">Ledger</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Item composition (BUILDUP-01) -->
+  <div class="card" style="margin-bottom: 18px; border-left: 3px solid var(--accent);">
+    <h2>Item composition — buildup tree
+      <span class="pill" style="background: rgba(214,51,132,0.10); color: var(--accent);">BUILDUP-01 · dormant</span>
+    </h2>
+    <ul class="compact">
+      <li><strong>One recursive node.</strong> A line nests under another via <code>project_items.parent_id</code> (self-FK). The buildup is a tree — no separate "component" table.</li>
+      <li><strong>The tree is pure cost.</strong> Every node rolls up cost; the client charge sits above the roll-up; <strong>margin is the gap</strong>. A <strong>single project-level margin</strong> (the existing <code>EstimateBreakdown</code> cascade), not per-node.</li>
+      <li><strong><code>added_by</code> = the authority / visibility line</strong> — who owns a node (agent vs supplier) drives what each side may see and edit.</li>
+      <li><strong>Private-cost boundary.</strong> Leaf costs never reach a client surface — an <strong>RP-11-shaped</strong> rule (one predicate, enforced at every place a line renders). The v2.65 fix that filters the explore pre-load to <code>editable()</code> is the same one-place-predicate discipline.</li>
+      <li><strong>Schema impact ≈ one column.</strong> New columns are <strong>dormant + additive</strong> (all NULL, unwired): <code>items.kind</code>, <code>project_items.kind</code> (VARCHAR 20), <code>project_items.parent_id</code> (UUID self-FK) + index <code>ix_project_items_parent</code>. Legacy <code>items.parent_item_id</code> / <code>derived_from_id</code> confirmed inert (0 / 346 rows).</li>
+    </ul>
+    <p class="note" style="margin-top: 10px;">Shipped dev-only v2.62–v2.65 (architect-audited 2026-08-25, no blockers). <strong>Not yet wired</strong> — the columns are placeholders until the components / time-&amp;-materials build lands. Design record: <code>docs/PROGRESS.md</code>.</p>
+  </div>
+
+  <!-- ROW: Universal patterns + Tables -->
+  <div class="row-2">
+
+    <div class="card">
+      <h2>Universal patterns</h2>
+      <ul class="compact">
+        <li><strong>Every business table</strong> has 6 audit columns: <code>created_at</code>, <code>created_by</code>, <code>updated_at</code>, <code>updated_by</code>, <code>deleted_at</code>, <code>deleted_by</code></li>
+        <li><strong>Soft-delete</strong> via <code>deleted_at IS NULL</code> filter on every read. Hard-delete is forbidden on entity tables (trigger raises).</li>
+        <li><strong>Junction tables</strong> exempt from soft-delete — they hard-delete (e.g. cart item removed = row gone).</li>
+        <li><strong>Active flag</strong> co-exists with soft-delete on items: <code>is_active</code> (publish toggle) + <code>deleted_at</code> (soft-delete).</li>
+        <li><strong>UUIDs</strong> generated via <code>gen_random_uuid()</code> (PG13+ built-in, schema-portable).</li>
+        <li><strong>Audit trigger</strong> stamps <code>updated_by</code> from <code>current_user_id()</code> session var.</li>
+        <li><strong>Reports gate on parent chain</strong> — not the child's own flag (a project_item is "live" if the project is, not just if it's not deleted).</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Key tables</h2>
+      <table>
+        <tbody>
+          <tr><td class="layer-name">orgs</td><td>Agencies, suppliers, Ballpark itself. <code>org_type</code> drives behaviour.</td></tr>
+          <tr><td class="layer-name">users</td><td>Auth identity. Each user belongs to N orgs via <code>user_orgs</code>.</td></tr>
+          <tr><td class="layer-name">clients</td><td>An agency's customers (e.g. "Nike"). Tied to the agency org.</td></tr>
+          <tr><td class="layer-name">projects</td><td>An event. Belongs to one client. Has many cart items, estimates, messages.</td></tr>
+          <tr><td class="layer-name">categories</td><td>Marketplace taxonomy. Same names across orgs.</td></tr>
+          <tr><td class="layer-name">items</td><td>A supplier's catalogue entry. Belongs to one supplier org + one category.</td></tr>
+          <tr><td class="layer-name">project_items</td><td>The cart — project ↔ item junction. <strong>Project-level</strong>, fans out per supplier on checkout. Also the <strong>buildup tree</strong>: <code>parent_id</code> nests cost-part children under a line, <code>kind</code> classifies the node <span class="pill pill--junction" style="font-size:9px;">dormant</span></td></tr>
+          <tr><td class="layer-name">messages</td><td>Conversation thread, one per (project, supplier). Author + body + status.</td></tr>
+          <tr><td class="layer-name">message_items</td><td>Items being discussed in a message. Status pill lives here.</td></tr>
+          <tr><td class="layer-name">message_item_decisions</td><td>Append-only audit per item: accept / decline / price change / qty change.</td></tr>
+          <tr><td class="layer-name">balls_transactions</td><td>Credit ledger. Append-only. <code>balance = SUM(amount)</code>.</td></tr>
+          <tr><td class="layer-name">estimates · estimate_items</td><td>Cost roll-ups per project.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- ROW: Three-schema split + Migration -->
+  <div class="row-2">
+
+    <div class="card">
+      <h2>Three-schema environment split</h2>
+      <p style="font-size: 12px; margin: 0 0 8px;">One Supabase Postgres instance, three logical environments via schemas:</p>
+      <table>
+        <tbody>
+          <tr><td class="layer-name"><code>public</code></td><td>Local dev. Free to break.</td></tr>
+          <tr><td class="layer-name"><code>preview</code></td><td>Tracks <code>dev</code> branch. Internal QA.</td></tr>
+          <tr><td class="layer-name"><code>master</code></td><td>Tracks <code>master</code> branch. Customer-facing.</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size: 12px; margin: 8px 0 0; color: var(--text-secondary);">
+        The API picks its schema via <code>APP_SCHEMA</code> env var at boot. Same code, different data set per environment.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Migrations</h2>
+      <ul class="compact">
+        <li><strong>Single source of truth:</strong> <code>server/src/db/migrate-schemas.js</code></li>
+        <li>Every column / table / ALTER writes to all three schemas explicitly</li>
+        <li>Legacy <code>migrate.js</code> is deprecated — don't add to it</li>
+        <li>Run order: <code>public</code> → <code>preview</code> → <code>master</code>; rollouts are gated per environment</li>
+        <li>Historical migrations live under <code>migrate-v1.*.js</code> as a paper trail; canonical truth is the schemas file</li>
+        <li><strong>Phase 4 guard</strong> (v1.66e6) blocks accidental hard-delete on entity tables via PG trigger</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <strong>v1.66e6 audit foundation:</strong> the universal audit columns + stamp trigger + hard-delete guard are live on the dev DB. Soft-delete is enforced; junction tables stay hard-deletable; <code>updated_by</code> is populated from JWT middleware setting <code>SET LOCAL app.current_user_id</code> per request.
+  </div>
+
+</div>
+</body>
+</html>
