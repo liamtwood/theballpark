@@ -201,10 +201,10 @@
       <h2>Two composition trees</h2>
       <p style="font-size:12px; margin:0 0 8px; color:var(--text-secondary);">Same recursive shape, two layers — the catalogue is the <em>menu</em>, the project line is the <em>chosen buildup</em>.</p>
       <ul class="compact">
-        <li><strong>Catalogue template</strong> — <code>items.parent_item_id</code> <span class="pill pill--dormant">dormant</span> The supplier defines, once, what an item is made of (its options, variant set, T&amp;M breakdown). Children are real <code>items</code> rows, <code>kind</code>-typed.</li>
+        <li><strong>Catalogue template</strong> — the supplier defines, once, what an item is made of (its options, variant set, T&amp;M breakdown). Children are real <code>items</code> rows, <code>kind</code>-typed. <span class="pill" style="background:rgba(214,51,132,0.10); color:var(--accent);">STORAGE OPEN</span> <code>items.parent_item_id</code> already means <em>lineage</em> ("variant of / born from") and is written today — composition needs its own FK (e.g. <code>composed_under_id</code>) or the <code>item_components</code> join, <strong>not</strong> that column.</li>
         <li><strong>Project instance</strong> — <code>project_items.parent_id</code> When an agent drops the parent into a quote, the chosen subtree instantiates here as project lines.</li>
         <li><strong>Instantiation connects them</strong> — adding the parent copies mandatory components + the picked variant + chosen options down into <code>project_items</code>.</li>
-        <li><strong>Margin lives only at the project layer.</strong> The catalogue carries cost/pricing <em>rules</em>; the project line resolves them into a quote. The single project-level margin (existing <code>EstimateBreakdown</code> cascade) never leaks up into the catalogue definition.</li>
+        <li><strong>Margin lives only at the project layer.</strong> The catalogue carries cost/pricing <em>rules</em>; the project line resolves them into a quote. The single project-level margin cascade (server <code>computeEstimate</code> in <code>estimate.js</code>; client renders it as <code>EstimateBreakdown</code>) never leaks up into the catalogue definition.</li>
       </ul>
     </div>
 
@@ -228,8 +228,8 @@
       <ul class="compact">
         <li><strong>Each node carries</strong> <code>price_basis ∈ (flat | percent | per_primary_unit)</code> + an explicit <strong>operand</strong> (what it counts / is a % of — parent qty, parent cost, subtree, project).</li>
         <li><strong>Flat &amp; per-unit children are clean cost nodes</strong> — they roll up, margin sits above, the pure-cost tree holds.</li>
-        <li><strong>The % child is the stress test.</strong> Insurance = 10% <em>of what?</em> 10% of <strong>cost</strong> → stays a cost node, single cascade survives. 10% <strong>client fee on charge</strong> → sits <em>above</em> margin, the first thing that isn't pure cost. <span class="pill" style="background:rgba(214,51,132,0.10); color:var(--accent);">OPEN DECISION</span></li>
-        <li><strong>Private-cost boundary (RP-11).</strong> Component / T&amp;M leaf costs never reach a client surface — one predicate, enforced everywhere a line renders, keyed off <code>kind</code> as well as <code>added_by</code>.</li>
+        <li><strong>The % child — proposed resolution.</strong> 10% of <strong>cost</strong> → it's a tree node (rolls up, single cascade survives). A 10% <strong>client fee on charge</strong> → <em>not a tree node at all</em>: it belongs at the project cascade layer beside margin/VAT in <code>estimate.js</code>, so "tree is pure cost" holds by construction. <span class="pill" style="background:rgba(214,51,132,0.10); color:var(--accent);">PROPOSED — pending lock</span></li>
+        <li><strong>Private-cost boundary (RP-11).</strong> Component / T&amp;M leaf costs never reach a client surface — one predicate, enforced everywhere a line renders, keyed off <code>kind</code> plus authorship (<code>created_by</code>, the audit stamp — there is no <code>added_by</code> column; add a purpose-built owner column only if creator ≠ owner).</li>
       </ul>
     </div>
 
@@ -240,11 +240,11 @@
     <h2>Schema footprint — what's there, what's needed now, what's deferred</h2>
     <div class="row-2" style="margin-bottom:0;">
       <ul class="compact">
-        <li><strong>Present &amp; dormant</strong> (all NULL / unwired): <code>items.kind</code>, <code>project_items.kind</code> (VARCHAR 20), <code>project_items.parent_id</code> (UUID self-FK) + index <code>ix_project_items_parent</code>. Legacy <code>items.parent_item_id</code> / <code>derived_from_id</code> confirmed inert (0 / 346 rows) → the catalogue-template tree, ready to adopt.</li>
+        <li><strong>Present &amp; dormant</strong> (all NULL / unwired): <code>items.kind</code>, <code>project_items.kind</code> (VARCHAR 20), <code>project_items.parent_id</code> (UUID self-FK) + index <code>ix_project_items_parent</code>. Note <code>items.parent_item_id</code> / <code>derived_from_id</code> are <strong>data-empty (0 / 346) but writable lineage fields today</strong> (item create/update) — not a free slot for composition (see "Catalogue template" above).</li>
         <li><strong>The one guard needed at authoring time:</strong> <code>items.kind</code> earns a second job — <em>catalogue visibility</em>. The marketplace / store listing must exclude components (<code>kind = 'primary' OR kind IS NULL</code>) the same commit components can be created, or a child fridge pops up as a standalone card.</li>
       </ul>
       <ul class="compact">
-        <li><strong>Deferred — only if children become <em>canonical real-item</em> lines:</strong> relax <code>uq_project_items_canonical</code> to key on <code>(project_id, item_id, parent_id)</code> so the same item can sit at multiple tree positions. Not forced if children ride the custom / supplier-scoped path (which already dodges the index).</li>
+        <li><strong>Deferred — forced only if a child stores catalogue provenance in an <em>unscoped</em> <code>item_id</code></strong> (agent-owned, <code>supplier_org_id</code> NULL): then relax <code>uq_project_items_canonical</code> to key on <code>(project_id, item_id, parent_id)</code>. If provenance lives in a separate column (item_id stays NULL) or children are supplier-scoped, they dodge the index and no relax is needed. <span class="pill" style="background:rgba(214,51,132,0.10); color:var(--accent);">PROVENANCE OPEN</span></li>
         <li><strong>Deferred — components library:</strong> the marketplace-copy manager, plus a <code>item_components</code> join if one component is reused across <em>many</em> items (the single <code>parent_item_id</code> FK is a deliberate one-parent floor, not the library's shape).</li>
       </ul>
     </div>

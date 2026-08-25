@@ -81,6 +81,19 @@ private-cost boundary (RP-11 shape — enforce everywhere a line renders once
 components land); confirm `kind`/`parent_id` are truly inert until wired; the
 parked subcategory-on-existing edge (category-only grouping for pre-loaded lines).
 
+**Design-review corrections (2026-08-25, CC review of `components-one-pager.html`):**
+`added_by` is **not a column** — the authority/visibility stamp is `created_by`
+(and `client_visible` is a to-build field, not yet in schema). `items.parent_item_id`
+is already **lineage** ("variant of / born from") and a writable pass-through today,
+so the catalogue-composition tree needs its **own** FK (e.g. `composed_under_id`) or
+the `item_components` join — overloading `parent_item_id` is a Rule 7 / RP-11 drift
+risk. Three open decisions before this guides a build: (1) composition-parent storage
+(new FK vs join); (2) whether a child's catalogue provenance sits in an unscoped
+`item_id` — which *forces* the `uq_project_items_canonical` relax — or elsewhere;
+(3) the %-fee split (%-of-cost = tree node; client fee = project cascade layer beside
+margin/VAT — **proposed, pending lock**). Also promoted to preview + architect-audited
+(no blockers) at v2.65 since this entry's header was written.
+
 ---
 
 ### 2026-06-11 — pV2-AUDIT-03: API audit checklist + Helmet + Zod
