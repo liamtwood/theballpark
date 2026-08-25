@@ -14,7 +14,7 @@ import { MessageSuppliersDialogComponent, MsgSupplierCategory } from './message-
 import { ProjectSummaryTilesComponent } from './project-summary-tiles.component';
 import { EstimateBreakdownComponent } from './estimate-breakdown.component';
 import { EstimatePreviewRailComponent } from './estimate-preview-rail.component';
-import { CustomLineDialogComponent, CustomLine, LineSupplier } from './custom-line-dialog.component';
+import { CustomLineDialogComponent, CustomLine, LineSupplier, ExistingPick } from './custom-line-dialog.component';
 
 interface SupplierGroup {
   supplierId: string;
@@ -118,18 +118,18 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                     }
                   }
 
-                  @if (isFinal()) {
-                    <!-- Dashed add card at the bottom of the category's items.
-                         Custom lines persist as real project_items now
-                         (pV2-CUSTOMS-01), so they render above via the normal
-                         row with a "Custom" tag. -->
-                    <div class="p-3">
-                      <button type="button" class="flex w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border border-dashed border-hairline px-3 py-3 text-secondary transition-colors hover:bg-fill hover:text-text"
-                              (click)="openAdd(g)">
-                        <lucide-icon name="plus" [size]="15" /> Add Your Own Line Item
-                      </button>
-                    </div>
-                  }
+                  <!-- Dashed add card at the bottom of the category's items.
+                       Available on BOTH the Cart and Final views (was Final-only)
+                       so the entry point never vanishes when a round-trip lands
+                       you on the Cart tab. Custom lines persist as real
+                       project_items (pV2-CUSTOMS-01) and render above with a
+                       "Custom" tag. -->
+                  <div class="p-3">
+                    <button type="button" class="flex w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border border-dashed border-hairline px-3 py-3 text-secondary transition-colors hover:bg-fill hover:text-text"
+                            (click)="openAdd(g)">
+                      <lucide-icon name="plus" [size]="15" /> Add Your Own Line Item
+                    </button>
+                  </div>
                 </div>
               }
             </div>
@@ -164,16 +164,19 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
       </div>
 
       <!-- Right rail: the selected line's marketplace card (owns its own eye). -->
-      <app-estimate-preview-rail [line]="selectedLine()" />
+      <app-estimate-preview-rail [line]="selectedLine()" (exploreMore)="onExploreMore()" />
       </div>
     </div>
 
     <!-- Add Custom Line Item modal (Final view). -->
     @if (adding()) {
       <app-custom-line-dialog
+        [variant]="dialogVariant()"
         [categoryId]="pendingCategoryId()"
         [categoryName]="pendingCategoryName()"
+        [categoryIcon]="pendingCategoryIcon()"
         [suppliers]="pendingSuppliers()"
+        [existingLines]="pendingExisting()"
         (add)="addCustom($event)"
         (cancel)="adding.set(false)" />
     }
@@ -353,9 +356,16 @@ export class ProjectEstimateComponent {
   /** The category whose dashed button was clicked — seeds the dialog. */
   protected readonly pendingCategoryId = signal<string | null>(null);
   protected readonly pendingCategoryName = signal<string>('');
+  protected readonly pendingCategoryIcon = signal<string | null>(null);
   /** pV2-BUILDUP-01 (UI1): the pending category's suppliers — seed the dialog's
    *  supplier context (auto-selected when there's exactly one). */
   protected readonly pendingSuppliers = signal<LineSupplier[]>([]);
+  /** Which dialog flow: 'new' (agent custom lines) or 'explore' (browse a
+   *  supplier's catalogue from a selected line). */
+  protected readonly dialogVariant = signal<'new' | 'explore'>('new');
+  /** Explore: the supplier+category lines already in the quote (pre-loaded so
+   *  the dialog reflects current state; reconciled on submit). */
+  protected readonly pendingExisting = signal<ExistingPick[]>([]);
 
   /** Banner headline: the server client total. Custom lines are real
    *  project_items now (pV2-CUSTOMS-01), already in the cascade. */
@@ -363,52 +373,91 @@ export class ProjectEstimateComponent {
 
   /** Open the add-custom modal, seeded with the category whose dashed button
    *  was clicked (the dialog owns the form). */
-  protected openAdd(group?: { id: string; name: string; supplierGroups?: SupplierGroup[] }): void {
+  /** "Add Your Own Line Item" → the NEW flow: agent-owned custom lines, no
+   *  supplier, no browse rail (Form/Grid only). */
+  protected openAdd(group?: { id: string; name: string; iconName?: string | null }): void {
+    this.dialogVariant.set('new');
     this.pendingCategoryId.set(group?.id ?? null);
     this.pendingCategoryName.set(group?.name ?? '');
-    // Distinct real suppliers already present in this category — seed the
-    // dialog's supplier context (one → auto-selected; many → the agent picks).
-    const seen = new Map<string, LineSupplier>();
-    for (const sg of group?.supplierGroups ?? []) {
-      if (sg.supplierId && !seen.has(sg.supplierId)) {
-        seen.set(sg.supplierId, { id: sg.supplierId, name: sg.supplierName });
-      }
-    }
-    this.pendingSuppliers.set([...seen.values()]);
+    this.pendingCategoryIcon.set(group?.iconName ?? null);
+    this.pendingSuppliers.set([]);
+    this.adding.set(true);
+  }
+
+  /** "Explore More" on a selected line's preview → the EXPLORE flow: browse
+   *  that line's supplier's catalogue (grid-only + rail, supplier fixed). */
+  protected onExploreMore(): void {
+    const l = this.selectedLine();
+    if (!l?.supplierId) return;
+    this.dialogVariant.set('explore');
+    this.pendingCategoryId.set(l.categoryId);
+    this.pendingCategoryName.set(l.categoryName ?? '');
+    this.pendingCategoryIcon.set(l.categoryIconName ?? null);
+    this.pendingSuppliers.set([{ id: l.supplierId, name: l.supplierName ?? null }]);
+    // Pre-load the picks with this supplier+category's existing (non-declined)
+    // catalogue lines, so the dialog opens showing what's already there.
+    this.pendingExisting.set(
+      this.rows()
+        .filter((q) => q.supplierId === l.supplierId && q.categoryId === l.categoryId && !!q.itemId && !isDeclined(q))
+        .map((q) => ({
+          lineId: q.id, itemId: q.itemId, name: q.name ?? '', cost: q.basePrice,
+          quantity: q.quantity, categoryName: q.categoryName, subcategoryName: null,
+        }))
+    );
     this.adding.set(true);
   }
   /** Persist the custom line (pV2-CUSTOMS-01) — it becomes a real cart line
    *  that rides along in the category's brief. Reload so it renders like any
    *  line (with a "Custom" tag; no supplier until one quotes it). */
   protected async addCustom(lines: CustomLine[]): Promise<void> {
-    if (this.savingCustom() || !lines.length) return;
+    const explore = this.dialogVariant() === 'explore';
+    if (this.savingCustom() || (!explore && !lines.length)) return;
     this.savingCustom.set(true);
     try {
-      // Grid mode adds a whole section at once; add sequentially, then reload
-      // once. (A batch endpoint is the follow-up if this gets heavy.)
-      for (const line of lines) {
-        if (line.itemId) {
-          // Picked an existing supplier item — add it as a real quote line
-          // (references the catalogue item, groups under its supplier). Not a
-          // custom/agency copy.
-          await firstValueFrom(this.projects.addQuoteItem(this.projectId(), line.itemId));
-        } else {
-          await firstValueFrom(this.projects.addCustomItem(this.projectId(), {
-            categoryId: line.categoryId,
-            name: line.description,
-            description: line.notes || null,
-            cost: line.cost,
-            quantity: line.quantity,
-            unit: line.unit,
-            supplierOrgId: line.supplierOrgId,
-          }));
+      if (explore) {
+        // Reconcile the supplier+category slice against the pre-loaded state:
+        // add fresh picks, remove existing lines no longer present, update qty.
+        const existing = this.pendingExisting();
+        const kept = new Set(lines.filter((l) => l.lineId).map((l) => l.lineId));
+        for (const e of existing) {
+          if (!kept.has(e.lineId)) {
+            await firstValueFrom(this.projects.removeQuoteItem(this.projectId(), e.lineId));
+          }
+        }
+        const prevById = new Map(existing.map((e) => [e.lineId, e]));
+        for (const l of lines) {
+          if (l.lineId) {
+            const prev = prevById.get(l.lineId);
+            if (prev && prev.quantity !== l.quantity) {
+              await firstValueFrom(this.projects.setQuoteItemQuantity(this.projectId(), l.lineId, l.quantity));
+            }
+          } else if (l.itemId) {
+            await firstValueFrom(this.projects.addQuoteItem(this.projectId(), l.itemId));
+          }
+        }
+      } else {
+        // 'new' — additive: reference an item, else a custom agent-owned line.
+        for (const line of lines) {
+          if (line.itemId) {
+            await firstValueFrom(this.projects.addQuoteItem(this.projectId(), line.itemId));
+          } else {
+            await firstValueFrom(this.projects.addCustomItem(this.projectId(), {
+              categoryId: line.categoryId,
+              name: line.description,
+              description: line.notes || null,
+              cost: line.cost,
+              quantity: line.quantity,
+              unit: line.unit,
+              supplierOrgId: line.supplierOrgId,
+            }));
+          }
         }
       }
       this.adding.set(false);
       this.lines.reload();
       this.est.reload();
     } catch (err) {
-      this.toast.add({ severity: 'error', summary: "Couldn't add the line(s) — please try again.", detail: errorDetail(err), life: 5000 });
+      this.toast.add({ severity: 'error', summary: "Couldn't save the line(s) — please try again.", detail: errorDetail(err), life: 5000 });
     } finally {
       this.savingCustom.set(false);
     }
