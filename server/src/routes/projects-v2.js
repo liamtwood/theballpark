@@ -154,9 +154,14 @@ const CustomAddSchema = z.object({
   description: z.string().nullish(),
   cost: z.number().nonnegative().nullish(),
   quantity: z.number().int().positive().optional(),
+  unit: z.string().nullish(),
   installed: z.boolean().nullish(),
   installCost: z.number().nonnegative().nullish(),
   installUnit: z.string().nullish(),
+  // pV2-BUILDUP-01 (UI1): the supplier this line is "for" — added in the
+  // context of a supplier, ticked into project_item_suppliers. Optional:
+  // null = "to source" (agent doesn't know the supplier yet).
+  supplierOrgId: z.string().uuid().nullish(),
 }).strip();
 router.post('/:id/items/custom', async (req, res, next) => {
   try {
