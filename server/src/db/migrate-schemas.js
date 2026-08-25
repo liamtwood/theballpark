@@ -2538,6 +2538,23 @@ const migrate = async () => {
     const parentCount = await seedCodelists(client);
     console.log(`  reference_codelists installed — ${parentCount} parents seeded, default invariant asserted (v2.18a).`);
 
+    // ── pV2-BUILDUP-01 (step 1) — recursive line-item buildup: additive columns.
+    // `kind` classifies a catalogue item (component / product / option) and a
+    // project line (cost-part / option / plain). `parent_id` nests one project
+    // line under another (Sofa → Woodwork; Family Room → sections). All nullable
+    // and UNUSED until the buildup logic lands — pure additive, zero behaviour
+    // change. The key-constraint relax that lets the same item appear twice is a
+    // SEPARATE step (not here) — it carries the only regression risk.
+    for (const s of ['public', 'preview', 'master']) {
+      await client.query(`
+        ALTER TABLE ${s}.items         ADD COLUMN IF NOT EXISTS kind      VARCHAR(20);
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS kind      VARCHAR(20);
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES ${s}.project_items(id);
+        CREATE INDEX IF NOT EXISTS ix_project_items_parent ON ${s}.project_items(parent_id);
+      `);
+    }
+    console.log('  pV2-BUILDUP-01 columns installed (items.kind, project_items.kind + parent_id, all schemas).');
+
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');
     console.log('   preview → run npm run db:seed:preview to populate');
