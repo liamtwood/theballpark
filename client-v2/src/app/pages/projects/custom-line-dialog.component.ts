@@ -52,10 +52,9 @@ interface GridRow {
    *  (readies the supplier's components: Staffing→Crew, Materials→Sheet …). */
   categoryName: string | null;
   subcategoryName: string | null;
-  matched: boolean;
 }
 let ROW_UID = 0;
-const blankRow = (): GridRow => ({ id: ROW_UID++, description: '', cost: null, qty: 1, unit: null, itemId: null, lineId: null, categoryName: null, subcategoryName: null, matched: false });
+const blankRow = (): GridRow => ({ id: ROW_UID++, description: '', cost: null, qty: 1, unit: null, itemId: null, lineId: null, categoryName: null, subcategoryName: null });
 
 /** pV2-BUILDUP-01 (UI1) — the add-lines modal, two variants:
  *  • 'new'     — create agent-owned custom lines (Form/Grid, type them in).
@@ -321,7 +320,7 @@ export class CustomLineDialogComponent implements OnInit {
       this.rows.set(this.existingLines().map((e) => ({
         id: ROW_UID++, description: e.name, cost: e.cost, qty: e.quantity,
         unit: null, itemId: e.itemId, lineId: e.lineId,
-        categoryName: e.categoryName, subcategoryName: e.subcategoryName, matched: true,
+        categoryName: e.categoryName, subcategoryName: e.subcategoryName,
       })));
       if (this.suppliers().length) this.supplierId.set(this.suppliers()[0].id);
     }
@@ -389,7 +388,7 @@ export class CustomLineDialogComponent implements OnInit {
     const row: GridRow = {
       id: ROW_UID++, description: item.name, cost: item.basePrice, qty: 1,
       unit: item.unit, itemId: item.id, lineId: null,
-      categoryName: item.categoryName ?? null, subcategoryName: item.subcategoryName ?? null, matched: true,
+      categoryName: item.categoryName ?? null, subcategoryName: item.subcategoryName ?? null,
     };
     this.rows.set([...this.rows().filter((r) => r.description.trim()), row]);
   }

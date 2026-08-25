@@ -394,11 +394,14 @@ export class ProjectEstimateComponent {
     this.pendingCategoryName.set(l.categoryName ?? '');
     this.pendingCategoryIcon.set(l.categoryIconName ?? null);
     this.pendingSuppliers.set([{ id: l.supplierId, name: l.supplierName ?? null }]);
-    // Pre-load the picks with this supplier+category's existing (non-declined)
-    // catalogue lines, so the dialog opens showing what's already there.
+    // Pre-load the picks with this supplier+category's existing catalogue lines
+    // that are still EDITABLE (status = to_send). Sent/locked lines are managed
+    // in the inbox — staging them would make the reconcile issue remove/qty on
+    // locked rows (server 409) and partially apply (audit MED-2). `editable`
+    // is the one-place predicate (RP-11).
     this.pendingExisting.set(
       this.rows()
-        .filter((q) => q.supplierId === l.supplierId && q.categoryId === l.categoryId && !!q.itemId && !isDeclined(q))
+        .filter((q) => q.supplierId === l.supplierId && q.categoryId === l.categoryId && !!q.itemId && editable(q))
         .map((q) => ({
           lineId: q.id, itemId: q.itemId, name: q.name ?? '', cost: q.basePrice,
           quantity: q.quantity, categoryName: q.categoryName, subcategoryName: null,
