@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ballpark — Components &amp; Item Composition (1-pager)</title>
+<style>
+  :root {
+    --bg: #fbf7f4;
+    --surface: #ffffff;
+    --text: #1f2937;
+    --text-secondary: #6b7280;
+    --border: 1px solid #e5e7eb;
+    --radius: 12px;
+    --accent: #d63384;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+    --primary: #0ea5e9;   /* primary item        */
+    --option:  #b45309;   /* option / add-on     */
+    --variant: #8b5cf6;   /* variant (pick one)  */
+    --comp:    #047857;   /* component / T&M     */
+    --volume:  #d63384;   /* volume / scaling    */
+  }
+  body {
+    margin: 0; padding: 28px 36px;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    line-height: 1.45;
+  }
+  .page { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; font-weight: 700; }
+  .lead { color: var(--text-secondary); margin: 0 0 24px; font-size: 13px; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+
+  .card {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .card h2 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin: 0 0 10px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table th, table td { text-align: left; padding: 6px 8px; vertical-align: top; }
+  table thead th {
+    color: var(--text-secondary);
+    font-weight: 600;
+    border-bottom: var(--border);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  table tbody tr { border-bottom: 1px solid #f3f4f6; }
+  table tbody tr:last-child { border-bottom: none; }
+  .kind { font-weight: 700; font-size: 12px; }
+
+  ul.compact { margin: 0; padding-left: 16px; font-size: 12px; }
+  ul.compact li { margin-bottom: 5px; }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    background: #f3f4f6;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 4px;
+  }
+  .pill--primary { background: rgba(14,165,233,0.12); color: var(--primary); }
+  .pill--option  { background: rgba(180,83,9,0.12);   color: var(--option); }
+  .pill--variant { background: rgba(139,92,246,0.12); color: var(--variant); }
+  .pill--comp    { background: rgba(4,120,87,0.12);   color: var(--comp); }
+  .pill--dormant { background: #f3f4f6;               color: var(--text-secondary); }
+
+  .diagram {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 18px;
+  }
+  .tree-svg { width: 100%; height: auto; max-height: 300px; display: block; }
+
+  .note {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #fafafa;
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+  }
+  .note strong { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Ballpark — Components &amp; Item Composition</h1>
+  <p class="lead">How a catalogue item builds up from typed children — options, variants, and cost components — as one recursive tree. <strong>Design foundation (pV2-BUILDUP-01) — dormant, not yet wired.</strong></p>
+
+  <!-- Composition tree -->
+  <div class="diagram">
+    <h2 style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin: 0 0 12px;">A primary item and its typed children</h2>
+    <svg class="tree-svg" viewBox="0 0 960 280" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- parent -->
+      <g>
+        <rect x="390" y="18" width="180" height="50" rx="8" fill="#fff" stroke="#0ea5e9" stroke-width="1.6"/>
+        <text x="480" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#0ea5e9">Airstream</text>
+        <text x="480" y="57" text-anchor="middle" font-size="10" fill="#6b7280">primary item · has its own price</text>
+      </g>
+
+      <!-- connectors -->
+      <line x1="480" y1="68" x2="120" y2="150" stroke="#cbd5e1" stroke-width="1.2"/>
+      <line x1="480" y1="68" x2="360" y2="150" stroke="#cbd5e1" stroke-width="1.2"/>
+      <line x1="480" y1="68" x2="600" y2="150" stroke="#cbd5e1" stroke-width="1.2"/>
+      <line x1="480" y1="68" x2="840" y2="150" stroke="#cbd5e1" stroke-width="1.2"/>
+
+      <!-- child: option (%) -->
+      <g>
+        <rect x="40" y="150" width="160" height="54" rx="8" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+        <text x="120" y="172" text-anchor="middle" font-size="12" font-weight="600" fill="#b45309">Insurance</text>
+        <text x="120" y="188" text-anchor="middle" font-size="9.5" fill="#6b7280">option · % of cost</text>
+        <text x="120" y="200" text-anchor="middle" font-size="9.5" fill="#6b7280">opt-in (0..N)</text>
+      </g>
+
+      <!-- child: add-on (flat) -->
+      <g>
+        <rect x="280" y="150" width="160" height="54" rx="8" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+        <text x="360" y="172" text-anchor="middle" font-size="12" font-weight="600" fill="#b45309">Fridge</text>
+        <text x="360" y="188" text-anchor="middle" font-size="9.5" fill="#6b7280">add-on · flat</text>
+        <text x="360" y="200" text-anchor="middle" font-size="9.5" fill="#6b7280">opt-in (0..N)</text>
+      </g>
+
+      <!-- child: variant (pick one) -->
+      <g>
+        <rect x="520" y="150" width="160" height="54" rx="8" fill="#fff" stroke="#8b5cf6" stroke-width="1.5"/>
+        <text x="600" y="172" text-anchor="middle" font-size="12" font-weight="600" fill="#8b5cf6">Size</text>
+        <text x="600" y="188" text-anchor="middle" font-size="9.5" fill="#6b7280">variant · pick one</text>
+        <text x="600" y="200" text-anchor="middle" font-size="9.5" fill="#6b7280">exactly 1 of set</text>
+      </g>
+
+      <!-- child: component / T&M (private) -->
+      <g>
+        <rect x="760" y="150" width="160" height="54" rx="8" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+        <text x="840" y="172" text-anchor="middle" font-size="12" font-weight="600" fill="#047857">Build labour</text>
+        <text x="840" y="188" text-anchor="middle" font-size="9.5" fill="#6b7280">component · T&amp;M</text>
+        <text x="840" y="200" text-anchor="middle" font-size="9.5" fill="#047857">private — cost only</text>
+      </g>
+
+      <!-- legend -->
+      <g transform="translate(40, 244)">
+        <rect x="0" y="0" width="13" height="13" rx="2" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="19" y="10" font-size="10" fill="#374151">Primary</text>
+        <rect x="90" y="0" width="13" height="13" rx="2" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+        <text x="109" y="10" font-size="10" fill="#374151">Option / add-on (client)</text>
+        <rect x="270" y="0" width="13" height="13" rx="2" fill="#fff" stroke="#8b5cf6" stroke-width="1.5"/>
+        <text x="289" y="10" font-size="10" fill="#374151">Variant — pick one (client)</text>
+        <rect x="470" y="0" width="13" height="13" rx="2" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+        <text x="489" y="10" font-size="10" fill="#374151">Component / T&amp;M — private cost</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- ROW: Child kinds + Two trees -->
+  <div class="row-2">
+
+    <div class="card">
+      <h2>Child kinds — one node, typed</h2>
+      <p style="font-size:12px; margin:0 0 8px; color:var(--text-secondary);">Every node is the same recursive shape; <code>kind</code> + a selection rule + a pricing basis differentiate it. The five kinds are the pricing mechanisms expressed as children.</p>
+      <table>
+        <thead><tr><th>Kind</th><th>Selection</th><th>Pricing basis</th><th>Audience</th></tr></thead>
+        <tbody>
+          <tr><td class="kind" style="color:var(--primary)">primary</td><td>the line itself</td><td>own price</td><td>client</td></tr>
+          <tr><td class="kind" style="color:var(--option)">add-on / option</td><td>opt-in, 0..N</td><td>flat / % / per-primary-unit</td><td>client</td></tr>
+          <tr><td class="kind" style="color:var(--variant)">variant</td><td><strong>pick one</strong> of a set</td><td>sets / replaces base</td><td>client</td></tr>
+          <tr><td class="kind" style="color:var(--comp)">component (T&amp;M)</td><td>always-on</td><td>cost (hrs×rate, qty×unit)</td><td><strong>private</strong></td></tr>
+          <tr><td class="kind" style="color:var(--volume)">volume</td><td>derived from qty</td><td>per-unit / bracket</td><td>client</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Two composition trees</h2>
+      <p style="font-size:12px; margin:0 0 8px; color:var(--text-secondary);">Same recursive shape, two layers — the catalogue is the <em>menu</em>, the project line is the <em>chosen buildup</em>.</p>
+      <ul class="compact">
+        <li><strong>Catalogue template</strong> — <code>items.parent_item_id</code> <span class="pill pill--dormant">dormant</span> The supplier defines, once, what an item is made of (its options, variant set, T&amp;M breakdown). Children are real <code>items</code> rows, <code>kind</code>-typed.</li>
+        <li><strong>Project instance</strong> — <code>project_items.parent_id</code> When an agent drops the parent into a quote, the chosen subtree instantiates here as project lines.</li>
+        <li><strong>Instantiation connects them</strong> — adding the parent copies mandatory components + the picked variant + chosen options down into <code>project_items</code>.</li>
+        <li><strong>Margin lives only at the project layer.</strong> The catalogue carries cost/pricing <em>rules</em>; the project line resolves them into a quote. The single project-level margin (existing <code>EstimateBreakdown</code> cascade) never leaks up into the catalogue definition.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- ROW: Authoring + Pricing -->
+  <div class="row-2">
+
+    <div class="card">
+      <h2>Authoring — in the context of an item</h2>
+      <ul class="compact">
+        <li><strong>Go to an item → supplier clicks <em>Add options / estimate / variant</em>.</strong> The item you're on <em>is</em> the parent (context sets it — no parent picker); the button sets the <code>kind</code>.</li>
+        <li><strong>Item-scoped for now.</strong> Components are created + reused only under their parent item. No standalone existence, no browse surface yet.</li>
+        <li><strong>Later:</strong> a components manager = a copy of the marketplace on a new route, the same catalogue engine (<code>catalogue-layout</code> + <code>MarketplaceStore</code>) filtered to <code>kind = component</code>. A filter and a route, not a rebuild.</li>
+        <li><strong>The <em>explore</em> add-lines dialog is the primitive</strong> the child-authoring modes (options / estimate / variant) reuse.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Pricing basis &amp; the open fork</h2>
+      <ul class="compact">
+        <li><strong>Each node carries</strong> <code>price_basis ∈ (flat | percent | per_primary_unit)</code> + an explicit <strong>operand</strong> (what it counts / is a % of — parent qty, parent cost, subtree, project).</li>
+        <li><strong>Flat &amp; per-unit children are clean cost nodes</strong> — they roll up, margin sits above, the pure-cost tree holds.</li>
+        <li><strong>The % child is the stress test.</strong> Insurance = 10% <em>of what?</em> 10% of <strong>cost</strong> → stays a cost node, single cascade survives. 10% <strong>client fee on charge</strong> → sits <em>above</em> margin, the first thing that isn't pure cost. <span class="pill" style="background:rgba(214,51,132,0.10); color:var(--accent);">OPEN DECISION</span></li>
+        <li><strong>Private-cost boundary (RP-11).</strong> Component / T&amp;M leaf costs never reach a client surface — one predicate, enforced everywhere a line renders, keyed off <code>kind</code> as well as <code>added_by</code>.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- Schema footprint -->
+  <div class="card" style="margin-bottom:18px;">
+    <h2>Schema footprint — what's there, what's needed now, what's deferred</h2>
+    <div class="row-2" style="margin-bottom:0;">
+      <ul class="compact">
+        <li><strong>Present &amp; dormant</strong> (all NULL / unwired): <code>items.kind</code>, <code>project_items.kind</code> (VARCHAR 20), <code>project_items.parent_id</code> (UUID self-FK) + index <code>ix_project_items_parent</code>. Legacy <code>items.parent_item_id</code> / <code>derived_from_id</code> confirmed inert (0 / 346 rows) → the catalogue-template tree, ready to adopt.</li>
+        <li><strong>The one guard needed at authoring time:</strong> <code>items.kind</code> earns a second job — <em>catalogue visibility</em>. The marketplace / store listing must exclude components (<code>kind = 'primary' OR kind IS NULL</code>) the same commit components can be created, or a child fridge pops up as a standalone card.</li>
+      </ul>
+      <ul class="compact">
+        <li><strong>Deferred — only if children become <em>canonical real-item</em> lines:</strong> relax <code>uq_project_items_canonical</code> to key on <code>(project_id, item_id, parent_id)</code> so the same item can sit at multiple tree positions. Not forced if children ride the custom / supplier-scoped path (which already dodges the index).</li>
+        <li><strong>Deferred — components library:</strong> the marketplace-copy manager, plus a <code>item_components</code> join if one component is reused across <em>many</em> items (the single <code>parent_item_id</code> FK is a deliberate one-parent floor, not the library's shape).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Status:</strong> composition is a <strong>design foundation, not a live feature</strong> — the columns are dormant placeholders shipped dev-only (pV2-BUILDUP-01, v2.62–v2.65, architect-audited 2026-08-25, no blockers). Near-term footprint = authoring-in-item-context + the <code>kind</code> listing filter; everything else (pricing engine, instantiation, the % fork, the library) is a later layer that nothing here blocks. Design record: <code>docs/PROGRESS.md</code>; model memory <code>project_recursive_lineitem_model</code>.
+  </div>
+
+</div>
+</body>
+</html>

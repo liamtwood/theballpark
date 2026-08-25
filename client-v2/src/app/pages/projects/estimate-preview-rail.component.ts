@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
@@ -33,6 +33,14 @@ import { quoteLineToCatalogueItem } from './quote-line.util';
             <div class="bp-card p-4">
               <app-item-preview [item]="previewItem()!" [categoryName]="l.categoryName"
                                 closeIcon="eye" closeLabel="Hide preview" (closed)="hidden.set(true)" />
+              <!-- pV2-BUILDUP-01 (UI1): browse more of this item's supplier. -->
+              @if (l.supplierId) {
+                <button type="button"
+                        class="mt-3 flex w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border border-hairline px-3 py-2.5 text-secondary transition-colors hover:bg-fill hover:text-text"
+                        (click)="exploreMore.emit()">
+                  <lucide-icon name="layout-grid" [size]="15" /> Explore More
+                </button>
+              }
             </div>
           }
         </div>
@@ -42,6 +50,8 @@ import { quoteLineToCatalogueItem } from './quote-line.util';
 })
 export class EstimatePreviewRailComponent {
   readonly line = input<QuoteLine | null>(null);
+  /** "Explore More" → the host opens the supplier-browse dialog for this line. */
+  readonly exploreMore = output<void>();
   /** Eye toggle — suppresses the preview for ALL selections (session-local). */
   protected readonly hidden = signal(false);
 

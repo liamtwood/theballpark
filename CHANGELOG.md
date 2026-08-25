@@ -33,6 +33,7 @@ _Nothing pending — dev and preview are level._
 
 **Chore**
 
+- regenerate What's new for promote — v2.57-v2.61 now on preview `8f144bae`
 - bump staging chip for preview promote (inbox + About Project + What's new) `a88aeb88`
 
 </details>

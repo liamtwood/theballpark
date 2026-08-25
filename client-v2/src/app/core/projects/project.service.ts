@@ -60,6 +60,10 @@ export class ProjectService {
     categoryId: string | null; name: string; description?: string | null;
     cost?: number | null; quantity?: number; installed?: boolean | null;
     installCost?: number | null; installUnit?: string | null;
+    /** The item's unit (per head / day), carried from a looked-up item. */
+    unit?: string | null;
+    /** pV2-BUILDUP-01 (UI1): supplier this line is added for (tags it). */
+    supplierOrgId?: string | null;
   }): Observable<QuoteLine> {
     return this.api.post<QuoteLine>(`/api/projects-v2/${projectId}/items/custom`, body);
   }

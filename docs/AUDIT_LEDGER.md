@@ -60,6 +60,74 @@ changes (the render corrects itself when the reader source flips).
 
 ---
 
+## pV2-BUILDUP-01 arc audit (2026-08-25, `cc` architect + `chat` ledger)
+
+Item composition / cost-buildup foundations — **dev only, not yet promoted**.
+Design-heavy arc; the code is a first slice (dormant schema + a reusable
+add-lines dialog). Architect report:
+`docs/audits/2026-08-25-buildup-01-angular-architect-audit.md`.
+
+**Ships:** `25e84f2e` v2.62 (dormant additive schema — `items.kind`,
+`project_items.kind` / `parent_id` + index `ix_project_items_parent`),
+`779acdc1` v2.63 (supplier-item type-ahead in the add-line dialog; tagged via
+`project_item_suppliers`), `7b73663f` v2.64 (new/explore dialog split +
+browse-shuttle rail), `007cc41a` docs (PROGRESS.md), `76e67c46` v2.65
+(architect-audit remediation).
+
+**Model** (design record `docs/PROGRESS.md:34–82`; memory
+`project_recursive_lineitem_model`): one uniform recursive node
+(`project_items.parent_id`); the tree is **pure cost**; a **single
+project-level margin** (the existing `EstimateBreakdown` cascade); `added_by` =
+the authority/visibility line; leaf costs never reach a client surface
+(**private-cost boundary — an RP-11 shape**, see RP-11 below). Schema impact ≈
+one column; the new columns are dormant/additive (all NULL, unwired).
+
+**CC architect verdict: no blockers.** Clean on the axes that matter — `org_id`
+JWT-only; `supplierOrgId` UUID-validated + server-guarded; the supplier-tick
+write rides the existing transaction (Rule 1); the schema block additive +
+idempotent with `kind`/`parent_id` confirmed inert; tokens-only; the RP-11
+private-cost boundary intact (nothing new renders internal cost client-side).
+
+| File | Lines | SHA | Status | Notes |
+|---|---|---|---|---|
+| `client-v2/.../projects/custom-line-dialog.component.ts` | 398 | `9fa0bdc` | △ ALARM | Rewritten v2.64 (new/explore). AT the 400 alarm. MED-3: split into `new`/`explore` components — **required before next touch** (queued for the components / T&M build). |
+| `client-v2/.../projects/project-estimate.component.ts` | 528 | `28e54f9` | △ ALARM | Host; opens the dialog, tracks collapsed categories. Regrew past 400 (was 806 → 444 at the 2026-07-08 audit). MED-1: extract the reconcile diff into a util — **required before next touch**. |
+| `client-v2/.../projects/estimate-preview-rail.component.ts` | 64 | `b0da6ba` | ✓ clean | "Explore More" button on supplier-line preview cards. |
+| `client-v2/.../core/projects/project.service.ts` | 96 | `6ebd4ee` | ✓ clean | `addQuoteItem` / `removeQuoteItem` / `setQuoteItemQuantity` — the reconcile verbs. |
+| `server/src/services/projects.service.js` | 860 | `6dc7554` | ✓ flagged | `addCustomItem` + the `project_item_suppliers` tick (inside the existing txn, Rule 1). Large orchestrator, over the 350 service alarm — pre-existing, not this arc's growth. |
+| `server/src/routes/projects-v2.js` | 220 | `1746e5a` | ✓ clean | `CustomAddSchema` + `unit` / `supplierOrgId`. Over the 200 route warn; watch. |
+| `server/src/db/migrate-schemas.js` | 2572 | `4c0d406` | ✓ clean | Dormant-columns block `:2541–2556`, looped over the three schemas. Admin tool (uncapped). |
+
+**Findings (CC architect, triaged):**
+
+- **MED-2 — FIXED (v2.65).** Because Add/Explore now sits on both Cart and
+  Final, the explore pre-load could stage sent/locked lines; reconcile then
+  issued remove/qty on them → server 409 → partial write. Fixed by filtering the
+  pre-load to `editable()` (`status = to_send`) — the **one-place predicate**, so
+  locked lines stay inbox-managed. (An RP-11-class save: one predicate, every
+  reader.)
+- **LOW-4 — FIXED (v2.65).** Dead field removed.
+- **MED-1 / MED-3 — accepted, DEFERRED to the components / T&M build.** The two
+  bloat extractions (reconcile → util; dialog → `new`/`explore`). Deferred so the
+  split is done knowing the buildup shape, not speculatively — this is the
+  mandatory "before next touch" work on those two files (see Bloat watch).
+- **LOW-1** (rail silently caps at 48 items) and **LOW-2** (`effect()` →
+  `resource()`) — DEFERRED to the same pass.
+- **LOW-3** — the `supplierOrgId` server plumbing is currently dormant (like the
+  schema columns); recorded as forward-plumbing, no action.
+
+**Open (product/forward, not audit debt):** the `uq_project_items_canonical`
+relax that would allow the same item twice — the only regression risk, not yet
+done (`migrate-schemas.js:2168–2170`); the parked `project_items` subcategory
+edge (category-only grouping for pre-loaded lines); `kind` / `parent_id` stay
+inert until buildup logic lands.
+
+**chat-side (Claude) pass:** this ledger section + the composition callout in
+`prompts/data-model-one-pager.html`. A separate Claude audit, if run, folds into
+this section.
+
+---
+
 ## Diagnostic learnings — read before every audit
 
 Patterns where chat's initial hypothesis turned out wrong; root cause was
@@ -126,6 +194,7 @@ someday," they are load-bearing-until-X and a liability past X.
 | TECH-DEBT-02 | **Signup PII capture — `ip_address` + `user_agent`.** `marketing.guestlist_signup` has captured `ip_address` + `user_agent` server-side on every signup since v1 — PII beyond the name + email a registrant knowingly provides. Not surfaced anywhere and not used, but collected + retained indefinitely. Needs: (a) a privacy-policy mention of what's captured, (b) a retention decision (how long / auto-purge), (c) potentially stop collecting it entirely if there's no analytics/anti-abuse use. Not blocking — bookmarking now so it isn't lost. | `server/src/services/marketing.service.js` (`createSignup` INSERT) + `server/src/db/migrate-schemas.js` (`marketing.guestlist_signup.ip_address` / `user_agent`) | 2026-06-22, pV2-EA-01 (pre-existing since v1; logged now) | **Address in a dedicated pV2-PRIVACY-01 ship** — decide collect/retain/purge + privacy-policy copy. Not gated to a single milestone; resolve before any public-marketing privacy review. |
 | SUNSET-01 | **Vestigial `users` columns — `name` + `role` + `org_id`.** Three columns no longer architecturally meaningful but still load-bearing: `users.name` (NOT NULL, written by v2 `auth.service.js` (Google SSO) + `team.js` (invite) + `user.service.js` + all seeds — can't drop without first relaxing NOT NULL + stopping writes); `users.role` (still read by v1 client-angular admin UI — `app-shell.component.ts:752` + `top-nav.component.ts:439` do `users[0].role === 'admin'` — dropping would break v1 visually); `users.org_id` (written by seeds + `user.service.js`, read by v1 `item-detail` + persona — superseded by `default_org_id`/`user_orgs` but not unreferenced). Removing now = destructive migration on shared preview/prod DB + NOT NULL conflict + v1 still live = churn + risk for zero functional gain. | `server/src/db/migrate-schemas.js` (`users` table); writers in `server/src/services/auth.service.js`, `server/src/routes/team.js`, `server/src/services/user.service.js`, seeds; readers in `client-angular/src/app/shell/app-shell.component.ts`, `client-angular/src/app/.../top-nav.component.ts` | 2026-06-23, logged during STORE-01 doc sweep | **Fold into pV2-11 v1 retirement sweep.** Sequence: (1) v1 client off → nothing reads `role`/`org_id`; (2) update v2 inserts in auth.service.js + team.js + user.service.js + seeds to stop writing name/role/org_id; backfill any null `display_name` from `name`; (3) DROP three columns via `migrate-schemas.js` across all schemas, relax `name` to nullable or drop. **MUST NOT remain past pV2-11.** |
 | TECH-DEBT-01 | **[`/api/admin/*` secret gate RETIRED 2026-06-22 / pV2-EA-02b — now gates on `authenticate` + `requireActiveMembership('admin.cross_org_view')`, the verified session role; `middleware/admin.js` deleted. The residual `GET /api/org/users` PII exposure below is the remaining open item until AUTH-01.]** **Interim admin gate — shared secret over forgeable header.** `/api/admin/*` is gated by an `x-bp-admin-secret` header matched against the `ADMIN_API_SECRET` env (constant-time compare); when the env is unset (local dev) it falls back to the legacy `x-bp-user-id` role lookup as an explicit dev-only bypass. Replaces the prior gate that trusted `x-bp-user-id` alone — which was forgeable because `GET /api/org/users` hands any anonymous caller every user's id + role, so knowing an admin UUID granted full read/write over the guestlist (PII) + welcome content/settings + Resend test-sends. The secret defangs that. **Residual (NOT closed here):** `GET /api/org/users` still returns `SELECT *` (incl. name/email/role) to anonymous callers — a v1-era dev-shim the v1 client depends on to self-identify (`users[0].id` → header) and that `user-context.js` audit attribution reads. It can't be hardened without breaking v1's identity bootstrap, and it's not part of the v2/welcome surface. The secret gate removes its value as an *escalation* vector; the remaining `users`-table PII exposure retires with v1 / at AUTH-01. | `server/src/middleware/admin.js`; consumed by `server/src/routes/adminMarketing.js`; residual at `server/src/index.js` (`GET /api/org/users`) + `server/src/services/user.service.js` (`getByOrg`) | 2026-06-18, interim welcome prod-gate fix | **Replace with v2 Supabase JWT auth at pV2-AUTH-01; MUST NOT remain past that ship.** At AUTH-01: delete the secret/header bypass in `admin.js` and gate `/api/admin/*` on the verified JWT subject + admin role; gate or scope `GET /api/org/users` so it no longer returns user PII to anonymous callers; retire `x-bp-user-id` everywhere it is still trusted. |
+| SUNSET-02 | **Dead `items` columns — `coverage_area` + `external_url`.** Two columns on `items` with no live consumers: (a) `coverage_area NUMERIC(10,2)` — the v1 numeric predecessor of `location_coverage TEXT` (STORE-FIELDS-01); ambiguous semantics, superseded, no readers left. (b) `external_url VARCHAR` — reserved v1 slot for an off-platform product link that never shipped; zero readers. Not urgent to drop, but they clutter the schema and confuse audits of "what does an item carry". | `server/src/db/migrate-schemas.js` `items` table + all three schemas (public / preview / master) | 2026-07-20, logged during item-attribute review (Liam) | **Drop in the next `items` migration touch** — combine with any STORE-FIELDS-03 or subsequent schema change; idempotent `DROP COLUMN IF EXISTS` across the three schemas. Verify no readers via grep first (`coverage_area`, `external_url`) — expected zero. No consumer changes required. |
 
 ## How to use this ledger
 
@@ -243,8 +312,10 @@ someday," they are load-bearing-until-X and a liability past X.
 | `client-v2/src/app/shared/catalogue/item-card.component.ts` | 286 | 250 warn / 400 alarm | Warning band (97 → 286 across STORE-01 — owner actions + confirm flows). Watch; if a 4th action lands, extract the action row. |
 | `client-v2/src/app/pages/marketplace/marketplace-store.ts` | 280 | 250 warn / 400 alarm | Warning band (owner/admin filters added). Watch. |
 | `server/src/services/item.service.js` | 293 | 200 warn / 350 alarm | Warning band (data-model + duplicate). Watch. |
+| `client-v2/src/app/pages/projects/project-estimate.component.ts` | 528 | 250 warn / 400 alarm | **ALARM** (pV2-BUILDUP-01, v2.65 audit MED-1). Regrew 444 → 528 as the Add/Explore host. Extract the reconcile diff into a util — **required before next touch** (the components / T&M build). |
+| `client-v2/src/app/pages/projects/custom-line-dialog.component.ts` | 398 | 250 warn / 400 alarm | **At ALARM** (pV2-BUILDUP-01, v2.65 audit MED-3). Rewritten as new/explore. Split into `new` / `explore` components — **required before next touch**. |
 
-**At Alarm:** none. (`profile.component.ts` resolved at v2.34u — 660 → 274.)
+**At Alarm:** `project-estimate.component.ts` (528, over) + `custom-line-dialog.component.ts` (398, at) — both pV2-BUILDUP-01; extractions accepted and queued for the components / T&M build (v2.65 architect audit MED-1 / MED-3). (`profile.component.ts` resolved at v2.34u — 660 → 274.)
 
 ## Bonus — styles.css
 

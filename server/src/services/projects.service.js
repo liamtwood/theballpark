@@ -661,6 +661,18 @@ async function addCustomItem(orgId, projectId, body) {
       `UPDATE project_items SET logical_line_id = id WHERE id = $1 AND logical_line_id IS NULL`,
       [rowId]
     );
+    // pV2-BUILDUP-01 (UI1): tag the line to the supplier it was added under
+    // (the add-in-context-of-supplier flow). Mirrors the catalogue add's
+    // source-supplier tick. Guarded to real supplier orgs; NULL = "to source".
+    if (body.supplierOrgId) {
+      await client.query(
+        `INSERT INTO project_item_suppliers (project_item_id, supplier_org_id)
+         SELECT $1, o.id FROM orgs o
+          WHERE o.id = $2 AND o.type = 'supplier'
+         ON CONFLICT (project_item_id, supplier_org_id) DO NOTHING`,
+        [rowId, body.supplierOrgId]
+      );
+    }
     return lineById(client, rowId);
   });
 }
