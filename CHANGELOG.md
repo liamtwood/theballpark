@@ -11,7 +11,30 @@ _Nothing pending — dev and preview are level._
 
 ---
 
-## ✅ On preview — currently `v2.61`
+## ✅ On preview — currently `v2.65`
+
+### v2.65 — 2026-08-25
+
+**Fixes**
+
+- pV2-BUILDUP-01 architect-audit remediation (MED-2, LOW-4) `76e67c46`
+
+**Chore**
+
+- regenerate What's new for promote — v2.62-v2.65 now on preview `d34da5b0`
+- bump staging chip for preview promote (pV2-BUILDUP-01) `f0ba121b`
+
+### v2.64 — 2026-08-25
+
+**Features**
+
+- pV2-BUILDUP-01 UI1 iteration — new/explore split + browse rail `7b73663f`
+
+### v2.63 — 2026-08-24
+
+**Features**
+
+- pV2-BUILDUP-01 UI1 — add supplier items to the quote (lookup + supplier context) `779acdc1`
 
 ### v2.61 — 2026-07-17
 
@@ -33,6 +56,7 @@ _Nothing pending — dev and preview are level._
 
 **Chore**
 
+- reconcile What's new after preview promote — dev and preview level `63df704f`
 - regenerate What's new for promote — v2.57-v2.61 now on preview `8f144bae`
 - bump staging chip for preview promote (inbox + About Project + What's new) `a88aeb88`
 
