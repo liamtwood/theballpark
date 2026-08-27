@@ -19,8 +19,10 @@ import {
   ChevronDown,
   ChevronRight,
   CircleUser,
+  FolderKanban,
   FolderOpen,
   FolderPlus,
+  Percent,
   Inbox,
   Rocket,
   Settings,
@@ -142,7 +144,7 @@ export const appConfig: ApplicationConfig = {
         // Shell + sandbox
         ChevronLeft, Rocket, Trash2,
         // pV2-04b home: cog, drawer close, launcher tiles, Back link
-        Settings, X, FolderPlus, FolderOpen, Inbox, Store, CircleUser, ArrowLeft,
+        Settings, X, FolderPlus, FolderOpen, FolderKanban, Percent, Inbox, Store, CircleUser, ArrowLeft,
         // Profile: section edit lifecycle
         SquarePen, Check, Lock,
         // v2.13a supplier sub-hubs: projects-hub stages + storefront trio

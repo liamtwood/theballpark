@@ -35,6 +35,15 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.93 (2026-08-27): always-present "Project" section + Contingency row
+- The Final Quote's uncategorised bucket is relabelled **"Project"** and is
+  **always shown** (even empty) — the home for the agent's own self-entered costs
+  (fees / legal), sorted last.
+- It carries a **Contingency** row: a **% of costs from the project**
+  (`bd().contingencyPct` / `bd().contingency`) — displayed, not an item, can't be
+  removed. No category creation / no schema change (chosen over free-text
+  categories "for now").
+
 ## Iteration — v2.92 (2026-08-27): custom agency lines aren't "sendable"
 - **Fix (regression from v2.90):** the supplier-name agency fallback had also
   moved into `supplier_id` (the LOGIC field), so an agent's own custom line

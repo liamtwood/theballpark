@@ -105,6 +105,18 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
 
               @if (isOpen(g.id)) {
                 <div class="border-t border-hairline">
+                  <!-- pV2-BUILDUP-04 — the Project section carries the project
+                       Contingency (a % of costs, not an item; can't be removed). -->
+                  @if (g.isProject) {
+                    <div class="flex items-center gap-3 border-b border-hairline px-3 py-3">
+                      <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="percent" [size]="22" /></span>
+                      <div class="min-w-0 flex-1">
+                        <span class="bp-list-title">Contingency</span>
+                        <div class="bp-meta mt-0.5">{{ bd().contingencyPct }}% of costs</div>
+                      </div>
+                      <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ bd().contingency | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                    </div>
+                  }
                   @for (sg of g.supplierGroups; track sg.supplierId) {
                     <!-- Thin supplier band grouping this category's items. -->
                     <div class="flex items-center gap-2 border-b border-hairline bg-fill px-3 py-2">
@@ -358,23 +370,39 @@ export class ProjectEstimateComponent {
   /** Top-level rows only (options are nested under their parent, not listed). */
   protected readonly topRows = computed(() => this.visibleRows().filter((l) => !l.optionOfLineId));
 
-  protected readonly groups = computed(() =>
-    groupByCategory(this.topRows()).map((g) => ({
-      ...g,
+  protected readonly groups = computed(() => {
+    const mapped = groupByCategory(this.topRows()).map((g) => {
+      // '__none' = the uncategorised bucket → the agent's "Project" section: the
+      // home for their own self-entered costs (fees, legal) + Contingency.
+      const isProject = g.id === '__none';
       // Declined/cancelled lines still show in the list but are excluded from
       // the category total (matches the server subtotal — pV2-INBOX-05). Each
       // line's picked options roll into its category total too (they're counted
       // server-side, so the cards must sum to the banner).
-      total: g.items.reduce(
+      const linesTotal = g.items.reduce(
         (s, l) => s + (isDeclined(l) ? 0 : lineCost(l))
           + this.optionsFor(l.id).reduce((s2, o) => s2 + (isDeclined(o) ? 0 : lineCost(o)), 0),
         0,
-      ),
-      iconName: g.items[0]?.categoryIconName ?? null,
-      // Expanded list: items grouped under a thin supplier band.
-      supplierGroups: bySupplier(g.items),
-    }))
-  );
+      );
+      return {
+        ...g,
+        name: isProject ? 'Project' : g.name,
+        isProject,
+        // The Project card also shows the project-level contingency amount.
+        total: linesTotal + (isProject ? this.bd().contingency : 0),
+        iconName: isProject ? 'folder-kanban' : (g.items[0]?.categoryIconName ?? null),
+        supplierGroups: bySupplier(g.items),
+      };
+    });
+    // Ensure the Project section always exists on the Final Quote — even empty,
+    // so contingency shows and the agent always has a place to add their costs.
+    if (this.isFinal() && !mapped.some((g) => g.isProject)) {
+      mapped.push({ id: '__none', name: 'Project', items: [], isProject: true,
+        total: this.bd().contingency, iconName: 'folder-kanban', supplierGroups: [] });
+    }
+    // Project section sorts last (it's the agency/overhead block).
+    return mapped.sort((a, b) => (a.isProject ? 1 : 0) - (b.isProject ? 1 : 0));
+  });
 
   // Track COLLAPSED categories (not expanded) so the default — and every new
   // category, and the state after a navigate-away-and-back — is EXPANDED. This
