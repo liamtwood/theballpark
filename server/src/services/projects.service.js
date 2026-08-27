@@ -401,6 +401,8 @@ function toQuoteLine(row) {
     optionOfLineId: row.option_of_line_id ?? null,
     // pV2-BUILDUP-04 — the line's extras (child component names), name-only.
     extras: row.extra_names ?? [],
+    // pV2-BUILDUP-04 — the line's Details free-text (markdown).
+    details: row.details ?? null,
   };
 }
 
@@ -421,7 +423,7 @@ const QUOTE_LINE_JOIN = `
          -- base_price / catalogue install. So the quote card matches the inbox.
          COALESCE(pi.price_current, pi.base_price)  AS base_price,
          pi.unit, pi.image_url, pi.quantity,
-         pi.option_of_line_id,
+         pi.option_of_line_id, pi.details,
          pi.installed, pi.logical_line_id, pi.created_at, pi.is_custom,
          pi.category_id, c.name AS category_name,
          c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url,
@@ -965,6 +967,7 @@ async function updateLineDetails(orgId, projectId, lineId, patch) {
   if (patch.name !== undefined)        { vals.push(patch.name);        sets.push(`name = $${vals.length}`); }
   if (patch.description !== undefined) { vals.push(patch.description); sets.push(`description = $${vals.length}`); }
   if (patch.services !== undefined)    { vals.push(patch.services);    sets.push(`install_description = $${vals.length}`); }
+  if (patch.details !== undefined)     { vals.push(patch.details);     sets.push(`details = $${vals.length}`); }
   if (!sets.length) return false;
   const r = await pool.query(
     `UPDATE project_items SET ${sets.join(', ')} WHERE id = $1 AND deleted_at IS NULL RETURNING id`,

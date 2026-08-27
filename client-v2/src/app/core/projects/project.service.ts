@@ -163,7 +163,7 @@ export class ProjectService {
    *  supplier records what they changed on the line. NOT lock-gated. */
   updateLineDetails(
     projectId: string, itemId: string,
-    body: { name?: string; description?: string | null; services?: string | null },
+    body: { name?: string; description?: string | null; services?: string | null; details?: string | null },
   ): Observable<QuoteLine> {
     return this.api.patch<QuoteLine>(`/api/projects-v2/${projectId}/items/${itemId}/details`, body);
   }

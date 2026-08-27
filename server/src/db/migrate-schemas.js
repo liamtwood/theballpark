@@ -2586,6 +2586,13 @@ const migrate = async () => {
     }
     console.log('  pV2-BUILDUP-03 column installed (project_items.option_of_line_id, all schemas).');
 
+    // ── pV2-BUILDUP-04 (Details) — a clean free-text (markdown) field on the
+    // line, like Description/Services. Nullable, additive.
+    for (const s of ['public', 'preview', 'master']) {
+      await client.query(`ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS details TEXT;`);
+    }
+    console.log('  pV2-BUILDUP-04 column installed (project_items.details, all schemas).');
+
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');
     console.log('   preview → run npm run db:seed:preview to populate');

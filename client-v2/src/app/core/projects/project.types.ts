@@ -82,6 +82,8 @@ export interface QuoteLine {
   optionOfLineId?: string | null;
   /** pV2-BUILDUP-04 — the line's extras (child component names), name-only. */
   extras?: string[];
+  /** pV2-BUILDUP-04 — the line's Details free-text (markdown). */
+  details?: string | null;
   /** The line's supplier default currency (ISO code) — e.g. 'GBP', 'USD'. */
   supplierCurrency?: string | null;
 }

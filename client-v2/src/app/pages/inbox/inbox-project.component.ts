@@ -15,6 +15,7 @@ import { TERMINAL_STATUSES, gbp } from './inbox-status';
 import { InboxRailComponent, RailOuter } from './inbox-rail.component';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { lineCost, quoteLineToCatalogueItem, quoteLineToRequestedItem } from '../projects/quote-line.util';
+import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
 import { ProjectService } from '../../core/projects/project.service';
 
@@ -29,7 +30,7 @@ import { ProjectService } from '../../core/projects/project.service';
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, FormsModule, LucideAngularModule, PageHeroComponent, InboxRailComponent, ItemPreviewComponent, CustomizeDialogComponent],
+  imports: [CurrencyPipe, DatePipe, FormsModule, LucideAngularModule, MarkdownPipe, PageHeroComponent, InboxRailComponent, ItemPreviewComponent, CustomizeDialogComponent],
   host: { '[class]': 'hostClass()' },
   template: `
     @if (!embedded()) {
@@ -183,8 +184,8 @@ import { ProjectService } from '../../core/projects/project.service';
                                   <span class="bp-body-small font-semibold tabular-nums text-text">{{ tot }}</span>
                                 }
                               </div>
-                              <textarea rows="4" class="bp-store-textarea mt-1 w-full" placeholder="• e.g. Wine Pairing 100@15"
-                                        [ngModel]="edExtrasText()" (ngModelChange)="edExtrasText.set($event)" (keydown.enter)="onExtrasEnter($event)" (blur)="onExtrasBlur()"></textarea>
+                              <textarea rows="4" class="bp-store-textarea mt-1 w-full" placeholder="Free text. **bold**, _italic_, - lists. A line like 'Wine 100@15' auto-totals."
+                                        [ngModel]="edExtrasText()" (ngModelChange)="edExtrasText.set($event)" (blur)="onExtrasBlur()"></textarea>
                             </div>
                             <div class="mt-4 flex gap-2.5 border-t border-hairline pt-4">
                               <button type="button" class="bp-btn-outline flex-1" (click)="cancelEdit()">Cancel</button>
@@ -196,19 +197,15 @@ import { ProjectService } from '../../core/projects/project.service';
                               <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName" [showStoreLink]="false" [showFromPrefix]="false"
                                                 closeIcon="chevron-up" closeLabel="Minimise"
                                                 (closed)="toggleAttachment(m.id, line.id)" />
-                              @if (line.extras?.length) {
+                              @if (line.details) {
                                 <div class="mt-3 border-t border-hairline pt-3">
                                   <div class="flex items-center justify-between gap-2">
                                     <span class="bp-field-label">Details</span>
-                                    @if (extrasTotalStr(line.extras, line.supplierCurrency); as tot) {
+                                    @if (extrasTotalStr(line.details.split('\n'), line.supplierCurrency); as tot) {
                                       <span class="bp-body-small font-semibold tabular-nums text-text">{{ tot }}</span>
                                     }
                                   </div>
-                                  <ul class="mt-1 space-y-0.5">
-                                    @for (ex of line.extras; track ex) {
-                                      <li class="bp-body-small text-secondary">• {{ ex }}</li>
-                                    }
-                                  </ul>
+                                  <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="line.details | md: 'heading'"></div>
                                 </div>
                               }
                             </div>
@@ -744,7 +741,7 @@ export class InboxProjectComponent {
     this.edDesc.set(line.description ?? '');
     this.edServices.set(line.installDescription ?? '');
     this.edPrice.set(line.basePrice ?? null);
-    this.edExtrasText.set(line.extras?.length ? line.extras.map((e) => `• ${e}`).join('\n') : '• ');
+    this.edExtrasText.set(line.details ?? '');
     this.editingLine.set(line);
   }
   protected cancelEdit(): void {
@@ -755,22 +752,15 @@ export class InboxProjectComponent {
     if (!line || this.savingDetails()) return;
     this.savingDetails.set(true);
     try {
-      // Save the text (name / description / Services).
+      // Recompute any "qty@price" in Details so the saved text carries totals.
+      const detailsText = this.edExtrasText().split('\n').map((l) => this.calcExtraLine(l)).join('\n').trim();
+      // Save the text fields (name / description / Services / Details) in one PATCH.
       await firstValueFrom(this.projects.updateLineDetails(this.projectId(), line.id, {
         name: this.edName().trim() || undefined,
         description: this.edDesc().trim() || null,
         services: this.edServices().trim() || null,
+        details: detailsText || null,
       }));
-      // Save the Details list as name-only child components (reconcile: add new,
-      // drop removed). Only when there's something to sync (skip an empty no-op).
-      const extras = this.parseExtras(this.edExtrasText());
-      if (extras.length || (line.extras?.length ?? 0) > 0) {
-        await firstValueFrom(this.projects.saveComponents(
-          this.projectId(), line.id,
-          extras.map((name) => ({ categoryId: null, name, cost: null, unit: null, quantity: 1, kind: 'component', included: true })),
-          null, null,
-        ));
-      }
       // If they also changed the PRICE, fire the same "New Cost Suggested"
       // proposal as the propose flow (posts the chat line + sets price_current).
       const oldRate = line.basePrice ?? 0;

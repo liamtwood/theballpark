@@ -283,9 +283,10 @@ const LineDetailsSchema = z
     name: z.string().trim().min(1).max(200).optional(),
     description: z.string().max(4000).nullish(),
     services: z.string().max(4000).nullish(),
+    details: z.string().max(8000).nullish(),
   })
-  .refine((b) => b.name !== undefined || b.description !== undefined || b.services !== undefined, {
-    message: 'name, description or services is required',
+  .refine((b) => b.name !== undefined || b.description !== undefined || b.services !== undefined || b.details !== undefined, {
+    message: 'name, description, services or details is required',
   });
 router.patch('/:id/items/:itemId/details', async (req, res, next) => {
   try {

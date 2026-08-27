@@ -35,6 +35,17 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.85 (2026-08-27): Details is a clean markdown text field (was forced-bullet components)
+- Details no longer forces bullets or splits into components. It's now a **clean
+  free-text field** like Description — new nullable `project_items.details` (all
+  3 schemas, in migrate-schemas.js), saved via `updateLineDetails`.
+- Read-only renders via the MarkdownPipe in **heading mode** (a non-bulleted line
+  = bold sub-heading, so `Catering` / `Extras` headings + `- ` bullets read as an
+  outline — the category structure, purely as text). Header total + `qty@price`
+  calc still work (recompute on blur/save; totals baked into the saved text).
+- Note: previously-saved component "extras" don't render here anymore (moved to
+  the text field); re-enter as text.
+
 ## Iteration — v2.84 (2026-08-27): markdown rendering + comma totals
 - New shared **`MarkdownPipe`** (`| md`) — a SAFE bold/italic/list subset
   (escapes first, emits only strong/em/ul/li/p; no bypassSecurityTrust). Wired
