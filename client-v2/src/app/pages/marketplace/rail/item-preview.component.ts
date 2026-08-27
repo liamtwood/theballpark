@@ -65,7 +65,7 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
     <div class="mt-3 flex items-baseline gap-1.5">
       @if (editable() && priceEditable()) {
         <span class="bp-price-large">£</span>
-        <input type="number" min="0" step="1" class="bp-input-field bp-price-large w-28" placeholder="0"
+        <input type="number" min="0" max="999999" step="1" class="bp-input-field bp-price-large w-24" placeholder="0"
                [ngModel]="item().basePrice" (ngModelChange)="priceChange.emit($event)" (click)="$event.stopPropagation()" />
         @if (item().unit) {
           <span class="bp-meta">/ {{ item().unit }}</span>
