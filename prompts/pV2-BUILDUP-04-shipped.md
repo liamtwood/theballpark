@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.81 (2026-08-27): Details header shows a running total
+- The Details header now shows a **total on the right**, but **only when lines
+  carry costs** (sum of each line's trailing "= <total>", incl. manual ones like
+  "fridge = £150"). Live in the editor (recomputes as you type), and on the
+  read-only card. Symbol follows the **lines' own sign**, falling back to the
+  supplier currency for unsigned entries.
+
 ## Iteration — v2.80 (2026-08-27): Details calc defaults to the SUPPLIER currency
 - An unsigned "qty@price" defaults the total's symbol to the **line's supplier
   currency** (`orgs.default_currency`), falling back to the project currency,

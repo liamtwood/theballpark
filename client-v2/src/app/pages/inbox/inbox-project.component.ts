@@ -177,8 +177,13 @@ import { ProjectService } from '../../core/projects/project.service';
                             <!-- Details — bulleted extras saved as name-only child
                                  components. Enter adds a bullet; "qty@price" auto-totals. -->
                             <div class="mt-3 border-t border-hairline pt-3">
-                              <span class="bp-field-label">Details</span>
-                              <textarea rows="4" class="bp-store-textarea mt-1 w-full" placeholder="• e.g. Wine Pairing 100@£15"
+                              <div class="flex items-center justify-between gap-2">
+                                <span class="bp-field-label">Details</span>
+                                @if (edExtrasTotalStr(); as tot) {
+                                  <span class="bp-body-small font-semibold tabular-nums text-text">{{ tot }}</span>
+                                }
+                              </div>
+                              <textarea rows="4" class="bp-store-textarea mt-1 w-full" placeholder="• e.g. Wine Pairing 100@15"
                                         [ngModel]="edExtrasText()" (ngModelChange)="edExtrasText.set($event)" (keydown.enter)="onExtrasEnter($event)"></textarea>
                             </div>
                             <div class="mt-4 flex gap-2.5 border-t border-hairline pt-4">
@@ -193,7 +198,12 @@ import { ProjectService } from '../../core/projects/project.service';
                                                 (closed)="toggleAttachment(m.id, line.id)" />
                               @if (line.extras?.length) {
                                 <div class="mt-3 border-t border-hairline pt-3">
-                                  <span class="bp-field-label">Details</span>
+                                  <div class="flex items-center justify-between gap-2">
+                                    <span class="bp-field-label">Details</span>
+                                    @if (extrasTotalStr(line.extras, line.supplierCurrency); as tot) {
+                                      <span class="bp-body-small font-semibold tabular-nums text-text">{{ tot }}</span>
+                                    }
+                                  </div>
                                   <ul class="mt-1 space-y-0.5">
                                     @for (ex of line.extras; track ex) {
                                       <li class="bp-body-small text-secondary">• {{ ex }}</li>
@@ -677,6 +687,34 @@ export class InboxProjectComponent {
       .map((l) => this.calcExtraLine(l.replace(/^\s*[•\-*]\s*/, '').trim()).trim())
       .filter((l) => l.length > 0);
   }
+  /** Sum the trailing "= <total>" on each Details line + the sign the lines use
+   *  (so the header total matches the lines, not the supplier default). */
+  private extrasTotalOf(lines: string[]): { sum: number; sym: string | null } {
+    let sum = 0;
+    let sym: string | null = null;
+    for (const l of lines) {
+      const m = this.calcExtraLine(l).match(/=\s*([$£€¥]?)\s*(\d+(?:\.\d+)?)\s*$/);
+      if (m) {
+        sum += Number(m[2]);
+        if (!sym && m[1]) sym = m[1];
+      }
+    }
+    return { sum, sym };
+  }
+  private withCommas(n: number): string {
+    const s = String(Math.round(n * 100) / 100);
+    const [int, dec] = s.split('.');
+    return int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (dec ? '.' + dec : '');
+  }
+  /** Formatted Details total ("$3,000") for a set of lines, or '' when there are
+   *  no costs — so the header total only shows once costs are added. */
+  protected extrasTotalStr(lines: string[] | undefined, code?: string | null): string {
+    const { sum, sym } = this.extrasTotalOf(lines ?? []);
+    return sum > 0 ? (sym || this.currencySymbol(code)) + this.withCommas(sum) : '';
+  }
+  /** Live Details total for the editor (recomputes as they type). */
+  protected readonly edExtrasTotalStr = computed(() =>
+    this.extrasTotalStr(this.edExtrasText().split('\n'), this.editingLine()?.supplierCurrency));
   /** The line as the editable card's CatalogueItem, overlaid with the in-progress edits. */
   protected readonly editPreviewItem = computed<CatalogueItem | null>(() => {
     const l = this.editingLine();
