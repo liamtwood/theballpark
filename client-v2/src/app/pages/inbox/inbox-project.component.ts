@@ -142,26 +142,9 @@ import { ProjectService } from '../../core/projects/project.service';
                     <div class="w-80 max-w-full" [class.self-end]="m.mine">
                       @if (isAttachmentOpen(m.id, line.id)) {
                         <div class="bp-card p-4">
-                          @if (isEditingLine(line)) {
-                            <!-- Inline edit: the supplier records what changed
-                                 (Description + Services), Save/Cancel at the bottom. -->
-                            @if (editPreviewItem(); as pi) {
-                              <app-item-preview [item]="pi" [categoryName]="line.categoryName" [editable]="true"
-                                                closeIcon="chevron-up" closeLabel="Minimise" (closed)="toggleAttachment(m.id, line.id)"
-                                                (nameChange)="edName.set($event)" (descChange)="edDesc.set($event)" (servicesChange)="edServices.set($event)" />
-                            }
-                            <div class="mt-4 flex gap-2.5 border-t border-hairline pt-4">
-                              <button type="button" class="bp-btn-outline flex-1" (click)="cancelEdit()">Cancel</button>
-                              <button type="button" class="bp-btn-grad flex-1" [disabled]="savingDetails()" (click)="saveDetails()">{{ savingDetails() ? 'Saving…' : 'Save' }}</button>
-                            </div>
-                          } @else {
-                            <!-- Read-only; the supplier clicks the card to edit it. -->
-                            <div [class.cursor-pointer]="!isAgency()" [attr.title]="isAgency() ? null : 'Click to edit description & services'" (click)="beginEdit(line)">
-                              <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName"
-                                                closeIcon="chevron-up" closeLabel="Minimise"
-                                                (closed)="toggleAttachment(m.id, line.id)" />
-                            </div>
-                          }
+                          <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName"
+                                            closeIcon="chevron-up" closeLabel="Minimise"
+                                            (closed)="toggleAttachment(m.id, line.id)" />
                         </div>
                       } @else {
                         <button type="button"
@@ -181,9 +164,27 @@ import { ProjectService } from '../../core/projects/project.service';
                     <div class="w-80 max-w-full" [class.self-end]="m.mine">
                       @if (isAttachmentOpen(m.id, line.id)) {
                         <div class="bp-card p-4">
-                          <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName"
-                                            closeIcon="chevron-up" closeLabel="Minimise"
-                                            (closed)="toggleAttachment(m.id, line.id)" />
+                          @if (isEditingLine(line)) {
+                            <!-- Inline edit: the supplier records what changed on
+                                 the revised item (Description + Services), Save/
+                                 Cancel at the bottom. -->
+                            @if (editPreviewItem(); as pi) {
+                              <app-item-preview [item]="pi" [categoryName]="line.categoryName" [editable]="true"
+                                                closeIcon="chevron-up" closeLabel="Minimise" (closed)="toggleAttachment(m.id, line.id)"
+                                                (nameChange)="edName.set($event)" (descChange)="edDesc.set($event)" (servicesChange)="edServices.set($event)" />
+                            }
+                            <div class="mt-4 flex gap-2.5 border-t border-hairline pt-4">
+                              <button type="button" class="bp-btn-outline flex-1" (click)="cancelEdit()">Cancel</button>
+                              <button type="button" class="bp-btn-grad flex-1" [disabled]="savingDetails()" (click)="saveDetails()">{{ savingDetails() ? 'Saving…' : 'Save' }}</button>
+                            </div>
+                          } @else {
+                            <!-- Read-only; the supplier clicks the revised card to edit it. -->
+                            <div [class.cursor-pointer]="!isAgency()" [attr.title]="isAgency() ? null : 'Click to edit description & services'" (click)="beginEdit(line)">
+                              <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName"
+                                                closeIcon="chevron-up" closeLabel="Minimise"
+                                                (closed)="toggleAttachment(m.id, line.id)" />
+                            </div>
+                          }
                         </div>
                       } @else {
                         <button type="button"

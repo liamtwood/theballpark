@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.70 (2026-08-27): click-to-edit on the REVISED card, not the original
+- Moved the inline click-to-edit from the brief "original item" card to the
+  **Revised item** card (Liam: "click to edit the revised not the original").
+  The revised item is what the supplier changed, so that's the one they annotate.
+- Original/brief card is back to read-only; the Revised card is read-only until
+  the supplier clicks it → editable (Description/Services/Name) + Save/Cancel.
+
 ## Iteration — v2.69 (2026-08-27): edit inline in the conversation, not a button
 - Replaced the "Edit item" button + separate editor pane with **inline
   edit-in-place** on the item card in the conversation (Liam: "I was thinking we
