@@ -34,5 +34,12 @@ Customize screen.
 ## Notes
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
+
+## Iteration — v2.68 (2026-08-27)
+- **Revised item card is now show/hide collapsible**, same pattern as the brief
+  "original item" attachment: collapsed = paperclip + name + a muted "Revised"
+  pill + chevron; expands in place to the item-preview (minimise chevron).
+  Defaults collapsed; independent toggle from the original (different message id,
+  same `toggleAttachment(messageId, lineId)` key).
 - Name is editable because the shared card exposes it; can be locked to
   description+Services only if wanted.

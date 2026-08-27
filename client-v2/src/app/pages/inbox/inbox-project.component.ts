@@ -185,15 +185,27 @@ import { ProjectService } from '../../core/projects/project.service';
                       }
                     </div>
                   }
-                  <!-- Revised item card delivered with a "New Cost" message. -->
+                  <!-- Revised item card delivered with a "New Cost" message —
+                       show/hide collapsible, same pattern as the brief
+                       attachment above (independent toggle: different message id). -->
                   @for (line of proposalCardsFor(m); track line.id) {
                     <div class="w-80 max-w-full" [class.self-end]="m.mine">
-                      <div class="bp-card p-4">
-                        <span class="bp-field-label">Revised item</span>
-                        <div class="mt-2">
-                          <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName" closeIcon="x" closeLabel="Close" />
+                      @if (isAttachmentOpen(m.id, line.id)) {
+                        <div class="bp-card p-4">
+                          <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName"
+                                            closeIcon="chevron-up" closeLabel="Minimise"
+                                            (closed)="toggleAttachment(m.id, line.id)" />
                         </div>
-                      </div>
+                      } @else {
+                        <button type="button"
+                                class="flex w-full items-center gap-2 rounded-[var(--radius-card)] border border-hairline bg-surface px-3 py-2.5 text-left shadow-[var(--shadow-xs)] transition-colors hover:bg-fill"
+                                (click)="toggleAttachment(m.id, line.id)">
+                          <lucide-icon name="paperclip" [size]="14" class="shrink-0 text-muted" />
+                          <span class="bp-list-title min-w-0 flex-1 truncate">{{ line.name }}</span>
+                          <span class="bp-pill bp-pill--muted shrink-0">Revised</span>
+                          <lucide-icon name="chevron-down" [size]="15" class="shrink-0 text-muted" />
+                        </button>
+                      }
                     </div>
                   }
                 }
