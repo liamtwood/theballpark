@@ -177,6 +177,8 @@ function toDetail(row) {
     // Financial defaults for the Estimate tab breakdown (v1 formula).
     defaultMarginPct: row.default_margin_pct === null ? null : Number(row.default_margin_pct),
     defaultContingencyPct: row.default_contingency_pct === null ? null : Number(row.default_contingency_pct),
+    defaultInsurancePct: row.default_insurance_pct == null ? null : Number(row.default_insurance_pct),
+    defaultInsuranceAmount: row.default_insurance_amount == null ? null : Number(row.default_insurance_amount),
     defaultVatPct: row.default_vat_pct === null ? null : Number(row.default_vat_pct),
     eventName: row.event_name,
     clientName: row.client_name ?? null,
@@ -229,6 +231,8 @@ const EDITABLE = {
   tier: 'tier',
   defaultMarginPct: 'default_margin_pct',
   defaultContingencyPct: 'default_contingency_pct',
+  defaultInsurancePct: 'default_insurance_pct',
+  defaultInsuranceAmount: 'default_insurance_amount',
   defaultVatPct: 'default_vat_pct',
   // Media (pV2-MEDIA-01b) — the picker result maps here.
   coverImageUrl: 'cover_image_url',

@@ -35,6 +35,24 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.98 (2026-08-27): Contingency / Insurance / Margin are editable inline
+- The three Coverage rates are now **editable inline** with a control **visually
+  identical to the quantity stepper** (Liam: "make the entry field identical to
+  the count number") — new `RateInputComponent` reuses the `.bp-qty-stepper` /
+  `.bp-qty-step` / `.bp-qty-input` chrome but allows **0 and decimals** (rates,
+  not counts), commits on blur/Enter and on each −/+ press.
+- **Contingency** edits `defaultContingencyPct`. **Margin** edits
+  `defaultMarginPct` — and its stepper only appears **when the eye reveals** the
+  row (hidden otherwise, so a client never sees it). **Insurance** edits the
+  **active mode**: a % if one is set (`defaultInsurancePct`), else the fixed £
+  (`defaultInsuranceAmount`, £50 steps).
+- Persist → `PUT /api/projects-v2/:id` then **reload the server cascade**, so
+  every total (and the project card) recomputes from the source of truth.
+- Server: `ProjectUpdateSchema` + the `EDITABLE` map + `toDetail` now carry
+  `defaultInsurancePct` / `defaultInsuranceAmount`; client `ProjectDetail` /
+  `ProjectUpdate` gain the same two fields. (Columns already existed — no schema
+  change.) Clears the v2.95 TODO (insurance had been DB-only).
+
 ## Iteration — v2.97 (2026-08-27): Coverage margin row reads "Other", details hidden until the eye
 - The Coverage card's margin row now shows just **"Other"** with **no
   description** by default (Liam: it shouldn't read "Margin" / "20% — already in

@@ -5,10 +5,11 @@ import { MessageService } from 'primeng/api';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
-import { EstimateBreakdown, ProjectDetail, QuoteLine, groupByCategory } from '../../core/projects/project.types';
+import { EstimateBreakdown, ProjectDetail, ProjectUpdate, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
 import { editable, hasInstall, isDeclined, isInstalled, lineCost } from './quote-line.util';
 import { EstimateItemRowComponent } from './estimate-item-row.component';
+import { RateInputComponent } from './rate-input.component';
 import { InboxService, OutreachRosterEntry } from '../../core/inbox/inbox.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { MessageSuppliersDialogComponent, MsgSupplierCategory } from './message-suppliers-dialog.component';
@@ -52,7 +53,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
   selector: 'app-project-estimate',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CurrencyPipe, LucideAngularModule, MessageSuppliersDialogComponent, EstimateItemRowComponent,
+    CurrencyPipe, LucideAngularModule, MessageSuppliersDialogComponent, EstimateItemRowComponent, RateInputComponent,
     ProjectSummaryTilesComponent, EstimateBreakdownComponent, EstimatePreviewRailComponent, CustomLineDialogComponent,
     OptionsPickerComponent,
   ],
@@ -118,16 +119,21 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="percent" [size]="22" /></span>
                       <div class="min-w-0 flex-1">
                         <span class="bp-list-title">Contingency</span>
-                        <div class="bp-meta mt-0.5">{{ bd().contingencyPct }}% of costs</div>
+                        <div class="bp-meta mt-0.5">% of project costs</div>
                       </div>
+                      <app-rate-input class="shrink-0" [value]="bd().contingencyPct" label="contingency percent"
+                                      (rateCommit)="saveRate({ defaultContingencyPct: $event })" (click)="$event.stopPropagation()" />
                       <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ bd().contingency | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
                     <div class="flex items-center gap-3 border-b border-hairline px-3 py-3">
                       <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="percent" [size]="22" /></span>
                       <div class="min-w-0 flex-1">
                         <span class="bp-list-title">Insurance</span>
-                        <div class="bp-meta mt-0.5">@if (bd().insurancePct > 0) { {{ bd().insurancePct }}% of costs } @else if (bd().insurance > 0) { fixed } @else { not set }</div>
+                        <div class="bp-meta mt-0.5">@if (bd().insurancePct > 0) { % of project costs } @else { fixed amount }</div>
                       </div>
+                      <app-rate-input class="shrink-0" [value]="bd().insurancePct > 0 ? bd().insurancePct : bd().insurance"
+                                      [stepBy]="bd().insurancePct > 0 ? 1 : 50" label="insurance"
+                                      (rateCommit)="onInsuranceChange($event)" (click)="$event.stopPropagation()" />
                       <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ bd().insurance | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
                     <!-- Margin — a reference row: the silent markup already baked
@@ -146,9 +152,13 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                           </button>
                         </span>
                         @if (showMargin()) {
-                          <div class="bp-meta mt-0.5">Margin {{ bd().marginPct }}% — already in Project Costs</div>
+                          <div class="bp-meta mt-0.5">Margin % — already in Project Costs</div>
                         }
                       </div>
+                      @if (showMargin()) {
+                        <app-rate-input class="shrink-0" [value]="bd().marginPct" label="margin percent"
+                                        (rateCommit)="saveRate({ defaultMarginPct: $event })" (click)="$event.stopPropagation()" />
+                      }
                       <span class="bp-body-small w-20 shrink-0 text-right tabular-nums">{{ showMargin() ? (bd().marginAmount | currency: cur() : 'symbol' : '1.0-0') : '••••' }}</span>
                     </div>
                   }
@@ -319,6 +329,24 @@ export class ProjectEstimateComponent {
   protected onLineChanged(): void {
     this.lines.reload();
     this.est.reload();
+  }
+
+  /** Persist an edited Coverage rate (contingency / insurance / margin) to the
+   *  project defaults, then reload the server cascade so every total (and the
+   *  project card) recomputes. Optimism isn't worth it — the rate flows through
+   *  the whole cascade, so we just reload from the source of truth. */
+  protected async saveRate(patch: ProjectUpdate): Promise<void> {
+    try {
+      await firstValueFrom(this.projects.update(this.projectId(), patch));
+      this.est.reload();
+    } catch (err) {
+      this.toast.add({ severity: 'error', summary: "Couldn't save the rate — please try again.", detail: errorDetail(err), life: 4000 });
+    }
+  }
+  /** Insurance edits the ACTIVE mode: a % if one is set, else the fixed £. */
+  protected onInsuranceChange(v: number): void {
+    if (this.bd().insurancePct > 0) this.saveRate({ defaultInsurancePct: v });
+    else this.saveRate({ defaultInsuranceAmount: v });
   }
   protected selectLine(l: QuoteLine): void {
     this.selectedItemId.set(l.id);
