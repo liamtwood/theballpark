@@ -185,7 +185,7 @@ import { ProjectService } from '../../core/projects/project.service';
                                 }
                               </div>
                               <textarea rows="4" class="bp-store-textarea mt-1 w-full" placeholder="Free text. **bold**, _italic_, - lists. A line like 'Wine 100@15' auto-totals."
-                                        [ngModel]="edExtrasText()" (ngModelChange)="edExtrasText.set($event)" (blur)="onExtrasBlur()"></textarea>
+                                        [ngModel]="edExtrasText()" (ngModelChange)="edExtrasText.set($event)" (keydown.enter)="onExtrasEnter($event)" (blur)="onExtrasBlur()"></textarea>
                             </div>
                             <div class="mt-4 flex gap-2.5 border-t border-hairline pt-4">
                               <button type="button" class="bp-btn-outline flex-1" (click)="cancelEdit()">Cancel</button>
@@ -681,12 +681,13 @@ export class InboxProjectComponent {
     const recalced = this.edExtrasText().split('\n').map((l) => this.calcExtraLine(l)).join('\n');
     if (recalced !== this.edExtrasText()) this.edExtrasText.set(recalced);
   }
-  /** Enter in the extras box: finalise every line (run the calc) and start a
-   *  fresh bulleted line. Bullets are literal "• " prefixes, stripped on save. */
+  /** Enter in the Details box: finalise every line (run the qty@price / N×M
+   *  calc) then start a plain new line — no forced bullets. Gives immediate calc
+   *  feedback; blur covers lines finished without an Enter. */
   protected onExtrasEnter(ev: Event): void {
     ev.preventDefault();
     const finalised = this.edExtrasText().split('\n').map((l) => this.calcExtraLine(l));
-    this.edExtrasText.set(finalised.join('\n') + '\n• ');
+    this.edExtrasText.set(finalised.join('\n') + '\n');
   }
   /** Parse the extras textarea into clean component names (strip bullets, run
    *  the calc for lines the user didn't Enter through, drop blanks). */
