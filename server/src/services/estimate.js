@@ -11,6 +11,7 @@
 // the card and the Estimate tab can never drift. Keep the formula ONLY here.
 
 const DEFAULT_CONTINGENCY_PCT = 10;
+const DEFAULT_INSURANCE_PCT = 0; // opt-in; 0 leaves existing totals unchanged
 const DEFAULT_MARGIN_PCT = 20;
 const DEFAULT_VAT_PCT = 20;
 
@@ -30,11 +31,15 @@ function computeEstimate(subtotal, rates = {}) {
   const sub = Number(subtotal);
   const base = Number.isFinite(sub) && sub > 0 ? sub : 0;
   const contingencyPct = rateOr(rates.contingencyPct, DEFAULT_CONTINGENCY_PCT);
+  const insurancePct = rateOr(rates.insurancePct, DEFAULT_INSURANCE_PCT);
   const marginPct = rateOr(rates.marginPct, DEFAULT_MARGIN_PCT);
   const vatPct = rateOr(rates.vatPct, DEFAULT_VAT_PCT);
 
+  // Contingency + insurance are both % of the subtotal (matches the SOW: costs
+  // ex → +contingency +insurance → inc).
   const contingency = base * (contingencyPct / 100);
-  const ourCost = base + contingency;
+  const insurance = base * (insurancePct / 100);
+  const ourCost = base + contingency + insurance;
   const marginAmount = ourCost * (marginPct / 100);
   const preVat = ourCost + marginAmount;
   const vatAmount = preVat * (vatPct / 100);
@@ -43,9 +48,11 @@ function computeEstimate(subtotal, rates = {}) {
   return {
     subtotal: base,
     contingencyPct,
+    insurancePct,
     marginPct,
     vatPct,
     contingency,
+    insurance,
     ourCost,
     marginAmount,
     vatAmount,
@@ -56,6 +63,7 @@ function computeEstimate(subtotal, rates = {}) {
 module.exports = {
   computeEstimate,
   DEFAULT_CONTINGENCY_PCT,
+  DEFAULT_INSURANCE_PCT,
   DEFAULT_MARGIN_PCT,
   DEFAULT_VAT_PCT,
 };

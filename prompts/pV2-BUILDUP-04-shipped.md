@@ -35,6 +35,16 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.94 (2026-08-27): Insurance (below Contingency) in the cascade
+- New **`default_insurance_pct`** on projects + orgs (all schemas, in
+  migrate-schemas.js; house default **0** so existing totals are unchanged).
+- **estimate.js cascade** now applies insurance beside contingency:
+  `ourCost = subtotal + contingency + insurance` (both % of subtotal, matching
+  the SOW's costs-ex → +contingency +insurance → costs-inc). Breakdown gains
+  `insurancePct` / `insurance`.
+- Displayed **below Contingency** in the Project section + in the breakdown table
+  (breakdown row only when > 0). Apple set to 2% for the demo.
+
 ## Iteration — v2.93 (2026-08-27): always-present "Project" section + Contingency row
 - The Final Quote's uncategorised bucket is relabelled **"Project"** and is
   **always shown** (even empty) — the home for the agent's own self-entered costs

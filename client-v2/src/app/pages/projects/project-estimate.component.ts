@@ -116,6 +116,14 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       </div>
                       <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ bd().contingency | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
+                    <div class="flex items-center gap-3 border-b border-hairline px-3 py-3">
+                      <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="percent" [size]="22" /></span>
+                      <div class="min-w-0 flex-1">
+                        <span class="bp-list-title">Insurance</span>
+                        <div class="bp-meta mt-0.5">{{ bd().insurancePct }}% of costs</div>
+                      </div>
+                      <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ bd().insurance | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                    </div>
                   }
                   @for (sg of g.supplierGroups; track sg.supplierId) {
                     <!-- Thin supplier band grouping this category's items. -->
@@ -388,8 +396,8 @@ export class ProjectEstimateComponent {
         ...g,
         name: isProject ? 'Project' : g.name,
         isProject,
-        // The Project card also shows the project-level contingency amount.
-        total: linesTotal + (isProject ? this.bd().contingency : 0),
+        // The Project card also shows the project-level contingency + insurance.
+        total: linesTotal + (isProject ? this.bd().contingency + this.bd().insurance : 0),
         iconName: isProject ? 'folder-kanban' : (g.items[0]?.categoryIconName ?? null),
         supplierGroups: bySupplier(g.items),
       };
@@ -398,7 +406,7 @@ export class ProjectEstimateComponent {
     // so contingency shows and the agent always has a place to add their costs.
     if (this.isFinal() && !mapped.some((g) => g.isProject)) {
       mapped.push({ id: '__none', name: 'Project', items: [], isProject: true,
-        total: this.bd().contingency, iconName: 'folder-kanban', supplierGroups: [] });
+        total: this.bd().contingency + this.bd().insurance, iconName: 'folder-kanban', supplierGroups: [] });
     }
     // Project section sorts last (it's the agency/overhead block).
     return mapped.sort((a, b) => (a.isProject ? 1 : 0) - (b.isProject ? 1 : 0));
@@ -460,9 +468,11 @@ export class ProjectEstimateComponent {
     return {
       subtotal: 0,
       contingencyPct: this.project().defaultContingencyPct ?? 10,
+      insurancePct: 0,
       marginPct: this.project().defaultMarginPct ?? 20,
       vatPct: this.project().defaultVatPct ?? 20,
       contingency: 0,
+      insurance: 0,
       ourCost: 0,
       marginAmount: 0,
       vatAmount: 0,

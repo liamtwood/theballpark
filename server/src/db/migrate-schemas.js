@@ -2590,8 +2590,11 @@ const migrate = async () => {
     // line, like Description/Services. Nullable, additive.
     for (const s of ['public', 'preview', 'master']) {
       await client.query(`ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS details TEXT;`);
+      // Insurance % (like contingency) — a cost add-on. Defaults 0 (house).
+      await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS default_insurance_pct NUMERIC(5,2);`);
+      await client.query(`ALTER TABLE ${s}.orgs     ADD COLUMN IF NOT EXISTS default_insurance_pct NUMERIC(5,2);`);
     }
-    console.log('  pV2-BUILDUP-04 column installed (project_items.details, all schemas).');
+    console.log('  pV2-BUILDUP-04 columns installed (project_items.details, projects/orgs.default_insurance_pct, all schemas).');
 
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');

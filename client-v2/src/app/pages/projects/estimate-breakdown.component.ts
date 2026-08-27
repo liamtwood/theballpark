@@ -17,6 +17,9 @@ import { EstimateBreakdown } from '../../core/projects/project.types';
       @if (bd().contingencyPct > 0) {
         <div class="flex justify-between bp-body-small text-secondary"><span>Contingency ({{ bd().contingencyPct }}%)</span><span>{{ bd().contingency | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
       }
+      @if (bd().insurancePct > 0) {
+        <div class="flex justify-between bp-body-small text-secondary"><span>Insurance ({{ bd().insurancePct }}%)</span><span>{{ bd().insurance | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
+      }
     </div>
     <div class="mt-3 flex items-baseline justify-between border-t border-hairline pt-3">
       <span class="bp-field-label">Your cost</span>
