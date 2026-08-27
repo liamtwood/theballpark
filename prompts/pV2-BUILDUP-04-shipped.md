@@ -35,6 +35,15 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.84 (2026-08-27): markdown rendering + comma totals
+- New shared **`MarkdownPipe`** (`| md`) — a SAFE bold/italic/list subset
+  (escapes first, emits only strong/em/ul/li/p; no bypassSecurityTrust). Wired
+  into `item-preview` Description + Services, so formatting renders wherever the
+  card shows (inbox, estimate rail, marketplace rail). `heading` mode renders a
+  non-bulleted line as a bold sub-heading (for the coming Details categories).
+- Details calc totals now use **thousands separators** (`= £18,000`); the header
+  total + parser handle commas.
+
 ## Iteration — v2.83 (2026-08-27): recalc a line on blur (edited operand)
 - Editing an operand (e.g. `100x2` → `100x3`) left the "= total" stale until
   Enter/Save. The textarea now recomputes every line on **blur**, so leaving the

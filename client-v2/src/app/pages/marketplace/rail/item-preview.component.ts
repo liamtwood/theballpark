@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
+import { MarkdownPipe } from '../../../shared/markdown.pipe';
 
 /** pV2-06b — the rail's ITEM mode: image, name, supplier, price + unit,
  *  category context, full description. Pure preview over the already-
@@ -13,7 +14,7 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
 @Component({
   selector: 'app-item-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, FormsModule, RouterLink, LucideAngularModule],
+  imports: [CurrencyPipe, FormsModule, RouterLink, LucideAngularModule, MarkdownPipe],
   host: { class: 'block' },
   template: `
     <div class="mb-3 flex items-start justify-between gap-2">
@@ -105,7 +106,7 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
     } @else if (item().description) {
       <div class="mt-3 border-t border-hairline pt-3">
         <span class="bp-field-label">Description</span>
-        <p class="bp-body-small mt-1 whitespace-pre-line text-secondary">{{ item().description }}</p>
+        <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="item().description | md"></div>
       </div>
     }
 
@@ -117,7 +118,7 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
     } @else if (item().installDescription) {
       <div class="mt-3 border-t border-hairline pt-3">
         <span class="bp-field-label">Services</span>
-        <p class="bp-body-small mt-1 whitespace-pre-line text-secondary">{{ item().installDescription }}</p>
+        <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="item().installDescription | md"></div>
       </div>
     }
   `,

@@ -670,7 +670,7 @@ export class InboxProjectComponent {
     const total = Number(m[2]) * Number(m[4]);
     if (!Number.isFinite(total)) return line;
     const sym = m[1] || m[3] || this.currencySymbol(this.editingLine()?.supplierCurrency); // their sign, else supplier currency
-    const totalStr = total % 1 === 0 ? String(total) : total.toFixed(2);
+    const totalStr = this.withCommas(total); // thousands separators, e.g. 18,000
     // Drop only a trailing "= <result>" (a bare number) — never the expression,
     // so "fridge = 150x2" keeps its "150x2" and just gains "= 300".
     const base = line.replace(/\s*=\s*[$£€¥]?\s*[\d,]*(?:\.\d+)?\s*$/, '').trimEnd();
@@ -705,9 +705,9 @@ export class InboxProjectComponent {
     let sum = 0;
     let sym: string | null = null;
     for (const l of lines) {
-      const m = this.calcExtraLine(l).match(/=\s*([$£€¥]?)\s*(\d+(?:\.\d+)?)\s*$/);
+      const m = this.calcExtraLine(l).match(/=\s*([$£€¥]?)\s*([\d,]+(?:\.\d+)?)\s*$/);
       if (m) {
-        sum += Number(m[2]);
+        sum += Number(m[2].replace(/,/g, '')); // strip thousands separators to sum
         if (!sym && m[1]) sym = m[1];
       }
     }
