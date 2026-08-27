@@ -35,6 +35,15 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.92 (2026-08-27): custom agency lines aren't "sendable"
+- **Fix (regression from v2.90):** the supplier-name agency fallback had also
+  moved into `supplier_id` (the LOGIC field), so an agent's own custom line
+  looked like it had a supplier → swept into "Message Suppliers" / Explore More.
+  Reverted `supplier_id` to `COALESCE(supplier_org_id, i.org_id)` (NULL for
+  custom); only the NAME/city/currency keep the agency fallback (display).
+- The Final Quote **status pill ("To send") is hidden for lines with no real
+  supplier** — an agent's own line never gets sent, so it just shows "Custom".
+
 ## Iteration — v2.91 (2026-08-27): fix Add-from-Uncategorised + category picker shows all categories
 - **Bug:** "Add Your Own Line Item" from the **Uncategorised** card sent
   `categoryId: '__none'` (groupByCategory's synthetic bucket id) → the route's

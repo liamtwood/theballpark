@@ -447,10 +447,11 @@ const QUOTE_LINE_JOIN = `
          -- sent — the source of truth for who's quoting THIS row; pre-send it's
          -- NULL so we fall back to the item's catalogue owner (the default the
          -- cart cat card shows, "N items from <supplier>").
-         -- Supplier = the asked supplier, else the catalogue owner, else the
-         -- project's own agency (so an agent's custom line — fees, legal — shows
-         -- the AGENCY name, not a blank supplier).
-         COALESCE(pi.supplier_org_id, i.org_id, pr.org_id) AS supplier_id,
+         -- supplier_id is the LOGIC field (outreach / Message Suppliers / Explore
+         -- More): the asked supplier, else the catalogue owner, else NULL for an
+         -- agent's own custom line (no supplier to message). The NAME falls back
+         -- to the project's agency so the card still reads "<Agency>", not blank.
+         COALESCE(pi.supplier_org_id, i.org_id) AS supplier_id,
          COALESCE(o.name, ao.name) AS supplier_name,
          COALESCE(o.city, ao.city) AS supplier_city,
          COALESCE(o.default_currency, ao.default_currency) AS supplier_currency,

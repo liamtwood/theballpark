@@ -32,7 +32,10 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
         @if (line().isCustom) {
           <span class="bp-pill bp-pill--muted shrink-0" title="Custom line — no catalogue backing until a supplier quotes it">Custom</span>
         }
-        @if (isFinal()) {
+        <!-- Send-status only for lines that actually go to a supplier. An
+             agent's own custom line (no supplier) never gets sent, so no
+             "To send" pill — just its "Custom" tag. -->
+        @if (isFinal() && line().supplierId) {
           <span [class]="pill()">{{ label() }}</span>
         }
       </div>
