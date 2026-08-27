@@ -13,7 +13,7 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { TERMINAL_STATUSES, gbp } from './inbox-status';
 import { InboxRailComponent, RailOuter } from './inbox-rail.component';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
-import { quoteLineToCatalogueItem, quoteLineToRequestedItem } from '../projects/quote-line.util';
+import { lineCost, quoteLineToCatalogueItem, quoteLineToRequestedItem } from '../projects/quote-line.util';
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
 import { ProjectService } from '../../core/projects/project.service';
 
@@ -169,9 +169,9 @@ import { ProjectService } from '../../core/projects/project.service';
                                  the revised item (Description + Services), Save/
                                  Cancel at the bottom. -->
                             @if (editPreviewItem(); as pi) {
-                              <app-item-preview [item]="pi" [categoryName]="line.categoryName" [showStoreLink]="false" [showFromPrefix]="false" [editable]="true"
+                              <app-item-preview [item]="pi" [categoryName]="line.categoryName" [showStoreLink]="false" [showFromPrefix]="false" [editable]="true" [priceEditable]="true"
                                                 closeIcon="chevron-up" closeLabel="Minimise" (closed)="toggleAttachment(m.id, line.id)"
-                                                (nameChange)="edName.set($event)" (descChange)="edDesc.set($event)" (servicesChange)="edServices.set($event)" />
+                                                (nameChange)="edName.set($event)" (descChange)="edDesc.set($event)" (servicesChange)="edServices.set($event)" (priceChange)="edPrice.set($event)" />
                             }
                             <div class="mt-4 flex gap-2.5 border-t border-hairline pt-4">
                               <button type="button" class="bp-btn-outline flex-1" (click)="cancelEdit()">Cancel</button>
@@ -619,12 +619,13 @@ export class InboxProjectComponent {
   protected readonly edName = signal('');
   protected readonly edDesc = signal('');
   protected readonly edServices = signal('');
+  protected readonly edPrice = signal<number | null>(null);
   protected readonly savingDetails = signal(false);
   /** The line as the editable card's CatalogueItem, overlaid with the in-progress edits. */
   protected readonly editPreviewItem = computed<CatalogueItem | null>(() => {
     const l = this.editingLine();
     if (!l) return null;
-    return { ...quoteLineToCatalogueItem(l), name: this.edName() || l.name || '', description: this.edDesc(), installDescription: this.edServices() };
+    return { ...quoteLineToCatalogueItem(l), name: this.edName() || l.name || '', description: this.edDesc(), installDescription: this.edServices(), basePrice: this.edPrice() };
   });
   protected isEditingLine(line: QuoteLine): boolean {
     return this.editingLine()?.id === line.id;
@@ -636,6 +637,7 @@ export class InboxProjectComponent {
     this.edName.set(line.name ?? '');
     this.edDesc.set(line.description ?? '');
     this.edServices.set(line.installDescription ?? '');
+    this.edPrice.set(line.basePrice ?? null);
     this.editingLine.set(line);
   }
   protected cancelEdit(): void {
@@ -646,11 +648,22 @@ export class InboxProjectComponent {
     if (!line || this.savingDetails()) return;
     this.savingDetails.set(true);
     try {
+      // Save the text (name / description / Services).
       await firstValueFrom(this.projects.updateLineDetails(this.projectId(), line.id, {
         name: this.edName().trim() || undefined,
         description: this.edDesc().trim() || null,
         services: this.edServices().trim() || null,
       }));
+      // If they also changed the PRICE, fire the same "New Cost Suggested"
+      // proposal as the propose flow (posts the chat line + sets price_current).
+      const oldRate = line.basePrice ?? 0;
+      const newRate = Number(this.edPrice());
+      if (Number.isFinite(newRate) && newRate >= 0 && Math.abs(newRate - oldRate) > 0.005) {
+        const nm = this.edName().trim() || line.name || 'Item';
+        const fromTotal = lineCost(line);
+        const newTotal = lineCost({ ...line, basePrice: newRate });
+        await this.itemAction(line.id, 'adjust', newRate, `${nm} ${gbp(fromTotal)} New Cost Suggested ${gbp(newTotal)} by ${this.actorName()}`);
+      }
       this.editingLine.set(null);
       this.threadsRes.reload(); // pull the edited card back into the thread
     } catch {

@@ -35,6 +35,16 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.74 (2026-08-27): edit the price on the revised card → triggers a cost proposal
+- The revised-card editor now also lets the supplier **change the price** (new
+  `item-preview` inputs `priceEditable` + `priceChange` output — a number input
+  in place of the price display).
+- On **Save**, if the price changed, it fires the **same "New Cost Suggested"
+  proposal as the propose flow** (`itemAction('adjust', newRate, …)`): posts the
+  chat line (`<name> <fromTotal> New Cost Suggested <newTotal> by <actor>`) and
+  sets `price_current`. Text-only edits still just save via `updateLineDetails`.
+- Totals in the message use `lineCost` (install-aware), matching submitPropose.
+
 ## Iteration — v2.73 (2026-08-27): revised card price drops the "From" prefix
 - New `item-preview` input `showFromPrefix` (default true); set `false` on the
   revised card (it carries a firm agreed cost, not an indicative "From £X").

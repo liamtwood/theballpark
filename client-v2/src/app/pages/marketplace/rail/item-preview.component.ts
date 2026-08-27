@@ -63,7 +63,14 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
 
     <!-- Mirrors the item card's price treatment (pV2-CARDS-01 QC #1). -->
     <div class="mt-3 flex items-baseline gap-1.5">
-      @if (item().basePrice !== null) {
+      @if (editable() && priceEditable()) {
+        <span class="bp-price-large">£</span>
+        <input type="number" min="0" step="1" class="bp-input-field bp-price-large w-28" placeholder="0"
+               [ngModel]="item().basePrice" (ngModelChange)="priceChange.emit($event)" (click)="$event.stopPropagation()" />
+        @if (item().unit) {
+          <span class="bp-meta">/ {{ item().unit }}</span>
+        }
+      } @else if (item().basePrice !== null) {
         <span class="bp-price-large">@if (showFromPrefix()) {From }{{ item().basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
         @if (item().unit) {
           <span class="bp-meta">/ {{ item().unit }}</span>
@@ -131,9 +138,13 @@ export class ItemPreviewComponent {
   /** Opt-in edit mode — the name + description become editable and emit changes
    *  (used by the supplier Customize to set the final item the agent sees). */
   readonly editable = input<boolean>(false);
+  /** Also allow the PRICE to be edited (a number input). Opt-in on top of
+   *  `editable` — the inbox revised card lets the supplier change the cost. */
+  readonly priceEditable = input<boolean>(false);
   readonly nameChange = output<string>();
   readonly descChange = output<string>();
   readonly servicesChange = output<string>();
+  readonly priceChange = output<number>();
 
   /** Ballpark admins get a Review entry on items they don't own (moderation). */
   protected readonly canModerate = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
