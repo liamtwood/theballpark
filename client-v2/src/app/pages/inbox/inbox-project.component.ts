@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, linkedSignal, resource, signal, viewChild } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom, map } from 'rxjs';
@@ -16,7 +15,8 @@ import { InboxRailComponent, RailOuter } from './inbox-rail.component';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { lineCost, quoteLineToCatalogueItem, quoteLineToRequestedItem } from '../projects/quote-line.util';
 import { MarkdownPipe } from '../../shared/markdown.pipe';
-import { currencySymbol, detailsCalcLine, detailsTotalStr } from '../../shared/details-format';
+import { currencySymbol, detailsTotalStr } from '../../shared/details-format';
+import { LineEditorComponent, LineEdit } from '../projects/line-editor.component';
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
 import { ProjectService } from '../../core/projects/project.service';
 
@@ -31,7 +31,7 @@ import { ProjectService } from '../../core/projects/project.service';
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, FormsModule, LucideAngularModule, MarkdownPipe, PageHeroComponent, InboxRailComponent, ItemPreviewComponent, CustomizeDialogComponent],
+  imports: [CurrencyPipe, DatePipe, LucideAngularModule, MarkdownPipe, PageHeroComponent, InboxRailComponent, ItemPreviewComponent, CustomizeDialogComponent, LineEditorComponent],
   host: { '[class]': 'hostClass()' },
   template: `
     @if (!embedded()) {
@@ -168,30 +168,11 @@ import { ProjectService } from '../../core/projects/project.service';
                       @if (isAttachmentOpen(m.id, line.id)) {
                         <div class="bp-card p-4">
                           @if (isEditingLine(line)) {
-                            <!-- Inline edit: the supplier records what changed on
-                                 the revised item (Description + Services), Save/
-                                 Cancel at the bottom. -->
-                            @if (editPreviewItem(); as pi) {
-                              <app-item-preview [item]="pi" [categoryName]="line.categoryName" [showStoreLink]="false" [showFromPrefix]="false" [editable]="true" [priceEditable]="true"
-                                                closeIcon="chevron-up" closeLabel="Minimise" (closed)="toggleAttachment(m.id, line.id)"
-                                                (nameChange)="edName.set($event)" (descChange)="edDesc.set($event)" (servicesChange)="edServices.set($event)" (priceChange)="edPrice.set($event)" />
-                            }
-                            <!-- Details — bulleted extras saved as name-only child
-                                 components. Enter adds a bullet; "qty@price" auto-totals. -->
-                            <div class="mt-3 border-t border-hairline pt-3">
-                              <div class="flex items-center justify-between gap-2">
-                                <span class="bp-field-label">Details</span>
-                                @if (edExtrasTotalStr(); as tot) {
-                                  <span class="bp-body-small font-semibold tabular-nums text-text">{{ tot }}</span>
-                                }
-                              </div>
-                              <textarea rows="4" class="bp-store-textarea mt-1 w-full" placeholder="Free text. **bold**, _italic_, - lists. A line like 'Wine 100@15' auto-totals."
-                                        [ngModel]="edExtrasText()" (ngModelChange)="edExtrasText.set($event)" (keydown.enter)="onExtrasEnter($event)" (blur)="onExtrasBlur()"></textarea>
-                            </div>
-                            <div class="mt-4 flex gap-2.5 border-t border-hairline pt-4">
-                              <button type="button" class="bp-btn-outline flex-1" (click)="cancelEdit()">Cancel</button>
-                              <button type="button" class="bp-btn-grad flex-1" [disabled]="savingDetails()" (click)="saveDetails()">{{ savingDetails() ? 'Saving…' : 'Save' }}</button>
-                            </div>
+                            <!-- Inline edit — shared LineEditor (name/cost/unit/
+                                 description/services/details). Supplier: a cost
+                                 change fires a New-Cost proposal (onLineSave). -->
+                            <app-line-editor [line]="line" [saving]="savingDetails()"
+                                             (save)="onLineSave(line, $event)" (cancel)="cancelEdit()" />
                           } @else {
                             <!-- Read-only; the supplier clicks the revised card to edit it. -->
                             <div [class.cursor-pointer]="!isAgency()" [attr.title]="isAgency() ? null : 'Click to edit'" (click)="beginEdit(line)">
@@ -638,112 +619,59 @@ export class InboxProjectComponent {
     this.loadCustoTotal(it.id);
   }
 
-  // ── Edit item details inline in the conversation — the supplier clicks the
-  //    read-only item card and it becomes editable (Description + Services),
-  //    with Save/Cancel at the bottom. Reuses the editable item-preview. ───────
+  // ── Edit a line inline — the supplier clicks the read-only revised card and
+  //    it becomes the shared <app-line-editor>. The read-only Details total
+  //    reuses the same shared formatter. ────────────────────────────────────
   protected readonly editingLine = signal<QuoteLine | null>(null);
-  protected readonly edName = signal('');
-  protected readonly edDesc = signal('');
-  protected readonly edServices = signal('');
-  protected readonly edPrice = signal<number | null>(null);
-  /** Extras editor — one bulleted line per extra (saved as name-only child
-   *  components). A "qty@price" is auto-totalled into the line text. */
-  protected readonly edExtrasText = signal('');
   protected readonly savingDetails = signal(false);
 
-  /** Fallback currency symbol for an unsigned "qty@price" — a code, else the
-   *  project currency, else £. */
+  /** Fallback currency symbol — a code, else the project currency, else £. */
   private symbolFor(code?: string | null): string {
     return currencySymbol(code || this.project()?.currency);
   }
-  /** Evaluate a Details line's "qty@price" / "N×M" → "= <total>" (shared util,
-   *  supplier-currency fallback). */
-  private calcExtraLine(line: string): string {
-    return detailsCalcLine(line, this.symbolFor(this.editingLine()?.supplierCurrency));
-  }
-  /** Blur: re-run the calc on every line so a changed operand (e.g. 150x2 →
-   *  150x4) updates its "= total" in place. (The header total already updates
-   *  live as you type.) An expression is the source of truth — to set a custom
-   *  total, drop the x/@ and just type "= <amount>". */
-  protected onExtrasBlur(): void {
-    const recalced = this.edExtrasText().split('\n').map((l) => this.calcExtraLine(l)).join('\n');
-    if (recalced !== this.edExtrasText()) this.edExtrasText.set(recalced);
-  }
-  /** Enter in the Details box: recompute the line the caret is on (qty@price /
-   *  N×M), then insert a newline AT THE CARET (so rows land where you are, not at
-   *  the bottom). Blur covers lines finished without an Enter. */
-  protected onExtrasEnter(ev: Event): void {
-    ev.preventDefault();
-    const ta = ev.target as HTMLTextAreaElement;
-    const pos = ta.selectionStart ?? ta.value.length;
-    const before = ta.value.slice(0, pos);
-    const after = ta.value.slice(pos);
-    const lineStart = before.lastIndexOf('\n') + 1;
-    const finalised = before.slice(0, lineStart) + this.calcExtraLine(before.slice(lineStart)) + '\n';
-    const caret = finalised.length;
-    this.edExtrasText.set(finalised + after);
-    setTimeout(() => { try { ta.setSelectionRange(caret, caret); } catch { /* detached */ } }, 0);
-  }
-  /** Formatted Details total ("£3,100") for the text, or '' when no line carries
-   *  a cost. Shared with the Final Quote card via details-format. */
+  /** Formatted Details total for the read-only card ("£3,100"), or ''. */
   protected detailsTotalDisplay(text: string | null | undefined, code?: string | null): string {
     return detailsTotalStr(text, this.symbolFor(code));
   }
-  /** Live Details total for the editor (recomputes as they type). */
-  protected readonly edExtrasTotalStr = computed(() =>
-    this.detailsTotalDisplay(this.edExtrasText(), this.editingLine()?.supplierCurrency));
-  /** The line as the editable card's CatalogueItem, overlaid with the in-progress edits. */
-  protected readonly editPreviewItem = computed<CatalogueItem | null>(() => {
-    const l = this.editingLine();
-    if (!l) return null;
-    return { ...quoteLineToCatalogueItem(l), name: this.edName() || l.name || '', description: this.edDesc(), installDescription: this.edServices(), basePrice: this.edPrice() };
-  });
   protected isEditingLine(line: QuoteLine): boolean {
     return this.editingLine()?.id === line.id;
   }
-  /** Supplier clicks the read-only item card → enter inline edit (seed fields).
+  /** Supplier clicks the read-only revised card → open the inline editor.
    *  Agent view is read-only (no-op). */
   protected beginEdit(line: QuoteLine): void {
     if (this.isAgency()) return;
-    this.edName.set(line.name ?? '');
-    this.edDesc.set(line.description ?? '');
-    this.edServices.set(line.installDescription ?? '');
-    this.edPrice.set(line.basePrice ?? null);
-    this.edExtrasText.set(line.details ?? '');
     this.editingLine.set(line);
   }
   protected cancelEdit(): void {
     this.editingLine.set(null);
   }
-  protected async saveDetails(): Promise<void> {
-    const line = this.editingLine();
-    if (!line || this.savingDetails()) return;
+  /** Persist the edit. Text fields (name/unit/description/services/details) go
+   *  via updateLineDetails; a PRICE change fires the same "New Cost Suggested"
+   *  proposal as the propose flow (supplier→agent negotiation), keeping
+   *  price_current + the chat line in sync. */
+  protected async onLineSave(line: QuoteLine, edit: LineEdit): Promise<void> {
+    if (this.savingDetails()) return;
     this.savingDetails.set(true);
     try {
-      // Recompute any "qty@price" in Details so the saved text carries totals.
-      const detailsText = this.edExtrasText().split('\n').map((l) => this.calcExtraLine(l)).join('\n').trim();
-      // Save the text fields (name / description / Services / Details) in one PATCH.
       await firstValueFrom(this.projects.updateLineDetails(this.projectId(), line.id, {
-        name: this.edName().trim() || undefined,
-        description: this.edDesc().trim() || null,
-        services: this.edServices().trim() || null,
-        details: detailsText || null,
+        name: edit.name,
+        unit: edit.unit,
+        description: edit.description,
+        services: edit.services,
+        details: edit.details,
       }));
-      // If they also changed the PRICE, fire the same "New Cost Suggested"
-      // proposal as the propose flow (posts the chat line + sets price_current).
       const oldRate = line.basePrice ?? 0;
-      const newRate = Number(this.edPrice());
+      const newRate = Number(edit.cost);
       if (Number.isFinite(newRate) && newRate >= 0 && Math.abs(newRate - oldRate) > 0.005) {
-        const nm = this.edName().trim() || line.name || 'Item';
+        const nm = edit.name?.trim() || line.name || 'Item';
         const fromTotal = lineCost(line);
         const newTotal = lineCost({ ...line, basePrice: newRate });
         await this.itemAction(line.id, 'adjust', newRate, `${nm} ${gbp(fromTotal)} New Cost Suggested ${gbp(newTotal)} by ${this.actorName()}`);
       }
       this.editingLine.set(null);
-      this.threadsRes.reload(); // pull the edited card back into the thread
+      this.threadsRes.reload();
     } catch {
-      // Keep the editor open on failure so they can retry; nothing was cleared
-      // locally, so no silent data loss.
+      // Keep the editor open on failure; nothing cleared locally.
     } finally {
       this.savingDetails.set(false);
     }

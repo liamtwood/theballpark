@@ -447,8 +447,13 @@ const QUOTE_LINE_JOIN = `
          -- sent — the source of truth for who's quoting THIS row; pre-send it's
          -- NULL so we fall back to the item's catalogue owner (the default the
          -- cart cat card shows, "N items from <supplier>").
-         COALESCE(pi.supplier_org_id, i.org_id) AS supplier_id,
-         o.name AS supplier_name, o.city AS supplier_city, o.default_currency AS supplier_currency,
+         -- Supplier = the asked supplier, else the catalogue owner, else the
+         -- project's own agency (so an agent's custom line — fees, legal — shows
+         -- the AGENCY name, not a blank supplier).
+         COALESCE(pi.supplier_org_id, i.org_id, pr.org_id) AS supplier_id,
+         COALESCE(o.name, ao.name) AS supplier_name,
+         COALESCE(o.city, ao.city) AS supplier_city,
+         COALESCE(o.default_currency, ao.default_currency) AS supplier_currency,
          -- Send-state: the line's negotiation status, now on project_items
          -- itself (pV2-UNIFY-01). NULL = never sent = still in the cart.
          -- Drives the cart/final split + the per-item badge (pV2-CART-01).
@@ -456,7 +461,9 @@ const QUOTE_LINE_JOIN = `
     FROM project_items pi
     LEFT JOIN categories c ON c.id = pi.category_id
     LEFT JOIN items i ON i.id = pi.item_id
-    LEFT JOIN orgs o ON o.id = COALESCE(pi.supplier_org_id, i.org_id)`;
+    LEFT JOIN orgs o ON o.id = COALESCE(pi.supplier_org_id, i.org_id)
+    LEFT JOIN projects pr ON pr.id = pi.project_id
+    LEFT JOIN orgs ao ON ao.id = pr.org_id`;
 
 /** Collapse a message_item send-status into the quote line's coarse status:
  *  to_send (never sent) → out_for_quote → quoted → booked / declined. */
@@ -968,6 +975,10 @@ async function updateLineDetails(orgId, projectId, lineId, patch) {
   if (patch.description !== undefined) { vals.push(patch.description); sets.push(`description = $${vals.length}`); }
   if (patch.services !== undefined)    { vals.push(patch.services);    sets.push(`install_description = $${vals.length}`); }
   if (patch.details !== undefined)     { vals.push(patch.details);     sets.push(`details = $${vals.length}`); }
+  // Agent-editable line fields (their own custom lines): cost/unit/category.
+  if (patch.cost !== undefined)        { vals.push(patch.cost);        sets.push(`base_price = $${vals.length}`); }
+  if (patch.unit !== undefined)        { vals.push(patch.unit);        sets.push(`unit = $${vals.length}`); }
+  if (patch.categoryId !== undefined)  { vals.push(patch.categoryId);  sets.push(`category_id = $${vals.length}`); }
   if (!sets.length) return false;
   const r = await pool.query(
     `UPDATE project_items SET ${sets.join(', ')} WHERE id = $1 AND deleted_at IS NULL RETURNING id`,

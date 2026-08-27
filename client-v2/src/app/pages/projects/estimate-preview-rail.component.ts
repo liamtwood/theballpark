@@ -1,12 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
+import { firstValueFrom } from 'rxjs';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { QuoteLine } from '../../core/projects/project.types';
+import { ProjectService } from '../../core/projects/project.service';
 import { lineCost, quoteLineToCatalogueItem } from './quote-line.util';
 import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { currencySymbol, detailsTotalStr } from '../../shared/details-format';
+import { LineEditorComponent, LineEdit } from './line-editor.component';
 
 /** pV2-CART-01 — the right-rail marketplace preview for the selected quote
  *  line. Owns the eye toggle (hides the card for ALL selections until clicked
@@ -14,7 +17,7 @@ import { currencySymbol, detailsTotalStr } from '../../shared/details-format';
 @Component({
   selector: 'app-estimate-preview-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule, ItemPreviewComponent, MarkdownPipe],
+  imports: [CurrencyPipe, LucideAngularModule, ItemPreviewComponent, MarkdownPipe, LineEditorComponent],
   host: { class: 'contents' },
   template: `
     @if (line(); as l) {
@@ -34,6 +37,12 @@ import { currencySymbol, detailsTotalStr } from '../../shared/details-format';
             </div>
           } @else {
             <div class="bp-card p-4">
+            @if (editing()) {
+              <!-- pV2-BUILDUP-04 — the agent edits their own line inline (shared
+                   LineEditor: name/cost/unit/category/description/services/details). -->
+              <app-line-editor [line]="l" [categories]="categories()" [saving]="saving()"
+                               (save)="onSave(l, $event)" (cancel)="editing.set(false)" />
+            } @else {
               <app-item-preview [item]="previewItem()!" [categoryName]="l.categoryName" [showFromPrefix]="false" [showStoreLink]="false"
                                 closeIcon="eye" closeLabel="Hide preview" (closed)="hidden.set(true)" />
               <!-- pV2-BUILDUP-04 — the line's Details (same free-text markdown the
@@ -48,6 +57,14 @@ import { currencySymbol, detailsTotalStr } from '../../shared/details-format';
                   </div>
                   <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="l.details | md"></div>
                 </div>
+              }
+              <!-- Agent edits their own line (custom / self-entered). -->
+              @if (canEdit()) {
+                <button type="button"
+                        class="mt-3 flex w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border border-hairline px-3 py-2.5 text-secondary transition-colors hover:bg-fill hover:text-text"
+                        (click)="editing.set(true)">
+                  <lucide-icon name="square-pen" [size]="15" /> Edit line
+                </button>
               }
               <!-- pV2-BUILDUP-03 — this line's picked options, listed on the card. -->
               @if (options().length) {
@@ -73,6 +90,7 @@ import { currencySymbol, detailsTotalStr } from '../../shared/details-format';
                   <lucide-icon name="layout-grid" [size]="15" /> Explore More
                 </button>
               }
+            }
             </div>
           }
         </div>
@@ -81,17 +99,46 @@ import { currencySymbol, detailsTotalStr } from '../../shared/details-format';
   `,
 })
 export class EstimatePreviewRailComponent {
+  private readonly projects = inject(ProjectService);
   readonly line = input<QuoteLine | null>(null);
+  readonly projectId = input.required<string>();
   /** pV2-BUILDUP-03 — the selected line's picked options, listed on the card. */
   readonly options = input<QuoteLine[]>([]);
   readonly cur = input<string>('GBP');
+  /** pV2-BUILDUP-04 — project categories for the inline editor's category picker. */
+  readonly categories = input<{ id: string; name: string }[]>([]);
+  /** Whether the agent can edit this line inline (their own custom lines). */
+  readonly canEdit = input<boolean>(false);
   /** "Explore More" → the host opens the supplier-browse dialog for this line. */
   readonly exploreMore = output<void>();
+  /** A line was edited + saved → the host reloads the quote + cascade. */
+  readonly changed = output<void>();
   protected optCost(l: QuoteLine): number { return lineCost(l); }
   /** The line's Details running total ("£3,100"), or '' when no costs. */
   protected detailsTotal(l: QuoteLine): string { return detailsTotalStr(l.details, currencySymbol(l.supplierCurrency)); }
   /** Eye toggle — suppresses the preview for ALL selections (session-local). */
   protected readonly hidden = signal(false);
+  /** Inline-edit mode — resets to false whenever the selected line changes. */
+  protected readonly editing = linkedSignal(() => (this.line(), false));
+  protected readonly saving = signal(false);
+  /** Persist the agent's edit to their own line (direct — no negotiation), then
+   *  tell the host to reload. */
+  protected async onSave(line: QuoteLine, edit: LineEdit): Promise<void> {
+    if (this.saving()) return;
+    this.saving.set(true);
+    try {
+      await firstValueFrom(this.projects.updateLineDetails(this.projectId(), line.id, {
+        name: edit.name, cost: edit.cost, unit: edit.unit, categoryId: edit.categoryId,
+        description: edit.description, services: edit.services, details: edit.details,
+      }));
+      this.editing.set(false);
+      this.changed.emit();
+    } catch {
+      // Keep the editor open on failure; nothing cleared locally.
+    } finally {
+      this.saving.set(false);
+    }
+  }
 
   /** The selected line mapped to the marketplace preview's CatalogueItem shape
    *  (the quote line already carries everything the preview renders). */

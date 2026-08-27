@@ -181,7 +181,8 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
 
       <!-- Right rail: the selected line's marketplace card (owns its own eye). -->
       <app-estimate-preview-rail [line]="selectedLine()" [options]="selectedOptions()" [cur]="cur()"
-                                 (exploreMore)="onExploreMore()" />
+                                 [projectId]="projectId()" [categories]="categoryOptions()" [canEdit]="selectedCanEdit()"
+                                 (exploreMore)="onExploreMore()" (changed)="onLineChanged()" />
       </div>
     </div>
 
@@ -251,6 +252,18 @@ export class ProjectEstimateComponent {
     const id = this.selectedItemId();
     return id ? this.optionsFor(id) : [];
   });
+  /** Project categories (id + name) for the inline editor's category picker. */
+  protected readonly categoryOptions = computed(() => this.groups().map((g) => ({ id: g.id, name: g.name })));
+  /** The agent can edit their OWN custom lines inline (fees / legal / self-entered). */
+  protected readonly selectedCanEdit = computed(() => {
+    const l = this.selectedLine();
+    return !!l && !!l.isCustom && editable(l);
+  });
+  /** A line was edited on the rail → reload the quote + server cascade. */
+  protected onLineChanged(): void {
+    this.lines.reload();
+    this.est.reload();
+  }
   protected selectLine(l: QuoteLine): void {
     this.selectedItemId.set(l.id);
   }

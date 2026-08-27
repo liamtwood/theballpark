@@ -35,6 +35,24 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.90 (2026-08-27): agent edits their own lines on the Final Quote (shared LineEditor)
+- **New shared `LineEditorComponent`** (name / **cost** / **unit** / **category** /
+  description / services / details) — extracted so the inbox revised card and the
+  Final Quote rail share ONE editor (extract-before-duplicate). Reuses the
+  editable `item-preview` (now with an editable **unit** input) + the category
+  `<select>` + the Details field (shared `details-format` calc/total).
+- **Final Quote**: the agent's **own custom lines** (fees / legal / self-entered)
+  are now editable inline on the rail card — "Edit line" → the LineEditor → Save
+  writes **directly** (no negotiation). `estimate-preview-rail` gained the edit
+  state + save; `project-estimate` passes categories/canEdit and reloads on save.
+- **Inbox**: the revised-card editor is now the same `LineEditor`; a price change
+  still fires the "New Cost Suggested" proposal (parent decides direct vs
+  proposal).
+- **Server**: `updateLineDetails` now also sets `base_price` / `unit` /
+  `category_id` (agent's own lines). `QUOTE_LINE_JOIN` supplier now falls back to
+  the **project's agency** so a custom line (no supplier) shows the **agency
+  name**, not blank. No new columns (base_price/unit/category_id already exist).
+
 ## Iteration — v2.88 (2026-08-27): Final Quote card shows Details (reuses item-preview)
 - The Final Quote right-rail card (`estimate-preview-rail`) now shows the line's
   **Details** (markdown + running total) under the reused `item-preview` — same

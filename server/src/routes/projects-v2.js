@@ -284,10 +284,14 @@ const LineDetailsSchema = z
     description: z.string().max(4000).nullish(),
     services: z.string().max(4000).nullish(),
     details: z.string().max(8000).nullish(),
+    cost: z.number().nonnegative().nullish(),
+    unit: z.string().max(50).nullish(),
+    categoryId: z.string().uuid().nullish(),
   })
-  .refine((b) => b.name !== undefined || b.description !== undefined || b.services !== undefined || b.details !== undefined, {
-    message: 'name, description, services or details is required',
-  });
+  .refine(
+    (b) => ['name', 'description', 'services', 'details', 'cost', 'unit', 'categoryId'].some((k) => b[k] !== undefined),
+    { message: 'at least one field is required' },
+  );
 router.patch('/:id/items/:itemId/details', async (req, res, next) => {
   try {
     const parsed = LineDetailsSchema.safeParse(req.body);

@@ -72,9 +72,11 @@ import { MarkdownPipe } from '../../../shared/markdown.pipe';
           <input type="number" min="0" max="999999" step="1" class="bp-input-field" placeholder="0"
                  [ngModel]="item().basePrice" (ngModelChange)="priceChange.emit($event)" (click)="$event.stopPropagation()" />
         </span>
-        @if (item().unit) {
-          <span class="bp-meta">/ {{ item().unit }}</span>
-        }
+        <span class="bp-meta">/</span>
+        <span class="inline-block w-20 shrink-0">
+          <input type="text" class="bp-input-field" placeholder="unit"
+                 [ngModel]="item().unit" (ngModelChange)="unitChange.emit($event)" (click)="$event.stopPropagation()" />
+        </span>
       } @else if (item().basePrice !== null) {
         <span class="bp-price-large">@if (showFromPrefix()) {From }{{ item().basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
         @if (item().unit) {
@@ -150,6 +152,7 @@ export class ItemPreviewComponent {
   readonly descChange = output<string>();
   readonly servicesChange = output<string>();
   readonly priceChange = output<number>();
+  readonly unitChange = output<string>();
 
   /** Ballpark admins get a Review entry on items they don't own (moderation). */
   protected readonly canModerate = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
