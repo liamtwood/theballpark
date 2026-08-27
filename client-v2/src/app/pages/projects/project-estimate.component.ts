@@ -108,8 +108,11 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
 
               @if (isOpen(g.id)) {
                 <div class="border-t border-hairline">
+                  <!-- Hard-cost lines display the marked-up price (margin baked
+                       in); Fees are shown raw. -->
+                  @let mk = g.isProject ? 1 : marginMarkup();
                   <!-- pV2-BUILDUP-04 — Project Coverage: Contingency (% of costs)
-                       + Insurance (% or a fixed £). Display rows, not items. -->
+                       + Insurance (% or a fixed £) + a hidden Margin reference. -->
                   @if (g.isCoverage) {
                     <div class="flex items-center gap-3 border-b border-hairline px-3 py-3">
                       <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="percent" [size]="22" /></span>
@@ -127,6 +130,25 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       </div>
                       <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ bd().insurance | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
+                    <!-- Margin — a reference row: the silent markup already baked
+                         into Project Costs, NOT added to coverage. Grayed out, with
+                         a discreet eye to reveal/hide it so a viewing client can't
+                         read the margin off the page. -->
+                    <div class="flex items-center gap-3 px-3 py-3 text-muted">
+                      <span class="bp-icon-block h-16 w-16 shrink-0 opacity-50"><lucide-icon name="percent" [size]="22" /></span>
+                      <div class="min-w-0 flex-1">
+                        <span class="bp-list-title flex items-center gap-1.5 text-muted">
+                          Margin
+                          <button type="button" class="rounded p-0.5 hover:text-secondary" (click)="showMargin.set(!showMargin())"
+                                  [attr.aria-label]="showMargin() ? 'Hide margin' : 'Reveal margin'"
+                                  [title]="showMargin() ? 'Hide margin' : 'Reveal margin'">
+                            <lucide-icon [name]="showMargin() ? 'eye-off' : 'eye'" [size]="14" />
+                          </button>
+                        </span>
+                        <div class="bp-meta mt-0.5">{{ bd().marginPct }}% — already in Project Costs</div>
+                      </div>
+                      <span class="bp-body-small w-20 shrink-0 text-right tabular-nums">{{ showMargin() ? (bd().marginAmount | currency: cur() : 'symbol' : '1.0-0') : '••••' }}</span>
+                    </div>
                   }
                   @for (sg of g.supplierGroups; track sg.supplierId) {
                     <!-- Thin supplier band grouping this category's items. -->
@@ -136,7 +158,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                     </div>
                     @for (l of sg.items; track l.id) {
                       <app-estimate-item-row
-                        [line]="l" [isFinal]="isFinal()" [selected]="selectedItemId() === l.id" [cur]="cur()"
+                        [line]="l" [markup]="mk" [isFinal]="isFinal()" [selected]="selectedItemId() === l.id" [cur]="cur()"
                         (select)="selectLine(l)"
                         (qtyChange)="onQtyChange(l.id, $event)"
                         (installToggle)="toggleInstall(l)"
@@ -147,8 +169,8 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                         <div class="flex items-center gap-2 border-b border-hairline bg-fill/40 py-2 pl-14 pr-3">
                           <lucide-icon name="corner-down-right" [size]="14" class="shrink-0 text-muted" />
                           <span class="min-w-0 flex-1 truncate bp-meta text-text">{{ op.name }}</span>
-                          <span class="bp-meta shrink-0 tabular-nums text-secondary">{{ op.basePrice != null ? (op.basePrice | currency: cur() : 'symbol' : '1.0-0') : '' }}@if (op.unit) { / {{ op.unit }} } × {{ op.quantity }}</span>
-                          <span class="w-20 shrink-0 text-right bp-body-small tabular-nums text-secondary">{{ optCost(op) | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                          <span class="bp-meta shrink-0 tabular-nums text-secondary">{{ op.basePrice != null ? (op.basePrice * mk | currency: cur() : 'symbol' : '1.0-0') : '' }}@if (op.unit) { / {{ op.unit }} } × {{ op.quantity }}</span>
+                          <span class="w-20 shrink-0 text-right bp-body-small tabular-nums text-secondary">{{ optCost(op) * mk | currency: cur() : 'symbol' : '1.0-0' }}</span>
                           <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
                                   (click)="removeLine(op)" [attr.aria-label]="'Remove ' + op.name" title="Remove option">
                             <lucide-icon name="trash-2" [size]="14" />
@@ -384,6 +406,10 @@ export class ProjectEstimateComponent {
   /** Top-level rows only (options are nested under their parent, not listed). */
   protected readonly topRows = computed(() => this.visibleRows().filter((l) => !l.optionOfLineId));
 
+  /** Display markup for hard-cost lines (1 + margin%) — margin silently marks up
+   *  the client-facing Project Costs. Fees are never marked up. */
+  protected readonly marginMarkup = computed(() => 1 + (this.bd().marginPct || 0) / 100);
+
   protected readonly groups = computed(() => {
     const mapped = groupByCategory(this.topRows()).map((g) => {
       // '__none' = the uncategorised bucket → the "Fees" section (the agent's own
@@ -402,7 +428,9 @@ export class ProjectEstimateComponent {
         name: isProject ? 'Project' : g.name,
         isProject,
         isCoverage: false,
-        total: linesTotal,
+        // Hard-cost categories show the marked-up total (margin baked in); the
+        // Fees section is never marked up.
+        total: isProject ? linesTotal : linesTotal * this.marginMarkup(),
         iconName: isProject ? 'wallet' : (g.items[0]?.categoryIconName ?? null),
         supplierGroups: bySupplier(g.items),
       };
@@ -420,8 +448,10 @@ export class ProjectEstimateComponent {
    *  (% or a fixed £). Display rows, not items; they feed the client total. */
   protected readonly coverageGroup = computed(() => ({
     id: '__coverage', name: 'Coverage', items: [] as QuoteLine[], isProject: false, isCoverage: true,
-    total: this.bd().contingency + this.bd().insurance, iconName: 'percent', supplierGroups: [] as SupplierGroup[],
+    total: this.bd().coverage, iconName: 'percent', supplierGroups: [] as SupplierGroup[],
   }));
+  /** Reveal the (normally hidden) Margin reference row on the Coverage card. */
+  protected readonly showMargin = signal(false);
 
   /** The Final Quote laid out as the SOW's three sections: Project Costs →
    *  Fees → Project Coverage. The Cart shows just the category list. */
@@ -493,16 +523,18 @@ export class ProjectEstimateComponent {
     const v = this.est.value();
     if (v) return v;
     return {
-      subtotal: 0,
-      contingencyPct: this.project().defaultContingencyPct ?? 10,
-      insurancePct: 0,
+      hardCosts: 0,
       marginPct: this.project().defaultMarginPct ?? 20,
-      vatPct: this.project().defaultVatPct ?? 20,
-      contingency: 0,
-      insurance: 0,
-      ourCost: 0,
       marginAmount: 0,
-      vatAmount: 0,
+      projectCosts: 0,
+      contingencyPct: this.project().defaultContingencyPct ?? 10,
+      contingency: 0,
+      insurancePct: 0,
+      insurance: 0,
+      coverage: 0,
+      fees: 0,
+      projectTotal: 0,
+      subtotal: 0,
       clientTotal: 0,
     };
   });

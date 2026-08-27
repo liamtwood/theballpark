@@ -72,23 +72,25 @@ const LIST_SELECT = `
          -- item has one (the Estimate tab lets the agent opt a line out; the
          -- card shows the default all-installed Ballpark). Run through the
          -- cascade below → matches getEstimate + the Estimate tab.
-         (SELECT COALESCE(SUM(lt), 0) FROM (
-            SELECT DISTINCT ON (pi.logical_line_id) (${LINE_TOTAL_SQL}) AS lt
-              FROM project_items pi
-              LEFT JOIN items i ON i.id = pi.item_id
-             WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
-               -- child components (private buildup) never count (pV2-BUILDUP-02).
-               AND pi.parent_id IS NULL
-               -- Declined/cancelled lines drop out of the card total too, so it
-               -- matches getEstimate + the Estimate tab (pV2-INBOX-05). ONE rule,
-               -- line-total.util (audit 2026-07-17 B2).
-               AND ${notDeclinedSql()}
-             ORDER BY pi.logical_line_id,
-                      (pi.status IN ('accepted','booked')) DESC NULLS LAST,
-                      pi.created_at ASC, pi.id
-          ) x) AS quote_subtotal
+         sub.hard_subtotal, sub.fees_subtotal
     FROM projects p
-    LEFT JOIN clients c ON c.id = p.client_id
+    LEFT JOIN clients c ON c.id = p.client_id,
+    LATERAL (
+      -- pV2-BUILDUP-04: split hard costs (categorised) vs fees (uncategorised)
+      -- so the card total uses the same SOW cascade as the Estimate tab.
+      SELECT COALESCE(SUM(lt) FILTER (WHERE cat_id IS NOT NULL), 0) AS hard_subtotal,
+             COALESCE(SUM(lt) FILTER (WHERE cat_id IS NULL), 0)     AS fees_subtotal
+        FROM (
+          SELECT DISTINCT ON (pi.logical_line_id) (${LINE_TOTAL_SQL}) AS lt, pi.category_id AS cat_id
+            FROM project_items pi
+            LEFT JOIN items i ON i.id = pi.item_id
+           WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
+             AND pi.parent_id IS NULL AND ${notDeclinedSql()}
+           ORDER BY pi.logical_line_id,
+                    (pi.status IN ('accepted','booked')) DESC NULLS LAST,
+                    pi.created_at ASC, pi.id
+        ) x
+    ) sub
    WHERE p.org_id = $1 AND p.deleted_at IS NULL
    ORDER BY p.created_at DESC`;
 
@@ -97,14 +99,15 @@ const LIST_SELECT = `
  *  never drift. null when unquoted so the card reads "£0" rather than a fake
  *  figure (computeEstimate would return 0). */
 function cardBallpark(row) {
-  const subtotal = Number(row.quote_subtotal ?? 0);
-  if (subtotal <= 0) return null;
-  return computeEstimate(subtotal, {
+  const hard = Number(row.hard_subtotal ?? 0);
+  const fees = Number(row.fees_subtotal ?? 0);
+  if (hard <= 0 && fees <= 0) return null;
+  return computeEstimate(hard, {
+    feesSubtotal: fees,
     contingencyPct: row.default_contingency_pct,
     insurancePct: row.default_insurance_pct, insuranceAmount: row.default_insurance_amount,
     marginPct: row.default_margin_pct,
-    vatPct: row.default_vat_pct,
-  }).clientTotal;
+  }).projectTotal;
 }
 
 function toCard(row) {
@@ -541,42 +544,40 @@ async function listItems(orgId, projectId) {
 async function getEstimate(orgId, projectId, scope = 'all') {
   const cartOnly = scope === 'cart';
   const r = await pool.query(
-    `SELECT p.default_contingency_pct, p.default_insurance_pct, p.default_insurance_amount, p.default_margin_pct, p.default_vat_pct,
-            -- pV2-UNIFY-01a: a logical line can fan out to N supplier rows;
-            -- count ONE per logical_line_id — the accepted/booked row if any
-            -- (its negotiated price_current), else the canonical row (base_price).
-            (SELECT COALESCE(SUM(lt), 0) FROM (
-               SELECT DISTINCT ON (pi.logical_line_id) (${LINE_TOTAL_SQL}) AS lt
-                 FROM project_items pi
-                 LEFT JOIN items i ON i.id = pi.item_id
-                WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
-                  -- child components (private buildup) never count (pV2-BUILDUP-02).
-                  AND pi.parent_id IS NULL
-                  -- scope=cart → only still-in-cart (never-sent) lines.
-                  AND ($3 = false OR pi.status IS NULL)
-                  -- Declined/cancelled lines drop out of the cost (the Final
-                  -- Quote still LISTS them with the red pill; they just don't
-                  -- count toward the subtotal / client total). NULL = in cart.
-                  -- ONE rule, line-total.util (audit 2026-07-17 B2).
-                  AND ${notDeclinedSql()}
-                -- pV2-UNIFY-01a (audit M-2): deterministic tiebreak, IDENTICAL
-                -- across getEstimate / LIST_SELECT / listItems so the banner
-                -- total and the line list can't pick different competing clones.
-                ORDER BY pi.logical_line_id,
-                         (pi.status IN ('accepted','booked')) DESC NULLS LAST,
-                         pi.created_at ASC, pi.id
-             ) x) AS quote_subtotal
-       FROM projects p
+    `SELECT p.default_contingency_pct, p.default_insurance_pct, p.default_insurance_amount, p.default_margin_pct,
+            -- pV2-BUILDUP-04: split HARD costs (categorised supplier lines) from
+            -- FEES (the agent's own uncategorised lines) — margin marks up hard
+            -- costs only; fees are added flat.
+            sub.hard_subtotal, sub.fees_subtotal
+       FROM projects p,
+       LATERAL (
+         SELECT COALESCE(SUM(lt) FILTER (WHERE cat_id IS NOT NULL), 0) AS hard_subtotal,
+                COALESCE(SUM(lt) FILTER (WHERE cat_id IS NULL), 0)     AS fees_subtotal
+           FROM (
+             -- pV2-UNIFY-01a: ONE row per logical_line_id — the accepted/booked
+             -- row if any (its price_current), else the canonical (base_price).
+             SELECT DISTINCT ON (pi.logical_line_id) (${LINE_TOTAL_SQL}) AS lt, pi.category_id AS cat_id
+               FROM project_items pi
+               LEFT JOIN items i ON i.id = pi.item_id
+              WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
+                AND pi.parent_id IS NULL             -- no private buildup children
+                AND ($3 = false OR pi.status IS NULL) -- cart scope = still-in-cart
+                AND ${notDeclinedSql()}              -- declined lines don't count
+              ORDER BY pi.logical_line_id,
+                       (pi.status IN ('accepted','booked')) DESC NULLS LAST,
+                       pi.created_at ASC, pi.id
+           ) x
+       ) sub
       WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
     [projectId, orgId, cartOnly]
   );
   if (!r.rows.length) return null;
   const row = r.rows[0];
-  return computeEstimate(row.quote_subtotal, {
+  return computeEstimate(row.hard_subtotal, {
+    feesSubtotal: row.fees_subtotal,
     contingencyPct: row.default_contingency_pct,
     insurancePct: row.default_insurance_pct, insuranceAmount: row.default_insurance_amount,
     marginPct: row.default_margin_pct,
-    vatPct: row.default_vat_pct,
   });
 }
 

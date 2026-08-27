@@ -40,7 +40,7 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
         }
       </div>
       @if (line().basePrice != null || line().unit) {
-        <div class="bp-meta mt-0.5">{{ line().basePrice != null ? (line().basePrice | currency: cur() : 'symbol' : '1.0-0') : '' }}@if (line().unit) { / {{ unitText() }} }</div>
+        <div class="bp-meta mt-0.5">{{ line().basePrice != null ? (displayUnit() | currency: cur() : 'symbol' : '1.0-0') : '' }}@if (line().unit) { / {{ unitText() }} }</div>
       }
       <label class="mt-1.5 flex w-fit items-center gap-2.5" [class.opacity-40]="!canInstall() || !canEdit()"
              [title]="canInstall() ? 'Include installation' : 'No install price'">
@@ -67,7 +67,7 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
       <span class="bp-body-small shrink-0 text-center text-secondary" title="Out for quote — change it in the inbox">× {{ line().quantity }}</span>
     }
     <span class="bp-body-small w-20 shrink-0 text-right text-secondary" [class.line-through]="isDeclined()" [class.text-muted]="isDeclined()"
-          [title]="isDeclined() ? 'Declined — not included in the total' : ''">{{ cost() | currency: cur() : 'symbol' : '1.0-0' }}</span>
+          [title]="isDeclined() ? 'Declined — not included in the total' : ''">{{ displayCost() | currency: cur() : 'symbol' : '1.0-0' }}</span>
     @if (canEdit()) {
       <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
               (click)="$event.stopPropagation(); remove.emit()" [attr.aria-label]="'Remove ' + line().name" title="Remove item">
@@ -80,6 +80,9 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
 })
 export class EstimateItemRowComponent {
   readonly line = input.required<QuoteLine>();
+  /** Display markup (1 + margin%) — hard-cost lines show the marked-up price the
+   *  client sees; the raw supplier price stays in the inbox. Fees pass 1. */
+  readonly markup = input<number>(1);
   readonly isFinal = input<boolean>(false);
   readonly selected = input<boolean>(false);
   readonly cur = input.required<string>();
@@ -93,6 +96,9 @@ export class EstimateItemRowComponent {
   protected readonly canInstall = computed(() => hasInstall(this.line()));
   protected readonly installed = computed(() => isInstalled(this.line()));
   protected readonly cost = computed(() => lineCost(this.line()));
+  /** Marked-up unit price + line total for display (raw × markup). */
+  protected displayUnit(): number { return (this.line().basePrice ?? 0) * this.markup(); }
+  protected displayCost(): number { return this.cost() * this.markup(); }
   protected readonly isDeclined = computed(() => isDeclined(this.line()));
   protected label(): string { return statusLabel(this.line()); }
   protected pill(): string { return statusPill(this.line()); }

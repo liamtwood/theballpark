@@ -35,6 +35,38 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.96 (2026-08-27): SOW cascade — margin silently marks up Project Costs
+- Reworked the estimate cascade to the agency **SOW model** (ref
+  `docs/sow-invoice/EXT 1901 X LUCKY SAINT.xlsx`). One formula, server-side
+  (`services/estimate.js`), consumed by BOTH the project card and the Estimate
+  tab so they can't drift. **App-wide** — project cards recompute too.
+- **Margin silently marks up the hard-cost lines.** A supplier agrees $1,000 in
+  the inbox (shown raw there); Project Costs shows **$1,200** —
+  `projectCosts = hardCosts × (1 + margin%)`. Margin % defaults from the
+  project's `default_margin_pct` (seeded from the org's supplier %); house
+  default 20%. The uplift is applied to every hard-cost line, its unit price,
+  its line total, the category total, and nested option rows.
+- **Cascade:** `projectCosts = hard × (1+margin%)`; `contingency` = % of
+  projectCosts; `insurance` = % of projectCosts **or** a fixed £ (% wins);
+  `coverage = contingency + insurance`; **`fees`** = the agent's own
+  uncategorised lines, added **flat (no markup)**; `projectTotal = projectCosts
+  + coverage + fees`. **VAT dropped** for now (removed `DEFAULT_VAT_PCT`, the
+  Your-cost/Margin/VAT rows).
+- **Server split the subtotal** into `hard_subtotal` (categorised) +
+  `fees_subtotal` (uncategorised) via a `LATERAL` `FILTER` subquery in both
+  `LIST_SELECT`/`cardBallpark` and `getEstimate`.
+- **Summary box** (`estimate-breakdown.component`) now shows exactly **Project
+  Costs / Project Coverage / Project Fees / Project Total** — **margin and VAT
+  are NOT shown**, so a client viewing the page never reads the markup off it.
+- **Margin reference row** on the Coverage card: grayed out, `% — already in
+  Project Costs`, amount masked as `••••` behind a **discreet eye toggle**
+  (`showMargin`) to reveal/hide it. It is a reference only — NOT added to
+  coverage (margin already lives in Project Costs).
+- Client type `EstimateBreakdown` rewritten to `{ hardCosts, marginPct,
+  marginAmount, projectCosts, contingencyPct, contingency, insurancePct,
+  insurance, coverage, fees, projectTotal, subtotal, clientTotal }`
+  (subtotal/clientTotal kept as back-compat aliases).
+
 ## Iteration — v2.95 (2026-08-27): Final Quote as 3 sections (Project Costs / Fees / Project Coverage)
 - The Final Quote is now laid out as the SOW's **three sections**: **Project
   Costs** (real category cards) → **Fees** (the agent's own "Project" card) →

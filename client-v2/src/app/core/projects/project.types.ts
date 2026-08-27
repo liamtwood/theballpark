@@ -95,18 +95,27 @@ export type QuoteLineStatus = 'to_send' | 'out_for_quote' | 'quoted' | 'booked' 
  *  GET /:id/estimate). The Estimate tab renders this directly — the cascade
  *  math lives ONLY on the server so the tab and the project card can't drift. */
 export interface EstimateBreakdown {
-  subtotal: number;
+  /** Raw supplier hard costs (before the silent margin markup). */
+  hardCosts: number;
+  marginPct: number;
+  /** Margin silently baked into projectCosts (= projectCosts − hardCosts). */
+  marginAmount: number;
+  /** Displayed Project Costs = hardCosts × (1 + margin%). */
+  projectCosts: number;
   contingencyPct: number;
+  contingency: number;
   /** >0 when insurance is a %, else 0 (a fixed £ amount, or none). */
   insurancePct: number;
-  marginPct: number;
-  vatPct: number;
-  contingency: number;
-  /** The resolved insurance amount (from the % or the fixed £). */
+  /** Resolved insurance amount (from the % or the fixed £). */
   insurance: number;
-  ourCost: number;
-  marginAmount: number;
-  vatAmount: number;
+  /** contingency + insurance. */
+  coverage: number;
+  /** Σ the agent's own fee lines (uncategorised). */
+  fees: number;
+  /** projectCosts + coverage + fees (ex-VAT). */
+  projectTotal: number;
+  // Back-compat aliases.
+  subtotal: number;
   clientTotal: number;
 }
 
