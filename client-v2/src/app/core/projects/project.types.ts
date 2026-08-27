@@ -82,6 +82,8 @@ export interface QuoteLine {
   optionOfLineId?: string | null;
   /** pV2-BUILDUP-04 — the line's extras (child component names), name-only. */
   extras?: string[];
+  /** The line's supplier default currency (ISO code) — e.g. 'GBP', 'USD'. */
+  supplierCurrency?: string | null;
 }
 
 /** Per-item send-state — the single switch between the cart and final views. */

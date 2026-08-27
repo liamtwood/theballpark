@@ -35,11 +35,16 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.80 (2026-08-27): Details calc defaults to the SUPPLIER currency
+- An unsigned "qty@price" defaults the total's symbol to the **line's supplier
+  currency** (`orgs.default_currency`), falling back to the project currency,
+  then £. Carried on the QuoteLine as `supplierCurrency` via
+  `o.default_currency` in `QUOTE_LINE_JOIN`. A typed `$`/`£` still wins.
+
 ## Iteration — v2.79 (2026-08-27): Details calc defaults to the project currency
-- An unsigned "qty@price" now defaults the total's symbol to the **project's
-  currency** (US-keyboard users can't easily type £): `100@15` → `= £1500` on a
-  GBP project. A typed `$`/`£` still wins. Plumbed `currency` onto the inbox
-  project summary (server `inbox.service` + client `InboxProjectSummary`).
+- An unsigned "qty@price" defaulted the total's symbol to the **project's
+  currency**. Plumbed `currency` onto the inbox project summary (kept as the
+  fallback after supplier currency). Superseded by v2.80.
 
 ## Iteration — v2.77 (2026-08-27): "Details" section — bulleted extras saved as components
 - New **Details** section under Services on the revised edit card: an

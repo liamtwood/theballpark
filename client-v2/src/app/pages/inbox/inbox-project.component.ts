@@ -643,10 +643,11 @@ export class InboxProjectComponent {
   protected readonly edExtrasText = signal('');
   protected readonly savingDetails = signal(false);
 
-  /** The project quote's currency symbol — the default for an unsigned "qty@price". */
-  private currencySymbol(): string {
+  /** Currency symbol for the default of an unsigned "qty@price" — the line's
+   *  supplier currency, else the project currency, else £. */
+  private currencySymbol(code?: string | null): string {
     const map: Record<string, string> = { GBP: '£', USD: '$', EUR: '€', JPY: '¥', AUD: '$', CAD: '$', NZD: '$' };
-    return map[this.project()?.currency ?? 'GBP'] ?? '£';
+    return map[(code || this.project()?.currency || 'GBP')] ?? '£';
   }
   /** Turn "Wine 100@$15" (or "…100@$15 =") into "Wine 100@$15 = £1500".
    *  Forgiving: optional $/£, optional trailing "=". Name-only text — it never
@@ -656,7 +657,7 @@ export class InboxProjectComponent {
     if (!m) return line;
     const total = Number(m[1]) * Number(m[3]);
     if (!Number.isFinite(total)) return line;
-    const sym = m[2] || this.currencySymbol(); // their sign, else the project currency
+    const sym = m[2] || this.currencySymbol(this.editingLine()?.supplierCurrency); // their sign, else the supplier currency
     const totalStr = total % 1 === 0 ? String(total) : total.toFixed(2);
     const base = line.replace(/\s*=.*$/, '').trimEnd(); // drop any existing "= …"
     return `${base} = ${sym}${totalStr}`;

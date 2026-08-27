@@ -386,6 +386,7 @@ function toQuoteLine(row) {
     supplierId: row.supplier_id ?? null,
     supplierName: row.supplier_name ?? null,
     supplierCity: row.supplier_city ?? null,
+    supplierCurrency: row.supplier_currency ?? null,
     status: quoteStatus(row.sent_status),
     // The original library item (the request) — the inbox brief renders this
     // instead of the (possibly-revised) line. null fields for custom lines.
@@ -445,7 +446,7 @@ const QUOTE_LINE_JOIN = `
          -- NULL so we fall back to the item's catalogue owner (the default the
          -- cart cat card shows, "N items from <supplier>").
          COALESCE(pi.supplier_org_id, i.org_id) AS supplier_id,
-         o.name AS supplier_name, o.city AS supplier_city,
+         o.name AS supplier_name, o.city AS supplier_city, o.default_currency AS supplier_currency,
          -- Send-state: the line's negotiation status, now on project_items
          -- itself (pV2-UNIFY-01). NULL = never sent = still in the cart.
          -- Drives the cart/final split + the per-item badge (pV2-CART-01).
