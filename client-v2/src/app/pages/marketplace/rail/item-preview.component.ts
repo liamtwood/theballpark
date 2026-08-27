@@ -64,7 +64,7 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
     <!-- Mirrors the item card's price treatment (pV2-CARDS-01 QC #1). -->
     <div class="mt-3 flex items-baseline gap-1.5">
       @if (item().basePrice !== null) {
-        <span class="bp-price-large">From {{ item().basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+        <span class="bp-price-large">@if (showFromPrefix()) {From }{{ item().basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
         @if (item().unit) {
           <span class="bp-meta">/ {{ item().unit }}</span>
         }
@@ -124,6 +124,9 @@ export class ItemPreviewComponent {
   /** Show the store-item link (edit/review/view product) in the header. Off for
    *  the inbox conversation cards, which shouldn't jump out to the library. */
   readonly showStoreLink = input<boolean>(true);
+  /** Prefix the price with "From" (indicative marketplace price). Off when the
+   *  price is a firm, agreed cost (e.g. the inbox revised card). */
+  readonly showFromPrefix = input<boolean>(true);
   readonly closed = output<void>();
   /** Opt-in edit mode — the name + description become editable and emit changes
    *  (used by the supplier Customize to set the final item the agent sees). */

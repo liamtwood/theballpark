@@ -35,6 +35,11 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.73 (2026-08-27): revised card price drops the "From" prefix
+- New `item-preview` input `showFromPrefix` (default true); set `false` on the
+  revised card (it carries a firm agreed cost, not an indicative "From £X").
+  Original card + marketplace/estimate previews keep "From".
+
 ## Iteration — v2.72 (2026-08-27): revised card appears once (latest revision)
 - The revised item card previously rendered under **every** "New Cost Suggested"
   message. Now it renders **only under the most recent** proposal

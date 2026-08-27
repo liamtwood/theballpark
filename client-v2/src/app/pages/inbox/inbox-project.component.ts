@@ -169,7 +169,7 @@ import { ProjectService } from '../../core/projects/project.service';
                                  the revised item (Description + Services), Save/
                                  Cancel at the bottom. -->
                             @if (editPreviewItem(); as pi) {
-                              <app-item-preview [item]="pi" [categoryName]="line.categoryName" [showStoreLink]="false" [editable]="true"
+                              <app-item-preview [item]="pi" [categoryName]="line.categoryName" [showStoreLink]="false" [showFromPrefix]="false" [editable]="true"
                                                 closeIcon="chevron-up" closeLabel="Minimise" (closed)="toggleAttachment(m.id, line.id)"
                                                 (nameChange)="edName.set($event)" (descChange)="edDesc.set($event)" (servicesChange)="edServices.set($event)" />
                             }
@@ -180,7 +180,7 @@ import { ProjectService } from '../../core/projects/project.service';
                           } @else {
                             <!-- Read-only; the supplier clicks the revised card to edit it. -->
                             <div [class.cursor-pointer]="!isAgency()" [attr.title]="isAgency() ? null : 'Click to edit description & services'" (click)="beginEdit(line)">
-                              <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName" [showStoreLink]="false"
+                              <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName" [showStoreLink]="false" [showFromPrefix]="false"
                                                 closeIcon="chevron-up" closeLabel="Minimise"
                                                 (closed)="toggleAttachment(m.id, line.id)" />
                             </div>
