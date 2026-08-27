@@ -159,6 +159,15 @@ export class ProjectService {
     return this.api.patch<QuoteLine>(`/api/projects-v2/${projectId}/items/${itemId}`, { installed });
   }
 
+  /** Edit a line's free-text details (name / description / Services) — the
+   *  supplier records what they changed on the line. NOT lock-gated. */
+  updateLineDetails(
+    projectId: string, itemId: string,
+    body: { name?: string; description?: string | null; services?: string | null },
+  ): Observable<QuoteLine> {
+    return this.api.patch<QuoteLine>(`/api/projects-v2/${projectId}/items/${itemId}/details`, body);
+  }
+
   /** Recommend + add items from the project's stored brief (v1 matcher per
    *  category). The Estimate tab then displays the grouped quote. */
   recommend(projectId: string): Observable<RecommendResult> {

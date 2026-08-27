@@ -92,11 +92,40 @@ import { ProjectService } from '../../core/projects/project.service';
                     <!-- pV2-BUILDUP — Customize entry hidden for now (client:
                          "too complicated"). Code kept; re-enable this button to
                          restore it. -->
+                    <!-- Edit the line's description + Services: the supplier
+                         records what they changed (e.g. upgraded the menu). -->
+                    <button type="button" class="bp-act bp-act--gray ml-auto" [disabled]="sending()" (click)="toggleEditDetails(it)">
+                      <lucide-icon [name]="isEditingItem(it) ? 'x' : 'square-pen'" [size]="15" /> {{ isEditingItem(it) ? 'Close' : 'Edit item' }}
+                    </button>
                   }
                 </div>
               </div>
 
-              @if (customizing(); as c) {
+              @if (editingItem(); as ei) {
+                <!-- Edit item details — the editable item card (description +
+                     Services), reused from Customize. Save writes the line so
+                     the change shows in the inbox + Final Quote. -->
+                <div class="min-h-0 flex-1 overflow-y-auto p-5">
+                  <div class="mx-auto max-w-md">
+                    <div class="bp-card p-4">
+                      <span class="bp-field-label">Edit item details</span>
+                      <p class="bp-caption mt-0.5">Record what you changed on this line — e.g. upgraded the menu, added a fridge.</p>
+                      <div class="mt-3">
+                        @if (editPreviewItem(); as pi) {
+                          <app-item-preview [item]="pi" [categoryName]="ei.line?.categoryName ?? null" [editable]="true"
+                                            (nameChange)="edName.set($event)" (descChange)="edDesc.set($event)" (servicesChange)="edServices.set($event)" />
+                        }
+                      </div>
+                    </div>
+                    <div class="mt-4 flex gap-2.5">
+                      <button type="button" class="bp-btn-outline flex-1" (click)="editingItem.set(null)">Cancel</button>
+                      <button type="button" class="bp-btn-grad flex-1" [disabled]="savingDetails()" (click)="saveDetails()">
+                        {{ savingDetails() ? 'Saving…' : 'Save details' }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              } @else if (customizing(); as c) {
                 <!-- pV2-BUILDUP-02 — the estimate builder, inline in the thread
                      pane (replaces the conversation while customizing). -->
                 <div class="min-h-0 flex-1 overflow-y-auto">
@@ -568,6 +597,52 @@ export class InboxProjectComponent {
     const from = it.priceCurrent ?? it.priceRef ?? 0;
     await this.itemAction(it.id, 'adjust', rate, `${it.name} ${gbp(from)} New Cost Suggested ${gbp(total)} by ${this.actorName()}`);
     this.loadCustoTotal(it.id);
+  }
+
+  // ── Edit item details — the supplier records what they changed on the line
+  //    (description + Services), reusing the editable item-preview card ────────
+  protected readonly editingItem = signal<InboxThreadItem | null>(null);
+  protected readonly edName = signal('');
+  protected readonly edDesc = signal('');
+  protected readonly edServices = signal('');
+  protected readonly savingDetails = signal(false);
+  /** The line as the editable card's CatalogueItem, overlaid with the in-progress edits. */
+  protected readonly editPreviewItem = computed<CatalogueItem | null>(() => {
+    const l = this.editingItem()?.line;
+    if (!l) return null;
+    return { ...quoteLineToCatalogueItem(l), name: this.edName() || l.name || '', description: this.edDesc(), installDescription: this.edServices() };
+  });
+  protected isEditingItem(it: InboxThreadItem | null): boolean {
+    return !!it && this.editingItem()?.id === it.id;
+  }
+  /** Open (or close) the inline detail editor for this line, seeding the fields. */
+  protected toggleEditDetails(it: InboxThreadItem): void {
+    if (this.isEditingItem(it)) { this.editingItem.set(null); return; }
+    const l = it.line;
+    this.edName.set(l?.name ?? it.name ?? '');
+    this.edDesc.set(l?.description ?? '');
+    this.edServices.set(l?.installDescription ?? '');
+    this.editingItem.set(it);
+  }
+  protected async saveDetails(): Promise<void> {
+    const it = this.editingItem();
+    if (!it || this.savingDetails()) return;
+    this.savingDetails.set(true);
+    try {
+      await firstValueFrom(this.projects.updateLineDetails(this.projectId(), it.id, {
+        name: this.edName().trim() || undefined,
+        description: this.edDesc().trim() || null,
+        services: this.edServices().trim() || null,
+      }));
+      this.editingItem.set(null);
+      this.threadsRes.reload(); // pull the edited card back into the thread
+    } catch {
+      // Surfaced to the user via the toast in the caller path is overkill here;
+      // keep the editor open so they can retry. (No silent data loss — nothing
+      // was cleared locally.)
+    } finally {
+      this.savingDetails.set(false);
+    }
   }
 
   protected accept(it: InboxThreadItem): void {

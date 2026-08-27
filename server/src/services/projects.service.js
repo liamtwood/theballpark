@@ -935,6 +935,38 @@ async function updateItem(orgId, projectId, lineId, patch) {
   return lineById(pool, r.rows[0].id);
 }
 
+/** Edit a line's free-text details — name / description / Services
+ *  (install_description) — so the supplier can RECORD what they changed on the
+ *  line (e.g. "upgraded to Gourmet menu; added fridge"). Unlike updateItem this
+ *  is NOT lock-gated: the supplier annotates the line WHILE it's out for quote.
+ *  Authority: the caller owns the row — either their own per-supplier fan-out
+ *  row (supplier editing the line they were asked to quote) OR the project's
+ *  canonical row (the agent). Only provided fields change. Returns the line,
+ *  null if not the caller's, false if no live row. */
+async function updateLineDetails(orgId, projectId, lineId, patch) {
+  const auth = await pool.query(
+    `SELECT pi.id
+       FROM project_items pi
+       JOIN projects p ON p.id = pi.project_id
+      WHERE pi.id = $1 AND pi.project_id = $2 AND pi.deleted_at IS NULL
+        AND (pi.supplier_org_id = $3 OR (pi.supplier_org_id IS NULL AND p.org_id = $3))`,
+    [lineId, projectId, orgId]
+  );
+  if (!auth.rows.length) return null;
+  const sets = [];
+  const vals = [lineId];
+  if (patch.name !== undefined)        { vals.push(patch.name);        sets.push(`name = $${vals.length}`); }
+  if (patch.description !== undefined) { vals.push(patch.description); sets.push(`description = $${vals.length}`); }
+  if (patch.services !== undefined)    { vals.push(patch.services);    sets.push(`install_description = $${vals.length}`); }
+  if (!sets.length) return false;
+  const r = await pool.query(
+    `UPDATE project_items SET ${sets.join(', ')} WHERE id = $1 AND deleted_at IS NULL RETURNING id`,
+    vals
+  );
+  if (!r.rows.length) return false;
+  return lineById(pool, r.rows[0].id);
+}
+
 /** Soft-remove an item from the project's quote. Returns true if a row was
  *  removed, false if none, null if the project isn't the org's, 'locked' if
  *  the item is out for quote (read-only in the quote). */
@@ -1060,6 +1092,6 @@ async function recommend(orgId, projectId) {
 
 module.exports = {
   listForOrg, listClientNames, getDetail, updateDetail, create,
-  listItems, getEstimate, addItem, addCustomItem, saveComponents, listComponents, listMyComponents, removeItem, updateItem, recommend,
+  listItems, getEstimate, addItem, addCustomItem, saveComponents, listComponents, listMyComponents, removeItem, updateItem, updateLineDetails, recommend,
   resolveStatus, DEFAULT_STATUS, toCard, linesByIds,
 };

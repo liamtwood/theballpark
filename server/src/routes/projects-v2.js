@@ -275,6 +275,33 @@ router.patch('/:id/items/:itemId', async (req, res, next) => {
   }
 });
 
+// PATCH /:id/items/:itemId/details — edit the line's free-text details
+// (name / description / Services) so the supplier can record what they changed
+// on the line. NOT lock-gated (they annotate while it's out for quote).
+const LineDetailsSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200).optional(),
+    description: z.string().max(4000).nullish(),
+    services: z.string().max(4000).nullish(),
+  })
+  .refine((b) => b.name !== undefined || b.description !== undefined || b.services !== undefined, {
+    message: 'name, description or services is required',
+  });
+router.patch('/:id/items/:itemId/details', async (req, res, next) => {
+  try {
+    const parsed = LineDetailsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const line = await projects.updateLineDetails(req.user.org_id, req.params.id, req.params.itemId, parsed.data);
+    if (line === null) return res.status(404).json({ error: 'Line not found or not yours to edit' });
+    if (line === false) return res.status(404).json({ error: 'Item not in quote' });
+    res.json(line);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // DELETE /:id/items/:itemId — remove an item from the quote.
 router.delete('/:id/items/:itemId', async (req, res, next) => {
   try {
