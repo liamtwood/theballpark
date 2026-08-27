@@ -97,10 +97,12 @@ export type QuoteLineStatus = 'to_send' | 'out_for_quote' | 'quoted' | 'booked' 
 export interface EstimateBreakdown {
   subtotal: number;
   contingencyPct: number;
+  /** >0 when insurance is a %, else 0 (a fixed £ amount, or none). */
   insurancePct: number;
   marginPct: number;
   vatPct: number;
   contingency: number;
+  /** The resolved insurance amount (from the % or the fixed £). */
   insurance: number;
   ourCost: number;
   marginAmount: number;

@@ -35,6 +35,19 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.95 (2026-08-27): Final Quote as 3 sections (Project Costs / Fees / Project Coverage)
+- The Final Quote is now laid out as the SOW's **three sections**: **Project
+  Costs** (real category cards) → **Fees** (the agent's own "Project" card) →
+  **Project Coverage** (a fake card with **Contingency** + **Insurance** rows).
+  Contingency/insurance moved out of the Fees card into Coverage. (Cart still
+  shows one list.)
+- **Insurance supports BOTH modes** — a **% of costs** *or* a **fixed £**
+  (`default_insurance_pct` wins if set, else `default_insurance_amount`, else 0).
+  New `default_insurance_amount` (projects + orgs, in migrate-schemas). Apple set
+  to a £477 fixed value for the demo.
+- **TODO:** insurance is set via DB for now — no inline edit UI yet on the
+  Coverage card (next).
+
 ## Iteration — v2.94 (2026-08-27): Insurance (below Contingency) in the cascade
 - New **`default_insurance_pct`** on projects + orgs (all schemas, in
   migrate-schemas.js; house default **0** so existing totals are unchanged).

@@ -60,7 +60,7 @@ const LIST_SELECT = `
          p.cover_image_url, p.client_logo_url,
          p.cover_focal_x, p.cover_focal_y, p.icon_name, p.icon_color,
          p.unsplash_photographer_name, p.unsplash_photo_url,
-         p.currency, p.default_contingency_pct, p.default_insurance_pct, p.default_margin_pct, p.default_vat_pct,
+         p.currency, p.default_contingency_pct, p.default_insurance_pct, p.default_insurance_amount, p.default_margin_pct, p.default_vat_pct,
          p.created_at, p.updated_at,
          COALESCE(p.client_name, c.name) AS client_name,
          (SELECT COUNT(DISTINCT i.org_id)
@@ -101,7 +101,7 @@ function cardBallpark(row) {
   if (subtotal <= 0) return null;
   return computeEstimate(subtotal, {
     contingencyPct: row.default_contingency_pct,
-    insurancePct: row.default_insurance_pct,
+    insurancePct: row.default_insurance_pct, insuranceAmount: row.default_insurance_amount,
     marginPct: row.default_margin_pct,
     vatPct: row.default_vat_pct,
   }).clientTotal;
@@ -541,7 +541,7 @@ async function listItems(orgId, projectId) {
 async function getEstimate(orgId, projectId, scope = 'all') {
   const cartOnly = scope === 'cart';
   const r = await pool.query(
-    `SELECT p.default_contingency_pct, p.default_insurance_pct, p.default_margin_pct, p.default_vat_pct,
+    `SELECT p.default_contingency_pct, p.default_insurance_pct, p.default_insurance_amount, p.default_margin_pct, p.default_vat_pct,
             -- pV2-UNIFY-01a: a logical line can fan out to N supplier rows;
             -- count ONE per logical_line_id — the accepted/booked row if any
             -- (its negotiated price_current), else the canonical row (base_price).
@@ -574,7 +574,7 @@ async function getEstimate(orgId, projectId, scope = 'all') {
   const row = r.rows[0];
   return computeEstimate(row.quote_subtotal, {
     contingencyPct: row.default_contingency_pct,
-    insurancePct: row.default_insurance_pct,
+    insurancePct: row.default_insurance_pct, insuranceAmount: row.default_insurance_amount,
     marginPct: row.default_margin_pct,
     vatPct: row.default_vat_pct,
   });

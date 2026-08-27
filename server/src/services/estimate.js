@@ -11,7 +11,6 @@
 // the card and the Estimate tab can never drift. Keep the formula ONLY here.
 
 const DEFAULT_CONTINGENCY_PCT = 10;
-const DEFAULT_INSURANCE_PCT = 0; // opt-in; 0 leaves existing totals unchanged
 const DEFAULT_MARGIN_PCT = 20;
 const DEFAULT_VAT_PCT = 20;
 
@@ -31,14 +30,16 @@ function computeEstimate(subtotal, rates = {}) {
   const sub = Number(subtotal);
   const base = Number.isFinite(sub) && sub > 0 ? sub : 0;
   const contingencyPct = rateOr(rates.contingencyPct, DEFAULT_CONTINGENCY_PCT);
-  const insurancePct = rateOr(rates.insurancePct, DEFAULT_INSURANCE_PCT);
   const marginPct = rateOr(rates.marginPct, DEFAULT_MARGIN_PCT);
   const vatPct = rateOr(rates.vatPct, DEFAULT_VAT_PCT);
 
-  // Contingency + insurance are both % of the subtotal (matches the SOW: costs
-  // ex → +contingency +insurance → inc).
+  // Contingency is a % of the subtotal. Insurance is EITHER a % of the subtotal
+  // OR a fixed entered £ — the % wins when set, else the fixed amount, else 0.
+  // Both add before margin/VAT (SOW: costs ex → +contingency +insurance → inc).
   const contingency = base * (contingencyPct / 100);
-  const insurance = base * (insurancePct / 100);
+  const insurancePctSet = rates.insurancePct != null && Number.isFinite(Number(rates.insurancePct));
+  const insurancePct = insurancePctSet ? Number(rates.insurancePct) : 0;
+  const insurance = insurancePctSet ? base * (insurancePct / 100) : rateOr(rates.insuranceAmount, 0);
   const ourCost = base + contingency + insurance;
   const marginAmount = ourCost * (marginPct / 100);
   const preVat = ourCost + marginAmount;
@@ -48,7 +49,7 @@ function computeEstimate(subtotal, rates = {}) {
   return {
     subtotal: base,
     contingencyPct,
-    insurancePct,
+    insurancePct, // >0 when insurance is a %, else 0 (fixed £ or none)
     marginPct,
     vatPct,
     contingency,
@@ -63,7 +64,6 @@ function computeEstimate(subtotal, rates = {}) {
 module.exports = {
   computeEstimate,
   DEFAULT_CONTINGENCY_PCT,
-  DEFAULT_INSURANCE_PCT,
   DEFAULT_MARGIN_PCT,
   DEFAULT_VAT_PCT,
 };

@@ -88,9 +88,12 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
           @else { Everything's out for quote — nothing left to send. }
         </p>
       } @else {
-        <p class="bp-field-label uppercase tracking-wide">Categories</p>
+        <!-- pV2-BUILDUP-04 — the SOW's three sections: Project Costs → Fees →
+             Project Coverage (contingency + insurance). Cart shows one list. -->
+        @for (section of sections(); track section.label; let first = $first) {
+        <p class="bp-field-label uppercase tracking-wide" [class.mt-6]="!first">{{ section.label }}</p>
         <div class="mt-2 flex flex-col gap-2.5">
-          @for (g of groups(); track g.id) {
+          @for (g of section.groups; track g.id) {
             <!-- Category card — bare icon (no block around it) + name, cat
                  total right, a chevron that expands the items underneath. -->
             <div class="bp-card overflow-hidden">
@@ -105,9 +108,9 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
 
               @if (isOpen(g.id)) {
                 <div class="border-t border-hairline">
-                  <!-- pV2-BUILDUP-04 — the Project section carries the project
-                       Contingency (a % of costs, not an item; can't be removed). -->
-                  @if (g.isProject) {
+                  <!-- pV2-BUILDUP-04 — Project Coverage: Contingency (% of costs)
+                       + Insurance (% or a fixed £). Display rows, not items. -->
+                  @if (g.isCoverage) {
                     <div class="flex items-center gap-3 border-b border-hairline px-3 py-3">
                       <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="percent" [size]="22" /></span>
                       <div class="min-w-0 flex-1">
@@ -120,7 +123,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="percent" [size]="22" /></span>
                       <div class="min-w-0 flex-1">
                         <span class="bp-list-title">Insurance</span>
-                        <div class="bp-meta mt-0.5">{{ bd().insurancePct }}% of costs</div>
+                        <div class="bp-meta mt-0.5">@if (bd().insurancePct > 0) { {{ bd().insurancePct }}% of costs } @else if (bd().insurance > 0) { fixed } @else { not set }</div>
                       </div>
                       <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ bd().insurance | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
@@ -161,17 +164,20 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                        you on the Cart tab. Custom lines persist as real
                        project_items (pV2-CUSTOMS-01) and render above with a
                        "Custom" tag. -->
-                  <div class="p-3">
-                    <button type="button" class="flex w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border border-dashed border-hairline px-3 py-3 text-secondary transition-colors hover:bg-fill hover:text-text"
-                            (click)="openAdd(g)">
-                      <lucide-icon name="plus" [size]="15" /> Add Your Own Line Item
-                    </button>
-                  </div>
+                  @if (!g.isCoverage) {
+                    <div class="p-3">
+                      <button type="button" class="flex w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border border-dashed border-hairline px-3 py-3 text-secondary transition-colors hover:bg-fill hover:text-text"
+                              (click)="openAdd(g)">
+                        <lucide-icon name="plus" [size]="15" /> Add Your Own Line Item
+                      </button>
+                    </div>
+                  }
                 </div>
               }
             </div>
           }
         </div>
+        }
 
         <app-estimate-breakdown [bd]="bd()" [budget]="budget()" [cur]="cur()" />
 
@@ -380,13 +386,12 @@ export class ProjectEstimateComponent {
 
   protected readonly groups = computed(() => {
     const mapped = groupByCategory(this.topRows()).map((g) => {
-      // '__none' = the uncategorised bucket → the agent's "Project" section: the
-      // home for their own self-entered costs (fees, legal) + Contingency.
+      // '__none' = the uncategorised bucket → the "Fees" section (the agent's own
+      // self-entered lines: fees, legal). Contingency + insurance live in the
+      // separate "Project Coverage" section below.
       const isProject = g.id === '__none';
-      // Declined/cancelled lines still show in the list but are excluded from
-      // the category total (matches the server subtotal — pV2-INBOX-05). Each
-      // line's picked options roll into its category total too (they're counted
-      // server-side, so the cards must sum to the banner).
+      // Declined/cancelled lines still list but drop out of the category total
+      // (matches the server subtotal — pV2-INBOX-05); a line's options roll in.
       const linesTotal = g.items.reduce(
         (s, l) => s + (isDeclined(l) ? 0 : lineCost(l))
           + this.optionsFor(l.id).reduce((s2, o) => s2 + (isDeclined(o) ? 0 : lineCost(o)), 0),
@@ -396,20 +401,42 @@ export class ProjectEstimateComponent {
         ...g,
         name: isProject ? 'Project' : g.name,
         isProject,
-        // The Project card also shows the project-level contingency + insurance.
-        total: linesTotal + (isProject ? this.bd().contingency + this.bd().insurance : 0),
-        iconName: isProject ? 'folder-kanban' : (g.items[0]?.categoryIconName ?? null),
+        isCoverage: false,
+        total: linesTotal,
+        iconName: isProject ? 'wallet' : (g.items[0]?.categoryIconName ?? null),
         supplierGroups: bySupplier(g.items),
       };
     });
-    // Ensure the Project section always exists on the Final Quote — even empty,
-    // so contingency shows and the agent always has a place to add their costs.
+    // The Fees section is always present on the Final Quote — the home for the
+    // agent's own costs (even before they've added any).
     if (this.isFinal() && !mapped.some((g) => g.isProject)) {
       mapped.push({ id: '__none', name: 'Project', items: [], isProject: true,
-        total: this.bd().contingency + this.bd().insurance, iconName: 'folder-kanban', supplierGroups: [] });
+        isCoverage: false, total: 0, iconName: 'wallet', supplierGroups: [] });
     }
-    // Project section sorts last (it's the agency/overhead block).
-    return mapped.sort((a, b) => (a.isProject ? 1 : 0) - (b.isProject ? 1 : 0));
+    return mapped;
+  });
+
+  /** The "Project Coverage" card — Contingency (% of costs) + Insurance
+   *  (% or a fixed £). Display rows, not items; they feed the client total. */
+  protected readonly coverageGroup = computed(() => ({
+    id: '__coverage', name: 'Coverage', items: [] as QuoteLine[], isProject: false, isCoverage: true,
+    total: this.bd().contingency + this.bd().insurance, iconName: 'percent', supplierGroups: [] as SupplierGroup[],
+  }));
+
+  /** The Final Quote laid out as the SOW's three sections: Project Costs →
+   *  Fees → Project Coverage. The Cart shows just the category list. */
+  protected readonly sections = computed(() => {
+    const all = this.groups();
+    const costs = all.filter((g) => !g.isProject);
+    const fees = all.filter((g) => g.isProject);
+    const out: { label: string; groups: typeof all }[] = [{ label: 'Project Costs', groups: costs }];
+    if (this.isFinal()) {
+      out.push({ label: 'Fees', groups: fees });
+      out.push({ label: 'Project Coverage', groups: [this.coverageGroup()] });
+    } else if (fees.length) {
+      out.push({ label: 'Fees', groups: fees });
+    }
+    return out.filter((s) => s.groups.length);
   });
 
   // Track COLLAPSED categories (not expanded) so the default — and every new
