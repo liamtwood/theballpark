@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.87 (2026-08-27): Details renders like Description + Enter inserts at caret
+- Details now renders in **prose mode** (was heading-mode, which bolded every
+  non-bulleted line) — plain lines are normal, `**bold**` when chosen, same as
+  Description.
+- **Enter inserts a newline at the caret** and recomputes only the caret's line —
+  fixes rows only appearing at the bottom and "carriage returns ignored".
+
 ## Iteration — v2.85 (2026-08-27): Details is a clean markdown text field (was forced-bullet components)
 - Details no longer forces bullets or splits into components. It's now a **clean
   free-text field** like Description — new nullable `project_items.details` (all

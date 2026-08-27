@@ -205,7 +205,7 @@ import { ProjectService } from '../../core/projects/project.service';
                                       <span class="bp-body-small font-semibold tabular-nums text-text">{{ tot }}</span>
                                     }
                                   </div>
-                                  <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="line.details | md: 'heading'"></div>
+                                  <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="line.details | md"></div>
                                 </div>
                               }
                             </div>
@@ -681,13 +681,20 @@ export class InboxProjectComponent {
     const recalced = this.edExtrasText().split('\n').map((l) => this.calcExtraLine(l)).join('\n');
     if (recalced !== this.edExtrasText()) this.edExtrasText.set(recalced);
   }
-  /** Enter in the Details box: finalise every line (run the qty@price / N×M
-   *  calc) then start a plain new line — no forced bullets. Gives immediate calc
-   *  feedback; blur covers lines finished without an Enter. */
+  /** Enter in the Details box: recompute the line the caret is on (qty@price /
+   *  N×M), then insert a newline AT THE CARET (so rows land where you are, not at
+   *  the bottom). Blur covers lines finished without an Enter. */
   protected onExtrasEnter(ev: Event): void {
     ev.preventDefault();
-    const finalised = this.edExtrasText().split('\n').map((l) => this.calcExtraLine(l));
-    this.edExtrasText.set(finalised.join('\n') + '\n');
+    const ta = ev.target as HTMLTextAreaElement;
+    const pos = ta.selectionStart ?? ta.value.length;
+    const before = ta.value.slice(0, pos);
+    const after = ta.value.slice(pos);
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const finalised = before.slice(0, lineStart) + this.calcExtraLine(before.slice(lineStart)) + '\n';
+    const caret = finalised.length;
+    this.edExtrasText.set(finalised + after);
+    setTimeout(() => { try { ta.setSelectionRange(caret, caret); } catch { /* detached */ } }, 0);
   }
   /** Parse the extras textarea into clean component names (strip bullets, run
    *  the calc for lines the user didn't Enter through, drop blanks). */
