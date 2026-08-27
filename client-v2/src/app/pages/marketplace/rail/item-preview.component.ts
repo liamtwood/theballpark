@@ -25,17 +25,17 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
       <div class="flex items-center gap-2">
         @if (item().ownedByActiveOrg) {
           <!-- pV2-STORE-01 — owner edits their own item. -->
-          <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Edit product" aria-label="Edit product">
+          <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Edit product" aria-label="Edit product" (click)="$event.stopPropagation()">
             <lucide-icon name="square-pen" [size]="14" />
           </a>
         } @else if (canModerate()) {
           <!-- pV2-STORE-01 — ballpark admin reviews / approves the item. -->
-          <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Review product" aria-label="Review product">
+          <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Review product" aria-label="Review product" (click)="$event.stopPropagation()">
             <lucide-icon name="circle-check" [size]="14" />
           </a>
         } @else {
           <!-- pV2-STORE-01 — anyone else (e.g. an agent) opens the read-only view. -->
-          <a [routerLink]="['/store/items', item().id]" [queryParams]="{ view: 1 }" class="bp-itemprev-close" title="View product" aria-label="View product">
+          <a [routerLink]="['/store/items', item().id]" [queryParams]="{ view: 1 }" class="bp-itemprev-close" title="View product" aria-label="View product" (click)="$event.stopPropagation()">
             <lucide-icon name="external-link" [size]="14" />
           </a>
         }
@@ -44,7 +44,7 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
           class="bp-itemprev-close"
           [attr.aria-label]="closeLabel()"
           [title]="closeLabel()"
-          (click)="closed.emit()"
+          (click)="$event.stopPropagation(); closed.emit()"
         >
           <lucide-icon [name]="closeIcon()" [size]="14" />
         </button>

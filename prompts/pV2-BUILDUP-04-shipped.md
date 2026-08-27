@@ -35,6 +35,18 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.69 (2026-08-27): edit inline in the conversation, not a button
+- Replaced the "Edit item" button + separate editor pane with **inline
+  edit-in-place** on the item card in the conversation (Liam: "I was thinking we
+  would edit directly in the inbox conversation").
+- The brief **item card is read-only; the supplier clicks it → it becomes
+  editable** (Name/Description/Services), with **Save / Cancel at the bottom** of
+  the card. Agent view stays read-only (no click-to-edit).
+- `item-preview` header controls (store link + minimise chevron) now
+  `stopPropagation`, so clicking them doesn't trigger the card's enter-edit.
+- Same `updateLineDetails` PATCH; the button + `updateLineDetails` service/route
+  from the previous iteration are unchanged.
+
 ## Iteration — v2.68 (2026-08-27)
 - **Revised item card is now show/hide collapsible**, same pattern as the brief
   "original item" attachment: collapsed = paperclip + name + a muted "Revised"
