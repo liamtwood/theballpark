@@ -35,6 +35,15 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.91 (2026-08-27): fix Add-from-Uncategorised + category picker shows all categories
+- **Bug:** "Add Your Own Line Item" from the **Uncategorised** card sent
+  `categoryId: '__none'` (groupByCategory's synthetic bucket id) → the route's
+  `z.string().uuid()` rejected it → "Couldn't save the line(s)". `openAdd` now
+  normalises `'__none'` → `null`.
+- The inline editor's **category picker now lists ALL top-level categories**
+  (via `CatalogueService.categories()`), not just the ones already in the quote —
+  so a line (e.g. 1901 Fees) can be moved to any category.
+
 ## Iteration — v2.90 (2026-08-27): agent edits their own lines on the Final Quote (shared LineEditor)
 - **New shared `LineEditorComponent`** (name / **cost** / **unit** / **category** /
   description / services / details) — extracted so the inbox revised card and the

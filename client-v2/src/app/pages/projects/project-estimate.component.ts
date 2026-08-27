@@ -10,6 +10,7 @@ import { errorDetail } from '../../core/http-error';
 import { editable, hasInstall, isDeclined, isInstalled, lineCost } from './quote-line.util';
 import { EstimateItemRowComponent } from './estimate-item-row.component';
 import { InboxService, OutreachRosterEntry } from '../../core/inbox/inbox.service';
+import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { MessageSuppliersDialogComponent, MsgSupplierCategory } from './message-suppliers-dialog.component';
 import { ProjectSummaryTilesComponent } from './project-summary-tiles.component';
 import { EstimateBreakdownComponent } from './estimate-breakdown.component';
@@ -226,6 +227,10 @@ export class ProjectEstimateComponent {
   private readonly toast = inject(MessageService);
   private readonly inbox = inject(InboxService);
   private readonly router = inject(Router);
+  private readonly catalogue = inject(CatalogueService);
+  /** ALL top-level categories (not just those already in the quote) — the
+   *  inline editor's category picker so a line can move to any category. */
+  private readonly allCategories = resource({ loader: () => this.catalogue.categories() });
 
   readonly projectId = input.required<string>();
   readonly project = input.required<ProjectDetail>();
@@ -252,8 +257,9 @@ export class ProjectEstimateComponent {
     const id = this.selectedItemId();
     return id ? this.optionsFor(id) : [];
   });
-  /** Project categories (id + name) for the inline editor's category picker. */
-  protected readonly categoryOptions = computed(() => this.groups().map((g) => ({ id: g.id, name: g.name })));
+  /** All categories (id + name) for the inline editor's category picker. */
+  protected readonly categoryOptions = computed(() =>
+    (this.allCategories.value() ?? []).map((c) => ({ id: c.id, name: c.name })));
   /** The agent can edit their OWN custom lines inline (fees / legal / self-entered). */
   protected readonly selectedCanEdit = computed(() => {
     const l = this.selectedLine();
@@ -463,7 +469,9 @@ export class ProjectEstimateComponent {
    *  supplier, no browse rail (Form/Grid only). */
   protected openAdd(group?: { id: string; name: string; iconName?: string | null }): void {
     this.dialogVariant.set('new');
-    this.pendingCategoryId.set(group?.id ?? null);
+    // '__none' is groupByCategory's synthetic Uncategorised bucket — send NULL,
+    // not the fake id (it isn't a UUID; the server would 400).
+    this.pendingCategoryId.set(group && group.id !== '__none' ? group.id : null);
     this.pendingCategoryName.set(group?.name ?? '');
     this.pendingCategoryIcon.set(group?.iconName ?? null);
     this.pendingSuppliers.set([]);
