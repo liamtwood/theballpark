@@ -35,6 +35,12 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.71 (2026-08-27): hide the store-item link on inbox cards
+- New `item-preview` input `showStoreLink` (default true); set `false` on the
+  inbox conversation cards (original + revised) so the header no longer shows the
+  "view/edit product" link (external-link square-with-arrow) that jumped out to
+  the library. Other surfaces (marketplace rail, estimate rail) keep it.
+
 ## Iteration — v2.70 (2026-08-27): click-to-edit on the REVISED card, not the original
 - Moved the inline click-to-edit from the brief "original item" card to the
   **Revised item** card (Liam: "click to edit the revised not the original").

@@ -23,21 +23,23 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
         <h3 class="bp-list-title">{{ item().name }}</h3>
       }
       <div class="flex items-center gap-2">
-        @if (item().ownedByActiveOrg) {
-          <!-- pV2-STORE-01 — owner edits their own item. -->
-          <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Edit product" aria-label="Edit product" (click)="$event.stopPropagation()">
-            <lucide-icon name="square-pen" [size]="14" />
-          </a>
-        } @else if (canModerate()) {
-          <!-- pV2-STORE-01 — ballpark admin reviews / approves the item. -->
-          <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Review product" aria-label="Review product" (click)="$event.stopPropagation()">
-            <lucide-icon name="circle-check" [size]="14" />
-          </a>
-        } @else {
-          <!-- pV2-STORE-01 — anyone else (e.g. an agent) opens the read-only view. -->
-          <a [routerLink]="['/store/items', item().id]" [queryParams]="{ view: 1 }" class="bp-itemprev-close" title="View product" aria-label="View product" (click)="$event.stopPropagation()">
-            <lucide-icon name="external-link" [size]="14" />
-          </a>
+        @if (showStoreLink()) {
+          @if (item().ownedByActiveOrg) {
+            <!-- pV2-STORE-01 — owner edits their own item. -->
+            <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Edit product" aria-label="Edit product" (click)="$event.stopPropagation()">
+              <lucide-icon name="square-pen" [size]="14" />
+            </a>
+          } @else if (canModerate()) {
+            <!-- pV2-STORE-01 — ballpark admin reviews / approves the item. -->
+            <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Review product" aria-label="Review product" (click)="$event.stopPropagation()">
+              <lucide-icon name="circle-check" [size]="14" />
+            </a>
+          } @else {
+            <!-- pV2-STORE-01 — anyone else (e.g. an agent) opens the read-only view. -->
+            <a [routerLink]="['/store/items', item().id]" [queryParams]="{ view: 1 }" class="bp-itemprev-close" title="View product" aria-label="View product" (click)="$event.stopPropagation()">
+              <lucide-icon name="external-link" [size]="14" />
+            </a>
+          }
         }
         <button
           type="button"
@@ -119,6 +121,9 @@ export class ItemPreviewComponent {
    *  quote views hide the preview (eye). */
   readonly closeIcon = input<string>('x');
   readonly closeLabel = input<string>('Close preview');
+  /** Show the store-item link (edit/review/view product) in the header. Off for
+   *  the inbox conversation cards, which shouldn't jump out to the library. */
+  readonly showStoreLink = input<boolean>(true);
   readonly closed = output<void>();
   /** Opt-in edit mode — the name + description become editable and emit changes
    *  (used by the supplier Customize to set the final item the agent sees). */
