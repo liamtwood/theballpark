@@ -138,14 +138,16 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       <span class="bp-icon-block h-16 w-16 shrink-0 opacity-50"><lucide-icon name="percent" [size]="22" /></span>
                       <div class="min-w-0 flex-1">
                         <span class="bp-list-title flex items-center gap-1.5 text-muted">
-                          Margin
+                          Other
                           <button type="button" class="rounded p-0.5 hover:text-secondary" (click)="showMargin.set(!showMargin())"
                                   [attr.aria-label]="showMargin() ? 'Hide margin' : 'Reveal margin'"
                                   [title]="showMargin() ? 'Hide margin' : 'Reveal margin'">
                             <lucide-icon [name]="showMargin() ? 'eye-off' : 'eye'" [size]="14" />
                           </button>
                         </span>
-                        <div class="bp-meta mt-0.5">{{ bd().marginPct }}% — already in Project Costs</div>
+                        @if (showMargin()) {
+                          <div class="bp-meta mt-0.5">Margin {{ bd().marginPct }}% — already in Project Costs</div>
+                        }
                       </div>
                       <span class="bp-body-small w-20 shrink-0 text-right tabular-nums">{{ showMargin() ? (bd().marginAmount | currency: cur() : 'symbol' : '1.0-0') : '••••' }}</span>
                     </div>

@@ -35,6 +35,12 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.97 (2026-08-27): Coverage margin row reads "Other", details hidden until the eye
+- The Coverage card's margin row now shows just **"Other"** with **no
+  description** by default (Liam: it shouldn't read "Margin" / "20% — already in
+  Project Costs" on the page). Clicking the **eye** reveals the description
+  (`Margin {{pct}}% — already in Project Costs`) and unmasks the amount.
+
 ## Iteration — v2.96 (2026-08-27): SOW cascade — margin silently marks up Project Costs
 - Reworked the estimate cascade to the agency **SOW model** (ref
   `docs/sow-invoice/EXT 1901 X LUCKY SAINT.xlsx`). One formula, server-side
