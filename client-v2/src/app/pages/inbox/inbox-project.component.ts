@@ -651,7 +651,7 @@ export class InboxProjectComponent {
     if (!m) return line;
     const total = Number(m[1]) * Number(m[3]);
     if (!Number.isFinite(total)) return line;
-    const sym = m[2] || '£';
+    const sym = m[2]; // whatever sign they used ($ / £), or none
     const totalStr = total % 1 === 0 ? String(total) : total.toFixed(2);
     const base = line.replace(/\s*=.*$/, '').trimEnd(); // drop any existing "= …"
     return `${base} = ${sym}${totalStr}`;
