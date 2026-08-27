@@ -35,6 +35,23 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.99 (2026-08-27): Insurance is a % of project costs (drop fixed-£ mode)
+- Confirmed against the actual Lucky Saint SOW: contingency **@5%** and
+  insurance **@2%** were BOTH struck off the **same £23,853 project-cost
+  subtotal**, in parallel (5% = £1,193, 2% = £477; insurance is NOT stacked on
+  contingency). So insurance is now simply a **% of the (marked-up) project
+  costs**, exactly like contingency.
+- **Removed the fixed-£ insurance mode entirely** (Liam: "if they want a fixed
+  insurance cost they can set that to 0 and add an item to the fees"). The
+  Insurance row is now a plain % editor; a flat insurance charge is entered as a
+  Fees line instead.
+- `estimate.js`: `insurance = projectCosts × insurancePct%` (default 0); dropped
+  the `insuranceAmount` branch. `projects.service.js`: dropped `insuranceAmount`
+  from both `computeEstimate` calls, the two SELECTs, `EDITABLE`, and `toDetail`.
+  `ProjectUpdateSchema` + client `ProjectDetail`/`ProjectUpdate` drop
+  `defaultInsuranceAmount`. The `default_insurance_amount` **column is left
+  dormant** in migrate-schemas (harmless, like `parent_item_id`).
+
 ## Iteration — v2.98 (2026-08-27): Contingency / Insurance / Margin are editable inline
 - The three Coverage rates are now **editable inline** with a control **visually
   identical to the quantity stepper** (Liam: "make the entry field identical to

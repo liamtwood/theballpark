@@ -44,10 +44,9 @@ const ProjectUpdateSchema = z.object({
   // Per-project financial rates (Estimate cascade). NUMERIC(5,2) → ≤ 999.99.
   defaultMarginPct: z.number().nonnegative().max(999.99).nullable().optional(),
   defaultContingencyPct: z.number().nonnegative().max(999.99).nullable().optional(),
-  // Insurance: a % of project costs, NUMERIC(5,2) → ≤ 999.99; OR a fixed £
-  // amount, NUMERIC(12,2). The % wins when set (server cascade).
+  // Insurance is a % of project costs (like contingency). A flat insurance cost
+  // is entered as a Fees line, not here — so there's no fixed-£ field.
   defaultInsurancePct: z.number().nonnegative().max(999.99).nullable().optional(),
-  defaultInsuranceAmount: z.number().nonnegative().max(9999999999.99).nullable().optional(),
   defaultVatPct: z.number().nonnegative().max(999.99).nullable().optional(),
   // Media (pV2-MEDIA-01b) — the image-picker result maps to these.
   coverImageUrl: z.string().trim().max(1000).nullable().optional(),

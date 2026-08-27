@@ -160,9 +160,8 @@ export interface ProjectDetail {
   /** Financial defaults — the Estimate tab breakdown (v1 formula). */
   defaultMarginPct: number | null;
   defaultContingencyPct: number | null;
-  /** Insurance: a % of project costs (wins when set) OR a fixed £ amount. */
+  /** Insurance: a % of project costs (like contingency; a flat cost is a Fee). */
   defaultInsurancePct: number | null;
-  defaultInsuranceAmount: number | null;
   defaultVatPct: number | null;
   /** Media (pV2-MEDIA-01b). */
   coverFocalX: number;
@@ -201,7 +200,6 @@ export type ProjectUpdate = Partial<{
   defaultMarginPct: number | null;
   defaultContingencyPct: number | null;
   defaultInsurancePct: number | null;
-  defaultInsuranceAmount: number | null;
   defaultVatPct: number | null;
   coverImageUrl: string | null;
   clientLogoUrl: string | null;

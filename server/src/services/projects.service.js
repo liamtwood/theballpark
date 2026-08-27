@@ -60,7 +60,7 @@ const LIST_SELECT = `
          p.cover_image_url, p.client_logo_url,
          p.cover_focal_x, p.cover_focal_y, p.icon_name, p.icon_color,
          p.unsplash_photographer_name, p.unsplash_photo_url,
-         p.currency, p.default_contingency_pct, p.default_insurance_pct, p.default_insurance_amount, p.default_margin_pct, p.default_vat_pct,
+         p.currency, p.default_contingency_pct, p.default_insurance_pct, p.default_margin_pct, p.default_vat_pct,
          p.created_at, p.updated_at,
          COALESCE(p.client_name, c.name) AS client_name,
          (SELECT COUNT(DISTINCT i.org_id)
@@ -105,7 +105,7 @@ function cardBallpark(row) {
   return computeEstimate(hard, {
     feesSubtotal: fees,
     contingencyPct: row.default_contingency_pct,
-    insurancePct: row.default_insurance_pct, insuranceAmount: row.default_insurance_amount,
+    insurancePct: row.default_insurance_pct,
     marginPct: row.default_margin_pct,
   }).projectTotal;
 }
@@ -178,7 +178,6 @@ function toDetail(row) {
     defaultMarginPct: row.default_margin_pct === null ? null : Number(row.default_margin_pct),
     defaultContingencyPct: row.default_contingency_pct === null ? null : Number(row.default_contingency_pct),
     defaultInsurancePct: row.default_insurance_pct == null ? null : Number(row.default_insurance_pct),
-    defaultInsuranceAmount: row.default_insurance_amount == null ? null : Number(row.default_insurance_amount),
     defaultVatPct: row.default_vat_pct === null ? null : Number(row.default_vat_pct),
     eventName: row.event_name,
     clientName: row.client_name ?? null,
@@ -232,7 +231,6 @@ const EDITABLE = {
   defaultMarginPct: 'default_margin_pct',
   defaultContingencyPct: 'default_contingency_pct',
   defaultInsurancePct: 'default_insurance_pct',
-  defaultInsuranceAmount: 'default_insurance_amount',
   defaultVatPct: 'default_vat_pct',
   // Media (pV2-MEDIA-01b) — the picker result maps here.
   coverImageUrl: 'cover_image_url',
@@ -548,7 +546,7 @@ async function listItems(orgId, projectId) {
 async function getEstimate(orgId, projectId, scope = 'all') {
   const cartOnly = scope === 'cart';
   const r = await pool.query(
-    `SELECT p.default_contingency_pct, p.default_insurance_pct, p.default_insurance_amount, p.default_margin_pct,
+    `SELECT p.default_contingency_pct, p.default_insurance_pct, p.default_margin_pct,
             -- pV2-BUILDUP-04: split HARD costs (categorised supplier lines) from
             -- FEES (the agent's own uncategorised lines) — margin marks up hard
             -- costs only; fees are added flat.
@@ -580,7 +578,7 @@ async function getEstimate(orgId, projectId, scope = 'all') {
   return computeEstimate(row.hard_subtotal, {
     feesSubtotal: row.fees_subtotal,
     contingencyPct: row.default_contingency_pct,
-    insurancePct: row.default_insurance_pct, insuranceAmount: row.default_insurance_amount,
+    insurancePct: row.default_insurance_pct,
     marginPct: row.default_margin_pct,
   });
 }

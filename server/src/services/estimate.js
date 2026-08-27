@@ -31,7 +31,7 @@ function nonNeg(v) {
 /**
  * Run the hard-costs + fees subtotals through the SOW cascade.
  * @param {number} hardSubtotal - Σ qty×price over the SUPPLIER (categorised) lines, raw.
- * @param {{feesSubtotal?, contingencyPct?, insurancePct?, insuranceAmount?, marginPct?}} [rates]
+ * @param {{feesSubtotal?, contingencyPct?, insurancePct?, marginPct?}} [rates]
  * @returns the breakdown the Estimate tab renders; the card uses `.projectTotal`.
  */
 function computeEstimate(hardSubtotal, rates = {}) {
@@ -44,12 +44,13 @@ function computeEstimate(hardSubtotal, rates = {}) {
   const marginAmount = rawHard * (marginPct / 100);
   const projectCosts = rawHard + marginAmount;
 
-  // Contingency is a % of the (marked-up) project costs. Insurance is EITHER a %
-  // of project costs OR a fixed entered £ — the % wins when set, else the amount.
+  // Contingency and insurance are BOTH a % of the (marked-up) project costs,
+  // struck in parallel off the same base — matching the agency SOW (Lucky Saint:
+  // contingency @5% + insurance @2%, both of the £23,853 project-cost subtotal).
+  // There's no fixed-£ insurance mode: a flat insurance cost is just a Fees line.
   const contingency = projectCosts * (contingencyPct / 100);
-  const insurancePctSet = rates.insurancePct != null && Number.isFinite(Number(rates.insurancePct));
-  const insurancePct = insurancePctSet ? Number(rates.insurancePct) : 0;
-  const insurance = insurancePctSet ? projectCosts * (insurancePct / 100) : rateOr(rates.insuranceAmount, 0);
+  const insurancePct = rateOr(rates.insurancePct, 0);
+  const insurance = projectCosts * (insurancePct / 100);
   const coverage = contingency + insurance;
 
   const projectTotal = projectCosts + coverage + fees; // ex-VAT
@@ -61,7 +62,7 @@ function computeEstimate(hardSubtotal, rates = {}) {
     projectCosts,     // displayed Project Costs (hard × (1+margin%))
     contingencyPct,
     contingency,
-    insurancePct,     // >0 when insurance is a %, else 0 (fixed £ or none)
+    insurancePct,     // % of project costs (0 = no insurance)
     insurance,
     coverage,         // contingency + insurance
     fees,

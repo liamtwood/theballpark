@@ -129,11 +129,10 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="percent" [size]="22" /></span>
                       <div class="min-w-0 flex-1">
                         <span class="bp-list-title">Insurance</span>
-                        <div class="bp-meta mt-0.5">@if (bd().insurancePct > 0) { % of project costs } @else { fixed amount }</div>
+                        <div class="bp-meta mt-0.5">% of project costs</div>
                       </div>
-                      <app-rate-input class="shrink-0" [value]="bd().insurancePct > 0 ? bd().insurancePct : bd().insurance"
-                                      [stepBy]="bd().insurancePct > 0 ? 1 : 50" label="insurance"
-                                      (rateCommit)="onInsuranceChange($event)" (click)="$event.stopPropagation()" />
+                      <app-rate-input class="shrink-0" [value]="bd().insurancePct" label="insurance percent"
+                                      (rateCommit)="saveRate({ defaultInsurancePct: $event })" (click)="$event.stopPropagation()" />
                       <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ bd().insurance | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
                     <!-- Margin — a reference row: the silent markup already baked
@@ -342,11 +341,6 @@ export class ProjectEstimateComponent {
     } catch (err) {
       this.toast.add({ severity: 'error', summary: "Couldn't save the rate — please try again.", detail: errorDetail(err), life: 4000 });
     }
-  }
-  /** Insurance edits the ACTIVE mode: a % if one is set, else the fixed £. */
-  protected onInsuranceChange(v: number): void {
-    if (this.bd().insurancePct > 0) this.saveRate({ defaultInsurancePct: v });
-    else this.saveRate({ defaultInsuranceAmount: v });
   }
   protected selectLine(l: QuoteLine): void {
     this.selectedItemId.set(l.id);
