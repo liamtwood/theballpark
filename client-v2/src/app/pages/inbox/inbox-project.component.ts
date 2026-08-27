@@ -184,7 +184,7 @@ import { ProjectService } from '../../core/projects/project.service';
                                 }
                               </div>
                               <textarea rows="4" class="bp-store-textarea mt-1 w-full" placeholder="• e.g. Wine Pairing 100@15"
-                                        [ngModel]="edExtrasText()" (ngModelChange)="edExtrasText.set($event)" (keydown.enter)="onExtrasEnter($event)"></textarea>
+                                        [ngModel]="edExtrasText()" (ngModelChange)="edExtrasText.set($event)" (keydown.enter)="onExtrasEnter($event)" (blur)="onExtrasBlur()"></textarea>
                             </div>
                             <div class="mt-4 flex gap-2.5 border-t border-hairline pt-4">
                               <button type="button" class="bp-btn-outline flex-1" (click)="cancelEdit()">Cancel</button>
@@ -675,6 +675,14 @@ export class InboxProjectComponent {
     // so "fridge = 150x2" keeps its "150x2" and just gains "= 300".
     const base = line.replace(/\s*=\s*[$£€¥]?\s*[\d,]*(?:\.\d+)?\s*$/, '').trimEnd();
     return `${base} = ${sym}${totalStr}`;
+  }
+  /** Blur: re-run the calc on every line so a changed operand (e.g. 150x2 →
+   *  150x4) updates its "= total" in place. (The header total already updates
+   *  live as you type.) An expression is the source of truth — to set a custom
+   *  total, drop the x/@ and just type "= <amount>". */
+  protected onExtrasBlur(): void {
+    const recalced = this.edExtrasText().split('\n').map((l) => this.calcExtraLine(l)).join('\n');
+    if (recalced !== this.edExtrasText()) this.edExtrasText.set(recalced);
   }
   /** Enter in the extras box: finalise every line (run the calc) and start a
    *  fresh bulleted line. Bullets are literal "• " prefixes, stripped on save. */

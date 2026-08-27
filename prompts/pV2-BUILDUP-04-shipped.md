@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.83 (2026-08-27): recalc a line on blur (edited operand)
+- Editing an operand (e.g. `100x2` → `100x3`) left the "= total" stale until
+  Enter/Save. The textarea now recomputes every line on **blur**, so leaving the
+  field (or clicking Save) updates the line totals. Header total already updated
+  live. An expression stays the source of truth — for a custom total, drop the
+  x/@.
+
 ## Iteration — v2.82 (2026-08-27): Details calc also supports N×M (x / × / *)
 - The calc now accepts `x` / `×` / `*` as well as `@`: `fridge 150x2 → = 300`,
   `£150x2 → = £300`. Evaluates the expression **in place** and appends the
