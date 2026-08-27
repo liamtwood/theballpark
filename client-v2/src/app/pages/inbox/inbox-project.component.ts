@@ -456,11 +456,22 @@ export class InboxProjectComponent {
   protected cardsFor(m: InboxBubble): QuoteLine[] {
     return this.cardsByMessage().get(m.id) ?? [];
   }
+  /** The id of the LAST "New Cost Suggested" message in the current view — the
+   *  revised card renders under this message only, so it appears ONCE (at the
+   *  latest revision) instead of under every proposal in the history. */
+  protected readonly lastProposalMessageId = computed<string | null>(() => {
+    const msgs = this.visibleMessages();
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (/new cost suggested/i.test(msgs[i].body)) return msgs[i].id;
+    }
+    return null;
+  });
   /** The revised item card(s) delivered with a "New Cost" message — the current
    *  line (supplier's edited name/description/services + revised price) for the
-   *  item(s) the message proposed a new cost on. */
+   *  item(s) the message proposed a new cost on. Only the LATEST proposal
+   *  renders the card (it reflects the last-edited line), so it appears once. */
   protected proposalCardsFor(m: InboxBubble): QuoteLine[] {
-    if (!/new cost suggested/i.test(m.body)) return [];
+    if (m.id !== this.lastProposalMessageId()) return [];
     const t = this.selectedThread();
     if (!t) return [];
     return t.items

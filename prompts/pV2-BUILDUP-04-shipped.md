@@ -35,6 +35,12 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.72 (2026-08-27): revised card appears once (latest revision)
+- The revised item card previously rendered under **every** "New Cost Suggested"
+  message. Now it renders **only under the most recent** proposal
+  (`lastProposalMessageId`), so it appears once and reflects the last-edited
+  line. Original card untouched.
+
 ## Iteration — v2.71 (2026-08-27): hide the store-item link on inbox cards
 - New `item-preview` input `showStoreLink` (default true); set `false` on the
   inbox conversation cards (original + revised) so the header no longer shows the
