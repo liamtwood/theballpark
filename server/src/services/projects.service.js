@@ -398,6 +398,8 @@ function toQuoteLine(row) {
     // pV2-BUILDUP-03 — set when this line is a picked option of another line;
     // the Final Quote nests it under that parent + lists it in the item card.
     optionOfLineId: row.option_of_line_id ?? null,
+    // pV2-BUILDUP-04 — the line's extras (child component names), name-only.
+    extras: row.extra_names ?? [],
   };
 }
 
@@ -434,6 +436,10 @@ const QUOTE_LINE_JOIN = `
          -- pV2-BUILDUP-03 — does the catalogue item carry options (child items)?
          -- Drives the Final Quote "Options" button.
          EXISTS (SELECT 1 FROM items ci WHERE ci.parent_item_id = pi.item_id AND ci.deleted_at IS NULL) AS has_options,
+         -- pV2-BUILDUP-04 — the line's "extras" = its child component names, so
+         -- the inbox card can list them read-only without a second fetch.
+         (SELECT array_agg(ch.name ORDER BY ch.created_at)
+            FROM project_items ch WHERE ch.parent_id = pi.id AND ch.deleted_at IS NULL) AS extra_names,
          -- Supplier (pV2-UNIFY-01a): the ASKED supplier (supplier_org_id) once
          -- sent — the source of truth for who's quoting THIS row; pre-send it's
          -- NULL so we fall back to the item's catalogue owner (the default the

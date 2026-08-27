@@ -35,6 +35,18 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.77 (2026-08-27): "Details" section — bulleted extras saved as components
+- New **Details** section under Services on the revised edit card: an
+  auto-bulleted textarea (Enter finalises the line + starts a new "• " bullet).
+- Each line = a **name-only child component** (reuses `saveComponents`, which also
+  clones each name up to the org's reusable component library). **No price impact
+  — excluded from totals like every component.**
+- Inline calc: a "qty@price" in a line auto-totals into the text
+  (`Wine Pairing 100@£15` → `Wine Pairing 100@£15 = £1500`); forgiving of $/£ and
+  a trailing "=", idempotent.
+- The line carries its extra names via an `array_agg` in `QUOTE_LINE_JOIN`
+  (`extras: string[]`); the read-only card lists them as bullets under Details.
+
 ## Iteration — v2.74 (2026-08-27): edit the price on the revised card → triggers a cost proposal
 - The revised-card editor now also lets the supplier **change the price** (new
   `item-preview` inputs `priceEditable` + `priceChange` output — a number input

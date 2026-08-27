@@ -80,6 +80,8 @@ export interface QuoteLine {
   /** pV2-BUILDUP-03 — set when this line is a picked option of another line;
    *  the Final Quote nests it under that parent + lists it in the item card. */
   optionOfLineId?: string | null;
+  /** pV2-BUILDUP-04 — the line's extras (child component names), name-only. */
+  extras?: string[];
 }
 
 /** Per-item send-state — the single switch between the cart and final views. */

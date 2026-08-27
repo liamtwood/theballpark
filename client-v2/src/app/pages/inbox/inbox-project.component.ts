@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, linkedSignal, resource, signal, viewChild } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom, map } from 'rxjs';
@@ -28,7 +29,7 @@ import { ProjectService } from '../../core/projects/project.service';
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, LucideAngularModule, PageHeroComponent, InboxRailComponent, ItemPreviewComponent, CustomizeDialogComponent],
+  imports: [CurrencyPipe, DatePipe, FormsModule, LucideAngularModule, PageHeroComponent, InboxRailComponent, ItemPreviewComponent, CustomizeDialogComponent],
   host: { '[class]': 'hostClass()' },
   template: `
     @if (!embedded()) {
@@ -173,16 +174,33 @@ import { ProjectService } from '../../core/projects/project.service';
                                                 closeIcon="chevron-up" closeLabel="Minimise" (closed)="toggleAttachment(m.id, line.id)"
                                                 (nameChange)="edName.set($event)" (descChange)="edDesc.set($event)" (servicesChange)="edServices.set($event)" (priceChange)="edPrice.set($event)" />
                             }
+                            <!-- Details — bulleted extras saved as name-only child
+                                 components. Enter adds a bullet; "qty@price" auto-totals. -->
+                            <div class="mt-3 border-t border-hairline pt-3">
+                              <span class="bp-field-label">Details</span>
+                              <textarea rows="4" class="bp-store-textarea mt-1 w-full" placeholder="• e.g. Wine Pairing 100@£15"
+                                        [ngModel]="edExtrasText()" (ngModelChange)="edExtrasText.set($event)" (keydown.enter)="onExtrasEnter($event)"></textarea>
+                            </div>
                             <div class="mt-4 flex gap-2.5 border-t border-hairline pt-4">
                               <button type="button" class="bp-btn-outline flex-1" (click)="cancelEdit()">Cancel</button>
                               <button type="button" class="bp-btn-grad flex-1" [disabled]="savingDetails()" (click)="saveDetails()">{{ savingDetails() ? 'Saving…' : 'Save' }}</button>
                             </div>
                           } @else {
                             <!-- Read-only; the supplier clicks the revised card to edit it. -->
-                            <div [class.cursor-pointer]="!isAgency()" [attr.title]="isAgency() ? null : 'Click to edit description & services'" (click)="beginEdit(line)">
+                            <div [class.cursor-pointer]="!isAgency()" [attr.title]="isAgency() ? null : 'Click to edit'" (click)="beginEdit(line)">
                               <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName" [showStoreLink]="false" [showFromPrefix]="false"
                                                 closeIcon="chevron-up" closeLabel="Minimise"
                                                 (closed)="toggleAttachment(m.id, line.id)" />
+                              @if (line.extras?.length) {
+                                <div class="mt-3 border-t border-hairline pt-3">
+                                  <span class="bp-field-label">Details</span>
+                                  <ul class="mt-1 space-y-0.5">
+                                    @for (ex of line.extras; track ex) {
+                                      <li class="bp-body-small text-secondary">• {{ ex }}</li>
+                                    }
+                                  </ul>
+                                </div>
+                              }
                             </div>
                           }
                         </div>
@@ -620,7 +638,39 @@ export class InboxProjectComponent {
   protected readonly edDesc = signal('');
   protected readonly edServices = signal('');
   protected readonly edPrice = signal<number | null>(null);
+  /** Extras editor — one bulleted line per extra (saved as name-only child
+   *  components). A "qty@price" is auto-totalled into the line text. */
+  protected readonly edExtrasText = signal('');
   protected readonly savingDetails = signal(false);
+
+  /** Turn "Wine 100@$15" (or "…100@$15 =") into "Wine 100@$15 = £1500".
+   *  Forgiving: optional $/£, optional trailing "=". Name-only text — it never
+   *  touches the real line price. Idempotent (recomputing re-writes the total). */
+  private calcExtraLine(line: string): string {
+    const m = line.match(/(\d+(?:\.\d+)?)\s*@\s*([$£]?)\s*(\d+(?:\.\d+)?)/);
+    if (!m) return line;
+    const total = Number(m[1]) * Number(m[3]);
+    if (!Number.isFinite(total)) return line;
+    const sym = m[2] || '£';
+    const totalStr = total % 1 === 0 ? String(total) : total.toFixed(2);
+    const base = line.replace(/\s*=.*$/, '').trimEnd(); // drop any existing "= …"
+    return `${base} = ${sym}${totalStr}`;
+  }
+  /** Enter in the extras box: finalise every line (run the calc) and start a
+   *  fresh bulleted line. Bullets are literal "• " prefixes, stripped on save. */
+  protected onExtrasEnter(ev: Event): void {
+    ev.preventDefault();
+    const finalised = this.edExtrasText().split('\n').map((l) => this.calcExtraLine(l));
+    this.edExtrasText.set(finalised.join('\n') + '\n• ');
+  }
+  /** Parse the extras textarea into clean component names (strip bullets, run
+   *  the calc for lines the user didn't Enter through, drop blanks). */
+  private parseExtras(text: string): string[] {
+    return text
+      .split('\n')
+      .map((l) => this.calcExtraLine(l.replace(/^\s*[•\-*]\s*/, '').trim()).trim())
+      .filter((l) => l.length > 0);
+  }
   /** The line as the editable card's CatalogueItem, overlaid with the in-progress edits. */
   protected readonly editPreviewItem = computed<CatalogueItem | null>(() => {
     const l = this.editingLine();
@@ -638,6 +688,7 @@ export class InboxProjectComponent {
     this.edDesc.set(line.description ?? '');
     this.edServices.set(line.installDescription ?? '');
     this.edPrice.set(line.basePrice ?? null);
+    this.edExtrasText.set(line.extras?.length ? line.extras.map((e) => `• ${e}`).join('\n') : '• ');
     this.editingLine.set(line);
   }
   protected cancelEdit(): void {
@@ -654,6 +705,16 @@ export class InboxProjectComponent {
         description: this.edDesc().trim() || null,
         services: this.edServices().trim() || null,
       }));
+      // Save the Details list as name-only child components (reconcile: add new,
+      // drop removed). Only when there's something to sync (skip an empty no-op).
+      const extras = this.parseExtras(this.edExtrasText());
+      if (extras.length || (line.extras?.length ?? 0) > 0) {
+        await firstValueFrom(this.projects.saveComponents(
+          this.projectId(), line.id,
+          extras.map((name) => ({ categoryId: null, name, cost: null, unit: null, quantity: 1, kind: 'component', included: true })),
+          null, null,
+        ));
+      }
       // If they also changed the PRICE, fire the same "New Cost Suggested"
       // proposal as the propose flow (posts the chat line + sets price_current).
       const oldRate = line.basePrice ?? 0;
