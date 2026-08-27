@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.82 (2026-08-27): Details calc also supports N×M (x / × / *)
+- The calc now accepts `x` / `×` / `*` as well as `@`: `fridge 150x2 → = 300`,
+  `£150x2 → = £300`. Evaluates the expression **in place** and appends the
+  result, so `fridge = 150x2` becomes `fridge = 150x2 = 300` (keeps the maths
+  visible). The trailing-result strip is now number-only, so it never eats the
+  expression. Caveat: a literal `6x6` in a name would also be multiplied.
+
 ## Iteration — v2.81 (2026-08-27): Details header shows a running total
 - The Details header now shows a **total on the right**, but **only when lines
   carry costs** (sum of each line's trailing "= <total>", incl. manual ones like

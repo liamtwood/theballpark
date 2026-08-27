@@ -663,13 +663,17 @@ export class InboxProjectComponent {
    *  Forgiving: optional $/£, optional trailing "=". Name-only text — it never
    *  touches the real line price. Idempotent (recomputing re-writes the total). */
   private calcExtraLine(line: string): string {
-    const m = line.match(/(\d+(?:\.\d+)?)\s*@\s*([$£]?)\s*(\d+(?:\.\d+)?)/);
+    // <num> <op> <num> where op is @ (qty@price) or x / × / * (value×qty). A
+    // currency sign may sit before either number.
+    const m = line.match(/([$£€¥]?)\s*(\d+(?:\.\d+)?)\s*[@x×*]\s*([$£€¥]?)\s*(\d+(?:\.\d+)?)/i);
     if (!m) return line;
-    const total = Number(m[1]) * Number(m[3]);
+    const total = Number(m[2]) * Number(m[4]);
     if (!Number.isFinite(total)) return line;
-    const sym = m[2] || this.currencySymbol(this.editingLine()?.supplierCurrency); // their sign, else the supplier currency
+    const sym = m[1] || m[3] || this.currencySymbol(this.editingLine()?.supplierCurrency); // their sign, else supplier currency
     const totalStr = total % 1 === 0 ? String(total) : total.toFixed(2);
-    const base = line.replace(/\s*=.*$/, '').trimEnd(); // drop any existing "= …"
+    // Drop only a trailing "= <result>" (a bare number) — never the expression,
+    // so "fridge = 150x2" keeps its "150x2" and just gains "= 300".
+    const base = line.replace(/\s*=\s*[$£€¥]?\s*[\d,]*(?:\.\d+)?\s*$/, '').trimEnd();
     return `${base} = ${sym}${totalStr}`;
   }
   /** Enter in the extras box: finalise every line (run the calc) and start a
