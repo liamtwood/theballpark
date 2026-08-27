@@ -67,6 +67,8 @@ export interface InboxProjectSummary {
   agencyName: string | null;
   agencyLogoUrl: string | null;
   itemCount: number;
+  /** ISO currency code for the project quote (e.g. 'GBP', 'USD'). */
+  currency: string;
   originalTotal: number;
   revisedTotal: number;
 }

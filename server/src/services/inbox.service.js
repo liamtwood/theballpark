@@ -356,6 +356,7 @@ async function getProjectSummary(projectId, threads) {
             -- the supplier's card showed no client at all. Same COALESCE as
             -- LIST_SELECT / getDetail (audit 2026-07-17 S2).
             COALESCE(p.client_name, cl.name) AS client_name,
+            p.currency,
             ag.name AS agency_name, ag.logo_url AS agency_logo_url
        FROM projects p
        LEFT JOIN clients cl ON cl.id = p.client_id
@@ -373,6 +374,7 @@ async function getProjectSummary(projectId, threads) {
     agencyName: row.agency_name ?? threads[0]?.agencyName ?? null,
     agencyLogoUrl: row.agency_logo_url ?? null,
     itemCount: allItems.length,
+    currency: row.currency ?? 'GBP',
     originalTotal: allItems.reduce((s, it) => s + Number(it.priceRef ?? 0), 0),
     revisedTotal: allItems.reduce((s, it) => s + Number(it.priceCurrent ?? it.priceRef ?? 0), 0),
   };
