@@ -34,7 +34,7 @@ import { currencySymbol, detailsTotalStr } from '../../shared/details-format';
             </div>
           } @else {
             <div class="bp-card p-4">
-              <app-item-preview [item]="previewItem()!" [categoryName]="l.categoryName"
+              <app-item-preview [item]="previewItem()!" [categoryName]="l.categoryName" [showFromPrefix]="false" [showStoreLink]="false"
                                 closeIcon="eye" closeLabel="Hide preview" (closed)="hidden.set(true)" />
               <!-- pV2-BUILDUP-04 — the line's Details (same free-text markdown the
                    inbox card shows), with its running total. -->
