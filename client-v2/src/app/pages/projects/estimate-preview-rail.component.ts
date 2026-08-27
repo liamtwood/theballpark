@@ -5,6 +5,8 @@ import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { QuoteLine } from '../../core/projects/project.types';
 import { lineCost, quoteLineToCatalogueItem } from './quote-line.util';
+import { MarkdownPipe } from '../../shared/markdown.pipe';
+import { currencySymbol, detailsTotalStr } from '../../shared/details-format';
 
 /** pV2-CART-01 — the right-rail marketplace preview for the selected quote
  *  line. Owns the eye toggle (hides the card for ALL selections until clicked
@@ -12,7 +14,7 @@ import { lineCost, quoteLineToCatalogueItem } from './quote-line.util';
 @Component({
   selector: 'app-estimate-preview-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule, ItemPreviewComponent],
+  imports: [CurrencyPipe, LucideAngularModule, ItemPreviewComponent, MarkdownPipe],
   host: { class: 'contents' },
   template: `
     @if (line(); as l) {
@@ -34,6 +36,19 @@ import { lineCost, quoteLineToCatalogueItem } from './quote-line.util';
             <div class="bp-card p-4">
               <app-item-preview [item]="previewItem()!" [categoryName]="l.categoryName"
                                 closeIcon="eye" closeLabel="Hide preview" (closed)="hidden.set(true)" />
+              <!-- pV2-BUILDUP-04 — the line's Details (same free-text markdown the
+                   inbox card shows), with its running total. -->
+              @if (l.details) {
+                <div class="mt-3 border-t border-hairline pt-3">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="bp-field-label">Details</span>
+                    @if (detailsTotal(l); as tot) {
+                      <span class="bp-body-small font-semibold tabular-nums text-text">{{ tot }}</span>
+                    }
+                  </div>
+                  <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="l.details | md"></div>
+                </div>
+              }
               <!-- pV2-BUILDUP-03 — this line's picked options, listed on the card. -->
               @if (options().length) {
                 <div class="mt-3 rounded-[var(--radius-card)] border border-hairline">
@@ -73,6 +88,8 @@ export class EstimatePreviewRailComponent {
   /** "Explore More" → the host opens the supplier-browse dialog for this line. */
   readonly exploreMore = output<void>();
   protected optCost(l: QuoteLine): number { return lineCost(l); }
+  /** The line's Details running total ("£3,100"), or '' when no costs. */
+  protected detailsTotal(l: QuoteLine): string { return detailsTotalStr(l.details, currencySymbol(l.supplierCurrency)); }
   /** Eye toggle — suppresses the preview for ALL selections (session-local). */
   protected readonly hidden = signal(false);
 

@@ -16,6 +16,7 @@ import { InboxRailComponent, RailOuter } from './inbox-rail.component';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { lineCost, quoteLineToCatalogueItem, quoteLineToRequestedItem } from '../projects/quote-line.util';
 import { MarkdownPipe } from '../../shared/markdown.pipe';
+import { currencySymbol, detailsCalcLine, detailsTotalStr } from '../../shared/details-format';
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
 import { ProjectService } from '../../core/projects/project.service';
 
@@ -201,7 +202,7 @@ import { ProjectService } from '../../core/projects/project.service';
                                 <div class="mt-3 border-t border-hairline pt-3">
                                   <div class="flex items-center justify-between gap-2">
                                     <span class="bp-field-label">Details</span>
-                                    @if (extrasTotalStr(line.details.split('\n'), line.supplierCurrency); as tot) {
+                                    @if (detailsTotalDisplay(line.details, line.supplierCurrency); as tot) {
                                       <span class="bp-body-small font-semibold tabular-nums text-text">{{ tot }}</span>
                                     }
                                   </div>
@@ -650,28 +651,15 @@ export class InboxProjectComponent {
   protected readonly edExtrasText = signal('');
   protected readonly savingDetails = signal(false);
 
-  /** Currency symbol for the default of an unsigned "qty@price" — the line's
-   *  supplier currency, else the project currency, else £. */
-  private currencySymbol(code?: string | null): string {
-    const map: Record<string, string> = { GBP: '£', USD: '$', EUR: '€', JPY: '¥', AUD: '$', CAD: '$', NZD: '$' };
-    return map[(code || this.project()?.currency || 'GBP')] ?? '£';
+  /** Fallback currency symbol for an unsigned "qty@price" — a code, else the
+   *  project currency, else £. */
+  private symbolFor(code?: string | null): string {
+    return currencySymbol(code || this.project()?.currency);
   }
-  /** Turn "Wine 100@$15" (or "…100@$15 =") into "Wine 100@$15 = £1500".
-   *  Forgiving: optional $/£, optional trailing "=". Name-only text — it never
-   *  touches the real line price. Idempotent (recomputing re-writes the total). */
+  /** Evaluate a Details line's "qty@price" / "N×M" → "= <total>" (shared util,
+   *  supplier-currency fallback). */
   private calcExtraLine(line: string): string {
-    // <num> <op> <num> where op is @ (qty@price) or x / × / * (value×qty). A
-    // currency sign may sit before either number.
-    const m = line.match(/([$£€¥]?)\s*(\d+(?:\.\d+)?)\s*[@x×*]\s*([$£€¥]?)\s*(\d+(?:\.\d+)?)/i);
-    if (!m) return line;
-    const total = Number(m[2]) * Number(m[4]);
-    if (!Number.isFinite(total)) return line;
-    const sym = m[1] || m[3] || this.currencySymbol(this.editingLine()?.supplierCurrency); // their sign, else supplier currency
-    const totalStr = this.withCommas(total); // thousands separators, e.g. 18,000
-    // Drop only a trailing "= <result>" (a bare number) — never the expression,
-    // so "fridge = 150x2" keeps its "150x2" and just gains "= 300".
-    const base = line.replace(/\s*=\s*[$£€¥]?\s*[\d,]*(?:\.\d+)?\s*$/, '').trimEnd();
-    return `${base} = ${sym}${totalStr}`;
+    return detailsCalcLine(line, this.symbolFor(this.editingLine()?.supplierCurrency));
   }
   /** Blur: re-run the calc on every line so a changed operand (e.g. 150x2 →
    *  150x4) updates its "= total" in place. (The header total already updates
@@ -696,42 +684,14 @@ export class InboxProjectComponent {
     this.edExtrasText.set(finalised + after);
     setTimeout(() => { try { ta.setSelectionRange(caret, caret); } catch { /* detached */ } }, 0);
   }
-  /** Parse the extras textarea into clean component names (strip bullets, run
-   *  the calc for lines the user didn't Enter through, drop blanks). */
-  private parseExtras(text: string): string[] {
-    return text
-      .split('\n')
-      .map((l) => this.calcExtraLine(l.replace(/^\s*[•\-*]\s*/, '').trim()).trim())
-      .filter((l) => l.length > 0);
-  }
-  /** Sum the trailing "= <total>" on each Details line + the sign the lines use
-   *  (so the header total matches the lines, not the supplier default). */
-  private extrasTotalOf(lines: string[]): { sum: number; sym: string | null } {
-    let sum = 0;
-    let sym: string | null = null;
-    for (const l of lines) {
-      const m = this.calcExtraLine(l).match(/=\s*([$£€¥]?)\s*([\d,]+(?:\.\d+)?)\s*$/);
-      if (m) {
-        sum += Number(m[2].replace(/,/g, '')); // strip thousands separators to sum
-        if (!sym && m[1]) sym = m[1];
-      }
-    }
-    return { sum, sym };
-  }
-  private withCommas(n: number): string {
-    const s = String(Math.round(n * 100) / 100);
-    const [int, dec] = s.split('.');
-    return int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (dec ? '.' + dec : '');
-  }
-  /** Formatted Details total ("$3,000") for a set of lines, or '' when there are
-   *  no costs — so the header total only shows once costs are added. */
-  protected extrasTotalStr(lines: string[] | undefined, code?: string | null): string {
-    const { sum, sym } = this.extrasTotalOf(lines ?? []);
-    return sum > 0 ? (sym || this.currencySymbol(code)) + this.withCommas(sum) : '';
+  /** Formatted Details total ("£3,100") for the text, or '' when no line carries
+   *  a cost. Shared with the Final Quote card via details-format. */
+  protected detailsTotalDisplay(text: string | null | undefined, code?: string | null): string {
+    return detailsTotalStr(text, this.symbolFor(code));
   }
   /** Live Details total for the editor (recomputes as they type). */
   protected readonly edExtrasTotalStr = computed(() =>
-    this.extrasTotalStr(this.edExtrasText().split('\n'), this.editingLine()?.supplierCurrency));
+    this.detailsTotalDisplay(this.edExtrasText(), this.editingLine()?.supplierCurrency));
   /** The line as the editable card's CatalogueItem, overlaid with the in-progress edits. */
   protected readonly editPreviewItem = computed<CatalogueItem | null>(() => {
     const l = this.editingLine();

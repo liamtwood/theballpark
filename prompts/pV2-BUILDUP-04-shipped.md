@@ -35,6 +35,14 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.88 (2026-08-27): Final Quote card shows Details (reuses item-preview)
+- The Final Quote right-rail card (`estimate-preview-rail`) now shows the line's
+  **Details** (markdown + running total) under the reused `item-preview` — same
+  project-item card, no new component.
+- Extracted the Details parse/calc/total to a shared `details-format.ts`
+  (`detailsCalcLine` / `detailsTotalStr` / `currencySymbol`); the inbox now
+  delegates to it (one definition, no drift between inbox + Final Quote).
+
 ## Iteration — v2.87 (2026-08-27): Details renders like Description + Enter inserts at caret
 - Details now renders in **prose mode** (was heading-mode, which bolded every
   non-bulleted line) — plain lines are normal, `**bold**` when chosen, same as
