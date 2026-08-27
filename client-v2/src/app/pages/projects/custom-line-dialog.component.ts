@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { CatalogueItem, sizedImage } from '../../shared/catalogue/catalogue.types';
+import { ShuttleComponent, ShuttleItem, ShuttlePick } from '../../shared/shuttle/shuttle.component';
 
 /** A supplier available to tag a line to. */
 export interface LineSupplier { id: string; name: string | null; }
@@ -65,7 +66,7 @@ const blankRow = (): GridRow => ({ id: ROW_UID++, description: '', cost: null, q
 @Component({
   selector: 'app-custom-line-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, FormsModule, LucideAngularModule],
+  imports: [DecimalPipe, FormsModule, LucideAngularModule, ShuttleComponent],
   host: { class: 'contents' },
   template: `
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" (click)="cancel.emit()">
@@ -144,86 +145,20 @@ const blankRow = (): GridRow => ({ id: ROW_UID++, description: '', cost: null, q
             <button type="button" class="bp-btn-grad mt-4 w-full" [disabled]="!filledCount()" (click)="submitGrid()">Add {{ filledCount() }} Line Item{{ filledCount() === 1 ? '' : 's' }}</button>
           }
         } @else {
-          <!-- ── EXPLORE: browse (left) → shuttle into grouped picks (right) ── -->
-          <div class="mt-4 grid gap-0 md:grid-cols-[1fr_1px_1fr]">
-            <!-- LEFT: the supplier's catalogue, scoped to the category. -->
-            <div class="min-w-0 pr-4">
-              <input class="bp-input-field" placeholder="Filter items…" [ngModel]="railQuery()" (ngModelChange)="railQuery.set($event)" autocomplete="off" />
-              <div class="mt-2 h-[320px] overflow-y-auto rounded-[var(--radius-card)] border border-hairline">
-                @if (railGroups().length) {
-                  @for (grp of railGroups(); track grp.name) {
-                    <div class="border-b border-hairline bg-fill px-3 py-1.5">
-                      <span class="bp-meta truncate font-medium text-text">{{ grp.name }}</span>
-                    </div>
-                    @for (it of grp.items; track it.id) {
-                      <button type="button"
-                              class="group grid w-full grid-cols-[36px_1fr_auto_20px] items-center gap-2.5 border-b border-hairline px-3 py-1.5 text-left last:border-b-0"
-                              [class.hover:bg-fill]="!picked().has(it.id)"
-                              [class.opacity-55]="picked().has(it.id)"
-                              [disabled]="picked().has(it.id)"
-                              (click)="addFromRail(it)">
-                        @if (it.coverUrl) {
-                          <img class="h-8 w-9 rounded object-cover" [src]="thumb(it.coverUrl)" alt="" loading="lazy" decoding="async" />
-                        } @else { <div class="h-8 w-9 rounded bg-fill"></div> }
-                        <span class="min-w-0 truncate text-md font-medium text-text">{{ it.name }}</span>
-                        <span class="text-md text-text">{{ it.basePrice === null ? 'POA' : ('£' + (it.basePrice | number: '1.0-0')) }}</span>
-                        @if (picked().has(it.id)) {
-                          <lucide-icon name="check" [size]="15" class="text-success" />
-                        } @else {
-                          <lucide-icon name="plus" [size]="15" class="text-muted opacity-0 group-hover:opacity-100" />
-                        }
-                      </button>
-                    }
-                  }
-                } @else {
-                  <p class="bp-caption px-3 py-3">{{ railItems().length ? 'No items match.' : 'No catalogue items in this category.' }}</p>
-                }
-              </div>
-            </div>
-
-            <!-- Vertical shuttle divider. -->
-            <div class="hidden bg-hairline md:block"></div>
-
-            <!-- RIGHT: the picks — grouped by category (band only when >1). -->
-            <div class="min-w-0 pl-4">
-              <span class="bp-field-label">Added items</span>
-              <div class="mt-2 h-[320px] overflow-y-auto rounded-[var(--radius-card)] border border-hairline">
-                @if (filledCount()) {
-                  @for (cat of pickGroups(); track cat.name) {
-                    @if (pickGroups().length > 1) {
-                      <div class="flex items-center justify-between border-b border-hairline bg-fill px-3 py-1.5">
-                        <span class="bp-meta truncate font-semibold text-text">{{ cat.name }}</span>
-                        <span class="bp-meta">£{{ cat.total | number: '1.0-0' }}</span>
-                      </div>
-                    }
-                    @for (sub of cat.subs; track sub.name) {
-                      @if (sub.name) {
-                        <div class="border-b border-hairline bg-surface px-3 py-1 pl-4">
-                          <span class="bp-caption truncate font-medium text-secondary">{{ sub.name }}</span>
-                        </div>
-                      }
-                      @for (r of sub.rows; track r.id) {
-                        <div class="grid grid-cols-[1fr_auto_64px_28px] items-center gap-2 border-b border-hairline px-3 py-1.5 last:border-b-0">
-                          <span class="min-w-0 truncate text-md font-medium text-text">{{ r.description }}</span>
-                          <span class="bp-meta shrink-0">{{ r.cost === null ? 'POA' : ('£' + (r.cost | number: '1.0-0')) }}</span>
-                          <input type="number" class="bp-input-field text-right" [ngModel]="r.qty" (ngModelChange)="r.qty = $event" />
-                          <button type="button" class="rounded-md p-1 text-muted hover:text-danger" aria-label="Remove" (click)="removePick(r.id)">
-                            <lucide-icon name="x" [size]="15" />
-                          </button>
-                        </div>
-                      }
-                    }
-                  }
-                } @else {
-                  <p class="bp-caption px-3 py-6 text-center">Click items on the left to add them here.</p>
-                }
-              </div>
-              <div class="mt-2 flex items-center justify-end">
-                <span class="bp-meta">{{ filledCount() }} item{{ filledCount() === 1 ? '' : 's' }} · £{{ gridTotal() | number: '1.0-0' }}</span>
-              </div>
-              <button type="button" class="bp-btn-grad mt-3 w-full" (click)="submitGrid()">Save</button>
-            </div>
-          </div>
+          <!-- ── EXPLORE: the shared shuttle (browse left → picks right) ── -->
+          <app-shuttle class="mt-4 block"
+            [available]="railShuttle()"
+            [picks]="pickShuttle()"
+            [pickedIds]="pickedIds()"
+            [showThumbs]="true"
+            leftPlaceholder="Filter items…"
+            rightTitle="Added items"
+            [emptyLeft]="railItems().length ? 'No items match.' : 'No catalogue items in this category.'"
+            emptyRight="Click items on the left to add them here."
+            (add)="onShuttleAdd($event)"
+            (remove)="removePick(+$event)"
+            (qtyChange)="onShuttleQty($event)" />
+          <button type="button" class="bp-btn-grad mt-3 w-full" (click)="submitGrid()">Save</button>
         }
       </div>
     </div>
@@ -249,47 +184,32 @@ export class CustomLineDialogComponent implements OnInit {
 
   // ── Browse rail (explore) ────────────────────────────────────────────────
   protected readonly railItems = signal<CatalogueItem[]>([]);
-  protected readonly railQuery = signal('');
-  protected readonly railFiltered = computed(() => {
-    const q = this.railQuery().trim().toLowerCase();
-    const all = this.railItems();
-    return q ? all.filter((i) => i.name.toLowerCase().includes(q)) : all;
-  });
-  /** Rail items grouped by subcategory (pre-sorted subcat→name). */
-  protected readonly railGroups = computed(() => {
-    const groups: { name: string; items: CatalogueItem[] }[] = [];
-    const idx = new Map<string, { name: string; items: CatalogueItem[] }>();
-    for (const it of this.railFiltered()) {
-      const key = it.subcategoryName || 'Other';
-      let g = idx.get(key);
-      if (!g) { g = { name: key, items: [] }; idx.set(key, g); groups.push(g); }
-      g.items.push(it);
-    }
-    return groups;
-  });
   /** Catalogue item ids already staged in the picks (drives the left ✓ state). */
   protected readonly picked = computed(() => new Set(this.rows().filter((r) => r.itemId).map((r) => r.itemId!)));
-  /** Picks grouped category → subcategory. Category band shows only when there
-   *  is >1 category; subcategory band shows when the row carries a subcategory. */
-  protected readonly pickGroups = computed(() => {
-    interface Sub { name: string; rows: GridRow[]; total: number; }
-    interface Cat { name: string; total: number; subs: Sub[]; }
-    const cats: Cat[] = [];
-    const catIdx = new Map<string, Cat>();
-    const subIdx = new Map<string, Map<string, Sub>>();
-    for (const r of this.rows().filter((x) => x.description.trim())) {
-      const catKey = r.categoryName || 'Other';
-      let cat = catIdx.get(catKey);
-      if (!cat) { cat = { name: catKey, total: 0, subs: [] }; catIdx.set(catKey, cat); cats.push(cat); subIdx.set(catKey, new Map()); }
-      const subMap = subIdx.get(catKey)!;
-      const subKey = r.subcategoryName || '';
-      let sub = subMap.get(subKey);
-      if (!sub) { sub = { name: subKey, rows: [], total: 0 }; subMap.set(subKey, sub); cat.subs.push(sub); }
-      const line = (Number(r.cost) || 0) * Math.max(1, Number(r.qty) || 1);
-      sub.rows.push(r); sub.total += line; cat.total += line;
-    }
-    return cats;
-  });
+
+  // ── Shuttle adapters (catalogue ⇄ shuttle items, picks ⇄ rows) ──────────
+  protected readonly railShuttle = computed<ShuttleItem[]>(() =>
+    this.railItems().map((it) => ({
+      id: it.id, name: it.name, price: it.basePrice,
+      groupName: it.subcategoryName || 'Other', coverUrl: this.thumb(it.coverUrl),
+    }))
+  );
+  /** Picks → shuttle picks, grouped by category on the right. */
+  protected readonly pickShuttle = computed<ShuttlePick[]>(() =>
+    this.rows().filter((r) => r.description.trim()).map((r) => ({
+      id: String(r.id), name: r.description, cost: r.cost, qty: r.qty,
+      groupName: r.categoryName || 'Other',
+    }))
+  );
+  protected readonly pickedIds = computed<string[]>(() => [...this.picked()]);
+  protected onShuttleAdd(si: ShuttleItem): void {
+    const it = this.railItems().find((x) => x.id === si.id);
+    if (it) this.addFromRail(it);
+  }
+  protected onShuttleQty(e: { id: string; qty: number }): void {
+    const r = this.rows().find((x) => String(x.id) === e.id);
+    if (r) { r.qty = e.qty; this.rows.set([...this.rows()]); }
+  }
 
   protected thumb(url: string | null): string | null { return sizedImage(url, 96); }
 

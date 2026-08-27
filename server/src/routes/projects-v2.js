@@ -47,6 +47,17 @@ router.get('/client-names', async (req, res, next) => {
   }
 });
 
+// GET /my-components — pV2-BUILDUP-02: the caller-supplier's reusable components
+// (derived from the children they've added before) for the Customize left rail
+// + type-ahead. org from JWT. Declared before /:id.
+router.get('/my-components', async (req, res, next) => {
+  try {
+    res.json(await projects.listMyComponents(req.user.org_id, req.query.q));
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST / — create a project from an AI-parsed brief (no items). org_id
 // from JWT, NEVER the body; status dual-written 'draft'.
 router.post('/', async (req, res, next) => {
@@ -162,6 +173,9 @@ const CustomAddSchema = z.object({
   // context of a supplier, ticked into project_item_suppliers. Optional:
   // null = "to source" (agent doesn't know the supplier yet).
   supplierOrgId: z.string().uuid().nullish(),
+  // pV2-BUILDUP-03 — the parent quote line this custom line is a picked option
+  // of (nests under it in the Final Quote). Null = a standalone custom line.
+  optionOfLineId: z.string().uuid().nullish(),
 }).strip();
 router.post('/:id/items/custom', async (req, res, next) => {
   try {
@@ -172,6 +186,62 @@ router.post('/:id/items/custom', async (req, res, next) => {
     const line = await projects.addCustomItem(req.user.org_id, req.params.id, parsed.data);
     if (line === null) return res.status(404).json({ error: 'Project not found' });
     res.status(201).json(line);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /:id/items/:itemId/components — pV2-BUILDUP-02 supplier Customize: add
+// child components under the line :itemId. Authority is SUPPLIER-scoped (the
+// caller must own the parent line's per-supplier row) — NOT project ownership —
+// so a supplier can build up a line they were asked to quote without touching
+// the agent's canonical row. Batch insert.
+const ComponentsSchema = z.object({
+  components: z.array(z.object({
+    id: z.string().uuid().optional(), // present = update an existing child
+    categoryId: z.string().uuid().nullish(),
+    name: z.string().trim().min(1),
+    cost: z.number().nonnegative().nullish(),
+    unit: z.string().nullish(),
+    quantity: z.number().int().positive().optional(),
+    kind: z.string().max(20).nullish(),
+    included: z.boolean().optional(),
+    description: z.string().nullish(),
+    // Demo: the image rides inline as a data URL (project_items.image_url is
+    // text). Generous cap so a small photo fits; the media pipeline replaces
+    // this later. ~2.7MB of base64.
+    image: z.string().max(2_800_000).nullish(),
+  })),
+  revisedPrice: z.number().nonnegative().nullish(),
+  marginPct: z.number().nonnegative().max(100).nullish(),
+  parentName: z.string().trim().min(1).max(200).optional(),
+  parentDescription: z.string().max(4000).nullish(),
+  parentServices: z.string().max(4000).nullish(),
+}).strip();
+// GET the line's current components (re-opening the estimate).
+router.get('/:id/items/:itemId/components', async (req, res, next) => {
+  try {
+    const rows = await projects.listComponents(req.user.org_id, req.params.id, req.params.itemId);
+    if (rows === null) return res.status(404).json({ error: 'Line not found or not yours to estimate' });
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+// POST reconciles the full component set (add/update/remove) + optional revised
+// price (the supplier's estimate-derived quote for the line).
+router.post('/:id/items/:itemId/components', async (req, res, next) => {
+  try {
+    const parsed = ComponentsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const rows = await projects.saveComponents(
+      req.user.org_id, req.params.id, req.params.itemId, parsed.data.components, parsed.data.revisedPrice, parsed.data.marginPct,
+      parsed.data.parentName, parsed.data.parentDescription, parsed.data.parentServices
+    );
+    if (rows === null) return res.status(404).json({ error: 'Line not found or not yours to estimate' });
+    res.status(201).json(rows);
   } catch (err) {
     next(err);
   }

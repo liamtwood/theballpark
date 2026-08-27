@@ -97,3 +97,19 @@ export function quoteLineToCatalogueItem(l: QuoteLine): CatalogueItem {
     isActive: true,
   };
 }
+
+/** The line's ORIGINAL library item (the request) — name/price/description/
+ *  services from the catalogue item, NOT the (possibly-revised) line. Falls back
+ *  to the line itself for custom lines (no catalogue backing). */
+export function quoteLineToRequestedItem(l: QuoteLine): CatalogueItem {
+  const base = quoteLineToCatalogueItem(l);
+  if (!l.itemId) return base; // custom line — nothing to fall back to
+  return {
+    ...base,
+    name: l.libName ?? base.name,
+    description: l.libDescription ?? base.description,
+    installDescription: l.libServices ?? base.installDescription,
+    basePrice: l.libBasePrice ?? base.basePrice,
+    coverUrl: l.libImageUrl ?? base.coverUrl,
+  };
+}

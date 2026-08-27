@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, input, linkedSignal, resource, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, linkedSignal, resource, signal, viewChild } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
@@ -13,7 +13,9 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { TERMINAL_STATUSES, gbp } from './inbox-status';
 import { InboxRailComponent, RailOuter } from './inbox-rail.component';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
-import { quoteLineToCatalogueItem } from '../projects/quote-line.util';
+import { quoteLineToCatalogueItem, quoteLineToRequestedItem } from '../projects/quote-line.util';
+import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
+import { ProjectService } from '../../core/projects/project.service';
 
 /** pV2-INBOX-01/03 — the per-project conversation surface, viewer-aware.
  *  Supplier (standalone /inbox/:projectId): the left rail is THEIR items
@@ -26,7 +28,7 @@ import { quoteLineToCatalogueItem } from '../projects/quote-line.util';
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, LucideAngularModule, PageHeroComponent, InboxRailComponent, ItemPreviewComponent],
+  imports: [CurrencyPipe, DatePipe, LucideAngularModule, PageHeroComponent, InboxRailComponent, ItemPreviewComponent, CustomizeDialogComponent],
   host: { '[class]': 'hostClass()' },
   template: `
     @if (!embedded()) {
@@ -70,7 +72,7 @@ import { quoteLineToCatalogueItem } from '../projects/quote-line.util';
                     {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}
                   }
                 </h2>
-                <div class="mt-1.5 flex items-center gap-6">
+                <div class="mt-1.5 flex flex-wrap items-center gap-x-6 gap-y-1.5">
                   <span>
                     <span class="bp-caption">Original</span>
                     <span class="bp-body-small ml-1.5 text-secondary">{{ t.originalTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
@@ -79,8 +81,37 @@ import { quoteLineToCatalogueItem } from '../projects/quote-line.util';
                     <span class="bp-caption">Revised</span>
                     <span class="bp-body-small ml-1.5 font-semibold text-text">{{ t.revisedTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
                   </span>
+                  <!-- pV2-BUILDUP-02 — supplier's estimate buildup on the selected line. -->
+                  @if (!isAgency() && selectedItem(); as it) {
+                    @if (custoTotal() != null) {
+                      <span>
+                        <span class="bp-caption">Customizations</span>
+                        <span class="bp-body-small ml-1.5 text-secondary">{{ custoTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+                      </span>
+                    }
+                    <!-- pV2-BUILDUP — Customize entry hidden for now (client:
+                         "too complicated"). Code kept; re-enable this button to
+                         restore it. -->
+                  }
                 </div>
               </div>
+
+              @if (customizing(); as c) {
+                <!-- pV2-BUILDUP-02 — the estimate builder, inline in the thread
+                     pane (replaces the conversation while customizing). -->
+                <div class="min-h-0 flex-1 overflow-y-auto">
+                  <app-customize-dialog
+                    [projectId]="projectId()"
+                    [lineId]="c.id"
+                    [itemName]="c.name"
+                    [originalPrice]="c.priceRef"
+                    [previewLine]="c.line"
+                    (saved)="onCustomizeSaved()"
+                    (changed)="onCustomizeChanged()"
+                    (sendCost)="onSendCost($event)"
+                    (cancel)="customizing.set(null)" />
+                </div>
+              } @else {
 
               <!-- Bubbles — on the page (parchment) ground so the white
                    agency bubbles read as cards; "You" stays gradient. In a
@@ -123,6 +154,17 @@ import { quoteLineToCatalogueItem } from '../projects/quote-line.util';
                           <lucide-icon name="chevron-down" [size]="15" class="shrink-0 text-muted" />
                         </button>
                       }
+                    </div>
+                  }
+                  <!-- Revised item card delivered with a "New Cost" message. -->
+                  @for (line of proposalCardsFor(m); track line.id) {
+                    <div class="w-80 max-w-full" [class.self-end]="m.mine">
+                      <div class="bp-card p-4">
+                        <span class="bp-field-label">Revised item</span>
+                        <div class="mt-2">
+                          <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName" closeIcon="x" closeLabel="Close" />
+                        </div>
+                      </div>
                     </div>
                   }
                 }
@@ -190,6 +232,8 @@ import { quoteLineToCatalogueItem } from '../projects/quote-line.util';
                       <button type="button" class="bp-act bp-act--red" [disabled]="sending()" (click)="decline(it)">
                         <lucide-icon [name]="isAgency() ? 'x' : 'circle-off'" [size]="15" /> {{ isAgency() ? 'Cancel' : 'Decline' }}
                       </button>
+                      <!-- pV2-BUILDUP-02 — supplier Customize entry hidden for
+                           now (client: "too complicated"). Code kept. -->
                     }
                   </div>
                 }
@@ -218,6 +262,7 @@ import { quoteLineToCatalogueItem } from '../projects/quote-line.util';
                   <lucide-icon name="send" [size]="15" /> Send
                 </button>
               </div>
+              }
             </div>
           }
         </div>
@@ -247,7 +292,7 @@ export class InboxProjectComponent {
     this.route.paramMap.pipe(map((p) => p.get('projectId') ?? '')),
     { initialValue: '' }
   );
-  private readonly projectId = computed(() => this.projectIdInput() || this.routeProjectId());
+  protected readonly projectId = computed(() => this.projectIdInput() || this.routeProjectId());
 
   protected readonly threadsRes = resource({
     params: () => this.projectId() || undefined,
@@ -380,11 +425,26 @@ export class InboxProjectComponent {
   protected cardsFor(m: InboxBubble): QuoteLine[] {
     return this.cardsByMessage().get(m.id) ?? [];
   }
+  /** The revised item card(s) delivered with a "New Cost" message — the current
+   *  line (supplier's edited name/description/services + revised price) for the
+   *  item(s) the message proposed a new cost on. */
+  protected proposalCardsFor(m: InboxBubble): QuoteLine[] {
+    if (!/new cost suggested/i.test(m.body)) return [];
+    const t = this.selectedThread();
+    if (!t) return [];
+    return t.items
+      .filter((it) => it.itemId && m.taggedItemIds.includes(it.itemId) && it.line)
+      .map((it) => it.line!);
+  }
 
   /** The quote line as the preview card's CatalogueItem (shared mapper — the
    *  same shape the Estimate right-rail renders). */
   protected asPreview(line: QuoteLine): CatalogueItem {
     return quoteLineToCatalogueItem(line);
+  }
+  /** The brief renders the ORIGINAL library item (the request), not the line. */
+  protected asRequested(line: QuoteLine): CatalogueItem {
+    return quoteLineToRequestedItem(line);
   }
 
   /** Per-attachment expand state, keyed `<messageId>:<lineId>` so the same item
@@ -458,6 +518,56 @@ export class InboxProjectComponent {
   /** Terminal items are read-only (no actions). */
   protected isTerminal(status: string): boolean {
     return TERMINAL_STATUSES.has(status);
+  }
+
+  // ── pV2-BUILDUP-02 — supplier Customize (build the line from components) ──
+  private readonly projects = inject(ProjectService);
+  protected readonly customizing = signal<InboxThreadItem | null>(null);
+  /** The selected line's estimate (component cost) total — the header's
+   *  "Customizations" figure. Loaded on selection (supplier viewer only). */
+  protected readonly custoTotal = signal<number | null>(null);
+  private readonly custoLoader = effect(() => {
+    const it = this.selectedItem();
+    if (this.isAgency() || !it) { this.custoTotal.set(null); return; }
+    this.loadCustoTotal(it.id);
+  });
+  private loadCustoTotal(lineId: string): void {
+    this.projects.getComponents(this.projectId(), lineId).subscribe({
+      next: (res) => this.custoTotal.set(
+        res.components.length ? res.components.reduce((s, c) => s + (c.selection_type === 'selected' ? (Number(c.base_price) || 0) * Math.max(1, c.quantity || 1) : 0), 0) : null
+      ),
+      error: () => this.custoTotal.set(null),
+    });
+  }
+  protected openCustomize(it: InboxThreadItem): void { this.customizing.set(it); }
+  protected isCustomizing(it: InboxThreadItem | null): boolean { return !!it && this.customizing()?.id === it.id; }
+  /** Header toggle: open the inline estimate for this line, or close it. */
+  protected toggleCustomize(it: InboxThreadItem): void {
+    this.customizing.set(this.isCustomizing(it) ? null : it);
+  }
+  protected onCustomizeSaved(): void {
+    const it = this.customizing();
+    this.customizing.set(null);
+    if (it) this.loadCustoTotal(it.id); // refresh the header figure
+    this.threadsRes.reload(); // pull the revised price back in
+  }
+  /** Draft saved (estimate stays open) — reload so the thread header's revised
+   *  total reflects the current buildup. */
+  protected onCustomizeChanged(): void {
+    const it = this.customizing();
+    if (it) this.loadCustoTotal(it.id);
+    this.threadsRes.reload();
+  }
+  /** Send New Cost — post the built-up total as a new-cost proposal (the same
+   *  negotiation move as "Suggest New Cost": message + status + price). */
+  protected async onSendCost(total: number): Promise<void> {
+    const it = this.customizing();
+    this.customizing.set(null);
+    if (!it) return;
+    const rate = total / (it.quantity || 1); // price_current is the per-unit rate
+    const from = it.priceCurrent ?? it.priceRef ?? 0;
+    await this.itemAction(it.id, 'adjust', rate, `${it.name} ${gbp(from)} New Cost Suggested ${gbp(total)} by ${this.actorName()}`);
+    this.loadCustoTotal(it.id);
   }
 
   protected accept(it: InboxThreadItem): void {

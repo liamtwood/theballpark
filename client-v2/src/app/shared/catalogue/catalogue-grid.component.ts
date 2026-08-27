@@ -28,6 +28,7 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
               (favouriteToggled)="favouriteToggled.emit($event)"
               (quoteToggled)="quoteToggled.emit($event)"
               (changed)="changed.emit()"
+              (build)="build.emit($event)"
             />
           }
         </div>
@@ -98,6 +99,8 @@ export class CatalogueGridComponent {
   readonly quoteToggled = output<string>();
   /** An owner item-card mutated (duplicate/active/trash) — host should refresh. */
   readonly changed = output<void>();
+  /** Owner clicked "Build from components" on a card — host opens the buildup. */
+  readonly build = output<string>();
 
   protected thumb(url: string | null): string | null {
     return sizedImage(url, 160);

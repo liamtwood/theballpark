@@ -11,12 +11,54 @@
 // forced false — an item only goes live when a ballpark admin approves it
 // (that transition lands on a separate admin-gated route).
 
+const { z } = require('zod');
 const router = require('express').Router();
 const { requireActiveMembership } = require('../middleware/require-active-membership');
 const ItemService = require('../services/item.service');
 const { StoreItemCreateSchema, StoreItemUpdateSchema } = require('../schemas/store-item.schema');
 
 router.use(requireActiveMembership('item.create'));
+
+// pV2-BUILDUP-03 — an item's composition (options/components): child items via
+// parent_item_id. Same shape the Customize UI already consumes.
+const ItemComponentsSchema = z.object({
+  components: z.array(z.object({
+    id: z.string().uuid().optional(),
+    categoryId: z.string().uuid().nullish(),
+    name: z.string().trim().min(1),
+    cost: z.number().nonnegative().nullish(),
+    unit: z.string().nullish(),
+    kind: z.string().max(20).nullish(),
+    description: z.string().nullish(),
+    image: z.string().max(2_800_000).nullish(),
+  })),
+  parentName: z.string().trim().min(1).max(200).optional(),
+  parentDescription: z.string().max(4000).nullish(),
+  parentServices: z.string().max(4000).nullish(),
+}).strip();
+
+router.get('/:id/components', async (req, res, next) => {
+  try {
+    const out = await ItemService.listComponents(req.user.org_id, req.params.id);
+    if (out === null) return res.status(404).json({ error: 'Not found' });
+    res.json(out);
+  } catch (err) { next(err); }
+});
+
+router.post('/:id/components', async (req, res, next) => {
+  try {
+    const parsed = ItemComponentsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const rows = await ItemService.saveComponents(
+      req.user.org_id, req.params.id, parsed.data.components,
+      parsed.data.parentName, parsed.data.parentDescription, parsed.data.parentServices
+    );
+    if (rows === null) return res.status(404).json({ error: 'Not found' });
+    res.status(201).json(rows);
+  } catch (err) { next(err); }
+});
 
 router.get('/:id', async (req, res, next) => {
   try {

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -12,11 +13,15 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
 @Component({
   selector: 'app-item-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, RouterLink, LucideAngularModule],
+  imports: [CurrencyPipe, FormsModule, RouterLink, LucideAngularModule],
   host: { class: 'block' },
   template: `
     <div class="mb-3 flex items-start justify-between gap-2">
-      <h3 class="bp-list-title">{{ item().name }}</h3>
+      @if (editable()) {
+        <input class="bp-input-field bp-list-title min-w-0 flex-1" placeholder="Item name" [ngModel]="item().name" (ngModelChange)="nameChange.emit($event)" autocomplete="off" />
+      } @else {
+        <h3 class="bp-list-title">{{ item().name }}</h3>
+      }
       <div class="flex items-center gap-2">
         @if (item().ownedByActiveOrg) {
           <!-- pV2-STORE-01 — owner edits their own item. -->
@@ -79,14 +84,24 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
       }
     </dl>
 
-    @if (item().description) {
+    @if (editable()) {
+      <div class="mt-3 border-t border-hairline pt-3">
+        <span class="bp-field-label">Description</span>
+        <textarea rows="6" class="bp-store-textarea mt-1 w-full" placeholder="Describe the item for the agent…" [ngModel]="item().description" (ngModelChange)="descChange.emit($event)"></textarea>
+      </div>
+    } @else if (item().description) {
       <div class="mt-3 border-t border-hairline pt-3">
         <span class="bp-field-label">Description</span>
         <p class="bp-body-small mt-1 whitespace-pre-line text-secondary">{{ item().description }}</p>
       </div>
     }
 
-    @if (item().installDescription) {
+    @if (editable()) {
+      <div class="mt-3 border-t border-hairline pt-3">
+        <span class="bp-field-label">Services</span>
+        <textarea rows="4" class="bp-store-textarea mt-1 w-full" placeholder="Services included…" [ngModel]="item().installDescription" (ngModelChange)="servicesChange.emit($event)"></textarea>
+      </div>
+    } @else if (item().installDescription) {
       <div class="mt-3 border-t border-hairline pt-3">
         <span class="bp-field-label">Services</span>
         <p class="bp-body-small mt-1 whitespace-pre-line text-secondary">{{ item().installDescription }}</p>
@@ -105,6 +120,12 @@ export class ItemPreviewComponent {
   readonly closeIcon = input<string>('x');
   readonly closeLabel = input<string>('Close preview');
   readonly closed = output<void>();
+  /** Opt-in edit mode — the name + description become editable and emit changes
+   *  (used by the supplier Customize to set the final item the agent sees). */
+  readonly editable = input<boolean>(false);
+  readonly nameChange = output<string>();
+  readonly descChange = output<string>();
+  readonly servicesChange = output<string>();
 
   /** Ballpark admins get a Review entry on items they don't own (moderation). */
   protected readonly canModerate = computed(() => this.auth.user()?.activeOrgType === 'ballpark');

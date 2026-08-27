@@ -2020,6 +2020,12 @@ const migrate = async () => {
       ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS image_url TEXT;
       ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS image_url TEXT;
 
+      -- pV2-BUILDUP-02: the supplier's "Services" text on the customized line
+      -- (editable on the Customize item card, sent to the agent).
+      ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS install_description TEXT;
+      ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS install_description TEXT;
+      ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS install_description TEXT;
+
       -- pV2-CART-01: per-line Install choice. NULL = default (assumed on when
       -- the catalogue item carries an install_cost); true/false = explicit.
       ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS installed BOOLEAN;
@@ -2554,6 +2560,31 @@ const migrate = async () => {
       `);
     }
     console.log('  pV2-BUILDUP-01 columns installed (items.kind, project_items.kind + parent_id, all schemas).');
+
+    // ── pV2-BUILDUP-02 (Customize) — the supplier's line-level margin. Saved on
+    // the parent (per-supplier) line so re-opening the Customize estimate shows
+    // the same margin; seeds from the org default on a fresh line. Nullable,
+    // additive — NULL means "not set, fall back to the org default".
+    for (const s of ['public', 'preview', 'master']) {
+      await client.query(`
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS margin_pct NUMERIC(5,2);
+      `);
+    }
+    console.log('  pV2-BUILDUP-02 column installed (project_items.margin_pct, all schemas).');
+
+    // ── pV2-BUILDUP-03 (item options) — a picked option links to the parent
+    // quote line it belongs to, so the Final Quote nests it under that item and
+    // the item card lists it. Distinct from parent_id (the private cost-buildup
+    // children, excluded from totals): an option is a visible, counted line.
+    // Nullable, additive — NULL means a standalone line, not an option.
+    for (const s of ['public', 'preview', 'master']) {
+      await client.query(`
+        ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS option_of_line_id UUID REFERENCES ${s}.project_items(id) ON DELETE CASCADE;
+        CREATE INDEX IF NOT EXISTS ix_project_items_option_of_line
+          ON ${s}.project_items(option_of_line_id) WHERE option_of_line_id IS NOT NULL;
+      `);
+    }
+    console.log('  pV2-BUILDUP-03 column installed (project_items.option_of_line_id, all schemas).');
 
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');

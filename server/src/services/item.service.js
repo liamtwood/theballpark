@@ -1,5 +1,6 @@
 const pool = require('../db/pool');
 const { als } = require('../db/request-context');
+const { withTransaction } = require('../db/with-transaction');
 
 async function getAll(orgId, categoryId, tag, subcategoryId) {
   // v1.41: items.category_id is ALWAYS a parent now (migration ran in
@@ -21,6 +22,8 @@ async function getAll(orgId, categoryId, tag, subcategoryId) {
     LEFT JOIN categories sc ON i.subcategory_id = sc.id
     LEFT JOIN orgs o ON i.org_id = o.id
     WHERE i.is_active = true AND i.deleted_at IS NULL
+      AND i.kind IS DISTINCT FROM 'component'
+      AND i.parent_item_id IS NULL
   `;
   const params = [];
   if (orgId) { params.push(orgId); query += ` AND i.org_id = $${params.length}`; }
@@ -44,6 +47,8 @@ async function countsByCategory() {
      FROM items i
      LEFT JOIN categories c ON i.category_id = c.id
      WHERE i.is_active = true AND i.deleted_at IS NULL AND i.category_id IS NOT NULL
+       AND i.kind IS DISTINCT FROM 'component'
+       AND i.parent_item_id IS NULL
      GROUP BY i.category_id, c.parent_id`
   );
   const map = {};
@@ -291,4 +296,110 @@ async function duplicate(id) {
   }
 }
 
-module.exports = { getAll, getById, getTagsByCategory, countsByCategory, create, update, softDelete, duplicate };
+// ── pV2-BUILDUP-03 — item composition (options / components) ──────────────────
+// An item's buildup is CHILD items (parent_item_id = this item, kind='component').
+// Reuses the exact Customize UI on the catalogue side: same response shape as the
+// project variant, but quantity/selection are per-PROJECT (set when the item is
+// added), so here they default (quantity 1, selection 'selected').
+const toItemComponent = (c) => ({
+  id: c.id, name: c.name, base_price: c.base_price, unit: c.unit,
+  quantity: 1, category_id: c.category_id, kind: c.kind,
+  selection_type: 'selected', description: c.description, image_url: c.image_url,
+});
+
+/** The item's children + its own name/description/services (org-scoped). */
+async function listComponents(orgId, itemId) {
+  const own = await pool.query(
+    `SELECT name, description, install_description FROM items
+      WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+    [itemId, orgId]
+  );
+  if (!own.rows.length) return null;
+  const r = await pool.query(
+    `SELECT id, name, base_price, unit, category_id, kind, description, image_url
+       FROM items WHERE parent_item_id = $1 AND deleted_at IS NULL ORDER BY created_at`,
+    [itemId]
+  );
+  return {
+    components: r.rows.map(toItemComponent),
+    parentName: own.rows[0].name,
+    parentDescription: own.rows[0].description,
+    parentServices: own.rows[0].install_description,
+    marginPct: null,
+    defaultMarginPct: null,
+  };
+}
+
+/** Reconcile the item's children (add/update/soft-delete), clone-up new ones to
+ *  the reusable library (kind='component', parent_item_id NULL, deduped by name),
+ *  and persist the parent item's name/description/services. */
+async function saveComponents(orgId, itemId, components, parentName, parentDescription, parentServices) {
+  const list = Array.isArray(components) ? components : [];
+  return withTransaction(async (client) => {
+    const own = await client.query(
+      `SELECT id FROM items WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`, [itemId, orgId]
+    );
+    if (!own.rows.length) return null;
+    const existing = await client.query(
+      `SELECT id FROM items WHERE parent_item_id = $1 AND deleted_at IS NULL`, [itemId]
+    );
+    const keep = new Set(list.filter((c) => c.id).map((c) => c.id));
+    for (const row of existing.rows) {
+      if (!keep.has(row.id)) await client.query(`UPDATE items SET deleted_at = NOW() WHERE id = $1`, [row.id]);
+    }
+    for (const c of list) {
+      const nm = String(c.name || '').trim();
+      if (!nm) continue;
+      const cost = c.cost == null ? null : Number(c.cost);
+      if (c.id && keep.has(c.id)) {
+        await client.query(
+          `UPDATE items SET name=$2, base_price=$3, unit=$4, category_id=$5, kind=$6, description=$7, image_url=$8
+            WHERE id=$1 AND parent_item_id=$9`,
+          [c.id, nm, cost, c.unit || null, c.categoryId || null, c.kind || 'component', c.description || null, c.image || null, itemId]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO items (org_id, parent_item_id, category_id, name, description, unit, base_price, kind, image_url, is_active, approval_status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'component', $8, true, 'approved')`,
+          [orgId, itemId, c.categoryId || null, nm, c.description || null, c.unit || null, cost, c.image || null]
+        );
+      }
+      // Clone-up to the library (INSERT-ONLY, deduped by name).
+      const exists = await client.query(
+        `SELECT 1 FROM items WHERE org_id=$1 AND kind='component' AND parent_item_id IS NULL AND deleted_at IS NULL AND lower(name)=lower($2) LIMIT 1`,
+        [orgId, nm]
+      );
+      if (!exists.rows.length) {
+        await client.query(
+          `INSERT INTO items (org_id, category_id, name, description, unit, base_price, kind, image_url, is_active, approval_status)
+           VALUES ($1, $2, $3, $4, $5, $6, 'component', $7, true, 'approved')`,
+          [orgId, c.categoryId || null, nm, c.description || null, c.unit || null, cost, c.image || null]
+        );
+      }
+    }
+    if (typeof parentName === 'string' && parentName.trim())
+      await client.query(`UPDATE items SET name=$2 WHERE id=$1 AND org_id=$3`, [itemId, parentName.trim(), orgId]);
+    if (parentDescription !== undefined)
+      await client.query(`UPDATE items SET description=$2 WHERE id=$1 AND org_id=$3`, [itemId, parentDescription || null, orgId]);
+    if (parentServices !== undefined)
+      await client.query(`UPDATE items SET install_description=$2 WHERE id=$1 AND org_id=$3`, [itemId, parentServices || null, orgId]);
+    const rows = await client.query(
+      `SELECT id, name, base_price, unit, category_id, kind, description, image_url
+         FROM items WHERE parent_item_id=$1 AND deleted_at IS NULL ORDER BY created_at`, [itemId]
+    );
+    return rows.rows.map(toItemComponent);
+  });
+}
+
+/** An item's options (child items), PUBLIC read — for the Final Quote picker
+ *  (the agent isn't the item's owner, so this isn't org-scoped). */
+async function listOptions(itemId) {
+  const r = await pool.query(
+    `SELECT id, name, base_price, unit, category_id, kind, description, image_url
+       FROM items WHERE parent_item_id = $1 AND deleted_at IS NULL ORDER BY created_at`,
+    [itemId]
+  );
+  return r.rows.map(toItemComponent);
+}
+
+module.exports = { getAll, getById, getTagsByCategory, countsByCategory, create, update, softDelete, duplicate, listComponents, saveComponents, listOptions };

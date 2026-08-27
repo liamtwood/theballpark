@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { QuoteLine } from '../../core/projects/project.types';
-import { quoteLineToCatalogueItem } from './quote-line.util';
+import { lineCost, quoteLineToCatalogueItem } from './quote-line.util';
 
 /** pV2-CART-01 — the right-rail marketplace preview for the selected quote
  *  line. Owns the eye toggle (hides the card for ALL selections until clicked
@@ -11,7 +12,7 @@ import { quoteLineToCatalogueItem } from './quote-line.util';
 @Component({
   selector: 'app-estimate-preview-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, ItemPreviewComponent],
+  imports: [CurrencyPipe, LucideAngularModule, ItemPreviewComponent],
   host: { class: 'contents' },
   template: `
     @if (line(); as l) {
@@ -33,6 +34,22 @@ import { quoteLineToCatalogueItem } from './quote-line.util';
             <div class="bp-card p-4">
               <app-item-preview [item]="previewItem()!" [categoryName]="l.categoryName"
                                 closeIcon="eye" closeLabel="Hide preview" (closed)="hidden.set(true)" />
+              <!-- pV2-BUILDUP-03 — this line's picked options, listed on the card. -->
+              @if (options().length) {
+                <div class="mt-3 rounded-[var(--radius-card)] border border-hairline">
+                  <div class="flex items-center gap-2 border-b border-hairline bg-fill px-3 py-2">
+                    <lucide-icon name="list-checks" [size]="14" class="shrink-0 text-muted" />
+                    <span class="bp-field-label">Options</span>
+                  </div>
+                  @for (op of options(); track op.id) {
+                    <div class="flex items-center gap-2 border-b border-hairline px-3 py-2 last:border-b-0">
+                      <span class="min-w-0 flex-1 truncate bp-meta text-text">{{ op.name }}</span>
+                      <span class="bp-meta shrink-0 tabular-nums text-secondary">× {{ op.quantity }}</span>
+                      <span class="bp-body-small w-16 shrink-0 text-right tabular-nums text-secondary">{{ optCost(op) | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                    </div>
+                  }
+                </div>
+              }
               <!-- pV2-BUILDUP-01 (UI1): browse more of this item's supplier. -->
               @if (l.supplierId) {
                 <button type="button"
@@ -50,8 +67,12 @@ import { quoteLineToCatalogueItem } from './quote-line.util';
 })
 export class EstimatePreviewRailComponent {
   readonly line = input<QuoteLine | null>(null);
+  /** pV2-BUILDUP-03 — the selected line's picked options, listed on the card. */
+  readonly options = input<QuoteLine[]>([]);
+  readonly cur = input<string>('GBP');
   /** "Explore More" → the host opens the supplier-browse dialog for this line. */
   readonly exploreMore = output<void>();
+  protected optCost(l: QuoteLine): number { return lineCost(l); }
   /** Eye toggle — suppresses the preview for ALL selections (session-local). */
   protected readonly hidden = signal(false);
 

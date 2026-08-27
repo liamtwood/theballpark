@@ -187,7 +187,12 @@ router.get('/items', async (req, res, next) => {
     }
     const { cat, sub, q, offset, priceMin, priceMax, tier, supplier, status, active } = parsed.data;
     const vals = [req.user.org_id]; // $1 — ownership flag, never from the client
-    const where = [`i.deleted_at IS NULL`];
+    // kind='component' items are the supplier's private cost-buildup library —
+    // surfaced ONLY in Customize (Explore), never in the marketplace browse
+    // (pV2-BUILDUP-02). parent_item_id IS NOT NULL rows are an item's child
+    // options/components (pV2-BUILDUP-03) — they belong to their parent, never
+    // browsable on their own.
+    const where = [`i.deleted_at IS NULL`, `i.kind IS DISTINCT FROM 'component'`, `i.parent_item_id IS NULL`];
     // pV2-STORE-01 — non-public visibility. The `status`/`active` filters are
     // honoured for two callers only: (1) the OWNER of the pinned supplier org
     // — a supplier sees their own draft/pending/inactive items; (2) a BALLPARK
@@ -267,11 +272,31 @@ router.get('/items/:id', async (req, res, next) => {
          FROM items i
          LEFT JOIN categories c ON c.id = i.category_id
         WHERE i.id = $1 AND i.deleted_at IS NULL
-          AND i.is_active AND i.approval_status = 'approved'`,
+          AND i.is_active AND i.approval_status = 'approved'
+          -- Components + child options are never marketplace-visible, even by
+          -- direct link (pV2-BUILDUP-03).
+          AND i.kind IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL`,
       [req.params.id]
     );
     if (!r.rows.length) return res.status(404).json({ error: 'Not found' });
     res.json(r.rows[0]);
+  } catch (err) { next(err); }
+});
+
+/** GET /api/marketplace/items/:id/options — the item's options (child items),
+ *  for the Final Quote Options picker. PUBLIC read (the agent isn't the owner). */
+router.get('/items/:id/options', async (req, res, next) => {
+  try {
+    const r = await pool.query(
+      `SELECT id, name, base_price, unit, category_id, kind, description, image_url
+         FROM items WHERE parent_item_id = $1 AND deleted_at IS NULL ORDER BY created_at`,
+      [req.params.id]
+    );
+    res.json(r.rows.map((c) => ({
+      id: c.id, name: c.name, base_price: c.base_price, unit: c.unit, quantity: 1,
+      category_id: c.category_id, kind: c.kind, selection_type: 'selected',
+      description: c.description, image_url: c.image_url,
+    })));
   } catch (err) { next(err); }
 });
 

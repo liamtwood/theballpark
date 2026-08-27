@@ -67,6 +67,19 @@ export interface QuoteLine {
   /** Coarse send-state (pV2-CART-01): to_send (in cart) → out_for_quote →
    *  quoted → booked / declined. Cart shows to_send; Final shows all + badge. */
   status: QuoteLineStatus;
+  /** The ORIGINAL library item (the request) — the inbox brief renders this so
+   *  it shows the library price/description, not the (revised) line. Null for
+   *  custom lines (no catalogue backing). */
+  libName?: string | null;
+  libDescription?: string | null;
+  libBasePrice?: number | null;
+  libServices?: string | null;
+  libImageUrl?: string | null;
+  /** pV2-BUILDUP-03 — the catalogue item carries options (child items). */
+  hasOptions?: boolean;
+  /** pV2-BUILDUP-03 — set when this line is a picked option of another line;
+   *  the Final Quote nests it under that parent + lists it in the item card. */
+  optionOfLineId?: string | null;
 }
 
 /** Per-item send-state — the single switch between the cart and final views. */

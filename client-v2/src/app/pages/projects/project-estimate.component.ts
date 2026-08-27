@@ -15,6 +15,7 @@ import { ProjectSummaryTilesComponent } from './project-summary-tiles.component'
 import { EstimateBreakdownComponent } from './estimate-breakdown.component';
 import { EstimatePreviewRailComponent } from './estimate-preview-rail.component';
 import { CustomLineDialogComponent, CustomLine, LineSupplier, ExistingPick } from './custom-line-dialog.component';
+import { OptionsPickerComponent } from './options-picker.component';
 
 interface SupplierGroup {
   supplierId: string;
@@ -52,6 +53,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
   imports: [
     CurrencyPipe, LucideAngularModule, MessageSuppliersDialogComponent, EstimateItemRowComponent,
     ProjectSummaryTilesComponent, EstimateBreakdownComponent, EstimatePreviewRailComponent, CustomLineDialogComponent,
+    OptionsPickerComponent,
   ],
   host: { class: 'block' },
   template: `
@@ -114,7 +116,21 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                         (select)="selectLine(l)"
                         (qtyChange)="onQtyChange(l.id, $event)"
                         (installToggle)="toggleInstall(l)"
+                        (options)="optionsLine.set(l)"
                         (remove)="removeLine(l)" />
+                      <!-- pV2-BUILDUP-03 — the line's picked options, nested. -->
+                      @for (op of optionsFor(l.id); track op.id) {
+                        <div class="flex items-center gap-2 border-b border-hairline bg-fill/40 py-2 pl-14 pr-3">
+                          <lucide-icon name="corner-down-right" [size]="14" class="shrink-0 text-muted" />
+                          <span class="min-w-0 flex-1 truncate bp-meta text-text">{{ op.name }}</span>
+                          <span class="bp-meta shrink-0 tabular-nums text-secondary">{{ op.basePrice != null ? (op.basePrice | currency: cur() : 'symbol' : '1.0-0') : '' }}@if (op.unit) { / {{ op.unit }} } × {{ op.quantity }}</span>
+                          <span class="w-20 shrink-0 text-right bp-body-small tabular-nums text-secondary">{{ optCost(op) | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                          <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
+                                  (click)="removeLine(op)" [attr.aria-label]="'Remove ' + op.name" title="Remove option">
+                            <lucide-icon name="trash-2" [size]="14" />
+                          </button>
+                        </div>
+                      }
                     }
                   }
 
@@ -164,7 +180,8 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
       </div>
 
       <!-- Right rail: the selected line's marketplace card (owns its own eye). -->
-      <app-estimate-preview-rail [line]="selectedLine()" (exploreMore)="onExploreMore()" />
+      <app-estimate-preview-rail [line]="selectedLine()" [options]="selectedOptions()" [cur]="cur()"
+                                 (exploreMore)="onExploreMore()" />
       </div>
     </div>
 
@@ -187,6 +204,19 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         [categories]="messagingCategories()"
         (send)="onSendBriefs($event)"
         (cancel)="messagingOpen.set(false)" />
+    }
+
+    <!-- pV2-BUILDUP-03 — pick an item's options → they add as quote lines. -->
+    @if (optionsLine(); as ol) {
+      <app-options-picker
+        [projectId]="projectId()"
+        [itemId]="ol.itemId"
+        [lineId]="ol.id"
+        [itemName]="ol.name ?? ''"
+        [categoryId]="ol.categoryId"
+        [supplierId]="ol.supplierId"
+        (added)="onOptionsAdded()"
+        (cancel)="optionsLine.set(null)" />
     }
   `,
 })
@@ -216,8 +246,21 @@ export class ProjectEstimateComponent {
   protected readonly selectedLine = computed(
     () => this.rows().find((l) => l.id === this.selectedItemId()) ?? null
   );
+  /** The selected line's picked options — listed in the right-rail item card. */
+  protected readonly selectedOptions = computed(() => {
+    const id = this.selectedItemId();
+    return id ? this.optionsFor(id) : [];
+  });
   protected selectLine(l: QuoteLine): void {
     this.selectedItemId.set(l.id);
+  }
+
+  // ── pV2-BUILDUP-03 — the Options picker (an item's options → quote lines) ──
+  protected readonly optionsLine = signal<QuoteLine | null>(null);
+  protected onOptionsAdded(): void {
+    this.optionsLine.set(null);
+    this.lines.reload();
+    this.est.reload();
   }
 
   /** Quote lines as writable state (seeded from the resource load) so qty
@@ -272,12 +315,42 @@ export class ProjectEstimateComponent {
   /** Final shows everything; cart shows only the To Send slice. */
   protected readonly visibleRows = computed(() => (this.isFinal() ? this.rows() : this.cartRows()));
 
+  // ── pV2-BUILDUP-03 — picked options nest UNDER their parent line ──────────
+  // Option lines (option_of_line_id set) are real, counted, on-PDF lines, but
+  // they render as indented sub-rows beneath their parent — never as their own
+  // top-level row. Split them out here, indexed by parent line id.
+  protected readonly optionsByParent = computed(() => {
+    const m = new Map<string, QuoteLine[]>();
+    for (const l of this.visibleRows()) {
+      if (!l.optionOfLineId) continue;
+      const arr = m.get(l.optionOfLineId);
+      if (arr) arr.push(l);
+      else m.set(l.optionOfLineId, [l]);
+    }
+    return m;
+  });
+  protected optionsFor(lineId: string): QuoteLine[] {
+    return this.optionsByParent().get(lineId) ?? [];
+  }
+  /** Line total for a single line (qty-weighted) — template helper. */
+  protected optCost(l: QuoteLine): number {
+    return lineCost(l);
+  }
+  /** Top-level rows only (options are nested under their parent, not listed). */
+  protected readonly topRows = computed(() => this.visibleRows().filter((l) => !l.optionOfLineId));
+
   protected readonly groups = computed(() =>
-    groupByCategory(this.visibleRows()).map((g) => ({
+    groupByCategory(this.topRows()).map((g) => ({
       ...g,
       // Declined/cancelled lines still show in the list but are excluded from
-      // the category total (matches the server subtotal — pV2-INBOX-05).
-      total: g.items.reduce((s, l) => s + (isDeclined(l) ? 0 : lineCost(l)), 0),
+      // the category total (matches the server subtotal — pV2-INBOX-05). Each
+      // line's picked options roll into its category total too (they're counted
+      // server-side, so the cards must sum to the banner).
+      total: g.items.reduce(
+        (s, l) => s + (isDeclined(l) ? 0 : lineCost(l))
+          + this.optionsFor(l.id).reduce((s2, o) => s2 + (isDeclined(o) ? 0 : lineCost(o)), 0),
+        0,
+      ),
       iconName: g.items[0]?.categoryIconName ?? null,
       // Expanded list: items grouped under a thin supplier band.
       supplierGroups: bySupplier(g.items),

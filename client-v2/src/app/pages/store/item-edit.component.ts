@@ -140,6 +140,10 @@ interface ItemForm {
           <app-item-approval-panel [status]="currentStatus()" [statusAt]="statusAt()" />
         </div>
         </div>
+
+        <!-- pV2-BUILDUP-03 — the supplier-side "Options & build-up" (Customize)
+             entry is intentionally hidden for now (kept simple for the demo).
+             The composition code + endpoints remain; only this entry is removed. -->
       }
     </div>
 

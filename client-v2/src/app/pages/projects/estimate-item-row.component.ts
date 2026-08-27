@@ -55,6 +55,9 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
         <input type="checkbox" class="bp-check" [checked]="installed()" [disabled]="!canInstall() || !canEdit()" (change)="installToggle.emit()" />
       </label>
     </div>
+    <!-- pV2-BUILDUP-03 — item Options entry hidden for now (client: "too
+         complicated"). Code + picker kept; re-enable this button to restore it. -->
+
     @if (canEdit()) {
       <app-qty-input class="shrink-0" [value]="line().quantity" [label]="line().name ?? 'item'" (qtyCommit)="qtyChange.emit($event)" />
     } @else {
@@ -81,6 +84,7 @@ export class EstimateItemRowComponent {
   readonly qtyChange = output<number>();
   readonly installToggle = output<void>();
   readonly remove = output<void>();
+  readonly options = output<void>();
 
   protected readonly canEdit = computed(() => editable(this.line()));
   protected readonly canInstall = computed(() => hasInstall(this.line()));

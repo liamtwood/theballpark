@@ -77,6 +77,8 @@ const LIST_SELECT = `
               FROM project_items pi
               LEFT JOIN items i ON i.id = pi.item_id
              WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
+               -- child components (private buildup) never count (pV2-BUILDUP-02).
+               AND pi.parent_id IS NULL
                -- Declined/cancelled lines drop out of the card total too, so it
                -- matches getEstimate + the Estimate tab (pV2-INBOX-05). ONE rule,
                -- line-total.util (audit 2026-07-17 B2).
@@ -385,6 +387,17 @@ function toQuoteLine(row) {
     supplierName: row.supplier_name ?? null,
     supplierCity: row.supplier_city ?? null,
     status: quoteStatus(row.sent_status),
+    // The original library item (the request) — the inbox brief renders this
+    // instead of the (possibly-revised) line. null fields for custom lines.
+    libName: row.lib_name ?? null,
+    libDescription: row.lib_description ?? null,
+    libBasePrice: row.lib_base_price == null ? null : Number(row.lib_base_price),
+    libServices: row.lib_install_description ?? null,
+    libImageUrl: row.lib_image_url ?? null,
+    hasOptions: row.has_options ?? false,
+    // pV2-BUILDUP-03 — set when this line is a picked option of another line;
+    // the Final Quote nests it under that parent + lists it in the item card.
+    optionOfLineId: row.option_of_line_id ?? null,
   };
 }
 
@@ -405,12 +418,22 @@ const QUOTE_LINE_JOIN = `
          -- base_price / catalogue install. So the quote card matches the inbox.
          COALESCE(pi.price_current, pi.base_price)  AS base_price,
          pi.unit, pi.image_url, pi.quantity,
+         pi.option_of_line_id,
          pi.installed, pi.logical_line_id, pi.created_at, pi.is_custom,
          pi.category_id, c.name AS category_name,
          c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url,
          COALESCE(pi.install_cost, i.install_cost)  AS install_cost,
-         i.install_description,
+         -- Prefer the supplier's edited Services (Customize) over the catalogue's.
+         COALESCE(pi.install_description, i.install_description) AS install_description,
          COALESCE(pi.install_unit, i.install_unit)  AS install_unit,
+         -- The ORIGINAL library item (item_id), unmodified — the inbox brief
+         -- renders THIS (the request) while the New-Cost card renders the line.
+         i.name AS lib_name, i.description AS lib_description,
+         i.base_price AS lib_base_price, i.install_description AS lib_install_description,
+         i.image_url AS lib_image_url,
+         -- pV2-BUILDUP-03 — does the catalogue item carry options (child items)?
+         -- Drives the Final Quote "Options" button.
+         EXISTS (SELECT 1 FROM items ci WHERE ci.parent_item_id = pi.item_id AND ci.deleted_at IS NULL) AS has_options,
          -- Supplier (pV2-UNIFY-01a): the ASKED supplier (supplier_org_id) once
          -- sent — the source of truth for who's quoting THIS row; pre-send it's
          -- NULL so we fall back to the item's catalogue owner (the default the
@@ -469,7 +492,9 @@ async function listItems(orgId, projectId) {
     `SELECT * FROM (
        SELECT DISTINCT ON (sub.logical_line_id) sub.*
          FROM (${QUOTE_LINE_JOIN}
-                WHERE pi.project_id = $1 AND pi.deleted_at IS NULL) sub
+                -- parent_id IS NULL: child components (the private cost buildup)
+                -- never surface as quote lines (pV2-BUILDUP-02).
+                WHERE pi.project_id = $1 AND pi.deleted_at IS NULL AND pi.parent_id IS NULL) sub
         ORDER BY sub.logical_line_id,
                  (sub.sent_status IN ('accepted','booked')) DESC NULLS LAST,
                  -- Declined rows sort LAST so this pick lands on the same row
@@ -507,6 +532,8 @@ async function getEstimate(orgId, projectId, scope = 'all') {
                  FROM project_items pi
                  LEFT JOIN items i ON i.id = pi.item_id
                 WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
+                  -- child components (private buildup) never count (pV2-BUILDUP-02).
+                  AND pi.parent_id IS NULL
                   -- scope=cart → only still-in-cart (never-sent) lines.
                   AND ($3 = false OR pi.status IS NULL)
                   -- Declined/cancelled lines drop out of the cost (the Final
@@ -644,9 +671,9 @@ async function addCustomItem(orgId, projectId, body) {
       `INSERT INTO project_items
          (project_id, item_id, is_custom, category_id, selection_type, source,
           name, description, base_price, unit, quantity,
-          installed, install_cost, install_unit)
+          installed, install_cost, install_unit, option_of_line_id)
        VALUES ($1, NULL, true, $2, 'selected', 'custom',
-          $3, $4, $5, $6, $7, $8, $9, $10)
+          $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING id`,
       [projectId, body.categoryId || null, body.name,
        body.description || null,
@@ -654,7 +681,11 @@ async function addCustomItem(orgId, projectId, body) {
        body.unit || null, qty,
        body.installed ?? null,
        body.installCost == null ? null : Number(body.installCost),
-       body.installUnit || null]
+       body.installUnit || null,
+       // pV2-BUILDUP-03 — when this custom line is a picked OPTION, link it to
+       // its parent quote line so the Final Quote nests it under that item and
+       // the item card lists it. Stays a real, counted, on-PDF line.
+       body.optionOfLineId || null]
     );
     const rowId = ins.rows[0].id;
     await client.query(
@@ -675,6 +706,180 @@ async function addCustomItem(orgId, projectId, body) {
     }
     return lineById(client, rowId);
   });
+}
+
+/** pV2-BUILDUP-02 — supplier Customize: add child components under a line the
+ *  supplier was ASKED to quote. Authority = the caller owns the parent line's
+ *  per-supplier row (supplier_org_id = caller) — the supplier writes under THEIR
+ *  OWN row (the UNIFY fan-out), never the agent's canonical row. Children are
+ *  private, supplier-scoped project_items with parent_id set; `included` maps to
+ *  selection_type (selected = in, liked = pencilled). Cost-only, excluded from
+ *  the agent's canonical totals (which count supplier_org_id IS NULL). */
+const COMPONENT_SELECT = `SELECT id, name, base_price, unit, quantity, category_id, kind, selection_type, description, image_url
+     FROM project_items
+    WHERE parent_id = $1 AND supplier_org_id = $2 AND deleted_at IS NULL
+    ORDER BY created_at`;
+
+/** pV2-BUILDUP-02 — the child components already on a line (for re-opening the
+ *  Customize estimate). Supplier-scoped: only the caller's own children. */
+async function listComponents(orgId, projectId, parentLineId) {
+  const parent = await pool.query(
+    `SELECT pi.name, pi.description, pi.install_description, pi.margin_pct, o.default_margin_pct
+       FROM project_items pi
+       JOIN orgs o ON o.id = $3
+      WHERE pi.id = $1 AND pi.project_id = $2 AND pi.supplier_org_id = $3 AND pi.deleted_at IS NULL`,
+    [parentLineId, projectId, orgId]
+  );
+  if (!parent.rows.length) return null;
+  const r = await pool.query(COMPONENT_SELECT, [parentLineId, orgId]);
+  const num = (v) => (v == null ? null : Number(v));
+  return {
+    components: r.rows,
+    // The parent line's own name + description + services (the supplier edits
+    // these — the final item the agent sees).
+    parentName: parent.rows[0].name,
+    parentDescription: parent.rows[0].description,
+    parentServices: parent.rows[0].install_description,
+    // The saved line margin (null = never set → fall back to the org default).
+    marginPct: num(parent.rows[0].margin_pct),
+    defaultMarginPct: num(parent.rows[0].default_margin_pct),
+  };
+}
+
+/** pV2-BUILDUP-02 — RECONCILE the child components under a line the supplier was
+ *  asked to quote (their own per-supplier row). Each input component with an `id`
+ *  updates that child; without an `id` inserts a new one; any existing child not
+ *  in the input is soft-deleted. Optionally sets the line's revised price
+ *  (price_current) — the supplier's quote derived from the estimate. Children are
+ *  private/supplier-scoped, excluded from the agent's canonical totals. */
+async function saveComponents(orgId, projectId, parentLineId, components, revisedPrice, marginPct, parentName, parentDescription, parentServices) {
+  const list = Array.isArray(components) ? components : [];
+  return withTransaction(async (client) => {
+    const parent = await client.query(
+      `SELECT id FROM project_items
+        WHERE id = $1 AND project_id = $2 AND supplier_org_id = $3 AND deleted_at IS NULL`,
+      [parentLineId, projectId, orgId]
+    );
+    if (!parent.rows.length) return null; // not the supplier's line → 404
+    const existing = await client.query(
+      `SELECT id FROM project_items WHERE parent_id = $1 AND supplier_org_id = $2 AND deleted_at IS NULL`,
+      [parentLineId, orgId]
+    );
+    const keep = new Set(list.filter((c) => c.id).map((c) => c.id));
+    for (const row of existing.rows) {
+      if (!keep.has(row.id)) {
+        await client.query(`UPDATE project_items SET deleted_at = NOW() WHERE id = $1`, [row.id]);
+      }
+    }
+    for (const c of list) {
+      const qty = Math.max(1, Math.round(Number(c.quantity) || 1));
+      const sel = c.included ? 'selected' : 'liked';
+      const cost = c.cost == null ? null : Number(c.cost);
+      if (c.id && keep.has(c.id)) {
+        await client.query(
+          `UPDATE project_items SET name = $2, base_price = $3, unit = $4, quantity = $5,
+             category_id = $6, kind = $7, selection_type = $8, description = $10, image_url = $11
+            WHERE id = $1 AND supplier_org_id = $9`,
+          [c.id, c.name, cost, c.unit || null, qty, c.categoryId || null, c.kind || 'estimate', sel, orgId,
+           c.description || null, c.image || null]
+        );
+      } else {
+        const ins = await client.query(
+          `INSERT INTO project_items
+             (project_id, item_id, is_custom, parent_id, supplier_org_id,
+              category_id, selection_type, source, kind, name, base_price, unit, quantity, description, image_url)
+           VALUES ($1, NULL, true, $2, $3, $4, $5, 'custom', $6, $7, $8, $9, $10, $11, $12)
+           RETURNING id`,
+          [projectId, parentLineId, orgId, c.categoryId || null, sel, c.kind || 'estimate',
+           c.name, cost, c.unit || null, qty, c.description || null, c.image || null]
+        );
+        await client.query(
+          `UPDATE project_items SET logical_line_id = id WHERE id = $1 AND logical_line_id IS NULL`,
+          [ins.rows[0].id]
+        );
+      }
+    }
+    // The supplier's estimate-derived quote for the line = the item TOTAL the
+    // supplier enters. price_current is the per-UNIT rate (the line total derives
+    // via lineTotalSql), so store total / qty. (qty=1 items → total = rate.)
+    if (revisedPrice != null && Number.isFinite(Number(revisedPrice))) {
+      await client.query(
+        `UPDATE project_items
+            SET price_current = $2 / GREATEST(COALESCE(quantity, 1), 1)
+          WHERE id = $1 AND supplier_org_id = $3`,
+        [parentLineId, Number(revisedPrice), orgId]
+      );
+    }
+    // Save the line-level margin on the parent (BUILDUP-02): re-opening the
+    // Customize estimate shows the same margin instead of re-deriving it.
+    if (marginPct != null && Number.isFinite(Number(marginPct))) {
+      await client.query(
+        `UPDATE project_items SET margin_pct = $2 WHERE id = $1 AND supplier_org_id = $3`,
+        [parentLineId, Number(marginPct), orgId]
+      );
+    }
+    // The supplier's final item name + description for the line (what the agent
+    // sees). Only touch a field when the client actually sent it.
+    if (typeof parentName === 'string' && parentName.trim()) {
+      await client.query(
+        `UPDATE project_items SET name = $2 WHERE id = $1 AND supplier_org_id = $3`,
+        [parentLineId, parentName.trim(), orgId]
+      );
+    }
+    if (parentDescription !== undefined) {
+      await client.query(
+        `UPDATE project_items SET description = $2 WHERE id = $1 AND supplier_org_id = $3`,
+        [parentLineId, parentDescription || null, orgId]
+      );
+    }
+    if (parentServices !== undefined) {
+      await client.query(
+        `UPDATE project_items SET install_description = $2 WHERE id = $1 AND supplier_org_id = $3`,
+        [parentLineId, parentServices || null, orgId]
+      );
+    }
+    // Clone-up to the library: ensure every named component exists as a reusable
+    // `items` row (kind='component') for this org. INSERT-ONLY, deduped by name —
+    // the project child is a SNAPSHOT, so editing it here never touches the
+    // library copy, and vice-versa (independent, like a marketplace item and the
+    // quote line it spawned).
+    for (const c of list) {
+      const nm = String(c.name || '').trim();
+      if (!nm) continue;
+      const exists = await client.query(
+        `SELECT 1 FROM items WHERE org_id = $1 AND kind = 'component' AND deleted_at IS NULL AND lower(name) = lower($2) LIMIT 1`,
+        [orgId, nm]
+      );
+      if (exists.rows.length) continue;
+      await client.query(
+        `INSERT INTO items (org_id, category_id, name, description, unit, base_price, kind, image_url, is_active, approval_status)
+         VALUES ($1, $2, $3, $4, $5, $6, 'component', $7, true, 'approved')`,
+        [orgId, c.categoryId || null, nm, c.description || null, c.unit || null,
+         c.cost == null ? null : Number(c.cost), c.image || null]
+      );
+    }
+    const rows = await client.query(COMPONENT_SELECT, [parentLineId, orgId]);
+    return rows.rows;
+  });
+}
+
+/** pV2-BUILDUP-02 — the supplier's reusable component LIBRARY: real `items`
+ *  rows of kind='component', owned by the org. Same table as marketplace items,
+ *  but kind='component' rows are surfaced ONLY here (Customize Explore) — the
+ *  marketplace browse (item.service.getAll) filters them out. Private/org-scoped;
+ *  q optional (empty = the whole list). */
+async function listMyComponents(orgId, q) {
+  const term = `%${String(q || '').replace(/[%_\\]/g, '\\$&')}%`;
+  const r = await pool.query(
+    `SELECT id, name, base_price, unit, category_id, kind, description, image_url
+       FROM items
+      WHERE org_id = $1 AND kind = 'component' AND is_active = true AND deleted_at IS NULL
+        AND ($2 = '%%' OR name ILIKE $2)
+      ORDER BY lower(name)
+      LIMIT 100`,
+    [orgId, term]
+  );
+  return r.rows;
 }
 
 /** Has this item been sent for a quote on this project? Once sent the quote
@@ -855,6 +1060,6 @@ async function recommend(orgId, projectId) {
 
 module.exports = {
   listForOrg, listClientNames, getDetail, updateDetail, create,
-  listItems, getEstimate, addItem, addCustomItem, removeItem, updateItem, recommend,
+  listItems, getEstimate, addItem, addCustomItem, saveComponents, listComponents, listMyComponents, removeItem, updateItem, recommend,
   resolveStatus, DEFAULT_STATUS, toCard, linesByIds,
 };

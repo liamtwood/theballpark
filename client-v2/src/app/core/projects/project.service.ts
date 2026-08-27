@@ -3,6 +3,59 @@ import { Observable } from 'rxjs';
 import { ApiService } from '../api.service';
 import { EstimateBreakdown, ProjectCard, ProjectCreatePayload, ProjectDetail, ProjectUpdate, QuoteLine } from './project.types';
 
+/** pV2-BUILDUP-02 — a supplier's reusable component (the derived library). */
+export interface MyComponent {
+  id: string;
+  name: string;
+  base_price: number | null;
+  unit: string | null;
+  category_id: string | null;
+  kind: string | null;
+  description: string | null;
+  image_url: string | null;
+}
+
+/** pV2-BUILDUP-02 — one component line the supplier adds under a parent.
+ *  `id` present = update an existing child (reconcile). */
+export interface ComponentInput {
+  id?: string;
+  categoryId: string | null;
+  name: string;
+  cost: number | null;
+  unit: string | null;
+  quantity: number;
+  kind: string | null;
+  included: boolean;
+  description?: string | null;
+  /** Demo: an inline data URL stored in project_items.image_url (text). */
+  image?: string | null;
+}
+
+/** pV2-BUILDUP-02 — the re-open payload: the line's children + its saved margin
+ *  (null = never set) + the supplier org's default margin to seed from. */
+export interface ComponentsResponse {
+  components: ComponentRow[];
+  parentName: string;
+  parentDescription: string | null;
+  parentServices: string | null;
+  marginPct: number | null;
+  defaultMarginPct: number | null;
+}
+
+/** pV2-BUILDUP-02 — an existing child component (as stored), for re-open. */
+export interface ComponentRow {
+  id: string;
+  name: string;
+  base_price: number | null;
+  unit: string | null;
+  quantity: number;
+  category_id: string | null;
+  kind: string | null;
+  selection_type: string;
+  description: string | null;
+  image_url: string | null;
+}
+
 /** pV2-PROJECTS-01 — the v2 projects read path. INTERIM base
  *  `/api/projects-v2`: v1 owns the live ungated `/api/projects` until
  *  pV2-11; this is the gated, org-scoped (JWT) v2 surface. */
@@ -64,12 +117,35 @@ export class ProjectService {
     unit?: string | null;
     /** pV2-BUILDUP-01 (UI1): supplier this line is added for (tags it). */
     supplierOrgId?: string | null;
+    /** pV2-BUILDUP-03: parent quote line this line is a picked option of. */
+    optionOfLineId?: string | null;
   }): Observable<QuoteLine> {
     return this.api.post<QuoteLine>(`/api/projects-v2/${projectId}/items/custom`, body);
   }
 
   removeQuoteItem(projectId: string, itemId: string): Observable<{ removed: boolean }> {
     return this.api.delete<{ removed: boolean }>(`/api/projects-v2/${projectId}/items/${itemId}`);
+  }
+
+  /** pV2-BUILDUP-02 — the supplier's reusable components (derived library) for
+   *  the Customize left rail + type-ahead. */
+  listMyComponents(q?: string): Observable<MyComponent[]> {
+    const qs = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : '';
+    return this.api.get<MyComponent[]>(`/api/projects-v2/my-components${qs}`);
+  }
+
+  /** pV2-BUILDUP-02 — the line's current child components + its saved margin
+   *  (and the org default to seed from) — for re-opening the estimate. */
+  getComponents(projectId: string, lineId: string): Observable<ComponentsResponse> {
+    return this.api.get<ComponentsResponse>(`/api/projects-v2/${projectId}/items/${lineId}/components`);
+  }
+
+  /** pV2-BUILDUP-02 — reconcile the line's components (add/update/remove) + the
+   *  revised price and the line-level margin (the supplier's estimate quote). */
+  saveComponents(projectId: string, lineId: string, components: ComponentInput[], revisedPrice: number | null, marginPct: number | null, parent?: { name?: string; description?: string | null; services?: string | null }): Observable<ComponentRow[]> {
+    return this.api.post<ComponentRow[]>(`/api/projects-v2/${projectId}/items/${lineId}/components`, {
+      components, revisedPrice, marginPct, parentName: parent?.name, parentDescription: parent?.description, parentServices: parent?.services,
+    });
   }
 
   /** pV2-QUANTITY-01 — set a quote line's quantity (positive integer). */

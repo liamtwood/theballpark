@@ -109,13 +109,20 @@ import { AuthService } from '../../core/auth/auth.service';
         <!-- pV2-STORE-01 — owner manages their own item from the card:
              Edit, Duplicate, Show/Hide (is_active), Trash (soft delete). -->
         <div class="mt-3 flex items-center gap-2">
+          <!-- Build from components (itemize) — the supplier composes this item
+               from other items. Emits build; the host opens the buildup. -->
+          <button type="button" class="bp-item-card__act" title="Build from components" aria-label="Build item" (click)="onBuild($event)">
+            <lucide-icon name="list-tree" [size]="15" />
+          </button>
           <!-- Approved items are editable too now (photos locked in the editor). -->
           <a
             [routerLink]="['/store/items', item().id]"
-            class="bp-btn-outline flex flex-1 items-center justify-center gap-1.5"
+            class="bp-item-card__act"
+            title="Edit"
+            aria-label="Edit"
             (click)="onEditClick($event)"
           >
-            <lucide-icon name="square-pen" [size]="14" /> Edit
+            <lucide-icon name="square-pen" [size]="15" />
           </a>
           <button type="button" class="bp-item-card__act" [disabled]="busy()" title="Duplicate" aria-label="Duplicate" (click)="onDuplicate($event)">
             <lucide-icon name="copy" [size]="15" />
@@ -209,6 +216,14 @@ export class ItemCardComponent {
   /** The Edit link navigates itself — don't also trigger the card open. */
   protected onEditClick(e: Event): void {
     e.stopPropagation();
+  }
+
+  /** Build-from-components entry — the host opens the buildup for this item.
+   *  Destination is the next slice; for now this just surfaces the intent. */
+  readonly build = output<string>();
+  protected onBuild(e: Event): void {
+    e.stopPropagation();
+    this.build.emit(this.item().id);
   }
 
   // ── Owner item management (pV2-STORE-01) ──────────────────────────────────
