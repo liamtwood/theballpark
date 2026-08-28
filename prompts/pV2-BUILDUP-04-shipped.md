@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.104 (2026-08-28): tile value in the item-title font + NATO dates
+- Stacked tile **value now uses `.bp-list-title`** (same font/size/weight as item
+  names like "Awards Ceremony AV Package") instead of the lighter `.bp-body-small`.
+- **Date tile is NATO** (`31-Dec-2024`) when the stored `eventDate` parses to a
+  real date; freeform values (e.g. "Q4") are left as-is. Applies wherever the
+  tiles render.
+
 ## Iteration — v2.103 (2026-08-28): document meta tiles stack the value under the label
 - The document's meta tiles were truncating ("31 D…", "£100,…"). Added a
   `stacked` variant to `ProjectSummaryTilesComponent` — icon + label on top, the

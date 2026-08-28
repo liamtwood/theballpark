@@ -3,6 +3,18 @@ import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { ProjectDetail } from '../../core/projects/project.types';
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** NATO date (DD-Mmm-YYYY, e.g. 31-Dec-2024) when the stored value parses to a
+ *  real date; otherwise the raw string is left untouched (event dates can be
+ *  free text like "Q4" or a range). */
+function natoDate(s: string): string {
+  const t = Date.parse(s);
+  if (Number.isNaN(t)) return s;
+  const d = new Date(t);
+  return `${String(d.getDate()).padStart(2, '0')}-${MONTHS[d.getMonth()]}-${d.getFullYear()}`;
+}
+
 /** pV2-CART-01 — the 5 summary tiles (Date / Location / Duration / Guest count
  *  / Budget) at the top of the Cart/Final. Pure presentation; extracted from
  *  project-estimate (audit M1). */
@@ -22,7 +34,7 @@ import { ProjectDetail } from '../../core/projects/project.types';
               <span class="bp-icon-block h-8 w-8 shrink-0"><lucide-icon [name]="t.icon" [size]="16" [strokeWidth]="1.75" /></span>
               <span class="bp-field-label">{{ t.label }}</span>
             </div>
-            <span class="bp-body-small mt-1.5 block text-text">{{ t.value }}</span>
+            <span class="bp-list-title mt-1.5 block">{{ t.value }}</span>
           } @else {
             <div class="flex items-start gap-3">
               <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon [name]="t.icon" [size]="18" [strokeWidth]="1.75" /></span>
@@ -50,7 +62,7 @@ export class ProjectSummaryTilesComponent {
     const p = this.project();
     const money = (n: number) => this.currencyPipe.transform(n, this.currency(), 'symbol', '1.0-0') ?? '—';
     return [
-      { icon: 'calendar', label: 'Date', value: p.eventDate || '—' },
+      { icon: 'calendar', label: 'Date', value: p.eventDate ? natoDate(p.eventDate) : '—' },
       { icon: 'map-pin', label: 'Location', value: p.venueCity || p.venueName || '—' },
       { icon: 'clock', label: 'Duration', value: p.durationDays ? `${p.durationDays} ${p.durationDays === 1 ? 'day' : 'days'}` : '—' },
       { icon: 'users', label: 'Guest count', value: p.guestCount != null ? String(p.guestCount) : '—' },
