@@ -35,6 +35,10 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.162 (2026-08-28): Customize footer Cancel button
+- Added a **Cancel** button before **Save draft** in the customize footer
+  (project mode) — fires `cancel` (same as the top "Back to conversation").
+
 ## Iteration — v2.161 (2026-08-28): inbox — replies require an item; keep context
 - **Bug:** `selectedId` (`() => null`) and `selectedThreadId` (`ts[0]`) were
   `linkedSignal`s off the threads list, so **every reload** (send / accept /

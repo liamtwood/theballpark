@@ -149,6 +149,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
               @if (itemMode()) {
                 <button type="button" class="bp-btn-grad flex-1" [disabled]="saving() || !loaded()" (click)="save(false)">{{ saving() ? 'Saving…' : 'Save options' }}</button>
               } @else {
+                <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="cancel.emit()">Cancel</button>
                 <button type="button" class="bp-btn-outline flex-1" [disabled]="saving() || !loaded()" (click)="save(false)">{{ saving() ? 'Saving…' : 'Save draft' }}</button>
                 <button type="button" class="bp-btn-grad flex-1" [disabled]="saving() || !loaded()" (click)="openSend()">
                   <lucide-icon name="circle-dollar-sign" [size]="16" /> Send New Cost
