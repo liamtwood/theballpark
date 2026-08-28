@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -71,11 +71,17 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                 <span class="bp-list-title">{{ parentName() || 'Original item' }}</span>
                 <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1">
                   @if (originalPrice() != null) {
-                    <label class="inline-flex items-center gap-1.5 cursor-pointer" title="Include the item's base price (off = rebuild the price from parts)" (click)="$event.stopPropagation()">
-                      <input type="checkbox" class="bp-check" [checked]="includeBase()" (change)="includeBase.set($any($event.target).checked)" />
+                    <span class="inline-flex items-center gap-1.5" title="Include the item's base price (off = rebuild the price from parts)" (click)="$event.stopPropagation()">
+                      <input type="checkbox" class="bp-check cursor-pointer" [checked]="includeBase()" (change)="includeBase.set($any($event.target).checked)" />
                       <span class="bp-caption">Base</span>
-                      <span class="bp-body-small ml-0.5 text-secondary tabular-nums">£{{ originalPrice() | number: '1.0-0' }}</span>
-                    </label>
+                      @if (baseUnitPrice() != null) {
+                        <input type="number" min="1" inputmode="numeric" class="h-7 w-16 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-md outline-none focus:border-accent disabled:opacity-50"
+                               [value]="baseQty()" [disabled]="!includeBase()"
+                               (input)="baseQty.set($any($event.target).valueAsNumber || 1)" />
+                        <span class="bp-caption">{{ baseUnit() || 'qty' }} × £{{ baseUnitPrice() | number: '1.0-0' }} =</span>
+                      }
+                      <span class="bp-body-small ml-0.5 text-secondary tabular-nums">£{{ baseCost() | number: '1.0-0' }}</span>
+                    </span>
                   }
                   <span><span class="bp-caption">Customizations</span> <span class="bp-body-small ml-1 text-secondary tabular-nums">£{{ costTotal() | number: '1.0-0' }}</span></span>
                   <span><span class="bp-caption">Revised</span> <span class="bp-price-large ml-1 tabular-nums">£{{ withMargin() | number: '1.0-0' }}</span></span>
@@ -286,6 +292,11 @@ export class CustomizeDialogComponent implements OnInit {
   readonly itemName = input<string>('');
   /** The line's ORIGINAL price (price_ref) — shown as "Original" in the header. */
   readonly originalPrice = input<number | null>(null);
+  /** The line's per-unit rate + qty + unit — lets the base row rescale by head
+   *  count (falls back to a flat originalPrice when the unit rate is unknown). */
+  readonly baseUnitPrice = input<number | null>(null);
+  readonly baseUnit = input<string | null>(null);
+  readonly baseQuantity = input<number | null>(null);
   /** The line being customized, as a quote line — mapped to the same preview
    *  card the final quote renders (right rail: photo + description). */
   readonly previewLine = input<QuoteLine | null>(null);
@@ -379,8 +390,15 @@ export class CustomizeDialogComponent implements OnInit {
    *  On = AUGMENT (base + customizations); off = DECOMPOSE (rebuild from parts,
    *  the pre-fix behaviour). Not yet persisted — resets to on each open. */
   protected readonly includeBase = signal(true);
-  /** The item's own base cost that seeds the buildup (0 when excluded). */
-  protected readonly baseCost = computed(() => (this.includeBase() ? (this.originalPrice() ?? 0) : 0));
+  /** Editable base head-count (qty), seeded from the line's quantity. */
+  protected readonly baseQty = linkedSignal(() => this.baseQuantity() ?? 1);
+  /** The item's own base cost that seeds the buildup (0 when excluded). Uses the
+   *  per-unit rate × the (editable) head count when known, else a flat total. */
+  protected readonly baseCost = computed(() => {
+    if (!this.includeBase()) return 0;
+    const up = this.baseUnitPrice();
+    return up != null ? up * Math.max(1, Number(this.baseQty()) || 1) : (this.originalPrice() ?? 0);
+  });
   /** Margin £ on the customizations only — the base keeps its already-quoted
    *  price and is NOT re-margined. */
   protected readonly marginAmount = computed(() => Math.round(this.costTotal() * ((Number(this.margin()) || 0) / 100)));

@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.164 (2026-08-28): editable head-count on the Customize base
+- The base row now takes the line's **per-unit rate + unit + qty** (`unitPriceRef`
+  / `unit` / `quantity`), so its head count is **editable** — `baseCost =
+  unitRate × baseQty` (rescales the revised total). Falls back to a flat
+  `originalPrice` when no unit rate. (Rescales the total; doesn't change the
+  line's negotiated quantity — that's separate.)
+
 ## Iteration — v2.163 (2026-08-28): Customize uses the base cost (no more price drop)
 - **Bug fixed:** customizing overwrote the line's price with `Σ(components)` — an
   intact £17,325 line dropped to £42 on adding one component (and Send New Cost
