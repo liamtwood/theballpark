@@ -35,6 +35,14 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.120 (2026-08-28): Options → Header section (Reference / Address) + phone
+- New Options **Header** section: **Reference** toggle (the Project / Type /
+  Created meta table) and **Address** toggle (the agency address block). Both
+  persisted (`quote_show_ref` / `quote_show_address`, default ON, all schemas +
+  targeted `ALTER` on public).
+- Agency address block now includes the **phone number**, ordered address →
+  **phone** → city (from the org profile's `phone`).
+
 ## Iteration — v2.119 (2026-08-28): "Project Summary" = the event-facts tiles
 - The **tiles** (Date / Location / Duration / Guest count / Budget) are now a
   boxed **"Project Summary"** section (shaded header + tiles inside), controlled

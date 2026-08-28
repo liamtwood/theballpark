@@ -177,6 +177,8 @@ export interface ProjectDetail {
   quoteShowItemDesc: boolean | null;
   quoteShowOverview: boolean | null;
   quoteShowSummary: boolean | null;
+  quoteShowRef: boolean | null;
+  quoteShowAddress: boolean | null;
   /** Media (pV2-MEDIA-01b). */
   coverFocalX: number;
   coverFocalY: number;
@@ -224,6 +226,8 @@ export type ProjectUpdate = Partial<{
   quoteShowItemDesc: boolean | null;
   quoteShowOverview: boolean | null;
   quoteShowSummary: boolean | null;
+  quoteShowRef: boolean | null;
+  quoteShowAddress: boolean | null;
   coverImageUrl: string | null;
   clientLogoUrl: string | null;
   cardColor: string | null;

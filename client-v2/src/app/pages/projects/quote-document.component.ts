@@ -63,12 +63,15 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
           }
           <div>
             <div class="bp-list-title text-[length:var(--text-2xl)] font-bold tracking-tight">{{ org()?.name || 'Your Agency' }}</div>
-            @for (ln of agencyAddressLines(); track $index) {
-              <div class="bp-meta leading-relaxed">{{ ln }}</div>
+            @if (showAddress()) {
+              @for (ln of agencyAddressLines(); track $index) {
+                <div class="bp-meta leading-relaxed">{{ ln }}</div>
+              }
             }
           </div>
         </div>
         <!-- Meta table — shaded label column, left-justified values, address-size. -->
+        @if (showRef()) {
         <div class="shrink-0 overflow-hidden rounded-md border border-hairline bp-meta">
           <div class="grid grid-cols-[auto_auto]">
             <div class="border-b border-hairline bg-fill px-2.5 py-1 font-medium text-text">Project</div>
@@ -79,6 +82,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
             <div class="border-l border-hairline px-2.5 py-1 text-left text-text">{{ createdStr() }}</div>
           </div>
         </div>
+        }
       </div>
       <!-- Title banner — company + project name, shaded like the meta label
            column, rounded + bordered to match the tiles below. -->
@@ -237,6 +241,18 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
         <h3 class="bp-edit-section-title">Options</h3>
 
         <div class="mt-4">
+          <span class="bp-field-label">Header</span>
+          <div class="mt-2 flex flex-col gap-2">
+            <label class="flex items-center gap-2 bp-body-small text-secondary">
+              <input type="checkbox" class="bp-check" [ngModel]="showRef()" (ngModelChange)="showRef.set($event); saveOptions()" /> Reference
+            </label>
+            <label class="flex items-center gap-2 bp-body-small text-secondary">
+              <input type="checkbox" class="bp-check" [ngModel]="showAddress()" (ngModelChange)="showAddress.set($event); saveOptions()" /> Address
+            </label>
+          </div>
+        </div>
+
+        <div class="mt-5">
           <span class="bp-field-label">Theme</span>
           <div class="mt-2 flex flex-col gap-1.5">
             <button type="button" class="flex items-center justify-between rounded-[var(--radius-card)] border px-3 py-2 bp-body-small transition-colors"
@@ -327,6 +343,8 @@ export class QuoteDocumentComponent implements OnInit {
   protected readonly showItemDesc = signal(true);
   protected readonly showOverview = signal(true);
   protected readonly showSummary = signal(true);
+  protected readonly showRef = signal(true);
+  protected readonly showAddress = signal(true);
 
   /** Seed the options from the stored project values (defaults when unset). */
   ngOnInit(): void {
@@ -341,6 +359,8 @@ export class QuoteDocumentComponent implements OnInit {
     this.showItemDesc.set(p.quoteShowItemDesc ?? true);
     this.showOverview.set(p.quoteShowOverview ?? true);
     this.showSummary.set(p.quoteShowSummary ?? true);
+    this.showRef.set(p.quoteShowRef ?? true);
+    this.showAddress.set(p.quoteShowAddress ?? true);
   }
   protected setMode(m: 'default' | 'bw' | 'color'): void { this.mode.set(m); this.saveOptions(); }
   protected onColor(hex: string): void { this.pickedColor.set(hex); this.mode.set('color'); this.saveOptions(); }
@@ -357,6 +377,8 @@ export class QuoteDocumentComponent implements OnInit {
         quoteShowItemDesc: this.showItemDesc(),
         quoteShowOverview: this.showOverview(),
         quoteShowSummary: this.showSummary(),
+        quoteShowRef: this.showRef(),
+        quoteShowAddress: this.showAddress(),
       }));
     } catch {
       // Non-fatal — the local view keeps the choice; it just didn't persist.
@@ -396,6 +418,7 @@ export class QuoteDocumentComponent implements OnInit {
     const o = this.org();
     if (!o) return [];
     const parts = (o.address ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (o.phone) parts.push(o.phone);
     if (o.city) parts.push(o.city);
     return parts;
   });

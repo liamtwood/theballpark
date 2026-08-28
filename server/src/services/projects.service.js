@@ -190,6 +190,8 @@ function toDetail(row) {
     quoteShowItemDesc: row.quote_show_item_desc ?? true,
     quoteShowOverview: row.quote_show_overview ?? true,
     quoteShowSummary: row.quote_show_summary ?? true,
+    quoteShowRef: row.quote_show_ref ?? true,
+    quoteShowAddress: row.quote_show_address ?? true,
     eventName: row.event_name,
     clientName: row.client_name ?? null,
     coverUrl: row.cover_image_url,
@@ -253,6 +255,8 @@ const EDITABLE = {
   quoteShowItemDesc: 'quote_show_item_desc',
   quoteShowOverview: 'quote_show_overview',
   quoteShowSummary: 'quote_show_summary',
+  quoteShowRef: 'quote_show_ref',
+  quoteShowAddress: 'quote_show_address',
   // Media (pV2-MEDIA-01b) — the picker result maps here.
   coverImageUrl: 'cover_image_url',
   clientLogoUrl: 'client_logo_url',
