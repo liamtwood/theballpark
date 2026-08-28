@@ -71,7 +71,11 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                 <span class="bp-list-title">{{ parentName() || 'Original item' }}</span>
                 <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1">
                   @if (originalPrice() != null) {
-                    <span><span class="bp-caption">Original</span> <span class="bp-body-small ml-1 text-secondary tabular-nums">£{{ originalPrice() | number: '1.0-0' }}</span></span>
+                    <label class="inline-flex items-center gap-1.5 cursor-pointer" title="Include the item's base price (off = rebuild the price from parts)" (click)="$event.stopPropagation()">
+                      <input type="checkbox" class="bp-check" [checked]="includeBase()" (change)="includeBase.set($any($event.target).checked)" />
+                      <span class="bp-caption">Base</span>
+                      <span class="bp-body-small ml-0.5 text-secondary tabular-nums">£{{ originalPrice() | number: '1.0-0' }}</span>
+                    </label>
                   }
                   <span><span class="bp-caption">Customizations</span> <span class="bp-body-small ml-1 text-secondary tabular-nums">£{{ costTotal() | number: '1.0-0' }}</span></span>
                   <span><span class="bp-caption">Revised</span> <span class="bp-price-large ml-1 tabular-nums">£{{ withMargin() | number: '1.0-0' }}</span></span>
@@ -371,8 +375,18 @@ export class CustomizeDialogComponent implements OnInit {
     this.rows().reduce((s, r) => s + (r.name.trim() && r.included ? (Number(r.cost) || 0) * Math.max(1, Number(r.qty) || 1) : 0), 0)
   );
   /** Revised (client) price = rolled-up cost + the line margin. Derived live. */
-  protected readonly withMargin = computed(() => Math.round(this.costTotal() * (1 + (Number(this.margin()) || 0) / 100)));
-  protected readonly marginAmount = computed(() => Math.max(0, this.withMargin() - this.costTotal()));
+  /** Include the item's own base price in the revised total (default on).
+   *  On = AUGMENT (base + customizations); off = DECOMPOSE (rebuild from parts,
+   *  the pre-fix behaviour). Not yet persisted — resets to on each open. */
+  protected readonly includeBase = signal(true);
+  /** The item's own base cost that seeds the buildup (0 when excluded). */
+  protected readonly baseCost = computed(() => (this.includeBase() ? (this.originalPrice() ?? 0) : 0));
+  /** Margin £ on the customizations only — the base keeps its already-quoted
+   *  price and is NOT re-margined. */
+  protected readonly marginAmount = computed(() => Math.round(this.costTotal() * ((Number(this.margin()) || 0) / 100)));
+  /** Revised = base (flat) + customizations + their margin. Base is preserved,
+   *  never overwritten, so customizing augments instead of zeroing the price. */
+  protected readonly withMargin = computed(() => Math.round(this.baseCost() + this.costTotal() + this.marginAmount()));
   protected catName(id: string | null): string {
     return id ? (this.categories().find((c) => c.id === id)?.name ?? 'Category') : 'Uncategorised';
   }

@@ -35,6 +35,18 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.163 (2026-08-28): Customize uses the base cost (no more price drop)
+- **Bug fixed:** customizing overwrote the line's price with `Σ(components)` — an
+  intact £17,325 line dropped to £42 on adding one component (and Send New Cost
+  would fire £42). Now the buildup **seeds the item's own base cost**:
+  `Revised = base + customizations + margin(customizations)`. Base is added
+  **flat** (not re-margined — it's an already-quoted price); margin applies to the
+  customizations only.
+- New **"Base £X" include toggle** in the header (default **on** = augment). Turn
+  it **off** to DECOMPOSE (rebuild the whole price from parts — the pre-fix
+  behaviour), so both workflows are supported. Not yet persisted (resets on each
+  open) — persistence is a follow-up.
+
 ## Iteration — v2.162 (2026-08-28): Customize footer Cancel button
 - Added a **Cancel** button before **Save draft** in the customize footer
   (project mode) — fires `cancel` (same as the top "Back to conversation").
