@@ -13,7 +13,7 @@ import { RateInputComponent } from './rate-input.component';
 import { InboxService, OutreachRosterEntry } from '../../core/inbox/inbox.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { MessageSuppliersDialogComponent, MsgSupplierCategory } from './message-suppliers-dialog.component';
-import { ProjectSummaryTilesComponent } from './project-summary-tiles.component';
+import { EventDetailsEditComponent } from './event-details-edit.component';
 import { EstimateBreakdownComponent } from './estimate-breakdown.component';
 import { EstimatePreviewRailComponent } from './estimate-preview-rail.component';
 import { CustomLineDialogComponent, CustomLine, LineSupplier, ExistingPick } from './custom-line-dialog.component';
@@ -54,7 +54,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CurrencyPipe, LucideAngularModule, MessageSuppliersDialogComponent, EstimateItemRowComponent, RateInputComponent,
-    ProjectSummaryTilesComponent, EstimateBreakdownComponent, EstimatePreviewRailComponent, CustomLineDialogComponent,
+    EventDetailsEditComponent, EstimateBreakdownComponent, EstimatePreviewRailComponent, CustomLineDialogComponent,
     OptionsPickerComponent,
   ],
   host: { class: 'block' },
@@ -62,20 +62,17 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
     <div>
       <h2 class="bp-page-title pt-2 text-center">{{ isFinal() ? 'Final Project Quote' : 'Project Cart' }}</h2>
 
-      <!-- Summary tiles: Date / Location / Duration / Guest count / Budget. -->
-      <app-project-summary-tiles class="mt-4 block" [project]="project()" [currency]="cur()" />
-
       <!-- Reading column stays page-centered; the preview rail floats
-           absolutely — top aligned with the banner, right aligned with the
-           budget tile / content edge (Liam 2026-07-07). -->
+           absolutely — top aligned with the content, right aligned with the
+           content edge (Liam 2026-07-07). -->
       <div class="relative">
       <div class="mx-auto max-w-2xl">
 
-      <!-- Estimated Ballpark Cost banner (the headline = client total). -->
-      <div class="bp-quote-banner mt-5 px-6 py-7 text-center">
-        <div class="bp-body-small">Estimated Ballpark {{ isFinal() ? 'Total' : 'Cost' }}</div>
-        <div class="bp-amount-hero mt-1">{{ bannerTotal() | currency: cur() : 'symbol' : '1.0-0' }}</div>
-      </div>
+      <!-- Editable event details: Date / Location / Duration / Guest count /
+           Budget. In-column so its edges line up with the cost cards. Each
+           field saves on blur; (saved) reloads the project. -->
+      <app-event-details-edit class="mt-4 block" [project]="project()" [projectId]="projectId()"
+                              [currency]="cur()" (saved)="detailsSaved.emit()" />
 
       <div class="mt-5"></div>
 
@@ -300,6 +297,8 @@ export class ProjectEstimateComponent {
   readonly addItems = output<void>();
   /** "Go with this Ballpark" — jump to the Final Quote tab (cart). */
   readonly goToFinal = output<void>();
+  /** An event-details field was saved → host reloads its project resource. */
+  readonly detailsSaved = output<void>();
 
   protected readonly isFinal = computed(() => this.view() === 'final');
 

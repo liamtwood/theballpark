@@ -281,7 +281,7 @@ interface DetailForm {
           }
           @case ('estimate') {
             <div class="min-h-0 flex-1 overflow-y-auto">
-              <app-project-estimate [projectId]="p.id" [project]="p" (addItems)="addItems()" (goToFinal)="goToTab('final')" />
+              <app-project-estimate [projectId]="p.id" [project]="p" (addItems)="addItems()" (goToFinal)="goToTab('final')" (detailsSaved)="detail.reload()" />
             </div>
           }
           @case ('final') {
@@ -295,7 +295,7 @@ interface DetailForm {
                   <lucide-icon name="file-text" [size]="15" /> View as SOW
                 </button>
               </div>
-              <app-project-estimate [projectId]="p.id" [project]="p" view="final" />
+              <app-project-estimate [projectId]="p.id" [project]="p" view="final" (detailsSaved)="detail.reload()" />
             </div>
             @if (docView()) {
               <app-quote-document [projectId]="p.id" [project]="p" (close)="docView.set(false)" />

@@ -35,6 +35,22 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.140 (2026-08-28): editable Event details card on Cart/Final
+- Replaced the read-only **summary tiles** (Date / Location / Duration / Guest
+  count / Budget) at the top of the estimate view with a new **editable
+  `app-event-details-edit`** card — the same facts, now inputs, plus **Client
+  name** (`clientName`) and **Event type** (`eventType`), both existing project
+  fields. Each field **saves on blur** via a targeted `ProjectUpdate` patch (one
+  nullable column); a "Details saved" pill flips to "Saving…" / "Couldn't save".
+- `(saved)` bubbles up (`detailsSaved` output) → the host calls
+  `detail.reload()` so every surface re-reads. Location edits `venueName`
+  (labelled "Location"); Duration/Guests/Budget parse to `number|null`.
+- **Removed** the "Estimated Ballpark {Total,Cost}" headline banner from the
+  estimate view (the total still shows in the breakdown box; the total + CTA
+  card is the next step). Card sits **inside the `max-w-2xl` reading column** so
+  its edges line up with the Project Costs cards (Liam QC).
+- No server / schema / type changes — `ProjectUpdate` already accepts all five.
+
 ## Iteration — v2.139 (2026-08-28): Timeline 3-column table + label/date pairing
 - Timeline renders as **3 columns** (label · start date · end date; end blank when
   no range). The parser now **pairs** a bare-label line with its following bare-date
