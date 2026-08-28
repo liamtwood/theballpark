@@ -35,6 +35,9 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.150 (2026-08-28): eyebrow not bold
+- Hero eyebrow weight 600 → 400 (matches the ref); still tracked-uppercase.
+
 ## Iteration — v2.149 (2026-08-28): eyebrow sized to match the ref
 - The hero **eyebrow** now uses `--text-xl` (same size as the ref/subtitle),
   keeping the tracked-uppercase treatment.

@@ -105,7 +105,7 @@ import { LucideAngularModule } from 'lucide-angular';
         margin: 0;
         /* Same size as the ref/subtitle (--text-xl); tracked + uppercase. */
         font-size: var(--text-xl);
-        font-weight: 600;
+        font-weight: 400;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--color-text-secondary);
