@@ -55,6 +55,12 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
   `],
   template: `
     <div class="p-4">
+      <!-- Back out of the builder without saving (returns to the thread). -->
+      <div class="mb-3">
+        <button type="button" class="flex items-center gap-2 bp-body-small text-secondary transition-colors hover:text-text" (click)="cancel.emit()">
+          <lucide-icon name="arrow-left" [size]="16" /> Back to conversation
+        </button>
+      </div>
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
           <!-- CENTRE: the editable estimate, grouped by category. -->
           <div class="min-w-0">

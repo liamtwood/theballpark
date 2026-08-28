@@ -35,6 +35,11 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.160 (2026-08-28): Customize dialog — visible Back/close
+- The customize builder replaces the conversation (so the row's Close toggle is
+  gone while it's open) but had **no visible close** of its own. Added a **"Back
+  to conversation"** button at the top of `customize-dialog` that fires `cancel`.
+
 ## Iteration — v2.159 (2026-08-28): re-enable supplier Customize in the inbox
 - Restored the **supplier Customize button** in the inbox thread action row
   (supplier-only, `!isAgency()`) — toggles the inline estimate/build-up dialog
