@@ -171,6 +171,7 @@ export interface ProjectDetail {
   quoteThemeMode: 'default' | 'bw' | 'color' | null;
   quoteThemeColor: string | null;
   quoteFooter: string | null;
+  quoteShowCreated: boolean | null;
   /** Media (pV2-MEDIA-01b). */
   coverFocalX: number;
   coverFocalY: number;
@@ -212,6 +213,7 @@ export type ProjectUpdate = Partial<{
   quoteThemeMode: 'default' | 'bw' | 'color' | null;
   quoteThemeColor: string | null;
   quoteFooter: string | null;
+  quoteShowCreated: boolean | null;
   coverImageUrl: string | null;
   clientLogoUrl: string | null;
   cardColor: string | null;

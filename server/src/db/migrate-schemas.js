@@ -2598,6 +2598,7 @@ const migrate = async () => {
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS quote_theme_mode TEXT;`);
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS quote_theme_color TEXT;`);
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS quote_footer TEXT;`);
+      await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS quote_show_created BOOLEAN;`);
       // Insurance is a % of project costs (default_insurance_amount was an earlier
       // fixed-£ take, left dormant.)
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS default_insurance_pct NUMERIC(5,2);`);

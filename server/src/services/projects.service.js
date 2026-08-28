@@ -183,6 +183,7 @@ function toDetail(row) {
     quoteThemeMode: row.quote_theme_mode ?? null,
     quoteThemeColor: row.quote_theme_color ?? null,
     quoteFooter: row.quote_footer ?? null,
+    quoteShowCreated: row.quote_show_created ?? false,
     eventName: row.event_name,
     clientName: row.client_name ?? null,
     coverUrl: row.cover_image_url,
@@ -240,6 +241,7 @@ const EDITABLE = {
   quoteThemeMode: 'quote_theme_mode',
   quoteThemeColor: 'quote_theme_color',
   quoteFooter: 'quote_footer',
+  quoteShowCreated: 'quote_show_created',
   // Media (pV2-MEDIA-01b) — the picker result maps here.
   coverImageUrl: 'cover_image_url',
   clientLogoUrl: 'client_logo_url',

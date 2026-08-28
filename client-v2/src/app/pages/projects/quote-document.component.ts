@@ -211,8 +211,13 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
           </div>
         </section>
 
-        @if (footer()) {
-          <p class="bp-caption mt-8 whitespace-pre-line border-t border-hairline pt-3">{{ footer() }}</p>
+        @if (footer() || showCreated()) {
+          <div class="mt-8 flex items-end justify-between gap-4 border-t border-hairline pt-3">
+            <p class="bp-caption whitespace-pre-line">{{ footer() }}</p>
+            @if (showCreated()) {
+              <p class="bp-caption shrink-0">Created {{ createdStr() }}</p>
+            }
+          </div>
         }
       }
     </div>
@@ -256,6 +261,10 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
           <span class="bp-field-label">Footer</span>
           <textarea rows="3" class="bp-store-textarea mt-1.5 w-full" placeholder="e.g. Excludes VAT."
                     [ngModel]="footer()" (ngModelChange)="footer.set($event)" (blur)="saveOptions()"></textarea>
+          <label class="mt-2.5 flex items-center gap-2 bp-body-small text-secondary">
+            <input type="checkbox" class="bp-check" [ngModel]="showCreated()" (ngModelChange)="showCreated.set($event); saveOptions()" />
+            Show created date in footer
+          </label>
         </div>
       </div>
     </aside>
@@ -282,6 +291,7 @@ export class QuoteDocumentComponent implements OnInit {
   protected readonly mode = signal<'default' | 'bw' | 'color'>('default');
   protected readonly pickedColor = signal('#6d28d9');
   protected readonly footer = signal('Excludes VAT.');
+  protected readonly showCreated = signal(false);
 
   /** Seed the options from the stored project values (defaults when unset). */
   ngOnInit(): void {
@@ -289,6 +299,7 @@ export class QuoteDocumentComponent implements OnInit {
     if (p.quoteThemeMode) this.mode.set(p.quoteThemeMode);
     if (p.quoteThemeColor) this.pickedColor.set(p.quoteThemeColor);
     this.footer.set(p.quoteFooter ?? 'Excludes VAT.');
+    this.showCreated.set(!!p.quoteShowCreated);
   }
   protected setMode(m: 'default' | 'bw' | 'color'): void { this.mode.set(m); this.saveOptions(); }
   protected onColor(hex: string): void { this.pickedColor.set(hex); this.mode.set('color'); this.saveOptions(); }
@@ -299,6 +310,7 @@ export class QuoteDocumentComponent implements OnInit {
         quoteThemeMode: this.mode(),
         quoteThemeColor: this.pickedColor(),
         quoteFooter: this.footer().trim() || null,
+        quoteShowCreated: this.showCreated(),
       }));
     } catch {
       // Non-fatal — the local view keeps the choice; it just didn't persist.

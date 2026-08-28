@@ -35,6 +35,14 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.117 (2026-08-28): Options — "Show created date in footer"
+- New Options checkbox **"Show created date in footer"** (persisted:
+  `quote_show_created` column, all schemas + targeted `ALTER` on public). When on,
+  the footer shows "Created {date + 24h time}" on the right, next to the footer
+  text. Wired through the project PUT like the other quote options.
+- Page numbers deferred — needs server-rendered PDF (puppeteer footerTemplate) or
+  in-page JS pagination; CSS page counters don't render in Chrome's Save-as-PDF.
+
 ## Iteration — v2.116 (2026-08-28): indent the quote Overview
 - Indented the Project Overview paragraph a little from both edges (`px-6`). Font
   was already correct (confirmed against a screenshot) — no font change.
