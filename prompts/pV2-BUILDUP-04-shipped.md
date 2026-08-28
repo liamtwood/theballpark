@@ -35,6 +35,12 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.156 (2026-08-28): Reports buttons as a tab band
+- Dropped the "REPORTS" title; the two document buttons now render as a
+  **tab-band-style** even-width pill row (`bp-tab-band--even` + `bp-tab`),
+  relabelled **Ballpark** (file-text) and **SOW** (signature). Still open the
+  quote / SOW overlays.
+
 ## Iteration — v2.155 (2026-08-28): Event Description card + transparent scrollbar
 - Added an **Event Description** card after Event details (same soft-white
   workspace treatment) — an editable textarea bound to `description`, saving on
