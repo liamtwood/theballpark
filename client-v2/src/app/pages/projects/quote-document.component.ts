@@ -162,7 +162,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
         </div>
 
         <p class="bp-caption mt-8 border-t border-hairline pt-3">
-          Project Costs are shown inclusive of any agency margin; margin is not itemised. Excludes VAT.
+          Excludes VAT.
         </p>
       }
     </div>
