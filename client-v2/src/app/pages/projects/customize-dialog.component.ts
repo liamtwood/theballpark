@@ -55,39 +55,41 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
   `],
   template: `
     <div class="p-4">
-      <!-- Back out of the builder without saving (returns to the thread). -->
-      <div class="mb-3">
+      <!-- Back out of the builder without saving (returns to the thread) +
+           the running totals (Customizations / Revised) in the header. -->
+      <div class="mb-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
         <button type="button" class="flex items-center gap-2 bp-body-small text-secondary transition-colors hover:text-text" (click)="cancel.emit()">
           <lucide-icon name="arrow-left" [size]="16" /> Back to conversation
         </button>
+        <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+          <span><span class="bp-caption">Customizations</span> <span class="bp-body-small ml-1 text-secondary tabular-nums">£{{ costTotal() | number: '1.0-0' }}</span></span>
+          <span><span class="bp-caption">Revised</span> <span class="bp-price-large ml-1 tabular-nums">£{{ withMargin() | number: '1.0-0' }}</span></span>
+        </div>
       </div>
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
           <!-- CENTRE: the editable estimate, grouped by category. -->
           <div class="min-w-0">
-            <!-- TOP: the item itself — click to edit its final name + description
-                 (shown in the right rail). Revised updates live. -->
-            <button type="button" class="mb-4 block w-full rounded-[var(--radius-card)] border p-4 text-left transition-colors" [class.border-accent]="parentSelected()" [class.border-hairline]="!parentSelected()" (click)="selectParent()">
-              <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-                <span class="bp-list-title">{{ parentName() || 'Original item' }}</span>
-                <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-                  @if (originalPrice() != null) {
-                    <span class="inline-flex items-center gap-1.5" title="Include the item's base price (off = rebuild the price from parts)" (click)="$event.stopPropagation()">
-                      <input type="checkbox" class="bp-check cursor-pointer" [checked]="includeBase()" (change)="includeBase.set($any($event.target).checked)" />
-                      <span class="bp-caption">Base</span>
-                      @if (baseUnitPrice() != null) {
-                        <input type="number" min="1" inputmode="numeric" class="h-7 w-16 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-md outline-none focus:border-accent disabled:opacity-50"
-                               [value]="baseQty()" [disabled]="!includeBase()"
-                               (input)="baseQty.set($any($event.target).valueAsNumber || 1)" />
-                        <span class="bp-caption">{{ baseUnit() || 'qty' }} × £{{ baseUnitPrice() | number: '1.0-0' }} =</span>
-                      }
-                      <span class="bp-body-small ml-0.5 text-secondary tabular-nums">£{{ baseCost() | number: '1.0-0' }}</span>
-                    </span>
-                  }
-                  <span><span class="bp-caption">Customizations</span> <span class="bp-body-small ml-1 text-secondary tabular-nums">£{{ costTotal() | number: '1.0-0' }}</span></span>
-                  <span><span class="bp-caption">Revised</span> <span class="bp-price-large ml-1 tabular-nums">£{{ withMargin() | number: '1.0-0' }}</span></span>
-                </div>
-              </div>
-            </button>
+            <!-- TOP: the item itself as row-0 — a "project component": editable
+                 cost / qty / unit + Inc, same shape as the component rows. Click
+                 the row (not a field) to edit its name/description in the rail. -->
+            <div class="mb-4 grid cursor-pointer grid-cols-[108px_1fr_78px_62px_68px_84px_30px_24px] items-center gap-1.5 rounded-[var(--radius-card)] border px-2.5 py-2 transition-colors"
+                 [class.border-accent]="parentSelected()" [class.border-hairline]="!parentSelected()" (click)="selectParent()">
+              <span class="px-2 bp-body-small text-secondary">Base</span>
+              <span class="px-2 bp-list-title truncate">{{ parentName() || 'Original item' }}</span>
+              @if (baseUnitPrice() != null) {
+                <input type="number" class="bp-input-field text-center tabular-nums" [ngModel]="baseRate()" (ngModelChange)="baseRate.set($event)" (click)="$event.stopPropagation()" />
+                <input type="number" class="bp-input-field text-center tabular-nums" [ngModel]="baseQty()" (ngModelChange)="baseQty.set($event)" (click)="$event.stopPropagation()" />
+                <select class="bp-input-field bp-select" [ngModel]="baseUnitDraft()" (ngModelChange)="baseUnitDraft.set($event || null)" (click)="$event.stopPropagation()">
+                  <option [ngValue]="null">—</option>
+                  @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
+                </select>
+              } @else {
+                <span></span><span></span><span></span>
+              }
+              <span class="text-center tabular-nums bp-body-small" [class.text-muted]="!includeBase()" [class.text-text]="includeBase()">£{{ baseCost() | number: '1.0-0' }}</span>
+              <input type="checkbox" class="justify-self-center" [checked]="includeBase()" (change)="includeBase.set($any($event.target).checked)" (click)="$event.stopPropagation()" title="Include the item's base price (off = rebuild from parts)" />
+              <span></span>
+            </div>
 
             <!-- One card per category (Final-Quote card), then a default Extras
                  card holding the margin + the un-filtered add. Each card carries
@@ -390,14 +392,17 @@ export class CustomizeDialogComponent implements OnInit {
    *  On = AUGMENT (base + customizations); off = DECOMPOSE (rebuild from parts,
    *  the pre-fix behaviour). Not yet persisted — resets to on each open. */
   protected readonly includeBase = signal(true);
-  /** Editable base head-count (qty), seeded from the line's quantity. */
+  /** The base = the item itself as row-0 (a "project component"): editable
+   *  cost (per-unit rate) / qty / unit, all seeded from the line. */
+  protected readonly baseRate = linkedSignal(() => this.baseUnitPrice());
   protected readonly baseQty = linkedSignal(() => this.baseQuantity() ?? 1);
-  /** The item's own base cost that seeds the buildup (0 when excluded). Uses the
-   *  per-unit rate × the (editable) head count when known, else a flat total. */
+  protected readonly baseUnitDraft = linkedSignal(() => this.baseUnit());
+  /** The base cost that seeds the buildup (0 when excluded). Uses the per-unit
+   *  rate × the (editable) head count when known, else a flat total. */
   protected readonly baseCost = computed(() => {
     if (!this.includeBase()) return 0;
-    const up = this.baseUnitPrice();
-    return up != null ? up * Math.max(1, Number(this.baseQty()) || 1) : (this.originalPrice() ?? 0);
+    const r = this.baseRate();
+    return r != null ? r * Math.max(1, Number(this.baseQty()) || 1) : (this.originalPrice() ?? 0);
   });
   /** Margin £ on the customizations only — the base keeps its already-quoted
    *  price and is NOT re-margined. */

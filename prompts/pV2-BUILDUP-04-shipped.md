@@ -35,6 +35,14 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.165 (2026-08-28): base = a "project component" row (cost/qty/unit/Inc)
+- The parent card is now a **component-style row-0**: editable **Cost / Qty /
+  Unit** + **Inc** checkbox (`baseRate` / `baseQty` / `baseUnitDraft` /
+  `includeBase`), same grid + fields as the component rows. (Derived, not yet a
+  persisted `project_items` child — that's the deferred unification.)
+- Moved the **Customizations / Revised** totals off the card into the dialog
+  **header** (next to Back to conversation).
+
 ## Iteration — v2.164 (2026-08-28): editable head-count on the Customize base
 - The base row now takes the line's **per-unit rate + unit + qty** (`unitPriceRef`
   / `unit` / `quantity`), so its head count is **editable** — `baseCost =
