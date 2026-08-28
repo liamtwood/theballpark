@@ -35,6 +35,12 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.170 (2026-08-28): one Revised (hide the thread header's while customizing)
+- The inbox thread header's Original/Revised/Upgrades **hide while the Customize
+  builder is open** (`@if (!customizing())`) — the builder's own header shows the
+  LIVE Upgrades/Revised, so no second, diverging (saved) copy. Fixes the "two
+  Revised values" (£21,945 saved vs £20,000 live).
+
 ## Iteration — v2.169 (2026-08-28): "Customizations" → "Upgrades"
 - Relabelled the running total **Customizations → Upgrades** (customize header +
   the inbox item header) — fits the base + upcharges model.
