@@ -35,6 +35,15 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.161 (2026-08-28): inbox — replies require an item; keep context
+- **Bug:** `selectedId` (`() => null`) and `selectedThreadId` (`ts[0]`) were
+  `linkedSignal`s off the threads list, so **every reload** (send / accept /
+  suggest / customize save) reset them — orphaning the armed item, which made
+  replies fall back to **General**. Both now **preserve their pick** across a
+  reload (drop only if it no longer exists).
+- The **compose is disabled until an item is selected** (placeholder: "Select an
+  item above to reply") — no more accidental General messages.
+
 ## Iteration — v2.160 (2026-08-28): Customize dialog — visible Back/close
 - The customize builder replaces the conversation (so the row's Close toggle is
   gone while it's open) but had **no visible close** of its own. Added a **"Back

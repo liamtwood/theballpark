@@ -289,9 +289,9 @@ import { ProjectService } from '../../core/projects/project.service';
                   <input
                     #composeInput
                     class="w-full border-none bg-transparent p-0 text-md outline-none ring-0 placeholder:text-muted focus:ring-0"
-                    placeholder="Type your message…"
+                    [placeholder]="selectedItem() ? 'Type your message…' : 'Select an item above to reply'"
                     [value]="draft()"
-                    [disabled]="sending()"
+                    [disabled]="sending() || !selectedItem()"
                     (input)="draft.set($any($event.target).value)"
                     (keydown.enter)="send(t.id)"
                   />
@@ -299,7 +299,7 @@ import { ProjectService } from '../../core/projects/project.service';
                 <button
                   type="button"
                   class="bp-send-btn shrink-0"
-                  [disabled]="!draft().trim() || sending()"
+                  [disabled]="!draft().trim() || sending() || !selectedItem()"
                   (click)="send(t.id)"
                 >
                   <lucide-icon name="send" [size]="15" /> Send
@@ -390,11 +390,22 @@ export class InboxProjectComponent {
    *  deselect (Liam 2026-06-29). */
   protected readonly selectedId = linkedSignal<InboxThread[], string | null>({
     source: this.threads,
-    computation: () => null,
+    // Preserve the armed item across reloads (a send/accept/customize reloads
+    // the threads) — only drop it if that item no longer exists. Losing it here
+    // is what let replies fall back to "General" (Liam 2026-08-28).
+    computation: (ts, prev) => {
+      const id = prev?.value ?? null;
+      return id && ts.some((t) => t.items.some((i) => i.id === id)) ? id : null;
+    },
   });
   protected readonly selectedThreadId = linkedSignal<InboxThread[], string | null>({
     source: this.threads,
-    computation: (ts) => ts[0]?.id ?? null,
+    // Keep the current thread across reloads; default to the first only when the
+    // previous one is gone (else a reply bounced you back to thread[0]).
+    computation: (ts, prev) => {
+      const id = prev?.value ?? null;
+      return id && ts.some((t) => t.id === id) ? id : (ts[0]?.id ?? null);
+    },
   });
 
   protected readonly selectedThread = computed<InboxThread | null>(() => {
