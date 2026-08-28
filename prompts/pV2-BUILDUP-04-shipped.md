@@ -35,6 +35,10 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.146 (2026-08-28): center the About Project tab
+- Centered the **About Project** content (`bp-settings-body` was 720px-capped but
+  left-aligned) with `mx-auto` + gutters, matching the Ballpark Cost column.
+
 ## Iteration — v2.145 (2026-08-28): hide the Project Cart tab
 - Removed **Project Cart** from the visible tab band. The `estimate` route still
   exists (reachable via the cart→final flow / URL); it's just no longer a tab.

@@ -105,7 +105,7 @@ interface DetailForm {
       <div class="bp-page-body">
         @switch (tab()) {
           @case ('details') {
-            <div class="bp-settings-body min-h-0 flex-1 overflow-y-auto">
+            <div class="bp-settings-body mx-auto w-full px-4 pt-4 min-h-0 flex-1 overflow-y-auto">
               <!-- Weighted "% complete" over the project's fields; each unmet
                    item deep-links into its edit section (mirrors Profile). -->
               <app-completeness-card
