@@ -60,7 +60,9 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
   host: { class: 'block' },
   template: `
     <div>
-      <h2 class="bp-page-title pt-2 text-center">{{ isFinal() ? 'Final Project Quote' : 'Project Cart' }}</h2>
+      @if (!isFinal()) {
+        <h2 class="bp-page-title pt-2 text-center">Project Cart</h2>
+      }
 
       <!-- Reading column stays page-centered; the preview rail floats
            absolutely — top aligned with the content, right aligned with the

@@ -35,6 +35,11 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.142 (2026-08-28): rename Final Quote tab → Ballpark Cost, drop the final title
+- Renamed the **"Final Quote" tab → "Ballpark Cost"**.
+- Removed the **"Final Project Quote"** page title on the final view (the Event
+  details card is the top now). Cart still shows its "Project Cart" title.
+
 ## Iteration — v2.141 (2026-08-28): Event details — Project name, order, NATO date, comma budget
 - Added **Project** (`name`, required — a blank blur won't null it) and set the
   field order to **Project · Client · Event type · Event date · Location ·

@@ -362,7 +362,7 @@ export class ProjectDetailComponent {
     { key: 'details', label: 'About ' + this.label() },
     { key: 'marketplace', label: 'Marketplace' },
     { key: 'estimate', label: 'Project Cart' },
-    { key: 'final', label: 'Final Quote' },
+    { key: 'final', label: 'Ballpark Cost' },
     { key: 'inbox', label: 'Inbox' },
   ]);
 
