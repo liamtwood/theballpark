@@ -48,6 +48,10 @@ const ProjectUpdateSchema = z.object({
   // is entered as a Fees line, not here — so there's no fixed-£ field.
   defaultInsurancePct: z.number().nonnegative().max(999.99).nullable().optional(),
   defaultVatPct: z.number().nonnegative().max(999.99).nullable().optional(),
+  // Quote document options (per project).
+  quoteThemeMode: z.enum(['default', 'bw', 'color']).nullable().optional(),
+  quoteThemeColor: z.string().trim().max(40).nullable().optional(),
+  quoteFooter: z.string().max(2000).nullable().optional(),
   // Media (pV2-MEDIA-01b) — the image-picker result maps to these.
   coverImageUrl: z.string().trim().max(1000).nullable().optional(),
   clientLogoUrl: z.string().trim().max(1000).nullable().optional(),

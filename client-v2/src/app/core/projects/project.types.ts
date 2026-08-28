@@ -167,6 +167,10 @@ export interface ProjectDetail {
   /** Insurance: a % of project costs (like contingency; a flat cost is a Fee). */
   defaultInsurancePct: number | null;
   defaultVatPct: number | null;
+  /** Quote document options (per project) — colour theme + footer text. */
+  quoteThemeMode: 'default' | 'bw' | 'color' | null;
+  quoteThemeColor: string | null;
+  quoteFooter: string | null;
   /** Media (pV2-MEDIA-01b). */
   coverFocalX: number;
   coverFocalY: number;
@@ -205,6 +209,9 @@ export type ProjectUpdate = Partial<{
   defaultContingencyPct: number | null;
   defaultInsurancePct: number | null;
   defaultVatPct: number | null;
+  quoteThemeMode: 'default' | 'bw' | 'color' | null;
+  quoteThemeColor: string | null;
+  quoteFooter: string | null;
   coverImageUrl: string | null;
   clientLogoUrl: string | null;
   cardColor: string | null;

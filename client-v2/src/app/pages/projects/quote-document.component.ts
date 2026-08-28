@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, output, resource, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -41,17 +41,6 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
       <button type="button" class="flex items-center gap-2 bp-body-small text-secondary transition-colors hover:text-text" (click)="close.emit()">
         <lucide-icon name="arrow-left" [size]="16" /> Back to builder
       </button>
-      <!-- Theme picker: Default / B&W / Pick a Colour. -->
-      <div class="flex items-center gap-1 rounded-full border border-hairline p-0.5">
-        <button type="button" class="rounded-full px-3 py-1 bp-meta transition-colors" [class.bg-fill]="mode() === 'default'" [class.text-text]="mode() === 'default'" [class.text-secondary]="mode() !== 'default'" (click)="mode.set('default')">Default</button>
-        <button type="button" class="rounded-full px-3 py-1 bp-meta transition-colors" [class.bg-fill]="mode() === 'bw'" [class.text-text]="mode() === 'bw'" [class.text-secondary]="mode() !== 'bw'" (click)="mode.set('bw')">B &amp; W</button>
-        <button type="button" class="flex items-center gap-1.5 rounded-full px-3 py-1 bp-meta transition-colors" [class.bg-fill]="mode() === 'color'" [class.text-text]="mode() === 'color'" [class.text-secondary]="mode() !== 'color'" (click)="mode.set('color')">
-          Colour
-          @if (mode() === 'color') {
-            <input type="color" class="h-4 w-4 cursor-pointer rounded border-0 bg-transparent p-0" [ngModel]="pickedColor()" (ngModelChange)="pickedColor.set($event)" (click)="$event.stopPropagation()" />
-          }
-        </button>
-      </div>
       <button type="button" class="bp-btn-grad flex items-center gap-2" (click)="print()">
         <lucide-icon name="printer" [size]="15" /> Print / Save PDF
       </button>
@@ -208,14 +197,57 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
           </div>
         </section>
 
-        <p class="bp-caption mt-8 border-t border-hairline pt-3">
-          Excludes VAT.
-        </p>
+        @if (footer()) {
+          <p class="bp-caption mt-8 whitespace-pre-line border-t border-hairline pt-3">{{ footer() }}</p>
+        }
       }
     </div>
+
+    <!-- Options panel (screen only — outside .quote-doc__paper, so the global
+         print rule hides it). Standard Ballpark card chrome. -->
+    <aside class="fixed right-6 top-24 z-10 hidden w-64 lg:block">
+      <div class="bp-card p-4">
+        <h3 class="bp-edit-section-title">Options</h3>
+
+        <div class="mt-4">
+          <span class="bp-field-label">Colour theme</span>
+          <div class="mt-2 flex flex-col gap-1.5">
+            <button type="button" class="flex items-center justify-between rounded-[var(--radius-card)] border px-3 py-2 bp-body-small transition-colors"
+                    [class.border-hairline]="mode() !== 'default'" [class.text-secondary]="mode() !== 'default'"
+                    [class.border-text]="mode() === 'default'" [class.text-text]="mode() === 'default'"
+                    (click)="setMode('default')">
+              Default @if (mode() === 'default') { <lucide-icon name="check" [size]="15" /> }
+            </button>
+            <button type="button" class="flex items-center justify-between rounded-[var(--radius-card)] border px-3 py-2 bp-body-small transition-colors"
+                    [class.border-hairline]="mode() !== 'bw'" [class.text-secondary]="mode() !== 'bw'"
+                    [class.border-text]="mode() === 'bw'" [class.text-text]="mode() === 'bw'"
+                    (click)="setMode('bw')">
+              B &amp; W @if (mode() === 'bw') { <lucide-icon name="check" [size]="15" /> }
+            </button>
+            <button type="button" class="flex items-center justify-between gap-2 rounded-[var(--radius-card)] border px-3 py-2 bp-body-small transition-colors"
+                    [class.border-hairline]="mode() !== 'color'" [class.text-secondary]="mode() !== 'color'"
+                    [class.border-text]="mode() === 'color'" [class.text-text]="mode() === 'color'"
+                    (click)="setMode('color')">
+              <span>Pick a colour</span>
+              <span class="flex items-center gap-2">
+                <input type="color" class="h-5 w-5 cursor-pointer rounded border-0 bg-transparent p-0"
+                       [ngModel]="pickedColor()" (ngModelChange)="onColor($event)" (click)="$event.stopPropagation()" />
+                @if (mode() === 'color') { <lucide-icon name="check" [size]="15" /> }
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <span class="bp-field-label">Footer</span>
+          <textarea rows="3" class="bp-store-textarea mt-1.5 w-full" placeholder="e.g. Excludes VAT."
+                    [ngModel]="footer()" (ngModelChange)="footer.set($event)" (blur)="saveOptions()"></textarea>
+        </div>
+      </div>
+    </aside>
   `,
 })
-export class QuoteDocumentComponent {
+export class QuoteDocumentComponent implements OnInit {
   private readonly projects = inject(ProjectService);
   private readonly orgs = inject(OrganisationService);
 
@@ -232,9 +264,32 @@ export class QuoteDocumentComponent {
 
   protected readonly cur = computed(() => this.project().currency || 'GBP');
 
-  // ── Colour theme (session-local for now) ───────────────────────────────────
+  // ── Quote document options (persisted per project) ─────────────────────────
   protected readonly mode = signal<'default' | 'bw' | 'color'>('default');
   protected readonly pickedColor = signal('#6d28d9');
+  protected readonly footer = signal('Excludes VAT.');
+
+  /** Seed the options from the stored project values (defaults when unset). */
+  ngOnInit(): void {
+    const p = this.project();
+    if (p.quoteThemeMode) this.mode.set(p.quoteThemeMode);
+    if (p.quoteThemeColor) this.pickedColor.set(p.quoteThemeColor);
+    this.footer.set(p.quoteFooter ?? 'Excludes VAT.');
+  }
+  protected setMode(m: 'default' | 'bw' | 'color'): void { this.mode.set(m); this.saveOptions(); }
+  protected onColor(hex: string): void { this.pickedColor.set(hex); this.mode.set('color'); this.saveOptions(); }
+  /** Persist the options to the project (agent's own — project-owner PUT). */
+  protected async saveOptions(): Promise<void> {
+    try {
+      await firstValueFrom(this.projects.update(this.projectId(), {
+        quoteThemeMode: this.mode(),
+        quoteThemeColor: this.pickedColor(),
+        quoteFooter: this.footer().trim() || null,
+      }));
+    } catch {
+      // Non-fatal — the local view keeps the choice; it just didn't persist.
+    }
+  }
   /** Accent for icons + Project Total: theme accent (default), grey (B&W), or
    *  the picked colour. */
   protected readonly docAccent = computed(() => {

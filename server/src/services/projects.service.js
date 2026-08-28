@@ -179,6 +179,10 @@ function toDetail(row) {
     defaultContingencyPct: row.default_contingency_pct === null ? null : Number(row.default_contingency_pct),
     defaultInsurancePct: row.default_insurance_pct == null ? null : Number(row.default_insurance_pct),
     defaultVatPct: row.default_vat_pct === null ? null : Number(row.default_vat_pct),
+    // Quote document options (per project).
+    quoteThemeMode: row.quote_theme_mode ?? null,
+    quoteThemeColor: row.quote_theme_color ?? null,
+    quoteFooter: row.quote_footer ?? null,
     eventName: row.event_name,
     clientName: row.client_name ?? null,
     coverUrl: row.cover_image_url,
@@ -232,6 +236,10 @@ const EDITABLE = {
   defaultContingencyPct: 'default_contingency_pct',
   defaultInsurancePct: 'default_insurance_pct',
   defaultVatPct: 'default_vat_pct',
+  // Quote document options (per project).
+  quoteThemeMode: 'quote_theme_mode',
+  quoteThemeColor: 'quote_theme_color',
+  quoteFooter: 'quote_footer',
   // Media (pV2-MEDIA-01b) — the picker result maps here.
   coverImageUrl: 'cover_image_url',
   clientLogoUrl: 'client_logo_url',

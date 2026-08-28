@@ -35,6 +35,19 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.112 (2026-08-28): Options panel + persist document choices per project
+- Moved the colour picker into a right-side **Options** panel (standard Ballpark
+  `bp-card` chrome), and added an editable **Footer** field there (was the
+  hardcoded "Excludes VAT."). Panel is screen-only (outside `.quote-doc__paper`,
+  so the print rule hides it).
+- **Persisted per project**: 3 nullable columns — `quote_theme_mode`,
+  `quote_theme_color`, `quote_footer` (all schemas in migrate-schemas; targeted
+  `ALTER` on `public` for dev). Wired through `ProjectUpdateSchema`, the
+  `EDITABLE` map, `toDetail`, and client `ProjectDetail`/`ProjectUpdate`. The
+  document seeds from these on open and saves via the project-owner `PUT
+  /api/projects-v2/:id` on each change (mode click, colour commit, footer blur).
+- Supersedes v2.111's session-local note.
+
 ## Iteration — v2.111 (2026-08-28): document colour themes (Default / B&W / Pick a Colour)
 - Theme picker in the action bar: **Default** (theme accent), **B & W** (mono —
   grey icons, neutral bars), **Pick a Colour** (native colour input). One

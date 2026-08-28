@@ -2593,6 +2593,11 @@ const migrate = async () => {
       // The AGENT's client-facing line description (Quote document). Agent-owned
       // on any line; defaults to the supplier text when NULL. Nullable, additive.
       await client.query(`ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS quote_description TEXT;`);
+      // Quote document options (per project): colour theme + footer text. All
+      // nullable/additive; NULL = the house default ('default' theme, "Excludes VAT.").
+      await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS quote_theme_mode TEXT;`);
+      await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS quote_theme_color TEXT;`);
+      await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS quote_footer TEXT;`);
       // Insurance is a % of project costs (default_insurance_amount was an earlier
       // fixed-£ take, left dormant.)
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS default_insurance_pct NUMERIC(5,2);`);
