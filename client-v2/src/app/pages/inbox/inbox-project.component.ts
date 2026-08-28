@@ -270,8 +270,13 @@ import { ProjectService } from '../../core/projects/project.service';
                       <button type="button" class="bp-act bp-act--red" [disabled]="sending()" (click)="decline(it)">
                         <lucide-icon [name]="isAgency() ? 'x' : 'circle-off'" [size]="15" /> {{ isAgency() ? 'Cancel' : 'Decline' }}
                       </button>
-                      <!-- pV2-BUILDUP-02 — supplier Customize entry hidden for
-                           now (client: "too complicated"). Code kept. -->
+                      <!-- pV2-BUILDUP-02 — supplier Customize entry (re-enabled
+                           in the inbox): opens the inline estimate builder. -->
+                      @if (!isAgency()) {
+                        <button type="button" class="bp-act bp-act--outline" [disabled]="sending()" (click)="toggleCustomize(it)">
+                          <lucide-icon name="list-tree" [size]="15" /> {{ isCustomizing(it) ? 'Close' : 'Customize' }}
+                        </button>
+                      }
                     }
                   </div>
                 }

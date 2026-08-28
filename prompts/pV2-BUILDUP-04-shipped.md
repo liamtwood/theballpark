@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.159 (2026-08-28): re-enable supplier Customize in the inbox
+- Restored the **supplier Customize button** in the inbox thread action row
+  (supplier-only, `!isAgency()`) — toggles the inline estimate/build-up dialog
+  (`toggleCustomize` / `app-customize-dialog`, already wired). Label flips
+  Customize ⇄ Close. New neutral **`bp-act--outline`** variant for it (not a
+  semantic soft fill). Store item-edit entry left as-is (inbox only, per Liam).
+
 ## Iteration — v2.158 (2026-08-28): pink workspace on Overview (home) too
 - `isWorkspace()` now also matches **`/home`** so Overview gets the pink ground.
 

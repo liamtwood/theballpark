@@ -1695,6 +1695,9 @@ select.bp-input-field { appearance: auto; }
 .bp-act--yellow { background: var(--color-warn-soft); color: var(--color-warn); }
 .bp-act--gray { background: var(--color-fill); color: var(--color-text-secondary); }
 .bp-act--red { background: var(--color-danger-soft); color: var(--color-danger); }
+/* Neutral/secondary action (e.g. Customize) — outline, not a semantic soft fill. */
+.bp-act--outline { background: var(--color-surface); color: var(--color-text); border-color: var(--color-border-hairline); }
+.bp-act--outline:hover { background: var(--color-fill); }
 
 /* White agency bubble — reads as a card on the parchment ground. */
 .bp-bubble {
