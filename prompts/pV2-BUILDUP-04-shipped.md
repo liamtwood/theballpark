@@ -35,6 +35,27 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.100 (2026-08-28): client-facing Quote DOCUMENT (step 1 — read-only render + print)
+- New `QuoteDocumentComponent` — the Final Quote rendered as the agency-SOW
+  **document**: header (client/project) → **Project Costs** banded per category
+  (category Lucide icon + name, like the cost cards) → **Project Coverage**
+  (contingency + insurance %) → **Project Fees** → summary totals. Every line is
+  one shape: **name · description · qty · unit · cost**. Margin folded silently
+  into Project Costs (never shown); VAT excluded.
+- Reached via a **"View as document"** button on the Final Quote; renders as a
+  full-viewport overlay with a **Print / Save PDF** action (screen-only) and
+  "Back to builder".
+- **Print isolation** (global `styles.css`): the overlay sets `body.quote-doc-open`
+  and a `@media print` visibility-flip shows only `.quote-doc__paper` (survives
+  nesting), strips the app chrome + action bar, `@page A4`.
+- Uses the **app font + real category icons** (no bespoke chrome). Descriptions
+  render the line's current text (supplier default) via the markdown pipe — the
+  agent-owned `quote_description` override is **step 2** (next).
+- Registered the `Printer` icon. Wired into `project-detail` (`docView` signal).
+- Deferred (step 2): `quote_description` column + inline edit on the cost cards.
+  This ships the read-only look first for review, per Liam ("just build it and
+  we'll review").
+
 ## Iteration — v2.99 (2026-08-27): Insurance is a % of project costs (drop fixed-£ mode)
 - Confirmed against the actual Lucky Saint SOW: contingency **@5%** and
   insurance **@2%** were BOTH struck off the **same £23,853 project-cost

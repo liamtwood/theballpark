@@ -166,6 +166,22 @@
   padding: 32px;
 }
 
+/* pV2-BUILDUP-04 — Quote document print isolation. The document renders as a
+   full-viewport overlay (.quote-doc); on print we hide everything else and let
+   only the paper through (visibility flip survives arbitrary nesting). The
+   overlay adds `.quote-doc-open` to <body> while mounted so this only fires for
+   the document, never a stray print of another page. */
+@media print {
+  body.quote-doc-open * { visibility: hidden; }
+  body.quote-doc-open .quote-doc__paper,
+  body.quote-doc-open .quote-doc__paper * { visibility: visible; }
+  body.quote-doc-open .quote-doc__paper {
+    position: absolute; inset: 0; margin: 0; box-shadow: none; width: auto;
+  }
+  body.quote-doc-open .quote-doc__bar { display: none !important; }
+  @page { size: A4; margin: 14mm; }
+}
+
 /* Viewport-fit page (pV2-CARDS-01 QC laptop pass): the PAGE never scrolls
    — the hero + filter band stay anchored and each catalogue column scrolls
    within itself (catalogue-layout owns the per-column overflow). md+ only:

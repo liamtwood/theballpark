@@ -38,6 +38,7 @@ import {
   Search,
   Table,
   FileText,
+  Printer,
   Zap,
   CircleCheck,
   CircleCheckBig,
@@ -148,7 +149,7 @@ export const appConfig: ApplicationConfig = {
         // Profile: section edit lifecycle
         SquarePen, Check, Lock,
         // v2.13a supplier sub-hubs: projects-hub stages + storefront trio
-        FileText, Zap, CircleCheck, Package, Building2,
+        FileText, Printer, Zap, CircleCheck, Package, Building2,
         // pV2-MARKET-00 — admin Categories tile
         Tags,
         // pV2-06a — marketplace browse (search box + view toggle)

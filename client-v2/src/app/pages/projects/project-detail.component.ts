@@ -23,6 +23,7 @@ import { CompletenessCardComponent } from '../../shared/completeness/completenes
 import { CompletenessConfig } from '../../shared/completeness/completeness.types';
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
+import { QuoteDocumentComponent } from './quote-document.component';
 import { InboxProjectComponent } from '../inbox/inbox-project.component';
 
 type Tab = 'marketplace' | 'estimate' | 'final' | 'details' | 'inbox';
@@ -72,6 +73,7 @@ interface DetailForm {
     EntityIconComponent,
     ProjectMarketplaceComponent,
     ProjectEstimateComponent,
+    QuoteDocumentComponent,
     InboxProjectComponent,
   ],
   providers: [MessageService],
@@ -226,8 +228,17 @@ interface DetailForm {
           }
           @case ('final') {
             <div class="min-h-0 flex-1 overflow-y-auto">
+              <!-- pV2-BUILDUP-04 — jump to the client-facing quote document. -->
+              <div class="flex justify-end px-4 pt-4">
+                <button type="button" class="bp-btn-outline flex items-center gap-2" (click)="docView.set(true)">
+                  <lucide-icon name="file-text" [size]="15" /> View as document
+                </button>
+              </div>
               <app-project-estimate [projectId]="p.id" [project]="p" view="final" />
             </div>
+            @if (docView()) {
+              <app-quote-document [projectId]="p.id" [project]="p" (close)="docView.set(false)" />
+            }
           }
           @case ('inbox') {
             <app-inbox-project [viewer]="'agency'" [projectId]="p.id" [embedded]="true" />
@@ -308,6 +319,8 @@ export class ProjectDetailComponent {
   protected readonly saving = signal(false);
   /** Image-picker drawer (pV2-MEDIA-01b). */
   protected readonly imgDrawer = signal(false);
+  /** pV2-BUILDUP-04 — Final Quote → client-facing document overlay. */
+  protected readonly docView = signal(false);
   private snapshots: Partial<Record<Section, DetailForm>> = {};
 
   protected readonly tierOptions: EditFieldOption[] = [
