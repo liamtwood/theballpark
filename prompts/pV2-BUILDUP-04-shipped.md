@@ -35,6 +35,11 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.114 (2026-08-28): B&W Project Total is solid black
+- In **B & W**, the Project Total is now a **solid black bar with white text**
+  (matching the bold Default gradient treatment, just mono). Pick-a-Colour still
+  uses the tinted bar.
+
 ## Iteration — v2.113 (2026-08-28): Default theme uses the Ballpark brand gradient
 - **Default** shading now uses the soft Ballpark brand gradient
   (`--bp-gradient-soft`, translucent pink→green) on the section bars / banner /

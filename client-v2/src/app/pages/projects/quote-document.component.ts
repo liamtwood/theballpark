@@ -35,6 +35,9 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
        matching the app's brand total banner. */
     .doc-total--brand { background: var(--bp-gradient); }
     .doc-total--brand .bp-price-large { color: var(--bp-text-on-gradient); }
+    /* Project Total (B&W theme) — solid black + white text. */
+    .doc-total--bw { background: var(--color-text); }
+    .doc-total--bw .bp-price-large { color: var(--bp-text-on-gradient); }
     /* Keep the shaded/tinted bars when printing (browsers drop backgrounds
        otherwise, so the PDF would lose the shading + colour). */
     .quote-doc__paper { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -196,7 +199,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
             <div class="flex justify-between py-2.5"><span class="bp-body-small text-text">Project Fees</span><span class="bp-body-small tabular-nums text-text">{{ bd().fees | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
           </div>
           <div class="doc-total flex items-baseline justify-between border-t border-hairline px-4 py-3"
-               [class.doc-total--brand]="mode() === 'default'" [class.doc-bar]="mode() !== 'default'">
+               [class.doc-total--brand]="mode() === 'default'" [class.doc-total--bw]="mode() === 'bw'" [class.doc-bar]="mode() === 'color'">
             <span class="bp-price-large uppercase tracking-wide">Project Total</span>
             <span class="bp-price-large tabular-nums">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
