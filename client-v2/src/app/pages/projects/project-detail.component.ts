@@ -95,11 +95,12 @@ interface DetailForm {
   host: { class: 'block bp-vpfit' },
   template: `
     @if (detail.value(); as p) {
-      <app-page-hero [back]="{ label: labelPlural(), href: '/projects' }" [title]="p.name" [subtitle]="p.ref ?? ''">
-        <div hero-actions class="flex items-center gap-3">
-          <app-tab-band [tabs]="tabs()" [active]="tab()" (activeChange)="setTab($event)" />
-        </div>
-      </app-page-hero>
+      <app-page-hero [back]="{ label: labelPlural(), href: '/projects' }" [title]="p.name" [subtitle]="p.ref ?? ''" />
+
+      <!-- Tabs sit just above the tab content (Liam 2026-08-28). -->
+      <div class="flex justify-center pt-3">
+        <app-tab-band [tabs]="tabs()" [active]="tab()" (activeChange)="setTab($event)" />
+      </div>
 
       <div class="bp-page-body">
         @switch (tab()) {

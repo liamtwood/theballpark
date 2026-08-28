@@ -35,6 +35,12 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.143 (2026-08-28): move the tab band below the hero
+- Moved the **tab band** (About Project / Marketplace / Project Cart / Ballpark
+  Cost / Inbox) out of the page hero's actions slot to a **centered row just
+  above the tab content** — so on the estimate/final tabs it sits directly over
+  the Event details card. Hero now shows just Back + title + ref.
+
 ## Iteration — v2.142 (2026-08-28): rename Final Quote tab → Ballpark Cost, drop the final title
 - Renamed the **"Final Quote" tab → "Ballpark Cost"**.
 - Removed the **"Final Project Quote"** page title on the final view (the Event
