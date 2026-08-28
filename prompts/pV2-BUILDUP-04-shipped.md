@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.124 (2026-08-28): reorder Options + native brand checkboxes
+- Section order: **Theme → Header → Body → Footer**. Body order: **Project
+  overview → Project summary → Item descriptions**.
+- Checkboxes swapped from `bp-check` to native + `accent-color: var(--theme-accent)`
+  (`.opt-check`) — the purple was the OS-default native checkbox showing; forcing
+  `accent-color` makes the tick reliably brand-pink.
+
 ## Iteration — v2.123 (2026-08-28): Options panel restyle — icon bands + Theme dropdown
 - Each Options section (Header / Theme / Footer / Body) now has a **shaded band
   header with an icon** (panel-top / palette / panel-bottom / align-left), matching

@@ -38,6 +38,8 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
     /* Project Total (B&W theme) — solid black + white text. */
     .doc-total--bw { background: var(--color-text); }
     .doc-total--bw .bp-price-large { color: var(--bp-text-on-gradient); }
+    /* Options checkboxes — native + brand accent (reliably not the OS purple). */
+    .opt-check { width: 1rem; height: 1rem; margin: 0; cursor: pointer; accent-color: var(--theme-accent); }
     /* Keep the shaded/tinted bars when printing (browsers drop backgrounds
        otherwise, so the PDF would lose the shading + colour). */
     .quote-doc__paper { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -243,19 +245,6 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
       <div class="bp-card overflow-hidden">
         <h3 class="bp-edit-section-title px-4 pb-2 pt-4">Options</h3>
 
-        <!-- Header -->
-        <div class="flex items-center gap-2 border-y border-hairline bg-fill px-4 py-1.5">
-          <lucide-icon name="panel-top" [size]="14" class="text-muted" /><span class="bp-field-label">Header</span>
-        </div>
-        <div class="flex flex-col gap-2 px-4 py-3">
-          <label class="flex items-center gap-2 bp-body-small text-secondary">
-            <input type="checkbox" class="bp-check" [ngModel]="showRef()" (ngModelChange)="showRef.set($event); saveOptions()" /> Reference
-          </label>
-          <label class="flex items-center gap-2 bp-body-small text-secondary">
-            <input type="checkbox" class="bp-check" [ngModel]="showAddress()" (ngModelChange)="showAddress.set($event); saveOptions()" /> Address
-          </label>
-        </div>
-
         <!-- Theme -->
         <div class="flex items-center gap-2 border-y border-hairline bg-fill px-4 py-1.5">
           <lucide-icon name="palette" [size]="14" class="text-muted" /><span class="bp-field-label">Theme</span>
@@ -276,24 +265,17 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
           }
         </div>
 
-        <!-- Footer -->
+        <!-- Header -->
         <div class="flex items-center gap-2 border-y border-hairline bg-fill px-4 py-1.5">
-          <lucide-icon name="panel-bottom" [size]="14" class="text-muted" /><span class="bp-field-label">Footer</span>
+          <lucide-icon name="panel-top" [size]="14" class="text-muted" /><span class="bp-field-label">Header</span>
         </div>
-        <div class="px-4 py-3">
-          <div class="flex flex-col gap-2">
-            <label class="flex items-center gap-2 bp-body-small text-secondary">
-              <input type="checkbox" class="bp-check" [ngModel]="showVatNote()" (ngModelChange)="showVatNote.set($event); saveOptions()" /> Exclude VAT
-            </label>
-            <label class="flex items-center gap-2 bp-body-small text-secondary">
-              <input type="checkbox" class="bp-check" [ngModel]="showPageNumbers()" (ngModelChange)="showPageNumbers.set($event); saveOptions()" /> Page numbers
-            </label>
-            <label class="flex items-center gap-2 bp-body-small text-secondary">
-              <input type="checkbox" class="bp-check" [ngModel]="showCreated()" (ngModelChange)="showCreated.set($event); saveOptions()" /> Created date
-            </label>
-          </div>
-          <textarea rows="2" class="bp-store-textarea mt-2 w-full" placeholder="Custom footer text…"
-                    [ngModel]="footer()" (ngModelChange)="footer.set($event)" (blur)="saveOptions()"></textarea>
+        <div class="flex flex-col gap-2 px-4 py-3">
+          <label class="flex items-center gap-2 bp-body-small text-secondary">
+            <input type="checkbox" class="opt-check" [ngModel]="showRef()" (ngModelChange)="showRef.set($event); saveOptions()" /> Reference
+          </label>
+          <label class="flex items-center gap-2 bp-body-small text-secondary">
+            <input type="checkbox" class="opt-check" [ngModel]="showAddress()" (ngModelChange)="showAddress.set($event); saveOptions()" /> Address
+          </label>
         </div>
 
         <!-- Body -->
@@ -302,14 +284,34 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
         </div>
         <div class="flex flex-col gap-2 px-4 py-3">
           <label class="flex items-center gap-2 bp-body-small text-secondary">
-            <input type="checkbox" class="bp-check" [ngModel]="showItemDesc()" (ngModelChange)="showItemDesc.set($event); saveOptions()" /> Item descriptions
+            <input type="checkbox" class="opt-check" [ngModel]="showOverview()" (ngModelChange)="showOverview.set($event); saveOptions()" /> Project overview
           </label>
           <label class="flex items-center gap-2 bp-body-small text-secondary">
-            <input type="checkbox" class="bp-check" [ngModel]="showOverview()" (ngModelChange)="showOverview.set($event); saveOptions()" /> Project overview
+            <input type="checkbox" class="opt-check" [ngModel]="showSummary()" (ngModelChange)="showSummary.set($event); saveOptions()" /> Project summary
           </label>
           <label class="flex items-center gap-2 bp-body-small text-secondary">
-            <input type="checkbox" class="bp-check" [ngModel]="showSummary()" (ngModelChange)="showSummary.set($event); saveOptions()" /> Project summary
+            <input type="checkbox" class="opt-check" [ngModel]="showItemDesc()" (ngModelChange)="showItemDesc.set($event); saveOptions()" /> Item descriptions
           </label>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center gap-2 border-y border-hairline bg-fill px-4 py-1.5">
+          <lucide-icon name="panel-bottom" [size]="14" class="text-muted" /><span class="bp-field-label">Footer</span>
+        </div>
+        <div class="px-4 py-3">
+          <div class="flex flex-col gap-2">
+            <label class="flex items-center gap-2 bp-body-small text-secondary">
+              <input type="checkbox" class="opt-check" [ngModel]="showVatNote()" (ngModelChange)="showVatNote.set($event); saveOptions()" /> Exclude VAT
+            </label>
+            <label class="flex items-center gap-2 bp-body-small text-secondary">
+              <input type="checkbox" class="opt-check" [ngModel]="showPageNumbers()" (ngModelChange)="showPageNumbers.set($event); saveOptions()" /> Page numbers
+            </label>
+            <label class="flex items-center gap-2 bp-body-small text-secondary">
+              <input type="checkbox" class="opt-check" [ngModel]="showCreated()" (ngModelChange)="showCreated.set($event); saveOptions()" /> Created date
+            </label>
+          </div>
+          <textarea rows="2" class="bp-store-textarea mt-2 w-full" placeholder="Custom footer text…"
+                    [ngModel]="footer()" (ngModelChange)="footer.set($event)" (blur)="saveOptions()"></textarea>
         </div>
       </div>
     </aside>
