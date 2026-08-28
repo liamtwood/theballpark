@@ -35,6 +35,15 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.111 (2026-08-28): document colour themes (Default / B&W / Pick a Colour)
+- Theme picker in the action bar: **Default** (theme accent), **B & W** (mono —
+  grey icons, neutral bars), **Pick a Colour** (native colour input). One
+  `--doc-accent` var drives the icons + Project Total; `--doc-bar-bg` tints the
+  shaded bars/banner (a light 12% `color-mix` wash of the picked colour).
+- `print-color-adjust: exact` so the shading + colour survive Print/Save-PDF.
+- **Session-local for now** — not yet persisted per project (next, if wanted: a
+  `quote_theme` column).
+
 ## Iteration — v2.110 (2026-08-28): center + enlarge section titles
 - Section heading bars (Project Costs / Coverage / Fees / Summary) are now
   **centered** and a **touch larger** (`--text-md`). Subtotal/total footers left

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, resource, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
@@ -19,14 +20,38 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
 @Component({
   selector: 'app-quote-document',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule, MarkdownPipe, ProjectSummaryTilesComponent],
-  host: { class: 'quote-doc fixed inset-0 z-50 overflow-y-auto bg-fill' },
+  imports: [CurrencyPipe, FormsModule, LucideAngularModule, MarkdownPipe, ProjectSummaryTilesComponent],
+  host: {
+    class: 'quote-doc fixed inset-0 z-50 overflow-y-auto bg-fill',
+    '[style.--doc-accent]': 'docAccent()',
+    '[style.--doc-bar-bg]': 'docBarBg()',
+  },
+  styles: [`
+    /* Colour theming (Default / B&W / Pick a Colour) — driven by the host vars.
+       Shaded bars tint with the accent; icons take it at full strength. */
+    .doc-bar { background: var(--doc-bar-bg); }
+    .doc-ink { color: var(--doc-accent); }
+    /* Keep the shaded/tinted bars when printing (browsers drop backgrounds
+       otherwise, so the PDF would lose the shading + colour). */
+    .quote-doc__paper { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  `],
   template: `
     <!-- Action bar (screen only — hidden on print). -->
-    <div class="quote-doc__bar sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-hairline bg-surface px-5 py-3">
+    <div class="quote-doc__bar sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-hairline bg-surface px-5 py-3">
       <button type="button" class="flex items-center gap-2 bp-body-small text-secondary transition-colors hover:text-text" (click)="close.emit()">
         <lucide-icon name="arrow-left" [size]="16" /> Back to builder
       </button>
+      <!-- Theme picker: Default / B&W / Pick a Colour. -->
+      <div class="flex items-center gap-1 rounded-full border border-hairline p-0.5">
+        <button type="button" class="rounded-full px-3 py-1 bp-meta transition-colors" [class.bg-fill]="mode() === 'default'" [class.text-text]="mode() === 'default'" [class.text-secondary]="mode() !== 'default'" (click)="mode.set('default')">Default</button>
+        <button type="button" class="rounded-full px-3 py-1 bp-meta transition-colors" [class.bg-fill]="mode() === 'bw'" [class.text-text]="mode() === 'bw'" [class.text-secondary]="mode() !== 'bw'" (click)="mode.set('bw')">B &amp; W</button>
+        <button type="button" class="flex items-center gap-1.5 rounded-full px-3 py-1 bp-meta transition-colors" [class.bg-fill]="mode() === 'color'" [class.text-text]="mode() === 'color'" [class.text-secondary]="mode() !== 'color'" (click)="mode.set('color')">
+          Colour
+          @if (mode() === 'color') {
+            <input type="color" class="h-4 w-4 cursor-pointer rounded border-0 bg-transparent p-0" [ngModel]="pickedColor()" (ngModelChange)="pickedColor.set($event)" (click)="$event.stopPropagation()" />
+          }
+        </button>
+      </div>
       <button type="button" class="bp-btn-grad flex items-center gap-2" (click)="print()">
         <lucide-icon name="printer" [size]="15" /> Print / Save PDF
       </button>
@@ -61,7 +86,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
       </div>
       <!-- Title banner — company + project name, shaded like the meta label
            column, rounded + bordered to match the tiles below. -->
-      <div class="mt-5 rounded-[var(--radius-card)] border border-hairline bg-fill px-6 py-6 text-center">
+      <div class="mt-5 rounded-[var(--radius-card)] border border-hairline doc-bar px-6 py-6 text-center">
         @if (project().clientName) {
           <div class="bp-field-label">{{ project().clientName }}</div>
         }
@@ -79,12 +104,12 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
       } @else {
         <!-- ===== PROJECT COSTS ===== -->
         <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
-          <div class="bg-fill px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Costs</span></div>
+          <div class="doc-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Costs</span></div>
           <div class="border-t border-hairline px-4">
             @for (g of costGroups(); track g.id) {
               <!-- Category band — icon + name, like the cost cards. -->
               <div class="mt-3 flex items-center gap-2">
-                <lucide-icon [name]="g.iconName || 'folder-open'" [size]="16" class="text-[var(--theme-accent)]" />
+                <lucide-icon [name]="g.iconName || 'folder-open'" [size]="16" class="doc-ink" />
                 <span class="bp-field-label">{{ g.name }}</span>
               </div>
               @for (l of g.items; track l.id) {
@@ -104,7 +129,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
               }
             }
           </div>
-          <div class="flex items-center justify-between border-t border-hairline bg-fill px-4 py-2.5">
+          <div class="flex items-center justify-between border-t border-hairline doc-bar px-4 py-2.5">
             <span class="bp-field-label uppercase tracking-wide text-text">Total Project Costs</span>
             <span class="bp-body-small font-bold tabular-nums text-text">{{ bd().projectCosts | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
@@ -112,11 +137,11 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
 
         <!-- ===== PROJECT COVERAGE ===== -->
         <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
-          <div class="bg-fill px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Coverage</span></div>
+          <div class="doc-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Coverage</span></div>
           <div class="border-t border-hairline px-4">
             <div class="flex items-center justify-between border-b border-hairline py-3">
               <div class="flex items-center gap-2">
-                <lucide-icon name="percent" [size]="16" class="text-[var(--theme-accent)]" />
+                <lucide-icon name="percent" [size]="16" class="doc-ink" />
                 <div>
                   <div class="bp-body-small font-semibold text-text">Contingency</div>
                   <div class="bp-meta">{{ bd().contingencyPct }}% of project costs</div>
@@ -126,7 +151,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
             </div>
             <div class="flex items-center justify-between py-3">
               <div class="flex items-center gap-2">
-                <lucide-icon name="percent" [size]="16" class="text-[var(--theme-accent)]" />
+                <lucide-icon name="percent" [size]="16" class="doc-ink" />
                 <div>
                   <div class="bp-body-small font-semibold text-text">Insurance</div>
                   <div class="bp-meta">{{ bd().insurancePct }}% of project costs</div>
@@ -135,7 +160,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
               <span class="bp-body-small w-20 text-right font-semibold tabular-nums text-text">{{ bd().insurance | currency: cur() : 'symbol' : '1.0-0' }}</span>
             </div>
           </div>
-          <div class="flex items-center justify-between border-t border-hairline bg-fill px-4 py-2.5">
+          <div class="flex items-center justify-between border-t border-hairline doc-bar px-4 py-2.5">
             <span class="bp-field-label uppercase tracking-wide text-text">Total Coverage</span>
             <span class="bp-body-small font-bold tabular-nums text-text">{{ bd().coverage | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
@@ -144,7 +169,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
         <!-- ===== PROJECT FEES ===== -->
         @if (feesGroup(); as fg) {
           <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
-            <div class="bg-fill px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Fees</span></div>
+            <div class="doc-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Fees</span></div>
             <div class="border-t border-hairline px-4">
               @for (l of fg.items; track l.id) {
                 <div class="flex items-start justify-between gap-4 border-b border-hairline py-3 last:border-b-0">
@@ -162,7 +187,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
                 </div>
               }
             </div>
-            <div class="flex items-center justify-between border-t border-hairline bg-fill px-4 py-2.5">
+            <div class="flex items-center justify-between border-t border-hairline doc-bar px-4 py-2.5">
               <span class="bp-field-label uppercase tracking-wide text-text">Total Fees</span>
               <span class="bp-body-small font-bold tabular-nums text-text">{{ bd().fees | currency: cur() : 'symbol' : '1.0-0' }}</span>
             </div>
@@ -171,13 +196,13 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
 
         <!-- ===== PROJECT SUMMARY ===== -->
         <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
-          <div class="bg-fill px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Summary</span></div>
+          <div class="doc-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Summary</span></div>
           <div class="border-t border-hairline px-4">
             <div class="flex justify-between border-b border-hairline py-2.5"><span class="bp-body-small text-text">Project Costs</span><span class="bp-body-small tabular-nums text-text">{{ bd().projectCosts | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
             <div class="flex justify-between border-b border-hairline py-2.5"><span class="bp-body-small text-text">Project Coverage</span><span class="bp-body-small tabular-nums text-text">{{ bd().coverage | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
             <div class="flex justify-between py-2.5"><span class="bp-body-small text-text">Project Fees</span><span class="bp-body-small tabular-nums text-text">{{ bd().fees | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
           </div>
-          <div class="flex items-baseline justify-between border-t border-hairline bg-fill px-4 py-3">
+          <div class="flex items-baseline justify-between border-t border-hairline doc-bar px-4 py-3">
             <span class="bp-price-large uppercase tracking-wide">Project Total</span>
             <span class="bp-price-large tabular-nums">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
@@ -206,6 +231,25 @@ export class QuoteDocumentComponent {
   }
 
   protected readonly cur = computed(() => this.project().currency || 'GBP');
+
+  // ── Colour theme (session-local for now) ───────────────────────────────────
+  protected readonly mode = signal<'default' | 'bw' | 'color'>('default');
+  protected readonly pickedColor = signal('#6d28d9');
+  /** Accent for icons + Project Total: theme accent (default), grey (B&W), or
+   *  the picked colour. */
+  protected readonly docAccent = computed(() => {
+    switch (this.mode()) {
+      case 'bw': return 'var(--color-text-secondary)';
+      case 'color': return this.pickedColor();
+      default: return 'var(--theme-accent)';
+    }
+  });
+  /** Shaded-bar background: neutral fill, or a light wash of the picked colour. */
+  protected readonly docBarBg = computed(() =>
+    this.mode() === 'color'
+      ? `color-mix(in srgb, ${this.pickedColor()} 12%, var(--color-surface))`
+      : 'var(--color-fill)');
+
   protected readonly subtitle = computed(() =>
     [this.project().eventType, this.project().venueCity].filter(Boolean).join(' · '));
 
