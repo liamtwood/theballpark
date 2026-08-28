@@ -35,6 +35,9 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.158 (2026-08-28): pink workspace on Overview (home) too
+- `isWorkspace()` now also matches **`/home`** so Overview gets the pink ground.
+
 ## Iteration — v2.157 (2026-08-28): pink workspace on Past projects too
 - `isWorkspace()` now also matches **`/projects`** (the Past projects list), so
   it gets the same pink ground as the project detail workspace.
