@@ -39,6 +39,8 @@ interface DetailForm {
   name: string;
   description: string;
   clientName: string;
+  clientCompanyNumber: string;
+  clientAddress: string;
   eventType: string;
   eventDate: string;
   venueName: string;
@@ -122,6 +124,8 @@ interface DetailForm {
                   <app-edit-field label="Ref" density="page" [readonlyAlways]="true" [value]="p.ref ?? '—'" />
                   <app-edit-field label="Event name" density="page" [editing]="editingEvent()" [value]="form().name" (valueChange)="patch({ name: $event })" />
                   <app-edit-field label="Client" density="page" [editing]="editingEvent()" [value]="form().clientName" [suggestions]="clientNames()" (valueChange)="patch({ clientName: $event })" />
+                  <app-edit-field label="Client company no." density="page" [editing]="editingEvent()" [value]="form().clientCompanyNumber" (valueChange)="patch({ clientCompanyNumber: $event })" />
+                  <app-edit-field class="bp-edit-field--span2" [span2]="true" label="Client address" type="textarea" density="page" [editing]="editingEvent()" [value]="form().clientAddress" (valueChange)="patch({ clientAddress: $event })" />
                   <app-edit-field label="Venue" density="page" [editing]="editingEvent()" [value]="form().venueName" (valueChange)="patch({ venueName: $event })" />
                   <app-edit-field label="City" density="page" [editing]="editingEvent()" [value]="form().venueCity" (valueChange)="patch({ venueCity: $event })" />
                   <app-edit-field class="bp-edit-field--span2" [span2]="true" label="Description" type="textarea" density="page" placeholder="Project overview — seeded from the brief; shown on the quote document." [editing]="editingEvent()" [value]="form().description" (valueChange)="patch({ description: $event })" />
@@ -439,6 +443,8 @@ export class ProjectDetailComponent {
             name: f.name.trim() || undefined,
             description: nullable(f.description),
             clientName: nullable(f.clientName),
+            clientCompanyNumber: nullable(f.clientCompanyNumber),
+            clientAddress: nullable(f.clientAddress),
             venueName: nullable(f.venueName),
             venueCity: nullable(f.venueCity),
           }
@@ -558,6 +564,8 @@ function toForm(d: ProjectDetail | null): DetailForm {
     name: d?.name ?? '',
     description: d?.description ?? '',
     clientName: d?.clientName ?? '',
+    clientCompanyNumber: d?.clientCompanyNumber ?? '',
+    clientAddress: d?.clientAddress ?? '',
     eventType: d?.eventType ?? '',
     eventDate: d?.eventDate ?? '',
     venueName: d?.venueName ?? '',

@@ -29,6 +29,8 @@ export interface OrgProfile {
   images: GalleryImage[];
   /** pV2-BUILDUP-04 — the agency's standard Terms & Conditions PDF (SOW Annex A). */
   termsPdfUrl: string | null;
+  /** pV2-BUILDUP-04 — agency company number (SOW Supplier line). */
+  companyNumber: string | null;
 }
 
 export type OrgProfileUpdate = Partial<

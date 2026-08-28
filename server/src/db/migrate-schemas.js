@@ -2610,6 +2610,11 @@ const migrate = async () => {
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS quote_show_address BOOLEAN;`);
       // The agency's standard Terms & Conditions PDF (SOW Annex A), org-level.
       await client.query(`ALTER TABLE ${s}.orgs ADD COLUMN IF NOT EXISTS terms_pdf_url TEXT;`);
+      // SOW parties — the agency's company number + the client's company number
+      // and address (Buyer details). All nullable/additive.
+      await client.query(`ALTER TABLE ${s}.orgs ADD COLUMN IF NOT EXISTS company_number TEXT;`);
+      await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS client_company_number TEXT;`);
+      await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS client_address TEXT;`);
       // Insurance is a % of project costs (default_insurance_amount was an earlier
       // fixed-£ take, left dormant.)
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS default_insurance_pct NUMERIC(5,2);`);

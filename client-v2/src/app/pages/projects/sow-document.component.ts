@@ -81,11 +81,15 @@ import { isDeclined } from './quote-line.util';
         <div class="grid grid-cols-2 gap-4 border-t border-hairline px-4 py-3">
           <div>
             <div class="bp-field-label">Buyer</div>
-            <div class="mt-1 bp-body-small text-text"><span class="font-semibold">{{ project().clientName || '[Client company]' }}</span> — a company registered in England &amp; Wales.</div>
+            <div class="mt-1 bp-body-small text-text">
+              <span class="font-semibold">{{ project().clientName || '[Client company]' }}</span>@if (project().clientCompanyNumber) { , company number {{ project().clientCompanyNumber }} }@if (project().clientAddress) { , whose principal place of business is at {{ project().clientAddress }} }.
+            </div>
           </div>
           <div>
             <div class="bp-field-label">Supplier</div>
-            <div class="mt-1 bp-body-small text-text"><span class="font-semibold">{{ org()?.name || '[Your agency]' }}</span>@if (supplierAddress()) { , whose principal place of business is at {{ supplierAddress() }} }.</div>
+            <div class="mt-1 bp-body-small text-text">
+              <span class="font-semibold">{{ org()?.name || '[Your agency]' }}</span>@if (org()?.companyNumber) { , company number {{ org()!.companyNumber }} }@if (supplierAddress()) { , whose principal place of business is at {{ supplierAddress() }} }.
+            </div>
           </div>
         </div>
       </section>

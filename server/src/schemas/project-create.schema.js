@@ -37,6 +37,9 @@ const ProjectUpdateSchema = z.object({
   guestCount: z.number().int().nonnegative().nullable().optional(),
   durationDays: z.number().int().nonnegative().nullable().optional(),
   clientName: z.string().trim().max(200).nullable().optional(),
+  // pV2-BUILDUP-04 — client (Buyer) details for the SOW.
+  clientCompanyNumber: z.string().trim().max(40).nullable().optional(),
+  clientAddress: z.string().trim().max(400).nullable().optional(),
   projectBudget: z.number().nonnegative().nullable().optional(),
   currency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
   tier: z.enum(['starter', 'professional', 'premium']).nullable().optional(),

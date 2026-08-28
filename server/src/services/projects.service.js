@@ -194,6 +194,9 @@ function toDetail(row) {
     quoteShowAddress: row.quote_show_address ?? true,
     eventName: row.event_name,
     clientName: row.client_name ?? null,
+    // pV2-BUILDUP-04 — client (Buyer) details for the SOW.
+    clientCompanyNumber: row.client_company_number ?? null,
+    clientAddress: row.client_address ?? null,
     coverUrl: row.cover_image_url,
     // Media (pV2-MEDIA-01b): cover focal point + icon fallback + Unsplash attribution.
     coverFocalX: row.cover_focal_x ?? 50,
@@ -238,6 +241,8 @@ const EDITABLE = {
   guestCount: 'guest_count',
   durationDays: 'duration_days',
   clientName: 'client_name',
+  clientCompanyNumber: 'client_company_number',
+  clientAddress: 'client_address',
   projectBudget: 'project_budget',
   currency: 'currency',
   tier: 'tier',

@@ -35,6 +35,14 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.134 (2026-08-28): SOW party fields — company numbers + client address
+- New columns (all schemas + targeted `ALTER` on public): `orgs.company_number`,
+  `projects.client_company_number`, `projects.client_address`.
+- **Org profile** gets a **Company number** field; the **About tab** gets **Client
+  company no.** + **Client address**. Wired through the org/project PUTs.
+- SOW **Parties** section now renders "company number …" + the client's registered
+  address for both Buyer and Supplier when set.
+
 ## Iteration — v2.133 (2026-08-28): SOW Location = project venue (no city dup)
 - SOW scope Location now uses the project's **venue value** alone (fallback city)
   instead of `venueName, venueCity` — which duplicated the city.

@@ -35,6 +35,8 @@ const OrganisationUpdateSchema = z
     coverImageUrl: z.string().trim().max(1000).nullable().optional(),
     // pV2-BUILDUP-04 — standard T&C PDF URL (SOW Annex A); nullable to clear.
     termsPdfUrl: z.string().trim().max(1000).nullable().optional(),
+    // pV2-BUILDUP-04 — agency company number (SOW Supplier line).
+    companyNumber: z.string().trim().max(40).optional().or(z.literal('')),
     images: z
       .array(
         z.object({

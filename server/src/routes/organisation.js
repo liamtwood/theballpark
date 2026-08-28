@@ -14,7 +14,7 @@ const { OrganisationUpdateSchema } = require('../schemas/organisation.schema');
 /** Shared projection — explicit columns, camelCase out. */
 const SELECT = `SELECT id, name, description, address, city, country, email, phone, ref_prefix, ref_counter,
        default_vat_pct, default_margin_pct, default_contingency_pct, default_currency,
-       logo_url, cover_image_url, images, terms_pdf_url
+       logo_url, cover_image_url, images, terms_pdf_url, company_number
   FROM orgs WHERE id = $1 AND deleted_at IS NULL`;
 
 function toProfile(row) {
@@ -39,6 +39,8 @@ function toProfile(row) {
     images: Array.isArray(row.images) ? row.images : [],
     // pV2-BUILDUP-04 — standard T&C PDF (SOW Annex A).
     termsPdfUrl: row.terms_pdf_url ?? null,
+    // pV2-BUILDUP-04 — agency company number (SOW Supplier line).
+    companyNumber: row.company_number ?? null,
   };
 }
 
@@ -81,6 +83,8 @@ router.put('/', requireActiveMembership('org.manage_billing'), async (req, res, 
       cover_image_url: p.coverImageUrl,
       // pV2-BUILDUP-04 — standard T&C PDF (nullable to clear).
       terms_pdf_url: p.termsPdfUrl,
+      // pV2-BUILDUP-04 — agency company number.
+      company_number: p.companyNumber === '' ? null : p.companyNumber,
     };
     const sets = [];
     const vals = [];

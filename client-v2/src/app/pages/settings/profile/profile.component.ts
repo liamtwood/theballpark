@@ -160,6 +160,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
           >
             <div class="bp-field-grid-2">
               <app-edit-field label="Organisation name" density="page" [editing]="store.editingOrg()" [value]="store.form().name" (valueChange)="store.patch({ name: $event })" />
+              <app-edit-field label="Company number" density="page" [editing]="store.editingOrg()" [value]="store.form().companyNumber" (valueChange)="store.patch({ companyNumber: $event })" />
               <app-edit-field label="City" density="page" [editing]="store.editingOrg()" [value]="store.form().city" (valueChange)="store.patch({ city: $event })" />
               <app-edit-field label="Country" type="select" density="page" [filter]="true" [options]="store.countryOptions()" [editing]="store.editingOrg()" [value]="store.form().country" (valueChange)="store.patch({ country: $event })" />
               <app-edit-field label="Address" density="page" [editing]="store.editingOrg()" [value]="store.form().address" (valueChange)="store.patch({ address: $event })" />

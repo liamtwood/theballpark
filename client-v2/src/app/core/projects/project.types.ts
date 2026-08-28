@@ -192,6 +192,9 @@ export interface ProjectDetail {
   images: GalleryImage[];
   /** Read-only display (joined from clients) — v1 Event details parity. */
   clientName: string | null;
+  /** pV2-BUILDUP-04 — client (Buyer) details for the SOW. */
+  clientCompanyNumber: string | null;
+  clientAddress: string | null;
   coverUrl: string | null;
   totalBallparkCost: number | null;
   createdAt: string;
@@ -209,6 +212,8 @@ export type ProjectUpdate = Partial<{
   guestCount: number | null;
   durationDays: number | null;
   clientName: string | null;
+  clientCompanyNumber: string | null;
+  clientAddress: string | null;
   projectBudget: number | null;
   currency: string;
   tier: 'starter' | 'professional' | 'premium' | null;

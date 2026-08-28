@@ -18,6 +18,7 @@ export interface ProfileForm {
   city: string;
   country: string;
   address: string;
+  companyNumber: string;
   email: string;
   phone: string;
   refPrefix: string;
@@ -110,6 +111,7 @@ export class ProfileEditService {
             address: f.address,
             city: f.city,
             country: f.country,
+            companyNumber: f.companyNumber.trim(),
             email: f.email,
             phone: f.phone,
             refPrefix: f.refPrefix.trim().toUpperCase(),
@@ -207,6 +209,7 @@ export function toForm(org: OrgProfile | null): ProfileForm {
     city: org?.city ?? '',
     country: org?.country ?? '',
     address: org?.address ?? '',
+    companyNumber: org?.companyNumber ?? '',
     email: org?.email ?? '',
     phone: org?.phone ?? '',
     refPrefix: (org?.refPrefix ?? '').toUpperCase(),
