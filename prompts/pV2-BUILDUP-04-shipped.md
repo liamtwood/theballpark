@@ -35,6 +35,17 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.106 (2026-08-28): quote document polish — agency header + shaded totals
+- **Agency header**: was wrongly showing the *client* name. Now fetches the
+  signed-in **agency org** (`GET /api/organisation`) and renders its **logo +
+  name + address** (address · city · country).
+- **Meta block** reordered to labeled rows: **Project | {ref}**, **Type |
+  Ballpark Quote**, **Created | {createdAt}** (long form, e.g. 31 December 2024).
+- **Subtotal rows** (Total Project Costs / Total Coverage / Total Fees) and
+  **Project Total**: UPPERCASE, **shaded** (`bg-fill`) with a **line below**
+  (`border-b-2`). **Project Total** label now sized to match the amount
+  (`bp-price-large`).
+
 ## Iteration — v2.105 (2026-08-28): step 2 — editable agent (quote) description per line
 - New **`project_items.quote_description`** column (all schemas in migrate-schemas;
   targeted `ALTER` run on `public` for dev). The **agent's client-facing line

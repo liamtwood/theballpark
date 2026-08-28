@@ -3,6 +3,7 @@ import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
+import { OrganisationService, OrgProfile } from '../../core/organisation.service';
 import { EstimateBreakdown, ProjectDetail, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { ProjectSummaryTilesComponent } from './project-summary-tiles.component';
@@ -33,16 +34,24 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
 
     <!-- The paper. -->
     <div class="quote-doc__paper mx-auto my-8 w-full max-w-3xl bg-surface p-12 shadow-sm">
-      <!-- Header -->
+      <!-- Header — the AGENCY (org sending the quote): logo, name, address. -->
       <div class="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <div class="bp-list-title text-[length:var(--text-2xl)] font-bold tracking-tight">{{ project().clientName || 'Your Agency' }}</div>
+        <div class="flex items-start gap-3">
+          @if (org()?.logoUrl) {
+            <img [src]="org()!.logoUrl" alt="" class="h-12 w-auto max-w-[120px] object-contain" />
+          }
+          <div>
+            <div class="bp-list-title text-[length:var(--text-2xl)] font-bold tracking-tight">{{ org()?.name || 'Your Agency' }}</div>
+            @if (agencyAddress()) {
+              <div class="bp-meta mt-1 leading-relaxed">{{ agencyAddress() }}</div>
+            }
+          </div>
         </div>
-        <div class="text-right bp-meta leading-relaxed">
-          @if (project().ref) { {{ project().ref }}<br/> }
-          @if (project().eventDate) { {{ project().eventDate }}<br/> }
-          Quote
-        </div>
+        <dl class="grid shrink-0 grid-cols-[auto_auto] items-baseline gap-x-3 gap-y-1">
+          <dt class="bp-field-label">Project</dt><dd class="bp-body-small text-right text-text">{{ project().ref || '—' }}</dd>
+          <dt class="bp-field-label">Type</dt><dd class="bp-body-small text-right text-text">Ballpark Quote</dd>
+          <dt class="bp-field-label">Created</dt><dd class="bp-body-small text-right text-text">{{ createdStr() }}</dd>
+        </dl>
       </div>
       <h1 class="bp-page-title text-[length:var(--text-hero)]">{{ project().name }}</h1>
       @if (subtitle()) {
@@ -85,8 +94,8 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
               </div>
             }
           }
-          <div class="flex items-center justify-between border-t-2 border-text py-2.5">
-            <span class="bp-field-label">Total project costs</span>
+          <div class="mt-1 flex items-center justify-between border-b-2 border-text bg-fill px-3 py-2.5">
+            <span class="bp-field-label uppercase tracking-wide text-text">Total Project Costs</span>
             <span class="bp-body-small font-bold tabular-nums text-text">{{ bd().projectCosts | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
         </div>
@@ -116,8 +125,8 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
             </div>
             <span class="bp-body-small w-20 text-right font-semibold tabular-nums text-text">{{ bd().insurance | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
-          <div class="flex items-center justify-between border-t-2 border-text py-2.5">
-            <span class="bp-field-label">Total coverage</span>
+          <div class="mt-1 flex items-center justify-between border-b-2 border-text bg-fill px-3 py-2.5">
+            <span class="bp-field-label uppercase tracking-wide text-text">Total Coverage</span>
             <span class="bp-body-small font-bold tabular-nums text-text">{{ bd().coverage | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
         </div>
@@ -143,8 +152,8 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
                 </div>
               </div>
             }
-            <div class="flex items-center justify-between border-t-2 border-text py-2.5">
-              <span class="bp-field-label">Total fees</span>
+            <div class="mt-1 flex items-center justify-between border-b-2 border-text bg-fill px-3 py-2.5">
+              <span class="bp-field-label uppercase tracking-wide text-text">Total Fees</span>
               <span class="bp-body-small font-bold tabular-nums text-text">{{ bd().fees | currency: cur() : 'symbol' : '1.0-0' }}</span>
             </div>
           </div>
@@ -155,8 +164,8 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
           <div class="flex justify-between py-1 bp-body-small text-secondary"><span>Project Costs</span><span class="tabular-nums">{{ bd().projectCosts | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
           <div class="flex justify-between py-1 bp-body-small text-secondary"><span>Project Coverage</span><span class="tabular-nums">{{ bd().coverage | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
           <div class="flex justify-between py-1 bp-body-small text-secondary"><span>Project Fees</span><span class="tabular-nums">{{ bd().fees | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
-          <div class="mt-2 flex items-baseline justify-between border-t border-hairline pt-3">
-            <span class="bp-list-title">Project Total</span>
+          <div class="mt-2 flex items-baseline justify-between border-b-2 border-text bg-fill px-3 py-3">
+            <span class="bp-price-large uppercase tracking-wide">Project Total</span>
             <span class="bp-price-large tabular-nums">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
         </div>
@@ -170,6 +179,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
 })
 export class QuoteDocumentComponent {
   private readonly projects = inject(ProjectService);
+  private readonly orgs = inject(OrganisationService);
 
   readonly projectId = input.required<string>();
   readonly project = input.required<ProjectDetail>();
@@ -185,6 +195,23 @@ export class QuoteDocumentComponent {
   protected readonly cur = computed(() => this.project().currency || 'GBP');
   protected readonly subtitle = computed(() =>
     [this.project().eventType, this.project().venueCity].filter(Boolean).join(' · '));
+
+  /** The agency (the org sending the quote) — its own logo/name/address header. */
+  private readonly orgRes = resource<OrgProfile, boolean>({
+    params: () => true,
+    loader: () => firstValueFrom(this.orgs.get()),
+  });
+  protected readonly org = computed(() => this.orgRes.value() ?? null);
+  protected readonly agencyAddress = computed(() => {
+    const o = this.org();
+    return o ? [o.address, o.city, o.country].filter(Boolean).join(', ') : '';
+  });
+  /** Quote created date — long form (31 December 2024) to match the header. */
+  protected readonly createdStr = computed(() => {
+    const iso = this.project().createdAt;
+    const t = iso ? Date.parse(iso) : NaN;
+    return Number.isNaN(t) ? '' : new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  });
 
   private readonly lines = resource<QuoteLine[], string>({
     params: () => this.projectId(),
