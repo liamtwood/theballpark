@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.108 (2026-08-28): title banner (company + project) + Created timestamp
+- **Title banner**: company name (client) + project name in one **shaded**
+  (`bg-fill`) container, **rounded + bordered to match the tile boxes**, centered.
+  Replaces the plain `<h1>` + subtitle.
+- **Created** now shows date **+ time on a 24h clock** — e.g. "25 Aug 2026 13:10"
+  (short month).
+
 ## Iteration — v2.107 (2026-08-28): agency address wraps + meta as a shaded table
 - **Address** now wraps on commas and drops the country — each comma-part of
   `address` is its own line, then `city` on a final line ("Ballpark House,

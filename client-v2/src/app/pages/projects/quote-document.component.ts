@@ -59,10 +59,14 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
           </div>
         </div>
       </div>
-      <h1 class="bp-page-title text-[length:var(--text-hero)]">{{ project().name }}</h1>
-      @if (subtitle()) {
-        <p class="bp-section-subtitle mt-1">{{ subtitle() }}</p>
-      }
+      <!-- Title banner — company + project name, shaded like the meta label
+           column, rounded + bordered to match the tiles below. -->
+      <div class="mt-5 rounded-[var(--radius-card)] border border-hairline bg-fill px-6 py-6 text-center">
+        @if (project().clientName) {
+          <div class="bp-field-label">{{ project().clientName }}</div>
+        }
+        <h1 class="bp-page-title text-[length:var(--text-hero)]">{{ project().name }}</h1>
+      </div>
 
       <!-- Date / Location / Duration / Guest count / Budget — the same tiles the
            builder shows, mounted here for parity. -->
@@ -217,11 +221,15 @@ export class QuoteDocumentComponent {
     if (o.city) parts.push(o.city);
     return parts;
   });
-  /** Quote created date — long form (31 December 2024) to match the header. */
+  /** Quote created date + time — short form, 24h clock (e.g. "25 Aug 2026 13:10"). */
   protected readonly createdStr = computed(() => {
     const iso = this.project().createdAt;
     const t = iso ? Date.parse(iso) : NaN;
-    return Number.isNaN(t) ? '' : new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    if (Number.isNaN(t)) return '';
+    const d = new Date(t);
+    const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${date} ${time}`;
   });
 
   private readonly lines = resource<QuoteLine[], string>({
