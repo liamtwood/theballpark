@@ -33,6 +33,8 @@ const OrganisationUpdateSchema = z
     // to clear); images is the gallery strip (bounded 20, jsonb).
     logoUrl: z.string().trim().max(1000).nullable().optional(),
     coverImageUrl: z.string().trim().max(1000).nullable().optional(),
+    // pV2-BUILDUP-04 — standard T&C PDF URL (SOW Annex A); nullable to clear.
+    termsPdfUrl: z.string().trim().max(1000).nullable().optional(),
     images: z
       .array(
         z.object({

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { LucideAngularModule } from 'lucide-angular';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -27,6 +28,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule,
+    LucideAngularModule,
     ToastModule,
     PageHeroComponent,
     EditSectionComponent,
@@ -215,6 +217,31 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
               <app-edit-field label="Contingency" type="number" suffix="%" density="page" [editing]="store.editingFin()" [value]="store.form().contingency" (valueChange)="store.patch({ contingency: $event })" />
             </div>
           </app-edit-section>
+
+          <!-- pV2-BUILDUP-04 — standard Terms & Conditions PDF (SOW Annex A). -->
+          @if (store.profile.value(); as org) {
+          <app-edit-section title="Terms &amp; Conditions" [editable]="false">
+            <p class="bp-caption">Your standard Terms &amp; Conditions PDF — attached as Annex A on Statements of Work.</p>
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+              @if (org.termsPdfUrl) {
+                <a [href]="org.termsPdfUrl" target="_blank" rel="noopener" class="flex items-center gap-2 bp-body-small text-text underline">
+                  <lucide-icon name="file-text" [size]="15" /> View current T&amp;Cs
+                </a>
+              } @else {
+                <span class="bp-body-small text-secondary">No T&amp;Cs uploaded yet.</span>
+              }
+              @if (store.canEdit()) {
+                <label class="bp-btn-outline flex cursor-pointer items-center gap-2">
+                  <lucide-icon name="upload" [size]="15" /> {{ store.savingTerms() ? 'Uploading…' : (org.termsPdfUrl ? 'Replace' : 'Upload PDF') }}
+                  <input type="file" accept="application/pdf" class="hidden" [disabled]="store.savingTerms()" (change)="onTermsFile($event)" />
+                </label>
+                @if (org.termsPdfUrl) {
+                  <button type="button" class="bp-body-small text-danger transition-colors hover:underline" (click)="store.removeTerms()">Remove</button>
+                }
+              }
+            </div>
+          </app-edit-section>
+          }
         </div>
       }
     </div>
@@ -235,6 +262,13 @@ export class ProfileComponent {
     { key: 'profile', label: 'Profile' },
     { key: 'shopfront', label: 'Shopfront' },
   ];
+  /** pV2-BUILDUP-04 — file input → upload the T&C PDF, then clear the input. */
+  protected onTermsFile(ev: Event): void {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) void this.store.uploadTerms(file);
+    input.value = '';
+  }
   protected setTab(key: string): void {
     this.tab.set(key === 'shopfront' ? 'shopfront' : 'profile');
   }

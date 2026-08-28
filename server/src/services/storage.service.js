@@ -17,9 +17,10 @@ class StorageService {
    */
   static async uploadFile(bucket, path, buffer, mimetype) {
     // Append timestamp to bust CDN cache when replacing images
-    const ext = mimetype === 'image/png' ? '.png' 
-               : mimetype === 'image/jpeg' ? '.jpg' 
-               : mimetype === 'image/webp' ? '.webp' 
+    const ext = mimetype === 'image/png' ? '.png'
+               : mimetype === 'image/jpeg' ? '.jpg'
+               : mimetype === 'image/webp' ? '.webp'
+               : mimetype === 'application/pdf' ? '.pdf'
                : '';
     const cacheBustedPath = `${path}_${Date.now()}${ext}`;
 

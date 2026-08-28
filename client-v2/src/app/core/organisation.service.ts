@@ -27,6 +27,8 @@ export interface OrgProfile {
   logoUrl: string | null;
   coverImageUrl: string | null;
   images: GalleryImage[];
+  /** pV2-BUILDUP-04 — the agency's standard Terms & Conditions PDF (SOW Annex A). */
+  termsPdfUrl: string | null;
 }
 
 export type OrgProfileUpdate = Partial<

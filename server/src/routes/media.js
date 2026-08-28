@@ -21,21 +21,31 @@ const SCOPE_BUCKET = {
   item: SUPPLIERS_BUCKET,
   supplier: SUPPLIERS_BUCKET,
   profile: SUPPLIERS_BUCKET,
+  // pV2-BUILDUP-04 — the agency's standard Terms & Conditions PDF (org-level).
+  terms: SUPPLIERS_BUCKET,
 };
 
 // POST /api/media/upload — multipart { file, scope }. org from JWT.
 router.post('/upload', upload.single('file'), async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file provided' });
-    if (!ALLOWED_MIME.has(req.file.mimetype)) {
-      return res.status(400).json({ error: 'Only PNG, JPEG, or WebP images are allowed' });
-    }
     const scope = String(req.body.scope || '');
     const bucket = SCOPE_BUCKET[scope];
     if (!bucket) return res.status(400).json({ error: 'Invalid scope' });
 
+    // The `terms` scope carries a PDF; all others are cover images.
+    if (scope === 'terms') {
+      if (req.file.mimetype !== 'application/pdf') {
+        return res.status(400).json({ error: 'Only a PDF is allowed for Terms & Conditions' });
+      }
+    } else if (!ALLOWED_MIME.has(req.file.mimetype)) {
+      return res.status(400).json({ error: 'Only PNG, JPEG, or WebP images are allowed' });
+    }
+
     // Org-scoped path; StorageService cache-busts + appends a timestamp.
-    const path = `${scope}/${req.user.org_id}/cover`;
+    const path = scope === 'terms'
+      ? `terms/${req.user.org_id}/standard`
+      : `${scope}/${req.user.org_id}/cover`;
     const url = await StorageService.uploadFile(bucket, path, req.file.buffer, req.file.mimetype);
     res.json({ url });
   } catch (err) {

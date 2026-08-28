@@ -14,7 +14,7 @@ const { OrganisationUpdateSchema } = require('../schemas/organisation.schema');
 /** Shared projection — explicit columns, camelCase out. */
 const SELECT = `SELECT id, name, description, address, city, country, email, phone, ref_prefix, ref_counter,
        default_vat_pct, default_margin_pct, default_contingency_pct, default_currency,
-       logo_url, cover_image_url, images
+       logo_url, cover_image_url, images, terms_pdf_url
   FROM orgs WHERE id = $1 AND deleted_at IS NULL`;
 
 function toProfile(row) {
@@ -37,6 +37,8 @@ function toProfile(row) {
     logoUrl: row.logo_url ?? null,
     coverImageUrl: row.cover_image_url ?? null,
     images: Array.isArray(row.images) ? row.images : [],
+    // pV2-BUILDUP-04 — standard T&C PDF (SOW Annex A).
+    termsPdfUrl: row.terms_pdf_url ?? null,
   };
 }
 
@@ -77,6 +79,8 @@ router.put('/', requireActiveMembership('org.manage_billing'), async (req, res, 
       // pV2-MEDIA-01d — branding URLs (nullable to clear).
       logo_url: p.logoUrl,
       cover_image_url: p.coverImageUrl,
+      // pV2-BUILDUP-04 — standard T&C PDF (nullable to clear).
+      terms_pdf_url: p.termsPdfUrl,
     };
     const sets = [];
     const vals = [];

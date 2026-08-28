@@ -2608,6 +2608,8 @@ const migrate = async () => {
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS quote_show_summary BOOLEAN;`);
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS quote_show_ref BOOLEAN;`);
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS quote_show_address BOOLEAN;`);
+      // The agency's standard Terms & Conditions PDF (SOW Annex A), org-level.
+      await client.query(`ALTER TABLE ${s}.orgs ADD COLUMN IF NOT EXISTS terms_pdf_url TEXT;`);
       // Insurance is a % of project costs (default_insurance_amount was an earlier
       // fixed-£ take, left dormant.)
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS default_insurance_pct NUMERIC(5,2);`);

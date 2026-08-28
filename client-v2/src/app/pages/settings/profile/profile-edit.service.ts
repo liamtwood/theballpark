@@ -7,6 +7,7 @@ import { errorDetail } from '../../../core/http-error';
 import { CodelistService } from '../../../core/codelists/codelist.service';
 import { OrgProfile, OrgProfileUpdate, OrganisationService } from '../../../core/organisation.service';
 import { GalleryImage, PickerResult, PickerTab } from '../../../core/media/media.types';
+import { MediaService } from '../../../core/media/media.service';
 import { EditFieldOption } from '../../../shared/edit-field/edit-field.component';
 import { CompletenessConfig } from '../../../shared/completeness/completeness.types';
 
@@ -35,6 +36,7 @@ export interface ProfileForm {
 @Injectable()
 export class ProfileEditService {
   private readonly orgs = inject(OrganisationService);
+  private readonly media = inject(MediaService);
   private readonly toast = inject(MessageService);
   private readonly codelists = inject(CodelistService);
   private readonly auth = inject(AuthService);
@@ -162,6 +164,28 @@ export class ProfileEditService {
   setCover(img: GalleryImage): void {
     void this.saveMedia({ coverImageUrl: img.url }, 'Cover updated.');
   }
+  // ── pV2-BUILDUP-04 — standard Terms & Conditions PDF (SOW Annex A). ────────
+  readonly savingTerms = signal(false);
+  async uploadTerms(file: File): Promise<void> {
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      this.toast.add({ severity: 'error', summary: 'Please choose a PDF.', life: 4000 });
+      return;
+    }
+    this.savingTerms.set(true);
+    try {
+      const { url } = await firstValueFrom(this.media.uploadTermsPdf(file));
+      await this.saveMedia({ termsPdfUrl: url }, 'Terms & Conditions updated.');
+    } catch (e) {
+      this.toast.add({ severity: 'error', summary: "Couldn't upload — please try again.", detail: errorDetail(e), life: 5000 });
+    } finally {
+      this.savingTerms.set(false);
+    }
+  }
+  removeTerms(): void {
+    void this.saveMedia({ termsPdfUrl: null }, 'Terms & Conditions removed.');
+  }
+
   private async saveMedia(patch: OrgProfileUpdate, summary: string): Promise<void> {
     try {
       const fresh = await firstValueFrom(this.orgs.update(patch));

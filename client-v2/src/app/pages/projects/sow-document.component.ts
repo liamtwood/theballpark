@@ -133,6 +133,11 @@ import { isDeclined } from './quote-line.util';
       <!-- Boilerplate + signatures -->
       <p class="bp-caption mt-6 text-secondary">
         This Statement of Work is entered into on the Effective Date pursuant to the supplier's standard terms of purchase set out in Annex A.
+        @if (org()?.termsPdfUrl) {
+          <a [href]="org()!.termsPdfUrl" target="_blank" rel="noopener" class="text-text underline">View Annex A — Terms &amp; Conditions</a> (attached to the PDF).
+        } @else {
+          <span class="italic">Annex A — Terms &amp; Conditions: upload your standard terms in the agency profile.</span>
+        }
       </p>
       <div class="mt-6 grid grid-cols-2 gap-10">
         @for (party of ['Signed by Buyer', 'Signed by Supplier']; track party) {

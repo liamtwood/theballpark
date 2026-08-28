@@ -35,6 +35,19 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.129 (2026-08-28): org T&C PDF (SOW Annex A)
+- Agencies upload their standard **Terms & Conditions PDF** on the org profile
+  (new **Terms & Conditions** section: upload / view / replace / remove).
+- **Server:** new `orgs.terms_pdf_url` column (all schemas + targeted `ALTER` on
+  public); `/api/media/upload` accepts a **PDF for scope `terms`** (org-scoped
+  path `terms/{org}/standard`); `storage.service` extensions `.pdf`;
+  `organisation.js` SELECT/toProfile/update + schema carry `termsPdfUrl`.
+- **Client:** `MediaService.uploadTermsPdf`, `OrgProfile.termsPdfUrl`, store
+  `uploadTerms`/`removeTerms`.
+- **SOW** references it — links "View Annex A — Terms & Conditions" when set, else
+  prompts to upload. (Server-side page-merge into the combined PDF is the
+  Puppeteer stage.)
+
 ## Iteration — v2.128 (2026-08-28): SOW styled to match the Quote
 - Restyled the SOW with the Quote's visual language: agency header + meta table
   (Document / Version / Effective), title banner, **boxed shaded sections**

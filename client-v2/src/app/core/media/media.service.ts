@@ -19,6 +19,15 @@ export class MediaService {
     return this.api.postForm<{ url: string }>('/api/media/upload', form);
   }
 
+  /** pV2-BUILDUP-04 — upload the agency's standard Terms & Conditions PDF
+   *  (org-level, SOW Annex A) → Supabase URL. */
+  uploadTermsPdf(file: File): Observable<{ url: string }> {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('scope', 'terms');
+    return this.api.postForm<{ url: string }>('/api/media/upload', form);
+  }
+
   /** Search Unsplash (paginated). Returns a bare array; the picker infers
    *  "more" from a full page. */
   searchUnsplash(query: string, page = 1, perPage = 24): Observable<UnsplashPhoto[]> {
