@@ -35,6 +35,16 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.131 (2026-08-28): seamless T&C pages (pdf.js) instead of a viewer
+- Replaced the Annex A `<iframe>` (viewer chrome — "omg what's that") with a new
+  reusable **`PdfPagesComponent`** that renders the PDF as a **stack of full-width
+  canvas pages inline** — no viewer frame, so the T&Cs read as more pages of the
+  SOW. Added `pdfjs-dist` (6.2); the ESM worker is copied to the served root via
+  angular.json and `workerSrc` is resolved against `document.baseURI`.
+- Screen preview (rasterized); the crisp vector merge into the final combined PDF
+  is still the Puppeteer stage. NB: if Supabase public URLs don't send permissive
+  CORS, pdf.js will show the error fallback → we'd add a same-origin proxy.
+
 ## Iteration — v2.130 (2026-08-28): embed the T&C pages inline on the SOW
 - The SOW now **embeds the org's T&C PDF inline** (an "Annex A — Terms &
   Conditions" section with an `<iframe>` at the bottom) when uploaded — the pages
