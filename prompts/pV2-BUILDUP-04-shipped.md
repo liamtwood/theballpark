@@ -35,6 +35,17 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.172 (2026-08-28): item-scoped thread header (the REAL divergence)
+- The real cause of the two Revised disagreeing: the thread header showed the
+  **whole thread's** `originalTotal`/`revisedTotal` even when a single item was
+  selected (title said "Italian Dinner" but numbers were the supplier's *all
+  items* aggregate). The base row (this item, £16,500) then didn't match the
+  header's Original (£17,325 = thread). Now, **when an item is selected the header
+  is item-scoped** (`it.priceRef` / `it.priceCurrent`), so it lines up with the
+  Customize base. Thread-level totals still show when no item is selected.
+- (v2.171's `originalPrice/qty` base seed stays — correct for items whose line
+  total includes install; a no-op otherwise.)
+
 ## Iteration — v2.171 (2026-08-28): reconcile the base (fix diverging Revised)
 - Reverted v2.170's hide — both totals stay visible; the concern was the
   **difference**, not the duplication.
