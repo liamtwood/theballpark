@@ -4,13 +4,24 @@ import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { ProjectDetail, ProjectUpdate } from '../../core/projects/project.types';
+import { withCommas } from '../../shared/details-format';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** NATO date (DD-Mmm-YYYY) when the string parses to a real date; otherwise the
+ *  raw text is kept (event dates can be free text like "Q4"/"TBC"/a range). */
+function natoDate(s: string): string {
+  const t = Date.parse(s);
+  if (Number.isNaN(t)) return s;
+  const d = new Date(t);
+  return `${String(d.getDate()).padStart(2, '0')}-${MONTHS[d.getMonth()]}-${d.getFullYear()}`;
+}
+
 /** pV2-BUILDUP-04 — the editable "Event details" card at the top of the
- *  Cart/Final, replacing the read-only summary tiles. Same five facts (Date /
- *  Location / Duration / Guest count / Budget); each saves on blur via a
- *  targeted ProjectUpdate patch, then (saved) tells the host to reload its
+ *  Cart/Final, replacing the read-only summary tiles. Each field saves on blur
+ *  via a targeted ProjectUpdate patch, then (saved) tells the host to reload its
  *  project resource so every surface re-reads. No optimism — the write is a
  *  single nullable column and the fresh detail is authoritative. */
 @Component({
@@ -39,19 +50,25 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
       <div class="mt-4 grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 md:grid-cols-3">
         <label class="block">
-          <span class="bp-field-label mb-1 block">Client name</span>
+          <span class="bp-field-label mb-1 block">Project</span>
+          <input class="bp-input-field" type="text" placeholder="Project name"
+                 [ngModel]="dName()" (ngModelChange)="dName.set($event)" (blur)="saveName()" />
+        </label>
+
+        <label class="block">
+          <span class="bp-field-label mb-1 block">Client</span>
           <input class="bp-input-field" type="text" placeholder="e.g. Acme Ltd"
                  [ngModel]="dClient()" (ngModelChange)="dClient.set($event)" (blur)="saveClient()" />
         </label>
 
-        <label class="block sm:col-span-2">
+        <label class="block">
           <span class="bp-field-label mb-1 block">Event type</span>
           <input class="bp-input-field" type="text" placeholder="e.g. Product launch party"
                  [ngModel]="dEventType()" (ngModelChange)="dEventType.set($event)" (blur)="saveEventType()" />
         </label>
 
         <label class="block">
-          <span class="bp-field-label mb-1 block">Date</span>
+          <span class="bp-field-label mb-1 block">Event date</span>
           <input class="bp-input-field" type="text" placeholder="e.g. 31-Dec-2026 / TBC"
                  [ngModel]="dDate()" (ngModelChange)="dDate.set($event)" (blur)="saveDate()" />
         </label>
@@ -63,20 +80,14 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
         </label>
 
         <label class="block">
-          <span class="bp-field-label mb-1 block">Duration (days)</span>
-          <input class="bp-input-field" type="number" min="0" inputmode="numeric" placeholder="e.g. 1"
-                 [ngModel]="dDuration()" (ngModelChange)="dDuration.set($event)" (blur)="saveDuration()" />
-        </label>
-
-        <label class="block">
-          <span class="bp-field-label mb-1 block">Guest count</span>
+          <span class="bp-field-label mb-1 block">Guests</span>
           <input class="bp-input-field" type="number" min="0" inputmode="numeric" placeholder="e.g. 150"
                  [ngModel]="dGuests()" (ngModelChange)="dGuests.set($event)" (blur)="saveGuests()" />
         </label>
 
         <label class="block">
-          <span class="bp-field-label mb-1 block">Budget ({{ symbol() }})</span>
-          <input class="bp-input-field" type="number" min="0" inputmode="numeric" placeholder="e.g. 100000"
+          <span class="bp-field-label mb-1 block">Budget guide ({{ symbol() }})</span>
+          <input class="bp-input-field" type="text" inputmode="numeric" placeholder="e.g. 100,000"
                  [ngModel]="dBudget()" (ngModelChange)="dBudget.set($event)" (blur)="saveBudget()" />
         </label>
       </div>
@@ -96,16 +107,25 @@ export class EventDetailsEditComponent {
   protected readonly state = signal<SaveState>('idle');
 
   // Drafts re-seed whenever the project reloads (linkedSignal tracks source).
+  protected readonly dName = linkedSignal(() => this.project().name ?? '');
   protected readonly dClient = linkedSignal(() => this.project().clientName ?? '');
   protected readonly dEventType = linkedSignal(() => this.project().eventType ?? '');
-  protected readonly dDate = linkedSignal(() => this.project().eventDate ?? '');
+  protected readonly dDate = linkedSignal(() => natoDate(this.project().eventDate ?? ''));
   protected readonly dLocation = linkedSignal(() => this.project().venueName ?? '');
-  protected readonly dDuration = linkedSignal(() => numStr(this.project().durationDays));
   protected readonly dGuests = linkedSignal(() => numStr(this.project().guestCount));
-  protected readonly dBudget = linkedSignal(() => numStr(this.project().projectBudget));
+  protected readonly dBudget = linkedSignal(() =>
+    this.project().projectBudget != null ? withCommas(this.project().projectBudget!) : '',
+  );
 
   protected symbol(): string {
     return this.currency() === 'USD' ? '$' : this.currency() === 'EUR' ? '€' : '£';
+  }
+
+  protected saveName(): void {
+    const next = this.dName().trim();
+    // Name is required — never null it out from a blank blur.
+    if (!next || next === this.project().name) return;
+    this.persist({ name: next });
   }
 
   protected saveClient(): void {
@@ -121,7 +141,9 @@ export class EventDetailsEditComponent {
   }
 
   protected saveDate(): void {
-    const next = this.dDate().trim() || null;
+    const formatted = natoDate(this.dDate().trim());
+    this.dDate.set(formatted); // reflect NATO in the box
+    const next = formatted || null;
     if (next === (this.project().eventDate ?? null)) return;
     this.persist({ eventDate: next });
   }
@@ -132,12 +154,6 @@ export class EventDetailsEditComponent {
     this.persist({ venueName: next });
   }
 
-  protected saveDuration(): void {
-    const next = parseNum(this.dDuration());
-    if (next === (this.project().durationDays ?? null)) return;
-    this.persist({ durationDays: next });
-  }
-
   protected saveGuests(): void {
     const next = parseNum(this.dGuests());
     if (next === (this.project().guestCount ?? null)) return;
@@ -145,7 +161,8 @@ export class EventDetailsEditComponent {
   }
 
   protected saveBudget(): void {
-    const next = parseNum(this.dBudget());
+    const next = parseNum(this.dBudget().replace(/,/g, ''));
+    this.dBudget.set(next != null ? withCommas(next) : ''); // reflect commas in the box
     if (next === (this.project().projectBudget ?? null)) return;
     this.persist({ projectBudget: next });
   }

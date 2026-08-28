@@ -35,6 +35,14 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.141 (2026-08-28): Event details — Project name, order, NATO date, comma budget
+- Added **Project** (`name`, required — a blank blur won't null it) and set the
+  field order to **Project · Client · Event type · Event date · Location ·
+  Guests · Budget guide (£)**. **Removed Duration.**
+- **Event date** formats to **NATO (DD-Mmm-YYYY)** on blur (unparseable text like
+  "TBC" kept). **Budget** is now a text box that shows **thousands separators**
+  (`withCommas`, e.g. 100,000) and parses commas out on save.
+
 ## Iteration — v2.140 (2026-08-28): editable Event details card on Cart/Final
 - Replaced the read-only **summary tiles** (Date / Location / Duration / Guest
   count / Budget) at the top of the estimate view with a new **editable
