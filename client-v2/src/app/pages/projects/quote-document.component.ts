@@ -52,7 +52,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
       <!-- Date / Location / Duration / Guest count / Budget — the same tiles the
            builder shows, mounted here for parity. -->
       <div class="mt-5">
-        <app-project-summary-tiles [project]="project()" [currency]="cur()" />
+        <app-project-summary-tiles [project]="project()" [currency]="cur()" [stacked]="true" />
       </div>
 
       @if (est.isLoading()) {

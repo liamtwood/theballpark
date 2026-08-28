@@ -35,6 +35,12 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.103 (2026-08-28): document meta tiles stack the value under the label
+- The document's meta tiles were truncating ("31 D…", "£100,…"). Added a
+  `stacked` variant to `ProjectSummaryTilesComponent` — icon + label on top, the
+  value full-width below (no truncation). The document opts in; the builder keeps
+  its compact layout.
+
 ## Iteration — v2.101 (2026-08-28): quote document header — Date/Location/Duration/Guests/Budget tiles
 - Added the 5 project-meta tiles to the quote document header by **mounting the
   existing `ProjectSummaryTilesComponent`** (Date=calendar, Location=map-pin,

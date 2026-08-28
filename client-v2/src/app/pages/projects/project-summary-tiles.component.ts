@@ -15,13 +15,23 @@ import { ProjectDetail } from '../../core/projects/project.types';
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
       @for (t of tiles(); track t.label) {
         <div class="bp-card p-3.5">
-          <div class="flex items-start gap-3">
-            <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon [name]="t.icon" [size]="18" [strokeWidth]="1.75" /></span>
-            <span class="min-w-0">
-              <span class="bp-field-label block">{{ t.label }}</span>
-              <span class="bp-body-small block truncate text-text">{{ t.value }}</span>
-            </span>
-          </div>
+          @if (stacked()) {
+            <!-- Value below the icon + label, full tile width (no truncation) —
+                 the quote document header. -->
+            <div class="flex items-center gap-2">
+              <span class="bp-icon-block h-8 w-8 shrink-0"><lucide-icon [name]="t.icon" [size]="16" [strokeWidth]="1.75" /></span>
+              <span class="bp-field-label">{{ t.label }}</span>
+            </div>
+            <span class="bp-body-small mt-1.5 block text-text">{{ t.value }}</span>
+          } @else {
+            <div class="flex items-start gap-3">
+              <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon [name]="t.icon" [size]="18" [strokeWidth]="1.75" /></span>
+              <span class="min-w-0">
+                <span class="bp-field-label block">{{ t.label }}</span>
+                <span class="bp-body-small block truncate text-text">{{ t.value }}</span>
+              </span>
+            </div>
+          }
         </div>
       }
     </div>
@@ -32,6 +42,9 @@ export class ProjectSummaryTilesComponent {
 
   readonly project = input.required<ProjectDetail>();
   readonly currency = input.required<string>();
+  /** Stack the value under the icon+label (full-width, no truncation) — the
+   *  quote document. Default keeps the compact builder layout. */
+  readonly stacked = input<boolean>(false);
 
   protected readonly tiles = computed(() => {
     const p = this.project();
