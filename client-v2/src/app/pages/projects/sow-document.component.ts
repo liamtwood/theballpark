@@ -9,11 +9,12 @@ import { isDeclined } from './quote-line.util';
 
 /** pV2-BUILDUP-04 — the client-facing STATEMENT OF WORK. A curated contract
  *  document (sibling to the Quote), reusing the same overlay + print isolation
- *  (.quote-doc / .quote-doc__paper / body.quote-doc-open). Structure follows the
- *  agency SOW: Buyer/Supplier parties, dates, Services & Goods (scope), Timeline,
- *  Fee (= the estimate total, ex-VAT), Payment Terms, Special Terms, signatures.
- *  Editable content fields + the Annex A T&C merge land next; today the new
- *  fields render seeded/placeholder text so the shape is real. */
+ *  (.quote-doc / .quote-doc__paper / body.quote-doc-open) AND the Quote's visual
+ *  language: agency header + meta table, title banner, boxed shaded sections, a
+ *  gradient Fee banner. Structure follows the agency SOW: Parties, dates/version,
+ *  Services & Goods (scope, seeded from the quote), Timeline, Fee (= estimate
+ *  total, ex-VAT), Payment Terms, Special Terms, signatures. Editable content +
+ *  the Annex A T&C merge land next; today the new fields render seeded/placeholder. */
 @Component({
   selector: 'app-sow-document',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -21,10 +22,11 @@ import { isDeclined } from './quote-line.util';
   host: { class: 'quote-doc fixed inset-0 z-50 overflow-y-auto bg-fill' },
   styles: [`
     .quote-doc__paper { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    /* SOW table — bordered rows, bold label column. */
-    .sow-row { display: grid; grid-template-columns: 9.5rem 1fr; border: 1px solid var(--color-border-hairline); border-top: 0; }
-    .sow-row:first-child { border-top: 1px solid var(--color-border-hairline); }
-    .sow-row > .sow-label { border-right: 1px solid var(--color-border-hairline); background: var(--color-fill); }
+    /* Match the Quote's Default theme: soft brand gradient on the shaded bars,
+       full gradient + white text on the headline Fee banner. */
+    .sow-bar { background: var(--bp-gradient-soft); }
+    .sow-fee { background: var(--bp-gradient); }
+    .sow-fee, .sow-fee .bp-price-large { color: var(--bp-text-on-gradient); }
   `],
   template: `
     <!-- Action bar (screen only — hidden on print). -->
@@ -38,81 +40,101 @@ import { isDeclined } from './quote-line.util';
     </div>
 
     <div class="quote-doc__paper mx-auto my-8 w-full max-w-3xl bg-surface p-12 shadow-sm">
-      <!-- Agency logo + title -->
-      <div class="mb-6 flex flex-col items-center gap-3 text-center">
-        @if (org()?.logoUrl) {
-          <img [src]="org()!.logoUrl" alt="" class="h-12 w-auto max-w-[140px] object-contain" />
-        }
-        <h1 class="bp-page-title text-[length:var(--text-2xl)] font-bold uppercase tracking-wide underline">Statement of Work</h1>
-      </div>
-
-      <!-- SOW table -->
-      <div class="mt-2">
-        <div class="sow-row">
-          <div class="sow-label px-3 py-2.5 bp-body-small font-semibold text-text">Buyer</div>
-          <div class="px-3 py-2.5 bp-body-small text-text">
-            <span class="font-semibold">{{ project().clientName || '[Client company]' }}</span> — company registered in England &amp; Wales.
-          </div>
-        </div>
-        <div class="sow-row">
-          <div class="sow-label px-3 py-2.5 bp-body-small font-semibold text-text">Supplier</div>
-          <div class="px-3 py-2.5 bp-body-small text-text">
-            <span class="font-semibold">{{ org()?.name || '[Your agency]' }}</span>@if (supplierAddress()) { , whose principal place of business is at {{ supplierAddress() }} }.
-          </div>
-        </div>
-        <div class="sow-row">
-          <div class="sow-label px-3 py-2.5 bp-body-small font-semibold text-text">Effective Date</div>
-          <div class="px-3 py-2.5 bp-body-small text-text">{{ effectiveDate() }}</div>
-        </div>
-        <div class="sow-row">
-          <div class="sow-label px-3 py-2.5 bp-body-small font-semibold text-text">SOW Version</div>
-          <div class="px-3 py-2.5 bp-body-small text-text">V1</div>
-        </div>
-        <div class="sow-row">
-          <div class="sow-label px-3 py-2.5 bp-body-small font-semibold text-text">Project Title</div>
-          <div class="px-3 py-2.5 bp-body-small text-text">{{ project().name }}</div>
-        </div>
-
-        <!-- Services & Goods — seeded from the quote's categories + lines. -->
-        <div class="sow-row">
-          <div class="sow-label px-3 py-2.5 bp-body-small font-semibold text-text">Services &amp; Goods</div>
-          <div class="px-3 py-2.5 bp-body-small text-text">
-            <p class="text-secondary">The supplier is responsible for delivering the following services and scope of work:</p>
-            @if (location()) {
-              <p class="mt-2"><span class="font-semibold">Location:</span> {{ location() }}</p>
+      <!-- Header — agency (logo + name + address) + meta table (Document / Version / Effective). -->
+      <div class="mb-8 flex items-start justify-between gap-4">
+        <div class="flex items-start gap-3">
+          @if (org()?.logoUrl) {
+            <img [src]="org()!.logoUrl" alt="" class="h-12 w-auto max-w-[120px] object-contain" />
+          }
+          <div>
+            <div class="bp-list-title text-[length:var(--text-2xl)] font-bold tracking-tight">{{ org()?.name || 'Your Agency' }}</div>
+            @for (ln of supplierAddressLines(); track $index) {
+              <div class="bp-meta leading-relaxed">{{ ln }}</div>
             }
-            @for (g of scopeGroups(); track g.id) {
-              <p class="mt-2 font-semibold">{{ g.name }}</p>
-              <ul class="ml-4 list-disc text-secondary">
-                @for (l of g.items; track l.id) { <li>{{ l.name }}@if (l.quantity > 1) { × {{ l.quantity }} }</li> }
-              </ul>
+            @if (org()?.phone) {
+              <div class="bp-meta font-medium leading-relaxed text-text">Phone: {{ org()!.phone }}</div>
             }
           </div>
         </div>
-
-        <div class="sow-row">
-          <div class="sow-label px-3 py-2.5 bp-body-small font-semibold text-text">Timeline</div>
-          <div class="px-3 py-2.5 bp-body-small text-secondary italic">Key dates &amp; milestones — to be added.</div>
-        </div>
-        <div class="sow-row">
-          <div class="sow-label px-3 py-2.5 bp-body-small font-semibold text-text">Fee</div>
-          <div class="px-3 py-2.5 bp-body-small font-semibold text-text">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-2' }} (exc. VAT)</div>
-        </div>
-        <div class="sow-row">
-          <div class="sow-label px-3 py-2.5 bp-body-small font-semibold text-text">Payment Terms</div>
-          <div class="px-3 py-2.5 bp-body-small text-secondary italic">Payment schedule — to be added (e.g. 50% on signature, 50% on completion).</div>
-        </div>
-        <div class="sow-row">
-          <div class="sow-label px-3 py-2.5 bp-body-small font-semibold text-text">Special Terms</div>
-          <div class="px-3 py-2.5 bp-body-small text-text">N/A</div>
+        <div class="shrink-0 overflow-hidden rounded-md border border-hairline bp-meta">
+          <div class="grid grid-cols-[auto_auto]">
+            <div class="border-b border-hairline bg-fill px-2.5 py-1 font-medium text-text">Document</div>
+            <div class="border-b border-l border-hairline px-2.5 py-1 text-left text-text">Statement of Work</div>
+            <div class="border-b border-hairline bg-fill px-2.5 py-1 font-medium text-text">Version</div>
+            <div class="border-b border-l border-hairline px-2.5 py-1 text-left text-text">V1</div>
+            <div class="bg-fill px-2.5 py-1 font-medium text-text">Effective</div>
+            <div class="border-l border-hairline px-2.5 py-1 text-left text-text">{{ effectiveDate() }}</div>
+          </div>
         </div>
       </div>
+
+      <!-- Title banner -->
+      <div class="mt-5 rounded-[var(--radius-card)] border border-hairline sow-bar px-6 py-6 text-center">
+        <div class="bp-field-label">Statement of Work</div>
+        <h1 class="bp-page-title text-[length:var(--text-hero)]">{{ project().name }}</h1>
+      </div>
+
+      <!-- Parties -->
+      <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
+        <div class="sow-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Parties</span></div>
+        <div class="grid grid-cols-2 gap-4 border-t border-hairline px-4 py-3">
+          <div>
+            <div class="bp-field-label">Buyer</div>
+            <div class="mt-1 bp-body-small text-text"><span class="font-semibold">{{ project().clientName || '[Client company]' }}</span> — a company registered in England &amp; Wales.</div>
+          </div>
+          <div>
+            <div class="bp-field-label">Supplier</div>
+            <div class="mt-1 bp-body-small text-text"><span class="font-semibold">{{ org()?.name || '[Your agency]' }}</span>@if (supplierAddress()) { , whose principal place of business is at {{ supplierAddress() }} }.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Services & Goods (scope) -->
+      <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
+        <div class="sow-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Services &amp; Goods</span></div>
+        <div class="border-t border-hairline px-4 py-3 bp-body-small text-text">
+          <p class="text-secondary">The supplier is responsible for delivering the following services and scope of work:</p>
+          @if (location()) {
+            <p class="mt-2"><span class="font-semibold">Location:</span> {{ location() }}</p>
+          }
+          @for (g of scopeGroups(); track g.id) {
+            <p class="mt-2 font-semibold">{{ g.name }}</p>
+            <ul class="ml-4 list-disc text-secondary">
+              @for (l of g.items; track l.id) { <li>{{ l.name }}@if (l.quantity > 1) { × {{ l.quantity }} }</li> }
+            </ul>
+          }
+        </div>
+      </section>
+
+      <!-- Timeline -->
+      <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
+        <div class="sow-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Timeline</span></div>
+        <div class="border-t border-hairline px-4 py-3 bp-body-small italic text-secondary">Key dates &amp; milestones — to be added.</div>
+      </section>
+
+      <!-- Fee — headline gradient banner (like the Quote's Project Total). -->
+      <div class="sow-fee mt-6 flex items-baseline justify-between rounded-[var(--radius-card)] border border-hairline px-4 py-3">
+        <span class="bp-price-large uppercase tracking-wide">Fee</span>
+        <span class="bp-price-large tabular-nums">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-2' }} <span class="bp-body-small">exc. VAT</span></span>
+      </div>
+
+      <!-- Payment Terms -->
+      <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
+        <div class="sow-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Payment Terms</span></div>
+        <div class="border-t border-hairline px-4 py-3 bp-body-small italic text-secondary">Payment schedule — to be added (e.g. 50% on signature, 50% on completion).</div>
+      </section>
+
+      <!-- Special Terms -->
+      <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
+        <div class="sow-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Special Terms</span></div>
+        <div class="border-t border-hairline px-4 py-3 bp-body-small text-text">N/A</div>
+      </section>
 
       <!-- Boilerplate + signatures -->
       <p class="bp-caption mt-6 text-secondary">
         This Statement of Work is entered into on the Effective Date pursuant to the supplier's standard terms of purchase set out in Annex A.
       </p>
-      <div class="mt-8 grid grid-cols-2 gap-10">
+      <div class="mt-6 grid grid-cols-2 gap-10">
         @for (party of ['Signed by Buyer', 'Signed by Supplier']; track party) {
           <div>
             <div class="bp-body-small font-semibold text-text">{{ party }}</div>
@@ -148,13 +170,18 @@ export class SowDocumentComponent {
     loader: () => firstValueFrom(this.orgs.get()),
   });
   protected readonly org = computed(() => this.orgRes.value() ?? null);
-  protected readonly supplierAddress = computed(() => {
+  /** Address wrapped on commas + city (phone rendered separately, labeled). */
+  protected readonly supplierAddressLines = computed(() => {
     const o = this.org();
-    return o ? [o.address, o.city].filter(Boolean).join(', ') : '';
+    if (!o) return [];
+    const parts = (o.address ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (o.city) parts.push(o.city);
+    return parts;
   });
+  protected readonly supplierAddress = computed(() => this.supplierAddressLines().join(', '));
   protected readonly location = computed(() =>
     [this.project().venueName, this.project().venueCity].filter(Boolean).join(', '));
-  /** Effective date — the project's created date, long form. */
+  /** Effective date — the project's created date. */
   protected readonly effectiveDate = computed(() => {
     const iso = this.project().createdAt;
     const t = iso ? Date.parse(iso) : NaN;

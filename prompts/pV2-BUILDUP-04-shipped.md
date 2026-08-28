@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.128 (2026-08-28): SOW styled to match the Quote
+- Restyled the SOW with the Quote's visual language: agency header + meta table
+  (Document / Version / Effective), title banner, **boxed shaded sections**
+  (Parties / Services & Goods / Timeline / Payment Terms / Special Terms), and a
+  **gradient Fee banner** (like the Project Total). Soft brand gradient on the
+  bars, full gradient + white text on the Fee.
+
 ## Iteration — v2.127 (2026-08-28): SOW document (curated skeleton)
 - New `SowDocumentComponent` — a curated **Statement of Work** (sibling of the
   Quote, reusing the `.quote-doc` overlay + print isolation). SOW table: Buyer /
