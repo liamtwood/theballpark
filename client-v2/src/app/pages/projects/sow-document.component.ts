@@ -199,8 +199,8 @@ export class SowDocumentComponent {
     return parts;
   });
   protected readonly supplierAddress = computed(() => this.supplierAddressLines().join(', '));
-  protected readonly location = computed(() =>
-    [this.project().venueName, this.project().venueCity].filter(Boolean).join(', '));
+  /** The project's location value (the venue), not venue + city concatenated. */
+  protected readonly location = computed(() => this.project().venueName || this.project().venueCity || '');
   /** Created date + time (short, 24h) — matches the Quote's ref box. */
   protected readonly createdStr = computed(() => {
     const iso = this.project().createdAt;

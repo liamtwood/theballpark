@@ -35,6 +35,10 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.133 (2026-08-28): SOW Location = project venue (no city dup)
+- SOW scope Location now uses the project's **venue value** alone (fallback city)
+  instead of `venueName, venueCity` — which duplicated the city.
+
 ## Iteration — v2.132 (2026-08-28): SOW QC — ref box, Project Total, exc. VAT
 - SOW ref box now matches the Quote: **Project / Type (Statement of Work) /
   Created** (date + 24h time). Dropped Version/Effective (no versioning — rely on
