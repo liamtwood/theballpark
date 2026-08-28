@@ -95,11 +95,16 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
         <div class="bp-md bp-body-small mt-5 px-6 text-secondary" [innerHTML]="project().description | md"></div>
       }
 
-      <!-- Date / Location / Duration / Guest count / Budget — the same tiles the
-           builder shows, mounted here for parity. -->
-      <div class="mt-5">
-        <app-project-summary-tiles [project]="project()" [currency]="cur()" [stacked]="true" />
-      </div>
+      <!-- ===== PROJECT SUMMARY — the event facts (Date / Location / Duration /
+           Guest count / Budget), as a boxed section. -->
+      @if (showSummary()) {
+        <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
+          <div class="doc-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Summary</span></div>
+          <div class="border-t border-hairline p-4">
+            <app-project-summary-tiles [project]="project()" [currency]="cur()" [stacked]="true" />
+          </div>
+        </section>
+      }
 
       @if (est.isLoading()) {
         <p class="bp-body-small mt-8 text-secondary">Preparing the quote…</p>
@@ -196,10 +201,9 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
           </section>
         }
 
-        <!-- ===== PROJECT SUMMARY ===== -->
-        @if (showSummary()) {
+        <!-- ===== COST SUMMARY — the financial recap + Project Total. -->
         <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
-          <div class="doc-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Summary</span></div>
+          <div class="doc-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Cost Summary</span></div>
           <div class="border-t border-hairline px-4">
             <div class="flex justify-between border-b border-hairline py-2.5"><span class="bp-body-small text-text">Project Costs</span><span class="bp-body-small tabular-nums text-text">{{ bd().projectCosts | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
             <div class="flex justify-between border-b border-hairline py-2.5"><span class="bp-body-small text-text">Project Coverage</span><span class="bp-body-small tabular-nums text-text">{{ bd().coverage | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
@@ -211,7 +215,6 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
             <span class="bp-price-large tabular-nums">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
         </section>
-        }
 
         @if (showVatNote() || footer() || showCreated()) {
           <div class="mt-8 flex items-end justify-between gap-4 border-t border-hairline pt-3">

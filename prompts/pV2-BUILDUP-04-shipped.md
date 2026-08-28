@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.119 (2026-08-28): "Project Summary" = the event-facts tiles
+- The **tiles** (Date / Location / Duration / Guest count / Budget) are now a
+  boxed **"Project Summary"** section (shaded header + tiles inside), controlled
+  by the Body **Project summary** toggle.
+- The financial recap section (Costs / Coverage / Fees / Project Total) is
+  renamed **"Cost Summary"** to avoid the name clash and is always shown.
+
 ## Iteration — v2.118 (2026-08-28): Options grouped into Theme / Footer / Body sections
 - Options panel now has three sections. **Footer**: checkboxes **Exclude VAT**
   (was the hardcoded note), **Page numbers**, **Created date**, plus a **Custom**
