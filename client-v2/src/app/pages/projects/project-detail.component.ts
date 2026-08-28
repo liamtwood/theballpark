@@ -24,6 +24,7 @@ import { CompletenessConfig } from '../../shared/completeness/completeness.types
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
 import { QuoteDocumentComponent } from './quote-document.component';
+import { SowDocumentComponent } from './sow-document.component';
 import { InboxProjectComponent } from '../inbox/inbox-project.component';
 
 type Tab = 'marketplace' | 'estimate' | 'final' | 'details' | 'inbox';
@@ -75,6 +76,7 @@ interface DetailForm {
     ProjectMarketplaceComponent,
     ProjectEstimateComponent,
     QuoteDocumentComponent,
+    SowDocumentComponent,
     InboxProjectComponent,
   ],
   providers: [MessageService],
@@ -230,16 +232,22 @@ interface DetailForm {
           }
           @case ('final') {
             <div class="min-h-0 flex-1 overflow-y-auto">
-              <!-- pV2-BUILDUP-04 — jump to the client-facing quote document. -->
-              <div class="flex justify-end px-4 pt-4">
+              <!-- pV2-BUILDUP-04 — jump to the client-facing documents. -->
+              <div class="flex justify-end gap-2 px-4 pt-4">
                 <button type="button" class="bp-btn-outline flex items-center gap-2" (click)="docView.set(true)">
-                  <lucide-icon name="file-text" [size]="15" /> View as document
+                  <lucide-icon name="file-text" [size]="15" /> View as Quote
+                </button>
+                <button type="button" class="bp-btn-outline flex items-center gap-2" (click)="sowView.set(true)">
+                  <lucide-icon name="file-text" [size]="15" /> View as SOW
                 </button>
               </div>
               <app-project-estimate [projectId]="p.id" [project]="p" view="final" />
             </div>
             @if (docView()) {
               <app-quote-document [projectId]="p.id" [project]="p" (close)="docView.set(false)" />
+            }
+            @if (sowView()) {
+              <app-sow-document [projectId]="p.id" [project]="p" (close)="sowView.set(false)" />
             }
           }
           @case ('inbox') {
@@ -321,8 +329,9 @@ export class ProjectDetailComponent {
   protected readonly saving = signal(false);
   /** Image-picker drawer (pV2-MEDIA-01b). */
   protected readonly imgDrawer = signal(false);
-  /** pV2-BUILDUP-04 — Final Quote → client-facing document overlay. */
+  /** pV2-BUILDUP-04 — Final Quote → client-facing document overlays. */
   protected readonly docView = signal(false);
+  protected readonly sowView = signal(false);
   private snapshots: Partial<Record<Section, DetailForm>> = {};
 
   protected readonly tierOptions: EditFieldOption[] = [

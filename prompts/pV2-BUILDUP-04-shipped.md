@@ -35,6 +35,18 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.127 (2026-08-28): SOW document (curated skeleton)
+- New `SowDocumentComponent` — a curated **Statement of Work** (sibling of the
+  Quote, reusing the `.quote-doc` overlay + print isolation). SOW table: Buyer /
+  Supplier (from org + client) / Effective Date / SOW Version / Project Title /
+  **Services & Goods** (seeded from the quote's categories + line names) /
+  Timeline (placeholder) / **Fee** (= estimate `projectTotal`, ex-VAT) / Payment
+  Terms (placeholder) / Special Terms; boilerplate line + Buyer/Supplier
+  signature block.
+- Reached from the Final Quote via a second button — "View as Quote" /
+  "View as SOW" (interim; the org-level "Create Document" picker + editable SOW
+  content fields + Annex-A T&C merge come next).
+
 ## Iteration — v2.126 (2026-08-28): thinner Options tick
 - Checkbox tick is now a thin 1.5px stroke checkmark (rotated-border), not the
   bold filled polygon.
