@@ -114,9 +114,10 @@ import { isDeclined } from './quote-line.util';
         <div class="border-t border-hairline px-4 py-3 bp-body-small text-text">
           @if (timelineRows().length) {
             @for (row of timelineRows(); track $index) {
-              <div class="flex items-baseline justify-between gap-4 border-b border-hairline py-1.5 last:border-b-0">
-                <span>{{ row.label }}</span>
-                @if (row.date) { <span class="shrink-0 font-medium tabular-nums">{{ row.date }}</span> }
+              <div class="flex items-baseline gap-3 border-b border-hairline py-1.5 last:border-b-0">
+                <span class="min-w-0 flex-1">{{ row.label }}</span>
+                <span class="w-24 shrink-0 text-right font-medium tabular-nums">{{ row.date1 }}</span>
+                <span class="w-24 shrink-0 text-right font-medium tabular-nums">{{ row.date2 }}</span>
               </div>
             }
           } @else {
@@ -240,18 +241,33 @@ export class SowDocumentComponent {
   });
   /** The project's location value (the venue), not venue + city concatenated. */
   protected readonly location = computed(() => this.project().venueName || this.project().venueCity || '');
-  /** Timeline as {label, date} rows — a line ending in a NATO date splits into a
-   *  two-column row (label left, date right); other lines render label-only. */
-  protected readonly timelineRows = computed(() =>
-    (this.project().sowTimeline ?? '')
-      .split('\n')
-      .map((raw) => {
-        const line = raw.trimEnd();
-        // A single NATO date, or a range ("… - …"), at the end → the date column.
-        const m = line.match(/^(.*?)[\s—–-]*(\d{2}-[A-Za-z]{3}-\d{4}(?:\s*[–-]\s*\d{2}-[A-Za-z]{3}-\d{4})?)\s*$/);
-        return m ? { label: m[1].trim(), date: m[2].replace(/\s*-\s*/g, ' – ') } : { label: line.trim(), date: '' };
-      })
-      .filter((r) => r.label || r.date));
+  /** Timeline → {label, date1, date2} rows for a 3-column table. Handles both
+   *  input styles: label + date(s) inline ("Installation 20-Aug-2026 -
+   *  21-Aug-2026"), AND a bare label line followed by a bare date line (blank
+   *  lines ignored) — the two are paired into one milestone. date2 is '' when
+   *  there's no range. */
+  protected readonly timelineRows = computed(() => {
+    const parse = (line: string) => {
+      const m = line.match(/^(.*?)[\s—–-]*(\d{2}-[A-Za-z]{3}-\d{4})(?:\s*[–-]\s*(\d{2}-[A-Za-z]{3}-\d{4}))?\s*$/);
+      return m ? { label: m[1].trim(), date1: m[2], date2: m[3] ?? '' } : { label: line, date1: '', date2: '' };
+    };
+    const lines = (this.project().sowTimeline ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
+    const rows: { label: string; date1: string; date2: string }[] = [];
+    for (let i = 0; i < lines.length; i += 1) {
+      const cur = parse(lines[i]);
+      // A bare label followed by a bare date → one milestone.
+      if (cur.label && !cur.date1 && i + 1 < lines.length) {
+        const next = parse(lines[i + 1]);
+        if (!next.label && next.date1) {
+          rows.push({ label: cur.label, date1: next.date1, date2: next.date2 });
+          i += 1;
+          continue;
+        }
+      }
+      rows.push(cur);
+    }
+    return rows;
+  });
   /** Created date + time (short, 24h) — matches the Quote's ref box. */
   protected readonly createdStr = computed(() => {
     const iso = this.project().createdAt;

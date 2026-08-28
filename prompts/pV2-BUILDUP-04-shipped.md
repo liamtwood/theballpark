@@ -35,6 +35,12 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.139 (2026-08-28): Timeline 3-column table + label/date pairing
+- Timeline renders as **3 columns** (label · start date · end date; end blank when
+  no range). The parser now **pairs** a bare-label line with its following bare-date
+  line (blank lines ignored) — handling the saved "label / date on separate lines"
+  style as well as inline "label date - date".
+
 ## Iteration — v2.138 (2026-08-28): Timeline date ranges
 - `detailsDateLine` now formats **every** date on a line (global), so a range
   ("20.08.26 - 21.08.26") formats both ends. The Timeline row parser recognises a
