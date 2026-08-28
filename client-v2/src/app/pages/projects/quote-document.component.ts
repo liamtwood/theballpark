@@ -67,6 +67,9 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
               @for (ln of agencyAddressLines(); track $index) {
                 <div class="bp-meta leading-relaxed">{{ ln }}</div>
               }
+              @if (org()?.phone) {
+                <div class="bp-meta leading-relaxed">Phone: {{ org()!.phone }}</div>
+              }
             }
           </div>
         </div>
@@ -418,7 +421,6 @@ export class QuoteDocumentComponent implements OnInit {
     const o = this.org();
     if (!o) return [];
     const parts = (o.address ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-    if (o.phone) parts.push(o.phone);
     if (o.city) parts.push(o.city);
     return parts;
   });

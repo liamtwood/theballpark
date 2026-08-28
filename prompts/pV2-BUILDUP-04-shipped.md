@@ -35,6 +35,10 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.121 (2026-08-28): phone below city, labeled "Phone:"
+- Moved the agency phone **below city** and labeled it **"Phone: {number}"** (own
+  line under the address block).
+
 ## Iteration — v2.120 (2026-08-28): Options → Header section (Reference / Address) + phone
 - New Options **Header** section: **Reference** toggle (the Project / Type /
   Created meta table) and **Address** toggle (the agency address block). Both
