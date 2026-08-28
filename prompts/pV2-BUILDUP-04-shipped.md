@@ -35,6 +35,12 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.167 (2026-08-28): Customize Qty as a − 1 + stepper
+- Swapped the plain Qty inputs (component rows + base row) for the existing
+  **`app-rate-input`** stepper (`bp-qty-stepper` chrome, min 1). Widened the Qty
+  grid column 62→104px to fit; wrapped each in a stop-propagation span so stepper
+  clicks don't select the row.
+
 ## Iteration — v2.166 (2026-08-28): base folds into its category card (row-0)
 - The base row now renders **inside the item's own category card** as the pinned
   first row ("an item masquerading as a component") — locked category, no remove,

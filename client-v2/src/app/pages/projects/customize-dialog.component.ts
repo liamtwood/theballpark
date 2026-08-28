@@ -10,6 +10,7 @@ import { QuoteLine } from '../../core/projects/project.types';
 import { quoteLineToCatalogueItem } from './quote-line.util';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { ShuttleComponent, ShuttleItem, ShuttlePick } from '../../shared/shuttle/shuttle.component';
+import { RateInputComponent } from './rate-input.component';
 
 interface Row {
   id: string | null;
@@ -38,7 +39,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
 @Component({
   selector: 'app-customize-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, FormsModule, LucideAngularModule, ItemPreviewComponent, ShuttleComponent],
+  imports: [DecimalPipe, FormsModule, LucideAngularModule, ItemPreviewComponent, ShuttleComponent, RateInputComponent],
   host: { class: 'contents' },
   styles: [`
     /* Native <select> chevrons crowd the value in narrow cells — replace the
@@ -86,18 +87,20 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                 @if (isCatOpen(grp.isExtras ? '__extras' : grp.categoryId)) {
                 <div class="border-t border-hairline">
                   @if (grp.isExtras || grp.rows.length || isBaseCat(grp.categoryId)) {
-                    <div class="grid grid-cols-[108px_1fr_78px_62px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline bg-fill px-2.5 py-2 bp-field-label">
+                    <div class="grid grid-cols-[108px_1fr_78px_104px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline bg-fill px-2.5 py-2 bp-field-label">
                       <span>Category</span><span>Item</span><span class="text-center">Cost £</span><span class="text-center">Qty</span><span>Unit</span><span class="text-center">Total</span><span class="text-center" title="Include">Inc</span><span></span>
                     </div>
                   }
                   @if (isBaseCat(grp.categoryId)) {
                     <!-- The item itself — row-0, a "project component": editable
                          cost/qty/unit + Inc; can't be removed or re-categorised. -->
-                    <div class="grid cursor-pointer grid-cols-[108px_1fr_78px_62px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline px-2.5 py-1" [class.bg-fill]="parentSelected()" (click)="selectParent()">
+                    <div class="grid cursor-pointer grid-cols-[108px_1fr_78px_104px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline px-2.5 py-1" [class.bg-fill]="parentSelected()" (click)="selectParent()">
                       <span class="px-2 bp-body-small text-secondary">Base</span>
                       <span class="px-2 bp-body-small font-medium text-text truncate">{{ parentName() || 'Original item' }}</span>
                       <input type="number" class="bp-input-field text-center tabular-nums" [ngModel]="baseRate()" (ngModelChange)="baseRate.set($event)" (click)="$event.stopPropagation()" />
-                      <input type="number" class="bp-input-field text-center tabular-nums" [ngModel]="baseQty()" (ngModelChange)="baseQty.set($event)" (click)="$event.stopPropagation()" />
+                      <span class="justify-self-center" (click)="$event.stopPropagation()">
+                        <app-rate-input [value]="baseQty() || 1" [min]="1" label="base quantity" (rateCommit)="baseQty.set($event)" />
+                      </span>
                       <select class="bp-input-field bp-select" [ngModel]="baseUnitDraft()" (ngModelChange)="baseUnitDraft.set($event || null)" (click)="$event.stopPropagation()">
                         <option [ngValue]="null">—</option>
                         @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
@@ -110,7 +113,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                   @if (grp.isExtras) {
                     <!-- Margin as a grid row (same format as a component row):
                          Extra · Margin · % (in the Cost column) · Total. -->
-                    <div class="grid grid-cols-[108px_1fr_78px_62px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline px-2.5 py-1">
+                    <div class="grid grid-cols-[108px_1fr_78px_104px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline px-2.5 py-1">
                       <span class="px-2 bp-body-small text-secondary">Extra</span>
                       <span class="px-2 bp-body-small font-medium text-text">Margin</span>
                       <input type="number" min="0" max="100" step="1" class="bp-input-field text-center tabular-nums" [ngModel]="margin()" (ngModelChange)="margin.set($event)" />
@@ -122,14 +125,16 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                     </div>
                   }
                   @for (r of grp.rows; track r._k) {
-                    <div class="grid cursor-pointer grid-cols-[108px_1fr_78px_62px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline px-2.5 py-1" [class.bg-fill]="r._k === selectedRowK()" (click)="selectRow(r)">
+                    <div class="grid cursor-pointer grid-cols-[108px_1fr_78px_104px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline px-2.5 py-1" [class.bg-fill]="r._k === selectedRowK()" (click)="selectRow(r)">
                       <select class="bp-input-field bp-select" [ngModel]="r.categoryId" (ngModelChange)="setCategory(r, $event)">
                         <option [ngValue]="null">—</option>
                         @for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
                       </select>
                       <input class="bp-input-field" placeholder="Component" [ngModel]="r.name" (ngModelChange)="r.name = $event" autocomplete="off" />
                       <input type="number" class="bp-input-field text-center tabular-nums" placeholder="—" [ngModel]="r.cost" (ngModelChange)="r.cost = $event" />
-                      <input type="number" class="bp-input-field text-center tabular-nums" [ngModel]="r.qty" (ngModelChange)="r.qty = $event" />
+                      <span class="justify-self-center" (click)="$event.stopPropagation()">
+                        <app-rate-input [value]="r.qty || 1" [min]="1" label="quantity" (rateCommit)="r.qty = $event; rows.set([...rows()])" />
+                      </span>
                       <select class="bp-input-field bp-select" [ngModel]="r.unit" (ngModelChange)="r.unit = $event || null">
                         <option [ngValue]="null">—</option>
                         @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
