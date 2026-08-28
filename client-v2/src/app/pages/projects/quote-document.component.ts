@@ -91,7 +91,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
 
       <!-- Project overview — the project description (seeded from the brief),
            indented a little from both edges. -->
-      @if (project().description) {
+      @if (showOverview() && project().description) {
         <div class="bp-md bp-body-small mt-5 px-6 text-secondary" [innerHTML]="project().description | md"></div>
       }
 
@@ -118,7 +118,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
                 <div class="flex items-start justify-between gap-4 border-b border-hairline py-3 last:border-b-0">
                   <div class="min-w-0 flex-1">
                     <div class="bp-body-small font-semibold text-text">{{ l.name }}</div>
-                    @if (desc(l); as d) {
+                    @if (showItemDesc() && desc(l); as d) {
                       <div class="bp-md bp-meta mt-1 max-w-prose text-secondary" [innerHTML]="d | md"></div>
                     }
                   </div>
@@ -177,7 +177,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
                 <div class="flex items-start justify-between gap-4 border-b border-hairline py-3 last:border-b-0">
                   <div class="min-w-0 flex-1">
                     <div class="bp-body-small font-semibold text-text">{{ l.name }}</div>
-                    @if (desc(l); as d) {
+                    @if (showItemDesc() && desc(l); as d) {
                       <div class="bp-md bp-meta mt-1 max-w-prose text-secondary" [innerHTML]="d | md"></div>
                     }
                   </div>
@@ -197,6 +197,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
         }
 
         <!-- ===== PROJECT SUMMARY ===== -->
+        @if (showSummary()) {
         <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
           <div class="doc-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Summary</span></div>
           <div class="border-t border-hairline px-4">
@@ -210,10 +211,14 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
             <span class="bp-price-large tabular-nums">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
         </section>
+        }
 
-        @if (footer() || showCreated()) {
+        @if (showVatNote() || footer() || showCreated()) {
           <div class="mt-8 flex items-end justify-between gap-4 border-t border-hairline pt-3">
-            <p class="bp-caption whitespace-pre-line">{{ footer() }}</p>
+            <div class="bp-caption">
+              @if (showVatNote()) { <p>Excludes VAT.</p> }
+              @if (footer()) { <p class="whitespace-pre-line">{{ footer() }}</p> }
+            </div>
             @if (showCreated()) {
               <p class="bp-caption shrink-0">Created {{ createdStr() }}</p>
             }
@@ -229,7 +234,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
         <h3 class="bp-edit-section-title">Options</h3>
 
         <div class="mt-4">
-          <span class="bp-field-label">Colour theme</span>
+          <span class="bp-field-label">Theme</span>
           <div class="mt-2 flex flex-col gap-1.5">
             <button type="button" class="flex items-center justify-between rounded-[var(--radius-card)] border px-3 py-2 bp-body-small transition-colors"
                     [class.border-hairline]="mode() !== 'default'" [class.text-secondary]="mode() !== 'default'"
@@ -257,14 +262,36 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
           </div>
         </div>
 
-        <div class="mt-4">
+        <div class="mt-5">
           <span class="bp-field-label">Footer</span>
-          <textarea rows="3" class="bp-store-textarea mt-1.5 w-full" placeholder="e.g. Excludes VAT."
+          <div class="mt-2 flex flex-col gap-2">
+            <label class="flex items-center gap-2 bp-body-small text-secondary">
+              <input type="checkbox" class="bp-check" [ngModel]="showVatNote()" (ngModelChange)="showVatNote.set($event); saveOptions()" /> Exclude VAT
+            </label>
+            <label class="flex items-center gap-2 bp-body-small text-secondary">
+              <input type="checkbox" class="bp-check" [ngModel]="showPageNumbers()" (ngModelChange)="showPageNumbers.set($event); saveOptions()" /> Page numbers
+            </label>
+            <label class="flex items-center gap-2 bp-body-small text-secondary">
+              <input type="checkbox" class="bp-check" [ngModel]="showCreated()" (ngModelChange)="showCreated.set($event); saveOptions()" /> Created date
+            </label>
+          </div>
+          <textarea rows="2" class="bp-store-textarea mt-2 w-full" placeholder="Custom footer text…"
                     [ngModel]="footer()" (ngModelChange)="footer.set($event)" (blur)="saveOptions()"></textarea>
-          <label class="mt-2.5 flex items-center gap-2 bp-body-small text-secondary">
-            <input type="checkbox" class="bp-check" [ngModel]="showCreated()" (ngModelChange)="showCreated.set($event); saveOptions()" />
-            Show created date in footer
-          </label>
+        </div>
+
+        <div class="mt-5">
+          <span class="bp-field-label">Body</span>
+          <div class="mt-2 flex flex-col gap-2">
+            <label class="flex items-center gap-2 bp-body-small text-secondary">
+              <input type="checkbox" class="bp-check" [ngModel]="showItemDesc()" (ngModelChange)="showItemDesc.set($event); saveOptions()" /> Item descriptions
+            </label>
+            <label class="flex items-center gap-2 bp-body-small text-secondary">
+              <input type="checkbox" class="bp-check" [ngModel]="showOverview()" (ngModelChange)="showOverview.set($event); saveOptions()" /> Project overview
+            </label>
+            <label class="flex items-center gap-2 bp-body-small text-secondary">
+              <input type="checkbox" class="bp-check" [ngModel]="showSummary()" (ngModelChange)="showSummary.set($event); saveOptions()" /> Project summary
+            </label>
+          </div>
         </div>
       </div>
     </aside>
@@ -290,16 +317,27 @@ export class QuoteDocumentComponent implements OnInit {
   // ── Quote document options (persisted per project) ─────────────────────────
   protected readonly mode = signal<'default' | 'bw' | 'color'>('default');
   protected readonly pickedColor = signal('#6d28d9');
-  protected readonly footer = signal('Excludes VAT.');
+  protected readonly footer = signal('');
   protected readonly showCreated = signal(false);
+  protected readonly showVatNote = signal(true);
+  protected readonly showPageNumbers = signal(false);
+  protected readonly showItemDesc = signal(true);
+  protected readonly showOverview = signal(true);
+  protected readonly showSummary = signal(true);
 
   /** Seed the options from the stored project values (defaults when unset). */
   ngOnInit(): void {
     const p = this.project();
     if (p.quoteThemeMode) this.mode.set(p.quoteThemeMode);
     if (p.quoteThemeColor) this.pickedColor.set(p.quoteThemeColor);
-    this.footer.set(p.quoteFooter ?? 'Excludes VAT.');
+    // The old default footer text "Excludes VAT." migrates to the VAT-note toggle.
+    this.footer.set(p.quoteFooter && p.quoteFooter !== 'Excludes VAT.' ? p.quoteFooter : '');
     this.showCreated.set(!!p.quoteShowCreated);
+    this.showVatNote.set(p.quoteShowVatNote ?? true);
+    this.showPageNumbers.set(!!p.quoteShowPageNumbers);
+    this.showItemDesc.set(p.quoteShowItemDesc ?? true);
+    this.showOverview.set(p.quoteShowOverview ?? true);
+    this.showSummary.set(p.quoteShowSummary ?? true);
   }
   protected setMode(m: 'default' | 'bw' | 'color'): void { this.mode.set(m); this.saveOptions(); }
   protected onColor(hex: string): void { this.pickedColor.set(hex); this.mode.set('color'); this.saveOptions(); }
@@ -311,6 +349,11 @@ export class QuoteDocumentComponent implements OnInit {
         quoteThemeColor: this.pickedColor(),
         quoteFooter: this.footer().trim() || null,
         quoteShowCreated: this.showCreated(),
+        quoteShowVatNote: this.showVatNote(),
+        quoteShowPageNumbers: this.showPageNumbers(),
+        quoteShowItemDesc: this.showItemDesc(),
+        quoteShowOverview: this.showOverview(),
+        quoteShowSummary: this.showSummary(),
       }));
     } catch {
       // Non-fatal — the local view keeps the choice; it just didn't persist.

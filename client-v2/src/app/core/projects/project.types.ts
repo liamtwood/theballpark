@@ -172,6 +172,11 @@ export interface ProjectDetail {
   quoteThemeColor: string | null;
   quoteFooter: string | null;
   quoteShowCreated: boolean | null;
+  quoteShowVatNote: boolean | null;
+  quoteShowPageNumbers: boolean | null;
+  quoteShowItemDesc: boolean | null;
+  quoteShowOverview: boolean | null;
+  quoteShowSummary: boolean | null;
   /** Media (pV2-MEDIA-01b). */
   coverFocalX: number;
   coverFocalY: number;
@@ -214,6 +219,11 @@ export type ProjectUpdate = Partial<{
   quoteThemeColor: string | null;
   quoteFooter: string | null;
   quoteShowCreated: boolean | null;
+  quoteShowVatNote: boolean | null;
+  quoteShowPageNumbers: boolean | null;
+  quoteShowItemDesc: boolean | null;
+  quoteShowOverview: boolean | null;
+  quoteShowSummary: boolean | null;
   coverImageUrl: string | null;
   clientLogoUrl: string | null;
   cardColor: string | null;

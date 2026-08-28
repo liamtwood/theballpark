@@ -35,6 +35,18 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.118 (2026-08-28): Options grouped into Theme / Footer / Body sections
+- Options panel now has three sections. **Footer**: checkboxes **Exclude VAT**
+  (was the hardcoded note), **Page numbers**, **Created date**, plus a **Custom**
+  footer-text field. **Body**: **Item descriptions**, **Project overview**,
+  **Project summary** — each show/hides that content on the document.
+- New persisted booleans (all schemas + targeted `ALTER` on public):
+  `quote_show_vat_note` / `_page_numbers` / `_item_desc` / `_overview` /
+  `_summary`. NULL defaults: ON for all except page numbers (OFF). Old default
+  footer text "Excludes VAT." migrates to the Exclude-VAT toggle on open.
+- **Page numbers** flag is stored but not rendered yet — it activates with the
+  server-side PDF (Puppeteer) work; browser print stays interim.
+
 ## Iteration — v2.117 (2026-08-28): Options — "Show created date in footer"
 - New Options checkbox **"Show created date in footer"** (persisted:
   `quote_show_created` column, all schemas + targeted `ALTER` on public). When on,

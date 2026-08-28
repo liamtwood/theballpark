@@ -53,6 +53,11 @@ const ProjectUpdateSchema = z.object({
   quoteThemeColor: z.string().trim().max(40).nullable().optional(),
   quoteFooter: z.string().max(2000).nullable().optional(),
   quoteShowCreated: z.boolean().nullable().optional(),
+  quoteShowVatNote: z.boolean().nullable().optional(),
+  quoteShowPageNumbers: z.boolean().nullable().optional(),
+  quoteShowItemDesc: z.boolean().nullable().optional(),
+  quoteShowOverview: z.boolean().nullable().optional(),
+  quoteShowSummary: z.boolean().nullable().optional(),
   // Media (pV2-MEDIA-01b) — the image-picker result maps to these.
   coverImageUrl: z.string().trim().max(1000).nullable().optional(),
   clientLogoUrl: z.string().trim().max(1000).nullable().optional(),
