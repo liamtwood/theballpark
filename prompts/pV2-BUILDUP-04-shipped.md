@@ -35,6 +35,11 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.125 (2026-08-28): plain neutral Options checkboxes
+- `.opt-check` is now a custom `appearance:none` box: rounded, hairline border, no
+  fill; a neutral ink tick (`::before`, `var(--color-text)`) shows when checked.
+  No brand/OS colour (fixes the blue/purple native rendering).
+
 ## Iteration — v2.124 (2026-08-28): reorder Options + native brand checkboxes
 - Section order: **Theme → Header → Body → Footer**. Body order: **Project
   overview → Project summary → Item descriptions**.

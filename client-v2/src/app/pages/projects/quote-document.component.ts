@@ -38,8 +38,21 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
     /* Project Total (B&W theme) — solid black + white text. */
     .doc-total--bw { background: var(--color-text); }
     .doc-total--bw .bp-price-large { color: var(--bp-text-on-gradient); }
-    /* Options checkboxes — native + brand accent (reliably not the OS purple). */
-    .opt-check { width: 1rem; height: 1rem; margin: 0; cursor: pointer; accent-color: var(--theme-accent); }
+    /* Options checkboxes — plain rounded box, hairline border, no fill; a neutral
+       (ink) tick appears when checked. No brand/OS colour. */
+    .opt-check {
+      appearance: none; -webkit-appearance: none;
+      width: 1rem; height: 1rem; margin: 0; cursor: pointer;
+      border: 1.5px solid var(--color-border-hairline); border-radius: 4px;
+      background: var(--color-surface);
+      display: inline-grid; place-content: center;
+    }
+    .opt-check::before {
+      content: ''; width: 0.6rem; height: 0.6rem; transform: scale(0);
+      transition: transform 0.1s ease; background: var(--color-text);
+      clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0, 43% 62%);
+    }
+    .opt-check:checked::before { transform: scale(1); }
     /* Keep the shaded/tinted bars when printing (browsers drop backgrounds
        otherwise, so the PDF would lose the shading + colour). */
     .quote-doc__paper { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
