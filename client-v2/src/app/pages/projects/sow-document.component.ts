@@ -247,8 +247,9 @@ export class SowDocumentComponent {
       .split('\n')
       .map((raw) => {
         const line = raw.trimEnd();
-        const m = line.match(/^(.*?)[\s—–-]*(\d{2}-[A-Za-z]{3}-\d{4})\s*$/);
-        return m ? { label: m[1].trim(), date: m[2] } : { label: line.trim(), date: '' };
+        // A single NATO date, or a range ("… - …"), at the end → the date column.
+        const m = line.match(/^(.*?)[\s—–-]*(\d{2}-[A-Za-z]{3}-\d{4}(?:\s*[–-]\s*\d{2}-[A-Za-z]{3}-\d{4})?)\s*$/);
+        return m ? { label: m[1].trim(), date: m[2].replace(/\s*-\s*/g, ' – ') } : { label: line.trim(), date: '' };
       })
       .filter((r) => r.label || r.date));
   /** Created date + time (short, 24h) — matches the Quote's ref box. */

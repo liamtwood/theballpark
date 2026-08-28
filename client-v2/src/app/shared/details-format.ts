@@ -60,14 +60,15 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
  *  and idempotent: the NATO output (a month WORD + `-`) doesn't re-match, and a
  *  line with no parseable date is returned unchanged (keeps its label intact). */
 export function detailsDateLine(line: string): string {
-  const out = line.replace(/\b(\d{1,2})[./](\d{1,2})[./](\d{2}|\d{4})\b/, (m, d, mo, y) => {
+  // Global — a line may carry a range ("20.08.26 - 21.08.26"), so format every date.
+  const out = line.replace(/\b(\d{1,2})[./](\d{1,2})[./](\d{2}|\d{4})\b/g, (m, d, mo, y) => {
     const day = Number(d);
     const mon = Number(mo);
     const year = y.length === 2 ? 2000 + Number(y) : Number(y);
     if (day < 1 || day > 31 || mon < 1 || mon > 12) return m;
     return `${String(day).padStart(2, '0')}-${MONTHS[mon - 1]}-${year}`;
   });
-  return out.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/, (m, y, mo, d) => {
+  return out.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (m, y, mo, d) => {
     const mon = Number(mo);
     const day = Number(d);
     if (mon < 1 || mon > 12 || day < 1 || day > 31) return m;

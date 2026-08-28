@@ -35,6 +35,11 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.138 (2026-08-28): Timeline date ranges
+- `detailsDateLine` now formats **every** date on a line (global), so a range
+  ("20.08.26 - 21.08.26") formats both ends. The Timeline row parser recognises a
+  trailing date **or range** as the date column (rendered "20-Aug-2026 – 21-Aug-2026").
+
 ## Iteration — v2.137 (2026-08-28): SOW Timeline renders as two columns
 - The SOW Timeline now renders each milestone as a **two-column row** (label left,
   NATO date right-aligned) via a `timelineRows` computed — a proper table look
