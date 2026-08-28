@@ -42,16 +42,22 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
           }
           <div>
             <div class="bp-list-title text-[length:var(--text-2xl)] font-bold tracking-tight">{{ org()?.name || 'Your Agency' }}</div>
-            @if (agencyAddress()) {
-              <div class="bp-meta mt-1 leading-relaxed">{{ agencyAddress() }}</div>
+            @for (ln of agencyAddressLines(); track $index) {
+              <div class="bp-meta leading-relaxed">{{ ln }}</div>
             }
           </div>
         </div>
-        <dl class="grid shrink-0 grid-cols-[auto_auto] items-baseline gap-x-3 gap-y-1">
-          <dt class="bp-field-label">Project</dt><dd class="bp-body-small text-right text-text">{{ project().ref || '—' }}</dd>
-          <dt class="bp-field-label">Type</dt><dd class="bp-body-small text-right text-text">Ballpark Quote</dd>
-          <dt class="bp-field-label">Created</dt><dd class="bp-body-small text-right text-text">{{ createdStr() }}</dd>
-        </dl>
+        <!-- Meta table — shaded label column, left-justified values, address-size. -->
+        <div class="shrink-0 overflow-hidden rounded-md border border-hairline bp-meta">
+          <div class="grid grid-cols-[auto_auto]">
+            <div class="border-b border-hairline bg-fill px-2.5 py-1 font-medium text-text">Project</div>
+            <div class="border-b border-l border-hairline px-2.5 py-1 text-left text-text">{{ project().ref || '—' }}</div>
+            <div class="border-b border-hairline bg-fill px-2.5 py-1 font-medium text-text">Type</div>
+            <div class="border-b border-l border-hairline px-2.5 py-1 text-left text-text">Ballpark Quote</div>
+            <div class="bg-fill px-2.5 py-1 font-medium text-text">Created</div>
+            <div class="border-l border-hairline px-2.5 py-1 text-left text-text">{{ createdStr() }}</div>
+          </div>
+        </div>
       </div>
       <h1 class="bp-page-title text-[length:var(--text-hero)]">{{ project().name }}</h1>
       @if (subtitle()) {
@@ -202,9 +208,14 @@ export class QuoteDocumentComponent {
     loader: () => firstValueFrom(this.orgs.get()),
   });
   protected readonly org = computed(() => this.orgRes.value() ?? null);
-  protected readonly agencyAddress = computed(() => {
+  /** Address wrapped on commas + city on its own line (no country) — e.g.
+   *  "Ballpark House, Kensington" + city "London" → 3 lines. */
+  protected readonly agencyAddressLines = computed(() => {
     const o = this.org();
-    return o ? [o.address, o.city, o.country].filter(Boolean).join(', ') : '';
+    if (!o) return [];
+    const parts = (o.address ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (o.city) parts.push(o.city);
+    return parts;
   });
   /** Quote created date — long form (31 December 2024) to match the header. */
   protected readonly createdStr = computed(() => {

@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.107 (2026-08-28): agency address wraps + meta as a shaded table
+- **Address** now wraps on commas and drops the country — each comma-part of
+  `address` is its own line, then `city` on a final line ("Ballpark House,
+  Kensington" + "London" → 3 lines).
+- **Meta block** is a **2-col table**: shaded label column (Project / Type /
+  Created), **left-justified** values, sized to match the address (`bp-meta`).
+
 ## Iteration — v2.106 (2026-08-28): quote document polish — agency header + shaded totals
 - **Agency header**: was wrongly showing the *client* name. Now fetches the
   signed-in **agency org** (`GET /api/organisation`) and renders its **logo +
