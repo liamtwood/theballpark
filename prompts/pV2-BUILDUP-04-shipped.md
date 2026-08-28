@@ -35,6 +35,10 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.169 (2026-08-28): "Customizations" → "Upgrades"
+- Relabelled the running total **Customizations → Upgrades** (customize header +
+  the inbox item header) — fits the base + upcharges model.
+
 ## Iteration — v2.168 (2026-08-28): plain numeric entry (no spin arrows)
 - Hid the native number-input spin arrows on `input.bp-input-field` (so Cost etc.
   are clean entry-only; the − 1 + steppers remain the way to nudge). Global,

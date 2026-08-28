@@ -88,7 +88,7 @@ import { ProjectService } from '../../core/projects/project.service';
                   @if (!isAgency() && selectedItem(); as it) {
                     @if (custoTotal() != null) {
                       <span>
-                        <span class="bp-caption">Customizations</span>
+                        <span class="bp-caption">Upgrades</span>
                         <span class="bp-body-small ml-1.5 text-secondary">{{ custoTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
                       </span>
                     }

@@ -63,7 +63,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
           <lucide-icon name="arrow-left" [size]="16" /> Back to conversation
         </button>
         <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-          <span><span class="bp-caption">Customizations</span> <span class="bp-body-small ml-1 text-secondary tabular-nums">£{{ costTotal() | number: '1.0-0' }}</span></span>
+          <span><span class="bp-caption">Upgrades</span> <span class="bp-body-small ml-1 text-secondary tabular-nums">£{{ costTotal() | number: '1.0-0' }}</span></span>
           <span><span class="bp-caption">Revised</span> <span class="bp-price-large ml-1 tabular-nums">£{{ withMargin() | number: '1.0-0' }}</span></span>
         </div>
       </div>
