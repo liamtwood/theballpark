@@ -35,11 +35,16 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
-## Iteration — v2.170 (2026-08-28): one Revised (hide the thread header's while customizing)
-- The inbox thread header's Original/Revised/Upgrades **hide while the Customize
-  builder is open** (`@if (!customizing())`) — the builder's own header shows the
-  LIVE Upgrades/Revised, so no second, diverging (saved) copy. Fixes the "two
-  Revised values" (£21,945 saved vs £20,000 live).
+## Iteration — v2.171 (2026-08-28): reconcile the base (fix diverging Revised)
+- Reverted v2.170's hide — both totals stay visible; the concern was the
+  **difference**, not the duplication.
+- Root cause: the base seeded its per-unit from `unitPriceRef` (**goods only**),
+  dropping the line's install/extras, so the builder's Revised undershot the
+  thread's by that amount. Now the base rate seeds from **full line total ÷ qty**
+  (`originalPrice / baseQuantity`), so at rest the base = the thread's Original
+  and the two reconcile. `isBaseCat` also gates on `originalPrice` now.
+
+## Iteration — v2.170 (2026-08-28): one Revised (hide the thread header's while customizing) [reverted in v2.171]
 
 ## Iteration — v2.169 (2026-08-28): "Customizations" → "Upgrades"
 - Relabelled the running total **Customizations → Upgrades** (customize header +

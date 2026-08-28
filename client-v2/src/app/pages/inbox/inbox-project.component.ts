@@ -75,30 +75,25 @@ import { ProjectService } from '../../core/projects/project.service';
                     {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}
                   }
                 </h2>
-                <!-- Totals hide while the Customize builder is open — its own
-                     header shows the LIVE Upgrades / Revised, so we don't show a
-                     second (saved, diverging) copy here. -->
-                @if (!customizing()) {
-                  <div class="mt-1.5 flex flex-wrap items-center gap-x-6 gap-y-1.5">
-                    <span>
-                      <span class="bp-caption">Original</span>
-                      <span class="bp-body-small ml-1.5 text-secondary">{{ t.originalTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-                    </span>
-                    <span>
-                      <span class="bp-caption">Revised</span>
-                      <span class="bp-body-small ml-1.5 font-semibold text-text">{{ t.revisedTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-                    </span>
-                    <!-- pV2-BUILDUP-02 — supplier's estimate buildup on the selected line. -->
-                    @if (!isAgency() && selectedItem()) {
-                      @if (custoTotal() != null) {
-                        <span>
-                          <span class="bp-caption">Upgrades</span>
-                          <span class="bp-body-small ml-1.5 text-secondary">{{ custoTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-                        </span>
-                      }
+                <div class="mt-1.5 flex flex-wrap items-center gap-x-6 gap-y-1.5">
+                  <span>
+                    <span class="bp-caption">Original</span>
+                    <span class="bp-body-small ml-1.5 text-secondary">{{ t.originalTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+                  </span>
+                  <span>
+                    <span class="bp-caption">Revised</span>
+                    <span class="bp-body-small ml-1.5 font-semibold text-text">{{ t.revisedTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+                  </span>
+                  <!-- pV2-BUILDUP-02 — supplier's estimate buildup on the selected line. -->
+                  @if (!isAgency() && selectedItem()) {
+                    @if (custoTotal() != null) {
+                      <span>
+                        <span class="bp-caption">Upgrades</span>
+                        <span class="bp-body-small ml-1.5 text-secondary">{{ custoTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+                      </span>
                     }
-                  </div>
-                }
+                  }
+                </div>
               </div>
 
               @if (customizing(); as c) {

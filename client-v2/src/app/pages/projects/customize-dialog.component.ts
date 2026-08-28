@@ -397,7 +397,14 @@ export class CustomizeDialogComponent implements OnInit {
   protected readonly includeBase = signal(true);
   /** The base = the item itself as row-0 (a "project component"): editable
    *  cost (per-unit rate) / qty / unit, all seeded from the line. */
-  protected readonly baseRate = linkedSignal(() => this.baseUnitPrice());
+  protected readonly baseRate = linkedSignal(() => {
+    // Seed from the FULL line total ÷ qty (so it INCLUDES install/extras) —
+    // otherwise the base reads goods-only and the revised total undershoots the
+    // thread's figure. Falls back to the goods rate when there's no line total.
+    const q = this.baseQuantity() ?? 1;
+    const op = this.originalPrice();
+    return op != null && q > 0 ? Math.round((op / q) * 100) / 100 : this.baseUnitPrice();
+  });
   protected readonly baseQty = linkedSignal(() => this.baseQuantity() ?? 1);
   protected readonly baseUnitDraft = linkedSignal(() => this.baseUnit());
   /** The base cost that seeds the buildup (0 when excluded). Uses the per-unit
@@ -506,7 +513,7 @@ export class CustomizeDialogComponent implements OnInit {
   }
   /** Is this the item's own category card (where the base row folds in)? */
   protected isBaseCat(categoryId: string | null): boolean {
-    return this.baseUnitPrice() != null && categoryId === this.baseCategoryId();
+    return this.originalPrice() != null && categoryId === this.baseCategoryId();
   }
   protected removeRow(r: Row): void {
     if (this.selectedRowK() === r._k) this.selectedRowK.set(null);
