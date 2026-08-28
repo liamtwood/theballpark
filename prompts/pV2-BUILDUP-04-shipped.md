@@ -35,6 +35,12 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.101 (2026-08-28): quote document header — Date/Location/Duration/Guests/Budget tiles
+- Added the 5 project-meta tiles to the quote document header by **mounting the
+  existing `ProjectSummaryTilesComponent`** (Date=calendar, Location=map-pin,
+  Duration=clock, Guest count=users, Budget=wallet) — same values + icons as the
+  builder, no rebuild.
+
 ## Iteration — v2.100 (2026-08-28): client-facing Quote DOCUMENT (step 1 — read-only render + print)
 - New `QuoteDocumentComponent` — the Final Quote rendered as the agency-SOW
   **document**: header (client/project) → **Project Costs** banded per category

@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { EstimateBreakdown, ProjectDetail, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { MarkdownPipe } from '../../shared/markdown.pipe';
+import { ProjectSummaryTilesComponent } from './project-summary-tiles.component';
 import { isDeclined, lineCost, unitPlain } from './quote-line.util';
 
 /** pV2-BUILDUP-04 — the client-facing Quote DOCUMENT. A read-only, print-styled
@@ -17,7 +18,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
 @Component({
   selector: 'app-quote-document',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule, MarkdownPipe],
+  imports: [CurrencyPipe, LucideAngularModule, MarkdownPipe, ProjectSummaryTilesComponent],
   host: { class: 'quote-doc fixed inset-0 z-50 overflow-y-auto bg-fill' },
   template: `
     <!-- Action bar (screen only — hidden on print). -->
@@ -47,6 +48,12 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
       @if (subtitle()) {
         <p class="bp-section-subtitle mt-1">{{ subtitle() }}</p>
       }
+
+      <!-- Date / Location / Duration / Guest count / Budget — the same tiles the
+           builder shows, mounted here for parity. -->
+      <div class="mt-5">
+        <app-project-summary-tiles [project]="project()" [currency]="cur()" />
+      </div>
 
       @if (est.isLoading()) {
         <p class="bp-body-small mt-8 text-secondary">Preparing the quote…</p>
