@@ -146,11 +146,18 @@
   --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
   --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.12);
 
+  /* ── Project "workspace" surface (pV2-BUILDUP-04) — the pale warm-pink
+     ground the project detail page sits on, the soft-white card treatment,
+     and the frosted app header. Light-only (v2 is a light app). */
+  --workspace-pink: oklch(0.93 0.05 5);
+  --card-border: oklch(0.915 0.008 300);
+  --shadow-quiet: 0 1px 2px rgba(17, 24, 39, 0.04), 0 1px 3px rgba(17, 24, 39, 0.05);
+
   /* Shell vertical chrome (audit cards-F-1): the SINGLE source for the
      app-shell main paddings AND the .bp-vpfit height calc — change a
      value here and both stay in step (a banner/tray bumps --shell-pt
      once, every viewport-fit page follows). */
-  --shell-pt: 5rem;
+  --shell-pt: 7rem; /* clears the two-row frosted app header (wordmark + nav) */
   --shell-pb: 0.5rem;
 
   /* ── PrimeNG bridge ───────────────────────────────────────────────────────
@@ -1743,3 +1750,31 @@ select.bp-input-field { appearance: auto; }
 .bp-spill--yellow { background: var(--color-warn-soft); color: var(--color-warn); }
 .bp-spill--gray { background: var(--color-fill); color: var(--color-text-secondary); }
 .bp-spill--red { background: var(--color-danger-soft); color: var(--color-danger); }
+
+/* ── Frosted app header + primary nav (pV2-BUILDUP-04) ──────────────────────
+   The fixed header sits over the (pink) workspace as studio off-white at 70%
+   with a strong blur. Two rows: wordmark + account (row 1), nav links (row 2). */
+.bp-app-header {
+  background: color-mix(in srgb, var(--theme-bg) 70%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+.bp-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.bp-nav-link:hover { color: var(--theme-text); background: rgba(15, 23, 42, 0.04); }
+.bp-nav-link.bp-nav-link--active { color: var(--theme-text); font-weight: 600; }
+
+/* The pink project "workspace" ground — set on the shell <main> for the
+   project-detail route only, so it's full-bleed behind the header. */
+.bp-main--workspace { background: var(--workspace-pink); }

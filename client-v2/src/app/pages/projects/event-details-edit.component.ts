@@ -29,8 +29,30 @@ function natoDate(s: string): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule, LucideAngularModule],
   host: { class: 'block' },
+  styles: [`
+    /* pV2-BUILDUP-04 workspace card — soft white on the pink ground. */
+    .ed-card {
+      background: var(--color-surface);
+      border: 1px solid var(--card-border);
+      border-radius: 32px;
+      box-shadow: var(--shadow-quiet);
+    }
+    .ed-label { font-size: var(--text-xs, 0.75rem); color: var(--color-text-secondary); }
+    .ed-input {
+      height: 44px; width: 100%;
+      border-radius: var(--radius-pill, 9999px);
+      border: 1px solid var(--card-border);
+      background: var(--color-surface);
+      padding: 0 16px;
+      font-size: var(--text-md);
+      color: var(--color-text, var(--bp-text-color));
+      outline: none;
+    }
+    .ed-input::placeholder { color: var(--color-text-secondary); opacity: 0.7; }
+    .ed-input:focus { border-color: var(--theme-accent); }
+  `],
   template: `
-    <div class="bp-card p-4 sm:p-5">
+    <div class="ed-card p-6">
       <div class="flex items-center justify-between">
         <span class="bp-list-title">Event details</span>
         @switch (state()) {
@@ -48,46 +70,46 @@ function natoDate(s: string): string {
         }
       </div>
 
-      <div class="mt-4 grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 md:grid-cols-3">
+      <div class="mt-5 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
         <label class="block">
-          <span class="bp-field-label mb-1 block">Project</span>
-          <input class="bp-input-field" type="text" placeholder="Project name"
+          <span class="ed-label mb-1.5 block">Project</span>
+          <input class="ed-input" type="text" placeholder="Project name"
                  [ngModel]="dName()" (ngModelChange)="dName.set($event)" (blur)="saveName()" />
         </label>
 
         <label class="block">
-          <span class="bp-field-label mb-1 block">Client</span>
-          <input class="bp-input-field" type="text" placeholder="e.g. Acme Ltd"
+          <span class="ed-label mb-1.5 block">Client</span>
+          <input class="ed-input" type="text" placeholder="e.g. Acme Ltd"
                  [ngModel]="dClient()" (ngModelChange)="dClient.set($event)" (blur)="saveClient()" />
         </label>
 
         <label class="block">
-          <span class="bp-field-label mb-1 block">Event type</span>
-          <input class="bp-input-field" type="text" placeholder="e.g. Product launch party"
+          <span class="ed-label mb-1.5 block">Event type</span>
+          <input class="ed-input" type="text" placeholder="e.g. Product launch party"
                  [ngModel]="dEventType()" (ngModelChange)="dEventType.set($event)" (blur)="saveEventType()" />
         </label>
 
         <label class="block">
-          <span class="bp-field-label mb-1 block">Event date</span>
-          <input class="bp-input-field" type="text" placeholder="e.g. 31-Dec-2026 / TBC"
+          <span class="ed-label mb-1.5 block">Event date</span>
+          <input class="ed-input" type="text" placeholder="e.g. 31-Dec-2026 / TBC"
                  [ngModel]="dDate()" (ngModelChange)="dDate.set($event)" (blur)="saveDate()" />
         </label>
 
         <label class="block">
-          <span class="bp-field-label mb-1 block">Location</span>
-          <input class="bp-input-field" type="text" placeholder="e.g. Victorian Ballroom"
+          <span class="ed-label mb-1.5 block">Location</span>
+          <input class="ed-input" type="text" placeholder="e.g. Victorian Ballroom"
                  [ngModel]="dLocation()" (ngModelChange)="dLocation.set($event)" (blur)="saveLocation()" />
         </label>
 
         <label class="block">
-          <span class="bp-field-label mb-1 block">Guests</span>
-          <input class="bp-input-field" type="number" min="0" inputmode="numeric" placeholder="e.g. 150"
+          <span class="ed-label mb-1.5 block">Guests</span>
+          <input class="ed-input" type="number" min="0" inputmode="numeric" placeholder="e.g. 150"
                  [ngModel]="dGuests()" (ngModelChange)="dGuests.set($event)" (blur)="saveGuests()" />
         </label>
 
         <label class="block">
-          <span class="bp-field-label mb-1 block">Budget guide ({{ symbol() }})</span>
-          <input class="bp-input-field" type="text" inputmode="numeric" placeholder="e.g. 100,000"
+          <span class="ed-label mb-1.5 block">Budget guide ({{ symbol() }})</span>
+          <input class="ed-input" type="text" inputmode="numeric" placeholder="e.g. 100,000"
                  [ngModel]="dBudget()" (ngModelChange)="dBudget.set($event)" (blur)="saveBudget()" />
         </label>
       </div>

@@ -35,6 +35,25 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.147 (2026-08-28): workspace redesign — frosted nav, pink ground, soft card
+- **Frosted app header** (`app-shell`): two rows — wordmark + account (row 1),
+  primary nav (row 2): **Overview · New project · Past projects · Messages ·
+  Marketplace · Profile**, each an existing authed route, so you can jump out
+  without going Back. Header is studio off-white at 70% + `backdrop-blur`
+  (`.bp-app-header`); `--shell-pt` bumped 5rem→7rem to clear the second row.
+- **Pink workspace ground** (`--workspace-pink: oklch(0.93 0.05 5)`) painted on
+  the shell `<main>` for the `/projects/:id` route only (full-bleed behind the
+  header), via a URL-derived `isWorkspace()` signal.
+- **Event details card** restyled to the mockup: soft-white (`--color-surface`),
+  warm-grey border (`--card-border: oklch(0.915 0.008 300)`), 32px radius,
+  `--shadow-quiet`, `p-6`, pill inputs, muted `text-xs` labels, `sm:2 / lg:3`
+  grid. New tokens live in `styles.css` (`--workspace-pink`, `--card-border`,
+  `--shadow-quiet`). Light-only (v2 is a light app).
+- **Enter a project → Ballpark Cost by default** (tab fallback `marketplace` →
+  `final`).
+- Deferred (next): hero-right total block (BALLPARK £26,409 / low confidence),
+  the wider full-width card, and any tab-set trimming.
+
 ## Iteration — v2.146 (2026-08-28): center the About Project tab
 - Centered the **About Project** content (`bp-settings-body` was 720px-capped but
   left-aligned) with `mx-auto` + gutters, matching the Ballpark Cost column.

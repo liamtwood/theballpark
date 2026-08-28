@@ -361,7 +361,7 @@ export class ProjectDetailComponent {
    *  the project's quote. */
   protected readonly tab = computed<Tab>(() => {
     const t = this.query().get('tab');
-    return (TABS as string[]).includes(t ?? '') ? (t as Tab) : 'marketplace';
+    return (TABS as string[]).includes(t ?? '') ? (t as Tab) : 'final';
   });
 
   protected readonly label = computed(() => this.pageConfig.eventLabel());
