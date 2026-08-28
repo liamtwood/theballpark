@@ -79,7 +79,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
       } @else {
         <!-- ===== PROJECT COSTS ===== -->
         <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
-          <div class="bg-fill px-4 py-2.5"><span class="bp-page-label">Project Costs</span></div>
+          <div class="bg-fill px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Costs</span></div>
           <div class="border-t border-hairline px-4">
             @for (g of costGroups(); track g.id) {
               <!-- Category band — icon + name, like the cost cards. -->
@@ -112,7 +112,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
 
         <!-- ===== PROJECT COVERAGE ===== -->
         <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
-          <div class="bg-fill px-4 py-2.5"><span class="bp-page-label">Project Coverage</span></div>
+          <div class="bg-fill px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Coverage</span></div>
           <div class="border-t border-hairline px-4">
             <div class="flex items-center justify-between border-b border-hairline py-3">
               <div class="flex items-center gap-2">
@@ -144,7 +144,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
         <!-- ===== PROJECT FEES ===== -->
         @if (feesGroup(); as fg) {
           <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
-            <div class="bg-fill px-4 py-2.5"><span class="bp-page-label">Project Fees</span></div>
+            <div class="bg-fill px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Fees</span></div>
             <div class="border-t border-hairline px-4">
               @for (l of fg.items; track l.id) {
                 <div class="flex items-start justify-between gap-4 border-b border-hairline py-3 last:border-b-0">
@@ -171,7 +171,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
 
         <!-- ===== PROJECT SUMMARY ===== -->
         <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
-          <div class="bg-fill px-4 py-2.5"><span class="bp-page-label">Project Summary</span></div>
+          <div class="bg-fill px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Project Summary</span></div>
           <div class="border-t border-hairline px-4">
             <div class="flex justify-between border-b border-hairline py-2.5"><span class="bp-body-small text-text">Project Costs</span><span class="bp-body-small tabular-nums text-text">{{ bd().projectCosts | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
             <div class="flex justify-between border-b border-hairline py-2.5"><span class="bp-body-small text-text">Project Coverage</span><span class="bp-body-small tabular-nums text-text">{{ bd().coverage | currency: cur() : 'symbol' : '1.0-0' }}</span></div>

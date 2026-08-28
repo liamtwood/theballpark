@@ -35,6 +35,11 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.110 (2026-08-28): center + enlarge section titles
+- Section heading bars (Project Costs / Coverage / Fees / Summary) are now
+  **centered** and a **touch larger** (`--text-md`). Subtotal/total footers left
+  as-is.
+
 ## Iteration — v2.109 (2026-08-28): sections as boxed cards + Project Summary
 - Each section (Project Costs / Coverage / Fees) is now a **rounded, bordered
   container** with a **shaded heading bar** and a **shaded subtotal footer** —
