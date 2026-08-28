@@ -28,13 +28,13 @@ function natoDate(s: string): string {
       @for (t of tiles(); track t.label) {
         <div class="bp-card p-3.5">
           @if (stacked()) {
-            <!-- Value below the icon + label, full tile width (no truncation) —
-                 the quote document header. -->
-            <div class="flex items-center gap-2">
+            <!-- Value below the icon + label, full tile width (no truncation),
+                 centered — the quote document header. -->
+            <div class="flex items-center justify-center gap-2">
               <span class="bp-icon-block h-8 w-8 shrink-0"><lucide-icon [name]="t.icon" [size]="16" [strokeWidth]="1.75" /></span>
               <span class="bp-field-label">{{ t.label }}</span>
             </div>
-            <span class="bp-list-title mt-1.5 block">{{ t.value }}</span>
+            <span class="bp-list-title mt-1.5 block text-center">{{ t.value }}</span>
           } @else {
             <div class="flex items-start gap-3">
               <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon [name]="t.icon" [size]="18" [strokeWidth]="1.75" /></span>

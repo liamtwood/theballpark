@@ -35,6 +35,14 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.109 (2026-08-28): sections as boxed cards + Project Summary
+- Each section (Project Costs / Coverage / Fees) is now a **rounded, bordered
+  container** with a **shaded heading bar** and a **shaded subtotal footer** —
+  matching the title banner + tile styling.
+- New **Project Summary** section (same container): Project Costs / Coverage /
+  Fees rows + an emphasized **Project Total** footer.
+- **Tile values centered** (Date/Location/etc), under a centered icon+label.
+
 ## Iteration — v2.108 (2026-08-28): title banner (company + project) + Created timestamp
 - **Title banner**: company name (client) + project name in one **shaded**
   (`bg-fill`) container, **rounded + bordered to match the tile boxes**, centered.

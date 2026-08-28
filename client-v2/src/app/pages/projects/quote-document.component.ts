@@ -78,107 +78,110 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
         <p class="bp-body-small mt-8 text-secondary">Preparing the quote…</p>
       } @else {
         <!-- ===== PROJECT COSTS ===== -->
-        <div class="quote-doc__section mt-8">
-          <div class="mb-1 flex items-center gap-2 border-b-2 border-text pb-1.5">
-            <span class="bp-page-label">Project Costs</span>
-          </div>
-          @for (g of costGroups(); track g.id) {
-            <!-- Category band — icon + name, like the cost cards. -->
-            <div class="mt-4 flex items-center gap-2">
-              <lucide-icon [name]="g.iconName || 'folder-open'" [size]="16" class="text-[var(--theme-accent)]" />
-              <span class="bp-field-label">{{ g.name }}</span>
-            </div>
-            @for (l of g.items; track l.id) {
-              <div class="flex items-start justify-between gap-4 border-b border-hairline py-3">
-                <div class="min-w-0 flex-1">
-                  <div class="bp-body-small font-semibold text-text">{{ l.name }}</div>
-                  @if (desc(l); as d) {
-                    <div class="bp-md bp-meta mt-1 max-w-prose text-secondary" [innerHTML]="d | md"></div>
-                  }
-                </div>
-                <div class="flex shrink-0 items-baseline gap-4 tabular-nums">
-                  <span class="bp-meta w-10 text-right text-secondary">{{ l.quantity }}</span>
-                  <span class="bp-meta w-16 text-right text-secondary">{{ (l.basePrice ?? 0) * markup() | currency: cur() : 'symbol' : '1.0-0' }}</span>
-                  <span class="bp-body-small w-20 text-right font-semibold text-text">{{ lineTotal(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
-                </div>
+        <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
+          <div class="bg-fill px-4 py-2.5"><span class="bp-page-label">Project Costs</span></div>
+          <div class="border-t border-hairline px-4">
+            @for (g of costGroups(); track g.id) {
+              <!-- Category band — icon + name, like the cost cards. -->
+              <div class="mt-3 flex items-center gap-2">
+                <lucide-icon [name]="g.iconName || 'folder-open'" [size]="16" class="text-[var(--theme-accent)]" />
+                <span class="bp-field-label">{{ g.name }}</span>
               </div>
+              @for (l of g.items; track l.id) {
+                <div class="flex items-start justify-between gap-4 border-b border-hairline py-3 last:border-b-0">
+                  <div class="min-w-0 flex-1">
+                    <div class="bp-body-small font-semibold text-text">{{ l.name }}</div>
+                    @if (desc(l); as d) {
+                      <div class="bp-md bp-meta mt-1 max-w-prose text-secondary" [innerHTML]="d | md"></div>
+                    }
+                  </div>
+                  <div class="flex shrink-0 items-baseline gap-4 tabular-nums">
+                    <span class="bp-meta w-10 text-right text-secondary">{{ l.quantity }}</span>
+                    <span class="bp-meta w-16 text-right text-secondary">{{ (l.basePrice ?? 0) * markup() | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                    <span class="bp-body-small w-20 text-right font-semibold text-text">{{ lineTotal(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                  </div>
+                </div>
+              }
             }
-          }
-          <div class="mt-1 flex items-center justify-between border-b-2 border-text bg-fill px-3 py-2.5">
+          </div>
+          <div class="flex items-center justify-between border-t border-hairline bg-fill px-4 py-2.5">
             <span class="bp-field-label uppercase tracking-wide text-text">Total Project Costs</span>
             <span class="bp-body-small font-bold tabular-nums text-text">{{ bd().projectCosts | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
-        </div>
+        </section>
 
         <!-- ===== PROJECT COVERAGE ===== -->
-        <div class="quote-doc__section mt-8">
-          <div class="mb-1 flex items-center gap-2 border-b-2 border-text pb-1.5">
-            <span class="bp-page-label">Project Coverage</span>
-          </div>
-          <div class="flex items-center justify-between border-b border-hairline py-3">
-            <div class="flex items-center gap-2">
-              <lucide-icon name="percent" [size]="16" class="text-[var(--theme-accent)]" />
-              <div>
-                <div class="bp-body-small font-semibold text-text">Contingency</div>
-                <div class="bp-meta">{{ bd().contingencyPct }}% of project costs</div>
+        <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
+          <div class="bg-fill px-4 py-2.5"><span class="bp-page-label">Project Coverage</span></div>
+          <div class="border-t border-hairline px-4">
+            <div class="flex items-center justify-between border-b border-hairline py-3">
+              <div class="flex items-center gap-2">
+                <lucide-icon name="percent" [size]="16" class="text-[var(--theme-accent)]" />
+                <div>
+                  <div class="bp-body-small font-semibold text-text">Contingency</div>
+                  <div class="bp-meta">{{ bd().contingencyPct }}% of project costs</div>
+                </div>
               </div>
+              <span class="bp-body-small w-20 text-right font-semibold tabular-nums text-text">{{ bd().contingency | currency: cur() : 'symbol' : '1.0-0' }}</span>
             </div>
-            <span class="bp-body-small w-20 text-right font-semibold tabular-nums text-text">{{ bd().contingency | currency: cur() : 'symbol' : '1.0-0' }}</span>
-          </div>
-          <div class="flex items-center justify-between border-b border-hairline py-3">
-            <div class="flex items-center gap-2">
-              <lucide-icon name="percent" [size]="16" class="text-[var(--theme-accent)]" />
-              <div>
-                <div class="bp-body-small font-semibold text-text">Insurance</div>
-                <div class="bp-meta">{{ bd().insurancePct }}% of project costs</div>
+            <div class="flex items-center justify-between py-3">
+              <div class="flex items-center gap-2">
+                <lucide-icon name="percent" [size]="16" class="text-[var(--theme-accent)]" />
+                <div>
+                  <div class="bp-body-small font-semibold text-text">Insurance</div>
+                  <div class="bp-meta">{{ bd().insurancePct }}% of project costs</div>
+                </div>
               </div>
+              <span class="bp-body-small w-20 text-right font-semibold tabular-nums text-text">{{ bd().insurance | currency: cur() : 'symbol' : '1.0-0' }}</span>
             </div>
-            <span class="bp-body-small w-20 text-right font-semibold tabular-nums text-text">{{ bd().insurance | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
-          <div class="mt-1 flex items-center justify-between border-b-2 border-text bg-fill px-3 py-2.5">
+          <div class="flex items-center justify-between border-t border-hairline bg-fill px-4 py-2.5">
             <span class="bp-field-label uppercase tracking-wide text-text">Total Coverage</span>
             <span class="bp-body-small font-bold tabular-nums text-text">{{ bd().coverage | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
-        </div>
+        </section>
 
         <!-- ===== PROJECT FEES ===== -->
         @if (feesGroup(); as fg) {
-          <div class="quote-doc__section mt-8">
-            <div class="mb-1 flex items-center gap-2 border-b-2 border-text pb-1.5">
-              <span class="bp-page-label">Project Fees</span>
+          <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
+            <div class="bg-fill px-4 py-2.5"><span class="bp-page-label">Project Fees</span></div>
+            <div class="border-t border-hairline px-4">
+              @for (l of fg.items; track l.id) {
+                <div class="flex items-start justify-between gap-4 border-b border-hairline py-3 last:border-b-0">
+                  <div class="min-w-0 flex-1">
+                    <div class="bp-body-small font-semibold text-text">{{ l.name }}</div>
+                    @if (desc(l); as d) {
+                      <div class="bp-md bp-meta mt-1 max-w-prose text-secondary" [innerHTML]="d | md"></div>
+                    }
+                  </div>
+                  <div class="flex shrink-0 items-baseline gap-4 tabular-nums">
+                    <span class="bp-meta w-10 text-right text-secondary">{{ l.quantity }}</span>
+                    <span class="bp-meta w-16 text-right text-secondary">{{ l.basePrice != null ? (l.basePrice | currency: cur() : 'symbol' : '1.0-0') : '' }}</span>
+                    <span class="bp-body-small w-20 text-right font-semibold text-text">{{ lineCostRaw(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                  </div>
+                </div>
+              }
             </div>
-            @for (l of fg.items; track l.id) {
-              <div class="flex items-start justify-between gap-4 border-b border-hairline py-3">
-                <div class="min-w-0 flex-1">
-                  <div class="bp-body-small font-semibold text-text">{{ l.name }}</div>
-                  @if (desc(l); as d) {
-                    <div class="bp-md bp-meta mt-1 max-w-prose text-secondary" [innerHTML]="d | md"></div>
-                  }
-                </div>
-                <div class="flex shrink-0 items-baseline gap-4 tabular-nums">
-                  <span class="bp-meta w-10 text-right text-secondary">{{ l.quantity }}</span>
-                  <span class="bp-meta w-16 text-right text-secondary">{{ l.basePrice != null ? (l.basePrice | currency: cur() : 'symbol' : '1.0-0') : '' }}</span>
-                  <span class="bp-body-small w-20 text-right font-semibold text-text">{{ lineCostRaw(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
-                </div>
-              </div>
-            }
-            <div class="mt-1 flex items-center justify-between border-b-2 border-text bg-fill px-3 py-2.5">
+            <div class="flex items-center justify-between border-t border-hairline bg-fill px-4 py-2.5">
               <span class="bp-field-label uppercase tracking-wide text-text">Total Fees</span>
               <span class="bp-body-small font-bold tabular-nums text-text">{{ bd().fees | currency: cur() : 'symbol' : '1.0-0' }}</span>
             </div>
-          </div>
+          </section>
         }
 
-        <!-- ===== SUMMARY ===== -->
-        <div class="mt-10 border-t-2 border-text pt-4">
-          <div class="flex justify-between py-1 bp-body-small text-secondary"><span>Project Costs</span><span class="tabular-nums">{{ bd().projectCosts | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
-          <div class="flex justify-between py-1 bp-body-small text-secondary"><span>Project Coverage</span><span class="tabular-nums">{{ bd().coverage | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
-          <div class="flex justify-between py-1 bp-body-small text-secondary"><span>Project Fees</span><span class="tabular-nums">{{ bd().fees | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
-          <div class="mt-2 flex items-baseline justify-between border-b-2 border-text bg-fill px-3 py-3">
+        <!-- ===== PROJECT SUMMARY ===== -->
+        <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
+          <div class="bg-fill px-4 py-2.5"><span class="bp-page-label">Project Summary</span></div>
+          <div class="border-t border-hairline px-4">
+            <div class="flex justify-between border-b border-hairline py-2.5"><span class="bp-body-small text-text">Project Costs</span><span class="bp-body-small tabular-nums text-text">{{ bd().projectCosts | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
+            <div class="flex justify-between border-b border-hairline py-2.5"><span class="bp-body-small text-text">Project Coverage</span><span class="bp-body-small tabular-nums text-text">{{ bd().coverage | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
+            <div class="flex justify-between py-2.5"><span class="bp-body-small text-text">Project Fees</span><span class="bp-body-small tabular-nums text-text">{{ bd().fees | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
+          </div>
+          <div class="flex items-baseline justify-between border-t border-hairline bg-fill px-4 py-3">
             <span class="bp-price-large uppercase tracking-wide">Project Total</span>
             <span class="bp-price-large tabular-nums">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
-        </div>
+        </section>
 
         <p class="bp-caption mt-8 border-t border-hairline pt-3">
           Excludes VAT.
