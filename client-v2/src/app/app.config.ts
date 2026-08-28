@@ -50,6 +50,10 @@ import {
   Copy,
   Eye,
   EyeOff,
+  Palette,
+  PanelTop,
+  PanelBottom,
+  AlignLeft,
   ListTree,
   Maximize2,
   Minimize2,
@@ -182,7 +186,7 @@ export const appConfig: ApplicationConfig = {
         // pV2-EA-02 — early-access admin
         ExternalLink, ChevronUp, Download,
         // pV2-STORE-01 — owner item-card actions (duplicate / show-hide / trash)
-        Copy, Eye, EyeOff, ListTree, Maximize2, Minimize2,
+        Copy, Eye, EyeOff, Palette, PanelTop, PanelBottom, AlignLeft, ListTree, Maximize2, Minimize2,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees

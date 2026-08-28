@@ -240,53 +240,48 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
     <!-- Options panel (screen only — outside .quote-doc__paper, so the global
          print rule hides it). Standard Ballpark card chrome. -->
     <aside class="fixed right-6 top-24 z-10 hidden w-64 lg:block">
-      <div class="bp-card p-4">
-        <h3 class="bp-edit-section-title">Options</h3>
+      <div class="bp-card overflow-hidden">
+        <h3 class="bp-edit-section-title px-4 pb-2 pt-4">Options</h3>
 
-        <div class="mt-4">
-          <span class="bp-field-label">Header</span>
-          <div class="mt-2 flex flex-col gap-2">
-            <label class="flex items-center gap-2 bp-body-small text-secondary">
-              <input type="checkbox" class="bp-check" [ngModel]="showRef()" (ngModelChange)="showRef.set($event); saveOptions()" /> Reference
-            </label>
-            <label class="flex items-center gap-2 bp-body-small text-secondary">
-              <input type="checkbox" class="bp-check" [ngModel]="showAddress()" (ngModelChange)="showAddress.set($event); saveOptions()" /> Address
-            </label>
-          </div>
+        <!-- Header -->
+        <div class="flex items-center gap-2 border-y border-hairline bg-fill px-4 py-1.5">
+          <lucide-icon name="panel-top" [size]="14" class="text-muted" /><span class="bp-field-label">Header</span>
+        </div>
+        <div class="flex flex-col gap-2 px-4 py-3">
+          <label class="flex items-center gap-2 bp-body-small text-secondary">
+            <input type="checkbox" class="bp-check" [ngModel]="showRef()" (ngModelChange)="showRef.set($event); saveOptions()" /> Reference
+          </label>
+          <label class="flex items-center gap-2 bp-body-small text-secondary">
+            <input type="checkbox" class="bp-check" [ngModel]="showAddress()" (ngModelChange)="showAddress.set($event); saveOptions()" /> Address
+          </label>
         </div>
 
-        <div class="mt-5">
-          <span class="bp-field-label">Theme</span>
-          <div class="mt-2 flex flex-col gap-1.5">
-            <button type="button" class="flex items-center justify-between rounded-[var(--radius-card)] border px-3 py-2 bp-body-small transition-colors"
-                    [class.border-hairline]="mode() !== 'default'" [class.text-secondary]="mode() !== 'default'"
-                    [class.border-text]="mode() === 'default'" [class.text-text]="mode() === 'default'"
-                    (click)="setMode('default')">
-              Default @if (mode() === 'default') { <lucide-icon name="check" [size]="15" /> }
-            </button>
-            <button type="button" class="flex items-center justify-between rounded-[var(--radius-card)] border px-3 py-2 bp-body-small transition-colors"
-                    [class.border-hairline]="mode() !== 'bw'" [class.text-secondary]="mode() !== 'bw'"
-                    [class.border-text]="mode() === 'bw'" [class.text-text]="mode() === 'bw'"
-                    (click)="setMode('bw')">
-              B &amp; W @if (mode() === 'bw') { <lucide-icon name="check" [size]="15" /> }
-            </button>
-            <button type="button" class="flex items-center justify-between gap-2 rounded-[var(--radius-card)] border px-3 py-2 bp-body-small transition-colors"
-                    [class.border-hairline]="mode() !== 'color'" [class.text-secondary]="mode() !== 'color'"
-                    [class.border-text]="mode() === 'color'" [class.text-text]="mode() === 'color'"
-                    (click)="setMode('color')">
-              <span>Pick a colour</span>
-              <span class="flex items-center gap-2">
-                <input type="color" class="h-5 w-5 cursor-pointer rounded border-0 bg-transparent p-0"
-                       [ngModel]="pickedColor()" (ngModelChange)="onColor($event)" (click)="$event.stopPropagation()" />
-                @if (mode() === 'color') { <lucide-icon name="check" [size]="15" /> }
-              </span>
-            </button>
-          </div>
+        <!-- Theme -->
+        <div class="flex items-center gap-2 border-y border-hairline bg-fill px-4 py-1.5">
+          <lucide-icon name="palette" [size]="14" class="text-muted" /><span class="bp-field-label">Theme</span>
+        </div>
+        <div class="px-4 py-3">
+          <select class="w-full rounded-[var(--radius-input,8px)] border border-hairline bg-surface px-2.5 py-1.5 bp-body-small text-text"
+                  [ngModel]="mode()" (ngModelChange)="setMode($any($event))">
+            <option value="default">Default (Ballpark)</option>
+            <option value="bw">Black &amp; White</option>
+            <option value="color">Pick a colour</option>
+          </select>
+          @if (mode() === 'color') {
+            <label class="mt-2 flex items-center justify-between gap-2 bp-body-small text-secondary">
+              Colour
+              <input type="color" class="h-6 w-10 cursor-pointer rounded border border-hairline bg-transparent p-0"
+                     [ngModel]="pickedColor()" (ngModelChange)="onColor($event)" />
+            </label>
+          }
         </div>
 
-        <div class="mt-5">
-          <span class="bp-field-label">Footer</span>
-          <div class="mt-2 flex flex-col gap-2">
+        <!-- Footer -->
+        <div class="flex items-center gap-2 border-y border-hairline bg-fill px-4 py-1.5">
+          <lucide-icon name="panel-bottom" [size]="14" class="text-muted" /><span class="bp-field-label">Footer</span>
+        </div>
+        <div class="px-4 py-3">
+          <div class="flex flex-col gap-2">
             <label class="flex items-center gap-2 bp-body-small text-secondary">
               <input type="checkbox" class="bp-check" [ngModel]="showVatNote()" (ngModelChange)="showVatNote.set($event); saveOptions()" /> Exclude VAT
             </label>
@@ -301,19 +296,20 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
                     [ngModel]="footer()" (ngModelChange)="footer.set($event)" (blur)="saveOptions()"></textarea>
         </div>
 
-        <div class="mt-5">
-          <span class="bp-field-label">Body</span>
-          <div class="mt-2 flex flex-col gap-2">
-            <label class="flex items-center gap-2 bp-body-small text-secondary">
-              <input type="checkbox" class="bp-check" [ngModel]="showItemDesc()" (ngModelChange)="showItemDesc.set($event); saveOptions()" /> Item descriptions
-            </label>
-            <label class="flex items-center gap-2 bp-body-small text-secondary">
-              <input type="checkbox" class="bp-check" [ngModel]="showOverview()" (ngModelChange)="showOverview.set($event); saveOptions()" /> Project overview
-            </label>
-            <label class="flex items-center gap-2 bp-body-small text-secondary">
-              <input type="checkbox" class="bp-check" [ngModel]="showSummary()" (ngModelChange)="showSummary.set($event); saveOptions()" /> Project summary
-            </label>
-          </div>
+        <!-- Body -->
+        <div class="flex items-center gap-2 border-y border-hairline bg-fill px-4 py-1.5">
+          <lucide-icon name="align-left" [size]="14" class="text-muted" /><span class="bp-field-label">Body</span>
+        </div>
+        <div class="flex flex-col gap-2 px-4 py-3">
+          <label class="flex items-center gap-2 bp-body-small text-secondary">
+            <input type="checkbox" class="bp-check" [ngModel]="showItemDesc()" (ngModelChange)="showItemDesc.set($event); saveOptions()" /> Item descriptions
+          </label>
+          <label class="flex items-center gap-2 bp-body-small text-secondary">
+            <input type="checkbox" class="bp-check" [ngModel]="showOverview()" (ngModelChange)="showOverview.set($event); saveOptions()" /> Project overview
+          </label>
+          <label class="flex items-center gap-2 bp-body-small text-secondary">
+            <input type="checkbox" class="bp-check" [ngModel]="showSummary()" (ngModelChange)="showSummary.set($event); saveOptions()" /> Project summary
+          </label>
         </div>
       </div>
     </aside>
@@ -338,7 +334,7 @@ export class QuoteDocumentComponent implements OnInit {
 
   // ── Quote document options (persisted per project) ─────────────────────────
   protected readonly mode = signal<'default' | 'bw' | 'color'>('default');
-  protected readonly pickedColor = signal('#6d28d9');
+  protected readonly pickedColor = signal('#d63384');
   protected readonly footer = signal('');
   protected readonly showCreated = signal(false);
   protected readonly showVatNote = signal(true);

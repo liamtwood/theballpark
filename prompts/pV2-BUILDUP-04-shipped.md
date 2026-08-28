@@ -35,6 +35,16 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.123 (2026-08-28): Options panel restyle — icon bands + Theme dropdown
+- Each Options section (Header / Theme / Footer / Body) now has a **shaded band
+  header with an icon** (panel-top / palette / panel-bottom / align-left), matching
+  the app's category-band style; card is full-bleed (`overflow-hidden`, no padding).
+- **Theme** is now a **dropdown** (Default / Black & White / Pick a colour) with the
+  colour swatch shown only in colour mode.
+- Colour-swatch default changed from purple `#6d28d9` → brand pink `#d63384`.
+  (Checkboxes already use `--theme-accent` via `bp-check`.)
+- Registered icons: Palette, PanelTop, PanelBottom, AlignLeft.
+
 ## Iteration — v2.122 (2026-08-28): phone in the meta-label style
 - "Phone:" line now `font-medium text-text` (darker, matching the Project / Type
   / Created labels) instead of the lighter `bp-meta` grey.
