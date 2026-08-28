@@ -35,6 +35,11 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.151 (2026-08-28): hero meta polish
+- Eyebrow + ref shrink a touch (`--text-xl`→`--text-lg`) via a new hero
+  **`dense`** flag; extra padding above the "PROJECT" eyebrow (margin-top 10px).
+- Back link relabelled **"Projects" → "Past projects"** on the project hero.
+
 ## Iteration — v2.150 (2026-08-28): eyebrow not bold
 - Hero eyebrow weight 600 → 400 (matches the ref); still tracked-uppercase.
 

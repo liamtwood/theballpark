@@ -17,6 +17,7 @@ import { LucideAngularModule } from 'lucide-angular';
     class: 'bp-page-hero',
     '[class.bp-page-hero--align-center]': "align() === 'center'",
     '[class.bp-page-hero--accent-none]': "accent() === 'none'",
+    '[class.bp-page-hero--dense]': 'dense()',
   },
   template: `
     @if (back(); as b) {
@@ -102,13 +103,19 @@ import { LucideAngularModule } from 'lucide-angular';
       /* Optional eyebrow (e.g. "PROJECT") above the title — small, tracked,
          uppercase, secondary. Renders only when set. */
       .bp-page-hero__eyebrow {
-        margin: 0;
-        /* Same size as the ref/subtitle (--text-xl); tracked + uppercase. */
-        font-size: var(--text-xl);
+        /* Extra breathing room above the eyebrow (Liam 2026-08-28). Sized a
+           touch smaller than before; tracked + uppercase; regular weight. */
+        margin: 10px 0 0;
+        font-size: var(--text-lg);
         font-weight: 400;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--color-text-secondary);
+      }
+
+      /* Dense heroes (project workspace) shrink the ref a touch to match. */
+      :host(.bp-page-hero--dense) .bp-page-hero__subtitle {
+        font-size: var(--text-lg);
       }
 
       .bp-page-hero__title {
@@ -158,6 +165,9 @@ export class PageHeroComponent {
 
   /** Optional eyebrow label shown above the title (e.g. "Project"). */
   readonly eyebrow = input<string>('');
+
+  /** Dense meta: shrinks the eyebrow + subtitle a touch (project workspace). */
+  readonly dense = input<boolean>(false);
 
   /** Main title — required. */
   readonly title = input.required<string>();
