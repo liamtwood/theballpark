@@ -35,6 +35,14 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.132 (2026-08-28): SOW QC — ref box, Project Total, exc. VAT
+- SOW ref box now matches the Quote: **Project / Type (Statement of Work) /
+  Created** (date + 24h time). Dropped Version/Effective (no versioning — rely on
+  date/time).
+- Headline relabelled **"Fee" → "Project Total"** (the value is the total, not the
+  agency Fee).
+- **exc. VAT** moved **under** the amount and made the same white as the price.
+
 ## Iteration — v2.131 (2026-08-28): seamless T&C pages (pdf.js) instead of a viewer
 - Replaced the Annex A `<iframe>` (viewer chrome — "omg what's that") with a new
   reusable **`PdfPagesComponent`** that renders the PDF as a **stack of full-width

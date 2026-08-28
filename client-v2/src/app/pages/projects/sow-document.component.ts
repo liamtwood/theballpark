@@ -27,7 +27,7 @@ import { isDeclined } from './quote-line.util';
        full gradient + white text on the headline Fee banner. */
     .sow-bar { background: var(--bp-gradient-soft); }
     .sow-fee { background: var(--bp-gradient); }
-    .sow-fee, .sow-fee .bp-price-large { color: var(--bp-text-on-gradient); }
+    .sow-fee, .sow-fee .bp-price-large, .sow-fee .bp-body-small { color: var(--bp-text-on-gradient); }
   `],
   template: `
     <!-- Action bar (screen only — hidden on print). -->
@@ -59,12 +59,12 @@ import { isDeclined } from './quote-line.util';
         </div>
         <div class="shrink-0 overflow-hidden rounded-md border border-hairline bp-meta">
           <div class="grid grid-cols-[auto_auto]">
-            <div class="border-b border-hairline bg-fill px-2.5 py-1 font-medium text-text">Document</div>
+            <div class="border-b border-hairline bg-fill px-2.5 py-1 font-medium text-text">Project</div>
+            <div class="border-b border-l border-hairline px-2.5 py-1 text-left text-text">{{ project().ref || '—' }}</div>
+            <div class="border-b border-hairline bg-fill px-2.5 py-1 font-medium text-text">Type</div>
             <div class="border-b border-l border-hairline px-2.5 py-1 text-left text-text">Statement of Work</div>
-            <div class="border-b border-hairline bg-fill px-2.5 py-1 font-medium text-text">Version</div>
-            <div class="border-b border-l border-hairline px-2.5 py-1 text-left text-text">V1</div>
-            <div class="bg-fill px-2.5 py-1 font-medium text-text">Effective</div>
-            <div class="border-l border-hairline px-2.5 py-1 text-left text-text">{{ effectiveDate() }}</div>
+            <div class="bg-fill px-2.5 py-1 font-medium text-text">Created</div>
+            <div class="border-l border-hairline px-2.5 py-1 text-left text-text">{{ createdStr() }}</div>
           </div>
         </div>
       </div>
@@ -113,10 +113,14 @@ import { isDeclined } from './quote-line.util';
         <div class="border-t border-hairline px-4 py-3 bp-body-small italic text-secondary">Key dates &amp; milestones — to be added.</div>
       </section>
 
-      <!-- Fee — headline gradient banner (like the Quote's Project Total). -->
-      <div class="sow-fee mt-6 flex items-baseline justify-between rounded-[var(--radius-card)] border border-hairline px-4 py-3">
-        <span class="bp-price-large uppercase tracking-wide">Fee</span>
-        <span class="bp-price-large tabular-nums">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-2' }} <span class="bp-body-small">exc. VAT</span></span>
+      <!-- Project Total — headline gradient banner (like the Quote). exc. VAT
+           sits under the amount, same white as the price. -->
+      <div class="sow-fee mt-6 flex items-center justify-between rounded-[var(--radius-card)] border border-hairline px-4 py-3">
+        <span class="bp-price-large uppercase tracking-wide">Project Total</span>
+        <span class="text-right leading-tight">
+          <span class="bp-price-large block tabular-nums">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-2' }}</span>
+          <span class="bp-body-small block">exc. VAT</span>
+        </span>
       </div>
 
       <!-- Payment Terms -->
@@ -197,11 +201,15 @@ export class SowDocumentComponent {
   protected readonly supplierAddress = computed(() => this.supplierAddressLines().join(', '));
   protected readonly location = computed(() =>
     [this.project().venueName, this.project().venueCity].filter(Boolean).join(', '));
-  /** Effective date — the project's created date. */
-  protected readonly effectiveDate = computed(() => {
+  /** Created date + time (short, 24h) — matches the Quote's ref box. */
+  protected readonly createdStr = computed(() => {
     const iso = this.project().createdAt;
     const t = iso ? Date.parse(iso) : NaN;
-    return Number.isNaN(t) ? '—' : new Date(t).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    if (Number.isNaN(t)) return '—';
+    const d = new Date(t);
+    const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${date} ${time}`;
   });
 
   private readonly est = resource<EstimateBreakdown, string>({
