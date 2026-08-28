@@ -35,6 +35,15 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.166 (2026-08-28): base folds into its category card (row-0)
+- The base row now renders **inside the item's own category card** as the pinned
+  first row ("an item masquerading as a component") — locked category, no remove,
+  Inc = augment/decompose. `baseCategoryId` (from `c.line.categoryId`) drives it;
+  `displayGroups` guarantees that category card exists even before any component.
+- **Category totals are now honest** — the item's category card = base + its
+  add-ons (`catCardTotal`); the standalone base card is gone. Header still splits
+  Customizations (add-ons only) vs Revised (base + add-ons + margin).
+
 ## Iteration — v2.165 (2026-08-28): base = a "project component" row (cost/qty/unit/Inc)
 - The parent card is now a **component-style row-0**: editable **Cost / Qty /
   Unit** + **Inc** checkbox (`baseRate` / `baseQty` / `baseUnitDraft` /

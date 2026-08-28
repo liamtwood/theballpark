@@ -112,6 +112,7 @@ import { ProjectService } from '../../core/projects/project.service';
                     [baseUnitPrice]="c.unitPriceRef"
                     [baseUnit]="c.unit"
                     [baseQuantity]="c.quantity"
+                    [baseCategoryId]="c.line?.categoryId ?? null"
                     [previewLine]="c.line"
                     (saved)="onCustomizeSaved()"
                     (changed)="onCustomizeChanged()"

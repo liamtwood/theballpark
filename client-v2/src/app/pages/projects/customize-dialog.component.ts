@@ -69,27 +69,6 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
           <!-- CENTRE: the editable estimate, grouped by category. -->
           <div class="min-w-0">
-            <!-- TOP: the item itself as row-0 — a "project component": editable
-                 cost / qty / unit + Inc, same shape as the component rows. Click
-                 the row (not a field) to edit its name/description in the rail. -->
-            <div class="mb-4 grid cursor-pointer grid-cols-[108px_1fr_78px_62px_68px_84px_30px_24px] items-center gap-1.5 rounded-[var(--radius-card)] border px-2.5 py-2 transition-colors"
-                 [class.border-accent]="parentSelected()" [class.border-hairline]="!parentSelected()" (click)="selectParent()">
-              <span class="px-2 bp-body-small text-secondary">Base</span>
-              <span class="px-2 bp-list-title truncate">{{ parentName() || 'Original item' }}</span>
-              @if (baseUnitPrice() != null) {
-                <input type="number" class="bp-input-field text-center tabular-nums" [ngModel]="baseRate()" (ngModelChange)="baseRate.set($event)" (click)="$event.stopPropagation()" />
-                <input type="number" class="bp-input-field text-center tabular-nums" [ngModel]="baseQty()" (ngModelChange)="baseQty.set($event)" (click)="$event.stopPropagation()" />
-                <select class="bp-input-field bp-select" [ngModel]="baseUnitDraft()" (ngModelChange)="baseUnitDraft.set($event || null)" (click)="$event.stopPropagation()">
-                  <option [ngValue]="null">—</option>
-                  @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
-                </select>
-              } @else {
-                <span></span><span></span><span></span>
-              }
-              <span class="text-center tabular-nums bp-body-small" [class.text-muted]="!includeBase()" [class.text-text]="includeBase()">£{{ baseCost() | number: '1.0-0' }}</span>
-              <input type="checkbox" class="justify-self-center" [checked]="includeBase()" (change)="includeBase.set($any($event.target).checked)" (click)="$event.stopPropagation()" title="Include the item's base price (off = rebuild from parts)" />
-              <span></span>
-            </div>
 
             <!-- One card per category (Final-Quote card), then a default Extras
                  card holding the margin + the un-filtered add. Each card carries
@@ -101,14 +80,31 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                   <span class="min-w-0 flex-1">
                     <span class="bp-list-title block truncate text-[length:var(--text-2xl)]">{{ grp.isExtras ? 'Extras' : catName(grp.categoryId) }}</span>
                   </span>
-                  <span class="bp-amount shrink-0 text-text tabular-nums">£{{ (grp.isExtras ? marginAmount() : grp.total) | number: '1.0-0' }}</span>
+                  <span class="bp-amount shrink-0 text-text tabular-nums">£{{ catCardTotal(grp) | number: '1.0-0' }}</span>
                   <lucide-icon [name]="isCatOpen(grp.isExtras ? '__extras' : grp.categoryId) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
                 </button>
                 @if (isCatOpen(grp.isExtras ? '__extras' : grp.categoryId)) {
                 <div class="border-t border-hairline">
-                  @if (grp.isExtras || grp.rows.length) {
+                  @if (grp.isExtras || grp.rows.length || isBaseCat(grp.categoryId)) {
                     <div class="grid grid-cols-[108px_1fr_78px_62px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline bg-fill px-2.5 py-2 bp-field-label">
                       <span>Category</span><span>Item</span><span class="text-center">Cost £</span><span class="text-center">Qty</span><span>Unit</span><span class="text-center">Total</span><span class="text-center" title="Include">Inc</span><span></span>
+                    </div>
+                  }
+                  @if (isBaseCat(grp.categoryId)) {
+                    <!-- The item itself — row-0, a "project component": editable
+                         cost/qty/unit + Inc; can't be removed or re-categorised. -->
+                    <div class="grid cursor-pointer grid-cols-[108px_1fr_78px_62px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline px-2.5 py-1" [class.bg-fill]="parentSelected()" (click)="selectParent()">
+                      <span class="px-2 bp-body-small text-secondary">Base</span>
+                      <span class="px-2 bp-body-small font-medium text-text truncate">{{ parentName() || 'Original item' }}</span>
+                      <input type="number" class="bp-input-field text-center tabular-nums" [ngModel]="baseRate()" (ngModelChange)="baseRate.set($event)" (click)="$event.stopPropagation()" />
+                      <input type="number" class="bp-input-field text-center tabular-nums" [ngModel]="baseQty()" (ngModelChange)="baseQty.set($event)" (click)="$event.stopPropagation()" />
+                      <select class="bp-input-field bp-select" [ngModel]="baseUnitDraft()" (ngModelChange)="baseUnitDraft.set($event || null)" (click)="$event.stopPropagation()">
+                        <option [ngValue]="null">—</option>
+                        @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
+                      </select>
+                      <span class="text-center tabular-nums bp-body-small" [class.text-muted]="!includeBase()" [class.text-text]="includeBase()">£{{ baseCost() | number: '1.0-0' }}</span>
+                      <input type="checkbox" class="justify-self-center" [checked]="includeBase()" (change)="includeBase.set($any($event.target).checked)" (click)="$event.stopPropagation()" title="Include the item's base price (off = rebuild from parts)" />
+                      <span></span>
                     </div>
                   }
                   @if (grp.isExtras) {
@@ -299,6 +295,8 @@ export class CustomizeDialogComponent implements OnInit {
   readonly baseUnitPrice = input<number | null>(null);
   readonly baseUnit = input<string | null>(null);
   readonly baseQuantity = input<number | null>(null);
+  /** The item's own category — the base row folds in as row-0 of this card. */
+  readonly baseCategoryId = input<string | null>(null);
   /** The line being customized, as a quote line — mapped to the same preview
    *  card the final quote renders (right rail: photo + description). */
   readonly previewLine = input<QuoteLine | null>(null);
@@ -486,9 +484,25 @@ export class CustomizeDialogComponent implements OnInit {
   protected readonly displayGroups = computed(() => {
     const groups = this.rowGroups();
     const real = groups.filter((g) => g.categoryId != null).map((g) => ({ ...g, isExtras: false }));
+    // Ensure the item's own category card exists even before any component is
+    // added — the base row folds in as row-0 of it.
+    const baseCat = this.baseCategoryId();
+    if (baseCat != null && !real.some((g) => g.categoryId === baseCat)) {
+      real.unshift({ categoryId: baseCat, rows: [], total: 0, isExtras: false });
+    }
     const nul = groups.find((g) => g.categoryId == null);
     return [...real, { categoryId: null as string | null, rows: nul?.rows ?? [], total: nul?.total ?? 0, isExtras: true }];
   });
+  /** A category card's displayed total: Extras = the margin; the item's own
+   *  category also adds the base row; others = just their component rows. */
+  protected catCardTotal(grp: { categoryId: string | null; total: number; isExtras: boolean }): number {
+    if (grp.isExtras) return this.marginAmount();
+    return grp.total + (grp.categoryId === this.baseCategoryId() ? this.baseCost() : 0);
+  }
+  /** Is this the item's own category card (where the base row folds in)? */
+  protected isBaseCat(categoryId: string | null): boolean {
+    return this.baseUnitPrice() != null && categoryId === this.baseCategoryId();
+  }
   protected removeRow(r: Row): void {
     if (this.selectedRowK() === r._k) this.selectedRowK.set(null);
     const next = this.rows().filter((x) => x._k !== r._k);
