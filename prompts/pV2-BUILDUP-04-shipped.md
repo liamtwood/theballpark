@@ -35,6 +35,11 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.135 (2026-08-28): SOW party sentence spacing
+- Assembled the Buyer/Supplier sentence tail (", company number …, whose
+  principal place of business is at ….") in code (`buyerRest`/`supplierRest`
+  computeds) to kill the stray space before the period from template whitespace.
+
 ## Iteration — v2.134 (2026-08-28): SOW party fields — company numbers + client address
 - New columns (all schemas + targeted `ALTER` on public): `orgs.company_number`,
   `projects.client_company_number`, `projects.client_address`.

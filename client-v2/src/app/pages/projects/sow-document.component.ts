@@ -81,15 +81,11 @@ import { isDeclined } from './quote-line.util';
         <div class="grid grid-cols-2 gap-4 border-t border-hairline px-4 py-3">
           <div>
             <div class="bp-field-label">Buyer</div>
-            <div class="mt-1 bp-body-small text-text">
-              <span class="font-semibold">{{ project().clientName || '[Client company]' }}</span>@if (project().clientCompanyNumber) { , company number {{ project().clientCompanyNumber }} }@if (project().clientAddress) { , whose principal place of business is at {{ project().clientAddress }} }.
-            </div>
+            <div class="mt-1 bp-body-small text-text"><span class="font-semibold">{{ project().clientName || '[Client company]' }}</span>{{ buyerRest() }}</div>
           </div>
           <div>
             <div class="bp-field-label">Supplier</div>
-            <div class="mt-1 bp-body-small text-text">
-              <span class="font-semibold">{{ org()?.name || '[Your agency]' }}</span>@if (org()?.companyNumber) { , company number {{ org()!.companyNumber }} }@if (supplierAddress()) { , whose principal place of business is at {{ supplierAddress() }} }.
-            </div>
+            <div class="mt-1 bp-body-small text-text"><span class="font-semibold">{{ org()?.name || '[Your agency]' }}</span>{{ supplierRest() }}</div>
           </div>
         </div>
       </section>
@@ -203,6 +199,23 @@ export class SowDocumentComponent {
     return parts;
   });
   protected readonly supplierAddress = computed(() => this.supplierAddressLines().join(', '));
+  /** The Buyer/Supplier sentence tail — ", company number …, whose principal
+   *  place of business is at …." — assembled in code to avoid template-whitespace
+   *  gaps (a space crept in before the period). */
+  protected readonly buyerRest = computed(() => {
+    const p = this.project();
+    let s = '';
+    if (p.clientCompanyNumber) s += `, company number ${p.clientCompanyNumber}`;
+    if (p.clientAddress) s += `, whose principal place of business is at ${p.clientAddress}`;
+    return `${s}.`;
+  });
+  protected readonly supplierRest = computed(() => {
+    const o = this.org();
+    let s = '';
+    if (o?.companyNumber) s += `, company number ${o.companyNumber}`;
+    if (this.supplierAddress()) s += `, whose principal place of business is at ${this.supplierAddress()}`;
+    return `${s}.`;
+  });
   /** The project's location value (the venue), not venue + city concatenated. */
   protected readonly location = computed(() => this.project().venueName || this.project().venueCity || '');
   /** Created date + time (short, 24h) — matches the Quote's ref box. */
