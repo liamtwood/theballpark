@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, resource } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
@@ -152,6 +153,17 @@ import { isDeclined } from './quote-line.util';
           </div>
         }
       </div>
+
+      <!-- Annex A — the agency's standard T&C PDF, embedded inline (screen only;
+           the crisp page-merge into the combined PDF lands with Puppeteer). -->
+      @if (termsSafeUrl(); as safe) {
+        <section class="mt-8 overflow-hidden rounded-[var(--radius-card)] border border-hairline print:hidden">
+          <div class="sow-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Annex A — Terms &amp; Conditions</span></div>
+          <div class="border-t border-hairline">
+            <iframe [src]="safe" class="block h-[85vh] w-full" title="Terms & Conditions"></iframe>
+          </div>
+        </section>
+      }
     </div>
   `,
 })
@@ -175,6 +187,14 @@ export class SowDocumentComponent {
     loader: () => firstValueFrom(this.orgs.get()),
   });
   protected readonly org = computed(() => this.orgRes.value() ?? null);
+  /** Safe iframe URL for the T&C PDF preview. The URL is the org's OWN uploaded
+   *  asset from our Supabase storage (not user-typed), so trusting it as a
+   *  resource URL for the <iframe> is safe. */
+  private readonly sanitizer = inject(DomSanitizer);
+  protected readonly termsSafeUrl = computed<SafeResourceUrl | null>(() => {
+    const u = this.org()?.termsPdfUrl;
+    return u ? this.sanitizer.bypassSecurityTrustResourceUrl(u) : null;
+  });
   /** Address wrapped on commas + city (phone rendered separately, labeled). */
   protected readonly supplierAddressLines = computed(() => {
     const o = this.org();

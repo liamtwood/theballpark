@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.130 (2026-08-28): embed the T&C pages inline on the SOW
+- The SOW now **embeds the org's T&C PDF inline** (an "Annex A — Terms &
+  Conditions" section with an `<iframe>` at the bottom) when uploaded — the pages
+  render below the SOW on screen. Screen-only (`print:hidden`); the crisp
+  page-merge into the combined PDF is the Puppeteer stage. URL sanitized
+  (`bypassSecurityTrustResourceUrl` — the org's own storage asset).
+
 ## Iteration — v2.129 (2026-08-28): org T&C PDF (SOW Annex A)
 - Agencies upload their standard **Terms & Conditions PDF** on the org profile
   (new **Terms & Conditions** section: upload / view / replace / remove).
