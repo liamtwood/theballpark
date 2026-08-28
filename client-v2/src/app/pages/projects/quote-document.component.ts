@@ -68,7 +68,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
                 <div class="bp-meta leading-relaxed">{{ ln }}</div>
               }
               @if (org()?.phone) {
-                <div class="bp-meta leading-relaxed">Phone: {{ org()!.phone }}</div>
+                <div class="bp-meta font-medium leading-relaxed text-text">Phone: {{ org()!.phone }}</div>
               }
             }
           </div>

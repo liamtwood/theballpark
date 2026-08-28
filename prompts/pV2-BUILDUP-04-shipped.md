@@ -35,6 +35,10 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.122 (2026-08-28): phone in the meta-label style
+- "Phone:" line now `font-medium text-text` (darker, matching the Project / Type
+  / Created labels) instead of the lighter `bp-meta` grey.
+
 ## Iteration — v2.121 (2026-08-28): phone below city, labeled "Phone:"
 - Moved the agency phone **below city** and labeled it **"Phone: {number}"** (own
   line under the address block).
