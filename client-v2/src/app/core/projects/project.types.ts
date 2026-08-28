@@ -84,6 +84,10 @@ export interface QuoteLine {
   extras?: string[];
   /** pV2-BUILDUP-04 — the line's Details free-text (markdown). */
   details?: string | null;
+  /** pV2-BUILDUP-04 — the AGENT's client-facing description (what prints on the
+   *  Quote document). Agent-owned on any line; null falls back to `description`
+   *  (the supplier text). */
+  quoteDescription?: string | null;
   /** The line's supplier default currency (ISO code) — e.g. 'GBP', 'USD'. */
   supplierCurrency?: string | null;
 }

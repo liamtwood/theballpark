@@ -2590,14 +2590,17 @@ const migrate = async () => {
     // line, like Description/Services. Nullable, additive.
     for (const s of ['public', 'preview', 'master']) {
       await client.query(`ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS details TEXT;`);
-      // Insurance is an ENTERED VALUE (£), not a %. (default_insurance_pct was
-      // an earlier take, left dormant.)
+      // The AGENT's client-facing line description (Quote document). Agent-owned
+      // on any line; defaults to the supplier text when NULL. Nullable, additive.
+      await client.query(`ALTER TABLE ${s}.project_items ADD COLUMN IF NOT EXISTS quote_description TEXT;`);
+      // Insurance is a % of project costs (default_insurance_amount was an earlier
+      // fixed-£ take, left dormant.)
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS default_insurance_pct NUMERIC(5,2);`);
       await client.query(`ALTER TABLE ${s}.orgs     ADD COLUMN IF NOT EXISTS default_insurance_pct NUMERIC(5,2);`);
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS default_insurance_amount NUMERIC(12,2);`);
       await client.query(`ALTER TABLE ${s}.orgs     ADD COLUMN IF NOT EXISTS default_insurance_amount NUMERIC(12,2);`);
     }
-    console.log('  pV2-BUILDUP-04 columns installed (project_items.details, projects/orgs.default_insurance_amount, all schemas).');
+    console.log('  pV2-BUILDUP-04 columns installed (project_items.details + quote_description, projects/orgs insurance defaults, all schemas).');
 
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');

@@ -409,6 +409,9 @@ function toQuoteLine(row) {
     extras: row.extra_names ?? [],
     // pV2-BUILDUP-04 — the line's Details free-text (markdown).
     details: row.details ?? null,
+    // pV2-BUILDUP-04 — the AGENT's client-facing line description (what prints on
+    // the Quote document). Agent-owned on any line; defaults to the supplier text.
+    quoteDescription: row.quote_description ?? null,
   };
 }
 
@@ -429,7 +432,7 @@ const QUOTE_LINE_JOIN = `
          -- base_price / catalogue install. So the quote card matches the inbox.
          COALESCE(pi.price_current, pi.base_price)  AS base_price,
          pi.unit, pi.image_url, pi.quantity,
-         pi.option_of_line_id, pi.details,
+         pi.option_of_line_id, pi.details, pi.quote_description,
          pi.installed, pi.logical_line_id, pi.created_at, pi.is_custom,
          pi.category_id, c.name AS category_name,
          c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url,
@@ -994,6 +997,30 @@ async function updateLineDetails(orgId, projectId, lineId, patch) {
   return lineById(pool, r.rows[0].id);
 }
 
+/** pV2-BUILDUP-04 — set the AGENT's client-facing description on ANY line in
+ *  their own project (the Quote document text). Authority is PROJECT ownership
+ *  (p.org_id = orgId), not line ownership — it's the agent's quote, and it writes
+ *  a SEPARATE column (quote_description), never the supplier's `description`.
+ *  Pass null/'' to clear (falls back to the supplier text). Returns the line,
+ *  null if the line isn't in the caller's project. */
+async function setQuoteDescription(orgId, projectId, lineId, text) {
+  const auth = await pool.query(
+    `SELECT pi.id
+       FROM project_items pi
+       JOIN projects p ON p.id = pi.project_id
+      WHERE pi.id = $1 AND pi.project_id = $2 AND pi.deleted_at IS NULL AND p.org_id = $3`,
+    [lineId, projectId, orgId]
+  );
+  if (!auth.rows.length) return null;
+  const value = text == null || text === '' ? null : text;
+  const r = await pool.query(
+    `UPDATE project_items SET quote_description = $2 WHERE id = $1 AND deleted_at IS NULL RETURNING id`,
+    [lineId, value]
+  );
+  if (!r.rows.length) return null;
+  return lineById(pool, r.rows[0].id);
+}
+
 /** Soft-remove an item from the project's quote. Returns true if a row was
  *  removed, false if none, null if the project isn't the org's, 'locked' if
  *  the item is out for quote (read-only in the quote). */
@@ -1119,6 +1146,6 @@ async function recommend(orgId, projectId) {
 
 module.exports = {
   listForOrg, listClientNames, getDetail, updateDetail, create,
-  listItems, getEstimate, addItem, addCustomItem, saveComponents, listComponents, listMyComponents, removeItem, updateItem, updateLineDetails, recommend,
+  listItems, getEstimate, addItem, addCustomItem, saveComponents, listComponents, listMyComponents, removeItem, updateItem, updateLineDetails, setQuoteDescription, recommend,
   resolveStatus, DEFAULT_STATUS, toCard, linesByIds,
 };

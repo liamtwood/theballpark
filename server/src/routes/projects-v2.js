@@ -247,6 +247,24 @@ router.post('/:id/items/:itemId/components', async (req, res, next) => {
   }
 });
 
+// PUT /:id/items/:itemId/quote-description — set the AGENT's client-facing line
+// description (the Quote document text). Project-owner scoped (any line in their
+// project); writes the separate quote_description column, never the supplier's.
+const QuoteDescriptionSchema = z.object({ quoteDescription: z.string().max(8000).nullable() });
+router.put('/:id/items/:itemId/quote-description', async (req, res, next) => {
+  try {
+    const parsed = QuoteDescriptionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const line = await projects.setQuoteDescription(req.user.org_id, req.params.id, req.params.itemId, parsed.data.quoteDescription);
+    if (line === null) return res.status(404).json({ error: 'Line not found in your project' });
+    res.json(line);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH /:id/items/:itemId — update the line: quantity (positive int) and/or
 // installed (bool, or null to reset to default). At least one required.
 const QuotePatchSchema = z

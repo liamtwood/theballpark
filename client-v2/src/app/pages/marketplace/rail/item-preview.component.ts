@@ -100,16 +100,18 @@ import { MarkdownPipe } from '../../../shared/markdown.pipe';
       }
     </dl>
 
-    @if (editable()) {
-      <div class="mt-3 border-t border-hairline pt-3">
-        <span class="bp-field-label">Description</span>
-        <textarea rows="6" class="bp-store-textarea mt-1 w-full" placeholder="Describe the item for the agent…" [ngModel]="item().description" (ngModelChange)="descChange.emit($event)"></textarea>
-      </div>
-    } @else if (item().description) {
-      <div class="mt-3 border-t border-hairline pt-3">
-        <span class="bp-field-label">Description</span>
-        <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="item().description | md"></div>
-      </div>
+    @if (showDescription()) {
+      @if (editable()) {
+        <div class="mt-3 border-t border-hairline pt-3">
+          <span class="bp-field-label">Description</span>
+          <textarea rows="6" class="bp-store-textarea mt-1 w-full" placeholder="Describe the item for the agent…" [ngModel]="item().description" (ngModelChange)="descChange.emit($event)"></textarea>
+        </div>
+      } @else if (item().description) {
+        <div class="mt-3 border-t border-hairline pt-3">
+          <span class="bp-field-label">Description</span>
+          <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="item().description | md"></div>
+        </div>
+      }
     }
 
     @if (editable()) {
@@ -141,6 +143,9 @@ export class ItemPreviewComponent {
   /** Prefix the price with "From" (indicative marketplace price). Off when the
    *  price is a firm, agreed cost (e.g. the inbox revised card). */
   readonly showFromPrefix = input<boolean>(true);
+  /** Show the Description block. Off on the estimate rail, which renders its own
+   *  editable client-facing (quote) description instead (pV2-BUILDUP-04). */
+  readonly showDescription = input<boolean>(true);
   readonly closed = output<void>();
   /** Opt-in edit mode — the name + description become editable and emit changes
    *  (used by the supplier Customize to set the final item the agent sees). */

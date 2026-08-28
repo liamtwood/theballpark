@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
@@ -17,7 +18,7 @@ import { LineEditorComponent, LineEdit } from './line-editor.component';
 @Component({
   selector: 'app-estimate-preview-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule, ItemPreviewComponent, MarkdownPipe, LineEditorComponent],
+  imports: [CurrencyPipe, FormsModule, LucideAngularModule, ItemPreviewComponent, MarkdownPipe, LineEditorComponent],
   host: { class: 'contents' },
   template: `
     @if (line(); as l) {
@@ -43,8 +44,36 @@ import { LineEditorComponent, LineEdit } from './line-editor.component';
               <app-line-editor [line]="l" [categories]="categories()" [saving]="saving()"
                                (save)="onSave(l, $event)" (cancel)="editing.set(false)" />
             } @else {
-              <app-item-preview [item]="previewItem()!" [categoryName]="l.categoryName" [showFromPrefix]="false" [showStoreLink]="false"
+              <app-item-preview [item]="previewItem()!" [categoryName]="l.categoryName" [showFromPrefix]="false" [showStoreLink]="false" [showDescription]="false"
                                 closeIcon="eye" closeLabel="Hide preview" (closed)="hidden.set(true)" />
+              <!-- pV2-BUILDUP-04 — the AGENT's client-facing description (what
+                   prints on the Quote document). Editable on ANY line; defaults
+                   to the supplier text. -->
+              <div class="mt-3 border-t border-hairline pt-3">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="bp-field-label">Description <span class="bp-meta font-normal">· on quote</span></span>
+                  @if (!editingDesc()) {
+                    <button type="button" class="rounded-md p-1 text-muted transition-colors hover:text-text"
+                            (click)="startDesc(l)" title="Edit quote description" aria-label="Edit quote description">
+                      <lucide-icon name="square-pen" [size]="14" />
+                    </button>
+                  }
+                </div>
+                @if (editingDesc()) {
+                  <textarea rows="6" class="bp-store-textarea mt-1.5 w-full" placeholder="Describe this line for the client…"
+                            [ngModel]="descDraft()" (ngModelChange)="descDraft.set($event)"></textarea>
+                  <div class="mt-2 flex items-center gap-2">
+                    <button type="button" class="bp-btn-grad flex-1" [disabled]="savingDesc()" (click)="saveDesc(l)">
+                      {{ savingDesc() ? 'Saving…' : 'Save' }}
+                    </button>
+                    <button type="button" class="bp-btn-outline" (click)="editingDesc.set(false)">Cancel</button>
+                  </div>
+                } @else if (quoteDesc(l); as d) {
+                  <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="d | md"></div>
+                } @else {
+                  <p class="bp-meta mt-1 italic">No description yet — add one for the quote.</p>
+                }
+              </div>
               <!-- pV2-BUILDUP-04 — the line's Details (same free-text markdown the
                    inbox card shows), with its running total. -->
               @if (l.details) {
@@ -121,6 +150,33 @@ export class EstimatePreviewRailComponent {
   /** Inline-edit mode — resets to false whenever the selected line changes. */
   protected readonly editing = linkedSignal(() => (this.line(), false));
   protected readonly saving = signal(false);
+
+  // ── pV2-BUILDUP-04 — the agent's client-facing (quote) description ──────────
+  /** The client-facing description: the agent's override, else the supplier text. */
+  protected quoteDesc(l: QuoteLine): string | null { return l.quoteDescription || l.description; }
+  /** Edit mode for the quote description — resets when the selected line changes. */
+  protected readonly editingDesc = linkedSignal(() => (this.line(), false));
+  protected readonly descDraft = signal('');
+  protected readonly savingDesc = signal(false);
+  protected startDesc(l: QuoteLine): void {
+    // Seed from the current client text (agent override, else supplier default).
+    this.descDraft.set(l.quoteDescription ?? l.description ?? '');
+    this.editingDesc.set(true);
+  }
+  protected async saveDesc(l: QuoteLine): Promise<void> {
+    if (this.savingDesc()) return;
+    this.savingDesc.set(true);
+    try {
+      const text = this.descDraft().trim();
+      await firstValueFrom(this.projects.setQuoteDescription(this.projectId(), l.id, text || null));
+      this.editingDesc.set(false);
+      this.changed.emit();
+    } catch {
+      // Keep the editor open on failure; nothing cleared locally.
+    } finally {
+      this.savingDesc.set(false);
+    }
+  }
   /** Persist the agent's edit to their own line (direct — no negotiation), then
    *  tell the host to reload. */
   protected async onSave(line: QuoteLine, edit: LineEdit): Promise<void> {

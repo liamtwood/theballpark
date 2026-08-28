@@ -171,6 +171,13 @@ export class ProjectService {
     return this.api.patch<QuoteLine>(`/api/projects-v2/${projectId}/items/${itemId}/details`, body);
   }
 
+  /** pV2-BUILDUP-04 — set the agent's client-facing description on ANY line in
+   *  their own project (the Quote document text). Project-owner scoped; null
+   *  clears it (falls back to the supplier text). */
+  setQuoteDescription(projectId: string, itemId: string, quoteDescription: string | null): Observable<QuoteLine> {
+    return this.api.put<QuoteLine>(`/api/projects-v2/${projectId}/items/${itemId}/quote-description`, { quoteDescription });
+  }
+
   /** Recommend + add items from the project's stored brief (v1 matcher per
    *  category). The Estimate tab then displays the grouped quote. */
   recommend(projectId: string): Observable<RecommendResult> {

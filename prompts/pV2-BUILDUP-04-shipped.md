@@ -35,6 +35,27 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.105 (2026-08-28): step 2 — editable agent (quote) description per line
+- New **`project_items.quote_description`** column (all schemas in migrate-schemas;
+  targeted `ALTER` run on `public` for dev). The **agent's client-facing line
+  description** — what prints on the Quote document. Agent-owned on ANY line,
+  **defaults to the supplier text** when null.
+- **Server:** `QUOTE_LINE_JOIN` + `toQuoteLine` expose `quoteDescription`. New
+  `setQuoteDescription(orgId, projectId, lineId, text)` service + `PUT
+  /:id/items/:itemId/quote-description` route — **project-owner scoped**
+  (`p.org_id = orgId`, not line ownership), writes the separate column, never the
+  supplier's `description`. null/'' clears (falls back to supplier text).
+- **Client:** `QuoteLine.quoteDescription`; `ProjectService.setQuoteDescription`.
+  The estimate **right-rail** (click a cost-card line) now shows an editable
+  **"Description · on quote"** block for every line — pencil → textarea seeded
+  from the current client text (agent override, else supplier default) → Save
+  (`setQuoteDescription` + reload). Item-preview's own description is suppressed
+  there (`showDescription=false`) so there's one description, not two.
+- **Document** renders `quoteDescription || description`, so edits show on print.
+- Resolves the step-2 deferral from v2.100. Marketplace lines are now editable by
+  the agent (the ownership gap that pushed us off per-item is closed by the
+  separate agent-owned column).
+
 ## Iteration — v2.104 (2026-08-28): tile value in the item-title font + NATO dates
 - Stacked tile **value now uses `.bp-list-title`** (same font/size/weight as item
   names like "Awards Ceremony AV Package") instead of the lighter `.bp-body-small`.

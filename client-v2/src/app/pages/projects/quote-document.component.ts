@@ -73,8 +73,8 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
               <div class="flex items-start justify-between gap-4 border-b border-hairline py-3">
                 <div class="min-w-0 flex-1">
                   <div class="bp-body-small font-semibold text-text">{{ l.name }}</div>
-                  @if (l.description) {
-                    <div class="bp-md bp-meta mt-1 max-w-prose text-secondary" [innerHTML]="l.description | md"></div>
+                  @if (desc(l); as d) {
+                    <div class="bp-md bp-meta mt-1 max-w-prose text-secondary" [innerHTML]="d | md"></div>
                   }
                 </div>
                 <div class="flex shrink-0 items-baseline gap-4 tabular-nums">
@@ -132,8 +132,8 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
               <div class="flex items-start justify-between gap-4 border-b border-hairline py-3">
                 <div class="min-w-0 flex-1">
                   <div class="bp-body-small font-semibold text-text">{{ l.name }}</div>
-                  @if (l.description) {
-                    <div class="bp-md bp-meta mt-1 max-w-prose text-secondary" [innerHTML]="l.description | md"></div>
+                  @if (desc(l); as d) {
+                    <div class="bp-md bp-meta mt-1 max-w-prose text-secondary" [innerHTML]="d | md"></div>
                   }
                 </div>
                 <div class="flex shrink-0 items-baseline gap-4 tabular-nums">
@@ -216,6 +216,8 @@ export class QuoteDocumentComponent {
 
   /** Margin markup (1 + margin%) — applied to hard-cost display only. */
   protected readonly markup = computed(() => 1 + (this.bd().marginPct || 0) / 100);
+  /** The client-facing description: the agent's override, else the supplier text. */
+  protected desc(l: QuoteLine): string | null { return l.quoteDescription || l.description; }
   protected lineTotal(l: QuoteLine): number { return lineCost(l) * this.markup(); }
   protected lineCostRaw(l: QuoteLine): number { return lineCost(l); }
   protected unitText(l: QuoteLine): string { return unitPlain(l.unit); }
