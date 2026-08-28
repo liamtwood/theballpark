@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { PdfPagesComponent } from '../../shared/pdf-pages.component';
+import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { OrganisationService, OrgProfile } from '../../core/organisation.service';
@@ -19,7 +20,7 @@ import { isDeclined } from './quote-line.util';
 @Component({
   selector: 'app-sow-document',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule, PdfPagesComponent],
+  imports: [CurrencyPipe, LucideAngularModule, PdfPagesComponent, MarkdownPipe],
   host: { class: 'quote-doc fixed inset-0 z-50 overflow-y-auto bg-fill' },
   styles: [`
     .quote-doc__paper { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -110,7 +111,13 @@ import { isDeclined } from './quote-line.util';
       <!-- Timeline -->
       <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
         <div class="sow-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Timeline</span></div>
-        <div class="border-t border-hairline px-4 py-3 bp-body-small italic text-secondary">Key dates &amp; milestones — to be added.</div>
+        <div class="border-t border-hairline px-4 py-3 bp-body-small text-text">
+          @if (project().sowTimeline) {
+            <div class="bp-md" [innerHTML]="project().sowTimeline | md"></div>
+          } @else {
+            <span class="italic text-secondary">Key dates &amp; milestones — add them on the project's Statement of Work section.</span>
+          }
+        </div>
       </section>
 
       <!-- Project Total — headline gradient banner (like the Quote). exc. VAT
@@ -126,13 +133,23 @@ import { isDeclined } from './quote-line.util';
       <!-- Payment Terms -->
       <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
         <div class="sow-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Payment Terms</span></div>
-        <div class="border-t border-hairline px-4 py-3 bp-body-small italic text-secondary">Payment schedule — to be added (e.g. 50% on signature, 50% on completion).</div>
+        <div class="border-t border-hairline px-4 py-3 bp-body-small text-text">
+          @if (project().sowPaymentTerms) {
+            <div class="bp-md" [innerHTML]="project().sowPaymentTerms | md"></div>
+          } @else {
+            <span class="italic text-secondary">Payment schedule — add it on the project's Statement of Work section.</span>
+          }
+        </div>
       </section>
 
       <!-- Special Terms -->
       <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
         <div class="sow-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Special Terms</span></div>
-        <div class="border-t border-hairline px-4 py-3 bp-body-small text-text">N/A</div>
+        <div class="border-t border-hairline px-4 py-3 bp-body-small text-text">
+          @if (project().sowSpecialTerms) {
+            <div class="bp-md" [innerHTML]="project().sowSpecialTerms | md"></div>
+          } @else { N/A }
+        </div>
       </section>
 
       <!-- Boilerplate + signatures -->
@@ -241,7 +258,9 @@ export class SowDocumentComponent {
   });
   /** Scope narrative seed — the quote's categories + their line names. */
   protected readonly scopeGroups = computed(() =>
-    groupByCategory((this.lines.value() ?? []).filter((l) => !l.optionOfLineId && !isDeclined(l) && l.categoryId != null)));
+    groupByCategory((this.lines.value() ?? []).filter((l) => !l.optionOfLineId && !isDeclined(l)))
+      // Include the agent's own Fees/Project lines (uncategorised) as services.
+      .map((g) => ({ ...g, name: g.id === '__none' ? 'Project Fees' : g.name })));
 
   protected print(): void { window.print(); }
 }

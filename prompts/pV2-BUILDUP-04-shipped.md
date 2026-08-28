@@ -35,6 +35,19 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.136 (2026-08-28): SOW content — Timeline / Payment / Special Terms + fees in scope
+- **Extracted a shared `DetailsEditorComponent`** from the inbox line-editor, with
+  modes **calc** (item Details — running total), **date** (Timeline — numeric
+  dates → NATO via new `detailsDateLine`), **plain** (markdown only). line-editor
+  refactored to use it (no behaviour change).
+- New project columns `sow_timeline` / `sow_payment_terms` / `sow_special_terms`
+  (all schemas + targeted `ALTER`), wired through the project PUT + a new
+  **Statement of Work** edit-section on the About tab (read = markdown, edit =
+  the Details editor; Timeline uses date mode).
+- **SOW** renders these three sections; empty ones prompt to fill them in.
+- **Services & Goods** now includes the agent's **Fees/Project** lines (as a
+  "Project Fees" group), not just categorised hard costs.
+
 ## Iteration — v2.135 (2026-08-28): SOW party sentence spacing
 - Assembled the Buyer/Supplier sentence tail (", company number …, whose
   principal place of business is at ….") in code (`buyerRest`/`supplierRest`

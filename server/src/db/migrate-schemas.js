@@ -2615,6 +2615,10 @@ const migrate = async () => {
       await client.query(`ALTER TABLE ${s}.orgs ADD COLUMN IF NOT EXISTS company_number TEXT;`);
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS client_company_number TEXT;`);
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS client_address TEXT;`);
+      // SOW content sections (free-text markdown) — timeline / payment / special.
+      await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS sow_timeline TEXT;`);
+      await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS sow_payment_terms TEXT;`);
+      await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS sow_special_terms TEXT;`);
       // Insurance is a % of project costs (default_insurance_amount was an earlier
       // fixed-£ take, left dormant.)
       await client.query(`ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS default_insurance_pct NUMERIC(5,2);`);

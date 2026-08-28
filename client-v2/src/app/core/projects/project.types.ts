@@ -195,6 +195,10 @@ export interface ProjectDetail {
   /** pV2-BUILDUP-04 — client (Buyer) details for the SOW. */
   clientCompanyNumber: string | null;
   clientAddress: string | null;
+  /** pV2-BUILDUP-04 — SOW content sections (free-text markdown). */
+  sowTimeline: string | null;
+  sowPaymentTerms: string | null;
+  sowSpecialTerms: string | null;
   coverUrl: string | null;
   totalBallparkCost: number | null;
   createdAt: string;
@@ -214,6 +218,9 @@ export type ProjectUpdate = Partial<{
   clientName: string | null;
   clientCompanyNumber: string | null;
   clientAddress: string | null;
+  sowTimeline: string | null;
+  sowPaymentTerms: string | null;
+  sowSpecialTerms: string | null;
   projectBudget: number | null;
   currency: string;
   tier: 'starter' | 'professional' | 'premium' | null;

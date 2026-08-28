@@ -25,13 +25,15 @@ import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
 import { QuoteDocumentComponent } from './quote-document.component';
 import { SowDocumentComponent } from './sow-document.component';
+import { DetailsEditorComponent } from '../../shared/details-editor.component';
+import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { InboxProjectComponent } from '../inbox/inbox-project.component';
 
 type Tab = 'marketplace' | 'estimate' | 'final' | 'details' | 'inbox';
 const TABS: Tab[] = ['marketplace', 'estimate', 'final', 'details', 'inbox'];
 
 /** The editable Details sections (v1 parity + per-project Financials). */
-type Section = 'event' | 'type' | 'logistics' | 'financials';
+type Section = 'event' | 'type' | 'logistics' | 'financials' | 'sow';
 
 /** The editable detail form (strings — edit-field's surface). Ref, Status
  *  and Client are read-only (rendered from the loaded detail, not here). */
@@ -52,6 +54,9 @@ interface DetailForm {
   marginPct: string;
   contingencyPct: string;
   vatPct: string;
+  sowTimeline: string;
+  sowPaymentTerms: string;
+  sowSpecialTerms: string;
 }
 
 /** pV2-PROJECTS-02 (slice 1) — /projects/:id inside-project view: hero +
@@ -79,6 +84,8 @@ interface DetailForm {
     ProjectEstimateComponent,
     QuoteDocumentComponent,
     SowDocumentComponent,
+    DetailsEditorComponent,
+    MarkdownPipe,
     InboxProjectComponent,
   ],
   providers: [MessageService],
@@ -179,6 +186,49 @@ interface DetailForm {
                   <app-edit-field label="Margin (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().marginPct" (valueChange)="patch({ marginPct: $event })" />
                   <app-edit-field label="Contingency (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().contingencyPct" (valueChange)="patch({ contingencyPct: $event })" />
                   <app-edit-field label="VAT (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().vatPct" (valueChange)="patch({ vatPct: $event })" />
+                </div>
+              </app-edit-section>
+
+              <!-- pV2-BUILDUP-04 — Statement of Work content: Timeline / Payment
+                   Terms / Special Terms (free-text markdown, edited with the
+                   shared Details editor; Timeline auto-formats dates). -->
+              <app-edit-section
+                title="Statement of Work"
+                [editable]="true"
+                [(editing)]="editingSow"
+                [saving]="saving()"
+                (edit)="snapshot('sow')"
+                (cancelled)="restore('sow')"
+                (save)="save('sow')"
+              >
+                <div class="flex flex-col gap-4">
+                  <div>
+                    <span class="bp-field-label">Timeline</span>
+                    @if (editingSow()) {
+                      <app-details-editor mode="date" label="" [rows]="5" placeholder="One milestone per line, e.g. 'Install 20.08.26' — dates auto-format."
+                                          [value]="form().sowTimeline" (valueChange)="patch({ sowTimeline: $event })" />
+                    } @else if (form().sowTimeline) {
+                      <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="form().sowTimeline | md"></div>
+                    } @else { <div class="bp-caption mt-1">—</div> }
+                  </div>
+                  <div>
+                    <span class="bp-field-label">Payment Terms</span>
+                    @if (editingSow()) {
+                      <app-details-editor mode="plain" label="" [rows]="4" placeholder="e.g. 50% on signature, 50% on completion."
+                                          [value]="form().sowPaymentTerms" (valueChange)="patch({ sowPaymentTerms: $event })" />
+                    } @else if (form().sowPaymentTerms) {
+                      <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="form().sowPaymentTerms | md"></div>
+                    } @else { <div class="bp-caption mt-1">—</div> }
+                  </div>
+                  <div>
+                    <span class="bp-field-label">Special Terms</span>
+                    @if (editingSow()) {
+                      <app-details-editor mode="plain" label="" [rows]="3" placeholder="Anything bespoke to this project (default: N/A)."
+                                          [value]="form().sowSpecialTerms" (valueChange)="patch({ sowSpecialTerms: $event })" />
+                    } @else if (form().sowSpecialTerms) {
+                      <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="form().sowSpecialTerms | md"></div>
+                    } @else { <div class="bp-caption mt-1">—</div> }
+                  </div>
                 </div>
               </app-edit-section>
 
@@ -330,6 +380,7 @@ export class ProjectDetailComponent {
   protected readonly editingType = signal(false);
   protected readonly editingLogistics = signal(false);
   protected readonly editingFinancials = signal(false);
+  protected readonly editingSow = signal(false);
   protected readonly saving = signal(false);
   /** Image-picker drawer (pV2-MEDIA-01b). */
   protected readonly imgDrawer = signal(false);
@@ -398,6 +449,7 @@ export class ProjectDetailComponent {
     type: this.editingType,
     logistics: this.editingLogistics,
     financials: this.editingFinancials,
+    sow: this.editingSow,
   };
 
   /** Weighted "% complete" over the project's key fields — mirrors the Profile
@@ -456,12 +508,18 @@ export class ProjectDetailComponent {
                 durationDays: numOrNull(f.durationDays),
                 guestCount: numOrNull(f.guestCount),
               }
-            : {
-                projectBudget: numOrNull(f.budget),
-                defaultMarginPct: numOrNull(f.marginPct),
-                defaultContingencyPct: numOrNull(f.contingencyPct),
-                defaultVatPct: numOrNull(f.vatPct),
-              };
+            : section === 'financials'
+              ? {
+                  projectBudget: numOrNull(f.budget),
+                  defaultMarginPct: numOrNull(f.marginPct),
+                  defaultContingencyPct: numOrNull(f.contingencyPct),
+                  defaultVatPct: numOrNull(f.vatPct),
+                }
+              : {
+                  sowTimeline: nullable(f.sowTimeline),
+                  sowPaymentTerms: nullable(f.sowPaymentTerms),
+                  sowSpecialTerms: nullable(f.sowSpecialTerms),
+                };
     try {
       const fresh = await firstValueFrom(this.projects.update(id, patch));
       this.form.set(toForm(fresh));
@@ -577,5 +635,8 @@ function toForm(d: ProjectDetail | null): DetailForm {
     marginPct: d?.defaultMarginPct != null ? String(d.defaultMarginPct) : '',
     contingencyPct: d?.defaultContingencyPct != null ? String(d.defaultContingencyPct) : '',
     vatPct: d?.defaultVatPct != null ? String(d.defaultVatPct) : '',
+    sowTimeline: d?.sowTimeline ?? '',
+    sowPaymentTerms: d?.sowPaymentTerms ?? '',
+    sowSpecialTerms: d?.sowSpecialTerms ?? '',
   };
 }

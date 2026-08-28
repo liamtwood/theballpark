@@ -40,6 +40,10 @@ const ProjectUpdateSchema = z.object({
   // pV2-BUILDUP-04 — client (Buyer) details for the SOW.
   clientCompanyNumber: z.string().trim().max(40).nullable().optional(),
   clientAddress: z.string().trim().max(400).nullable().optional(),
+  // pV2-BUILDUP-04 — SOW content sections (free-text markdown).
+  sowTimeline: z.string().max(8000).nullable().optional(),
+  sowPaymentTerms: z.string().max(8000).nullable().optional(),
+  sowSpecialTerms: z.string().max(8000).nullable().optional(),
   projectBudget: z.number().nonnegative().nullable().optional(),
   currency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
   tier: z.enum(['starter', 'professional', 'premium']).nullable().optional(),

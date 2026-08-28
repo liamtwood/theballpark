@@ -197,6 +197,10 @@ function toDetail(row) {
     // pV2-BUILDUP-04 — client (Buyer) details for the SOW.
     clientCompanyNumber: row.client_company_number ?? null,
     clientAddress: row.client_address ?? null,
+    // pV2-BUILDUP-04 — SOW content sections.
+    sowTimeline: row.sow_timeline ?? null,
+    sowPaymentTerms: row.sow_payment_terms ?? null,
+    sowSpecialTerms: row.sow_special_terms ?? null,
     coverUrl: row.cover_image_url,
     // Media (pV2-MEDIA-01b): cover focal point + icon fallback + Unsplash attribution.
     coverFocalX: row.cover_focal_x ?? 50,
@@ -243,6 +247,9 @@ const EDITABLE = {
   clientName: 'client_name',
   clientCompanyNumber: 'client_company_number',
   clientAddress: 'client_address',
+  sowTimeline: 'sow_timeline',
+  sowPaymentTerms: 'sow_payment_terms',
+  sowSpecialTerms: 'sow_special_terms',
   projectBudget: 'project_budget',
   currency: 'currency',
   tier: 'tier',

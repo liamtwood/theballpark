@@ -4,7 +4,8 @@ import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { QuoteLine } from '../../core/projects/project.types';
 import { quoteLineToCatalogueItem } from './quote-line.util';
-import { currencySymbol, detailsCalcLine, detailsTotalStr } from '../../shared/details-format';
+import { currencySymbol, detailsCalcLine } from '../../shared/details-format';
+import { DetailsEditorComponent } from '../../shared/details-editor.component';
 
 /** The edited line fields the parent persists. `cost` is the per-unit rate;
  *  the parent decides whether that's a direct base_price write (agent's own
@@ -28,7 +29,7 @@ export interface LineEdit {
 @Component({
   selector: 'app-line-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ItemPreviewComponent],
+  imports: [FormsModule, ItemPreviewComponent, DetailsEditorComponent],
   host: { class: 'block' },
   template: `
     @if (previewItem(); as pi) {
@@ -48,14 +49,9 @@ export interface LineEdit {
       </div>
     }
     <div class="mt-3 border-t border-hairline pt-3">
-      <div class="flex items-center justify-between gap-2">
-        <span class="bp-field-label">Details</span>
-        @if (detailsTotal(); as tot) {
-          <span class="bp-body-small font-semibold tabular-nums text-text">{{ tot }}</span>
-        }
-      </div>
-      <textarea rows="4" class="bp-store-textarea mt-1 w-full" placeholder="Free text. **bold**, _italic_, - lists. A line like 'Wine 100@15' auto-totals."
-                [ngModel]="edDetails()" (ngModelChange)="edDetails.set($event)" (keydown.enter)="onDetailsEnter($event)" (blur)="onDetailsBlur()"></textarea>
+      <app-details-editor mode="calc" label="Details" [currency]="line().supplierCurrency ?? null"
+                          placeholder="Free text. **bold**, _italic_, - lists. A line like 'Wine 100@15' auto-totals."
+                          [value]="edDetails()" (valueChange)="edDetails.set($event)" />
     </div>
     <div class="mt-4 flex gap-2.5 border-t border-hairline pt-4">
       <button type="button" class="bp-btn-outline flex-1" (click)="cancel.emit()">Cancel</button>
@@ -106,25 +102,6 @@ export class LineEditorComponent implements OnInit {
   });
 
   private sym(): string { return currencySymbol(this.line().supplierCurrency); }
-  protected readonly detailsTotal = computed(() => detailsTotalStr(this.edDetails(), this.sym()));
-
-  /** Enter recomputes the caret's line then inserts a newline AT the caret. */
-  protected onDetailsEnter(ev: Event): void {
-    ev.preventDefault();
-    const ta = ev.target as HTMLTextAreaElement;
-    const pos = ta.selectionStart ?? ta.value.length;
-    const before = ta.value.slice(0, pos);
-    const after = ta.value.slice(pos);
-    const lineStart = before.lastIndexOf('\n') + 1;
-    const finalised = before.slice(0, lineStart) + detailsCalcLine(before.slice(lineStart), this.sym()) + '\n';
-    const caret = finalised.length;
-    this.edDetails.set(finalised + after);
-    setTimeout(() => { try { ta.setSelectionRange(caret, caret); } catch { /* detached */ } }, 0);
-  }
-  protected onDetailsBlur(): void {
-    const recalced = this.edDetails().split('\n').map((l) => detailsCalcLine(l, this.sym())).join('\n');
-    if (recalced !== this.edDetails()) this.edDetails.set(recalced);
-  }
 
   protected onSave(): void {
     const details = this.edDetails().split('\n').map((l) => detailsCalcLine(l, this.sym())).join('\n').trim();
