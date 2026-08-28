@@ -35,6 +35,10 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.116 (2026-08-28): indent the quote Overview
+- Indented the Project Overview paragraph a little from both edges (`px-6`). Font
+  was already correct (confirmed against a screenshot) — no font change.
+
 ## Iteration — v2.115 (2026-08-28): project Description on About tab + quote Overview
 - The project `description` (seeded from the brief's parsed **summary** at
   creation) had no UI — added a multiline **Description** field to the **About**
