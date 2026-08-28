@@ -35,6 +35,10 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.149 (2026-08-28): eyebrow sized to match the ref
+- The hero **eyebrow** now uses `--text-xl` (same size as the ref/subtitle),
+  keeping the tracked-uppercase treatment.
+
 ## Iteration — v2.148 (2026-08-28): "PROJECT" eyebrow above the project name
 - Added an optional **`eyebrow`** input to `app-page-hero` (small tracked
   uppercase label above the title; renders only when set). Project detail passes

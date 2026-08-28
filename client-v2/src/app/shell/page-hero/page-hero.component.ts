@@ -103,7 +103,8 @@ import { LucideAngularModule } from 'lucide-angular';
          uppercase, secondary. Renders only when set. */
       .bp-page-hero__eyebrow {
         margin: 0;
-        font-size: var(--text-xs, 11px);
+        /* Same size as the ref/subtitle (--text-xl); tracked + uppercase. */
+        font-size: var(--text-xl);
         font-weight: 600;
         letter-spacing: 0.08em;
         text-transform: uppercase;
