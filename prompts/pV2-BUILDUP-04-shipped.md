@@ -35,6 +35,10 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.145 (2026-08-28): hide the Project Cart tab
+- Removed **Project Cart** from the visible tab band. The `estimate` route still
+  exists (reachable via the cart→final flow / URL); it's just no longer a tab.
+
 ## Iteration — v2.144 (2026-08-28): Reports tab holding the Quote/SOW buttons
 - Added a **Reports** tab (after Ballpark Cost). Moved the **View as Quote** /
   **View as SOW** buttons off the Ballpark Cost tab into Reports; they still open

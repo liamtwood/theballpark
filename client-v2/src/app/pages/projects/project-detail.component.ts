@@ -369,7 +369,6 @@ export class ProjectDetailComponent {
   protected readonly tabs = computed<TabBandTab[]>(() => [
     { key: 'details', label: 'About ' + this.label() },
     { key: 'marketplace', label: 'Marketplace' },
-    { key: 'estimate', label: 'Project Cart' },
     { key: 'final', label: 'Ballpark Cost' },
     { key: 'reports', label: 'Reports' },
     { key: 'inbox', label: 'Inbox' },
