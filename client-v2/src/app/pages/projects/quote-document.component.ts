@@ -48,11 +48,11 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
       display: inline-grid; place-content: center;
     }
     .opt-check::before {
-      content: ''; width: 0.6rem; height: 0.6rem; transform: scale(0);
-      transition: transform 0.1s ease; background: var(--color-text);
-      clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0, 43% 62%);
+      content: ''; width: 0.28rem; height: 0.52rem; margin-bottom: 0.08rem;
+      border: solid var(--color-text); border-width: 0 1.5px 1.5px 0;
+      transform: rotate(45deg) scale(0); transition: transform 0.1s ease;
     }
-    .opt-check:checked::before { transform: scale(1); }
+    .opt-check:checked::before { transform: rotate(45deg) scale(1); }
     /* Keep the shaded/tinted bars when printing (browsers drop backgrounds
        otherwise, so the PDF would lose the shading + colour). */
     .quote-doc__paper { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

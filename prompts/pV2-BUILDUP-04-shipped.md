@@ -35,6 +35,10 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.126 (2026-08-28): thinner Options tick
+- Checkbox tick is now a thin 1.5px stroke checkmark (rotated-border), not the
+  bold filled polygon.
+
 ## Iteration — v2.125 (2026-08-28): plain neutral Options checkboxes
 - `.opt-check` is now a custom `appearance:none` box: rounded, hairline border, no
   fill; a neutral ink tick (`::before`, `var(--color-text)`) shows when checked.
