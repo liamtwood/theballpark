@@ -35,6 +35,14 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.113 (2026-08-28): Default theme uses the Ballpark brand gradient
+- **Default** shading now uses the soft Ballpark brand gradient
+  (`--bp-gradient-soft`, translucent pink→green) on the section bars / banner /
+  footers instead of neutral fill — readable dark text stays.
+- **Project Total** (Default theme) is the **full `--bp-gradient` with white
+  text**, matching the app's brand total banner. B&W / Pick-a-Colour keep the
+  neutral/tinted treatment.
+
 ## Iteration — v2.112 (2026-08-28): Options panel + persist document choices per project
 - Moved the colour picker into a right-side **Options** panel (standard Ballpark
   `bp-card` chrome), and added an editable **Footer** field there (was the

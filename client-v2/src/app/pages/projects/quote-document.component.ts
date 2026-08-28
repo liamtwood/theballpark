@@ -31,6 +31,10 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
        Shaded bars tint with the accent; icons take it at full strength. */
     .doc-bar { background: var(--doc-bar-bg); }
     .doc-ink { color: var(--doc-accent); }
+    /* Project Total (Default theme) — the full Ballpark gradient + white text,
+       matching the app's brand total banner. */
+    .doc-total--brand { background: var(--bp-gradient); }
+    .doc-total--brand .bp-price-large { color: var(--bp-text-on-gradient); }
     /* Keep the shaded/tinted bars when printing (browsers drop backgrounds
        otherwise, so the PDF would lose the shading + colour). */
     .quote-doc__paper { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -191,7 +195,8 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
             <div class="flex justify-between border-b border-hairline py-2.5"><span class="bp-body-small text-text">Project Coverage</span><span class="bp-body-small tabular-nums text-text">{{ bd().coverage | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
             <div class="flex justify-between py-2.5"><span class="bp-body-small text-text">Project Fees</span><span class="bp-body-small tabular-nums text-text">{{ bd().fees | currency: cur() : 'symbol' : '1.0-0' }}</span></div>
           </div>
-          <div class="flex items-baseline justify-between border-t border-hairline doc-bar px-4 py-3">
+          <div class="doc-total flex items-baseline justify-between border-t border-hairline px-4 py-3"
+               [class.doc-total--brand]="mode() === 'default'" [class.doc-bar]="mode() !== 'default'">
             <span class="bp-price-large uppercase tracking-wide">Project Total</span>
             <span class="bp-price-large tabular-nums">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-0' }}</span>
           </div>
@@ -299,11 +304,15 @@ export class QuoteDocumentComponent implements OnInit {
       default: return 'var(--theme-accent)';
     }
   });
-  /** Shaded-bar background: neutral fill, or a light wash of the picked colour. */
-  protected readonly docBarBg = computed(() =>
-    this.mode() === 'color'
-      ? `color-mix(in srgb, ${this.pickedColor()} 12%, var(--color-surface))`
-      : 'var(--color-fill)');
+  /** Shaded-bar background: the soft Ballpark brand gradient (Default), neutral
+   *  fill (B&W), or a light wash of the picked colour. */
+  protected readonly docBarBg = computed(() => {
+    switch (this.mode()) {
+      case 'color': return `color-mix(in srgb, ${this.pickedColor()} 12%, var(--color-surface))`;
+      case 'bw': return 'var(--color-fill)';
+      default: return 'var(--bp-gradient-soft)';
+    }
+  });
 
   protected readonly subtitle = computed(() =>
     [this.project().eventType, this.project().venueCity].filter(Boolean).join(' · '));
