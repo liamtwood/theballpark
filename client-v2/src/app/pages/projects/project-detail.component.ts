@@ -29,8 +29,8 @@ import { DetailsEditorComponent } from '../../shared/details-editor.component';
 import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { InboxProjectComponent } from '../inbox/inbox-project.component';
 
-type Tab = 'marketplace' | 'estimate' | 'final' | 'details' | 'inbox';
-const TABS: Tab[] = ['marketplace', 'estimate', 'final', 'details', 'inbox'];
+type Tab = 'marketplace' | 'estimate' | 'final' | 'reports' | 'details' | 'inbox';
+const TABS: Tab[] = ['marketplace', 'estimate', 'final', 'reports', 'details', 'inbox'];
 
 /** The editable Details sections (v1 parity + per-project Financials). */
 type Section = 'event' | 'type' | 'logistics' | 'financials' | 'sow';
@@ -287,16 +287,23 @@ interface DetailForm {
           }
           @case ('final') {
             <div class="min-h-0 flex-1 overflow-y-auto">
-              <!-- pV2-BUILDUP-04 — jump to the client-facing documents. -->
-              <div class="flex justify-end gap-2 px-4 pt-4">
-                <button type="button" class="bp-btn-outline flex items-center gap-2" (click)="docView.set(true)">
-                  <lucide-icon name="file-text" [size]="15" /> View as Quote
-                </button>
-                <button type="button" class="bp-btn-outline flex items-center gap-2" (click)="sowView.set(true)">
-                  <lucide-icon name="file-text" [size]="15" /> View as SOW
-                </button>
-              </div>
               <app-project-estimate [projectId]="p.id" [project]="p" view="final" (detailsSaved)="detail.reload()" />
+            </div>
+          }
+          @case ('reports') {
+            <div class="min-h-0 flex-1 overflow-y-auto">
+              <!-- pV2-BUILDUP-04 — the client-facing documents (open as overlays). -->
+              <div class="mx-auto max-w-2xl px-4 pt-6">
+                <p class="bp-field-label uppercase tracking-wide">Reports</p>
+                <div class="mt-2 flex flex-col gap-3 sm:flex-row">
+                  <button type="button" class="bp-btn-outline flex items-center justify-center gap-2" (click)="docView.set(true)">
+                    <lucide-icon name="file-text" [size]="15" /> View as Quote
+                  </button>
+                  <button type="button" class="bp-btn-outline flex items-center justify-center gap-2" (click)="sowView.set(true)">
+                    <lucide-icon name="file-text" [size]="15" /> View as SOW
+                  </button>
+                </div>
+              </div>
             </div>
             @if (docView()) {
               <app-quote-document [projectId]="p.id" [project]="p" (close)="docView.set(false)" />
@@ -364,6 +371,7 @@ export class ProjectDetailComponent {
     { key: 'marketplace', label: 'Marketplace' },
     { key: 'estimate', label: 'Project Cart' },
     { key: 'final', label: 'Ballpark Cost' },
+    { key: 'reports', label: 'Reports' },
     { key: 'inbox', label: 'Inbox' },
   ]);
 

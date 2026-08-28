@@ -35,6 +35,12 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.144 (2026-08-28): Reports tab holding the Quote/SOW buttons
+- Added a **Reports** tab (after Ballpark Cost). Moved the **View as Quote** /
+  **View as SOW** buttons off the Ballpark Cost tab into Reports; they still open
+  the existing `app-quote-document` / `app-sow-document` overlays. Ballpark Cost
+  is now just the estimate. (Inline-in-tab document rendering deferred.)
+
 ## Iteration — v2.143 (2026-08-28): move the tab band below the hero
 - Moved the **tab band** (About Project / Marketplace / Project Cart / Ballpark
   Cost / Inbox) out of the page hero's actions slot to a **centered row just
