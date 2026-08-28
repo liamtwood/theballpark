@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NgTemplateOutlet } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
@@ -27,7 +28,7 @@ function natoDate(s: string): string {
 @Component({
   selector: 'app-event-details-edit',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, LucideAngularModule],
+  imports: [FormsModule, NgTemplateOutlet, LucideAngularModule],
   host: { class: 'block' },
   styles: [`
     /* pV2-BUILDUP-04 workspace card — soft white on the pink ground. */
@@ -50,24 +51,43 @@ function natoDate(s: string): string {
     }
     .ed-input::placeholder { color: var(--color-text-secondary); opacity: 0.7; }
     .ed-input:focus { border-color: var(--theme-accent); }
+    .ed-textarea {
+      width: 100%; min-height: 84px;
+      border-radius: 20px;
+      border: 1px solid var(--card-border);
+      background: var(--color-surface);
+      padding: 12px 16px;
+      font-size: var(--text-md);
+      font-family: var(--bp-font);
+      line-height: var(--leading-normal, 1.5);
+      color: var(--color-text, var(--bp-text-color));
+      outline: none;
+      resize: vertical;
+    }
+    .ed-textarea::placeholder { color: var(--color-text-secondary); opacity: 0.7; }
+    .ed-textarea:focus { border-color: var(--theme-accent); }
   `],
   template: `
+    <ng-template #savedChip>
+      @switch (state()) {
+        @case ('saving') {
+          <span class="bp-pill bp-body-small text-secondary">Saving…</span>
+        }
+        @case ('error') {
+          <span class="bp-pill bp-pill--danger bp-body-small">Couldn't save</span>
+        }
+        @default {
+          <span class="bp-pill bp-pill--success bp-body-small inline-flex items-center gap-1.5">
+            <lucide-icon name="check" [size]="14" [strokeWidth]="2" /> Details saved
+          </span>
+        }
+      }
+    </ng-template>
+
     <div class="ed-card p-6">
       <div class="flex items-center justify-between">
         <span class="bp-list-title">Event details</span>
-        @switch (state()) {
-          @case ('saving') {
-            <span class="bp-pill bp-body-small text-secondary">Saving…</span>
-          }
-          @case ('error') {
-            <span class="bp-pill bp-pill--danger bp-body-small">Couldn't save</span>
-          }
-          @default {
-            <span class="bp-pill bp-pill--success bp-body-small inline-flex items-center gap-1.5">
-              <lucide-icon name="check" [size]="14" [strokeWidth]="2" /> Details saved
-            </span>
-          }
-        }
+        <ng-container [ngTemplateOutlet]="savedChip" />
       </div>
 
       <div class="mt-5 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -114,6 +134,17 @@ function natoDate(s: string): string {
         </label>
       </div>
     </div>
+
+    <div class="ed-card mt-4 p-6">
+      <div class="flex items-center justify-between">
+        <span class="bp-list-title">Event Description</span>
+        <ng-container [ngTemplateOutlet]="savedChip" />
+      </div>
+      <textarea class="ed-textarea mt-4" rows="3"
+                placeholder="A short overview of the event — shown on the quote document."
+                [ngModel]="dDescription()" (ngModelChange)="dDescription.set($event)"
+                (blur)="saveDescription()"></textarea>
+    </div>
   `,
 })
 export class EventDetailsEditComponent {
@@ -138,6 +169,7 @@ export class EventDetailsEditComponent {
   protected readonly dBudget = linkedSignal(() =>
     this.project().projectBudget != null ? withCommas(this.project().projectBudget!) : '',
   );
+  protected readonly dDescription = linkedSignal(() => this.project().description ?? '');
 
   protected symbol(): string {
     return this.currency() === 'USD' ? '$' : this.currency() === 'EUR' ? '€' : '£';
@@ -187,6 +219,12 @@ export class EventDetailsEditComponent {
     this.dBudget.set(next != null ? withCommas(next) : ''); // reflect commas in the box
     if (next === (this.project().projectBudget ?? null)) return;
     this.persist({ projectBudget: next });
+  }
+
+  protected saveDescription(): void {
+    const next = this.dDescription().trim() || null;
+    if (next === (this.project().description ?? null)) return;
+    this.persist({ description: next });
   }
 
   private async persist(patch: ProjectUpdate): Promise<void> {

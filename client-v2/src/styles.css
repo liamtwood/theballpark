@@ -1785,3 +1785,16 @@ select.bp-input-field { appearance: auto; }
 /* The pink project "workspace" ground — set on the shell <main> for the
    project-detail route only, so it's full-bleed behind the header. */
 .bp-main--workspace { background: var(--workspace-pink); }
+
+/* Scrollbars — transparent track (shows the page/workspace ground through it,
+   not a white gutter) + a subtle rounded thumb. */
+* { scrollbar-color: rgba(15, 23, 42, 0.28) transparent; }
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.28);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.42); }

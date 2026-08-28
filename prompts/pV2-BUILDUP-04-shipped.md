@@ -35,6 +35,14 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.155 (2026-08-28): Event Description card + transparent scrollbar
+- Added an **Event Description** card after Event details (same soft-white
+  workspace treatment) — an editable textarea bound to `description`, saving on
+  blur via the shared persist path; the saved-chip is shared via an
+  `ngTemplateOutlet`.
+- **Scrollbars**: transparent track (shows the pink/page ground, not a white
+  gutter) + a subtle rounded thumb (global).
+
 ## Iteration — v2.154 (2026-08-28): tab icons + even-width tabs
 - `TabBandTab` gains an optional **`icon`**; project tabs get one each: About
   Project (clipboard-pen), Ballpark Cost (wallet), Marketplace (store), Reports
