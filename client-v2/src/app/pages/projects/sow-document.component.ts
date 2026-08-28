@@ -112,8 +112,13 @@ import { isDeclined } from './quote-line.util';
       <section class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
         <div class="sow-bar px-4 py-2.5 text-center"><span class="bp-page-label text-[length:var(--text-md)]">Timeline</span></div>
         <div class="border-t border-hairline px-4 py-3 bp-body-small text-text">
-          @if (project().sowTimeline) {
-            <div class="bp-md" [innerHTML]="project().sowTimeline | md"></div>
+          @if (timelineRows().length) {
+            @for (row of timelineRows(); track $index) {
+              <div class="flex items-baseline justify-between gap-4 border-b border-hairline py-1.5 last:border-b-0">
+                <span>{{ row.label }}</span>
+                @if (row.date) { <span class="shrink-0 font-medium tabular-nums">{{ row.date }}</span> }
+              </div>
+            }
           } @else {
             <span class="italic text-secondary">Key dates &amp; milestones — add them on the project's Statement of Work section.</span>
           }
@@ -235,6 +240,17 @@ export class SowDocumentComponent {
   });
   /** The project's location value (the venue), not venue + city concatenated. */
   protected readonly location = computed(() => this.project().venueName || this.project().venueCity || '');
+  /** Timeline as {label, date} rows — a line ending in a NATO date splits into a
+   *  two-column row (label left, date right); other lines render label-only. */
+  protected readonly timelineRows = computed(() =>
+    (this.project().sowTimeline ?? '')
+      .split('\n')
+      .map((raw) => {
+        const line = raw.trimEnd();
+        const m = line.match(/^(.*?)[\s—–-]*(\d{2}-[A-Za-z]{3}-\d{4})\s*$/);
+        return m ? { label: m[1].trim(), date: m[2] } : { label: line.trim(), date: '' };
+      })
+      .filter((r) => r.label || r.date));
   /** Created date + time (short, 24h) — matches the Quote's ref box. */
   protected readonly createdStr = computed(() => {
     const iso = this.project().createdAt;

@@ -35,6 +35,12 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.137 (2026-08-28): SOW Timeline renders as two columns
+- The SOW Timeline now renders each milestone as a **two-column row** (label left,
+  NATO date right-aligned) via a `timelineRows` computed — a proper table look
+  (a tab char can't do this; HTML collapses whitespace). Lines without a trailing
+  date render label-only.
+
 ## Iteration — v2.136 (2026-08-28): SOW content — Timeline / Payment / Special Terms + fees in scope
 - **Extracted a shared `DetailsEditorComponent`** from the inbox line-editor, with
   modes **calc** (item Details — running total), **date** (Timeline — numeric
