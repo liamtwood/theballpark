@@ -35,6 +35,15 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.115 (2026-08-28): project Description on About tab + quote Overview
+- The project `description` (seeded from the brief's parsed **summary** at
+  creation) had no UI — added a multiline **Description** field to the **About**
+  tab (new `textarea` type on the shared `EditFieldComponent`). Edits the
+  existing column via the standard project PUT (schema/EDITABLE already allowed
+  it).
+- **Quote document** now renders it as a **Project Overview** paragraph under the
+  banner (markdown), when present.
+
 ## Iteration — v2.114 (2026-08-28): B&W Project Total is solid black
 - In **B & W**, the Project Total is now a **solid black bar with white text**
   (matching the bold Default gradient treatment, just mono). Pick-a-Colour still

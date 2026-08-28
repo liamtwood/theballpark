@@ -89,6 +89,11 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
         <h1 class="bp-page-title text-[length:var(--text-hero)]">{{ project().name }}</h1>
       </div>
 
+      <!-- Project overview — the project description (seeded from the brief). -->
+      @if (project().description) {
+        <div class="bp-md bp-body-small mt-5 text-secondary" [innerHTML]="project().description | md"></div>
+      }
+
       <!-- Date / Location / Duration / Guest count / Budget — the same tiles the
            builder shows, mounted here for parity. -->
       <div class="mt-5">

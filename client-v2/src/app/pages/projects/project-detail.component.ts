@@ -36,6 +36,7 @@ type Section = 'event' | 'type' | 'logistics' | 'financials';
  *  and Client are read-only (rendered from the loaded detail, not here). */
 interface DetailForm {
   name: string;
+  description: string;
   clientName: string;
   eventType: string;
   eventDate: string;
@@ -121,6 +122,7 @@ interface DetailForm {
                   <app-edit-field label="Client" density="page" [editing]="editingEvent()" [value]="form().clientName" [suggestions]="clientNames()" (valueChange)="patch({ clientName: $event })" />
                   <app-edit-field label="Venue" density="page" [editing]="editingEvent()" [value]="form().venueName" (valueChange)="patch({ venueName: $event })" />
                   <app-edit-field label="City" density="page" [editing]="editingEvent()" [value]="form().venueCity" (valueChange)="patch({ venueCity: $event })" />
+                  <app-edit-field class="bp-edit-field--span2" [span2]="true" label="Description" type="textarea" density="page" placeholder="Project overview — seeded from the brief; shown on the quote document." [editing]="editingEvent()" [value]="form().description" (valueChange)="patch({ description: $event })" />
                 </div>
               </app-edit-section>
 
@@ -426,6 +428,7 @@ export class ProjectDetailComponent {
       section === 'event'
         ? {
             name: f.name.trim() || undefined,
+            description: nullable(f.description),
             clientName: nullable(f.clientName),
             venueName: nullable(f.venueName),
             venueCity: nullable(f.venueCity),
@@ -544,6 +547,7 @@ function asTier(v: string): ProjectUpdate['tier'] {
 function toForm(d: ProjectDetail | null): DetailForm {
   return {
     name: d?.name ?? '',
+    description: d?.description ?? '',
     clientName: d?.clientName ?? '',
     eventType: d?.eventType ?? '',
     eventDate: d?.eventDate ?? '',

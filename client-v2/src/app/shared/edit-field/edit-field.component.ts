@@ -4,7 +4,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
 
-export type EditFieldType = 'text' | 'email' | 'tel' | 'number' | 'select';
+export type EditFieldType = 'text' | 'email' | 'tel' | 'number' | 'select' | 'textarea';
 export type EditFieldDensity = 'drawer' | 'page';
 
 /** Per-instance counter so each field's <datalist> gets a unique id. */
@@ -74,6 +74,21 @@ export interface EditFieldOption {
           />
         } @else {
           <div class="bp-fld bp-edit-field__value">{{ displayValue() }}{{ suffix() }}</div>
+        }
+      }
+      @case ('textarea') {
+        @if (editing() && !readonlyAlways()) {
+          <textarea
+            class="bp-store-textarea w-full"
+            rows="4"
+            [ngModel]="value()"
+            [attr.placeholder]="placeholder()"
+            [attr.maxlength]="maxLength()"
+            [attr.aria-label]="label()"
+            (blur)="commitText($event)"
+          ></textarea>
+        } @else {
+          <div class="bp-fld bp-edit-field__value whitespace-pre-line">{{ value() || placeholder() }}</div>
         }
       }
       @default {
