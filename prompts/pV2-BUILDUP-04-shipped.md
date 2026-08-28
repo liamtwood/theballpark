@@ -35,6 +35,11 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.148 (2026-08-28): "PROJECT" eyebrow above the project name
+- Added an optional **`eyebrow`** input to `app-page-hero` (small tracked
+  uppercase label above the title; renders only when set). Project detail passes
+  **`eyebrow="Project"`** so "PROJECT" sits above the name, per the mockup.
+
 ## Iteration — v2.147 (2026-08-28): workspace redesign — frosted nav, pink ground, soft card
 - **Frosted app header** (`app-shell`): two rows — wordmark + account (row 1),
   primary nav (row 2): **Overview · New project · Past projects · Messages ·

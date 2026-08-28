@@ -95,7 +95,7 @@ interface DetailForm {
   host: { class: 'block bp-vpfit' },
   template: `
     @if (detail.value(); as p) {
-      <app-page-hero [back]="{ label: labelPlural(), href: '/projects' }" [title]="p.name" [subtitle]="p.ref ?? ''" />
+      <app-page-hero eyebrow="Project" [back]="{ label: labelPlural(), href: '/projects' }" [title]="p.name" [subtitle]="p.ref ?? ''" />
 
       <!-- Tabs sit just above the tab content (Liam 2026-08-28). -->
       <div class="flex justify-center pt-3">

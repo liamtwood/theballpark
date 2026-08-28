@@ -37,6 +37,9 @@ import { LucideAngularModule } from 'lucide-angular';
     }
 
     <div class="bp-page-hero__text">
+      @if (eyebrow()) {
+        <p class="bp-page-hero__eyebrow">{{ eyebrow() }}</p>
+      }
       <h1 class="bp-page-title bp-page-hero__title">{{ title() }}</h1>
       @if (subtitle()) {
         <p class="bp-page-subtitle bp-page-hero__subtitle">{{ subtitle() }}</p>
@@ -96,6 +99,17 @@ import { LucideAngularModule } from 'lucide-angular';
       /* Type comes from .bp-page-title / .bp-page-subtitle (pV2-TYPE-01 —
          was a local 28px/700; the table's 36/400 is the title2 standard).
          Structural classes keep only spacing. */
+      /* Optional eyebrow (e.g. "PROJECT") above the title — small, tracked,
+         uppercase, secondary. Renders only when set. */
+      .bp-page-hero__eyebrow {
+        margin: 0;
+        font-size: var(--text-xs, 11px);
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--color-text-secondary);
+      }
+
       .bp-page-hero__title {
         margin: 0;
       }
@@ -140,6 +154,9 @@ export class PageHeroComponent {
     if (history.length > 1) this.location.back();
     else this.router.navigateByUrl(fallbackHref);
   }
+
+  /** Optional eyebrow label shown above the title (e.g. "Project"). */
+  readonly eyebrow = input<string>('');
 
   /** Main title — required. */
   readonly title = input.required<string>();
