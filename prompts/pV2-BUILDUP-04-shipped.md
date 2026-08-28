@@ -35,6 +35,12 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.153 (2026-08-28): hero Ballpark = Project Total (cascade)
+- The hero "Ballpark" figure now reads the estimate cascade's **`projectTotal`**
+  (e.g. £97,979) instead of the stale `totalBallparkCost` (which read £0).
+  project-detail loads a `estimate` resource (`projects.estimate(id,'all')`);
+  reloaded when landing on the Ballpark Cost tab so it stays live after line edits.
+
 ## Iteration — v2.152 (2026-08-28): hero right-meta (Ballpark total) + tab order
 - Added a **right-hand meta block** to `app-page-hero` (`rightEyebrow` /
   `rightTitle` / `rightSubtitle`) that mirrors the left (same classes, right-

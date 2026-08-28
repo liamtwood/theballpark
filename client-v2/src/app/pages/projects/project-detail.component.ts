@@ -9,7 +9,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { CodelistService } from '../../core/codelists/codelist.service';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { ProjectService } from '../../core/projects/project.service';
-import { ProjectDetail, ProjectUpdate } from '../../core/projects/project.types';
+import { EstimateBreakdown, ProjectDetail, ProjectUpdate } from '../../core/projects/project.types';
 import { GalleryImage, PickerResult } from '../../core/media/media.types';
 import { errorDetail } from '../../core/http-error';
 import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
@@ -100,7 +100,7 @@ interface DetailForm {
       <app-page-hero eyebrow="Project" [dense]="true" [back]="{ label: 'Past projects', href: '/projects' }"
                      [title]="p.name" [subtitle]="p.ref ?? ''"
                      rightEyebrow="Ballpark"
-                     [rightTitle]="(p.totalBallparkCost | currency: (p.currency || 'GBP') : 'symbol' : '1.0-0') ?? '—'"
+                     [rightTitle]="(estimate.value()?.projectTotal | currency: (p.currency || 'GBP') : 'symbol' : '1.0-0') ?? '—'"
                      rightSubtitle="Exc. VAT" />
 
       <!-- Tabs sit just above the tab content (Liam 2026-08-28). -->
@@ -389,6 +389,14 @@ export class ProjectDetailComponent {
     },
   });
 
+  /** The server-computed cascade — the hero's "Ballpark / Project Total"
+   *  headline reads its `projectTotal`. Reloaded after an estimate-affecting
+   *  edit (rates / lines) so the headline stays live. */
+  protected readonly estimate = resource<EstimateBreakdown, string>({
+    params: () => this.id(),
+    loader: ({ params }) => firstValueFrom(this.projects.estimate(params, 'all')),
+  });
+
   protected readonly form = signal<DetailForm>(toForm(null));
   protected readonly editingEvent = signal(false);
   protected readonly editingType = signal(false);
@@ -425,6 +433,9 @@ export class ProjectDetailComponent {
   protected readonly clientNames = computed<string[]>(() => this.clientNamesRes.value() ?? []);
 
   protected setTab(t: string): void {
+    // Landing on Ballpark Cost → refresh the hero headline (lines/rates may have
+    // changed on the Marketplace tab since it last loaded).
+    if (t === 'final') this.estimate.reload();
     this.router
       .navigate([], { relativeTo: this.route, queryParams: { tab: t }, queryParamsHandling: 'merge' })
       .catch((err) => console.warn('[ProjectDetail] nav failed', err));
