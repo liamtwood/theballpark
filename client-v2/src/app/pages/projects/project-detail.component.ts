@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
+import { CurrencyPipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
@@ -69,6 +70,7 @@ interface DetailForm {
   selector: 'app-project-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    CurrencyPipe,
     ToastModule,
     LucideAngularModule,
     PageHeroComponent,
@@ -95,7 +97,11 @@ interface DetailForm {
   host: { class: 'block bp-vpfit' },
   template: `
     @if (detail.value(); as p) {
-      <app-page-hero eyebrow="Project" [dense]="true" [back]="{ label: 'Past projects', href: '/projects' }" [title]="p.name" [subtitle]="p.ref ?? ''" />
+      <app-page-hero eyebrow="Project" [dense]="true" [back]="{ label: 'Past projects', href: '/projects' }"
+                     [title]="p.name" [subtitle]="p.ref ?? ''"
+                     rightEyebrow="Ballpark"
+                     [rightTitle]="(p.totalBallparkCost | currency: (p.currency || 'GBP') : 'symbol' : '1.0-0') ?? '—'"
+                     rightSubtitle="Exc. VAT" />
 
       <!-- Tabs sit just above the tab content (Liam 2026-08-28). -->
       <div class="flex justify-center pt-3">
@@ -368,8 +374,8 @@ export class ProjectDetailComponent {
   protected readonly labelPlural = computed(() => `${this.label()}s`);
   protected readonly tabs = computed<TabBandTab[]>(() => [
     { key: 'details', label: 'About ' + this.label() },
-    { key: 'marketplace', label: 'Marketplace' },
     { key: 'final', label: 'Ballpark Cost' },
+    { key: 'marketplace', label: 'Marketplace' },
     { key: 'reports', label: 'Reports' },
     { key: 'inbox', label: 'Inbox' },
   ]);

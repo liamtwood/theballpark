@@ -35,6 +35,12 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.152 (2026-08-28): hero right-meta (Ballpark total) + tab order
+- Added a **right-hand meta block** to `app-page-hero` (`rightEyebrow` /
+  `rightTitle` / `rightSubtitle`) that mirrors the left (same classes, right-
+  aligned). Project hero shows **BALLPARK / {totalBallparkCost} / Exc. VAT**.
+- Swapped tab order: **Ballpark Cost now precedes Marketplace**.
+
 ## Iteration — v2.151 (2026-08-28): hero meta polish
 - Eyebrow + ref shrink a touch (`--text-xl`→`--text-lg`) via a new hero
   **`dense`** flag; extra padding above the "PROJECT" eyebrow (margin-top 10px).

@@ -48,6 +48,19 @@ import { LucideAngularModule } from 'lucide-angular';
     </div>
 
     <div class="bp-page-hero__actions">
+      @if (rightTitle()) {
+        <!-- Right-hand meta, mirroring the left block (same classes, right-
+             aligned) — e.g. BALLPARK / £26,409 / Exc. VAT. -->
+        <div class="bp-page-hero__meta-right">
+          @if (rightEyebrow()) {
+            <p class="bp-page-hero__eyebrow">{{ rightEyebrow() }}</p>
+          }
+          <p class="bp-page-title bp-page-hero__title">{{ rightTitle() }}</p>
+          @if (rightSubtitle()) {
+            <p class="bp-page-subtitle bp-page-hero__subtitle">{{ rightSubtitle() }}</p>
+          }
+        </div>
+      }
       <ng-content select="[hero-actions]"></ng-content>
     </div>
   `,
@@ -133,6 +146,16 @@ import { LucideAngularModule } from 'lucide-angular';
         gap: 8px;
       }
 
+      /* Right-hand meta mirrors the left text block: same child classes, but
+         right-aligned. */
+      .bp-page-hero__meta-right {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-end;
+        text-align: right;
+      }
+
       @media (max-width: 600px) {
         :host {
           padding: 20px 16px 16px;
@@ -168,6 +191,12 @@ export class PageHeroComponent {
 
   /** Dense meta: shrinks the eyebrow + subtitle a touch (project workspace). */
   readonly dense = input<boolean>(false);
+
+  /** Optional right-hand meta block, mirroring the left (eyebrow / title /
+   *  subtitle) — e.g. BALLPARK / £26,409 / Exc. VAT. Renders when rightTitle set. */
+  readonly rightEyebrow = input<string>('');
+  readonly rightTitle = input<string>('');
+  readonly rightSubtitle = input<string>('');
 
   /** Main title — required. */
   readonly title = input.required<string>();
