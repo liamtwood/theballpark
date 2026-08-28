@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { LucideAngularModule } from 'lucide-angular';
 
-/** One tab in the band (badge optional — e.g. Inbox unread). */
+/** One tab in the band (icon + badge optional — e.g. Inbox unread). */
 export interface TabBandTab {
   key: string;
   label: string;
+  icon?: string;
   badge?: number;
 }
 
@@ -16,7 +18,11 @@ export interface TabBandTab {
 @Component({
   selector: 'app-tab-band',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'bp-tab-band' },
+  imports: [LucideAngularModule],
+  host: {
+    class: 'bp-tab-band',
+    '[class.bp-tab-band--even]': 'equalWidth()',
+  },
   template: `
     @for (tab of tabs(); track tab.key) {
       <button
@@ -25,6 +31,9 @@ export interface TabBandTab {
         [class.bp-tab--active]="tab.key === active()"
         (click)="activeChange.emit(tab.key)"
       >
+        @if (tab.icon) {
+          <lucide-icon [name]="tab.icon" [size]="16" [strokeWidth]="1.75" />
+        }
         {{ tab.label }}
         @if (tab.badge) {
           <span class="bp-tab__badge">{{ tab.badge }}</span>
@@ -37,4 +46,6 @@ export class TabBandComponent {
   readonly tabs = input.required<readonly TabBandTab[]>();
   readonly active = input.required<string>();
   readonly activeChange = output<string>();
+  /** Give every tab an equal (fixed) width so the band reads even. */
+  readonly equalWidth = input<boolean>(false);
 }

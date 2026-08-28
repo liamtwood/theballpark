@@ -105,7 +105,7 @@ interface DetailForm {
 
       <!-- Tabs sit just above the tab content (Liam 2026-08-28). -->
       <div class="flex justify-center pt-3">
-        <app-tab-band [tabs]="tabs()" [active]="tab()" (activeChange)="setTab($event)" />
+        <app-tab-band [tabs]="tabs()" [active]="tab()" [equalWidth]="true" (activeChange)="setTab($event)" />
       </div>
 
       <div class="bp-page-body">
@@ -373,11 +373,11 @@ export class ProjectDetailComponent {
   protected readonly label = computed(() => this.pageConfig.eventLabel());
   protected readonly labelPlural = computed(() => `${this.label()}s`);
   protected readonly tabs = computed<TabBandTab[]>(() => [
-    { key: 'details', label: 'About ' + this.label() },
-    { key: 'final', label: 'Ballpark Cost' },
-    { key: 'marketplace', label: 'Marketplace' },
-    { key: 'reports', label: 'Reports' },
-    { key: 'inbox', label: 'Inbox' },
+    { key: 'details', label: 'About ' + this.label(), icon: 'clipboard-pen' },
+    { key: 'final', label: 'Ballpark Cost', icon: 'wallet' },
+    { key: 'marketplace', label: 'Marketplace', icon: 'store' },
+    { key: 'reports', label: 'Reports', icon: 'file-text' },
+    { key: 'inbox', label: 'Inbox', icon: 'inbox' },
   ]);
 
   protected readonly detail = resource<ProjectDetail, string>({

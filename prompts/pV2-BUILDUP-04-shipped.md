@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.154 (2026-08-28): tab icons + even-width tabs
+- `TabBandTab` gains an optional **`icon`**; project tabs get one each: About
+  Project (clipboard-pen), Ballpark Cost (wallet), Marketplace (store), Reports
+  (file-text), Inbox (inbox).
+- New opt-in **`equalWidth`** on `app-tab-band` → each tab `min-width:150px`,
+  content centred, so the band reads even. Only the project tabs opt in.
+
 ## Iteration — v2.153 (2026-08-28): hero Ballpark = Project Total (cascade)
 - The hero "Ballpark" figure now reads the estimate cascade's **`projectTotal`**
   (e.g. £97,979) instead of the stale `totalBallparkCost` (which read £0).
