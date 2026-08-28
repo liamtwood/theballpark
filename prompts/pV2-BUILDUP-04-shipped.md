@@ -35,6 +35,11 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.168 (2026-08-28): plain numeric entry (no spin arrows)
+- Hid the native number-input spin arrows on `input.bp-input-field` (so Cost etc.
+  are clean entry-only; the − 1 + steppers remain the way to nudge). Global,
+  scoped to `<input>` so selects keep their chevron.
+
 ## Iteration — v2.167 (2026-08-28): Customize Qty as a − 1 + stepper
 - Swapped the plain Qty inputs (component rows + base row) for the existing
   **`app-rate-input`** stepper (`bp-qty-stepper` chrome, min 1). Widened the Qty

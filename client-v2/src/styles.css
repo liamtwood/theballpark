@@ -1638,6 +1638,11 @@ body {
 }
 .bp-input-field:focus { border-color: var(--theme-accent); }
 select.bp-input-field { appearance: auto; }
+/* Plain numeric entry — hide the native number-input spin arrows (steppers are
+   a separate control). Scoped to <input> so selects keep their chevron. */
+input.bp-input-field { -moz-appearance: textfield; appearance: textfield; }
+input.bp-input-field::-webkit-outer-spin-button,
+input.bp-input-field::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 /* Custom checkbox — accent tick, no browser-default (blue) fill. */
 .bp-check {
