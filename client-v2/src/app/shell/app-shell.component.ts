@@ -78,8 +78,10 @@ export class AppShellComponent {
     { initialValue: this.router.url },
   );
 
-  /** True on a single project's detail page (/projects/:id) — the workspace. */
-  protected readonly isWorkspace = computed(() =>
-    /^\/projects\/[^/]+$/.test((this.url() || '').split('?')[0]),
-  );
+  /** True on the Past projects list (/projects) and a single project's detail
+   *  page (/projects/:id) — the pink workspace ground. */
+  protected readonly isWorkspace = computed(() => {
+    const path = (this.url() || '').split('?')[0];
+    return path === '/projects' || /^\/projects\/[^/]+$/.test(path);
+  });
 }

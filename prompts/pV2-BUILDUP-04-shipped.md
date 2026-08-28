@@ -35,6 +35,10 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.157 (2026-08-28): pink workspace on Past projects too
+- `isWorkspace()` now also matches **`/projects`** (the Past projects list), so
+  it gets the same pink ground as the project detail workspace.
+
 ## Iteration — v2.156 (2026-08-28): Reports buttons as a tab band
 - Dropped the "REPORTS" title; the two document buttons now render as a
   **tab-band-style** even-width pill row (`bp-tab-band--even` + `bp-tab`),
