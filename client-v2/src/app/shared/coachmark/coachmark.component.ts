@@ -20,7 +20,7 @@ import { CoachmarkService } from '../../core/coachmark.service';
             <input type="checkbox" class="bp-check" [checked]="dontShow()" (change)="dontShow.set($any($event.target).checked)" />
             <span>Don't show again</span>
           </label>
-          <button type="button" class="bp-btn-grad bp-coachmark__ok" (click)="ok()">Okay</button>
+          <button type="button" class="bp-coachmark__ok" (click)="ok()">Okay</button>
         </div>
       </div>
     }
@@ -51,7 +51,21 @@ import { CoachmarkService } from '../../core/coachmark.service';
       display: inline-flex; align-items: center; gap: 0.5rem;
       font-size: var(--text-sm); color: var(--color-text-secondary); cursor: pointer;
     }
-    .bp-coachmark__ok { padding: 0.4rem 1.15rem; }
+    /* Solid brand-rose "primary" button — accent fill, near-white text, hover
+       lightens to 90% opacity (matches the spec / the example bubble). */
+    .bp-coachmark__ok {
+      padding: 0.4rem 1.15rem;
+      border: none;
+      border-radius: var(--radius-pill);
+      background: var(--theme-accent);
+      color: var(--theme-accent-contrast, #fff);
+      font-family: var(--bp-font);
+      font-size: var(--text-md);
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.12s ease;
+    }
+    .bp-coachmark__ok:hover { opacity: 0.9; }
     /* Tail — a rotated square sharing the card's bg + border on two edges so it
        reads as a pointer merging into the card. */
     .bp-coachmark::before {

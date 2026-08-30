@@ -40,6 +40,11 @@ tab. Adding brand-new coachmarks stays a dev task for now.
   account menu (with Page settings / Early access). Lists registered coachmarks;
   edit description + Active toggle + Save.
 
+## Iteration — v2.176: Okay button = solid brand rose (not the gradient)
+- The coachmark **Okay** button was using `bp-btn-grad` (pink→green gradient);
+  switched to the solid **primary** look per spec — `--theme-accent` fill,
+  near-white text (`--theme-accent-contrast`), hover → 90% opacity.
+
 ## Iteration — v2.175: coachmarks overlay in their own layer
 - Coachmarks now render in an **absolute overlay above the tab band**
   (`absolute bottom-full left-1/2 -translate-x-1/2 z-40`, container
