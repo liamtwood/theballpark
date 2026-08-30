@@ -116,6 +116,13 @@ interface DetailForm {
           </div>
         </div>
       }
+      @if (tab() === 'marketplace') {
+        <!-- Marketplace is the centre tab (index 2 of 5) → no x-offset. -->
+        <div class="flex justify-center px-4">
+          <app-coachmark page="marketplace" name="intro" tail="down"
+                         defaultText="Here is the marketplace. Keep track of your running estimate by going back to the Ballpark tab." />
+        </div>
+      }
 
       <!-- Tabs sit just above the tab content (Liam 2026-08-28). -->
       <div class="flex justify-center pt-3">

@@ -40,6 +40,11 @@ tab. Adding brand-new coachmarks stays a dev task for now.
   account menu (with Page settings / Early access). Lists registered coachmarks;
   edit description + Active toggle + Save.
 
+## Iteration — v2.174: Marketplace coachmark
+- Added `page=marketplace name=intro` above the tab band on the Marketplace tab
+  (centre tab → no x-offset), tail down: *"Here is the marketplace. Keep track of
+  your running estimate by going back to the Ballpark tab."*
+
 ## Deferred
 - Admin **add/delete** of coachmarks (dev-defined for now).
 - Precise anchoring of the bubble to a specific element (currently top-centre of
