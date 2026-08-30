@@ -40,6 +40,12 @@ tab. Adding brand-new coachmarks stays a dev task for now.
   account menu (with Page settings / Early access). Lists registered coachmarks;
   edit description + Active toggle + Save.
 
+## Iteration — v2.175: coachmarks overlay in their own layer
+- Coachmarks now render in an **absolute overlay above the tab band**
+  (`absolute bottom-full left-1/2 -translate-x-1/2 z-40`, container
+  `pointer-events-none`), so showing/dismissing one **doesn't shift the layout** —
+  they float over the app. Tail still points down at the target tab.
+
 ## Iteration — v2.174: Marketplace coachmark
 - Added `page=marketplace name=intro` above the tab band on the Marketplace tab
   (centre tab → no x-offset), tail down: *"Here is the marketplace. Keep track of

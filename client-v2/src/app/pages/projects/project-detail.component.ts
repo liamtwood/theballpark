@@ -105,27 +105,26 @@ interface DetailForm {
                      [rightTitle]="(estimate.value()?.projectTotal | currency: (p.currency || 'GBP') : 'symbol' : '1.0-0') ?? '—'"
                      rightSubtitle="Exc. VAT" />
 
-      <!-- Coachmark (admin-editable) — sits ABOVE the tab band on Ballpark Cost,
-           tail pointing DOWN at the tab. The x-offset roughly aligns the tail
-           with the 2nd of the even-width tabs. -->
-      @if (tab() === 'final') {
-        <div class="flex justify-center px-4">
-          <div class="-translate-x-[150px]">
-            <app-coachmark page="ballpark-cost" name="intro" tail="down"
-                           defaultText="Here is your ballpark cost. Feel free to remove anything and add elements from the marketplace." />
+      <!-- Tabs sit just above the tab content (Liam 2026-08-28). Coachmarks
+           overlay ABOVE the band in their own layer (absolute → no layout shift
+           when they show/dismiss), tail pointing DOWN at the target tab. The
+           x-offset aligns the tail with the target of the even-width tabs. -->
+      <div class="relative flex justify-center pt-3">
+        @if (tab() === 'final') {
+          <div class="pointer-events-none absolute bottom-full left-1/2 z-40 -translate-x-1/2 pb-2">
+            <div class="-translate-x-[150px]">
+              <app-coachmark page="ballpark-cost" name="intro" tail="down"
+                             defaultText="Here is your ballpark cost. Feel free to remove anything and add elements from the marketplace." />
+            </div>
           </div>
-        </div>
-      }
-      @if (tab() === 'marketplace') {
-        <!-- Marketplace is the centre tab (index 2 of 5) → no x-offset. -->
-        <div class="flex justify-center px-4">
-          <app-coachmark page="marketplace" name="intro" tail="down"
-                         defaultText="Here is the marketplace. Keep track of your running estimate by going back to the Ballpark tab." />
-        </div>
-      }
-
-      <!-- Tabs sit just above the tab content (Liam 2026-08-28). -->
-      <div class="flex justify-center pt-3">
+        }
+        @if (tab() === 'marketplace') {
+          <!-- Marketplace is the centre tab (index 2 of 5) → no x-offset. -->
+          <div class="pointer-events-none absolute bottom-full left-1/2 z-40 -translate-x-1/2 pb-2">
+            <app-coachmark page="marketplace" name="intro" tail="down"
+                           defaultText="Here is the marketplace. Keep track of your running estimate by going back to the Ballpark tab." />
+          </div>
+        }
         <app-tab-band [tabs]="tabs()" [active]="tab()" [equalWidth]="true" (activeChange)="setTab($event)" />
       </div>
 
