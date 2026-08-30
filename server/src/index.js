@@ -296,6 +296,7 @@ app.get('/api/unsplash/search', async (req, res) => {
   // pV2-CODELISTS-01 — reference codelists (reads any member; value
   // curation platform admins; DELETE always 405 — locked rule 2).
   v2.use('/codelists', require('./routes/codelists-v2'));
+  v2.use('/coachmarks', require('./routes/coachmarks'));
   // pV2-PROJECTS-01 — the v2 projects surface, org-scoped (JWT org_id).
   // INTERIM PATH `/projects-v2`: v1 owns the live ungated /api/projects
   // (client-angular until pV2-11); reclaim the clean path at v1 retirement.

@@ -97,6 +97,16 @@ export const routes: Routes = [
           ),
       },
       {
+        // Settings → Coachmarks — edit the app's help-bubble content. Ballpark
+        // admins only, same gate as Pages/Categories/Codelists.
+        path: 'settings/coachmarks',
+        canActivate: [ballparkAdminGuard],
+        loadComponent: () =>
+          import('./pages/settings/coachmarks/coachmarks-settings.component').then(
+            (m) => m.CoachmarksSettingsComponent
+          ),
+      },
+      {
         // Dev-only style sandbox — visual QC for shared chrome components.
         path: 'style/hero',
         loadComponent: () =>

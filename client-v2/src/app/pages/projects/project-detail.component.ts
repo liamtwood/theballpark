@@ -29,6 +29,7 @@ import { SowDocumentComponent } from './sow-document.component';
 import { DetailsEditorComponent } from '../../shared/details-editor.component';
 import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { InboxProjectComponent } from '../inbox/inbox-project.component';
+import { CoachmarkComponent } from '../../shared/coachmark/coachmark.component';
 
 type Tab = 'marketplace' | 'estimate' | 'final' | 'reports' | 'details' | 'inbox';
 const TABS: Tab[] = ['marketplace', 'estimate', 'final', 'reports', 'details', 'inbox'];
@@ -73,6 +74,7 @@ interface DetailForm {
     CurrencyPipe,
     ToastModule,
     LucideAngularModule,
+    CoachmarkComponent,
     PageHeroComponent,
     TabBandComponent,
     EditSectionComponent,
@@ -102,6 +104,18 @@ interface DetailForm {
                      rightEyebrow="Ballpark"
                      [rightTitle]="(estimate.value()?.projectTotal | currency: (p.currency || 'GBP') : 'symbol' : '1.0-0') ?? '—'"
                      rightSubtitle="Exc. VAT" />
+
+      <!-- Coachmark (admin-editable) — sits ABOVE the tab band on Ballpark Cost,
+           tail pointing DOWN at the tab. The x-offset roughly aligns the tail
+           with the 2nd of the even-width tabs. -->
+      @if (tab() === 'final') {
+        <div class="flex justify-center px-4">
+          <div class="-translate-x-[150px]">
+            <app-coachmark page="ballpark-cost" name="intro" tail="down"
+                           defaultText="Here is your ballpark cost. Feel free to remove anything and add elements from the marketplace." />
+          </div>
+        </div>
+      }
 
       <!-- Tabs sit just above the tab content (Liam 2026-08-28). -->
       <div class="flex justify-center pt-3">

@@ -926,6 +926,27 @@ const migrate = async () => {
       `);
     }
 
+    // Coachmarks — admin-editable help-bubble content, keyed by (page, name).
+    // The app auto-registers a coachmark on first render (insert-if-missing with
+    // its code default); ballpark admins tweak the description / toggle active.
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS ${schema}.coachmarks (
+          id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          page        VARCHAR(100) NOT NULL,
+          name        VARCHAR(100) NOT NULL,
+          description TEXT,
+          tail        VARCHAR(10) DEFAULT 'up',
+          is_active   BOOLEAN DEFAULT true,
+          sort_order  INTEGER DEFAULT 0,
+          created_at  TIMESTAMPTZ DEFAULT NOW(),
+          updated_at  TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ${schema}_coachmarks_page_name_key
+          ON ${schema}.coachmarks (page, name);
+      `);
+    }
+
     // ─────────────────────────────────────────────────────────────────
     // SUPERSEDED (v1.42) — the v1.40 taxonomy array below is kept for
     // history only. It is NOT executed: the loops that consumed it were

@@ -66,6 +66,13 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
               >
                 Early access
               </a>
+              <a
+                routerLink="/settings/coachmarks"
+                class="block w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md text-text no-underline hover:bg-fill"
+                (click)="menu.hide()"
+              >
+                Coachmarks
+              </a>
             </div>
           }
 
