@@ -112,6 +112,12 @@ Customize screen.
 - Added a **Cancel** button before **Save draft** in the customize footer
   (project mode) — fires `cancel` (same as the top "Back to conversation").
 
+## Iteration — v2.177 (2026-08-31): inbox — no conversation until an item is selected
+- The thread pane no longer shows the thread-level conversation with nothing
+  selected — the bubbles are gated on `@if (selectedItem())`, else a prompt
+  "Select an item above to view its conversation." (pairs with v2.161, where the
+  compose was already disabled until an item was picked).
+
 ## Iteration — v2.161 (2026-08-28): inbox — replies require an item; keep context
 - **Bug:** `selectedId` (`() => null`) and `selectedThreadId` (`ts[0]`) were
   `linkedSignal`s off the threads list, so **every reload** (send / accept /

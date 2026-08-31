@@ -134,6 +134,7 @@ import { ProjectService } from '../../core/projects/project.service';
                    agency bubbles read as cards; "You" stays gradient. In a
                    filtered (item) view, broadcasts fade + carry a General tag. -->
               <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg px-5 py-4">
+                @if (selectedItem()) {
                 @for (m of visibleMessages(); track m.id) {
                   <div class="flex flex-col" [class.items-end]="m.mine" [class.items-start]="!m.mine">
                     <div class="bp-bubble" [class.bp-bubble--mine]="m.mine" [class.bp-bubble--general]="isGeneral(m)">
@@ -218,6 +219,12 @@ import { ProjectService } from '../../core/projects/project.service';
                       }
                     </div>
                   }
+                }
+                } @else {
+                  <!-- No conversation until an item is picked (Liam 2026-08-30). -->
+                  <div class="flex flex-1 items-center justify-center px-6 text-center">
+                    <p class="bp-body-small text-secondary">Select an item above to view its conversation.</p>
+                  </div>
                 }
               </div>
 
