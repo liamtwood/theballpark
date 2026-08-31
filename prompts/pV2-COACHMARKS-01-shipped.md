@@ -40,6 +40,12 @@ tab. Adding brand-new coachmarks stays a dev task for now.
   account menu (with Page settings / Early access). Lists registered coachmarks;
   edit description + Active toggle + Save.
 
+## Iteration — v2.179: generic Customize coachmark example (item-agnostic)
+- The example was catering-specific ("gourmet menu +£20") — nonsense for a Stage.
+  New generic wording: *"…To tailor it, add a line for any upgrade or extra the
+  client wants — its cost adds on top and the total updates live."* Updated both
+  the code default and the existing DB row (`scripts/reset-customize-coachmark.js`).
+
 ## Iteration — v2.178: Customize teaching coachmark + `{vars}` + hide Extras
 - Coachmark gains a **`vars` input** → `{key}` placeholders in the text are filled
   from context, so a coachmark can reference specifics while the admin still owns

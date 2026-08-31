@@ -77,7 +77,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
             @if (originalPrice() != null) {
               <div class="mb-4 flex justify-center">
                 <app-coachmark page="customize" name="base-intro" tail="down" [vars]="coachVars()"
-                               defaultText="The Base row is your {item} — {rate} per {unit} × {qty} = {total}. Now imagine the client wants to upgrade — add a line (e.g. a gourmet menu at +£20 per {unit}) and the total updates live." />
+                               defaultText="The Base row is your {item} — {rate} per {unit} × {qty} = {total}. To tailor it, add a line for any upgrade or extra the client wants — its cost adds on top and the total updates live." />
               </div>
             }
 
