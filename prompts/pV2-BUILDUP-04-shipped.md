@@ -112,6 +112,15 @@ Customize screen.
 - Added a **Cancel** button before **Save draft** in the customize footer
   (project mode) — fires `cancel` (same as the top "Back to conversation").
 
+## Iteration — v2.183 (2026-08-31): Customize base seeds from the CURRENT price
+- Bug: for a line whose price was negotiated (base 105 → current 115, no
+  components), the header showed the current Revised but Customize seeded its base
+  from the ORIGINAL rate → the two disagreed. Fix: pass `currentPrice`
+  (`priceCurrent ?? priceRef`); after load, seed `baseRate` so **base + upgrades =
+  current price** — `base = current − costTotal×(1+margin)`. Gives `base=current`
+  when there are no components, and the original base when there are (no
+  double-count).
+
 ## Iteration — v2.177 (2026-08-31): inbox — no conversation until an item is selected
 - The thread pane no longer shows the thread-level conversation with nothing
   selected — the bubbles are gated on `@if (selectedItem())`, else a prompt

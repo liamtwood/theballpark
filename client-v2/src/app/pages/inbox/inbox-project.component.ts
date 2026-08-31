@@ -118,6 +118,7 @@ import { ProjectService } from '../../core/projects/project.service';
                     [lineId]="c.id"
                     [itemName]="c.name"
                     [originalPrice]="c.priceRef"
+                    [currentPrice]="c.priceCurrent ?? c.priceRef"
                     [baseUnitPrice]="c.unitPriceRef"
                     [baseUnit]="c.unit"
                     [baseQuantity]="c.quantity"

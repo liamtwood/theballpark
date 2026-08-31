@@ -316,6 +316,10 @@ export class CustomizeDialogComponent implements OnInit {
   readonly itemName = input<string>('');
   /** The line's ORIGINAL price (price_ref) — shown as "Original" in the header. */
   readonly originalPrice = input<number | null>(null);
+  /** The line's CURRENT (possibly negotiated) total — the base is seeded so that
+   *  base + upgrades = this, so opening Customize reflects the current price
+   *  (not the original) and never double-counts saved components. */
+  readonly currentPrice = input<number | null>(null);
   /** The line's per-unit rate + qty + unit — lets the base row rescale by head
    *  count (falls back to a flat originalPrice when the unit rate is unknown). */
   readonly baseUnitPrice = input<number | null>(null);
@@ -477,6 +481,17 @@ export class CustomizeDialogComponent implements OnInit {
         this.parentName.set(res.parentName || this.itemName());
         this.parentDesc.set(res.parentDescription ?? '');
         this.parentServices.set(res.parentServices ?? '');
+        // Seed the base so base + upgrades = the line's CURRENT price. Handles a
+        // negotiated price (no components → base = current) and a customize-saved
+        // one (components → base = current − upgrades = the original base) without
+        // double-counting. Only when we know the current line total.
+        const current = this.currentPrice() ?? this.originalPrice();
+        if (current != null) {
+          const qty = Math.max(1, Number(this.baseQuantity()) || 1);
+          const upContribution = this.costTotal() * (1 + (Number(this.margin()) || 0) / 100);
+          const baseTotal = Math.max(0, current - upContribution);
+          this.baseRate.set(Math.round((baseTotal / qty) * 100) / 100);
+        }
         this.loaded.set(true);
       },
       // Load failed → leave `loaded` false so Save stays blocked (never wipe).
