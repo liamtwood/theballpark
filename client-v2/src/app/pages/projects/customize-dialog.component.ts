@@ -11,6 +11,7 @@ import { quoteLineToCatalogueItem } from './quote-line.util';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { ShuttleComponent, ShuttleItem, ShuttlePick } from '../../shared/shuttle/shuttle.component';
 import { RateInputComponent } from './rate-input.component';
+import { CoachmarkComponent } from '../../shared/coachmark/coachmark.component';
 
 interface Row {
   id: string | null;
@@ -39,7 +40,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
 @Component({
   selector: 'app-customize-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, FormsModule, LucideAngularModule, ItemPreviewComponent, ShuttleComponent, RateInputComponent],
+  imports: [DecimalPipe, FormsModule, LucideAngularModule, ItemPreviewComponent, ShuttleComponent, RateInputComponent, CoachmarkComponent],
   host: { class: 'contents' },
   styles: [`
     /* Native <select> chevrons crowd the value in narrow cells — replace the
@@ -71,10 +72,18 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
           <!-- CENTRE: the editable estimate, grouped by category. -->
           <div class="min-w-0">
 
-            <!-- One card per category (Final-Quote card), then a default Extras
-                 card holding the margin + the un-filtered add. Each card carries
-                 its own Explore/Add — category-scoped (Extras = all). -->
-            @for (grp of displayGroups(); track grp.categoryId ?? '__extras') {
+            <!-- Teaching coachmark (admin-editable, item-specific via {vars}) —
+                 explains the base row + an example, tail down at the first card. -->
+            @if (originalPrice() != null) {
+              <div class="mb-4 flex justify-center">
+                <app-coachmark page="customize" name="base-intro" tail="down" [vars]="coachVars()"
+                               defaultText="The Base row is your {item} — {rate} per {unit} × {qty} = {total}. Now imagine the client wants to upgrade — add a line (e.g. a gourmet menu at +£20 per {unit}) and the total updates live." />
+              </div>
+            }
+
+            <!-- One card per category (Final-Quote card). The Extras/margin card
+                 is hidden for now (cardGroups filters it). -->
+            @for (grp of cardGroups(); track grp.categoryId ?? '__extras') {
               <div class="mb-3 bp-card overflow-hidden">
                 <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggleCat(grp.isExtras ? '__extras' : grp.categoryId)">
                   <lucide-icon [name]="grp.isExtras ? 'sparkles' : catIcon(grp.categoryId)" [size]="30" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
@@ -505,6 +514,18 @@ export class CustomizeDialogComponent implements OnInit {
     const nul = groups.find((g) => g.categoryId == null);
     return [...real, { categoryId: null as string | null, rows: nul?.rows ?? [], total: nul?.total ?? 0, isExtras: true }];
   });
+  /** The cards actually rendered — Extras (margin editor + uncategorised) is
+   *  HIDDEN for now (Liam 2026-08-31); margin still applies at its default. */
+  protected readonly cardGroups = computed(() => this.displayGroups().filter((g) => !g.isExtras));
+  /** `{key}` substitutions for the Customize teaching coachmark — the specific
+   *  item's numbers, so the bubble explains the base with real values. */
+  protected readonly coachVars = computed(() => ({
+    item: this.parentName() || 'this item',
+    rate: '£' + (Number(this.baseRate()) || 0),
+    unit: this.baseUnitDraft() || 'unit',
+    qty: String(this.baseQty()),
+    total: '£' + Math.round(this.baseCost()).toLocaleString('en-GB'),
+  }));
   /** A category card's displayed total: Extras = the margin; the item's own
    *  category also adds the base row; others = just their component rows. */
   protected catCardTotal(grp: { categoryId: string | null; total: number; isExtras: boolean }): number {

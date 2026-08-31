@@ -40,6 +40,18 @@ tab. Adding brand-new coachmarks stays a dev task for now.
   account menu (with Page settings / Early access). Lists registered coachmarks;
   edit description + Active toggle + Save.
 
+## Iteration — v2.178: Customize teaching coachmark + `{vars}` + hide Extras
+- Coachmark gains a **`vars` input** → `{key}` placeholders in the text are filled
+  from context, so a coachmark can reference specifics while the admin still owns
+  the sentence. (`displayText` computed.)
+- New **`page=customize name=base-intro`** coachmark at the top of the Customize
+  builder (tail down at the first card): *"The Base row is your {item} — {rate}
+  per {unit} × {qty} = {total}. Now imagine the client wants to upgrade — add a
+  line … and the total updates live."* — vars come from the actual item
+  (`coachVars`).
+- **Extras/margin card hidden for now** in Customize (`cardGroups` filters
+  `isExtras`); margin still applies at its default.
+
 ## Iteration — v2.176: Okay button = solid brand rose (not the gradient)
 - The coachmark **Okay** button was using `bp-btn-grad` (pink→green gradient);
   switched to the solid **primary** look per spec — `--theme-accent` fill,

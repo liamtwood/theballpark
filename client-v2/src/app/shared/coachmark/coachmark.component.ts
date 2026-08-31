@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { CoachmarkService } from '../../core/coachmark.service';
 
 /** A pink "coachmark" help bubble (Liam's spec): white card, rose-tinted border,
@@ -14,7 +14,7 @@ import { CoachmarkService } from '../../core/coachmark.service';
   template: `
     @if (visible()) {
       <div class="bp-coachmark" [class.bp-coachmark--up]="tail() === 'up'" [class.bp-coachmark--down]="tail() === 'down'">
-        <p class="bp-coachmark__text">{{ text() }}</p>
+        <p class="bp-coachmark__text">{{ displayText() }}</p>
         <div class="bp-coachmark__foot">
           <label class="bp-coachmark__dsa">
             <input type="checkbox" class="bp-check" [checked]="dontShow()" (change)="dontShow.set($any($event.target).checked)" />
@@ -91,11 +91,20 @@ export class CoachmarkComponent implements OnInit {
   /** Which side the tail points from — a placement concern set at the usage
    *  site (up = bubble sits below its target, down = bubble sits above it). */
   readonly tail = input<'up' | 'down'>('up');
+  /** Optional `{key}` substitutions for the text — lets a coachmark reference
+   *  the specific context (e.g. this item's rate/qty/total) while the admin
+   *  still owns the sentence around them. */
+  readonly vars = input<Record<string, string | number>>({});
   readonly dismissed = output<void>();
 
   protected readonly visible = signal(false);
   protected readonly dontShow = signal(false);
   protected readonly text = signal('');
+  /** The text with `{key}` placeholders filled from `vars`. */
+  protected readonly displayText = computed(() => {
+    const v = this.vars();
+    return this.text().replace(/\{(\w+)\}/g, (_, k) => (v[k] != null ? String(v[k]) : `{${k}}`));
+  });
 
   ngOnInit(): void {
     if (this.suppressed()) return;
