@@ -40,6 +40,14 @@ tab. Adding brand-new coachmarks stays a dev task for now.
   account menu (with Page settings / Early access). Lists registered coachmarks;
   edit description + Active toggle + Save.
 
+## Iteration — v2.186: revert moving bubble → reliable top bubble + field glow
+- The per-cell anchoring (v2.184) used an `#ngTemplateOutlet` ref across the
+  `@for` cards; the ref didn't resolve inside the loop, so EVERY anchored bubble
+  (incl. the ask) rendered empty → "no coach". Reverted to **one bubble at the
+  top of the builder** (parent view, always resolves) with the active field
+  **glowing** (`.bp-demo-hl`), which moves per step. The moving-triangle idea
+  needs a non-ref anchoring approach (deferred).
+
 ## Iteration — v2.185: fix — demo bubble was clipped by the card
 - v2.184 regression: anchoring the bubble inside the category card (which was
   `overflow-hidden`) clipped it → "coaching doesn't appear". Card is now
