@@ -40,6 +40,19 @@ tab. Adding brand-new coachmarks stays a dev task for now.
   account menu (with Page settings / Early access). Lists registered coachmarks;
   edit description + Active toggle + Save.
 
+## Iteration — v2.181: Customize demo wizard (opt-in "want me to show you?")
+- Replaced the static customize base-intro bubble with an **opt-in demo**: an
+  "…Adding extras is easy — want me to show you?" bubble ([Show me] / [No thanks]).
+- **Show me** runs a self-driving example: adds an **Insurance** line and fills it
+  (Name → Cost £200 → Unit 'job'/Qty 1), then shows **Include**'s effect (Revised
+  ticks up), narrates **Save**, **unticks Include** (Revised drops), points at the
+  **×** remove, and finishes by **removing the demo line** — zero side effects,
+  nothing persisted. One narrating bubble (own overlay layer) + a **highlight**
+  (`.bp-demo-hl`) on the active field/button; **Next** steps through.
+- "No thanks" suppresses (localStorage); finishing does NOT — the opt-in returns
+  next open. Coachmark bubble styles moved to global `styles.css` so the wizard
+  reuses them.
+
 ## Iteration — v2.180: Customize coachmark → own layer + insurance example
 - Customize coachmark now renders as an **absolute overlay** (own layer, `z-40`,
   container `pointer-events-none`) so it no longer pushes the builder content

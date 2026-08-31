@@ -11,7 +11,6 @@ import { quoteLineToCatalogueItem } from './quote-line.util';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { ShuttleComponent, ShuttleItem, ShuttlePick } from '../../shared/shuttle/shuttle.component';
 import { RateInputComponent } from './rate-input.component';
-import { CoachmarkComponent } from '../../shared/coachmark/coachmark.component';
 
 interface Row {
   id: string | null;
@@ -40,7 +39,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
 @Component({
   selector: 'app-customize-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, FormsModule, LucideAngularModule, ItemPreviewComponent, ShuttleComponent, RateInputComponent, CoachmarkComponent],
+  imports: [DecimalPipe, FormsModule, LucideAngularModule, ItemPreviewComponent, ShuttleComponent, RateInputComponent],
   host: { class: 'contents' },
   styles: [`
     /* Native <select> chevrons crowd the value in narrow cells — replace the
@@ -72,13 +71,25 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
           <!-- CENTRE: the editable estimate, grouped by category. -->
           <div class="relative min-w-0">
 
-            <!-- Teaching coachmark (admin-editable, item-specific via {vars}) —
-                 in its OWN layer (absolute overlay → no layout shift), tail down
-                 at the first card. -->
-            @if (originalPrice() != null) {
+            <!-- Customize demo — opt-in "want me to show you?" → a self-running
+                 example. Own layer (absolute overlay → no layout shift). -->
+            @if (coachPhase() !== 'off') {
               <div class="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-center">
-                <app-coachmark page="customize" name="base-intro" tail="down" [vars]="coachVars()"
-                               defaultText="The Base row is your {item} — {rate} per {unit} × {qty} = {total}. To add an extra like insurance, add a line: type 'Insurance', pick 'job' as the unit, keep Qty at 1, then enter its Cost. It adds on top and the total updates live." />
+                <div class="bp-coachmark bp-coachmark--down pointer-events-auto">
+                  @if (coachPhase() === 'ask') {
+                    <p class="bp-coachmark__text">This is your {{ parentName() || 'item' }} base cost. Adding extras is easy — want me to show you?</p>
+                    <div class="bp-coachmark__foot">
+                      <button type="button" class="bp-coachmark__skip" (click)="dismissDemo()">No thanks</button>
+                      <button type="button" class="bp-coachmark__ok" (click)="startDemo()">Show me</button>
+                    </div>
+                  } @else {
+                    <p class="bp-coachmark__text">{{ demoText() }}</p>
+                    <div class="bp-coachmark__foot">
+                      <span class="bp-caption">{{ demoStep() + 1 }} / {{ demoCount }}</span>
+                      <button type="button" class="bp-coachmark__ok" (click)="demoNext()">{{ isLastStep() ? 'Done' : 'Next' }}</button>
+                    </div>
+                  }
+                </div>
               </div>
             }
 
@@ -140,18 +151,18 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                         <option [ngValue]="null">—</option>
                         @for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
                       </select>
-                      <input class="bp-input-field" placeholder="Component" [ngModel]="r.name" (ngModelChange)="r.name = $event" autocomplete="off" />
-                      <input type="number" class="bp-input-field text-center tabular-nums" placeholder="—" [ngModel]="r.cost" (ngModelChange)="r.cost = $event" />
+                      <input class="bp-input-field" [class.bp-demo-hl]="demoHl(r, 'name')" placeholder="Component" [ngModel]="r.name" (ngModelChange)="r.name = $event" autocomplete="off" />
+                      <input type="number" class="bp-input-field text-center tabular-nums" [class.bp-demo-hl]="demoHl(r, 'cost')" placeholder="—" [ngModel]="r.cost" (ngModelChange)="r.cost = $event" />
                       <span class="justify-self-center" (click)="$event.stopPropagation()">
                         <app-rate-input [value]="r.qty || 1" [min]="1" label="quantity" (rateCommit)="r.qty = $event; rows.set([...rows()])" />
                       </span>
-                      <select class="bp-input-field bp-select" [ngModel]="r.unit" (ngModelChange)="r.unit = $event || null">
+                      <select class="bp-input-field bp-select" [class.bp-demo-hl]="demoHl(r, 'unit')" [ngModel]="r.unit" (ngModelChange)="r.unit = $event || null">
                         <option [ngValue]="null">—</option>
                         @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
                       </select>
                       <span class="text-center tabular-nums bp-body-small" [class.text-muted]="!r.included || !r.name.trim()" [class.text-text]="r.included && r.name.trim()">{{ r.name.trim() && r.cost != null ? ('£' + (lineTotal(r) | number: '1.0-0')) : '—' }}</span>
-                      <input type="checkbox" class="justify-self-center" [ngModel]="r.included" (ngModelChange)="r.included = $event" />
-                      <button type="button" class="rounded-md p-1 text-muted hover:text-danger" aria-label="Remove" (click)="removeRow(r)"><lucide-icon name="x" [size]="14" /></button>
+                      <input type="checkbox" class="justify-self-center" [class.bp-demo-hl]="demoHl(r, 'inc')" [ngModel]="r.included" (ngModelChange)="r.included = $event" />
+                      <button type="button" class="rounded-md p-1 text-muted hover:text-danger" [class.bp-demo-hl]="demoHl(r, 'remove')" aria-label="Remove" (click)="removeRow(r)"><lucide-icon name="x" [size]="14" /></button>
                     </div>
                   }
                   <!-- Per-card footer: Explore (category-scoped) + Add. -->
@@ -173,7 +184,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                 <button type="button" class="bp-btn-grad flex-1" [disabled]="saving() || !loaded()" (click)="save(false)">{{ saving() ? 'Saving…' : 'Save options' }}</button>
               } @else {
                 <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="cancel.emit()">Cancel</button>
-                <button type="button" class="bp-btn-outline flex-1" [disabled]="saving() || !loaded()" (click)="save(false)">{{ saving() ? 'Saving…' : 'Save draft' }}</button>
+                <button type="button" class="bp-btn-outline flex-1" [class.bp-demo-hl]="demoField() === 'save'" [disabled]="saving() || !loaded()" (click)="save(false)">{{ saving() ? 'Saving…' : 'Save draft' }}</button>
                 <button type="button" class="bp-btn-grad flex-1" [disabled]="saving() || !loaded()" (click)="openSend()">
                   <lucide-icon name="circle-dollar-sign" [size]="16" /> Send New Cost
                 </button>
@@ -471,6 +482,10 @@ export class CustomizeDialogComponent implements OnInit {
       // Load failed → leave `loaded` false so Save stays blocked (never wipe).
       error: () => this.rows.set([this.blank()]),
     });
+    // Offer the demo (project mode only) when there's a base to build on.
+    if (!this.itemMode() && this.originalPrice() != null && this.baseCategoryId() != null && !this.demoSuppressed()) {
+      this.coachPhase.set('ask');
+    }
   }
 
   private mk(r: Omit<Row, '_k'>): Row { return { ...r, _k: RUID++ }; }
@@ -527,6 +542,74 @@ export class CustomizeDialogComponent implements OnInit {
     qty: String(this.baseQty()),
     total: '£' + Math.round(this.baseCost()).toLocaleString('en-GB'),
   }));
+
+  // ── Customize demo wizard — opt-in "want me to show you?" → a self-running
+  //    example that adds an Insurance line, fills its fields, shows Include's
+  //    effect on the total, then removes the demo line (no side effects). ─────
+  protected readonly coachPhase = signal<'ask' | 'run' | 'off'>('off');
+  protected readonly demoStep = signal(0);
+  private readonly demoRowK = signal<number | null>(null);
+  private readonly DEMO_KEY = 'bp-coachmark:customize:demo';
+  private static readonly DEMO_STEPS: { text: string; field: string | null; apply: string | null }[] = [
+    { text: "First, add a line and name it — say 'Insurance'.", field: 'name', apply: 'name' },
+    { text: "Give it a cost — let's say £200.", field: 'cost', apply: 'cost' },
+    { text: "Set the unit to 'job' and Qty 1.", field: 'unit', apply: 'unitqty' },
+    { text: "The Include tick counts it toward the total — watch the Revised go up.", field: 'inc', apply: 'include' },
+    { text: "When you're happy, Save draft keeps it.", field: 'save', apply: null },
+    { text: "Untick Include and the cost drops back — the line stays but stops counting.", field: 'inc', apply: 'exclude' },
+    { text: "To remove it entirely, hit the ×.", field: 'remove', apply: null },
+    { text: "That's it — now you try!", field: null, apply: null },
+  ];
+  protected readonly demoCount = CustomizeDialogComponent.DEMO_STEPS.length;
+  protected demoText(): string { return CustomizeDialogComponent.DEMO_STEPS[this.demoStep()]?.text ?? ''; }
+  protected demoField(): string | null {
+    return this.coachPhase() === 'run' ? (CustomizeDialogComponent.DEMO_STEPS[this.demoStep()]?.field ?? null) : null;
+  }
+  protected isLastStep(): boolean { return this.demoStep() >= this.demoCount - 1; }
+  protected isDemoRow(r: Row): boolean { return this.demoRowK() === r._k; }
+  protected demoHl(r: Row, field: string): boolean { return this.isDemoRow(r) && this.demoField() === field; }
+  private demoSuppressed(): boolean { try { return localStorage.getItem(this.DEMO_KEY) === '1'; } catch { return false; } }
+
+  protected startDemo(): void {
+    if (this.baseCategoryId() == null) { this.dismissDemo(); return; }
+    const row = this.mk({ id: null, name: '', cost: null, qty: 1, unit: null, categoryId: this.baseCategoryId(), included: true, description: null, image: null });
+    this.demoRowK.set(row._k);
+    this.rows.set([...this.rows(), row]);
+    this.coachPhase.set('run');
+    this.demoStep.set(0);
+    this.applyDemoStep(0);
+  }
+  protected demoNext(): void {
+    if (this.isLastStep()) { this.finishDemo(); return; }
+    const next = this.demoStep() + 1;
+    this.demoStep.set(next);
+    this.applyDemoStep(next);
+  }
+  protected dismissDemo(): void {
+    this.coachPhase.set('off');
+    try { localStorage.setItem(this.DEMO_KEY, '1'); } catch { /* private mode */ }
+  }
+  private finishDemo(): void {
+    const r = this.rows().find((x) => x._k === this.demoRowK());
+    if (r) this.removeRow(r); // the demo line was a demonstration — remove it
+    this.demoRowK.set(null);
+    // Don't suppress on finish — the opt-in returns next open (only "No thanks"
+    // permanently hides it).
+    this.coachPhase.set('off');
+  }
+  private applyDemoStep(step: number): void {
+    const r = this.rows().find((x) => x._k === this.demoRowK());
+    if (!r) return;
+    switch (CustomizeDialogComponent.DEMO_STEPS[step]?.apply) {
+      case 'name': r.name = 'Insurance'; break;
+      case 'cost': r.cost = 200; break;
+      case 'unitqty': r.unit = 'job'; r.qty = 1; break;
+      case 'include': r.included = true; break;
+      case 'exclude': r.included = false; break;
+    }
+    this.rows.set([...this.rows()]);
+  }
+
   /** A category card's displayed total: Extras = the margin; the item's own
    *  category also adds the base row; others = just their component rows. */
   protected catCardTotal(grp: { categoryId: string | null; total: number; isExtras: boolean }): number {
