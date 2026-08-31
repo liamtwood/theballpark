@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
@@ -39,7 +39,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
 @Component({
   selector: 'app-customize-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, FormsModule, LucideAngularModule, ItemPreviewComponent, ShuttleComponent, RateInputComponent],
+  imports: [DecimalPipe, NgTemplateOutlet, FormsModule, LucideAngularModule, ItemPreviewComponent, ShuttleComponent, RateInputComponent],
   host: { class: 'contents' },
   styles: [`
     /* Native <select> chevrons crowd the value in narrow cells — replace the
@@ -72,24 +72,33 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
           <div class="relative min-w-0">
 
             <!-- Customize demo — opt-in "want me to show you?" → a self-running
-                 example. Own layer (absolute overlay → no layout shift). -->
-            @if (coachPhase() !== 'off') {
+                 example. Bubble anchors to the field it's talking about (its tail
+                 points at it); own layer (absolute → no layout shift). The bubble
+                 CONTENT lives in one template, rendered at whichever anchor is
+                 active. -->
+            <ng-template #coachTip>
+              <div class="bp-coachmark bp-coachmark--down pointer-events-auto">
+                @if (coachPhase() === 'ask') {
+                  <p class="bp-coachmark__text">This is your {{ parentName() || 'item' }} base cost. Adding extras is easy — want me to show you?</p>
+                  <div class="bp-coachmark__foot">
+                    <button type="button" class="bp-coachmark__skip" (click)="dismissDemo()">No thanks</button>
+                    <button type="button" class="bp-coachmark__ok" (click)="startDemo()">Show me</button>
+                  </div>
+                } @else {
+                  <p class="bp-coachmark__text">{{ demoText() }}</p>
+                  <div class="bp-coachmark__foot">
+                    <span class="bp-caption">{{ demoStep() + 1 }} / {{ demoCount }}</span>
+                    <button type="button" class="bp-coachmark__ok" (click)="demoNext()">{{ isLastStep() ? 'Done' : 'Next' }}</button>
+                  </div>
+                }
+              </div>
+            </ng-template>
+
+            <!-- Steps with no single field (Save/Send narration + the final
+                 "now you try") anchor at the top-centre. -->
+            @if (coachPhase() === 'run' && (demoField() === 'save' || demoField() === null)) {
               <div class="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-center">
-                <div class="bp-coachmark bp-coachmark--down pointer-events-auto">
-                  @if (coachPhase() === 'ask') {
-                    <p class="bp-coachmark__text">This is your {{ parentName() || 'item' }} base cost. Adding extras is easy — want me to show you?</p>
-                    <div class="bp-coachmark__foot">
-                      <button type="button" class="bp-coachmark__skip" (click)="dismissDemo()">No thanks</button>
-                      <button type="button" class="bp-coachmark__ok" (click)="startDemo()">Show me</button>
-                    </div>
-                  } @else {
-                    <p class="bp-coachmark__text">{{ demoText() }}</p>
-                    <div class="bp-coachmark__foot">
-                      <span class="bp-caption">{{ demoStep() + 1 }} / {{ demoCount }}</span>
-                      <button type="button" class="bp-coachmark__ok" (click)="demoNext()">{{ isLastStep() ? 'Done' : 'Next' }}</button>
-                    </div>
-                  }
-                </div>
+                <ng-container [ngTemplateOutlet]="coachTip" />
               </div>
             }
 
@@ -117,7 +126,12 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                          cost/qty/unit + Inc; can't be removed or re-categorised. -->
                     <div class="grid cursor-pointer grid-cols-[108px_1fr_78px_104px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline px-2.5 py-1" [class.bg-fill]="parentSelected()" (click)="selectParent()">
                       <span class="px-2 bp-body-small text-secondary">Base</span>
-                      <span class="px-2 bp-body-small font-medium text-text truncate">{{ parentName() || 'Original item' }}</span>
+                      <div class="relative min-w-0">
+                        <span class="block px-2 bp-body-small font-medium text-text truncate">{{ parentName() || 'Original item' }}</span>
+                        @if (coachPhase() === 'ask') {
+                          <div class="pointer-events-none absolute bottom-full left-1/2 z-40 -translate-x-1/2 pb-1.5"><ng-container [ngTemplateOutlet]="coachTip" /></div>
+                        }
+                      </div>
                       <input type="number" class="bp-input-field text-center tabular-nums" [ngModel]="baseRate()" (ngModelChange)="baseRate.set($event)" (click)="$event.stopPropagation()" />
                       <span class="justify-self-center" (click)="$event.stopPropagation()">
                         <app-rate-input [value]="baseQty() || 1" [min]="1" label="base quantity" (rateCommit)="baseQty.set($event)" />
@@ -151,18 +165,33 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                         <option [ngValue]="null">—</option>
                         @for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
                       </select>
-                      <input class="bp-input-field" [class.bp-demo-hl]="demoHl(r, 'name')" placeholder="Component" [ngModel]="r.name" (ngModelChange)="r.name = $event" autocomplete="off" />
-                      <input type="number" class="bp-input-field text-center tabular-nums" [class.bp-demo-hl]="demoHl(r, 'cost')" placeholder="—" [ngModel]="r.cost" (ngModelChange)="r.cost = $event" />
+                      <div class="relative min-w-0">
+                        <input class="bp-input-field w-full" [class.bp-demo-hl]="demoHl(r, 'name')" placeholder="Component" [ngModel]="r.name" (ngModelChange)="r.name = $event" autocomplete="off" />
+                        @if (demoHl(r, 'name')) { <div class="pointer-events-none absolute bottom-full left-1/2 z-40 -translate-x-1/2 pb-1.5"><ng-container [ngTemplateOutlet]="coachTip" /></div> }
+                      </div>
+                      <div class="relative">
+                        <input type="number" class="bp-input-field w-full text-center tabular-nums" [class.bp-demo-hl]="demoHl(r, 'cost')" placeholder="—" [ngModel]="r.cost" (ngModelChange)="r.cost = $event" />
+                        @if (demoHl(r, 'cost')) { <div class="pointer-events-none absolute bottom-full left-1/2 z-40 -translate-x-1/2 pb-1.5"><ng-container [ngTemplateOutlet]="coachTip" /></div> }
+                      </div>
                       <span class="justify-self-center" (click)="$event.stopPropagation()">
                         <app-rate-input [value]="r.qty || 1" [min]="1" label="quantity" (rateCommit)="r.qty = $event; rows.set([...rows()])" />
                       </span>
-                      <select class="bp-input-field bp-select" [class.bp-demo-hl]="demoHl(r, 'unit')" [ngModel]="r.unit" (ngModelChange)="r.unit = $event || null">
-                        <option [ngValue]="null">—</option>
-                        @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
-                      </select>
+                      <div class="relative">
+                        <select class="bp-input-field bp-select w-full" [class.bp-demo-hl]="demoHl(r, 'unit')" [ngModel]="r.unit" (ngModelChange)="r.unit = $event || null">
+                          <option [ngValue]="null">—</option>
+                          @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
+                        </select>
+                        @if (demoHl(r, 'unit')) { <div class="pointer-events-none absolute bottom-full left-1/2 z-40 -translate-x-1/2 pb-1.5"><ng-container [ngTemplateOutlet]="coachTip" /></div> }
+                      </div>
                       <span class="text-center tabular-nums bp-body-small" [class.text-muted]="!r.included || !r.name.trim()" [class.text-text]="r.included && r.name.trim()">{{ r.name.trim() && r.cost != null ? ('£' + (lineTotal(r) | number: '1.0-0')) : '—' }}</span>
-                      <input type="checkbox" class="justify-self-center" [class.bp-demo-hl]="demoHl(r, 'inc')" [ngModel]="r.included" (ngModelChange)="r.included = $event" />
-                      <button type="button" class="rounded-md p-1 text-muted hover:text-danger" [class.bp-demo-hl]="demoHl(r, 'remove')" aria-label="Remove" (click)="removeRow(r)"><lucide-icon name="x" [size]="14" /></button>
+                      <div class="relative flex justify-center">
+                        <input type="checkbox" [class.bp-demo-hl]="demoHl(r, 'inc')" [ngModel]="r.included" (ngModelChange)="r.included = $event" />
+                        @if (demoHl(r, 'inc')) { <div class="pointer-events-none absolute bottom-full left-1/2 z-40 -translate-x-1/2 pb-1.5"><ng-container [ngTemplateOutlet]="coachTip" /></div> }
+                      </div>
+                      <div class="relative flex justify-center">
+                        <button type="button" class="rounded-md p-1 text-muted hover:text-danger" [class.bp-demo-hl]="demoHl(r, 'remove')" aria-label="Remove" (click)="removeRow(r)"><lucide-icon name="x" [size]="14" /></button>
+                        @if (demoHl(r, 'remove')) { <div class="pointer-events-none absolute bottom-full left-1/2 z-40 -translate-x-1/2 pb-1.5"><ng-container [ngTemplateOutlet]="coachTip" /></div> }
+                      </div>
                     </div>
                   }
                   <!-- Per-card footer: Explore (category-scoped) + Add. -->

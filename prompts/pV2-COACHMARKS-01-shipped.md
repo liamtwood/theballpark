@@ -40,6 +40,14 @@ tab. Adding brand-new coachmarks stays a dev task for now.
   account menu (with Page settings / Early access). Lists registered coachmarks;
   edit description + Active toggle + Save.
 
+## Iteration — v2.184: demo bubble anchors to each field (tail points at it)
+- The demo bubble now **moves to the field it's talking about**, tail down at it:
+  ASK → the base Item name; Name/Cost/Unit/Inc/× steps → that cell of the
+  insurance row (relative wrappers + an absolute `coachTip` template anchored
+  `bottom-full` over the cell). Save/final steps (no single field) stay top-centre.
+- NOTE (QC): narrow far-right cells (Inc, ×) may push the 288px bubble past the
+  edge — alignment likely needs a nudge on the real screen.
+
 ## Iteration — v2.182: richer demo narration
 - Reworded the demo steps: **Qty** flexibility (wine per head / 100 invitation
   cards / hire for 3 weeks), **Include** = offer + quickly exclude without
