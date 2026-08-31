@@ -105,7 +105,9 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
             <!-- One card per category (Final-Quote card). The Extras/margin card
                  is hidden for now (cardGroups filters it). -->
             @for (grp of cardGroups(); track grp.categoryId ?? '__extras') {
-              <div class="mb-3 bp-card overflow-hidden">
+              <!-- overflow-visible (not hidden) so the demo bubbles anchored to a
+                   row aren't clipped by the card's rounded corners. -->
+              <div class="mb-3 bp-card overflow-visible">
                 <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggleCat(grp.isExtras ? '__extras' : grp.categoryId)">
                   <lucide-icon [name]="grp.isExtras ? 'sparkles' : catIcon(grp.categoryId)" [size]="30" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
                   <span class="min-w-0 flex-1">
