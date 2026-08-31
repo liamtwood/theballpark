@@ -40,6 +40,16 @@ tab. Adding brand-new coachmarks stays a dev task for now.
   account menu (with Page settings / Early access). Lists registered coachmarks;
   edit description + Active toggle + Save.
 
+## Iteration — v2.180: Customize coachmark → own layer + insurance example
+- Customize coachmark now renders as an **absolute overlay** (own layer, `z-40`,
+  container `pointer-events-none`) so it no longer pushes the builder content
+  down / shifts the screen.
+- Example uses **insurance** (always relevant): *"…To add an extra like
+  insurance, add a line: type 'Insurance', pick 'job' as the unit, keep Qty at 1,
+  then enter its Cost…"* (code default + DB row updated).
+- TODO (discussed): a **step-by-step guided tour** that seeds the insurance line
+  and highlights each field in turn — deferred; this is the single-bubble version.
+
 ## Iteration — v2.179: generic Customize coachmark example (item-agnostic)
 - The example was catering-specific ("gourmet menu +£20") — nonsense for a Stage.
   New generic wording: *"…To tailor it, add a line for any upgrade or extra the

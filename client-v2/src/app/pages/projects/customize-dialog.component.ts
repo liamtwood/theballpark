@@ -70,14 +70,15 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
       </div>
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
           <!-- CENTRE: the editable estimate, grouped by category. -->
-          <div class="min-w-0">
+          <div class="relative min-w-0">
 
             <!-- Teaching coachmark (admin-editable, item-specific via {vars}) —
-                 explains the base row + an example, tail down at the first card. -->
+                 in its OWN layer (absolute overlay → no layout shift), tail down
+                 at the first card. -->
             @if (originalPrice() != null) {
-              <div class="mb-4 flex justify-center">
+              <div class="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-center">
                 <app-coachmark page="customize" name="base-intro" tail="down" [vars]="coachVars()"
-                               defaultText="The Base row is your {item} — {rate} per {unit} × {qty} = {total}. To tailor it, add a line for any upgrade or extra the client wants — its cost adds on top and the total updates live." />
+                               defaultText="The Base row is your {item} — {rate} per {unit} × {qty} = {total}. To add an extra like insurance, add a line: type 'Insurance', pick 'job' as the unit, keep Qty at 1, then enter its Cost. It adds on top and the total updates live." />
               </div>
             }
 

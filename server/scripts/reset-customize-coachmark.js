@@ -6,7 +6,7 @@
  */
 const pool = require('../src/db/pool');
 
-const TEXT = "The Base row is your {item} — {rate} per {unit} × {qty} = {total}. To tailor it, add a line for any upgrade or extra the client wants — its cost adds on top and the total updates live.";
+const TEXT = "The Base row is your {item} — {rate} per {unit} × {qty} = {total}. To add an extra like insurance, add a line: type 'Insurance', pick 'job' as the unit, keep Qty at 1, then enter its Cost. It adds on top and the total updates live.";
 
 (async () => {
   const r = await pool.query(
