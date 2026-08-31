@@ -40,6 +40,12 @@ tab. Adding brand-new coachmarks stays a dev task for now.
   account menu (with Page settings / Early access). Lists registered coachmarks;
   edit description + Active toggle + Save.
 
+## Iteration — v2.187: "Show me around" toggle to re-trigger the demo
+- Added a **"Show me around"** (circle-help) button in the Customize header —
+  `replayDemo()` clears the "No thanks" suppression flag and re-shows the opt-in.
+  (The coach was hidden because `bp-coachmark:customize:demo` had been set;
+  no more console-poking needed to re-run it.)
+
 ## Iteration — v2.186: revert moving bubble → reliable top bubble + field glow
 - The per-cell anchoring (v2.184) used an `#ngTemplateOutlet` ref across the
   `@for` cards; the ref didn't resolve inside the loop, so EVERY anchored bubble

@@ -59,9 +59,14 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
       <!-- Back out of the builder without saving (returns to the thread) +
            the running totals (Customizations / Revised) in the header. -->
       <div class="mb-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-        <button type="button" class="flex items-center gap-2 bp-body-small text-secondary transition-colors hover:text-text" (click)="cancel.emit()">
-          <lucide-icon name="arrow-left" [size]="16" /> Back to conversation
-        </button>
+        <div class="flex items-center gap-5">
+          <button type="button" class="flex items-center gap-2 bp-body-small text-secondary transition-colors hover:text-text" (click)="cancel.emit()">
+            <lucide-icon name="arrow-left" [size]="16" /> Back to conversation
+          </button>
+          <button type="button" class="inline-flex items-center gap-1.5 bp-body-small text-secondary transition-colors hover:text-[var(--theme-accent)]" (click)="replayDemo()">
+            <lucide-icon name="circle-help" [size]="15" /> Show me around
+          </button>
+        </div>
         <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1">
           <span><span class="bp-caption">Upgrades</span> <span class="bp-body-small ml-1 text-secondary tabular-nums">£{{ costTotal() | number: '1.0-0' }}</span></span>
           <span><span class="bp-caption">Revised</span> <span class="bp-price-large ml-1 tabular-nums">£{{ withMargin() | number: '1.0-0' }}</span></span>
@@ -606,6 +611,12 @@ export class CustomizeDialogComponent implements OnInit {
   protected dismissDemo(): void {
     this.coachPhase.set('off');
     try { localStorage.setItem(this.DEMO_KEY, '1'); } catch { /* private mode */ }
+  }
+  /** "Show me around" — force the demo back on (clears any prior "No thanks"). */
+  protected replayDemo(): void {
+    try { localStorage.removeItem(this.DEMO_KEY); } catch { /* private mode */ }
+    this.demoStep.set(0);
+    this.coachPhase.set('ask');
   }
   private finishDemo(): void {
     const r = this.rows().find((x) => x._k === this.demoRowK());
