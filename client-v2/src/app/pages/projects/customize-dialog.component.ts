@@ -76,25 +76,18 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
           <!-- CENTRE: the editable estimate, grouped by category. -->
           <div class="relative min-w-0">
 
-            <!-- Customize demo — opt-in "want me to show you?" → a self-running
-                 example. One bubble at the top of the builder (own layer →
-                 no layout shift); the active field GLOWS (.bp-demo-hl). -->
-            @if (coachPhase() !== 'off') {
+            <!-- Customize demo — the RUNNING steps show one bubble at the top of
+                 the builder (own layer → no layout shift); the active field
+                 GLOWS (.bp-demo-hl). The opt-in ("ask") is anchored to the Base
+                 row itself (below). -->
+            @if (coachPhase() === 'run') {
               <div class="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-center">
                 <div class="bp-coachmark bp-coachmark--down pointer-events-auto">
-                  @if (coachPhase() === 'ask') {
-                    <p class="bp-coachmark__text">This is your {{ parentName() || 'item' }} base cost. Adding extras is easy — want me to show you?</p>
-                    <div class="bp-coachmark__foot">
-                      <button type="button" class="bp-coachmark__skip" (click)="dismissDemo()">No thanks</button>
-                      <button type="button" class="bp-coachmark__ok" (click)="startDemo()">Show me</button>
-                    </div>
-                  } @else {
-                    <p class="bp-coachmark__text">{{ demoText() }}</p>
-                    <div class="bp-coachmark__foot">
-                      <span class="bp-caption">{{ demoStep() + 1 }} / {{ demoCount }}</span>
-                      <button type="button" class="bp-coachmark__ok" (click)="demoNext()">{{ isLastStep() ? 'Done' : 'Next' }}</button>
-                    </div>
-                  }
+                  <p class="bp-coachmark__text">{{ demoText() }}</p>
+                  <div class="bp-coachmark__foot">
+                    <span class="bp-caption">{{ demoStep() + 1 }} / {{ demoCount }}</span>
+                    <button type="button" class="bp-coachmark__ok" (click)="demoNext()">{{ isLastStep() ? 'Done' : 'Next' }}</button>
+                  </div>
                 </div>
               </div>
             }
@@ -123,7 +116,19 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                   @if (isBaseCat(grp.categoryId)) {
                     <!-- The item itself — row-0, a "project component": editable
                          cost/qty/unit + Inc; can't be removed or re-categorised. -->
-                    <div class="grid cursor-pointer grid-cols-[108px_1fr_78px_104px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline px-2.5 py-1" [class.bg-fill]="parentSelected()" (click)="selectParent()">
+                    <div class="relative grid cursor-pointer grid-cols-[108px_1fr_78px_104px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline px-2.5 py-1" [class.bg-fill]="parentSelected()" (click)="selectParent()">
+                      <!-- Opt-in coachmark, anchored to (and pointing at) the Base row. -->
+                      @if (coachPhase() === 'ask') {
+                        <div class="pointer-events-none absolute bottom-full left-1/2 z-40 -translate-x-1/2 pb-1.5" (click)="$event.stopPropagation()">
+                          <div class="bp-coachmark bp-coachmark--down pointer-events-auto">
+                            <p class="bp-coachmark__text">This is your {{ parentName() || 'item' }} base cost. Adding extras is easy — want me to show you?</p>
+                            <div class="bp-coachmark__foot">
+                              <button type="button" class="bp-coachmark__skip" (click)="dismissDemo()">No thanks</button>
+                              <button type="button" class="bp-coachmark__ok" (click)="startDemo()">Show me</button>
+                            </div>
+                          </div>
+                        </div>
+                      }
                       <span class="px-2 bp-body-small text-secondary">Base</span>
                       <span class="px-2 bp-body-small font-medium text-text truncate">{{ parentName() || 'Original item' }}</span>
                       <input type="number" class="bp-input-field text-center tabular-nums" [ngModel]="baseRate()" (ngModelChange)="baseRate.set($event)" (click)="$event.stopPropagation()" />

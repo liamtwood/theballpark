@@ -40,6 +40,12 @@ tab. Adding brand-new coachmarks stays a dev task for now.
   account menu (with Page settings / Early access). Lists registered coachmarks;
   edit description + Active toggle + Save.
 
+## Iteration — v2.188: opt-in bubble points at the Base row
+- The opt-in ("want me to show you?") now anchors to the **Base row** (inline in
+  that row, tail down at it) instead of the top of the builder — the tail points
+  at row 1. The running steps stay as the top bubble + field glow. (Inline
+  content, not a template ref, so it renders inside the `@for`.)
+
 ## Iteration — v2.187: "Show me around" toggle to re-trigger the demo
 - Added a **"Show me around"** (circle-help) button in the Customize header —
   `replayDemo()` clears the "No thanks" suppression flag and re-shows the opt-in.
