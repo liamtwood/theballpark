@@ -40,6 +40,12 @@ tab. Adding brand-new coachmarks stays a dev task for now.
   account menu (with Page settings / Early access). Lists registered coachmarks;
   edit description + Active toggle + Save.
 
+## Iteration — v2.182: richer demo narration
+- Reworded the demo steps: **Qty** flexibility (wine per head / 100 invitation
+  cards / hire for 3 weeks), **Include** = offer + quickly exclude without
+  deleting, and **Save draft vs Send new cost** (highlights both buttons on that
+  step).
+
 ## Iteration — v2.181: Customize demo wizard (opt-in "want me to show you?")
 - Replaced the static customize base-intro bubble with an **opt-in demo**: an
   "…Adding extras is easy — want me to show you?" bubble ([Show me] / [No thanks]).

@@ -185,7 +185,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
               } @else {
                 <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="cancel.emit()">Cancel</button>
                 <button type="button" class="bp-btn-outline flex-1" [class.bp-demo-hl]="demoField() === 'save'" [disabled]="saving() || !loaded()" (click)="save(false)">{{ saving() ? 'Saving…' : 'Save draft' }}</button>
-                <button type="button" class="bp-btn-grad flex-1" [disabled]="saving() || !loaded()" (click)="openSend()">
+                <button type="button" class="bp-btn-grad flex-1" [class.bp-demo-hl]="demoField() === 'save'" [disabled]="saving() || !loaded()" (click)="openSend()">
                   <lucide-icon name="circle-dollar-sign" [size]="16" /> Send New Cost
                 </button>
               }
@@ -552,12 +552,12 @@ export class CustomizeDialogComponent implements OnInit {
   private readonly DEMO_KEY = 'bp-coachmark:customize:demo';
   private static readonly DEMO_STEPS: { text: string; field: string | null; apply: string | null }[] = [
     { text: "First, add a line and name it — say 'Insurance'.", field: 'name', apply: 'name' },
-    { text: "Give it a cost — let's say £200.", field: 'cost', apply: 'cost' },
-    { text: "Set the unit to 'job' and Qty 1.", field: 'unit', apply: 'unitqty' },
-    { text: "The Include tick counts it toward the total — watch the Revised go up.", field: 'inc', apply: 'include' },
-    { text: "When you're happy, Save draft keeps it.", field: 'save', apply: null },
-    { text: "Untick Include and the cost drops back — the line stays but stops counting.", field: 'inc', apply: 'exclude' },
-    { text: "To remove it entirely, hit the ×.", field: 'remove', apply: null },
+    { text: "Give it a Cost — say £200.", field: 'cost', apply: 'cost' },
+    { text: "Unit × Qty is how it's priced — 'job' × 1 here, but you could do wine per 'head', 100 invitation cards, or hire for 3 weeks.", field: 'unit', apply: 'unitqty' },
+    { text: "The Include tick offers it to the client and counts it toward the total — watch the Revised go up.", field: 'inc', apply: 'include' },
+    { text: "Happy with it? Save draft to keep tweaking, or Send new cost for the client to accept.", field: 'save', apply: null },
+    { text: "Untick Include to drop it without deleting — the line stays, so you can offer it back anytime.", field: 'inc', apply: 'exclude' },
+    { text: "Or remove it entirely with the ×.", field: 'remove', apply: null },
     { text: "That's it — now you try!", field: null, apply: null },
   ];
   protected readonly demoCount = CustomizeDialogComponent.DEMO_STEPS.length;
