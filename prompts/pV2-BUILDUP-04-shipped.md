@@ -35,6 +35,13 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.194 (2026-09-01): Customize item preview gets the same treatment
+- The Customize right-panel **item** preview now matches every other project
+  surface: shows the live **"£X TOTAL"** (`withMargin()`, updates as you build),
+  drops the ↗ store-link, and labels the supplier blurb **"Item description"**.
+  The per-component card (a selected row) is unchanged — the total treatment is
+  the item's, not the components'.
+
 ## Iteration — v2.193 (2026-09-01): ONE consistent project-side item preview
 - Consolidated every project-side item display onto a single `app-item-preview`
   view, so the inbox brief card, the inbox revised card, and the estimate rail

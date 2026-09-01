@@ -246,6 +246,8 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
               @if (showPreview()) {
                 <div class="bp-card p-4">
                   <app-item-preview [item]="pi" [categoryName]="previewLine()?.categoryName ?? null"
+                                    [showStoreLink]="false" [showFromPrefix]="false" descriptionLabel="Item description"
+                                    [lineTotal]="withMargin()"
                                     [editable]="parentSelected()" (nameChange)="parentName.set($event)" (descChange)="parentDesc.set($event)" (servicesChange)="parentServices.set($event)"
                                     closeIcon="eye" closeLabel="Hide preview" (closed)="showPreview.set(false)" />
                 </div>
