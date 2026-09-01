@@ -7,6 +7,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
 import { MarkdownPipe } from '../../../shared/markdown.pipe';
 import { currencySymbol, detailsTotalStr } from '../../../shared/details-format';
+import { ItemizedRow } from '../../projects/quote-line.util';
 
 /** pV2-06b — the rail's ITEM mode: image, name, supplier, price + unit,
  *  category context, full description. Pure preview over the already-
@@ -160,7 +161,26 @@ import { currencySymbol, detailsTotalStr } from '../../../shared/details-format'
       </div>
     }
 
-    <!-- 4 · Details — the supplier's costed breakdown + running total. View only. -->
+    <!-- 4 · Itemized — the derived table: the item leads, then its included
+         components (name · qty unit). No prices, no markup — computed from the
+         actual buildup so it stays consistent everywhere. -->
+    @if (itemized().length > 1) {
+      <div class="mt-3 border-t border-hairline pt-3">
+        <span class="bp-field-label">Itemized</span>
+        <div class="mt-1.5 flex flex-col gap-1">
+          @for (r of itemized(); track $index) {
+            <div class="flex items-baseline justify-between gap-3">
+              <span class="bp-body-small" [class.font-medium]="r.lead" [class.text-text]="r.lead" [class.text-secondary]="!r.lead">{{ r.name }}</span>
+              @if (itemizedDetail(r); as d) {
+                <span class="bp-meta shrink-0 tabular-nums">{{ d }}</span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- 5 · Details — the supplier's costed breakdown + running total. View only. -->
     @if (!editable() && details()) {
       <div class="mt-3 border-t border-hairline pt-3">
         <div class="flex items-center justify-between gap-2">
@@ -209,8 +229,16 @@ export class ItemPreviewComponent {
   readonly details = input<string | null>(null);
   /** ISO currency for the Details total symbol (defaults to £). */
   readonly currencyCode = input<string | null>(null);
+  /** The derived Itemized rows (item leads, then included components). Rendered
+   *  when there's more than just the item — no prices, no markup. */
+  readonly itemized = input<ItemizedRow[]>([]);
   readonly closed = output<void>();
   readonly editClientDescription = output<void>();
+  /** "150 Heads" / "2 days" / "" (nothing for a single, unitless one-off). */
+  protected itemizedDetail(r: ItemizedRow): string {
+    const u = r.unit ? r.unit.trim() : '';
+    return (r.qty > 1 || u) ? `${r.qty}${u ? ' ' + u : ''}` : '';
+  }
   /** Formatted Details total ("£3,100"), or '' when no line carries a cost. */
   protected readonly detailsTotalDisplay = computed(() => detailsTotalStr(this.details(), currencySymbol(this.currencyCode())));
   /** Opt-in edit mode — the name + description become editable and emit changes

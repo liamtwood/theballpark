@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { QuoteLine } from '../../core/projects/project.types';
-import { lineCost, quoteLineToCatalogueItem } from './quote-line.util';
+import { lineCost, lineItemized, quoteLineToCatalogueItem } from './quote-line.util';
 
 /** pV2-PREVIEW-01 — the ONE project-side item preview. Maps a QuoteLine onto
  *  `app-item-preview` with the project treatment in a single place (client-facing
@@ -25,6 +25,7 @@ import { lineCost, quoteLineToCatalogueItem } from './quote-line.util';
         [clientDescription]="line()?.quoteDescription ?? null"
         [clientDescriptionEditable]="clientDescriptionEditable()"
         [details]="line()?.details ?? null"
+        [itemized]="itemized()"
         [currencyCode]="line()?.supplierCurrency ?? null"
         [closeIcon]="closeIcon()" [closeLabel]="closeLabel()"
         (closed)="closed.emit()" (editClientDescription)="editClientDescription.emit()" />
@@ -42,4 +43,5 @@ export class LinePreviewComponent {
   /** The client-facing line TOTAL (what they'll pay) — the preview headline. */
   protected readonly total = computed(() => { const l = this.line(); return l ? lineCost(l) : null; });
   protected readonly previewItem = computed(() => { const l = this.line(); return l ? quoteLineToCatalogueItem(l) : null; });
+  protected readonly itemized = computed(() => { const l = this.line(); return l ? lineItemized(l) : []; });
 }

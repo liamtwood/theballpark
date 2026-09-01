@@ -444,6 +444,9 @@ function toQuoteLine(row) {
     optionOfLineId: row.option_of_line_id ?? null,
     // pV2-BUILDUP-04 — the line's extras (child component names), name-only.
     extras: row.extra_names ?? [],
+    // pV2-PREVIEW-01 — the line's components (name/qty/unit/included) for the
+    // derived Itemized table (the item leads, then its included components).
+    components: row.component_items ?? [],
     // pV2-BUILDUP-04 — the line's Details free-text (markdown).
     details: row.details ?? null,
     // pV2-BUILDUP-04 — the AGENT's client-facing line description (what prints on
@@ -489,6 +492,13 @@ const QUOTE_LINE_JOIN = `
          -- the inbox card can list them read-only without a second fetch.
          (SELECT array_agg(ch.name ORDER BY ch.created_at)
             FROM project_items ch WHERE ch.parent_id = pi.id AND ch.deleted_at IS NULL) AS extra_names,
+         -- pV2-PREVIEW-01 — the child components as structured rows (name/qty/unit
+         -- + included) for the derived Itemized table.
+         (SELECT json_agg(json_build_object(
+              'name', ch.name, 'quantity', ch.quantity, 'unit', ch.unit,
+              'included', ch.selection_type = 'selected'
+            ) ORDER BY ch.created_at)
+            FROM project_items ch WHERE ch.parent_id = pi.id AND ch.deleted_at IS NULL) AS component_items,
          -- Supplier (pV2-UNIFY-01a): the ASKED supplier (supplier_org_id) once
          -- sent — the source of truth for who's quoting THIS row; pre-send it's
          -- NULL so we fall back to the item's catalogue owner (the default the

@@ -82,6 +82,9 @@ export interface QuoteLine {
   optionOfLineId?: string | null;
   /** pV2-BUILDUP-04 — the line's extras (child component names), name-only. */
   extras?: string[];
+  /** pV2-PREVIEW-01 — the line's components (name/qty/unit/included) for the
+   *  derived Itemized table (the item leads, then its included components). */
+  components?: { name: string; quantity: number; unit: string | null; included: boolean }[];
   /** pV2-BUILDUP-04 — the line's Details free-text (markdown). */
   details?: string | null;
   /** pV2-BUILDUP-04 — the AGENT's client-facing description (what prints on the

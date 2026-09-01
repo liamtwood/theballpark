@@ -35,6 +35,20 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.196 (2026-09-01): derived "Itemized" table (item + components)
+- New **Itemized** block on the preview: a **derived** table (no markup) listing
+  the **item first**, then its **included components** — `Name` left, `qty unit`
+  right (e.g. "Italian Dinner · 150 Heads", "Project Manager · 2 days",
+  "Cancellation Insurance" with nothing for a unitless one-off). **No prices** —
+  the money is the headline TOTAL. Styled as a clean two-column list to match the
+  card's other blocks (say the word if you'd prefer pills).
+- Fully derived, one definition: server enriches each line with
+  **`components` (name/qty/unit/included)** (`component_items` json_agg in
+  `QUOTE_LINE_JOIN`); `lineItemized(line)` builds the rows for the read-only
+  surfaces; Customize builds the same rows **live** from the buildup. Renders only
+  when there's more than the item itself. (Free-text Details block still present —
+  Itemized likely supersedes it; say the word to retire Details.)
+
 ## Iteration — v2.195 (2026-09-01): extract `app-line-preview` — one object, no drift
 - Answering "why isn't it the same UI object?": it always WAS the same
   `app-item-preview` component, but each surface re-declared the ~7 project

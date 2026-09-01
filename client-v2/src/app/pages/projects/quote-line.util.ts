@@ -72,6 +72,20 @@ export function unitPlain(unit: string | null): string {
   return unit ? unit.replace(/_/g, ' ') : '';
 }
 
+/** A row in the derived "Itemized" table — name + how-many, no prices. */
+export interface ItemizedRow { name: string; qty: number; unit: string | null; lead?: boolean; }
+
+/** The Itemized rows for a line: the item itself leads, then its INCLUDED
+ *  components (name/qty/unit only). The single definition both the read-only
+ *  preview (from `line.components`) and Customize (from the live rows) format. */
+export function lineItemized(l: QuoteLine): ItemizedRow[] {
+  const rows: ItemizedRow[] = [{ name: l.name ?? '', qty: l.quantity ?? 1, unit: l.unit, lead: true }];
+  for (const c of l.components ?? []) {
+    if (c.included) rows.push({ name: c.name, qty: c.quantity ?? 1, unit: c.unit });
+  }
+  return rows;
+}
+
 /** Map a quote line to the marketplace preview's CatalogueItem shape — the line
  *  already carries everything the preview card renders. Shared by the Estimate
  *  right-rail and the inbox attachment so the SAME card renders in both (no

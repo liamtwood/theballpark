@@ -7,7 +7,7 @@ import { CategoryInfo, CatalogueItem } from '../../shared/catalogue/catalogue.ty
 import { ProjectService, MyComponent, ComponentInput } from '../../core/projects/project.service';
 import { StoreItemService } from '../../core/store/store-item.service';
 import { QuoteLine } from '../../core/projects/project.types';
-import { quoteLineToCatalogueItem } from './quote-line.util';
+import { ItemizedRow, quoteLineToCatalogueItem } from './quote-line.util';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { ShuttleComponent, ShuttleItem, ShuttlePick } from '../../shared/shuttle/shuttle.component';
 import { RateInputComponent } from './rate-input.component';
@@ -250,6 +250,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                                     [lineTotal]="withMargin()"
                                     [clientDescription]="previewLine()?.quoteDescription ?? null"
                                     [details]="previewLine()?.details ?? null"
+                                    [itemized]="itemizedRows()"
                                     [currencyCode]="previewLine()?.supplierCurrency ?? null"
                                     [editable]="parentSelected()" (nameChange)="parentName.set($event)" (descChange)="parentDesc.set($event)" (servicesChange)="parentServices.set($event)"
                                     closeIcon="eye" closeLabel="Hide preview" (closed)="showPreview.set(false)" />
@@ -463,6 +464,19 @@ export class CustomizeDialogComponent implements OnInit {
   /** Revised = base (flat) + customizations + their margin. Base is preserved,
    *  never overwritten, so customizing augments instead of zeroing the price. */
   protected readonly withMargin = computed(() => Math.round(this.baseCost() + this.costTotal() + this.marginAmount()));
+  /** The derived Itemized rows shown live in the preview: the item leads, then
+   *  each included component (name/qty/unit only). Mirrors `lineItemized` for the
+   *  read-only surfaces so Customize and the inbox/rail match. */
+  protected readonly itemizedRows = computed<ItemizedRow[]>(() => {
+    const rows: ItemizedRow[] = [];
+    if (this.originalPrice() != null) {
+      rows.push({ name: this.parentName() || this.itemName(), qty: Number(this.baseQty()) || 1, unit: this.baseUnitDraft(), lead: true });
+    }
+    for (const r of this.rows()) {
+      if (r.included && r.name.trim()) rows.push({ name: r.name.trim(), qty: Number(r.qty) || 1, unit: r.unit });
+    }
+    return rows;
+  });
   protected catName(id: string | null): string {
     return id ? (this.categories().find((c) => c.id === id)?.name ?? 'Category') : 'Uncategorised';
   }
