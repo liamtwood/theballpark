@@ -40,6 +40,12 @@ tab. Adding brand-new coachmarks stays a dev task for now.
   account menu (with Page settings / Early access). Lists registered coachmarks;
   edit description + Active toggle + Save.
 
+## Iteration — v2.189: force card overflow:visible so the coach isn't clipped
+- The opt-in bubble "sat inside the cat container" — `.bp-card` has
+  `overflow: hidden` baked in and the `overflow-visible` utility class didn't win
+  the cascade. Set it via inline `style="overflow: visible"` on the category
+  card so the base-row coachmark floats above the card.
+
 ## Iteration — v2.188: opt-in bubble points at the Base row
 - The opt-in ("want me to show you?") now anchors to the **Base row** (inline in
   that row, tail down at it) instead of the top of the builder — the tail points
