@@ -44,9 +44,9 @@ import { LineEditorComponent, LineEdit } from './line-editor.component';
               <!-- pV2-PREVIEW-01 — the shared project preview (total + the four
                    text blocks, nulls hidden). The pencil on the Client description
                    block opens the inline editor below. -->
-              <app-line-preview [line]="l" [clientDescriptionEditable]="!editingDesc()"
+              <app-line-preview [line]="l" [clientDescriptionEditable]="!editingDesc()" [canEditItem]="canEdit()"
                                 closeIcon="eye" closeLabel="Hide preview"
-                                (closed)="hidden.set(true)" (editClientDescription)="startDesc(l)" />
+                                (closed)="hidden.set(true)" (editClientDescription)="startDesc(l)" (editItem)="editing.set(true)" />
               @if (editingDesc()) {
                 <div class="mt-3 border-t border-hairline pt-3">
                   <span class="bp-field-label">Client description <span class="bp-meta font-normal">· on the quote</span></span>
@@ -60,14 +60,8 @@ import { LineEditorComponent, LineEdit } from './line-editor.component';
                   </div>
                 </div>
               }
-              <!-- Agent edits their own line (custom / self-entered). -->
-              @if (canEdit()) {
-                <button type="button"
-                        class="mt-3 flex w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border border-hairline px-3 py-2.5 text-secondary transition-colors hover:bg-fill hover:text-text"
-                        (click)="editing.set(true)">
-                  <lucide-icon name="square-pen" [size]="15" /> Edit line
-                </button>
-              }
+              <!-- Editing is the preview's header pencil now (canEditItem), same
+                   widget as the inbox + Customize. -->
               <!-- pV2-BUILDUP-03 — this line's picked options, listed on the card. -->
               @if (options().length) {
                 <div class="mt-3 rounded-[var(--radius-card)] border border-hairline">

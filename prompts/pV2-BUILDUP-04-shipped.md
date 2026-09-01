@@ -35,6 +35,18 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.198 (2026-09-01): read-only-first preview + one edit affordance
+- Same rule everywhere now: selecting an item shows it **read-only**; a
+  **permission-gated edit pencil** in the preview header is the ONE way in.
+  Added `canEditItem` + `editItem` to `item-preview` (pencil ↔ done) and passed
+  it through `line-preview`.
+- **Customize:** selecting the base row no longer jumps into editable fields —
+  it's read-only, `editingParent` flips only via the pencil.
+- **Ballpark Quote rail:** dropped the bottom "Edit line" button; the header
+  pencil (`canEdit`) opens the line editor.
+- **Inbox:** the revised card's whole-body click-to-edit is replaced by the same
+  header pencil (`!isAgency()` → supplier), opening the line editor.
+
 ## Iteration — v2.197 (2026-09-01): SEV1 — base cost is stored, never re-derived
 - **The bug:** the base rate kept changing on its own. `baseRate` was seeded from
   `originalPrice / qty` AND re-seeded on every open from `currentPrice − upgrades`
