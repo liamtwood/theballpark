@@ -185,11 +185,11 @@ import { ProjectService } from '../../core/projects/project.service';
                             <app-line-editor [line]="line" [saving]="savingDetails()"
                                              (save)="onLineSave(line, $event)" (cancel)="cancelEdit()" />
                           } @else {
-                            <!-- Read-only; the supplier edits via the preview's
-                                 header pencil (same widget as Customize + the
-                                 Ballpark Quote rail). -->
-                            <app-line-preview [line]="line" [canEditItem]="!isAgency()" closeIcon="chevron-up" closeLabel="Minimise"
-                                              (closed)="toggleAttachment(m.id, line.id)" (editItem)="beginEdit(line)" />
+                            <!-- Read-only; the supplier clicks the card to edit. -->
+                            <div [class.cursor-pointer]="!isAgency()" [attr.title]="isAgency() ? null : 'Click to edit'" (click)="beginEdit(line)">
+                              <app-line-preview [line]="line" closeIcon="chevron-up" closeLabel="Minimise"
+                                                (closed)="toggleAttachment(m.id, line.id)" />
+                            </div>
                           }
                         </div>
                       } @else {

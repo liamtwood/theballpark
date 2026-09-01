@@ -28,8 +28,7 @@ import { lineCost, lineItemized, quoteLineToCatalogueItem } from './quote-line.u
         [itemized]="itemized()"
         [currencyCode]="line()?.supplierCurrency ?? null"
         [closeIcon]="closeIcon()" [closeLabel]="closeLabel()"
-        [canEditItem]="canEditItem()"
-        (closed)="closed.emit()" (editClientDescription)="editClientDescription.emit()" (editItem)="editItem.emit()" />
+        (closed)="closed.emit()" (editClientDescription)="editClientDescription.emit()" />
     }
   `,
 })
@@ -39,11 +38,8 @@ export class LinePreviewComponent {
   readonly closeLabel = input<string>('Close preview');
   /** Show a pencil on the Client description block (the host opens its editor). */
   readonly clientDescriptionEditable = input<boolean>(false);
-  /** Show the permission-gated edit pencil in the header (host opens its editor). */
-  readonly canEditItem = input<boolean>(false);
   readonly closed = output<void>();
   readonly editClientDescription = output<void>();
-  readonly editItem = output<void>();
   /** The client-facing line TOTAL (what they'll pay) — the preview headline. */
   protected readonly total = computed(() => { const l = this.line(); return l ? lineCost(l) : null; });
   protected readonly previewItem = computed(() => { const l = this.line(); return l ? quoteLineToCatalogueItem(l) : null; });

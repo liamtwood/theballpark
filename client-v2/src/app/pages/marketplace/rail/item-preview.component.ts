@@ -26,15 +26,6 @@ import { ItemizedRow } from '../../projects/quote-line.util';
         <h3 class="bp-list-title">{{ item().name }}</h3>
       }
       <div class="flex items-center gap-2">
-        @if (canEditItem()) {
-          <!-- Read-only by default; the pencil (permission-gated) flips the host
-               into edit mode, and the check exits it. -->
-          <button type="button" class="bp-itemprev-close" [title]="editable() ? 'Done' : 'Edit item'"
-                  [attr.aria-label]="editable() ? 'Done editing' : 'Edit item'"
-                  (click)="$event.stopPropagation(); editItem.emit()">
-            <lucide-icon [name]="editable() ? 'check' : 'square-pen'" [size]="14" />
-          </button>
-        }
         @if (showStoreLink()) {
           @if (item().ownedByActiveOrg) {
             <!-- pV2-STORE-01 — owner edits their own item. -->
@@ -241,12 +232,8 @@ export class ItemPreviewComponent {
   /** The derived Itemized rows (item leads, then included components). Rendered
    *  when there's more than just the item — no prices, no markup. */
   readonly itemized = input<ItemizedRow[]>([]);
-  /** Show a permission-gated edit toggle (pencil / done) in the header — the host
-   *  owns the actual `editable` switch, flipping it on `editItem`. */
-  readonly canEditItem = input<boolean>(false);
   readonly closed = output<void>();
   readonly editClientDescription = output<void>();
-  readonly editItem = output<void>();
   /** "150 Heads" / "2 days" / "" (nothing for a single, unitless one-off). */
   protected itemizedDetail(r: ItemizedRow): string {
     const u = r.unit ? r.unit.trim() : '';

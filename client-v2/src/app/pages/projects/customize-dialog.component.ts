@@ -252,7 +252,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                                     [details]="previewLine()?.details ?? null"
                                     [itemized]="itemizedRows()"
                                     [currencyCode]="previewLine()?.supplierCurrency ?? null"
-                                    [editable]="editingParent()" [canEditItem]="parentSelected()" (editItem)="editingParent.update((v) => !v)"
+                                    [editable]="parentSelected()"
                                     (nameChange)="parentName.set($event)" (descChange)="parentDesc.set($event)" (servicesChange)="parentServices.set($event)"
                                     closeIcon="eye" closeLabel="Hide preview" (closed)="showPreview.set(false)" />
                 </div>
@@ -385,12 +385,10 @@ export class CustomizeDialogComponent implements OnInit {
   /** Clicking the header selects the PARENT item — the right rail becomes the
    *  editor for the item's final name + description (what the agent sees). */
   protected readonly parentSelected = signal(false);
-  /** The item preview is READ-ONLY on select; the pencil flips this to edit. */
-  protected readonly editingParent = signal(false);
   protected readonly parentName = signal('');
   protected readonly parentDesc = signal('');
   protected readonly parentServices = signal('');
-  protected selectParent(): void { this.parentSelected.set(true); this.selectedRowK.set(null); this.showPreview.set(true); this.editingParent.set(false); }
+  protected selectParent(): void { this.parentSelected.set(true); this.selectedRowK.set(null); this.showPreview.set(true); }
   protected readonly saving = signal(false);
   /** True once the components have loaded from the server. Save is blocked until
    *  then, so a failed/incomplete load can't send an empty reconcile that
@@ -681,7 +679,7 @@ export class CustomizeDialogComponent implements OnInit {
     this.rows.set(next.length ? next : [this.blank()]);
   }
   /** Select a row → its card fills the right rail (add a description/image). */
-  protected selectRow(r: Row): void { this.selectedRowK.set(r._k); this.parentSelected.set(false); this.editingParent.set(false); }
+  protected selectRow(r: Row): void { this.selectedRowK.set(r._k); this.parentSelected.set(false); }
   /** Read a picked image into a data URL held on the row (client-only draft). */
   protected onPickImage(r: Row, ev: Event): void {
     const file = (ev.target as HTMLInputElement).files?.[0];

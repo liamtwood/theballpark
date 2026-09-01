@@ -35,6 +35,19 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.199 (2026-09-01): drop the edit button — click the item to edit
+- Liam: no edit button. Removed the v2.198 header pencil (and its
+  `canEditItem`/`editItem` plumbing from `item-preview` + `line-preview`). Editing
+  is triggered by **clicking the item** (read-only until then):
+  - **Customize:** click the base row → its fields enable in place (`editable =
+    parentSelected`).
+  - **Inbox:** click the card → line editor (supplier only).
+  - **Ballpark Quote rail:** click the card → line editor (card-click replaces the
+    dropped "Edit line" button).
+- NB inbox/rail still open the separate line-editor layout on click; the fully
+  in-place "same containers, fields just enable" unification (folding line-editor
+  into item-preview) is the pending follow-up if wanted.
+
 ## Iteration — v2.198 (2026-09-01): read-only-first preview + one edit affordance
 - Same rule everywhere now: selecting an item shows it **read-only**; a
   **permission-gated edit pencil** in the preview header is the ONE way in.

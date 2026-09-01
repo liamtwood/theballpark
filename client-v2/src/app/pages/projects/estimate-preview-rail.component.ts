@@ -44,9 +44,11 @@ import { LineEditorComponent, LineEdit } from './line-editor.component';
               <!-- pV2-PREVIEW-01 — the shared project preview (total + the four
                    text blocks, nulls hidden). The pencil on the Client description
                    block opens the inline editor below. -->
-              <app-line-preview [line]="l" [clientDescriptionEditable]="!editingDesc()" [canEditItem]="canEdit()"
-                                closeIcon="eye" closeLabel="Hide preview"
-                                (closed)="hidden.set(true)" (editClientDescription)="startDesc(l)" (editItem)="editing.set(true)" />
+              <div [class.cursor-pointer]="canEdit()" [attr.title]="canEdit() ? 'Click to edit' : null" (click)="canEdit() && editing.set(true)">
+                <app-line-preview [line]="l" [clientDescriptionEditable]="!editingDesc()"
+                                  closeIcon="eye" closeLabel="Hide preview"
+                                  (closed)="hidden.set(true)" (editClientDescription)="startDesc(l)" />
+              </div>
               @if (editingDesc()) {
                 <div class="mt-3 border-t border-hairline pt-3">
                   <span class="bp-field-label">Client description <span class="bp-meta font-normal">· on the quote</span></span>
