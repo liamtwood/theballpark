@@ -824,7 +824,7 @@ async function listComponents(orgId, projectId, parentLineId) {
  *  in the input is soft-deleted. Optionally sets the line's revised price
  *  (price_current) — the supplier's quote derived from the estimate. Children are
  *  private/supplier-scoped, excluded from the agent's canonical totals. */
-async function saveComponents(orgId, projectId, parentLineId, components, revisedPrice, marginPct, parentName, parentDescription, parentServices, parentQuantity, parentUnit) {
+async function saveComponents(orgId, projectId, parentLineId, components, revisedPrice, marginPct, parentName, parentDescription, parentServices, parentQuantity, parentUnit, parentUnitPrice) {
   const list = Array.isArray(components) ? components : [];
   return withTransaction(async (client) => {
     const parent = await client.query(
@@ -884,6 +884,14 @@ async function saveComponents(orgId, projectId, parentLineId, components, revise
       await client.query(
         `UPDATE project_items SET unit = $2 WHERE id = $1 AND supplier_org_id = $3`,
         [parentLineId, parentUnit || null, orgId]
+      );
+    }
+    // The base cost the supplier edits IS the line's per-unit reference cost
+    // (price_ref), copied at clone. Store it verbatim so nothing re-derives it.
+    if (parentUnitPrice != null && Number.isFinite(Number(parentUnitPrice))) {
+      await client.query(
+        `UPDATE project_items SET price_ref = $2 WHERE id = $1 AND supplier_org_id = $3`,
+        [parentLineId, Number(parentUnitPrice), orgId]
       );
     }
     // The supplier's estimate-derived quote for the line = the item TOTAL the

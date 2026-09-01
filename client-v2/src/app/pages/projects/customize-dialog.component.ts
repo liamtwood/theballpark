@@ -440,15 +440,12 @@ export class CustomizeDialogComponent implements OnInit {
    *  the pre-fix behaviour). Not yet persisted — resets to on each open. */
   protected readonly includeBase = signal(true);
   /** The base = the item itself as row-0 (a "project component"): editable
-   *  cost (per-unit rate) / qty / unit, all seeded from the line. */
-  protected readonly baseRate = linkedSignal(() => {
-    // Seed from the FULL line total ÷ qty (so it INCLUDES install/extras) —
-    // otherwise the base reads goods-only and the revised total undershoots the
-    // thread's figure. Falls back to the goods rate when there's no line total.
-    const q = this.baseQuantity() ?? 1;
-    const op = this.originalPrice();
-    return op != null && q > 0 ? Math.round((op / q) * 100) / 100 : this.baseUnitPrice();
-  });
+   *  cost (per-unit rate) / qty / unit. The rate is the STORED per-unit base
+   *  cost (price_ref), copied from the item at clone. It seeds from that value
+   *  and is otherwise ONLY changed by the user — there is deliberately NO logic
+   *  that re-derives it (a re-derivation was the base-cost-drift sev1). Persisted
+   *  straight back to price_ref on save, so a reopen reads the same number. */
+  protected readonly baseRate = linkedSignal(() => this.baseUnitPrice());
   protected readonly baseQty = linkedSignal(() => this.baseQuantity() ?? 1);
   protected readonly baseUnitDraft = linkedSignal(() => this.baseUnit());
   /** The base cost that seeds the buildup (0 when excluded). Uses the per-unit
@@ -513,17 +510,9 @@ export class CustomizeDialogComponent implements OnInit {
         this.parentName.set(res.parentName || this.itemName());
         this.parentDesc.set(res.parentDescription ?? '');
         this.parentServices.set(res.parentServices ?? '');
-        // Seed the base so base + upgrades = the line's CURRENT price. Handles a
-        // negotiated price (no components → base = current) and a customize-saved
-        // one (components → base = current − upgrades = the original base) without
-        // double-counting. Only when we know the current line total.
-        const current = this.currentPrice() ?? this.originalPrice();
-        if (current != null) {
-          const qty = Math.max(1, Number(this.baseQuantity()) || 1);
-          const upContribution = this.costTotal() * (1 + (Number(this.margin()) || 0) / 100);
-          const baseTotal = Math.max(0, current - upContribution);
-          this.baseRate.set(Math.round((baseTotal / qty) * 100) / 100);
-        }
+        // NB: the base rate is NOT re-derived here. It is the stored price_ref
+        // (see `baseRate`), copied at clone and only ever changed by the user —
+        // re-deriving it from current − upgrades was the base-cost-drift sev1.
         this.loaded.set(true);
       },
       // Load failed → leave `loaded` false so Save stays blocked (never wipe).
@@ -756,15 +745,20 @@ export class CustomizeDialogComponent implements OnInit {
   }
   private marginNum(): number | null { return this.margin() == null ? null : Number(this.margin()); }
   /** The parent item's edited name + description, for the save payload. */
-  private parentPatch(): { name?: string; description: string | null; services: string | null; quantity?: number; unit?: string | null } {
-    // The base row is the parent line itself — persist its edited qty/unit too,
-    // but only when that row is actually shown/editable (originalPrice != null).
+  private parentPatch(): { name?: string; description: string | null; services: string | null; quantity?: number; unit?: string | null; unitPrice?: number | null } {
+    // The base row is the parent line itself — persist its edited base cost
+    // (price_ref) / qty / unit too, but only when that row is shown/editable
+    // (originalPrice != null). The base cost is stored, never re-derived.
     const base = this.originalPrice() != null;
     return {
       name: this.parentName().trim() || undefined,
       description: this.parentDesc().trim() || null,
       services: this.parentServices().trim() || null,
-      ...(base ? { quantity: Math.max(1, Number(this.baseQty()) || 1), unit: this.baseUnitDraft() ?? null } : {}),
+      ...(base ? {
+        quantity: Math.max(1, Number(this.baseQty()) || 1),
+        unit: this.baseUnitDraft() ?? null,
+        unitPrice: this.baseRate() == null ? null : Number(this.baseRate()),
+      } : {}),
     };
   }
 

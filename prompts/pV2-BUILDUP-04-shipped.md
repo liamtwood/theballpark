@@ -35,6 +35,24 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.197 (2026-09-01): SEV1 — base cost is stored, never re-derived
+- **The bug:** the base rate kept changing on its own. `baseRate` was seeded from
+  `originalPrice / qty` AND re-seeded on every open from `currentPrice − upgrades`
+  (the v2.163/v2.183 reconciliation). Any change to the total or components moved
+  the base — "logic changing a value that should be fixed."
+- **The model (per Liam):** the base cost is copied from the item at clone, then
+  it's a plain editable value with **zero derivation**.
+- **Fix:** `baseRate` now seeds ONCE from the stored per-unit base **`price_ref`**
+  (`baseUnitPrice`) and is only ever changed by the user; removed the ngOnInit
+  re-seed entirely. On save the edited base cost is persisted straight back to
+  **`price_ref`** (new `parentUnitPrice` → `saveComponents`), so a reopen reads
+  the exact same number. `price_current` still stores the revised line total
+  (base + components + margin).
+- **Implication to note:** opening Customize on a line whose price was negotiated
+  flat (no components) now shows the base = its stored `price_ref`, and the
+  Revised = base + components — i.e. the buildup defines the price; a prior flat
+  negotiated figure is superseded when you save the buildup.
+
 ## Iteration — v2.196 (2026-09-01): derived "Itemized" table (item + components)
 - New **Itemized** block on the preview: a **derived** table (no markup) listing
   the **item first**, then its **included components** — `Name` left, `qty unit`
