@@ -166,7 +166,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                       </select>
                       <input class="bp-input-field" [class.bp-demo-hl]="demoHl(r, 'name')" placeholder="Component" [ngModel]="r.name" (ngModelChange)="r.name = $event" autocomplete="off" />
                       <input type="number" class="bp-input-field text-center tabular-nums" [class.bp-demo-hl]="demoHl(r, 'cost')" placeholder="—" [ngModel]="r.cost" (ngModelChange)="r.cost = $event" />
-                      <span class="justify-self-center" (click)="$event.stopPropagation()">
+                      <span class="justify-self-center" [class.bp-demo-hl]="demoHl(r, 'qty')" (click)="$event.stopPropagation()">
                         <app-rate-input [value]="r.qty || 1" [min]="1" label="quantity" (rateCommit)="r.qty = $event; rows.set([...rows()])" />
                       </span>
                       <select class="bp-input-field bp-select" [class.bp-demo-hl]="demoHl(r, 'unit')" [ngModel]="r.unit" (ngModelChange)="r.unit = $event || null">
@@ -576,17 +576,17 @@ export class CustomizeDialogComponent implements OnInit {
   //    effect on the total, then removes the demo line (no side effects). ─────
   protected readonly coachPhase = signal<'ask' | 'run' | 'off'>('off');
   protected readonly demoStep = signal(0);
-  private readonly demoRowK = signal<number | null>(null);
+  /** The demo builds up TWO example lines (Insurance, then a Project Manager);
+   *  `row` on each step indexes into this list so the glow follows the right one. */
+  private readonly demoRowKs = signal<number[]>([]);
   private readonly DEMO_KEY = 'bp-coachmark:customize:demo';
-  private static readonly DEMO_STEPS: { text: string; field: string | null; apply: string | null }[] = [
-    { text: "First, add a line and name it — say 'Insurance'.", field: 'name', apply: 'name' },
-    { text: "Give it a Cost — say £200.", field: 'cost', apply: 'cost' },
-    { text: "Unit × Qty is how it's priced — 'job' × 1 here, but you could do wine per 'head', 100 invitation cards, or hire for 3 weeks.", field: 'unit', apply: 'unitqty' },
-    { text: "The Include tick offers it to the client and counts it toward the total — watch the Revised go up.", field: 'inc', apply: 'include' },
-    { text: "Happy with it? Save draft to keep tweaking, or Send new cost for the client to accept.", field: 'save', apply: null },
-    { text: "Untick Include to drop it without deleting — the line stays, so you can offer it back anytime.", field: 'inc', apply: 'exclude' },
-    { text: "Or remove it entirely with the trashcan.", field: 'remove', apply: null },
-    { text: "That's it — now you try!", field: null, apply: null },
+  private static readonly DEMO_STEPS: { text: string; field: string | null; apply: string | null; row: number | null }[] = [
+    { text: "Why don't we add 'Cancellation Insurance'? Give the new line a name.", field: 'name', apply: 'ins-name', row: 0 },
+    { text: "Insurance is a one-time £200 charge — so enter 200 in Cost.", field: 'cost', apply: 'ins-cost', row: 0 },
+    { text: "Enter Qty 1, and you can leave the unit empty. Now let's add another line.", field: 'qty', apply: 'ins-qty', row: 0 },
+    { text: "Add a Project Manager for 2 days to support the project — £200 a day, Qty 2, unit 'day'. That's £400.", field: 'name', apply: 'add-pm', row: 1 },
+    { text: "The Include tick offers it to the client and counts it toward the total — watch the Revised go up.", field: 'inc', apply: 'include', row: 1 },
+    { text: "Happy with it? Save draft to keep tweaking, or Send new cost for the client to accept.", field: 'save', apply: null, row: null },
   ];
   protected readonly demoCount = CustomizeDialogComponent.DEMO_STEPS.length;
   protected demoText(): string { return CustomizeDialogComponent.DEMO_STEPS[this.demoStep()]?.text ?? ''; }
@@ -594,14 +594,19 @@ export class CustomizeDialogComponent implements OnInit {
     return this.coachPhase() === 'run' ? (CustomizeDialogComponent.DEMO_STEPS[this.demoStep()]?.field ?? null) : null;
   }
   protected isLastStep(): boolean { return this.demoStep() >= this.demoCount - 1; }
-  protected isDemoRow(r: Row): boolean { return this.demoRowK() === r._k; }
+  /** The demo row the CURRENT step is acting on (so only it glows). */
+  private currentDemoRowK(): number | null {
+    const idx = CustomizeDialogComponent.DEMO_STEPS[this.demoStep()]?.row;
+    return idx == null ? null : (this.demoRowKs()[idx] ?? null);
+  }
+  protected isDemoRow(r: Row): boolean { return this.currentDemoRowK() === r._k; }
   protected demoHl(r: Row, field: string): boolean { return this.isDemoRow(r) && this.demoField() === field; }
   private demoSuppressed(): boolean { try { return localStorage.getItem(this.DEMO_KEY) === '1'; } catch { return false; } }
 
   protected startDemo(): void {
     if (this.baseCategoryId() == null) { this.dismissDemo(); return; }
     const row = this.mk({ id: null, name: '', cost: null, qty: 1, unit: null, categoryId: this.baseCategoryId(), included: true, description: null, image: null });
-    this.demoRowK.set(row._k);
+    this.demoRowKs.set([row._k]);
     this.rows.set([...this.rows(), row]);
     this.coachPhase.set('run');
     this.demoStep.set(0);
@@ -624,22 +629,27 @@ export class CustomizeDialogComponent implements OnInit {
     this.coachPhase.set('ask');
   }
   private finishDemo(): void {
-    const r = this.rows().find((x) => x._k === this.demoRowK());
-    if (r) this.removeRow(r); // the demo line was a demonstration — remove it
-    this.demoRowK.set(null);
+    // The demo lines were a demonstration — remove them both.
+    for (const k of this.demoRowKs()) { const r = this.rows().find((x) => x._k === k); if (r) this.removeRow(r); }
+    this.demoRowKs.set([]);
     // Don't suppress on finish — the opt-in returns next open (only "No thanks"
     // permanently hides it).
     this.coachPhase.set('off');
   }
   private applyDemoStep(step: number): void {
-    const r = this.rows().find((x) => x._k === this.demoRowK());
-    if (!r) return;
+    const r0 = this.rows().find((x) => x._k === this.demoRowKs()[0]);
     switch (CustomizeDialogComponent.DEMO_STEPS[step]?.apply) {
-      case 'name': r.name = 'Insurance'; break;
-      case 'cost': r.cost = 200; break;
-      case 'unitqty': r.unit = 'job'; r.qty = 1; break;
-      case 'include': r.included = true; break;
-      case 'exclude': r.included = false; break;
+      case 'ins-name': if (r0) r0.name = 'Cancellation Insurance'; break;
+      case 'ins-cost': if (r0) r0.cost = 200; break;
+      case 'ins-qty': if (r0) { r0.qty = 1; r0.unit = null; } break;
+      case 'add-pm': {
+        // Second example line: a 2-day Project Manager (£200/day × 2 = £400).
+        const pm = this.mk({ id: null, name: 'Project Manager', cost: 200, qty: 2, unit: 'day', categoryId: this.baseCategoryId(), included: true, description: null, image: null });
+        this.demoRowKs.set([...this.demoRowKs(), pm._k]);
+        this.rows.set([...this.rows(), pm]);
+        return; // rows already re-set
+      }
+      case 'include': for (const k of this.demoRowKs()) { const r = this.rows().find((x) => x._k === k); if (r) r.included = true; } break;
     }
     this.rows.set([...this.rows()]);
   }

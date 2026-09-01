@@ -40,6 +40,20 @@ tab. Adding brand-new coachmarks stays a dev task for now.
   account menu (with Page settings / Early access). Lists registered coachmarks;
   edit description + Active toggle + Save.
 
+## Iteration — v2.191: demo builds two real lines (Insurance → Project Manager)
+- Reworked the Customize demo (per Liam's script) into a **two-line worked
+  example** instead of one Insurance line + exclude/remove:
+  1. name row 1 **'Cancellation Insurance'**, 2. Cost **£200** (one-time),
+  3. **Qty 1, unit empty**, 4. add a **Project Manager** line — £200 × Qty 2,
+  unit 'day' = **£400**, 5. **Include** (watch Revised rise), 6. **Save draft /
+  Send new cost**.
+- Machinery: `demoRowK` (single) → **`demoRowKs` (array)**; each step carries a
+  `row` index so the glow follows the right line; `add-pm` step spawns the 2nd
+  row mid-demo; `finishDemo` removes **both** demo lines. Added a **Qty glow**
+  binding (the rate-input had none). (£ not $ — product is GBP; supplier-name
+  prefix on the PM line left off since the builder has no clean supplier-name
+  source — say the word and I'll plumb the org name.)
+
 ## Iteration — v2.189: force card overflow:visible so the coach isn't clipped
 - The opt-in bubble "sat inside the cat container" — `.bp-card` has
   `overflow: hidden` baked in and the `overflow-visible` utility class didn't win
