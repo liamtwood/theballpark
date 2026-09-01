@@ -217,6 +217,9 @@ const ComponentsSchema = z.object({
   parentName: z.string().trim().min(1).max(200).optional(),
   parentDescription: z.string().max(4000).nullish(),
   parentServices: z.string().max(4000).nullish(),
+  // The base row IS the parent line — its editable quantity / unit persist here.
+  parentQuantity: z.number().int().positive().optional(),
+  parentUnit: z.string().max(40).nullish(),
 }).strip();
 // GET the line's current components (re-opening the estimate).
 router.get('/:id/items/:itemId/components', async (req, res, next) => {
@@ -238,7 +241,8 @@ router.post('/:id/items/:itemId/components', async (req, res, next) => {
     }
     const rows = await projects.saveComponents(
       req.user.org_id, req.params.id, req.params.itemId, parsed.data.components, parsed.data.revisedPrice, parsed.data.marginPct,
-      parsed.data.parentName, parsed.data.parentDescription, parsed.data.parentServices
+      parsed.data.parentName, parsed.data.parentDescription, parsed.data.parentServices,
+      parsed.data.parentQuantity, parsed.data.parentUnit
     );
     if (rows === null) return res.status(404).json({ error: 'Line not found or not yours to estimate' });
     res.status(201).json(rows);

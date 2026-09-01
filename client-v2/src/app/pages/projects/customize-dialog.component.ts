@@ -737,8 +737,16 @@ export class CustomizeDialogComponent implements OnInit {
   }
   private marginNum(): number | null { return this.margin() == null ? null : Number(this.margin()); }
   /** The parent item's edited name + description, for the save payload. */
-  private parentPatch(): { name?: string; description: string | null; services: string | null } {
-    return { name: this.parentName().trim() || undefined, description: this.parentDesc().trim() || null, services: this.parentServices().trim() || null };
+  private parentPatch(): { name?: string; description: string | null; services: string | null; quantity?: number; unit?: string | null } {
+    // The base row is the parent line itself — persist its edited qty/unit too,
+    // but only when that row is actually shown/editable (originalPrice != null).
+    const base = this.originalPrice() != null;
+    return {
+      name: this.parentName().trim() || undefined,
+      description: this.parentDesc().trim() || null,
+      services: this.parentServices().trim() || null,
+      ...(base ? { quantity: Math.max(1, Number(this.baseQty()) || 1), unit: this.baseUnitDraft() ?? null } : {}),
+    };
   }
 
   /** Send New Cost: persist the buildup (no price — the price rides the

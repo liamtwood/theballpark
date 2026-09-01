@@ -35,6 +35,20 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.192 (2026-09-01): base row's qty/unit now persist on the line
+- **Bug: editing the base cost/qty/unit didn't stick.** The base row IS the
+  parent `project_items` row (the item cloned into the project), but only its
+  name/description/services were patched — **quantity and unit were never
+  saved**, and the cost only rode through as a blended total ÷ the *old* qty, so
+  any of the three could appear to revert on reopen.
+- Now `saveComponents` also persists **parentQuantity / parentUnit** onto the
+  parent line, applied **before** the `price_current = revisedPrice / quantity`
+  division so it divides by the NEW qty (keeps base + upgrades = current). Wired
+  end-to-end: dialog `parentPatch` (guarded to when the base row is shown) →
+  client `project.service.saveComponents` (`parentQuantity`/`parentUnit`) →
+  `ComponentsSchema` → `projects.saveComponents`. Reopen now round-trips cost,
+  qty and unit exactly (the reseed recovers the same base rate).
+
 ## Iteration — v2.190 (2026-09-01): trashcan on rows + save-and-switch the builder
 - **Row remove icon** in the Customize builder changed from an **×** to a
   **trash-2** (size 14), matching how Ballpark Cost removes a line — same visual
