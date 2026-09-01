@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
-import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
@@ -39,7 +39,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
 @Component({
   selector: 'app-customize-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, NgTemplateOutlet, FormsModule, LucideAngularModule, ItemPreviewComponent, ShuttleComponent, RateInputComponent],
+  imports: [DecimalPipe, FormsModule, LucideAngularModule, ItemPreviewComponent, ShuttleComponent, RateInputComponent],
   host: { class: 'contents' },
   styles: [`
     /* Native <select> chevrons crowd the value in narrow cells — replace the
@@ -175,7 +175,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                       </select>
                       <span class="text-center tabular-nums bp-body-small" [class.text-muted]="!r.included || !r.name.trim()" [class.text-text]="r.included && r.name.trim()">{{ r.name.trim() && r.cost != null ? ('£' + (lineTotal(r) | number: '1.0-0')) : '—' }}</span>
                       <input type="checkbox" class="justify-self-center" [class.bp-demo-hl]="demoHl(r, 'inc')" [ngModel]="r.included" (ngModelChange)="r.included = $event" />
-                      <button type="button" class="rounded-md p-1 text-muted hover:text-danger" [class.bp-demo-hl]="demoHl(r, 'remove')" aria-label="Remove" (click)="removeRow(r)"><lucide-icon name="x" [size]="14" /></button>
+                      <button type="button" class="rounded-md p-1 text-muted hover:text-danger" [class.bp-demo-hl]="demoHl(r, 'remove')" aria-label="Remove" (click)="removeRow(r)"><lucide-icon name="trash-2" [size]="14" /></button>
                     </div>
                   }
                   <!-- Per-card footer: Explore (category-scoped) + Add. -->
@@ -585,7 +585,7 @@ export class CustomizeDialogComponent implements OnInit {
     { text: "The Include tick offers it to the client and counts it toward the total — watch the Revised go up.", field: 'inc', apply: 'include' },
     { text: "Happy with it? Save draft to keep tweaking, or Send new cost for the client to accept.", field: 'save', apply: null },
     { text: "Untick Include to drop it without deleting — the line stays, so you can offer it back anytime.", field: 'inc', apply: 'exclude' },
-    { text: "Or remove it entirely with the ×.", field: 'remove', apply: null },
+    { text: "Or remove it entirely with the trashcan.", field: 'remove', apply: null },
     { text: "That's it — now you try!", field: null, apply: null },
   ];
   protected readonly demoCount = CustomizeDialogComponent.DEMO_STEPS.length;
@@ -775,4 +775,10 @@ export class CustomizeDialogComponent implements OnInit {
       error: () => { this.saving.set(false); },
     });
   }
+
+  /** Persist the current buildup as a draft — used when the parent switches to a
+   *  different line so edits aren't lost (save-before-switch). buildComponents()
+   *  captures the rows synchronously; the request completes even as this dialog
+   *  is torn down and reopened on the new line. No-op if nothing is loaded. */
+  saveDraftPublic(): void { this.save(false); }
 }

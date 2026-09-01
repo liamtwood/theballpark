@@ -459,6 +459,16 @@ export class InboxProjectComponent {
     const t = this.threads().find((th) => th.items.some((i) => i.id === itemId));
     if (t) this.selectedThreadId.set(t.id);
     this.selectedId.set(itemId);
+    // If a DIFFERENT line is being customized, don't leave the builder stranded
+    // on the old line while the header shows the new one: save the current draft,
+    // then reopen the builder fresh on the newly-selected line.
+    const cur = this.customizing();
+    if (cur && cur.id !== itemId) {
+      this.customizeDialog()?.saveDraftPublic(); // captures rows synchronously
+      const next = t?.items.find((i) => i.id === itemId) ?? null;
+      this.customizing.set(null); // tear the builder down…
+      if (next) setTimeout(() => this.customizing.set(next)); // …and reopen on the new line
+    }
   }
 
   /** The bubbles to render: the whole thread at parent level; when an item
@@ -609,6 +619,9 @@ export class InboxProjectComponent {
   // ── pV2-BUILDUP-02 — supplier Customize (build the line from components) ──
   private readonly projects = inject(ProjectService);
   protected readonly customizing = signal<InboxThreadItem | null>(null);
+  /** The live builder instance (present only while customizing) — used to
+   *  save-before-switch when the user picks a different line. */
+  private readonly customizeDialog = viewChild(CustomizeDialogComponent);
   /** The selected line's estimate (component cost) total — the header's
    *  "Customizations" figure. Loaded on selection (supplier viewer only). */
   protected readonly custoTotal = signal<number | null>(null);

@@ -35,6 +35,18 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.190 (2026-09-01): trashcan on rows + save-and-switch the builder
+- **Row remove icon** in the Customize builder changed from an **×** to a
+  **trash-2** (size 14), matching how Ballpark Cost removes a line — same visual
+  vocabulary for "delete a line" everywhere. Demo narration updated ("…with the
+  trashcan").
+- **Bug: builder stranded on the old line.** Selecting a different item while
+  customizing left the header on item 2 but the builder still on item 1. Now
+  `selectItem` **saves the current draft** (`customizeDialog().saveDraftPublic()`
+  → `save(false)` captures the rows synchronously) then **reopens the builder on
+  the new line** (`customizing.set(null)` to tear it down, then `setTimeout` to
+  reopen fresh so `ngOnInit` re-runs and reloads the new line's components).
+
 ## Iteration — v2.172 (2026-08-28): item-scoped thread header (the REAL divergence)
 - The real cause of the two Revised disagreeing: the thread header showed the
   **whole thread's** `originalTotal`/`revisedTotal` even when a single item was
