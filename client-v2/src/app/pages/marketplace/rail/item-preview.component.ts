@@ -6,6 +6,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
 import { MarkdownPipe } from '../../../shared/markdown.pipe';
+import { currencySymbol, detailsTotalStr } from '../../../shared/details-format';
 
 /** pV2-06b — the rail's ITEM mode: image, name, supplier, price + unit,
  *  category context, full description. Pure preview over the already-
@@ -62,7 +63,9 @@ import { MarkdownPipe } from '../../../shared/markdown.pipe';
       </div>
     }
 
-    <!-- Mirrors the item card's price treatment (pV2-CARDS-01 QC #1). -->
+    <!-- Mirrors the item card's price treatment (pV2-CARDS-01 QC #1).
+         Project side (lineTotal set): the client-facing line TOTAL, always a
+         value. Marketplace/store: the indicative "From £/unit". -->
     <div class="mt-3 flex items-baseline gap-1.5">
       @if (editable() && priceEditable()) {
         <span class="bp-price-large">£</span>
@@ -77,6 +80,9 @@ import { MarkdownPipe } from '../../../shared/markdown.pipe';
           <input type="text" class="bp-input-field" placeholder="unit"
                  [ngModel]="item().unit" (ngModelChange)="unitChange.emit($event)" (click)="$event.stopPropagation()" />
         </span>
+      } @else if (lineTotal() !== null) {
+        <span class="bp-price-large">{{ lineTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+        <span class="bp-meta uppercase tracking-wide">Total</span>
       } @else if (item().basePrice !== null) {
         <span class="bp-price-large">@if (showFromPrefix()) {From }{{ item().basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
         @if (item().unit) {
@@ -100,20 +106,48 @@ import { MarkdownPipe } from '../../../shared/markdown.pipe';
       }
     </dl>
 
+    <!-- The four line text blocks in ONE fixed order (Client description → Item
+         description → Services → Details); view mode hides any that are null so
+         the card only shows what's filled in. Editable mode keeps just the two
+         supplier-owned fields (description + services). -->
+
+    <!-- 1 · Client description — the AGENT's text that prints on the quote. View
+         only; a pencil (clientDescriptionEditable) hands editing back to the host. -->
+    @if (!editable() && (clientDescription() || clientDescriptionEditable())) {
+      <div class="mt-3 border-t border-hairline pt-3">
+        <div class="flex items-center justify-between gap-2">
+          <span class="bp-field-label">Client description <span class="bp-meta font-normal">· on the quote</span></span>
+          @if (clientDescriptionEditable()) {
+            <button type="button" class="rounded-md p-1 text-muted transition-colors hover:text-text"
+                    (click)="$event.stopPropagation(); editClientDescription.emit()" title="Edit client description" aria-label="Edit client description">
+              <lucide-icon name="square-pen" [size]="14" />
+            </button>
+          }
+        </div>
+        @if (clientDescription()) {
+          <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="clientDescription() | md"></div>
+        } @else {
+          <p class="bp-meta mt-1 italic">No description yet — add one for the quote.</p>
+        }
+      </div>
+    }
+
+    <!-- 2 · Item description — the supplier's blurb (label overridable). -->
     @if (showDescription()) {
       @if (editable()) {
         <div class="mt-3 border-t border-hairline pt-3">
-          <span class="bp-field-label">Description</span>
+          <span class="bp-field-label">{{ descriptionLabel() }}</span>
           <textarea rows="6" class="bp-store-textarea mt-1 w-full" placeholder="Describe the item for the agent…" [ngModel]="item().description" (ngModelChange)="descChange.emit($event)"></textarea>
         </div>
       } @else if (item().description) {
         <div class="mt-3 border-t border-hairline pt-3">
-          <span class="bp-field-label">Description</span>
+          <span class="bp-field-label">{{ descriptionLabel() }}</span>
           <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="item().description | md"></div>
         </div>
       }
     }
 
+    <!-- 3 · Services — what's included / done on-site. -->
     @if (editable()) {
       <div class="mt-3 border-t border-hairline pt-3">
         <span class="bp-field-label">Services</span>
@@ -123,6 +157,19 @@ import { MarkdownPipe } from '../../../shared/markdown.pipe';
       <div class="mt-3 border-t border-hairline pt-3">
         <span class="bp-field-label">Services</span>
         <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="item().installDescription | md"></div>
+      </div>
+    }
+
+    <!-- 4 · Details — the supplier's costed breakdown + running total. View only. -->
+    @if (!editable() && details()) {
+      <div class="mt-3 border-t border-hairline pt-3">
+        <div class="flex items-center justify-between gap-2">
+          <span class="bp-field-label">Details</span>
+          @if (detailsTotalDisplay()) {
+            <span class="bp-body-small font-semibold tabular-nums text-text">{{ detailsTotalDisplay() }}</span>
+          }
+        </div>
+        <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="details() | md"></div>
       </div>
     }
   `,
@@ -143,10 +190,29 @@ export class ItemPreviewComponent {
   /** Prefix the price with "From" (indicative marketplace price). Off when the
    *  price is a firm, agreed cost (e.g. the inbox revised card). */
   readonly showFromPrefix = input<boolean>(true);
-  /** Show the Description block. Off on the estimate rail, which renders its own
-   *  editable client-facing (quote) description instead (pV2-BUILDUP-04). */
+  /** Show the (item) Description block. */
   readonly showDescription = input<boolean>(true);
+  /** Label for the supplier description block — project surfaces pass
+   *  "Item description" to disambiguate it from the Client description. */
+  readonly descriptionLabel = input<string>('Description');
+  /** Project side: the client-facing line TOTAL (what they'll pay). When set,
+   *  the price shows this as "£X TOTAL" instead of "From £/unit". */
+  readonly lineTotal = input<number | null>(null);
+  /** The AGENT's client-facing quote text (rendered as the first block, view
+   *  mode). null → an empty prompt when editable, else the block is hidden. */
+  readonly clientDescription = input<string | null>(null);
+  /** Show a pencil on the Client description block that emits editClientDescription
+   *  (the host — the estimate rail — opens its own editor). */
+  readonly clientDescriptionEditable = input<boolean>(false);
+  /** The line's Details free-text (markdown) — rendered as the last block with
+   *  its running total (view mode). */
+  readonly details = input<string | null>(null);
+  /** ISO currency for the Details total symbol (defaults to £). */
+  readonly currencyCode = input<string | null>(null);
   readonly closed = output<void>();
+  readonly editClientDescription = output<void>();
+  /** Formatted Details total ("£3,100"), or '' when no line carries a cost. */
+  protected readonly detailsTotalDisplay = computed(() => detailsTotalStr(this.details(), currencySymbol(this.currencyCode())));
   /** Opt-in edit mode — the name + description become editable and emit changes
    *  (used by the supplier Customize to set the final item the agent sees). */
   readonly editable = input<boolean>(false);

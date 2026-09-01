@@ -14,8 +14,6 @@ import { TERMINAL_STATUSES, gbp } from './inbox-status';
 import { InboxRailComponent, RailOuter } from './inbox-rail.component';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { lineCost, quoteLineToCatalogueItem, quoteLineToRequestedItem } from '../projects/quote-line.util';
-import { MarkdownPipe } from '../../shared/markdown.pipe';
-import { currencySymbol, detailsTotalStr } from '../../shared/details-format';
 import { LineEditorComponent, LineEdit } from '../projects/line-editor.component';
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
 import { ProjectService } from '../../core/projects/project.service';
@@ -31,7 +29,7 @@ import { ProjectService } from '../../core/projects/project.service';
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, LucideAngularModule, MarkdownPipe, PageHeroComponent, InboxRailComponent, ItemPreviewComponent, CustomizeDialogComponent, LineEditorComponent],
+  imports: [CurrencyPipe, DatePipe, LucideAngularModule, PageHeroComponent, InboxRailComponent, ItemPreviewComponent, CustomizeDialogComponent, LineEditorComponent],
   host: { '[class]': 'hostClass()' },
   template: `
     @if (!embedded()) {
@@ -160,7 +158,12 @@ import { ProjectService } from '../../core/projects/project.service';
                     <div class="w-80 max-w-full" [class.self-end]="m.mine">
                       @if (isAttachmentOpen(m.id, line.id)) {
                         <div class="bp-card p-4">
-                          <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName" [showStoreLink]="false"
+                          <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName" [showStoreLink]="false" [showFromPrefix]="false"
+                                            descriptionLabel="Item description"
+                                            [lineTotal]="lineTotalOf(line)"
+                                            [clientDescription]="line.quoteDescription ?? null"
+                                            [details]="line.details ?? null"
+                                            [currencyCode]="line.supplierCurrency ?? null"
                                             closeIcon="chevron-up" closeLabel="Minimise"
                                             (closed)="toggleAttachment(m.id, line.id)" />
                         </div>
@@ -192,19 +195,13 @@ import { ProjectService } from '../../core/projects/project.service';
                             <!-- Read-only; the supplier clicks the revised card to edit it. -->
                             <div [class.cursor-pointer]="!isAgency()" [attr.title]="isAgency() ? null : 'Click to edit'" (click)="beginEdit(line)">
                               <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName" [showStoreLink]="false" [showFromPrefix]="false"
+                                                descriptionLabel="Item description"
+                                                [lineTotal]="lineTotalOf(line)"
+                                                [clientDescription]="line.quoteDescription ?? null"
+                                                [details]="line.details ?? null"
+                                                [currencyCode]="line.supplierCurrency ?? null"
                                                 closeIcon="chevron-up" closeLabel="Minimise"
                                                 (closed)="toggleAttachment(m.id, line.id)" />
-                              @if (line.details) {
-                                <div class="mt-3 border-t border-hairline pt-3">
-                                  <div class="flex items-center justify-between gap-2">
-                                    <span class="bp-field-label">Details</span>
-                                    @if (detailsTotalDisplay(line.details, line.supplierCurrency); as tot) {
-                                      <span class="bp-body-small font-semibold tabular-nums text-text">{{ tot }}</span>
-                                    }
-                                  </div>
-                                  <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="line.details | md"></div>
-                                </div>
-                              }
                             </div>
                           }
                         </div>
@@ -676,13 +673,8 @@ export class InboxProjectComponent {
   protected readonly savingDetails = signal(false);
 
   /** Fallback currency symbol — a code, else the project currency, else £. */
-  private symbolFor(code?: string | null): string {
-    return currencySymbol(code || this.project()?.currency);
-  }
-  /** Formatted Details total for the read-only card ("£3,100"), or ''. */
-  protected detailsTotalDisplay(text: string | null | undefined, code?: string | null): string {
-    return detailsTotalStr(text, this.symbolFor(code));
-  }
+  /** The client-facing line TOTAL shown as the preview headline. */
+  protected lineTotalOf(line: QuoteLine): number { return lineCost(line); }
   protected isEditingLine(line: QuoteLine): boolean {
     return this.editingLine()?.id === line.id;
   }

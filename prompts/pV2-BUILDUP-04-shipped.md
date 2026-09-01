@@ -35,6 +35,26 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.193 (2026-09-01): ONE consistent project-side item preview
+- Consolidated every project-side item display onto a single `app-item-preview`
+  view, so the inbox brief card, the inbox revised card, and the estimate rail
+  all render identically:
+  - **Price = the client-facing line TOTAL** (`lineCost`, always a value) shown
+    as **"£X TOTAL"** — no more "From £/unit" or "Price on request" on the
+    project side (marketplace/store keep "From £/unit"). Per-unit line dropped
+    for now (per-head treatment coming separately).
+  - **Store-link (↗) removed** on the project side; **eye** = minimise kept.
+  - The **four text blocks in one fixed order, nulls hidden in view mode**:
+    **Client description** (agent's `quote_description`, `· on the quote`, with a
+    pencil that hands editing back to the estimate rail) → **Item description**
+    (supplier `description`, relabelled via `descriptionLabel`) → **Services** →
+    **Details** (with running total).
+- The estimate rail + inbox now feed those via `[lineTotal]`, `[clientDescription]`,
+  `[details]`, `[descriptionLabel]`, `[currencyCode]`; their own duplicated
+  Description/Details blocks (and now-dead `MarkdownPipe`/`detailsTotalDisplay`/
+  `symbolFor`) were removed. Client-description editing still lives in the rail
+  (opened by the preview's pencil).
+
 ## Iteration — v2.192 (2026-09-01): base row's qty/unit now persist on the line
 - **Bug: editing the base cost/qty/unit didn't stick.** The base row IS the
   parent `project_items` row (the item cloned into the project), but only its

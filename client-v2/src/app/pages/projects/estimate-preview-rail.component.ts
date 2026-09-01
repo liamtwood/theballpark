@@ -8,7 +8,6 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { QuoteLine } from '../../core/projects/project.types';
 import { ProjectService } from '../../core/projects/project.service';
 import { lineCost, quoteLineToCatalogueItem } from './quote-line.util';
-import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { currencySymbol, detailsTotalStr } from '../../shared/details-format';
 import { LineEditorComponent, LineEdit } from './line-editor.component';
 
@@ -18,7 +17,7 @@ import { LineEditorComponent, LineEdit } from './line-editor.component';
 @Component({
   selector: 'app-estimate-preview-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, FormsModule, LucideAngularModule, ItemPreviewComponent, MarkdownPipe, LineEditorComponent],
+  imports: [CurrencyPipe, FormsModule, LucideAngularModule, ItemPreviewComponent, LineEditorComponent],
   host: { class: 'contents' },
   template: `
     @if (line(); as l) {
@@ -44,22 +43,23 @@ import { LineEditorComponent, LineEdit } from './line-editor.component';
               <app-line-editor [line]="l" [categories]="categories()" [saving]="saving()"
                                (save)="onSave(l, $event)" (cancel)="editing.set(false)" />
             } @else {
-              <app-item-preview [item]="previewItem()!" [categoryName]="l.categoryName" [showFromPrefix]="false" [showStoreLink]="false" [showDescription]="false"
-                                closeIcon="eye" closeLabel="Hide preview" (closed)="hidden.set(true)" />
-              <!-- pV2-BUILDUP-04 — the AGENT's client-facing description (what
-                   prints on the Quote document). Editable on ANY line; defaults
-                   to the supplier text. -->
-              <div class="mt-3 border-t border-hairline pt-3">
-                <div class="flex items-center justify-between gap-2">
-                  <span class="bp-field-label">Description <span class="bp-meta font-normal">· on quote</span></span>
-                  @if (!editingDesc()) {
-                    <button type="button" class="rounded-md p-1 text-muted transition-colors hover:text-text"
-                            (click)="startDesc(l)" title="Edit quote description" aria-label="Edit quote description">
-                      <lucide-icon name="square-pen" [size]="14" />
-                    </button>
-                  }
-                </div>
-                @if (editingDesc()) {
+              <!-- pV2-PREVIEW-01 — ONE consistent preview: total price + the four
+                   text blocks (Client description → Item description → Services →
+                   Details) rendered inside item-preview, nulls hidden. The pencil
+                   on the Client description block opens the inline editor below. -->
+              <app-item-preview [item]="previewItem()!" [categoryName]="l.categoryName"
+                                [showFromPrefix]="false" [showStoreLink]="false"
+                                descriptionLabel="Item description"
+                                [lineTotal]="lineCostOf(l)"
+                                [clientDescription]="l.quoteDescription ?? null"
+                                [clientDescriptionEditable]="!editingDesc()"
+                                [details]="l.details ?? null"
+                                [currencyCode]="l.supplierCurrency ?? null"
+                                closeIcon="eye" closeLabel="Hide preview"
+                                (closed)="hidden.set(true)" (editClientDescription)="startDesc(l)" />
+              @if (editingDesc()) {
+                <div class="mt-3 border-t border-hairline pt-3">
+                  <span class="bp-field-label">Client description <span class="bp-meta font-normal">· on the quote</span></span>
                   <textarea rows="6" class="bp-store-textarea mt-1.5 w-full" placeholder="Describe this line for the client…"
                             [ngModel]="descDraft()" (ngModelChange)="descDraft.set($event)"></textarea>
                   <div class="mt-2 flex items-center gap-2">
@@ -68,23 +68,6 @@ import { LineEditorComponent, LineEdit } from './line-editor.component';
                     </button>
                     <button type="button" class="bp-btn-outline" (click)="editingDesc.set(false)">Cancel</button>
                   </div>
-                } @else if (quoteDesc(l); as d) {
-                  <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="d | md"></div>
-                } @else {
-                  <p class="bp-meta mt-1 italic">No description yet — add one for the quote.</p>
-                }
-              </div>
-              <!-- pV2-BUILDUP-04 — the line's Details (same free-text markdown the
-                   inbox card shows), with its running total. -->
-              @if (l.details) {
-                <div class="mt-3 border-t border-hairline pt-3">
-                  <div class="flex items-center justify-between gap-2">
-                    <span class="bp-field-label">Details</span>
-                    @if (detailsTotal(l); as tot) {
-                      <span class="bp-body-small font-semibold tabular-nums text-text">{{ tot }}</span>
-                    }
-                  </div>
-                  <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="l.details | md"></div>
                 </div>
               }
               <!-- Agent edits their own line (custom / self-entered). -->
@@ -143,6 +126,8 @@ export class EstimatePreviewRailComponent {
   /** A line was edited + saved → the host reloads the quote + cascade. */
   readonly changed = output<void>();
   protected optCost(l: QuoteLine): number { return lineCost(l); }
+  /** The client-facing line TOTAL shown as the preview headline. */
+  protected lineCostOf(l: QuoteLine): number { return lineCost(l); }
   /** The line's Details running total ("£3,100"), or '' when no costs. */
   protected detailsTotal(l: QuoteLine): string { return detailsTotalStr(l.details, currencySymbol(l.supplierCurrency)); }
   /** Eye toggle — suppresses the preview for ALL selections (session-local). */
