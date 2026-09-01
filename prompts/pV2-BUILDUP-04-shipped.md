@@ -35,6 +35,20 @@ Customize screen.
 - Supplier-only in the UI; the endpoint also permits the agent's canonical row
   (unused today) if we later want agent-side annotation.
 
+## Iteration — v2.195 (2026-09-01): extract `app-line-preview` — one object, no drift
+- Answering "why isn't it the same UI object?": it always WAS the same
+  `app-item-preview` component, but each surface re-declared the ~7 project
+  bindings by hand — which is how Customize drifted (missing Client description /
+  Details). Extracted **`LinePreviewComponent` (`app-line-preview`)** that maps a
+  `QuoteLine` → the preview ONCE (TOTAL via `lineCost`, no store-link, "Item
+  description", Client description + Details). The inbox brief/proposal cards and
+  the estimate rail now all mount `<app-line-preview [line]>`; removed their
+  duplicated bindings + now-dead helpers (`asPreview`, `asRequested`,
+  `lineTotalOf`, `previewItem`, `detailsTotal`, `quoteDesc`) and imports.
+- Customize also now shows the Client description + Details blocks (feeds them to
+  `app-item-preview` directly — it stays the **editable, live-`withMargin()`**
+  variant of the same component), so it matches the read-only surfaces.
+
 ## Iteration — v2.194 (2026-09-01): Customize item preview gets the same treatment
 - The Customize right-panel **item** preview now matches every other project
   surface: shows the live **"£X TOTAL"** (`withMargin()`, updates as you build),

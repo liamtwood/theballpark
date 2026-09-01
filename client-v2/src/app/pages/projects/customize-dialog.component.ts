@@ -248,6 +248,9 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                   <app-item-preview [item]="pi" [categoryName]="previewLine()?.categoryName ?? null"
                                     [showStoreLink]="false" [showFromPrefix]="false" descriptionLabel="Item description"
                                     [lineTotal]="withMargin()"
+                                    [clientDescription]="previewLine()?.quoteDescription ?? null"
+                                    [details]="previewLine()?.details ?? null"
+                                    [currencyCode]="previewLine()?.supplierCurrency ?? null"
                                     [editable]="parentSelected()" (nameChange)="parentName.set($event)" (descChange)="parentDesc.set($event)" (servicesChange)="parentServices.set($event)"
                                     closeIcon="eye" closeLabel="Hide preview" (closed)="showPreview.set(false)" />
                 </div>

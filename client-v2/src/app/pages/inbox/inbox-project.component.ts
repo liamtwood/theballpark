@@ -9,11 +9,10 @@ import { PageConfigService } from '../../core/config/page-config.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
 import { QuoteLine } from '../../core/projects/project.types';
-import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { TERMINAL_STATUSES, gbp } from './inbox-status';
 import { InboxRailComponent, RailOuter } from './inbox-rail.component';
-import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
-import { lineCost, quoteLineToCatalogueItem, quoteLineToRequestedItem } from '../projects/quote-line.util';
+import { LinePreviewComponent } from '../projects/line-preview.component';
+import { lineCost } from '../projects/quote-line.util';
 import { LineEditorComponent, LineEdit } from '../projects/line-editor.component';
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
 import { ProjectService } from '../../core/projects/project.service';
@@ -29,7 +28,7 @@ import { ProjectService } from '../../core/projects/project.service';
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, LucideAngularModule, PageHeroComponent, InboxRailComponent, ItemPreviewComponent, CustomizeDialogComponent, LineEditorComponent],
+  imports: [CurrencyPipe, DatePipe, LucideAngularModule, PageHeroComponent, InboxRailComponent, LinePreviewComponent, CustomizeDialogComponent, LineEditorComponent],
   host: { '[class]': 'hostClass()' },
   template: `
     @if (!embedded()) {
@@ -158,13 +157,7 @@ import { ProjectService } from '../../core/projects/project.service';
                     <div class="w-80 max-w-full" [class.self-end]="m.mine">
                       @if (isAttachmentOpen(m.id, line.id)) {
                         <div class="bp-card p-4">
-                          <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName" [showStoreLink]="false" [showFromPrefix]="false"
-                                            descriptionLabel="Item description"
-                                            [lineTotal]="lineTotalOf(line)"
-                                            [clientDescription]="line.quoteDescription ?? null"
-                                            [details]="line.details ?? null"
-                                            [currencyCode]="line.supplierCurrency ?? null"
-                                            closeIcon="chevron-up" closeLabel="Minimise"
+                          <app-line-preview [line]="line" closeIcon="chevron-up" closeLabel="Minimise"
                                             (closed)="toggleAttachment(m.id, line.id)" />
                         </div>
                       } @else {
@@ -194,13 +187,7 @@ import { ProjectService } from '../../core/projects/project.service';
                           } @else {
                             <!-- Read-only; the supplier clicks the revised card to edit it. -->
                             <div [class.cursor-pointer]="!isAgency()" [attr.title]="isAgency() ? null : 'Click to edit'" (click)="beginEdit(line)">
-                              <app-item-preview [item]="asPreview(line)" [categoryName]="line.categoryName" [showStoreLink]="false" [showFromPrefix]="false"
-                                                descriptionLabel="Item description"
-                                                [lineTotal]="lineTotalOf(line)"
-                                                [clientDescription]="line.quoteDescription ?? null"
-                                                [details]="line.details ?? null"
-                                                [currencyCode]="line.supplierCurrency ?? null"
-                                                closeIcon="chevron-up" closeLabel="Minimise"
+                              <app-line-preview [line]="line" closeIcon="chevron-up" closeLabel="Minimise"
                                                 (closed)="toggleAttachment(m.id, line.id)" />
                             </div>
                           }
@@ -530,15 +517,6 @@ export class InboxProjectComponent {
       .map((it) => it.line!);
   }
 
-  /** The quote line as the preview card's CatalogueItem (shared mapper — the
-   *  same shape the Estimate right-rail renders). */
-  protected asPreview(line: QuoteLine): CatalogueItem {
-    return quoteLineToCatalogueItem(line);
-  }
-  /** The brief renders the ORIGINAL library item (the request), not the line. */
-  protected asRequested(line: QuoteLine): CatalogueItem {
-    return quoteLineToRequestedItem(line);
-  }
 
   /** Per-attachment expand state, keyed `<messageId>:<lineId>` so the same item
    *  can be open under one message and closed under another. */
@@ -674,7 +652,6 @@ export class InboxProjectComponent {
 
   /** Fallback currency symbol — a code, else the project currency, else £. */
   /** The client-facing line TOTAL shown as the preview headline. */
-  protected lineTotalOf(line: QuoteLine): number { return lineCost(line); }
   protected isEditingLine(line: QuoteLine): boolean {
     return this.editingLine()?.id === line.id;
   }

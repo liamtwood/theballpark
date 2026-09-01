@@ -3,12 +3,10 @@ import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
-import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
-import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
+import { LinePreviewComponent } from './line-preview.component';
 import { QuoteLine } from '../../core/projects/project.types';
 import { ProjectService } from '../../core/projects/project.service';
-import { lineCost, quoteLineToCatalogueItem } from './quote-line.util';
-import { currencySymbol, detailsTotalStr } from '../../shared/details-format';
+import { lineCost } from './quote-line.util';
 import { LineEditorComponent, LineEdit } from './line-editor.component';
 
 /** pV2-CART-01 — the right-rail marketplace preview for the selected quote
@@ -17,7 +15,7 @@ import { LineEditorComponent, LineEdit } from './line-editor.component';
 @Component({
   selector: 'app-estimate-preview-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, FormsModule, LucideAngularModule, ItemPreviewComponent, LineEditorComponent],
+  imports: [CurrencyPipe, FormsModule, LucideAngularModule, LinePreviewComponent, LineEditorComponent],
   host: { class: 'contents' },
   template: `
     @if (line(); as l) {
@@ -43,18 +41,10 @@ import { LineEditorComponent, LineEdit } from './line-editor.component';
               <app-line-editor [line]="l" [categories]="categories()" [saving]="saving()"
                                (save)="onSave(l, $event)" (cancel)="editing.set(false)" />
             } @else {
-              <!-- pV2-PREVIEW-01 — ONE consistent preview: total price + the four
-                   text blocks (Client description → Item description → Services →
-                   Details) rendered inside item-preview, nulls hidden. The pencil
-                   on the Client description block opens the inline editor below. -->
-              <app-item-preview [item]="previewItem()!" [categoryName]="l.categoryName"
-                                [showFromPrefix]="false" [showStoreLink]="false"
-                                descriptionLabel="Item description"
-                                [lineTotal]="lineCostOf(l)"
-                                [clientDescription]="l.quoteDescription ?? null"
-                                [clientDescriptionEditable]="!editingDesc()"
-                                [details]="l.details ?? null"
-                                [currencyCode]="l.supplierCurrency ?? null"
+              <!-- pV2-PREVIEW-01 — the shared project preview (total + the four
+                   text blocks, nulls hidden). The pencil on the Client description
+                   block opens the inline editor below. -->
+              <app-line-preview [line]="l" [clientDescriptionEditable]="!editingDesc()"
                                 closeIcon="eye" closeLabel="Hide preview"
                                 (closed)="hidden.set(true)" (editClientDescription)="startDesc(l)" />
               @if (editingDesc()) {
@@ -126,10 +116,6 @@ export class EstimatePreviewRailComponent {
   /** A line was edited + saved → the host reloads the quote + cascade. */
   readonly changed = output<void>();
   protected optCost(l: QuoteLine): number { return lineCost(l); }
-  /** The client-facing line TOTAL shown as the preview headline. */
-  protected lineCostOf(l: QuoteLine): number { return lineCost(l); }
-  /** The line's Details running total ("£3,100"), or '' when no costs. */
-  protected detailsTotal(l: QuoteLine): string { return detailsTotalStr(l.details, currencySymbol(l.supplierCurrency)); }
   /** Eye toggle — suppresses the preview for ALL selections (session-local). */
   protected readonly hidden = signal(false);
   /** Inline-edit mode — resets to false whenever the selected line changes. */
@@ -138,7 +124,6 @@ export class EstimatePreviewRailComponent {
 
   // ── pV2-BUILDUP-04 — the agent's client-facing (quote) description ──────────
   /** The client-facing description: the agent's override, else the supplier text. */
-  protected quoteDesc(l: QuoteLine): string | null { return l.quoteDescription || l.description; }
   /** Edit mode for the quote description — resets when the selected line changes. */
   protected readonly editingDesc = linkedSignal(() => (this.line(), false));
   protected readonly descDraft = signal('');
@@ -180,11 +165,4 @@ export class EstimatePreviewRailComponent {
       this.saving.set(false);
     }
   }
-
-  /** The selected line mapped to the marketplace preview's CatalogueItem shape
-   *  (the quote line already carries everything the preview renders). */
-  protected readonly previewItem = computed<CatalogueItem | null>(() => {
-    const l = this.line();
-    return l ? quoteLineToCatalogueItem(l) : null;
-  });
 }
