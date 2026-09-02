@@ -74,6 +74,7 @@ export interface IntentContext {
   quantity?: number | null;
   currencySymbol?: string | null;
   componentNames?: string[] | null;
+  currentDescription?: string | null;
   role?: 'agent' | 'supplier' | null;
 }
 

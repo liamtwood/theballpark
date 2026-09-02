@@ -101,3 +101,15 @@ actions** the user taps to apply. v1 action allowlist:
 - Picking "Accept the cost" now opens a confirm step — "Accept the current cost of
   £X?" with **Back** / **Accept** buttons — matching Decline / Make-a-change (no
   fire-on-select). Added `currentTotal` to the rail context for the figure.
+
+## Iteration — v2.213 (2026-09-02): fix description apply, merge not replace, action-only suggestions
+- **Description apply fixed:** `set_base_description` now writes via the dedicated
+  `updateLineDetails` (PATCH /details) instead of the `saveComponents` rebuild — a
+  description change no longer touches components/price (and no longer fails).
+- **Merge, don't replace:** the parser now receives the **current description** and
+  is told to return the COMPLETE updated text (existing + the change), so
+  "add a soup option to the first course" augments the menu instead of wiping it.
+- **Suggestions are action-only:** the prompt now forbids meta prompts
+  ("Review…", "Share…", "Edit…", "Keep…") — suggestions must map to a concrete
+  action (add extra / suggest price / accept / decline), killing the conversational
+  spiral.

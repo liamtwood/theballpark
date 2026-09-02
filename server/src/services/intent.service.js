@@ -23,6 +23,7 @@ The line being discussed:
 - Item: ${ctx.itemName || 'this item'}
 - Base cost: ${ctx.baseCost == null ? 'unknown' : sym + ctx.baseCost} per ${ctx.unit || 'unit'} (× qty ${ctx.quantity ?? 1})
 - Existing add-on/extra components: ${comps}
+- Current description: ${ctx.currentDescription ? JSON.stringify(ctx.currentDescription) : '(none)'}
 
 Return exactly this shape:
 {"reply":"<one short, friendly sentence back to the user>","actions":[ ... ],"suggestions":["<short next-step chip>", ...]}
@@ -30,7 +31,7 @@ Return exactly this shape:
 ACTIONS — include one ONLY when the message clearly calls for it (else []):
 Supplier edits (the supplier changes their own line):
 - {"type":"set_base_cost","amount":<number>} — "set/change the base to X", "should be X a head".
-- {"type":"set_base_description","text":"<string>"} — "update the description to ...".
+- {"type":"set_base_description","text":"<the FULL new description>"} — when they want to change or ADD TO the description. Return the COMPLETE updated description: keep the existing content (see "Current description" above) and weave in their change — never just the new fragment.
 - {"type":"upsert_extra","name":"<string>","cost":<number|null>,"qty":<number|null>,"unit":"<string|null>"} — add or update an add-on/extra. Match an existing component name to UPDATE, else create. "add insurance at X", "a project manager for 2 days at X/day", "bump the wine to Y".
 Negotiation (either side):
 - {"type":"accept_cost"} — "accept", "that works", "agreed".
@@ -39,7 +40,7 @@ Negotiation (either side):
 Agent asks (the agent wants to REQUEST something from the supplier — draft the message, do NOT edit the line):
 - {"type":"draft_message","text":"<a polished, friendly request to the supplier>"} — "ask for a fridge", "can we get wine pairing", "ask for a discount", "request a 10% reduction". Write the actual message the agent could send.
 
-SUGGESTIONS — 0-3 very short next-step prompts the user might tap next (e.g. "Ask for a discount", "Add wine pairing", "Accept the cost"). Tailor to the role and what was just said. Omit if none fit.
+SUGGESTIONS — 0-3 very short next-step prompts that each map to a CONCRETE action (add an extra, suggest a price, accept, decline) — e.g. "Add wine pairing", "Suggest a lower price", "Accept the cost". NEVER meta prompts like "Review…", "Share…", "Edit…", "Keep…", or anything that just asks a question back. Omit entirely if none fit.
 
 Rules:
 - Money like "£200", "200", "2k" → numeric (2000 for 2k). Strip symbols.

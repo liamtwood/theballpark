@@ -15,6 +15,7 @@ export interface AgentRailContext {
   unit: string | null;
   quantity: number | null;
   currentTotal: number | null;   // the line's current (revised) total
+  currentDescription: string | null;
   componentNames: string[];
   role: 'agent' | 'supplier';
   currencyCode: string | null;
@@ -249,7 +250,8 @@ export class AgentRailComponent {
     try {
       const res = await firstValueFrom(this.projects.parseIntent(ctx.projectId, ctx.lineId, text, {
         itemName: ctx.itemName, baseCost: ctx.baseCost, unit: ctx.unit, quantity: ctx.quantity,
-        currencySymbol: this.sym(), componentNames: ctx.componentNames, role: ctx.role,
+        currencySymbol: this.sym(), componentNames: ctx.componentNames,
+        currentDescription: ctx.currentDescription, role: ctx.role,
       }));
       // Only surface actions the current viewer may actually take.
       const actions = (res.actions ?? []).filter((a) => this.permitted(a));
@@ -298,6 +300,11 @@ export class AgentRailComponent {
    *  components, via the existing saveComponents path (shared revised formula). */
   private async applyBuildup(a: IntentAction): Promise<void> {
     const ctx = this.context();
+    // A description change is a direct field write — never touch components/price.
+    if (a.type === 'set_base_description') {
+      await firstValueFrom(this.projects.updateLineDetails(ctx.projectId, ctx.lineId, { description: a.text }));
+      return;
+    }
     const res = await firstValueFrom(this.projects.getComponents(ctx.projectId, ctx.lineId));
     const comps: ComponentInput[] = res.components.map((c) => ({
       id: c.id, categoryId: c.category_id, name: c.name, cost: c.base_price, unit: c.unit,
@@ -310,8 +317,6 @@ export class AgentRailComponent {
 
     if (a.type === 'set_base_cost') {
       baseRate = a.amount;
-    } else if (a.type === 'set_base_description') {
-      description = a.text;
     } else if (a.type === 'upsert_extra') {
       const hit = comps.find((c) => c.name.trim().toLowerCase() === a.name.trim().toLowerCase());
       if (hit) {

@@ -268,6 +268,7 @@ const IntentSchema = z.object({
     quantity: z.number().nullish(),
     currencySymbol: z.string().max(4).nullish(),
     componentNames: z.array(z.string().max(200)).max(50).nullish(),
+    currentDescription: z.string().max(8000).nullish(),
     role: z.enum(['agent', 'supplier']).nullish(),
   }).nullish(),
 });
