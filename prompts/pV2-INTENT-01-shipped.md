@@ -235,3 +235,12 @@ actions** the user taps to apply. v1 action allowlist:
   to the per-unit rate + posts the "New Cost Suggested" message, which now blinks),
   then concludes + re-opens the options. Seeded from the line's current per-unit
   cost + qty.
+
+## Iteration — v2.231 (2026-09-02): Suggest form — unit picklist, boxed total, editable message
+- Unit is now a **picklist** (the units list, click to choose); **Total** sits in a
+  matching boxed container. Added a **"Message to send"** editable textarea that
+  auto-fills "<item> cost updated to £X, please see the updated item attached." and
+  keeps in sync with the total until the user edits it (`reseedMsg` / `msgTouched`).
+- `suggestCost` now emits **{ total, message }**; the inbox posts that exact message
+  with the New-Cost adjust (was a fixed "New Cost Suggested" line). The typed
+  suggest path builds the same message.

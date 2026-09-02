@@ -486,12 +486,12 @@ export class InboxProjectComponent {
       await this.send(t.id);
     }
   }
-  protected onAgentSuggestCost(total: number): void {
+  protected onAgentSuggestCost(payload: { total: number; message: string }): void {
     const it = this.selectedItem();
     if (!it) return;
-    const rate = total / (it.quantity || 1); // price_current is the per-unit rate
-    const from = it.priceCurrent ?? it.priceRef ?? 0;
-    void this.itemAction(it.id, 'adjust', rate, `${it.name} ${gbp(from)} New Cost Suggested ${gbp(total)} by ${this.actorName()}`);
+    const rate = payload.total / (it.quantity || 1); // price_current is the per-unit rate
+    const text = payload.message?.trim() || `${it.name} cost updated to ${gbp(payload.total)} by ${this.actorName()}`;
+    void this.itemAction(it.id, 'adjust', rate, text);
     this.blinkNextMessage();
   }
   protected onAgentSend(text: string): void {

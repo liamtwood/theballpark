@@ -174,25 +174,31 @@ interface Turn {
               <label class="flex items-center justify-between gap-3">
                 <span class="bp-body-small text-secondary">New cost</span>
                 <input type="number" min="0" class="h-8 w-28 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-right text-md tabular-nums outline-none focus:border-accent"
-                       [ngModel]="sugCost()" (ngModelChange)="sugCost.set($event)" />
+                       [ngModel]="sugCost()" (ngModelChange)="sugCost.set($event); reseedMsg()" />
               </label>
               <label class="flex items-center justify-between gap-3">
                 <span class="bp-body-small text-secondary">Qty</span>
                 <input type="number" min="1" class="h-8 w-28 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-right text-md tabular-nums outline-none focus:border-accent"
-                       [ngModel]="sugQty()" (ngModelChange)="sugQty.set($event)" />
+                       [ngModel]="sugQty()" (ngModelChange)="sugQty.set($event); reseedMsg()" />
               </label>
-              <div class="flex items-center justify-between gap-3">
+              <label class="flex items-center justify-between gap-3">
                 <span class="bp-body-small text-secondary">Unit</span>
-                <span class="bp-body-small text-text">{{ context().unit || '—' }}</span>
-              </div>
+                <select class="h-8 w-28 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-md outline-none focus:border-accent"
+                        [ngModel]="sugUnit()" (ngModelChange)="sugUnit.set($event || null)">
+                  <option [ngValue]="null">—</option>
+                  @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
+                </select>
+              </label>
               <div class="flex items-center justify-between gap-3 border-t border-hairline pt-2">
                 <span class="bp-body-small text-secondary">Total</span>
-                <span class="bp-body-small font-semibold text-text tabular-nums">{{ sym() }}{{ sugTotal().toLocaleString('en-GB') }}</span>
+                <span class="flex h-8 items-center rounded-[var(--radius-field)] border border-hairline bg-fill px-2 bp-body-small font-semibold text-text tabular-nums">{{ sym() }}{{ sugTotal().toLocaleString('en-GB') }}</span>
               </div>
             </div>
+            <p class="bp-caption text-muted mt-1">Message to send:</p>
+            <textarea rows="3" class="bp-store-textarea w-full" [ngModel]="sugMessage()" (ngModelChange)="sugMessage.set($event); msgTouched.set(true)"></textarea>
             <div class="flex items-center gap-3 pt-1">
               <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">Back</button>
-              <button type="button" class="bp-send-btn" [disabled]="!sugCost()" (click)="confirmSuggest()">Suggest</button>
+              <button type="button" class="bp-send-btn" [disabled]="!sugCost()" (click)="confirmSuggest()">Send</button>
             </div>
           }
         }
@@ -226,7 +232,7 @@ export class AgentRailComponent {
   readonly accept = output<void>();
   /** Decline/cancel with an optional reason (empty = no reason given). */
   readonly decline = output<string>();
-  readonly suggestCost = output<number>();
+  readonly suggestCost = output<{ total: number; message: string }>();
   readonly sendMessage = output<string>();
 
   protected readonly turns = signal<Turn[]>([]);
@@ -238,7 +244,18 @@ export class AgentRailComponent {
   /** Suggest-new-price form state. */
   protected readonly sugCost = signal<number | null>(null);
   protected readonly sugQty = signal<number>(1);
+  protected readonly sugUnit = signal<string | null>(null);
+  protected readonly sugMessage = signal('');
+  protected readonly msgTouched = signal(false);
   protected readonly sugTotal = computed(() => Math.round((Number(this.sugCost()) || 0) * Math.max(1, Number(this.sugQty()) || 1)));
+  /** Unit picklist (mirrors the customize builder's list). */
+  protected readonly units = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 'sheet', 'length', 'm', 'kg', 'litre', 'roll', 'pack', 'box', 'hire', 'job', 'lot'];
+  /** Keep the suggest message in sync with the total until the user edits it. */
+  protected reseedMsg(): void {
+    if (this.msgTouched()) return;
+    const item = this.context().itemName || 'This item';
+    this.sugMessage.set(`${item} cost updated to ${this.sym()}${this.sugTotal().toLocaleString('en-GB')}, please see the updated item attached.`);
+  }
   protected readonly reasonSel = signal<string | null>(null);
   protected readonly changeSel = signal<'suggest' | 'item' | 'extras' | null>(null);
   protected readonly otherText = signal('');
@@ -324,18 +341,21 @@ export class AgentRailComponent {
   protected confirmChange(): void {
     const c = this.changeSel();
     if (c === 'suggest') {
-      // Open the in-Assistant price form (New cost · Qty · Unit · Total).
+      // Open the in-Assistant price form (New cost · Qty · Unit · Total + message).
       this.sugCost.set(this.context().baseCost ?? null);
       this.sugQty.set(this.context().quantity ?? 1);
+      this.sugUnit.set(this.context().unit ?? null);
+      this.msgTouched.set(false);
+      this.reseedMsg();
       this.step.set('suggest');
       return;
     }
     if (c === 'item') this.hint.set('Tell me what to change on the item — name, description, or base cost (e.g. “set the base to £120”).');
     else if (c === 'extras') this.hint.set('Tell me the extra to add — e.g. “add insurance at £200” or “wine pairing £15 a head”.');
   }
-  /** Send the suggested new price (line total = cost × qty) to the host. */
+  /** Send the suggested new price (line total = cost × qty) + the message. */
   protected confirmSuggest(): void {
-    this.suggestCost.emit(this.sugTotal());
+    this.suggestCost.emit({ total: this.sugTotal(), message: this.sugMessage().trim() });
     this.conclude('sent');
   }
   protected readonly busy = signal(false);
@@ -418,7 +438,7 @@ export class AgentRailComponent {
     try {
       if (a.type === 'accept_cost') this.accept.emit();
       else if (a.type === 'decline') this.decline.emit('');
-      else if (a.type === 'suggest_cost') this.suggestCost.emit(a.amount);
+      else if (a.type === 'suggest_cost') this.suggestCost.emit({ total: a.amount, message: `${this.context().itemName || 'This item'} cost updated to ${this.sym()}${a.amount.toLocaleString('en-GB')}, please see the updated item attached.` });
       else if (a.type === 'draft_message') this.sendMessage.emit(a.text);
       else { await this.applyBuildup(a); this.changed.emit(); }
       turn.applied?.add(a);
