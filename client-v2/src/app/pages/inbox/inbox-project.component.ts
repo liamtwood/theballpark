@@ -135,9 +135,9 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                    filtered (item) view, broadcasts fade + carry a General tag. -->
               <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg px-5 py-4">
                 @if (selectedItem()) {
-                @for (m of visibleMessages(); track m.id) {
+                @for (m of visibleMessages(); track m.id; let last = $last) {
                   <div class="flex flex-col" [class.items-end]="m.mine" [class.items-start]="!m.mine">
-                    <div class="bp-bubble" [class.bp-bubble--mine]="m.mine" [class.bp-bubble--general]="isGeneral(m)">
+                    <div class="bp-bubble" [class.bp-bubble--mine]="m.mine" [class.bp-bubble--general]="isGeneral(m)" [class.bp-blink]="blinkMsg() && last">
                       <span class="bp-bubble__author">
                         {{ m.author }}
                         @if (isGeneral(m)) {
@@ -424,6 +424,7 @@ export class InboxProjectComponent {
       unit: it.unit ?? null,
       quantity: it.quantity ?? null,
       currentTotal: it.priceCurrent ?? it.priceRef ?? null,
+      deliveryDate: this.fmtEventDate(),
       currentDescription: it.description ?? it.line?.description ?? null,
       componentNames: it.line?.components?.map((c) => c.name) ?? it.line?.extras ?? [],
       role: this.isAgency() ? 'agent' : 'supplier',
@@ -445,7 +446,23 @@ export class InboxProjectComponent {
       case 'customize': this.toggleCustomize(it); break;
     }
   }
-  protected onAgentAccept(): void { const it = this.selectedItem(); if (it) this.accept(it); }
+  /** The project's event/delivery date, formatted for the Assistant confirm. */
+  private fmtEventDate(): string | null {
+    const iso = this.project()?.eventDate ?? null;
+    if (!iso) return null;
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  protected onAgentAccept(): void {
+    const it = this.selectedItem();
+    if (it) { this.accept(it); this.blinkNextMessage(); }
+  }
+  /** Blink the newest conversation bubble (twice) after a confirmation posts. */
+  protected readonly blinkMsg = signal(false);
+  private blinkNextMessage(): void {
+    this.blinkMsg.set(true);
+    setTimeout(() => this.blinkMsg.set(false), 1800);
+  }
   /** Decline/cancel; when the Assistant supplies a reason, post it straight away. */
   protected async onAgentDecline(reason: string): Promise<void> {
     const it = this.selectedItem();

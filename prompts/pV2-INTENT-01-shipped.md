@@ -160,3 +160,13 @@ actions** the user taps to apply. v1 action allowlist:
   composer just stacked after the content with empty space below. Fixed with inline
   `style="display: flex"` on the card (inline beats the class); flex-col + flex-1
   now work and the composer pins to the dead bottom.
+
+## Iteration — v2.221 (2026-09-02): richer Accept confirm (radio == typed) + message blink
+- **Accept confirm** now reads "Accept **£19,140** with delivery <event date> and
+  send a confirmation message?" with **Back / Accept** — and the **typed** path
+  ("accept", "approved", "good for me") routes to the SAME confirm turn instead of
+  just applying + "I've done it". Added `deliveryDate` (formatted project event
+  date) to the rail context.
+- On Accept the confirmation posts to the conversation (existing accept handler) and
+  the **newest bubble blinks twice** (`.bp-blink` ring flash, works over the
+  gradient bubbles) via `blinkMsg` + `$last`.

@@ -16,6 +16,7 @@ export interface AgentRailContext {
   unit: string | null;
   quantity: number | null;
   currentTotal: number | null;   // the line's current (revised) total
+  deliveryDate: string | null;   // the event/delivery date (already formatted)
   currentDescription: string | null;
   componentNames: string[];
   role: 'agent' | 'supplier';
@@ -30,8 +31,9 @@ interface Turn {
   actions?: IntentAction[];
   suggestions?: string[];
   applied?: Set<IntentAction>;
-  wrap?: boolean;   // offer "send them an update" after a change
-  draft?: boolean;  // an editable message + Send button
+  wrap?: boolean;         // offer "send them an update" after a change
+  draft?: boolean;        // an editable message + Send button
+  acceptConfirm?: boolean; // "Accept … and send a confirmation? [Back][Accept]"
 }
 
 /** pV2-INTENT-01 — the reusable conversational agent rail. You talk to it about
@@ -68,21 +70,12 @@ interface Turn {
           @if (step() === 'root') {
             <div role="radiogroup" class="mt-1 space-y-1.5">
               @if (context().canAccept) {
-                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('accept')" /><span class="bp-body-small text-text">Accept the cost</span></label>
+                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="askAccept()" /><span class="bp-body-small text-text">Accept the cost</span></label>
               }
               @if (context().canDecline) {
                 <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('decline')" /><span class="bp-body-small text-text">{{ context().role === 'agent' ? 'Cancel the request' : 'Decline' }}</span></label>
               }
               <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('change')" /><span class="bp-body-small text-text">Make a change</span></label>
-            </div>
-          }
-
-          <!-- Step 2: confirm accept. -->
-          @if (step() === 'accept') {
-            <p class="bp-body-small text-secondary">Accept the current cost@if (context().currentTotal != null) { of <span class="font-semibold text-text">{{ sym() }}{{ context().currentTotal!.toLocaleString('en-GB') }}</span>}?</p>
-            <div class="flex gap-2 pt-1">
-              <button type="button" class="bp-btn-outline" (click)="reset()">Back</button>
-              <button type="button" class="bp-btn-grad flex-1" (click)="confirmAccept()">Accept</button>
             </div>
           }
 
@@ -160,6 +153,12 @@ interface Turn {
                   <lucide-icon name="send" [size]="14" /> Send
                 </button>
               }
+              @if (t.acceptConfirm) {
+                <div class="flex gap-2 pt-1">
+                  <button type="button" class="bp-btn-outline" (click)="dropTurn(t)">Back</button>
+                  <button type="button" class="bp-btn-grad flex-1" (click)="confirmAcceptDo(t)">Accept</button>
+                </div>
+              }
             </div>
           }
         }
@@ -227,7 +226,22 @@ export class AgentRailComponent {
     return !!r && (r !== '__other' || !!this.otherText().trim());
   });
 
-  protected confirmAccept(): void { this.quickAction.emit('accept'); this.reset(); }
+  /** Ask to accept (radio OR typed): shows the total + delivery date and that a
+   *  confirmation message will be sent, then Back / Accept. */
+  protected askAccept(): void {
+    const s = this.sym();
+    const c = this.context();
+    const total = c.currentTotal != null ? `**${s}${c.currentTotal.toLocaleString('en-GB')}**` : 'the current cost';
+    const del = c.deliveryDate ? ` with delivery ${c.deliveryDate}` : '';
+    this.reset();
+    this.turns.update((t) => [...t, { who: 'assistant', text: `Accept ${total}${del} and send a confirmation message?`, acceptConfirm: true }]);
+  }
+  protected confirmAcceptDo(turn: Turn): void {
+    turn.acceptConfirm = false; // collapse the buttons
+    this.quickAction.emit('accept'); // host accepts + posts the confirmation message
+    this.turns.update((t) => [...t, { who: 'assistant', text: 'Confirmed ✓ — I sent them a confirmation.' }]);
+  }
+  protected dropTurn(turn: Turn): void { this.turns.update((t) => t.filter((x) => x !== turn)); }
   protected reset(): void {
     this.step.set('root'); this.reasonSel.set(null); this.changeSel.set(null);
     this.otherText.set(''); this.hint.set('');
@@ -289,13 +303,17 @@ export class AgentRailComponent {
         currentDescription: ctx.currentDescription, role: ctx.role,
       }));
       // Only surface actions the current viewer may actually take.
-      const actions = (res.actions ?? []).filter((a) => this.permitted(a));
+      const all = (res.actions ?? []).filter((a) => this.permitted(a));
+      const hasAccept = all.some((a) => a.type === 'accept_cost');
+      // Accept goes through the same confirm step as the radio (not a plain chip).
+      const actions = all.filter((a) => a.type !== 'accept_cost');
       const at: Turn = {
         who: 'assistant',
-        text: res.reply || (actions.length ? '' : "I couldn't turn that into an action — try naming a cost, an extra, or accept/decline."),
+        text: res.reply || (all.length ? '' : "I couldn't turn that into an action — try naming a cost, an extra, or accept/decline."),
         actions, suggestions: res.suggestions ?? [], applied: new Set<IntentAction>(),
       };
       this.turns.update((t) => [...t, at]);
+      if (hasAccept) this.askAccept();
       // "Let the Assistant do it": auto-apply the buildup edits (not negotiation).
       if (this.autoApply()) {
         for (const a of actions) { if (this.isBuildup(a)) await this.apply(at, a); }
