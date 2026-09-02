@@ -46,7 +46,7 @@ interface Turn {
   imports: [FormsModule, LucideAngularModule, MarkdownPipe],
   host: { class: 'contents' },
   template: `
-    <div class="bp-card flex h-full min-h-0 flex-1 flex-col p-0">
+    <div class="bp-card flex min-h-0 flex-1 flex-col p-0">
       <div class="flex items-center gap-2 border-b border-hairline px-4 py-3">
         <lucide-icon name="sparkles" [size]="16" class="text-[var(--theme-accent)]" />
         <span class="bp-list-title">Assistant</span>

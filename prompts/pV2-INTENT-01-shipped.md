@@ -146,3 +146,9 @@ actions** the user taps to apply. v1 action allowlist:
 - Fixed the send button: the arrow was invisible (`--theme-accent-contrast` gave no
   contrast on the pink) — now **white** at strokeWidth 2.5; added `resize-none` so
   the textarea's resize handle no longer pokes through the circle.
+
+## Iteration — v2.219 (2026-09-02): actually pin the composer — fix the flex chain
+- v2.218's `h-full` didn't resolve because the inbox `aside` was `xl:block` (no
+  height context). Made the aside `xl:flex xl:flex-col` and the rail card `flex-1`,
+  so the card fills the column, the messages area grows, and the composer pins to
+  the dead bottom.

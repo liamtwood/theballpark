@@ -289,7 +289,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                acting on the selected line; hidden while the Customize builder owns
                the pane. -->
           @if (showAgent()) {
-            <aside class="hidden min-h-0 xl:block">
+            <aside class="hidden min-h-0 xl:flex xl:flex-col">
               <app-agent-rail [context]="agentContext()!"
                               (quickAction)="onAgentQuick($event)"
                               (changed)="onCustomizeChanged()"
