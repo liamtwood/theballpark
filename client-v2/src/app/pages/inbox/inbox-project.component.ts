@@ -453,9 +453,9 @@ export class InboxProjectComponent {
   }
   /** The per-unit rate that makes the line total (incl install) equal `total`
    *  — the inverse of lineCost's install handling. */
-  private rateForLineTotal(it: InboxThreadItem, total: number): number {
+  private rateForLineTotal(it: InboxThreadItem, total: number, installChoice?: boolean): number {
     const qty = it.quantity || 1;
-    const installed = it.installed !== false && (it.installCost ?? 0) > 0;
+    const installed = (installChoice ?? (it.installed !== false)) && (it.installCost ?? 0) > 0;
     if (!installed || it.installCost == null) return total / qty;
     const ic = it.installCost;
     switch (it.installUnit) {
@@ -503,12 +503,17 @@ export class InboxProjectComponent {
       await this.send(t.id);
     }
   }
-  protected onAgentSuggestCost(payload: { total: number; message: string }): void {
+  protected async onAgentSuggestCost(payload: { total: number; message: string; installed: boolean }): Promise<void> {
     const it = this.selectedItem();
     if (!it) return;
-    // Back out the per-unit rate so the LINE total (incl the inherited install)
-    // equals what was entered — otherwise install stacks on top (the 15,399.45 bug).
-    const rate = this.rateForLineTotal(it, payload.total);
+    // Persist the install choice first (so the line total matches on accept), then
+    // back out the per-unit rate so the LINE total (incl install if kept) equals
+    // what was entered — otherwise install stacks on top (the 15,399.45 bug).
+    const currentlyInstalled = it.installed !== false && (it.installCost ?? 0) > 0;
+    if ((it.installCost ?? 0) > 0 && payload.installed !== currentlyInstalled) {
+      await firstValueFrom(this.projects.setQuoteItemInstalled(this.projectId(), it.id, payload.installed));
+    }
+    const rate = this.rateForLineTotal(it, payload.total, payload.installed);
     const text = payload.message?.trim() || `${it.name} cost updated to ${gbp(payload.total)} by ${this.actorName()}`;
     void this.itemAction(it.id, 'adjust', rate, text);
     this.blinkNextMessage();

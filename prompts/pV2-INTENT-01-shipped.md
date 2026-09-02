@@ -264,3 +264,11 @@ actions** the user taps to apply. v1 action allowlist:
   - **Seed from current:** the form seeds `New cost` from the line's CURRENT
     per-unit (`currentUnitCost` = price_current), not the original price_ref, so a
     prior suggestion shows on reopen instead of the old 105/£15,750.
+
+## Iteration — v2.234 (2026-09-02): Install checkbox in the Revise-cost form
+- Added an **Install ({basis})** checkbox to the Suggest-new-price form (shown only
+  when the line has an install cost), seeded from the current installed state.
+  Toggling it re-computes the Total (goods ± install). On **Send** the inbox
+  **persists the install choice** (`setQuoteItemInstalled`) then backs out the rate
+  for the chosen state, so the entered Total is the final price whether install is
+  on or off.

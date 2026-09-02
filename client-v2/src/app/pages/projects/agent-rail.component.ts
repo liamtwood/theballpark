@@ -193,6 +193,12 @@ interface Turn {
                   @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
                 </select>
               </label>
+              @if (context().installCost) {
+                <label class="flex cursor-pointer items-center justify-between gap-3">
+                  <span class="bp-body-small text-secondary">Install <span class="text-muted">({{ installLabel() }})</span></span>
+                  <input type="checkbox" [ngModel]="sugInstall()" (ngModelChange)="sugInstall.set($event); reseedTotal(); reseedMsg()" />
+                </label>
+              }
               <div class="flex items-center justify-between gap-3 border-t border-hairline pt-2">
                 <span class="bp-body-small text-secondary">Total</span>
                 <div class="relative">
@@ -240,7 +246,7 @@ export class AgentRailComponent {
   readonly accept = output<void>();
   /** Decline/cancel with an optional reason (empty = no reason given). */
   readonly decline = output<string>();
-  readonly suggestCost = output<{ total: number; message: string }>();
+  readonly suggestCost = output<{ total: number; message: string; installed: boolean }>();
   readonly sendMessage = output<string>();
 
   protected readonly turns = signal<Turn[]>([]);
@@ -258,10 +264,21 @@ export class AgentRailComponent {
   /** Total is editable: it tracks cost × qty until the user overrides it. */
   protected readonly sugTotal = signal(0);
   protected readonly totalTouched = signal(false);
-  /** Add install to a goods subtotal, matching the line-total formula. */
+  /** Whether install is included in the revised price (checkbox). */
+  protected readonly sugInstall = signal(true);
+  /** Human label for the install basis ("10%", "£X / order", "£X / head"). */
+  protected installLabel(): string {
+    const c = this.context();
+    if (c.installCost == null) return '';
+    if (c.installUnit === 'percentage') return `${c.installCost}%`;
+    if (c.installUnit === 'per_order') return `${this.sym()}${c.installCost} / order`;
+    return `${this.sym()}${c.installCost} / ${c.unit || 'unit'}`;
+  }
+  /** Add install to a goods subtotal (matching the line-total formula) when the
+   *  Install checkbox is on. */
   private withInstall(goods: number): number {
     const c = this.context();
-    if (!c.installApplies || c.installCost == null) return goods;
+    if (!this.sugInstall() || c.installCost == null) return goods;
     switch (c.installUnit) {
       case 'per_order': return goods + c.installCost;
       case 'percentage': return goods + goods * (c.installCost / 100);
@@ -372,6 +389,7 @@ export class AgentRailComponent {
       this.sugCost.set(this.context().currentUnitCost ?? null);
       this.sugQty.set(this.context().quantity ?? 1);
       this.sugUnit.set(this.context().unit ?? null);
+      this.sugInstall.set(this.context().installApplies);
       this.totalTouched.set(false);
       this.msgTouched.set(false);
       this.reseedTotal();
@@ -384,7 +402,7 @@ export class AgentRailComponent {
   }
   /** Send the suggested new price (line total = cost × qty) + the message. */
   protected confirmSuggest(): void {
-    this.suggestCost.emit({ total: this.sugTotal(), message: this.sugMessage().trim() });
+    this.suggestCost.emit({ total: this.sugTotal(), message: this.sugMessage().trim(), installed: this.sugInstall() });
     this.conclude('sent');
   }
   protected readonly busy = signal(false);
@@ -467,7 +485,7 @@ export class AgentRailComponent {
     try {
       if (a.type === 'accept_cost') this.accept.emit();
       else if (a.type === 'decline') this.decline.emit('');
-      else if (a.type === 'suggest_cost') this.suggestCost.emit({ total: a.amount, message: `${this.context().itemName || 'This item'} cost updated to ${this.sym()}${a.amount.toLocaleString('en-GB')}, please see the updated item attached.` });
+      else if (a.type === 'suggest_cost') this.suggestCost.emit({ total: a.amount, message: `${this.context().itemName || 'This item'} cost updated to ${this.sym()}${a.amount.toLocaleString('en-GB')}, please see the updated item attached.`, installed: this.context().installApplies });
       else if (a.type === 'draft_message') this.sendMessage.emit(a.text);
       else { await this.applyBuildup(a); this.changed.emit(); }
       turn.applied?.add(a);
