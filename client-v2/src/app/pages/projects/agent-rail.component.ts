@@ -162,15 +162,12 @@ interface Turn {
           @if (step() === 'change') {
             <p class="bp-caption text-muted">What would you like to change?</p>
             <div role="radiogroup" class="space-y-1.5">
-              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="changeSel.set('suggest')" /><span class="bp-body-small text-text">Suggest new price</span></label>
-              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="changeSel.set('item')" /><span class="bp-body-small text-text">Change item</span></label>
-              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="changeSel.set('extras')" /><span class="bp-body-small text-text">Add extras</span></label>
-            </div>
-            <div class="flex items-center gap-3 pt-1">
-              <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">Back</button>
-              <button type="button" class="bp-send-btn" [disabled]="!changeSel()" (click)="confirmChange()">Continue</button>
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="pickChange('suggest')" /><span class="bp-body-small text-text">Suggest new price</span></label>
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="pickChange('item')" /><span class="bp-body-small text-text">Change item</span></label>
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="pickChange('extras')" /><span class="bp-body-small text-text">Add extras</span></label>
             </div>
             @if (hint()) { <p class="bp-caption text-muted">{{ hint() }}</p> }
+            <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">Back</button>
           }
           @if (step() === 'suggest') {
             <p class="bp-caption text-muted">Suggest a new price:</p>
@@ -204,7 +201,7 @@ interface Turn {
                 <div class="relative">
                   <span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 bp-body-small text-muted">{{ sym() }}</span>
                   <input type="number" min="0" max="10000000" class="h-9 w-32 rounded-[var(--radius-field)] border border-hairline bg-surface pl-6 pr-2.5 text-right text-md font-semibold tabular-nums leading-none outline-none focus:border-accent"
-                         [ngModel]="sugTotal()" (ngModelChange)="sugTotal.set($event); totalTouched.set(true); sugCost.set(null); reseedMsg()" />
+                         [ngModel]="sugTotal()" (ngModelChange)="sugTotal.set($event); totalTouched.set(true); sugCost.set(null); sugInstall.set(false); reseedMsg()" />
                 </div>
               </div>
             </div>
@@ -300,7 +297,6 @@ export class AgentRailComponent {
     this.sugMessage.set(`${item} cost updated to ${this.sym()}${this.sugTotal().toLocaleString('en-GB')}, please see the updated item attached.`);
   }
   protected readonly reasonSel = signal<string | null>(null);
-  protected readonly changeSel = signal<'suggest' | 'item' | 'extras' | null>(null);
   protected readonly otherText = signal('');
   protected readonly hint = signal('');
   protected readonly draft = signal('');
@@ -367,7 +363,7 @@ export class AgentRailComponent {
     return `${days} day${days === 1 ? '' : 's'} ago`;
   }
   protected reset(): void {
-    this.step.set('root'); this.reasonSel.set(null); this.changeSel.set(null);
+    this.step.set('root'); this.reasonSel.set(null);
     this.otherText.set(''); this.hint.set('');
   }
 
@@ -379,11 +375,10 @@ export class AgentRailComponent {
     this.conclude('declined');
   }
 
-  /** Continue from the make-a-change picks: Suggest opens the propose entry;
-   *  Change item / Add extras drop a tailored hint to type the rest. */
-  protected confirmChange(): void {
-    const c = this.changeSel();
-    if (c === 'suggest') {
+  /** A make-a-change pick auto-advances (no Continue): Suggest opens the price
+   *  form; Change item / Add extras drop a tailored hint to type the rest. */
+  protected pickChange(kind: 'suggest' | 'item' | 'extras'): void {
+    if (kind === 'suggest') {
       // Open the in-Assistant price form (New cost · Qty · Unit · Total + message).
       // Seed from the CURRENT price so a prior suggestion shows, not the original.
       this.sugCost.set(this.context().currentUnitCost ?? null);
@@ -397,8 +392,9 @@ export class AgentRailComponent {
       this.step.set('suggest');
       return;
     }
-    if (c === 'item') this.hint.set('Tell me what to change on the item — name, description, or base cost (e.g. “set the base to £120”).');
-    else if (c === 'extras') this.hint.set('Tell me the extra to add — e.g. “add insurance at £200” or “wine pairing £15 a head”.');
+    this.hint.set(kind === 'item'
+      ? 'Tell me what to change on the item — name, description, or base cost (e.g. “set the base to £120”).'
+      : 'Tell me the extra to add — e.g. “add insurance at £200” or “wine pairing £15 a head”.');
   }
   /** Send the suggested new price (line total = cost × qty) + the message. */
   protected confirmSuggest(): void {

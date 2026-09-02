@@ -272,3 +272,11 @@ actions** the user taps to apply. v1 action allowlist:
   **persists the install choice** (`setQuoteItemInstalled`) then backs out the rate
   for the chosen state, so the entered Total is the final price whether install is
   on or off.
+
+## Iteration — v2.235 (2026-09-02): flat-total unchecks install too; make-a-change auto-advances
+- Overwriting the **Total** now also **unchecks Install** (as well as clearing the
+  per-unit cost) — a flat total is the final price, no install added.
+- **Make a change** no longer needs a **Continue**: selecting a sub-option radio
+  (Suggest new price / Change item / Add extras) **auto-advances** — Suggest opens
+  the form immediately; Change item / Add extras drop the hint. (Back still there.)
+  Removed the `changeSel`/Continue machinery.
