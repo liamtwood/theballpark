@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -95,6 +95,9 @@ import { DetailsEditorComponent } from '../../../shared/details-editor.component
       }
     </div>
 
+    <!-- Everything below the image + price collapses behind "More" when
+         collapsible (read-only surfaces); always shown otherwise. -->
+    @if (!collapsible() || expanded()) {
     <dl class="mt-3 flex flex-col gap-1.5">
       <div class="flex items-center justify-between gap-3">
         <dt class="bp-field-label">Supplier</dt>
@@ -206,6 +209,14 @@ import { DetailsEditorComponent } from '../../../shared/details-editor.component
         <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="details() | md"></div>
       </div>
     }
+    }
+    @if (collapsible()) {
+      <button type="button" class="mt-3 flex w-full items-center justify-center gap-1.5 border-t border-hairline pt-3 bp-body-small text-secondary transition-colors hover:text-text"
+              (click)="$event.stopPropagation(); expanded.set(!expanded())">
+        <lucide-icon [name]="expanded() ? 'chevron-up' : 'chevron-down'" [size]="14" />
+        {{ expanded() ? 'Less' : 'More' }}
+      </button>
+    }
   `,
 })
 export class ItemPreviewComponent {
@@ -254,6 +265,10 @@ export class ItemPreviewComponent {
   readonly detailsEditable = input<boolean>(false);
   readonly categoryChange = output<string | null>();
   readonly detailsChange = output<string>();
+  /** Read-only surfaces: start as a compact card (image · name · total) and
+   *  reveal supplier/category/descriptions/itemized/details behind "More". */
+  readonly collapsible = input<boolean>(false);
+  protected readonly expanded = signal(false);
   readonly closed = output<void>();
   readonly editClientDescription = output<void>();
   /** "150 Heads" / "2 days" / "" (nothing for a single, unitless one-off). */

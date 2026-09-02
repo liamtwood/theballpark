@@ -1023,3 +1023,11 @@ Customize screen.
   so **Cancel reverts**, and **Save** persists the buildup (`save(false)`) then
   closes. Details now persist through the save path: `parentPatch.details` →
   `saveComponents` (`parentDetails`) → `project_items.details`.
+
+## Iteration — v2.203 (2026-09-02): compact card + "More" to expand (inbox)
+- The read-only preview starts as a **compact card** — image · name · **£X TOTAL**
+  — with everything below (supplier/category/Client description/Item description/
+  Services/Itemized/Details) hidden behind a **More** toggle (chevron; "Less" to
+  re-collapse). New `collapsible` input on `item-preview` (+ passthrough on
+  `line-preview`); the inbox brief + revised cards pass `[collapsible]="true"`.
+  Off elsewhere (edit mode + store unaffected).

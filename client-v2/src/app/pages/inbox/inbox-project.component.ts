@@ -157,7 +157,7 @@ import { ProjectService } from '../../core/projects/project.service';
                     <div class="w-80 max-w-full" [class.self-end]="m.mine">
                       @if (isAttachmentOpen(m.id, line.id)) {
                         <div class="bp-card p-4">
-                          <app-line-preview [line]="line" closeIcon="chevron-up" closeLabel="Minimise"
+                          <app-line-preview [line]="line" [collapsible]="true" closeIcon="chevron-up" closeLabel="Minimise"
                                             (closed)="toggleAttachment(m.id, line.id)" />
                         </div>
                       } @else {
@@ -187,7 +187,7 @@ import { ProjectService } from '../../core/projects/project.service';
                           } @else {
                             <!-- Read-only; the supplier clicks the card to edit. -->
                             <div [class.cursor-pointer]="!isAgency()" [attr.title]="isAgency() ? null : 'Click to edit'" (click)="beginEdit(line)">
-                              <app-line-preview [line]="line" closeIcon="chevron-up" closeLabel="Minimise"
+                              <app-line-preview [line]="line" [collapsible]="true" closeIcon="chevron-up" closeLabel="Minimise"
                                                 (closed)="toggleAttachment(m.id, line.id)" />
                             </div>
                           }

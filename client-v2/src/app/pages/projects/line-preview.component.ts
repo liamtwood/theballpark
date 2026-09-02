@@ -28,6 +28,7 @@ import { lineCost, lineItemized, quoteLineToCatalogueItem } from './quote-line.u
         [itemized]="itemized()"
         [currencyCode]="line()?.supplierCurrency ?? null"
         [closeIcon]="closeIcon()" [closeLabel]="closeLabel()"
+        [collapsible]="collapsible()"
         (closed)="closed.emit()" (editClientDescription)="editClientDescription.emit()" />
     }
   `,
@@ -38,6 +39,8 @@ export class LinePreviewComponent {
   readonly closeLabel = input<string>('Close preview');
   /** Show a pencil on the Client description block (the host opens its editor). */
   readonly clientDescriptionEditable = input<boolean>(false);
+  /** Start as a compact card (image · name · total) with a "More" to expand. */
+  readonly collapsible = input<boolean>(false);
   readonly closed = output<void>();
   readonly editClientDescription = output<void>();
   /** The client-facing line TOTAL (what they'll pay) — the preview headline. */
