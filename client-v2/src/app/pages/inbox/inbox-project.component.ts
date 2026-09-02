@@ -460,8 +460,10 @@ export class InboxProjectComponent {
   /** Blink the newest conversation bubble (twice) after a confirmation posts. */
   protected readonly blinkMsg = signal(false);
   private blinkNextMessage(): void {
+    // Stays on long enough for the accept reply + reload to land, so the newly
+    // mounted bubble (which reads blinkMsg on creation) runs the animation.
     this.blinkMsg.set(true);
-    setTimeout(() => this.blinkMsg.set(false), 1800);
+    setTimeout(() => this.blinkMsg.set(false), 3500);
   }
   /** Decline/cancel; when the Assistant supplies a reason, post it straight away. */
   protected async onAgentDecline(reason: string): Promise<void> {

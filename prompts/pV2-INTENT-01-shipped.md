@@ -170,3 +170,10 @@ actions** the user taps to apply. v1 action allowlist:
 - On Accept the confirmation posts to the conversation (existing accept handler) and
   the **newest bubble blinks twice** (`.bp-blink` ring flash, works over the
   gradient bubbles) via `blinkMsg` + `$last`.
+
+## Iteration — v2.222 (2026-09-02): fix the message blink
+- The blink wasn't firing: the ring used `color-mix(… transparent)` (likely
+  invalid → no visible shadow) and the 1.8s flag could expire before the accept
+  reply+reload mounted the new bubble. Switched to a **solid `var(--theme-accent)`
+  ring** and widened the window to **3.5s** so the freshly-mounted bubble runs the
+  animation.

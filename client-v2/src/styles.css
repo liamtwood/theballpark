@@ -781,12 +781,12 @@ body {
    the interaction patterns (lift / zoom / selection / focus) live here
    only (RP-07: the style guard fails component-local card chrome). */
 /* pV2-INTENT-01 — flash a just-posted message bubble twice (e.g. after Accept).
-   A ring flash (not background) so it works over the gradient "mine" bubbles. */
+   A solid ring flash (not background) so it works over the gradient "mine" bubbles. */
 @keyframes bp-blink {
-  0%, 100% { box-shadow: 0 0 0 0 transparent; }
-  30%, 70% { box-shadow: 0 0 0 3px color-mix(in oklch, var(--theme-accent) 60%, transparent); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+  30%, 70% { box-shadow: 0 0 0 3px var(--theme-accent); }
 }
-.bp-blink { animation: bp-blink 0.5s ease-in-out 2; border-radius: var(--radius-card); }
+.bp-blink { animation: bp-blink 0.5s ease-in-out 2; }
 
 .bp-card {
   position: relative; /* overlay anchors: .bp-fav-btn, tag chips, badges */
