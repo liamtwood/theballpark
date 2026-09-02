@@ -244,3 +244,12 @@ actions** the user taps to apply. v1 action allowlist:
 - `suggestCost` now emits **{ total, message }**; the inbox posts that exact message
   with the New-Cost adjust (was a fixed "New Cost Suggested" line). The typed
   suggest path builds the same message.
+
+## Iteration — v2.232 (2026-09-02): editable total, uniform fields, select centering
+- **Total is now editable** (its own boxed input with a £ prefix) — it tracks
+  cost × qty until you override it (`sugTotal` signal + `totalTouched`). Editing the
+  total **clears the per-unit cost** (it's now a flat price), per Liam. Send is
+  gated on the total (not cost) so a flat total still sends.
+- All four fields (**New cost / Qty / Unit / Total**) share the same size (`h-9
+  w-32`); larger max so £10,000+ is fine. Fixed the unit **select** vertical
+  centering (`leading-normal`, consistent height/padding).

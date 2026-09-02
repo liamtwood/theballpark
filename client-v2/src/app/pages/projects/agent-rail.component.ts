@@ -173,17 +173,17 @@ interface Turn {
             <div class="space-y-2">
               <label class="flex items-center justify-between gap-3">
                 <span class="bp-body-small text-secondary">New cost</span>
-                <input type="number" min="0" class="h-8 w-28 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-right text-md tabular-nums outline-none focus:border-accent"
-                       [ngModel]="sugCost()" (ngModelChange)="sugCost.set($event); reseedMsg()" />
+                <input type="number" min="0" max="1000000" class="h-9 w-32 rounded-[var(--radius-field)] border border-hairline bg-surface px-2.5 text-right text-md tabular-nums leading-none outline-none focus:border-accent"
+                       [ngModel]="sugCost()" (ngModelChange)="sugCost.set($event); reseedTotal(); reseedMsg()" />
               </label>
               <label class="flex items-center justify-between gap-3">
                 <span class="bp-body-small text-secondary">Qty</span>
-                <input type="number" min="1" class="h-8 w-28 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-right text-md tabular-nums outline-none focus:border-accent"
-                       [ngModel]="sugQty()" (ngModelChange)="sugQty.set($event); reseedMsg()" />
+                <input type="number" min="1" max="1000000" class="h-9 w-32 rounded-[var(--radius-field)] border border-hairline bg-surface px-2.5 text-right text-md tabular-nums leading-none outline-none focus:border-accent"
+                       [ngModel]="sugQty()" (ngModelChange)="sugQty.set($event); reseedTotal(); reseedMsg()" />
               </label>
               <label class="flex items-center justify-between gap-3">
                 <span class="bp-body-small text-secondary">Unit</span>
-                <select class="h-8 w-28 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-md outline-none focus:border-accent"
+                <select class="h-9 w-32 rounded-[var(--radius-field)] border border-hairline bg-surface px-2.5 text-md leading-normal outline-none focus:border-accent"
                         [ngModel]="sugUnit()" (ngModelChange)="sugUnit.set($event || null)">
                   <option [ngValue]="null">—</option>
                   @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
@@ -191,14 +191,18 @@ interface Turn {
               </label>
               <div class="flex items-center justify-between gap-3 border-t border-hairline pt-2">
                 <span class="bp-body-small text-secondary">Total</span>
-                <span class="flex h-8 items-center rounded-[var(--radius-field)] border border-hairline bg-fill px-2 bp-body-small font-semibold text-text tabular-nums">{{ sym() }}{{ sugTotal().toLocaleString('en-GB') }}</span>
+                <div class="relative">
+                  <span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 bp-body-small text-muted">{{ sym() }}</span>
+                  <input type="number" min="0" max="10000000" class="h-9 w-32 rounded-[var(--radius-field)] border border-hairline bg-surface pl-6 pr-2.5 text-right text-md font-semibold tabular-nums leading-none outline-none focus:border-accent"
+                         [ngModel]="sugTotal()" (ngModelChange)="sugTotal.set($event); totalTouched.set(true); sugCost.set(null); reseedMsg()" />
+                </div>
               </div>
             </div>
             <p class="bp-caption text-muted mt-1">Message to send:</p>
             <textarea rows="3" class="bp-store-textarea w-full" [ngModel]="sugMessage()" (ngModelChange)="sugMessage.set($event); msgTouched.set(true)"></textarea>
             <div class="flex items-center gap-3 pt-1">
               <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">Back</button>
-              <button type="button" class="bp-send-btn" [disabled]="!sugCost()" (click)="confirmSuggest()">Send</button>
+              <button type="button" class="bp-send-btn" [disabled]="!sugTotal()" (click)="confirmSuggest()">Send</button>
             </div>
           }
         }
@@ -247,7 +251,14 @@ export class AgentRailComponent {
   protected readonly sugUnit = signal<string | null>(null);
   protected readonly sugMessage = signal('');
   protected readonly msgTouched = signal(false);
-  protected readonly sugTotal = computed(() => Math.round((Number(this.sugCost()) || 0) * Math.max(1, Number(this.sugQty()) || 1)));
+  /** Total is editable: it tracks cost × qty until the user overrides it. */
+  protected readonly sugTotal = signal(0);
+  protected readonly totalTouched = signal(false);
+  /** Recompute the total from cost × qty unless the user has overridden it. */
+  protected reseedTotal(): void {
+    if (this.totalTouched()) return;
+    this.sugTotal.set(Math.round((Number(this.sugCost()) || 0) * Math.max(1, Number(this.sugQty()) || 1)));
+  }
   /** Unit picklist (mirrors the customize builder's list). */
   protected readonly units = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 'sheet', 'length', 'm', 'kg', 'litre', 'roll', 'pack', 'box', 'hire', 'job', 'lot'];
   /** Keep the suggest message in sync with the total until the user edits it. */
@@ -345,7 +356,9 @@ export class AgentRailComponent {
       this.sugCost.set(this.context().baseCost ?? null);
       this.sugQty.set(this.context().quantity ?? 1);
       this.sugUnit.set(this.context().unit ?? null);
+      this.totalTouched.set(false);
       this.msgTouched.set(false);
+      this.reseedTotal();
       this.reseedMsg();
       this.step.set('suggest');
       return;
