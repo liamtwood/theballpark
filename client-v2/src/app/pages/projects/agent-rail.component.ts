@@ -21,6 +21,9 @@ export interface AgentRailContext {
   canDecline: boolean;
 }
 
+/** A standing quick-action chip (the host maps `key` to its existing handler). */
+export interface AgentQuickAction { key: string; label: string; icon?: string; tone?: 'green' | 'yellow' | 'gray' | 'red'; }
+
 interface Turn {
   who: 'you' | 'assistant';
   text: string;
@@ -46,6 +49,20 @@ interface Turn {
         <lucide-icon name="sparkles" [size]="16" class="text-[var(--theme-accent)]" />
         <span class="bp-list-title">Assistant</span>
       </div>
+
+      <!-- Standing quick actions the host wires to its existing handlers. -->
+      @if (quickActions().length) {
+        <div class="flex flex-wrap gap-1.5 border-b border-hairline px-3 py-2.5">
+          @for (q of quickActions(); track q.key) {
+            <button type="button" class="bp-act"
+                    [class.bp-act--green]="q.tone === 'green'" [class.bp-act--yellow]="q.tone === 'yellow'"
+                    [class.bp-act--gray]="q.tone === 'gray'" [class.bp-act--red]="q.tone === 'red'"
+                    [class.bp-act--outline]="!q.tone" (click)="quickAction.emit(q.key)">
+              @if (q.icon) { <lucide-icon [name]="q.icon" [size]="14" /> } {{ q.label }}
+            </button>
+          }
+        </div>
+      }
 
       <div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
         @if (!turns().length) {
@@ -105,6 +122,10 @@ interface Turn {
 export class AgentRailComponent {
   private readonly projects = inject(ProjectService);
   readonly context = input.required<AgentRailContext>();
+  /** Standing quick-action chips (Accept / Suggest / Request info / Decline /
+   *  Customize) — the host renders them here and wires `(quickAction)`. */
+  readonly quickActions = input<AgentQuickAction[]>([]);
+  readonly quickAction = output<string>();
   /** A buildup edit was applied + persisted — the host should reload the line. */
   readonly changed = output<void>();
   readonly accept = output<void>();

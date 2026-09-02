@@ -49,3 +49,14 @@ actions** the user taps to apply. v1 action allowlist:
 - **Mounted** as a third column in the inbox (xl), on the selected line, hidden
   while Customize owns the pane. Reusable elsewhere by handing it an
   `AgentRailContext`.
+
+## Iteration — v2.207 (2026-09-02): move the line actions into the Assistant chips
+- Removed the standing action bar from the conversation (the "£X / head · install ·
+  × qty · total" breakdown + Accept / Suggest / Request / Decline / Customize
+  buttons). Those are now **quick-action chips in the Assistant rail**
+  (`quickActions` input + `(quickAction)` output on `app-agent-rail`), calling the
+  EXISTING handlers (`accept` / `startPropose` / `requestInfo` / `decline` /
+  `toggleCustomize`) — role-aware (Customize supplier-only), hidden on terminal
+  lines. Message composer stays at the bottom of the conversation.
+- The Suggest-new-cost **rate entry** still lives in the conversation but now shows
+  ONLY when proposing (opened by the Assistant's "Suggest new cost" chip).

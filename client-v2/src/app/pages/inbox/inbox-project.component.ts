@@ -16,7 +16,7 @@ import { lineCost } from '../projects/quote-line.util';
 import { LineEditorComponent, LineEdit } from '../projects/line-editor.component';
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
 import { ProjectService } from '../../core/projects/project.service';
-import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.component';
+import { AgentRailComponent, AgentRailContext, AgentQuickAction } from '../projects/agent-rail.component';
 
 /** pV2-INBOX-01/03 — the per-project conversation surface, viewer-aware.
  *  Supplier (standalone /inbox/:projectId): the left rail is THEIR items
@@ -219,72 +219,41 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                    actionable (not terminal). Accept the current cost, or
                    propose a new one. Both viewers act; the server maps the
                    side (supplier vs agency). -->
+              <!-- pV2-INTENT-01 — the standing Accept / Suggest / Request / Decline
+                   / Customize actions moved to the Assistant rail's chips. Only the
+                   Suggest-new-cost rate entry stays here (opened by that chip). -->
               @if (selectedItem(); as it) {
-                @if (!isTerminal(it.status)) {
+                @if (!isTerminal(it.status) && proposing()) {
                   <div class="flex flex-wrap items-center gap-2 border-t border-hairline px-4 py-2.5">
-                    <!-- Cost · Unit · Install · Qty · Total breakdown (pV2-UNIFY-01):
-                         negotiation is on the per-unit rate; the total derives. -->
-                    <span class="bp-body-small min-w-0 flex-1 text-secondary">
-                      <span class="font-semibold text-text">{{ it.name }}</span>
-                      <span class="ml-1.5">{{ (it.unitPriceCurrent ?? it.unitPriceRef) | currency: 'GBP' : 'symbol' : '1.0-2' }}<span class="text-muted"> / {{ unitLabel(it) }}</span></span>
-                      @if (installLabel(it)) { <span class="text-muted"> · {{ installLabel(it) }}</span> }
-                      <span class="text-muted"> · × {{ it.quantity }}</span>
-                      · <span class="font-semibold text-text">{{ (it.priceCurrent ?? it.priceRef) | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-                    </span>
-                    @if (proposing()) {
+                    <span class="bp-body-small text-secondary">New cost for <span class="font-semibold text-text">{{ it.name }}</span></span>
+                    <input
+                      type="number"
+                      class="h-8 w-24 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-md outline-none focus:border-accent"
+                      [value]="proposePrice() ?? ''"
+                      [disabled]="sending()"
+                      placeholder="New rate"
+                      (input)="proposePrice.set($any($event.target).valueAsNumber)"
+                      (keydown.enter)="submitPropose(it)"
+                    />
+                    <span class="bp-body-small text-muted">/ {{ unitLabel(it) }}</span>
+                    @if (canInstall(it)) {
+                      <span class="bp-body-small text-muted">+ install</span>
                       <input
                         type="number"
-                        class="h-8 w-24 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-md outline-none focus:border-accent"
-                        [value]="proposePrice() ?? ''"
+                        class="h-8 w-20 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-md outline-none focus:border-accent"
+                        [value]="proposeInstall() ?? ''"
                         [disabled]="sending()"
-                        placeholder="New rate"
-                        (input)="proposePrice.set($any($event.target).valueAsNumber)"
+                        placeholder="install"
+                        (input)="proposeInstall.set($any($event.target).valueAsNumber)"
                         (keydown.enter)="submitPropose(it)"
                       />
-                      <span class="bp-body-small text-muted">/ {{ unitLabel(it) }}</span>
-                      @if (canInstall(it)) {
-                        <span class="bp-body-small text-muted">+ install</span>
-                        <input
-                          type="number"
-                          class="h-8 w-20 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-md outline-none focus:border-accent"
-                          [value]="proposeInstall() ?? ''"
-                          [disabled]="sending()"
-                          placeholder="install"
-                          (input)="proposeInstall.set($any($event.target).valueAsNumber)"
-                          (keydown.enter)="submitPropose(it)"
-                        />
-                        <span class="bp-body-small text-muted">{{ it.installUnit === 'percentage' ? '%' : (it.installUnit === 'per_order' ? '/ order' : '/ ' + unitLabel(it)) }}</span>
-                      }
-                      @if (proposedTotal() != null) {
-                        <span class="bp-body-small text-secondary">= <span class="font-semibold text-text">{{ proposedTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span></span>
-                      }
-                      <button type="button" class="bp-btn-outline" [disabled]="sending()" (click)="proposing.set(false)">Cancel</button>
-                      <button type="button" class="bp-btn-grad" [disabled]="sending() || proposePrice() == null" (click)="submitPropose(it)">Send cost</button>
-                    } @else {
-                      <button type="button" class="bp-act bp-act--green" [disabled]="sending()" (click)="accept(it)">
-                        <lucide-icon name="circle-check-big" [size]="15" /> Accept Cost
-                      </button>
-                      <button type="button" class="bp-act bp-act--yellow" [disabled]="sending()" (click)="startPropose(it)">
-                        <lucide-icon name="circle-dollar-sign" [size]="15" /> Suggest New Cost
-                      </button>
-                      <button type="button" class="bp-act bp-act--gray" [disabled]="sending()" (click)="requestInfo(it)">
-                        <lucide-icon name="info" [size]="15" /> Request Information
-                      </button>
-                      <!-- Item exit — marks the line declined (never removed):
-                           the supplier Declines it, the agent Cancels their
-                           request. Server records declined_by_supplier /
-                           declined_by_agent by side, which is terminal. -->
-                      <button type="button" class="bp-act bp-act--red" [disabled]="sending()" (click)="decline(it)">
-                        <lucide-icon [name]="isAgency() ? 'x' : 'circle-off'" [size]="15" /> {{ isAgency() ? 'Cancel' : 'Decline' }}
-                      </button>
-                      <!-- pV2-BUILDUP-02 — supplier Customize entry (re-enabled
-                           in the inbox): opens the inline estimate builder. -->
-                      @if (!isAgency()) {
-                        <button type="button" class="bp-act bp-act--outline" [disabled]="sending()" (click)="toggleCustomize(it)">
-                          <lucide-icon name="list-tree" [size]="15" /> {{ isCustomizing(it) ? 'Close' : 'Customize' }}
-                        </button>
-                      }
+                      <span class="bp-body-small text-muted">{{ it.installUnit === 'percentage' ? '%' : (it.installUnit === 'per_order' ? '/ order' : '/ ' + unitLabel(it)) }}</span>
                     }
+                    @if (proposedTotal() != null) {
+                      <span class="bp-body-small text-secondary">= <span class="font-semibold text-text">{{ proposedTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span></span>
+                    }
+                    <button type="button" class="bp-btn-outline" [disabled]="sending()" (click)="proposing.set(false)">Cancel</button>
+                    <button type="button" class="bp-btn-grad" [disabled]="sending() || proposePrice() == null" (click)="submitPropose(it)">Send cost</button>
                   </div>
                 }
               }
@@ -321,7 +290,8 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                the pane. -->
           @if (showAgent()) {
             <aside class="hidden min-h-0 xl:block">
-              <app-agent-rail [context]="agentContext()!"
+              <app-agent-rail [context]="agentContext()!" [quickActions]="agentQuickActions()"
+                              (quickAction)="onAgentQuick($event)"
                               (changed)="onCustomizeChanged()"
                               (accept)="onAgentAccept()" (decline)="onAgentDecline()"
                               (suggestCost)="onAgentSuggestCost($event)" (sendMessage)="onAgentSend($event)" />
@@ -460,6 +430,31 @@ export class InboxProjectComponent {
   });
   /** Show the rail (xl) when a line is selected and Customize isn't taking the pane. */
   protected readonly showAgent = computed(() => !!this.agentContext() && !this.customizing());
+  /** The standing action chips shown in the Assistant (moved out of the
+   *  conversation) — each calls the existing handler via onAgentQuick. */
+  protected readonly agentQuickActions = computed<AgentQuickAction[]>(() => {
+    const it = this.selectedItem();
+    if (!it || this.isTerminal(it.status)) return [];
+    const chips: AgentQuickAction[] = [
+      { key: 'accept', label: 'Accept cost', icon: 'circle-check-big', tone: 'green' },
+      { key: 'suggest', label: 'Suggest new cost', icon: 'circle-dollar-sign', tone: 'yellow' },
+      { key: 'info', label: 'Request info', icon: 'info', tone: 'gray' },
+      { key: 'decline', label: this.isAgency() ? 'Cancel' : 'Decline', icon: this.isAgency() ? 'x' : 'circle-off', tone: 'red' },
+    ];
+    if (!this.isAgency()) chips.push({ key: 'customize', label: 'Customize', icon: 'list-tree' });
+    return chips;
+  });
+  protected onAgentQuick(key: string): void {
+    const it = this.selectedItem();
+    if (!it) return;
+    switch (key) {
+      case 'accept': this.accept(it); break;
+      case 'suggest': this.startPropose(it); break;
+      case 'info': this.requestInfo(it); break;
+      case 'decline': this.decline(it); break;
+      case 'customize': this.toggleCustomize(it); break;
+    }
+  }
   protected onAgentAccept(): void { const it = this.selectedItem(); if (it) this.accept(it); }
   protected onAgentDecline(): void { const it = this.selectedItem(); if (it) this.decline(it); }
   protected onAgentSuggestCost(total: number): void {
