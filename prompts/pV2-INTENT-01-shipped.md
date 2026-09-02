@@ -177,3 +177,10 @@ actions** the user taps to apply. v1 action allowlist:
   reply+reload mounted the new bubble. Switched to a **solid `var(--theme-accent)`
   ring** and widened the window to **3.5s** so the freshly-mounted bubble runs the
   animation.
+
+## Iteration — v2.223 (2026-09-02): auto-scroll to the newest message (blink now visible)
+- The conversation never auto-scrolled, so a new message (incl. the accept
+  confirmation) landed below the fold — you saw neither the message nor its blink.
+  Added a `#msgScroll` ref + an effect that scrolls to the bottom whenever
+  `visibleMessages()` changes (any send / accept / reload). The newest bubble is
+  now in view, so its ring-flash is visible.

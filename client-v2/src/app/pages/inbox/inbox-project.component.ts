@@ -133,7 +133,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
               <!-- Bubbles — on the page (parchment) ground so the white
                    agency bubbles read as cards; "You" stays gradient. In a
                    filtered (item) view, broadcasts fade + carry a General tag. -->
-              <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg px-5 py-4">
+              <div #msgScroll class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg px-5 py-4">
                 @if (selectedItem()) {
                 @for (m of visibleMessages(); track m.id; let last = $last) {
                   <div class="flex flex-col" [class.items-end]="m.mine" [class.items-start]="!m.mine">
@@ -847,6 +847,13 @@ export class InboxProjectComponent {
   /** "Request Information" — seed the compose box with the item + cost so
    *  the supplier edits/adds detail, then send (chat-only; no status change). */
   private readonly composeInput = viewChild<ElementRef<HTMLInputElement>>('composeInput');
+  private readonly msgScroll = viewChild<ElementRef<HTMLDivElement>>('msgScroll');
+  /** Auto-scroll the conversation to the newest message (any send/accept/reload). */
+  private readonly autoScroll = effect(() => {
+    this.visibleMessages(); // re-run whenever the message list changes
+    const el = this.msgScroll()?.nativeElement;
+    if (el) setTimeout(() => { el.scrollTop = el.scrollHeight; });
+  });
   protected requestInfo(it: InboxThreadItem): void {
     this.disarmDecline(); // superseding action — this OVERWRITES the decline stem
     const cost = it.priceCurrent ?? it.priceRef ?? 0;
