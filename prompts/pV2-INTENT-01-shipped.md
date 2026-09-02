@@ -81,3 +81,12 @@ actions** the user taps to apply. v1 action allowlist:
   rate entry via `quickAction('suggest')`), **Change item** and **Add extras** (each
   drops a tailored free-text hint to type the rest); supplier also gets "open the
   full builder →". A **← Back** returns to the three top options.
+
+## Iteration — v2.210 (2026-09-02): radios + a single action button; drop builder link
+- Applied the pattern consistently: a sub-step shows **radios**, then **one action
+  button** takes the action (no fire-on-select). Decline = pick a reason (Other →
+  text box) → **Decline / Cancel request** (enabled once a reason is set). Make a
+  change = pick Suggest new price / Change item / Add extras → **Continue** (Suggest
+  opens the propose entry; the other two drop a hint to type). Each step keeps a
+  **Back**.
+- Removed the "open the full builder →" link from the Assistant.

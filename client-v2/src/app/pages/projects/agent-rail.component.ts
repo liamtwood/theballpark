@@ -71,29 +71,32 @@ interface Turn {
             <p class="bp-caption text-muted">{{ context().role === 'agent' ? 'Why are you cancelling?' : 'Why are you declining?' }}</p>
             <div role="radiogroup" class="space-y-1.5">
               @for (r of declineReasons(); track r) {
-                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="declineReason" (change)="chooseReason(r)" /><span class="bp-body-small text-text">{{ r }}</span></label>
+                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="declineReason" (change)="reasonSel.set(r)" /><span class="bp-body-small text-text">{{ r }}</span></label>
               }
-              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="declineReason" (change)="chooseReason('__other')" /><span class="bp-body-small text-text">Other…</span></label>
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="declineReason" (change)="reasonSel.set('__other')" /><span class="bp-body-small text-text">Other…</span></label>
             </div>
-            @if (otherOpen()) {
+            @if (reasonSel() === '__other') {
               <textarea rows="2" class="bp-store-textarea w-full" placeholder="Enter a reason…" [ngModel]="otherText()" (ngModelChange)="otherText.set($event)"></textarea>
-              <button type="button" class="bp-btn-grad" (click)="submitOther()">{{ context().role === 'agent' ? 'Cancel request' : 'Decline' }}</button>
             }
-            <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">← Back</button>
+            <div class="flex gap-2 pt-1">
+              <button type="button" class="bp-btn-outline" (click)="reset()">Back</button>
+              <button type="button" class="bp-btn-grad flex-1" [disabled]="!reasonReady()" (click)="confirmDecline()">{{ context().role === 'agent' ? 'Cancel request' : 'Decline' }}</button>
+            </div>
           }
 
           <!-- Step 2b: make-a-change sub-options. -->
           @if (step() === 'change') {
-            <div class="flex flex-wrap gap-1.5">
-              <button type="button" class="bp-act bp-act--outline" (click)="quickAction.emit('suggest')">Suggest new price</button>
-              <button type="button" class="bp-act bp-act--outline" (click)="setHint('item')">Change item</button>
-              <button type="button" class="bp-act bp-act--outline" (click)="setHint('extras')">Add extras</button>
+            <p class="bp-caption text-muted">What would you like to change?</p>
+            <div role="radiogroup" class="space-y-1.5">
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="changeSel.set('suggest')" /><span class="bp-body-small text-text">Suggest new price</span></label>
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="changeSel.set('item')" /><span class="bp-body-small text-text">Change item</span></label>
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="changeSel.set('extras')" /><span class="bp-body-small text-text">Add extras</span></label>
+            </div>
+            <div class="flex gap-2 pt-1">
+              <button type="button" class="bp-btn-outline" (click)="reset()">Back</button>
+              <button type="button" class="bp-btn-grad flex-1" [disabled]="!changeSel()" (click)="confirmChange()">Continue</button>
             </div>
             @if (hint()) { <p class="bp-caption text-muted">{{ hint() }}</p> }
-            @if (context().role === 'supplier') {
-              <button type="button" class="bp-caption text-[var(--theme-accent)] hover:underline" (click)="quickAction.emit('customize')">Or open the full builder →</button>
-            }
-            <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">← Back</button>
           }
         }
         @for (t of turns(); track $index) {
@@ -161,7 +164,8 @@ export class AgentRailComponent {
   protected readonly turns = signal<Turn[]>([]);
   /** Opening flow: root → decline (reasons) | change (sub-options). */
   protected readonly step = signal<'root' | 'decline' | 'change'>('root');
-  protected readonly otherOpen = signal(false);
+  protected readonly reasonSel = signal<string | null>(null);
+  protected readonly changeSel = signal<'suggest' | 'item' | 'extras' | null>(null);
   protected readonly otherText = signal('');
   protected readonly hint = signal('');
   protected readonly draft = signal('');
@@ -171,28 +175,33 @@ export class AgentRailComponent {
     this.context().role === 'agent'
       ? ['Over budget', 'No longer needed', 'Going another way']
       : ['Not available', 'Out of stock', "Can't provide this"]);
+  /** The decline action button is enabled once a reason (or Other text) is set. */
+  protected readonly reasonReady = computed(() => {
+    const r = this.reasonSel();
+    return !!r && (r !== '__other' || !!this.otherText().trim());
+  });
 
   protected pickOption(key: 'accept'): void { this.quickAction.emit(key); }
-  protected reset(): void { this.step.set('root'); this.otherOpen.set(false); this.otherText.set(''); this.hint.set(''); }
+  protected reset(): void {
+    this.step.set('root'); this.reasonSel.set(null); this.changeSel.set(null);
+    this.otherText.set(''); this.hint.set('');
+  }
 
-  /** Pick a decline reason → decline with that reason ('__other' opens a box). */
-  protected chooseReason(reason: string): void {
-    if (reason === '__other') { this.otherOpen.set(true); return; }
-    this.otherOpen.set(false);
+  /** Confirm the decline with the picked reason (radios → a single action button). */
+  protected confirmDecline(): void {
+    const r = this.reasonSel();
+    const reason = r === '__other' ? (this.otherText().trim() || 'Other') : (r || '');
     this.decline.emit(reason);
     this.reset();
   }
-  protected submitOther(): void {
-    const t = this.otherText().trim();
-    this.decline.emit(t || 'Other');
-    this.reset();
-  }
 
-  /** A make-a-change sub-option → a tailored free-text hint (they type the rest). */
-  protected setHint(kind: 'item' | 'extras'): void {
-    this.hint.set(kind === 'item'
-      ? 'Tell me what to change on the item — name, description, or base cost (e.g. “set the base to £120”).'
-      : 'Tell me the extra to add — e.g. “add insurance at £200” or “wine pairing £15 a head”.');
+  /** Continue from the make-a-change picks: Suggest opens the propose entry;
+   *  Change item / Add extras drop a tailored hint to type the rest. */
+  protected confirmChange(): void {
+    const c = this.changeSel();
+    if (c === 'suggest') { this.quickAction.emit('suggest'); this.reset(); return; }
+    if (c === 'item') this.hint.set('Tell me what to change on the item — name, description, or base cost (e.g. “set the base to £120”).');
+    else if (c === 'extras') this.hint.set('Tell me the extra to add — e.g. “add insurance at £200” or “wine pairing £15 a head”.');
   }
   protected readonly busy = signal(false);
   protected readonly applying = signal(false);
