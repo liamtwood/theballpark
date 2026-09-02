@@ -492,6 +492,7 @@ export class InboxProjectComponent {
     const rate = total / (it.quantity || 1); // price_current is the per-unit rate
     const from = it.priceCurrent ?? it.priceRef ?? 0;
     void this.itemAction(it.id, 'adjust', rate, `${it.name} ${gbp(from)} New Cost Suggested ${gbp(total)} by ${this.actorName()}`);
+    this.blinkNextMessage();
   }
   protected onAgentSend(text: string): void {
     if (!text.trim() || !this.selectedThread()) return;

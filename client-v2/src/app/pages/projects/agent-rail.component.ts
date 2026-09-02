@@ -168,6 +168,33 @@ interface Turn {
             </div>
             @if (hint()) { <p class="bp-caption text-muted">{{ hint() }}</p> }
           }
+          @if (step() === 'suggest') {
+            <p class="bp-caption text-muted">Suggest a new price:</p>
+            <div class="space-y-2">
+              <label class="flex items-center justify-between gap-3">
+                <span class="bp-body-small text-secondary">New cost</span>
+                <input type="number" min="0" class="h-8 w-28 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-right text-md tabular-nums outline-none focus:border-accent"
+                       [ngModel]="sugCost()" (ngModelChange)="sugCost.set($event)" />
+              </label>
+              <label class="flex items-center justify-between gap-3">
+                <span class="bp-body-small text-secondary">Qty</span>
+                <input type="number" min="1" class="h-8 w-28 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-right text-md tabular-nums outline-none focus:border-accent"
+                       [ngModel]="sugQty()" (ngModelChange)="sugQty.set($event)" />
+              </label>
+              <div class="flex items-center justify-between gap-3">
+                <span class="bp-body-small text-secondary">Unit</span>
+                <span class="bp-body-small text-text">{{ context().unit || '—' }}</span>
+              </div>
+              <div class="flex items-center justify-between gap-3 border-t border-hairline pt-2">
+                <span class="bp-body-small text-secondary">Total</span>
+                <span class="bp-body-small font-semibold text-text tabular-nums">{{ sym() }}{{ sugTotal().toLocaleString('en-GB') }}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 pt-1">
+              <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">Back</button>
+              <button type="button" class="bp-send-btn" [disabled]="!sugCost()" (click)="confirmSuggest()">Suggest</button>
+            </div>
+          }
         }
         @if (busy()) { <p class="bp-caption text-muted">Thinking…</p> }
       </div>
@@ -207,7 +234,11 @@ export class AgentRailComponent {
   protected readonly menuOpen = signal(false);
   protected readonly showOptions = computed(() => !this.turns().length || this.menuOpen());
   /** Opening flow: root → decline (reasons) | change (sub-options). */
-  protected readonly step = signal<'root' | 'accept' | 'decline' | 'change'>('root');
+  protected readonly step = signal<'root' | 'accept' | 'decline' | 'change' | 'suggest'>('root');
+  /** Suggest-new-price form state. */
+  protected readonly sugCost = signal<number | null>(null);
+  protected readonly sugQty = signal<number>(1);
+  protected readonly sugTotal = computed(() => Math.round((Number(this.sugCost()) || 0) * Math.max(1, Number(this.sugQty()) || 1)));
   protected readonly reasonSel = signal<string | null>(null);
   protected readonly changeSel = signal<'suggest' | 'item' | 'extras' | null>(null);
   protected readonly otherText = signal('');
@@ -292,9 +323,20 @@ export class AgentRailComponent {
    *  Change item / Add extras drop a tailored hint to type the rest. */
   protected confirmChange(): void {
     const c = this.changeSel();
-    if (c === 'suggest') { this.quickAction.emit('suggest'); this.reset(); return; }
+    if (c === 'suggest') {
+      // Open the in-Assistant price form (New cost · Qty · Unit · Total).
+      this.sugCost.set(this.context().baseCost ?? null);
+      this.sugQty.set(this.context().quantity ?? 1);
+      this.step.set('suggest');
+      return;
+    }
     if (c === 'item') this.hint.set('Tell me what to change on the item — name, description, or base cost (e.g. “set the base to £120”).');
     else if (c === 'extras') this.hint.set('Tell me the extra to add — e.g. “add insurance at £200” or “wine pairing £15 a head”.');
+  }
+  /** Send the suggested new price (line total = cost × qty) to the host. */
+  protected confirmSuggest(): void {
+    this.suggestCost.emit(this.sugTotal());
+    this.conclude('sent');
   }
   protected readonly busy = signal(false);
   protected readonly applying = signal(false);

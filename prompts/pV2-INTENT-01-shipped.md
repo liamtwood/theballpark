@@ -227,3 +227,11 @@ actions** the user taps to apply. v1 action allowlist:
 - Server exposes `buyerAcceptedAt` / `sellerAcceptedAt` on the item (from the
   decision timestamps); the inbox passes the viewer's side as `acceptedAt` (ms) to
   the rail; the radio shows `canAccept || acceptedAt` and appends `timeAgo`.
+
+## Iteration — v2.230 (2026-09-02): Suggest new price form in the Assistant
+- "Make a change → Suggest new price → Continue" now opens an **in-Assistant form**
+  — **New cost · Qty · Unit · Total** (total = cost × qty, live) — instead of
+  bouncing to the inbox rate input. **Suggest** sends the line total (host converts
+  to the per-unit rate + posts the "New Cost Suggested" message, which now blinks),
+  then concludes + re-opens the options. Seeded from the line's current per-unit
+  cost + qty.
