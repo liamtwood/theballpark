@@ -21,9 +21,6 @@ export interface AgentRailContext {
   canDecline: boolean;
 }
 
-/** A standing quick-action chip (the host maps `key` to its existing handler). */
-export interface AgentQuickAction { key: string; label: string; icon?: string; tone?: 'green' | 'yellow' | 'gray' | 'red'; }
-
 interface Turn {
   who: 'you' | 'assistant';
   text: string;
@@ -50,26 +47,40 @@ interface Turn {
         <span class="bp-list-title">Assistant</span>
       </div>
 
-      <!-- Standing quick actions the host wires to its existing handlers. -->
-      @if (quickActions().length) {
-        <div class="flex flex-wrap gap-1.5 border-b border-hairline px-3 py-2.5">
-          @for (q of quickActions(); track q.key) {
-            <button type="button" class="bp-act"
-                    [class.bp-act--green]="q.tone === 'green'" [class.bp-act--yellow]="q.tone === 'yellow'"
-                    [class.bp-act--gray]="q.tone === 'gray'" [class.bp-act--red]="q.tone === 'red'"
-                    [class.bp-act--outline]="!q.tone" (click)="quickAction.emit(q.key)">
-              @if (q.icon) { <lucide-icon [name]="q.icon" [size]="14" /> } {{ q.label }}
-            </button>
-          }
-        </div>
-      }
-
       <div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
         @if (!turns().length) {
           <p class="bp-body-small text-secondary">
-            Tell me what you'd like to do with <span class="text-text">{{ context().itemName || 'this item' }}</span> —
-            e.g. {{ context().role === 'agent' ? '“ask for a fridge and a 10% discount”.' : '“set the base to £120 and add insurance at £200”.' }}
+            Tell me what you'd like to do with <span class="text-text">{{ context().itemName || 'this item' }}</span> — pick an option below, or just send me a message.
           </p>
+          <!-- Opening options (radios). Accept / Decline run the existing handlers
+               via the host; "Make a change" just invites a free-text prompt. -->
+          <div role="radiogroup" class="mt-1 space-y-1.5">
+            @if (context().canAccept) {
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill">
+                <input type="radio" name="agentOpt" (change)="pickOption('accept')" />
+                <span class="bp-body-small text-text">Accept the cost</span>
+              </label>
+            }
+            @if (context().canDecline) {
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill">
+                <input type="radio" name="agentOpt" (change)="pickOption('decline')" />
+                <span class="bp-body-small text-text">{{ context().role === 'agent' ? 'Cancel the request' : 'Decline' }}</span>
+              </label>
+            }
+            <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill">
+              <input type="radio" name="agentOpt" (change)="pickOption('change')" />
+              <span class="bp-body-small text-text">Make a change</span>
+            </label>
+          </div>
+          @if (changeMode()) {
+            <p class="bp-caption text-muted">
+              Tell me what to change — e.g.
+              {{ context().role === 'agent' ? '“ask for a fridge”, “can we get 10% off?”' : '“set the base to £120”, “add insurance at £200”.' }}
+            </p>
+            @if (context().role === 'supplier') {
+              <button type="button" class="bp-caption text-[var(--theme-accent)] hover:underline" (click)="quickAction.emit('customize')">Or open the full builder →</button>
+            }
+          }
         }
         @for (t of turns(); track $index) {
           @if (t.who === 'you') {
@@ -122,9 +133,8 @@ interface Turn {
 export class AgentRailComponent {
   private readonly projects = inject(ProjectService);
   readonly context = input.required<AgentRailContext>();
-  /** Standing quick-action chips (Accept / Suggest / Request info / Decline /
-   *  Customize) — the host renders them here and wires `(quickAction)`. */
-  readonly quickActions = input<AgentQuickAction[]>([]);
+  /** Opening radio picks + the supplier "open builder" link go to the host
+   *  (keys: 'accept' | 'decline' | 'customize') → its existing handlers. */
   readonly quickAction = output<string>();
   /** A buildup edit was applied + persisted — the host should reload the line. */
   readonly changed = output<void>();
@@ -134,7 +144,15 @@ export class AgentRailComponent {
   readonly sendMessage = output<string>();
 
   protected readonly turns = signal<Turn[]>([]);
+  protected readonly changeMode = signal(false);
   protected readonly draft = signal('');
+
+  /** Opening radio pick: accept/decline run via the host; "change" just invites
+   *  a typed prompt (nothing destructive). */
+  protected pickOption(key: 'accept' | 'decline' | 'change'): void {
+    if (key === 'change') { this.changeMode.set(true); return; }
+    this.quickAction.emit(key);
+  }
   protected readonly busy = signal(false);
   protected readonly applying = signal(false);
   protected readonly sym = computed(() => currencySymbol(this.context().currencyCode));

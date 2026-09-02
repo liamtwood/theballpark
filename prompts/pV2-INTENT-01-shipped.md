@@ -60,3 +60,13 @@ actions** the user taps to apply. v1 action allowlist:
   lines. Message composer stays at the bottom of the conversation.
 - The Suggest-new-cost **rate entry** still lives in the conversation but now shows
   ONLY when proposing (opened by the Assistant's "Suggest new cost" chip).
+
+## Iteration — v2.208 (2026-09-02): opening radio options (Accept / Decline / Make a change)
+- Replaced the persistent chip row with an **opening prompt + radio group** in the
+  Assistant's empty state: "Tell me what you'd like to do with {item} — pick an
+  option below, or just send me a message." Options: **Accept the cost**,
+  **Decline/Cancel** (gated by canAccept/canDecline), **Make a change**.
+- Accept/Decline run the existing handlers (via `quickAction` → the inbox);
+  **Make a change** just reveals a hint inviting a free-text prompt (and, for a
+  supplier, an "open the full builder →" link → Customize). Users can ignore the
+  radios and type anything. Removed the `quickActions` input + chip row.

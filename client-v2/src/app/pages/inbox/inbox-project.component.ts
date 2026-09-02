@@ -16,7 +16,7 @@ import { lineCost } from '../projects/quote-line.util';
 import { LineEditorComponent, LineEdit } from '../projects/line-editor.component';
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
 import { ProjectService } from '../../core/projects/project.service';
-import { AgentRailComponent, AgentRailContext, AgentQuickAction } from '../projects/agent-rail.component';
+import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.component';
 
 /** pV2-INBOX-01/03 — the per-project conversation surface, viewer-aware.
  *  Supplier (standalone /inbox/:projectId): the left rail is THEIR items
@@ -290,7 +290,7 @@ import { AgentRailComponent, AgentRailContext, AgentQuickAction } from '../proje
                the pane. -->
           @if (showAgent()) {
             <aside class="hidden min-h-0 xl:block">
-              <app-agent-rail [context]="agentContext()!" [quickActions]="agentQuickActions()"
+              <app-agent-rail [context]="agentContext()!"
                               (quickAction)="onAgentQuick($event)"
                               (changed)="onCustomizeChanged()"
                               (accept)="onAgentAccept()" (decline)="onAgentDecline()"
@@ -430,20 +430,6 @@ export class InboxProjectComponent {
   });
   /** Show the rail (xl) when a line is selected and Customize isn't taking the pane. */
   protected readonly showAgent = computed(() => !!this.agentContext() && !this.customizing());
-  /** The standing action chips shown in the Assistant (moved out of the
-   *  conversation) — each calls the existing handler via onAgentQuick. */
-  protected readonly agentQuickActions = computed<AgentQuickAction[]>(() => {
-    const it = this.selectedItem();
-    if (!it || this.isTerminal(it.status)) return [];
-    const chips: AgentQuickAction[] = [
-      { key: 'accept', label: 'Accept cost', icon: 'circle-check-big', tone: 'green' },
-      { key: 'suggest', label: 'Suggest new cost', icon: 'circle-dollar-sign', tone: 'yellow' },
-      { key: 'info', label: 'Request info', icon: 'info', tone: 'gray' },
-      { key: 'decline', label: this.isAgency() ? 'Cancel' : 'Decline', icon: this.isAgency() ? 'x' : 'circle-off', tone: 'red' },
-    ];
-    if (!this.isAgency()) chips.push({ key: 'customize', label: 'Customize', icon: 'list-tree' });
-    return chips;
-  });
   protected onAgentQuick(key: string): void {
     const it = this.selectedItem();
     if (!it) return;
