@@ -251,7 +251,10 @@ export class AgentRailComponent {
     this.quickAction.emit('accept'); // host accepts + posts the confirmation message
     this.conclude('accepted');
   }
-  protected dropTurn(turn: Turn): void { this.turns.update((t) => t.filter((x) => x !== turn)); }
+  protected dropTurn(turn: Turn): void {
+    this.turns.update((t) => t.filter((x) => x !== turn));
+    this.menuOpen.set(true); // backing out returns to the options, never a dead end
+  }
 
   /** End a flow: a bold outcome line + time-ago, then re-open the options so the
    *  user isn't stuck. */
@@ -420,7 +423,7 @@ export class AgentRailComponent {
     if (!txt) return;
     this.sendMessage.emit(txt);
     this.changeLog.set([]);
-    this.turns.update((t) => [...t, { who: 'assistant', text: 'Sent ✓' }]);
+    this.conclude('sent'); // "Sent · just now" + re-open the options
   }
 
   /** After applying, echo the exact change so the user can eyeball + confirm it. */

@@ -213,3 +213,9 @@ actions** the user taps to apply. v1 action allowlist:
 - **Buttons shrunk** to the inbox **Send size** (`bp-send-btn`) instead of the big
   full-width `bp-btn-grad flex-1` — Accept / Decline / Continue / Send-update /
   draft Send; Back is a compact text button.
+
+## Iteration — v2.228 (2026-09-02): close two termination gaps (path trace)
+- **Back** from the Accept confirm now re-opens the options (`dropTurn` sets
+  `menuOpen`) — previously it could leave the menu hidden (dead end).
+- **Send them an update** now concludes ("Sent · just now") and re-opens the
+  options, instead of a bare "Sent ✓" with no next step.
