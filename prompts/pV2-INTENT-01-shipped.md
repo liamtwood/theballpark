@@ -120,3 +120,10 @@ actions** the user taps to apply. v1 action allowlist:
   description (formatted), the new base cost, or the added extra (name · cost ·
   qty/unit); brief lines for accept/decline/suggest/send. Assistant turns now
   render **markdown** (bold, lists) so the echoed description reads properly.
+
+## Iteration — v2.215 (2026-09-02): wrap-up — "anything else?" + send an editable update
+- After a buildup change the Assistant asks **"Anything else you'd like to change?"**
+  and offers **Send them an update** → drafts an editable message from the session's
+  change log ("Hi — I've updated Italian Dinner: updated the description; added Wine
+  pairing at £15 per head. Let me know if that works.") → the user edits it and hits
+  **Send** (posts to the conversation via the existing composer path).

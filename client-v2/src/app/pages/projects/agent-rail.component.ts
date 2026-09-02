@@ -30,6 +30,8 @@ interface Turn {
   actions?: IntentAction[];
   suggestions?: string[];
   applied?: Set<IntentAction>;
+  wrap?: boolean;   // offer "send them an update" after a change
+  draft?: boolean;  // an editable message + Send button
 }
 
 /** pV2-INTENT-01 — the reusable conversational agent rail. You talk to it about
@@ -140,6 +142,18 @@ interface Turn {
                   }
                 </div>
               }
+              @if (t.wrap) {
+                <p class="bp-caption text-muted">Anything else you'd like to change? If not:</p>
+                <button type="button" class="bp-act bp-act--outline" (click)="startDraft()">
+                  <lucide-icon name="send" [size]="14" /> Send them an update
+                </button>
+              }
+              @if (t.draft) {
+                <textarea rows="4" class="bp-store-textarea w-full" [ngModel]="draftText()" (ngModelChange)="draftText.set($event)"></textarea>
+                <button type="button" class="bp-btn-grad" (click)="sendDraft()">
+                  <lucide-icon name="send" [size]="14" /> Send
+                </button>
+              }
             </div>
           }
         }
@@ -181,6 +195,9 @@ export class AgentRailComponent {
   protected readonly otherText = signal('');
   protected readonly hint = signal('');
   protected readonly draft = signal('');
+  /** Short summaries of the changes made this session (for the update message). */
+  private readonly changeLog = signal<string[]>([]);
+  protected readonly draftText = signal('');
 
   /** Decline reasons depend on who's declining. */
   protected readonly declineReasons = computed(() =>
@@ -289,14 +306,51 @@ export class AgentRailComponent {
       else if (a.type === 'draft_message') this.sendMessage.emit(a.text);
       else { await this.applyBuildup(a); this.changed.emit(); }
       turn.applied?.add(a);
-      // Echo back exactly what changed, so the user can see + confirm it.
+      // Echo back exactly what changed; buildup edits also log a summary and offer
+      // to send the counterparty an update.
+      const isBuildup = a.type === 'set_base_cost' || a.type === 'set_base_description' || a.type === 'upsert_extra';
+      if (isBuildup) this.changeLog.update((l) => [...l, this.changeSummary(a)]);
       const done = this.confirmMessage(a);
-      this.turns.update((t) => done ? [...t, { who: 'assistant', text: done }] : [...t]);
+      this.turns.update((t) => done ? [...t, { who: 'assistant', text: done, wrap: isBuildup }] : [...t]);
     } catch {
       this.turns.update((t) => [...t, { who: 'assistant', text: "That didn't save — please try again or use the buttons." }]);
     } finally {
       this.applying.set(false);
     }
+  }
+
+  /** A short third-person summary of a change, for the wrap-up update message. */
+  private changeSummary(a: IntentAction): string {
+    const s = this.sym();
+    switch (a.type) {
+      case 'set_base_description': return 'updated the description';
+      case 'set_base_cost': return `set the base cost to ${s}${a.amount.toLocaleString('en-GB')}`;
+      case 'upsert_extra': {
+        let out = `added ${a.name}`;
+        if (a.cost != null) out += ` at ${s}${a.cost.toLocaleString('en-GB')}`;
+        if (a.unit) out += ` per ${a.unit}`;
+        return out;
+      }
+      default: return '';
+    }
+  }
+
+  /** "Send them an update" → draft an editable message from the change log. */
+  protected startDraft(): void {
+    const log = this.changeLog().filter(Boolean);
+    const item = this.context().itemName || 'this item';
+    this.draftText.set(log.length
+      ? `Hi — I've updated ${item}: ${log.join('; ')}. Let me know if that works for you.`
+      : `Hi — a quick update on ${item}.`);
+    this.turns.update((t) => [...t, { who: 'assistant', text: "OK — I'll send them this message. Edit if you like, then Send:", draft: true }]);
+  }
+  /** Send the (edited) update message to the counterparty via the host. */
+  protected sendDraft(): void {
+    const txt = this.draftText().trim();
+    if (!txt) return;
+    this.sendMessage.emit(txt);
+    this.changeLog.set([]);
+    this.turns.update((t) => [...t, { who: 'assistant', text: 'Sent ✓' }]);
   }
 
   /** After applying, echo the exact change so the user can eyeball + confirm it. */
