@@ -184,3 +184,10 @@ actions** the user taps to apply. v1 action allowlist:
   Added a `#msgScroll` ref + an effect that scrolls to the bottom whenever
   `visibleMessages()` changes (any send / accept / reload). The newest bubble is
   now in view, so its ring-flash is visible.
+
+## Iteration — v2.224 (2026-09-02): highlight instead of animate (reliable)
+- The keyframe flash never showed reliably (mount/reload timing, and the bubble's
+  own box-shadow). Swapped `.bp-blink` for a **static solid accent ring**
+  (`box-shadow … !important`) held for the ~3.5s window — no animation timing to
+  misfire, and !important beats the bubble's shadow. The newest bubble now clearly
+  rings after Accept.

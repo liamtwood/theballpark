@@ -780,13 +780,12 @@ body {
    via host/class — internal layout stays bespoke per archetype; chrome and
    the interaction patterns (lift / zoom / selection / focus) live here
    only (RP-07: the style guard fails component-local card chrome). */
-/* pV2-INTENT-01 — flash a just-posted message bubble twice (e.g. after Accept).
-   A solid ring flash (not background) so it works over the gradient "mine" bubbles. */
-@keyframes bp-blink {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
-  30%, 70% { box-shadow: 0 0 0 3px var(--theme-accent); }
+/* pV2-INTENT-01 — highlight a just-posted message bubble (e.g. after Accept):
+   a solid accent ring held for a couple seconds (reliable — no keyframe timing). */
+.bp-blink {
+  box-shadow: 0 0 0 3px var(--theme-accent) !important;
+  transition: box-shadow 0.15s ease-in-out;
 }
-.bp-blink { animation: bp-blink 0.5s ease-in-out 2; }
 
 .bp-card {
   position: relative; /* overlay anchors: .bp-fav-btn, tag chips, badges */
