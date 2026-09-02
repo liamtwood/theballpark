@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { ProjectService, IntentAction, ComponentInput } from '../../core/projects/project.service';
 import { revisedFromParts } from './quote-line.util';
 import { currencySymbol } from '../../shared/details-format';
+import { MarkdownPipe } from '../../shared/markdown.pipe';
 
 /** What the host hands the rail: the line it should act on + who's asking. */
 export interface AgentRailContext {
@@ -40,7 +41,7 @@ interface Turn {
 @Component({
   selector: 'app-agent-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, LucideAngularModule],
+  imports: [FormsModule, LucideAngularModule, MarkdownPipe],
   host: { class: 'contents' },
   template: `
     <div class="bp-card flex h-full min-h-0 flex-col p-0">
@@ -117,7 +118,7 @@ interface Turn {
             </div>
           } @else {
             <div class="mr-6 space-y-2">
-              @if (t.text) { <p class="bp-body-small text-secondary">{{ t.text }}</p> }
+              @if (t.text) { <div class="bp-md bp-body-small text-secondary" [innerHTML]="t.text | md"></div> }
               @if (t.actions?.length) {
                 <div class="flex flex-col gap-1.5">
                   @for (a of t.actions; track $index) {
@@ -288,11 +289,32 @@ export class AgentRailComponent {
       else if (a.type === 'draft_message') this.sendMessage.emit(a.text);
       else { await this.applyBuildup(a); this.changed.emit(); }
       turn.applied?.add(a);
-      this.turns.update((t) => [...t]); // reflect the "Done" state
+      // Echo back exactly what changed, so the user can see + confirm it.
+      const done = this.confirmMessage(a);
+      this.turns.update((t) => done ? [...t, { who: 'assistant', text: done }] : [...t]);
     } catch {
       this.turns.update((t) => [...t, { who: 'assistant', text: "That didn't save — please try again or use the buttons." }]);
     } finally {
       this.applying.set(false);
+    }
+  }
+
+  /** After applying, echo the exact change so the user can eyeball + confirm it. */
+  private confirmMessage(a: IntentAction): string {
+    const s = this.sym();
+    switch (a.type) {
+      case 'set_base_description': return `I updated the description to:\n\n${a.text}\n\nIs this what you wanted?`;
+      case 'set_base_cost': return `I set the base cost to **${s}${a.amount.toLocaleString('en-GB')}**. Is this what you wanted?`;
+      case 'upsert_extra': {
+        const bits = [a.name];
+        if (a.cost != null) bits.push(`${s}${a.cost.toLocaleString('en-GB')}`);
+        if (a.qty != null || a.unit) bits.push(`${a.qty ?? 1}${a.unit ? ' ' + a.unit : ''}`);
+        return `I added **${bits.join(' · ')}**. Is this what you wanted?`;
+      }
+      case 'accept_cost': return 'Done — I accepted the cost.';
+      case 'decline': return 'Done — I declined.';
+      case 'suggest_cost': return `I suggested a new cost of **${s}${a.amount.toLocaleString('en-GB')}**.`;
+      case 'draft_message': return 'Sent your message.';
     }
   }
 

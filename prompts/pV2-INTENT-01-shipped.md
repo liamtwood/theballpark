@@ -113,3 +113,10 @@ actions** the user taps to apply. v1 action allowlist:
   ("Review…", "Share…", "Edit…", "Keep…") — suggestions must map to a concrete
   action (add extra / suggest price / accept / decline), killing the conversational
   spiral.
+
+## Iteration — v2.214 (2026-09-02): echo the change back ("I updated … — is this what you wanted?")
+- After applying an action the Assistant now posts a **confirmation turn** showing
+  exactly what changed and asking "Is this what you wanted?": the full new
+  description (formatted), the new base cost, or the added extra (name · cost ·
+  qty/unit); brief lines for accept/decline/suggest/send. Assistant turns now
+  render **markdown** (bold, lists) so the echoed description reads properly.
