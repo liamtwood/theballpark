@@ -1008,3 +1008,9 @@ Customize screen.
   to_send`); clicking a supplier/quoted line does nothing by design (that's an
   inbox negotiation). If "doesn't work" meant those lines, that's a separate
   product call.
+
+## Iteration — v2.201 (2026-09-02): Customize — click the card to edit (match inbox)
+- In Customize you could only enter edit by clicking the base ROW in the grid;
+  clicking the preview CARD did nothing (inbox = click the card). The item card is
+  now click-to-edit too (`selectParent`), so the trigger matches the inbox. The
+  base-row click still selects it as well.

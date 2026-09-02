@@ -244,7 +244,9 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
               </div>
             } @else if (previewItem(); as pi) {
               @if (showPreview()) {
-                <div class="bp-card p-4">
+                <!-- Click the card to edit (same as the inbox); the base row in
+                     the grid still selects it too. -->
+                <div class="bp-card p-4" [class.cursor-pointer]="!parentSelected()" [attr.title]="parentSelected() ? null : 'Click to edit'" (click)="selectParent()">
                   <app-item-preview [item]="pi" [categoryName]="previewLine()?.categoryName ?? null"
                                     [showStoreLink]="false" [showFromPrefix]="false" descriptionLabel="Item description"
                                     [lineTotal]="withMargin()"
