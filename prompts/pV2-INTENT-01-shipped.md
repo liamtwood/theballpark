@@ -139,3 +139,10 @@ actions** the user taps to apply. v1 action allowlist:
 - The Assistant composer sits at the bottom of the rail (as before); the **up-arrow
   send** now lives INSIDE the message field (absolute bottom-right, disabled until
   there's text) and the separate Send button is removed. Enter still sends.
+
+## Iteration — v2.218 (2026-09-02): composer pinned to the dead bottom + visible send arrow
+- The rail card now **fills the column** (`flex-1`), so the composer pins to the
+  dead bottom (Claude-style) instead of sitting under short content.
+- Fixed the send button: the arrow was invisible (`--theme-accent-contrast` gave no
+  contrast on the pink) — now **white** at strokeWidth 2.5; added `resize-none` so
+  the textarea's resize handle no longer pokes through the circle.

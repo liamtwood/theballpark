@@ -46,7 +46,7 @@ interface Turn {
   imports: [FormsModule, LucideAngularModule, MarkdownPipe],
   host: { class: 'contents' },
   template: `
-    <div class="bp-card flex h-full min-h-0 flex-col p-0">
+    <div class="bp-card flex h-full min-h-0 flex-1 flex-col p-0">
       <div class="flex items-center gap-2 border-b border-hairline px-4 py-3">
         <lucide-icon name="sparkles" [size]="16" class="text-[var(--theme-accent)]" />
         <span class="bp-list-title">Assistant</span>
@@ -167,13 +167,13 @@ interface Turn {
       <div class="border-t border-hairline p-3">
         <!-- Send lives INSIDE the field as an up-arrow (no separate button). -->
         <div class="relative">
-          <textarea rows="2" class="bp-store-textarea w-full pr-11" placeholder="Message the assistant…"
+          <textarea rows="2" class="bp-store-textarea w-full resize-none pr-11" placeholder="Message the assistant…"
                     [ngModel]="draft()" (ngModelChange)="draft.set($event)"
                     (keydown.enter)="$event.preventDefault(); send()"></textarea>
           <button type="button" aria-label="Send"
-                  class="absolute bottom-2.5 right-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--theme-accent)] text-[var(--theme-accent-contrast)] transition-opacity disabled:opacity-40"
+                  class="absolute bottom-2.5 right-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--theme-accent)] text-white transition-opacity disabled:opacity-40"
                   [disabled]="busy() || !draft().trim()" (click)="send()">
-            <lucide-icon name="arrow-up" [size]="16" />
+            <lucide-icon name="arrow-up" [size]="16" [strokeWidth]="2.5" />
           </button>
         </div>
       </div>
