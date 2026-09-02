@@ -203,3 +203,13 @@ actions** the user taps to apply. v1 action allowlist:
   hit by the confirm flow). So the blink flag was never set. Added
   `blinkNextMessage()` to the `onAgentQuick` 'accept' case. (v2.223–225's scroll +
   high-contrast outline were still needed for it to be visible.)
+
+## Iteration — v2.227 (2026-09-02): don't leave them in limbo + smaller buttons
+- After Accept/Decline concludes, the Assistant now shows a **bold outcome line with
+  time-ago** ("**Accepted** · just now" → "5 mins ago" → "2 days ago") and then
+  **re-shows the options** ("Is there anything else?" + Accept / Decline / Make a
+  change) so the user always has a next step. `menuOpen`/`showOptions` gate the
+  re-shown menu; `conclude()` posts the outcome + reopens; `timeAgo()` formats it.
+- **Buttons shrunk** to the inbox **Send size** (`bp-send-btn`) instead of the big
+  full-width `bp-btn-grad flex-1` — Accept / Decline / Continue / Send-update /
+  draft Send; Back is a compact text button.

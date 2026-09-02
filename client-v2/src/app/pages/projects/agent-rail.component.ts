@@ -34,6 +34,9 @@ interface Turn {
   wrap?: boolean;         // offer "send them an update" after a change
   draft?: boolean;        // an editable message + Send button
   acceptConfirm?: boolean; // "Accept … and send a confirmation? [Back][Accept]"
+  strong?: boolean;        // render the text bold/black
+  concluded?: 'accepted' | 'declined' | 'sent'; // a terminal outcome + time-ago
+  at?: number;             // timestamp for the time-ago label
 }
 
 /** pV2-INTENT-01 — the reusable conversational agent rail. You talk to it about
@@ -65,52 +68,6 @@ interface Turn {
           <p class="bp-body-small text-secondary">
             Tell me what you'd like to do with <span class="text-text">{{ context().itemName || 'this item' }}</span> — pick an option below, or just send me a message.
           </p>
-
-          <!-- Step 1: the three opening options. -->
-          @if (step() === 'root') {
-            <div role="radiogroup" class="mt-1 space-y-1.5">
-              @if (context().canAccept) {
-                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="askAccept()" /><span class="bp-body-small text-text">Accept the cost</span></label>
-              }
-              @if (context().canDecline) {
-                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('decline')" /><span class="bp-body-small text-text">{{ context().role === 'agent' ? 'Cancel the request' : 'Decline' }}</span></label>
-              }
-              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('change')" /><span class="bp-body-small text-text">Make a change</span></label>
-            </div>
-          }
-
-          <!-- Step 2a: decline reasons (role-aware). -->
-          @if (step() === 'decline') {
-            <p class="bp-caption text-muted">{{ context().role === 'agent' ? 'Why are you cancelling?' : 'Why are you declining?' }}</p>
-            <div role="radiogroup" class="space-y-1.5">
-              @for (r of declineReasons(); track r) {
-                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="declineReason" (change)="reasonSel.set(r)" /><span class="bp-body-small text-text">{{ r }}</span></label>
-              }
-              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="declineReason" (change)="reasonSel.set('__other')" /><span class="bp-body-small text-text">Other…</span></label>
-            </div>
-            @if (reasonSel() === '__other') {
-              <textarea rows="2" class="bp-store-textarea w-full" placeholder="Enter a reason…" [ngModel]="otherText()" (ngModelChange)="otherText.set($event)"></textarea>
-            }
-            <div class="flex gap-2 pt-1">
-              <button type="button" class="bp-btn-outline" (click)="reset()">Back</button>
-              <button type="button" class="bp-btn-grad flex-1" [disabled]="!reasonReady()" (click)="confirmDecline()">{{ context().role === 'agent' ? 'Cancel request' : 'Decline' }}</button>
-            </div>
-          }
-
-          <!-- Step 2b: make-a-change sub-options. -->
-          @if (step() === 'change') {
-            <p class="bp-caption text-muted">What would you like to change?</p>
-            <div role="radiogroup" class="space-y-1.5">
-              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="changeSel.set('suggest')" /><span class="bp-body-small text-text">Suggest new price</span></label>
-              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="changeSel.set('item')" /><span class="bp-body-small text-text">Change item</span></label>
-              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="changeSel.set('extras')" /><span class="bp-body-small text-text">Add extras</span></label>
-            </div>
-            <div class="flex gap-2 pt-1">
-              <button type="button" class="bp-btn-outline" (click)="reset()">Back</button>
-              <button type="button" class="bp-btn-grad flex-1" [disabled]="!changeSel()" (click)="confirmChange()">Continue</button>
-            </div>
-            @if (hint()) { <p class="bp-caption text-muted">{{ hint() }}</p> }
-          }
         }
         @for (t of turns(); track $index) {
           @if (t.who === 'you') {
@@ -119,7 +76,7 @@ interface Turn {
             </div>
           } @else {
             <div class="mr-6 space-y-2">
-              @if (t.text) { <div class="bp-md bp-body-small text-secondary" [innerHTML]="t.text | md"></div> }
+              @if (t.text) { <div class="bp-md bp-body-small" [class.text-secondary]="!t.strong" [class.text-text]="t.strong" [class.font-semibold]="t.strong" [innerHTML]="t.text | md"></div> }
               @if (t.actions?.length) {
                 <div class="flex flex-col gap-1.5">
                   @for (a of t.actions; track $index) {
@@ -143,23 +100,72 @@ interface Turn {
               }
               @if (t.wrap) {
                 <p class="bp-caption text-muted">Anything else you'd like to change? If not:</p>
-                <button type="button" class="bp-act bp-act--outline" (click)="startDraft()">
+                <button type="button" class="bp-send-btn" (click)="startDraft()">
                   <lucide-icon name="send" [size]="14" /> Send them an update
                 </button>
               }
               @if (t.draft) {
                 <textarea rows="4" class="bp-store-textarea w-full" [ngModel]="draftText()" (ngModelChange)="draftText.set($event)"></textarea>
-                <button type="button" class="bp-btn-grad" (click)="sendDraft()">
+                <button type="button" class="bp-send-btn" (click)="sendDraft()">
                   <lucide-icon name="send" [size]="14" /> Send
                 </button>
               }
               @if (t.acceptConfirm) {
-                <div class="flex gap-2 pt-1">
-                  <button type="button" class="bp-btn-outline" (click)="dropTurn(t)">Back</button>
-                  <button type="button" class="bp-btn-grad flex-1" (click)="confirmAcceptDo(t)">Accept</button>
+                <div class="flex items-center gap-3 pt-1">
+                  <button type="button" class="bp-caption text-muted hover:text-text" (click)="dropTurn(t)">Back</button>
+                  <button type="button" class="bp-send-btn" (click)="confirmAcceptDo(t)">Accept</button>
                 </div>
               }
+              @if (t.concluded) {
+                <p class="bp-body-small font-semibold text-text">{{ t.concluded === 'accepted' ? 'Accepted' : (t.concluded === 'declined' ? 'Declined' : 'Sent') }} · {{ timeAgo(t.at!) }}</p>
+              }
             </div>
+          }
+        }
+
+        <!-- The opening options — shown initially and re-shown after a conclusion
+             (so you're never left in limbo). -->
+        @if (showOptions()) {
+          @if (turns().length) { <p class="bp-body-small font-semibold text-text">Is there anything else?</p> }
+          @if (step() === 'root') {
+            <div role="radiogroup" class="space-y-1.5">
+              @if (context().canAccept) {
+                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="askAccept()" /><span class="bp-body-small text-text">Accept the cost</span></label>
+              }
+              @if (context().canDecline) {
+                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('decline')" /><span class="bp-body-small text-text">{{ context().role === 'agent' ? 'Cancel the request' : 'Decline' }}</span></label>
+              }
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('change')" /><span class="bp-body-small text-text">Make a change</span></label>
+            </div>
+          }
+          @if (step() === 'decline') {
+            <p class="bp-caption text-muted">{{ context().role === 'agent' ? 'Why are you cancelling?' : 'Why are you declining?' }}</p>
+            <div role="radiogroup" class="space-y-1.5">
+              @for (r of declineReasons(); track r) {
+                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="declineReason" (change)="reasonSel.set(r)" /><span class="bp-body-small text-text">{{ r }}</span></label>
+              }
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="declineReason" (change)="reasonSel.set('__other')" /><span class="bp-body-small text-text">Other…</span></label>
+            </div>
+            @if (reasonSel() === '__other') {
+              <textarea rows="2" class="bp-store-textarea w-full" placeholder="Enter a reason…" [ngModel]="otherText()" (ngModelChange)="otherText.set($event)"></textarea>
+            }
+            <div class="flex items-center gap-3 pt-1">
+              <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">Back</button>
+              <button type="button" class="bp-send-btn" [disabled]="!reasonReady()" (click)="confirmDecline()">{{ context().role === 'agent' ? 'Cancel request' : 'Decline' }}</button>
+            </div>
+          }
+          @if (step() === 'change') {
+            <p class="bp-caption text-muted">What would you like to change?</p>
+            <div role="radiogroup" class="space-y-1.5">
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="changeSel.set('suggest')" /><span class="bp-body-small text-text">Suggest new price</span></label>
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="changeSel.set('item')" /><span class="bp-body-small text-text">Change item</span></label>
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="changeSel.set('extras')" /><span class="bp-body-small text-text">Add extras</span></label>
+            </div>
+            <div class="flex items-center gap-3 pt-1">
+              <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">Back</button>
+              <button type="button" class="bp-send-btn" [disabled]="!changeSel()" (click)="confirmChange()">Continue</button>
+            </div>
+            @if (hint()) { <p class="bp-caption text-muted">{{ hint() }}</p> }
           }
         }
         @if (busy()) { <p class="bp-caption text-muted">Thinking…</p> }
@@ -196,6 +202,9 @@ export class AgentRailComponent {
   readonly sendMessage = output<string>();
 
   protected readonly turns = signal<Turn[]>([]);
+  /** Re-show the opening options after a conclusion (accept/decline). */
+  protected readonly menuOpen = signal(false);
+  protected readonly showOptions = computed(() => !this.turns().length || this.menuOpen());
   /** Opening flow: root → decline (reasons) | change (sub-options). */
   protected readonly step = signal<'root' | 'accept' | 'decline' | 'change'>('root');
   protected readonly reasonSel = signal<string | null>(null);
@@ -234,14 +243,34 @@ export class AgentRailComponent {
     const total = c.currentTotal != null ? `**${s}${c.currentTotal.toLocaleString('en-GB')}**` : 'the current cost';
     const del = c.deliveryDate ? ` with delivery ${c.deliveryDate}` : '';
     this.reset();
+    this.menuOpen.set(false); // hide the menu while confirming
     this.turns.update((t) => [...t, { who: 'assistant', text: `Accept ${total}${del} and send a confirmation message?`, acceptConfirm: true }]);
   }
   protected confirmAcceptDo(turn: Turn): void {
     turn.acceptConfirm = false; // collapse the buttons
     this.quickAction.emit('accept'); // host accepts + posts the confirmation message
-    this.turns.update((t) => [...t, { who: 'assistant', text: 'Confirmed ✓ — I sent them a confirmation.' }]);
+    this.conclude('accepted');
   }
   protected dropTurn(turn: Turn): void { this.turns.update((t) => t.filter((x) => x !== turn)); }
+
+  /** End a flow: a bold outcome line + time-ago, then re-open the options so the
+   *  user isn't stuck. */
+  private conclude(kind: 'accepted' | 'declined' | 'sent'): void {
+    this.reset();
+    this.turns.update((t) => [...t, { who: 'assistant', text: '', concluded: kind, at: Date.now() }]);
+    this.menuOpen.set(true);
+  }
+  /** Relative time for a conclusion ("just now", "5 mins ago", "2 days ago"). */
+  protected timeAgo(ts: number): string {
+    const secs = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+    if (secs < 45) return 'just now';
+    const mins = Math.round(secs / 60);
+    if (mins < 60) return `${mins} min${mins === 1 ? '' : 's'} ago`;
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+    const days = Math.round(hrs / 24);
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  }
   protected reset(): void {
     this.step.set('root'); this.reasonSel.set(null); this.changeSel.set(null);
     this.otherText.set(''); this.hint.set('');
@@ -252,7 +281,7 @@ export class AgentRailComponent {
     const r = this.reasonSel();
     const reason = r === '__other' ? (this.otherText().trim() || 'Other') : (r || '');
     this.decline.emit(reason);
-    this.reset();
+    this.conclude('declined');
   }
 
   /** Continue from the make-a-change picks: Suggest opens the propose entry;
@@ -293,6 +322,7 @@ export class AgentRailComponent {
     const text = this.draft().trim();
     if (!text || this.busy()) return;
     const ctx = this.context();
+    this.menuOpen.set(false); // typing takes over from the options menu
     this.turns.update((t) => [...t, { who: 'you', text }]);
     this.draft.set('');
     this.busy.set(true);
