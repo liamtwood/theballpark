@@ -175,7 +175,7 @@ interface Turn {
               <label class="flex items-center justify-between gap-3">
                 <span class="bp-body-small text-secondary">New cost</span>
                 <input type="number" min="0" max="1000000" class="h-9 w-32 rounded-[var(--radius-field)] border border-hairline bg-surface px-2.5 text-right text-md tabular-nums leading-none outline-none focus:border-accent"
-                       [ngModel]="sugCost()" (ngModelChange)="sugCost.set($event); reseedTotal(); reseedMsg()" />
+                       [ngModel]="sugCost()" (ngModelChange)="sugCost.set($event); totalTouched.set(false); reseedTotal(); reseedMsg()" />
               </label>
               <label class="flex items-center justify-between gap-3">
                 <span class="bp-body-small text-secondary">Qty</span>
@@ -243,7 +243,7 @@ export class AgentRailComponent {
   readonly accept = output<void>();
   /** Decline/cancel with an optional reason (empty = no reason given). */
   readonly decline = output<string>();
-  readonly suggestCost = output<{ total: number; message: string }>();
+  readonly suggestCost = output<{ total: number; message: string; installed: boolean }>();
   readonly sendMessage = output<string>();
 
   protected readonly turns = signal<Turn[]>([]);
@@ -379,15 +379,17 @@ export class AgentRailComponent {
    *  form; Change item / Add extras drop a tailored hint to type the rest. */
   protected pickChange(kind: 'suggest' | 'item' | 'extras'): void {
     if (kind === 'suggest') {
-      // Open the in-Assistant price form (New cost · Qty · Unit · Total + message).
-      // Seed from the CURRENT price so a prior suggestion shows, not the original.
-      this.sugCost.set(this.context().currentUnitCost ?? null);
+      // Open the price form. The Total (the price they'll pay) is the source of
+      // truth, seeded from the CURRENT line total; New cost starts blank (type one
+      // to switch to a per-unit calc). So a prior flat total reopens as a flat
+      // total, not a reconstructed per-head value.
+      this.sugTotal.set(Math.round(this.context().currentTotal ?? 0));
+      this.sugCost.set(null);
       this.sugQty.set(this.context().quantity ?? 1);
       this.sugUnit.set(this.context().unit ?? null);
       this.sugInstall.set(this.context().installApplies);
-      this.totalTouched.set(false);
+      this.totalTouched.set(true); // the seeded Total is authoritative until they type a cost
       this.msgTouched.set(false);
-      this.reseedTotal();
       this.reseedMsg();
       this.step.set('suggest');
       return;
@@ -398,7 +400,7 @@ export class AgentRailComponent {
   }
   /** Send the suggested new price (line total = cost × qty) + the message. */
   protected confirmSuggest(): void {
-    this.suggestCost.emit({ total: this.sugTotal(), message: this.sugMessage().trim() });
+    this.suggestCost.emit({ total: this.sugTotal(), message: this.sugMessage().trim(), installed: this.sugInstall() });
     this.conclude('sent');
   }
   protected readonly busy = signal(false);
@@ -481,7 +483,7 @@ export class AgentRailComponent {
     try {
       if (a.type === 'accept_cost') this.accept.emit();
       else if (a.type === 'decline') this.decline.emit('');
-      else if (a.type === 'suggest_cost') this.suggestCost.emit({ total: a.amount, message: `${this.context().itemName || 'This item'} cost updated to ${this.sym()}${a.amount.toLocaleString('en-GB')}, please see the updated item attached.` });
+      else if (a.type === 'suggest_cost') this.suggestCost.emit({ total: a.amount, message: `${this.context().itemName || 'This item'} cost updated to ${this.sym()}${a.amount.toLocaleString('en-GB')}, please see the updated item attached.`, installed: this.context().installApplies });
       else if (a.type === 'draft_message') this.sendMessage.emit(a.text);
       else { await this.applyBuildup(a); this.changed.emit(); }
       turn.applied?.add(a);

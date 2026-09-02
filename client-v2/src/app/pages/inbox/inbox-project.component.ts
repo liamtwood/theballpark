@@ -503,15 +503,16 @@ export class InboxProjectComponent {
       await this.send(t.id);
     }
   }
-  protected onAgentSuggestCost(payload: { total: number; message: string }): void {
+  protected onAgentSuggestCost(payload: { total: number; message: string; installed: boolean }): void {
     const it = this.selectedItem();
     if (!it) return;
-    // Back out the per-unit rate so the LINE total (using the line's ACTUAL install
-    // state) equals what was entered. We don't toggle `installed` here — that PATCH
-    // is lock-gated on an out-for-quote line (409) and would abort the send.
-    const rate = this.rateForLineTotal(it, payload.total);
+    // Back out the per-unit rate for the chosen install state so the LINE total
+    // equals what was entered. Install is persisted through the NEGOTIATION adjust
+    // (installCost=0 to turn it off) — not the lock-gated /items PATCH (409).
+    const rate = this.rateForLineTotal(it, payload.total, payload.installed);
+    const installCost = payload.installed ? undefined : 0;
     const text = payload.message?.trim() || `${it.name} cost updated to ${gbp(payload.total)} by ${this.actorName()}`;
-    void this.itemAction(it.id, 'adjust', rate, text);
+    void this.itemAction(it.id, 'adjust', rate, text, installCost);
     this.blinkNextMessage();
   }
   protected onAgentSend(text: string): void {

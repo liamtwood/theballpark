@@ -291,3 +291,16 @@ actions** the user taps to apply. v1 action allowlist:
   the message + price always post. The Install checkbox only shapes the Total you
   enter (a lower/higher number that then becomes the final). Reopen reflects it
   (seeds from `price_current`).
+
+## Iteration — v2.237 (2026-09-02): flat total is stored & round-trips (Total is source of truth)
+- **Reopen now shows what you sent, not a reconstruction.** The form seeds the
+  **Total from the current line total** (source of truth) and leaves **New cost
+  blank** — type a cost to switch to a per-unit calc. So a flat £16,000 reopens as
+  £16,000 (cost blank), not 96.97/head × install.
+- **Install persists through the negotiation** (not the lock-gated PATCH): the
+  Suggest emits `installed`, and the inbox passes `installCost` on the adjust
+  (`0` to turn install off, confirmed written by `transitionItem`), computing the
+  rate for the chosen state. So unticking Install for a flat price sticks — reopen
+  shows Install unticked.
+- Known edge: re-ticking Install after a flat send doesn't restore the original
+  catalogue % (it was zeroed); use Customize if you need it back.
