@@ -1,11 +1,9 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, input, output, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { QuoteLine } from '../../core/projects/project.types';
-import { quoteLineToCatalogueItem } from './quote-line.util';
+import { lineItemized, quoteLineToCatalogueItem } from './quote-line.util';
 import { currencySymbol, detailsCalcLine } from '../../shared/details-format';
-import { DetailsEditorComponent } from '../../shared/details-editor.component';
 
 /** The edited line fields the parent persists. `cost` is the per-unit rate;
  *  the parent decides whether that's a direct base_price write (agent's own
@@ -29,30 +27,23 @@ export interface LineEdit {
 @Component({
   selector: 'app-line-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ItemPreviewComponent, DetailsEditorComponent],
+  imports: [ItemPreviewComponent],
   host: { class: 'block' },
   template: `
     @if (previewItem(); as pi) {
-      <app-item-preview [item]="pi" [categoryName]="null" [showStoreLink]="false" [showFromPrefix]="false"
+      <!-- ONE widget: the same item-preview card, fields enabled in place
+           (name / cost / unit / category / description / services / details). -->
+      <app-item-preview [item]="pi" [showStoreLink]="false" [showFromPrefix]="false"
                         [editable]="true" [priceEditable]="showPrice()"
+                        [categories]="categories()" [categoryId]="edCategoryId()"
+                        [detailsEditable]="true" [details]="edDetails()"
+                        [currencyCode]="line().supplierCurrency ?? null"
+                        [itemized]="itemized()"
                         closeIcon="x" closeLabel="Cancel" (closed)="cancel.emit()"
                         (nameChange)="edName.set($event)" (descChange)="edDesc.set($event)" (servicesChange)="edServices.set($event)"
-                        (priceChange)="edCost.set($event)" (unitChange)="edUnit.set($event)" />
+                        (priceChange)="edCost.set($event)" (unitChange)="edUnit.set($event)"
+                        (categoryChange)="edCategoryId.set($event)" (detailsChange)="edDetails.set($event)" />
     }
-    @if (categories().length) {
-      <div class="mt-3 border-t border-hairline pt-3">
-        <span class="bp-field-label">Category</span>
-        <select class="bp-input-field mt-1" [ngModel]="edCategoryId()" (ngModelChange)="edCategoryId.set($event)">
-          <option [ngValue]="null">— Uncategorised —</option>
-          @for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
-        </select>
-      </div>
-    }
-    <div class="mt-3 border-t border-hairline pt-3">
-      <app-details-editor mode="calc" label="Details" [currency]="line().supplierCurrency ?? null"
-                          placeholder="Free text. **bold**, _italic_, - lists. A line like 'Wine 100@15' auto-totals."
-                          [value]="edDetails()" (valueChange)="edDetails.set($event)" />
-    </div>
     <div class="mt-4 flex gap-2.5 border-t border-hairline pt-4">
       <button type="button" class="bp-btn-outline flex-1" (click)="cancel.emit()">Cancel</button>
       <button type="button" class="bp-btn-grad flex-1" [disabled]="saving()" (click)="onSave()">{{ saving() ? 'Saving…' : 'Save' }}</button>
@@ -88,6 +79,8 @@ export class LineEditorComponent implements OnInit {
     this.edDetails.set(l.details ?? '');
   }
 
+  /** The derived Itemized rows (read-only) — shown in edit too for continuity. */
+  protected readonly itemized = computed(() => lineItemized(this.line()));
   /** The line overlaid with the in-progress edits, as the card's CatalogueItem. */
   protected readonly previewItem = computed<CatalogueItem | null>(() => {
     const l = this.line();

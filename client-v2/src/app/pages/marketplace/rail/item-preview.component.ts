@@ -8,6 +8,7 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
 import { MarkdownPipe } from '../../../shared/markdown.pipe';
 import { currencySymbol, detailsTotalStr } from '../../../shared/details-format';
 import { ItemizedRow } from '../../projects/quote-line.util';
+import { DetailsEditorComponent } from '../../../shared/details-editor.component';
 
 /** pV2-06b — the rail's ITEM mode: image, name, supplier, price + unit,
  *  category context, full description. Pure preview over the already-
@@ -16,7 +17,7 @@ import { ItemizedRow } from '../../projects/quote-line.util';
 @Component({
   selector: 'app-item-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, FormsModule, RouterLink, LucideAngularModule, MarkdownPipe],
+  imports: [CurrencyPipe, FormsModule, RouterLink, LucideAngularModule, MarkdownPipe, DetailsEditorComponent],
   host: { class: 'block' },
   template: `
     <div class="mb-3 flex items-start justify-between gap-2">
@@ -99,10 +100,17 @@ import { ItemizedRow } from '../../projects/quote-line.util';
         <dt class="bp-field-label">Supplier</dt>
         <dd class="bp-field-value truncate">{{ item().supplierName }}</dd>
       </div>
-      @if (categoryName()) {
+      @if (categoryName() || (editable() && categories().length)) {
         <div class="flex items-center justify-between gap-3">
           <dt class="bp-field-label">Category</dt>
-          <dd class="bp-field-value truncate">{{ categoryName() }}</dd>
+          @if (editable() && categories().length) {
+            <select class="bp-input-field bp-select max-w-[60%]" [ngModel]="categoryId()" (ngModelChange)="categoryChange.emit($event)">
+              <option [ngValue]="null">— Uncategorised —</option>
+              @for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
+            </select>
+          } @else {
+            <dd class="bp-field-value truncate">{{ categoryName() }}</dd>
+          }
         </div>
       }
     </dl>
@@ -180,8 +188,14 @@ import { ItemizedRow } from '../../projects/quote-line.util';
       </div>
     }
 
-    <!-- 5 · Details — the supplier's costed breakdown + running total. View only. -->
-    @if (!editable() && details()) {
+    <!-- 5 · Details — the supplier's costed breakdown + running total. Editable
+         in place (same container) when detailsEditable; else read-only. -->
+    @if (editable() && detailsEditable()) {
+      <div class="mt-3 border-t border-hairline pt-3">
+        <app-details-editor mode="calc" label="Details" [currency]="currencyCode()"
+                            [value]="details() ?? ''" (valueChange)="detailsChange.emit($event)" />
+      </div>
+    } @else if (!editable() && details()) {
       <div class="mt-3 border-t border-hairline pt-3">
         <div class="flex items-center justify-between gap-2">
           <span class="bp-field-label">Details</span>
@@ -232,6 +246,14 @@ export class ItemPreviewComponent {
   /** The derived Itemized rows (item leads, then included components). Rendered
    *  when there's more than just the item — no prices, no markup. */
   readonly itemized = input<ItemizedRow[]>([]);
+  /** In-place editing extras (project surfaces only — the store never passes
+   *  these, so its card is unchanged). When editing: a Category picklist and a
+   *  Details editor render in the same containers. */
+  readonly categories = input<{ id: string; name: string }[]>([]);
+  readonly categoryId = input<string | null>(null);
+  readonly detailsEditable = input<boolean>(false);
+  readonly categoryChange = output<string | null>();
+  readonly detailsChange = output<string>();
   readonly closed = output<void>();
   readonly editClientDescription = output<void>();
   /** "150 Heads" / "2 days" / "" (nothing for a single, unitless one-off). */

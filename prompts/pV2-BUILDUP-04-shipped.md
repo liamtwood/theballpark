@@ -991,3 +991,20 @@ Customize screen.
   same `toggleAttachment(messageId, lineId)` key).
 - Name is editable because the shared card exposes it; can be locked to
   description+Services only if wanted.
+
+## Iteration — v2.200 (2026-09-02): in-place editing — one widget, same containers
+- Folded the line editor INTO `item-preview` so editing enables the fields in the
+  SAME card (no layout swap): `item-preview` now renders an editable **Category**
+  picklist and **Details** editor in place (gated by `categories` / `detailsEditable`
+  inputs the store never passes, so the marketplace card is unchanged).
+- `line-editor` is now a thin shell: it feeds the one card everything
+  (name/cost/unit/category/description/services/details + the read-only Itemized)
+  and keeps only Save/Cancel; dropped its separate Category block + Details editor
+  (and now-unused FormsModule/DetailsEditorComponent).
+- Net: clicking a line in the inbox or Ballpark Quote lights up the same card's
+  fields, matching Customize.
+- **Permission unchanged (flagged):** in the Ballpark Quote the agent can still
+  only edit their OWN custom `to_send` lines (`selectedCanEdit = isCustom &&
+  to_send`); clicking a supplier/quoted line does nothing by design (that's an
+  inbox negotiation). If "doesn't work" meant those lines, that's a separate
+  product call.
