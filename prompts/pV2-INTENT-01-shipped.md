@@ -152,3 +152,11 @@ actions** the user taps to apply. v1 action allowlist:
   height context). Made the aside `xl:flex xl:flex-col` and the rail card `flex-1`,
   so the card fills the column, the messages area grows, and the composer pins to
   the dead bottom.
+
+## Iteration — v2.220 (2026-09-02): the ACTUAL fix — .bp-card display:block beat flex
+- Root cause found: `.bp-card { display: block }` (styles.css:785) overrode the
+  Tailwind `flex` utility (equal specificity, later in source — same cascade trap
+  as the v2.189 overflow one). The rail card was laying out as block, so the
+  composer just stacked after the content with empty space below. Fixed with inline
+  `style="display: flex"` on the card (inline beats the class); flex-col + flex-1
+  now work and the composer pins to the dead bottom.

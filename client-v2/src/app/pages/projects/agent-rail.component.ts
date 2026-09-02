@@ -46,7 +46,9 @@ interface Turn {
   imports: [FormsModule, LucideAngularModule, MarkdownPipe],
   host: { class: 'contents' },
   template: `
-    <div class="bp-card flex min-h-0 flex-1 flex-col p-0">
+    <!-- display:flex inline — beats .bp-card's display:block so the flex-col
+         layout works and the composer pins to the bottom. -->
+    <div class="bp-card min-h-0 flex-1 flex-col p-0" style="display: flex">
       <div class="flex items-center gap-2 border-b border-hairline px-4 py-3">
         <lucide-icon name="sparkles" [size]="16" class="text-[var(--theme-accent)]" />
         <span class="bp-list-title">Assistant</span>
