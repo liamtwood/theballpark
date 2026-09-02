@@ -781,10 +781,12 @@ body {
    the interaction patterns (lift / zoom / selection / focus) live here
    only (RP-07: the style guard fails component-local card chrome). */
 /* pV2-INTENT-01 — highlight a just-posted message bubble (e.g. after Accept):
-   a solid accent ring held for a couple seconds (reliable — no keyframe timing). */
+   a HIGH-CONTRAST dark outline held for a couple seconds. Accent-on-accent was
+   invisible (pink ring over a pink bubble); a dark outline reads on any bubble. */
 .bp-blink {
-  box-shadow: 0 0 0 3px var(--theme-accent) !important;
-  transition: box-shadow 0.15s ease-in-out;
+  outline: 3px solid var(--color-text) !important;
+  outline-offset: 2px;
+  border-radius: var(--radius-card);
 }
 
 .bp-card {

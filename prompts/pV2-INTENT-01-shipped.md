@@ -191,3 +191,8 @@ actions** the user taps to apply. v1 action allowlist:
   (`box-shadow … !important`) held for the ~3.5s window — no animation timing to
   misfire, and !important beats the bubble's shadow. The newest bubble now clearly
   rings after Accept.
+
+## Iteration — v2.225 (2026-09-02): high-contrast highlight (was pink-on-pink)
+- The held ring used `--theme-accent` (pink) over the pink "You" bubble → invisible.
+  Switched to a **high-contrast dark `outline` (--color-text)** with offset, which
+  reads on any bubble and sits on top (not affected by the bubble's own shadow).
