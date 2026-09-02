@@ -249,6 +249,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                 <div class="bp-card p-4" [class.cursor-pointer]="!parentSelected()" [attr.title]="parentSelected() ? null : 'Click to edit'" (click)="selectParent()">
                   <app-item-preview [item]="pi" [categoryName]="previewLine()?.categoryName ?? null"
                                     [showStoreLink]="false" [showFromPrefix]="false" descriptionLabel="Item description"
+                                    [collapsible]="true"
                                     [lineTotal]="withMargin()"
                                     [clientDescription]="previewLine()?.quoteDescription ?? null"
                                     [details]="parentDetails()" [detailsEditable]="true"

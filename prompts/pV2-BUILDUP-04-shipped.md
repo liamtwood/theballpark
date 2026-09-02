@@ -1031,3 +1031,10 @@ Customize screen.
   re-collapse). New `collapsible` input on `item-preview` (+ passthrough on
   `line-preview`); the inbox brief + revised cards pass `[collapsible]="true"`.
   Off elsewhere (edit mode + store unaffected).
+
+## Iteration — v2.204 (2026-09-02): compact card + More in Customize too
+- Customize's item card now starts compact (image · name · TOTAL) with the same
+  More/Less toggle. Guarded so editing never hides fields: the detail always
+  shows when `editable()` (and the toggle hides in edit) — `@if (!collapsible ||
+  expanded || editable)`. Click the card → edit (fields + Save/Cancel); More →
+  peek the read-only detail.

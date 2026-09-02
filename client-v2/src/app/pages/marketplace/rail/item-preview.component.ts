@@ -96,8 +96,8 @@ import { DetailsEditorComponent } from '../../../shared/details-editor.component
     </div>
 
     <!-- Everything below the image + price collapses behind "More" when
-         collapsible (read-only surfaces); always shown otherwise. -->
-    @if (!collapsible() || expanded()) {
+         collapsible; always shown when expanded OR editing (never hide fields). -->
+    @if (!collapsible() || expanded() || editable()) {
     <dl class="mt-3 flex flex-col gap-1.5">
       <div class="flex items-center justify-between gap-3">
         <dt class="bp-field-label">Supplier</dt>
@@ -210,7 +210,7 @@ import { DetailsEditorComponent } from '../../../shared/details-editor.component
       </div>
     }
     }
-    @if (collapsible()) {
+    @if (collapsible() && !editable()) {
       <button type="button" class="mt-3 flex w-full items-center justify-center gap-1.5 border-t border-hairline pt-3 bp-body-small text-secondary transition-colors hover:text-text"
               (click)="$event.stopPropagation(); expanded.set(!expanded())">
         <lucide-icon [name]="expanded() ? 'chevron-up' : 'chevron-down'" [size]="14" />
