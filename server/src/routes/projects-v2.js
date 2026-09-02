@@ -268,6 +268,7 @@ const IntentSchema = z.object({
     quantity: z.number().nullish(),
     currencySymbol: z.string().max(4).nullish(),
     componentNames: z.array(z.string().max(200)).max(50).nullish(),
+    role: z.enum(['agent', 'supplier']).nullish(),
   }).nullish(),
 });
 router.post('/:id/items/:itemId/parse-intent', async (req, res, next) => {

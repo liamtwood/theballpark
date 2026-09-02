@@ -32,3 +32,20 @@ actions** the user taps to apply. v1 action allowlist:
 - A **reusable agent component** (a rail like the estimate/customize rail) that
   takes a line context, sends the message to `parseIntent`, renders the suggested
   actions as chips, and applies them. Mountable on multiple pages (inbox first).
+
+## Iteration — v2.206 (2026-09-02): the conversational agent rail (UI) + inbox mount
+- **`<app-agent-rail [context] (changed)(accept)(decline)(suggestCost)(sendMessage)>`**
+  — a reusable chat panel: you message it about the selected line; it shows a short
+  reply, **action chips** (Apply / Send, confirm-first), and **next-step suggestion
+  chips**. Parser extended to return `{reply, actions, suggestions}` and two new
+  actions: `suggest_cost` (a counter-offer total) and `draft_message` (the agent's
+  drafted "ask" to the supplier — e.g. "ask for wine pairing / a discount").
+- **Role-aware:** the rail only surfaces actions the viewer may take — supplier gets
+  the buildup edits (applied in place via `saveComponents` + the shared
+  `revisedFromParts`), agent gets `draft_message` / `suggest_cost`; both get
+  accept/decline (gated on a non-terminal line). Buildup edits update the
+  components AND the line total; negotiation moves are emitted to the inbox host
+  (existing `accept` / `decline` / `itemAction adjust` / `send`).
+- **Mounted** as a third column in the inbox (xl), on the selected line, hidden
+  while Customize owns the pane. Reusable elsewhere by handing it an
+  `AgentRailContext`.

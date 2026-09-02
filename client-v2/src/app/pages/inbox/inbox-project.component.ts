@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, linkedSignal, resource, signal, viewChild } from '@angular/core';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, NgClass } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom, map } from 'rxjs';
@@ -16,6 +16,7 @@ import { lineCost } from '../projects/quote-line.util';
 import { LineEditorComponent, LineEdit } from '../projects/line-editor.component';
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
 import { ProjectService } from '../../core/projects/project.service';
+import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.component';
 
 /** pV2-INBOX-01/03 — the per-project conversation surface, viewer-aware.
  *  Supplier (standalone /inbox/:projectId): the left rail is THEIR items
@@ -28,7 +29,7 @@ import { ProjectService } from '../../core/projects/project.service';
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, LucideAngularModule, PageHeroComponent, InboxRailComponent, LinePreviewComponent, CustomizeDialogComponent, LineEditorComponent],
+  imports: [CurrencyPipe, DatePipe, NgClass, LucideAngularModule, PageHeroComponent, InboxRailComponent, LinePreviewComponent, CustomizeDialogComponent, LineEditorComponent, AgentRailComponent],
   host: { '[class]': 'hostClass()' },
   template: `
     @if (!embedded()) {
@@ -47,7 +48,8 @@ import { ProjectService } from '../../core/projects/project.service';
       } @else if (threads().length === 0) {
         <p class="bp-body-small text-secondary">No quote requests in this project yet.</p>
       } @else {
-        <div class="grid min-h-0 flex-1 grid-cols-1 gap-6 xl:grid-cols-[300px_1fr]">
+        <div class="grid min-h-0 flex-1 grid-cols-1 gap-6"
+             [ngClass]="showAgent() ? 'xl:grid-cols-[280px_1fr_340px]' : 'xl:grid-cols-[300px_1fr]'">
           <!-- Left rail: project context card + thread cards + their items. -->
           <app-inbox-rail
             [project]="project()"
@@ -313,6 +315,18 @@ import { ProjectService } from '../../core/projects/project.service';
               }
             </div>
           }
+
+          <!-- pV2-INTENT-01 — the reusable conversational assistant rail (xl only),
+               acting on the selected line; hidden while the Customize builder owns
+               the pane. -->
+          @if (showAgent()) {
+            <aside class="hidden min-h-0 xl:block">
+              <app-agent-rail [context]="agentContext()!"
+                              (changed)="onCustomizeChanged()"
+                              (accept)="onAgentAccept()" (decline)="onAgentDecline()"
+                              (suggestCost)="onAgentSuggestCost($event)" (sendMessage)="onAgentSend($event)" />
+            </aside>
+          }
         </div>
       }
     </div>
@@ -423,6 +437,43 @@ export class InboxProjectComponent {
     if (!id) return null;
     return this.selectedThread()?.items.find((i) => i.id === id) ?? null;
   });
+
+  // ── pV2-INTENT-01 — the conversational assistant rail on the selected line ──
+  /** Context handed to the reusable agent rail (null → no line selected). */
+  protected readonly agentContext = computed<AgentRailContext | null>(() => {
+    const it = this.selectedItem();
+    if (!it) return null;
+    const terminal = this.isTerminal(it.status);
+    return {
+      projectId: this.projectId(),
+      lineId: it.id,
+      itemName: it.name,
+      baseCost: it.unitPriceRef ?? null,
+      unit: it.unit ?? null,
+      quantity: it.quantity ?? null,
+      componentNames: it.line?.components?.map((c) => c.name) ?? it.line?.extras ?? [],
+      role: this.isAgency() ? 'agent' : 'supplier',
+      currencyCode: it.line?.supplierCurrency ?? null,
+      canAccept: !terminal,
+      canDecline: !terminal,
+    };
+  });
+  /** Show the rail (xl) when a line is selected and Customize isn't taking the pane. */
+  protected readonly showAgent = computed(() => !!this.agentContext() && !this.customizing());
+  protected onAgentAccept(): void { const it = this.selectedItem(); if (it) this.accept(it); }
+  protected onAgentDecline(): void { const it = this.selectedItem(); if (it) this.decline(it); }
+  protected onAgentSuggestCost(total: number): void {
+    const it = this.selectedItem();
+    if (!it) return;
+    const rate = total / (it.quantity || 1); // price_current is the per-unit rate
+    const from = it.priceCurrent ?? it.priceRef ?? 0;
+    void this.itemAction(it.id, 'adjust', rate, `${it.name} ${gbp(from)} New Cost Suggested ${gbp(total)} by ${this.actorName()}`);
+  }
+  protected onAgentSend(text: string): void {
+    if (!text.trim() || !this.selectedThread()) return;
+    this.draft.set(text);
+    void this.send(this.selectedThread()!.id);
+  }
 
   /** Click a thread card's top row: view the whole thread (clears any item
    *  filter — also the "back to all" gesture). */

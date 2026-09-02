@@ -63,7 +63,9 @@ export type IntentAction =
   | { type: 'set_base_description'; text: string }
   | { type: 'upsert_extra'; name: string; cost: number | null; qty: number | null; unit: string | null }
   | { type: 'accept_cost' }
-  | { type: 'decline' };
+  | { type: 'decline' }
+  | { type: 'suggest_cost'; amount: number }
+  | { type: 'draft_message'; text: string };
 
 export interface IntentContext {
   itemName?: string | null;
@@ -72,6 +74,14 @@ export interface IntentContext {
   quantity?: number | null;
   currencySymbol?: string | null;
   componentNames?: string[] | null;
+  role?: 'agent' | 'supplier' | null;
+}
+
+/** The assistant's turn: a short reply, action chips, and next-step chips. */
+export interface IntentResult {
+  reply: string;
+  actions: IntentAction[];
+  suggestions: string[];
 }
 
 /** pV2-PROJECTS-01 — the v2 projects read path. INTERIM base
@@ -160,8 +170,8 @@ export class ProjectService {
 
   /** pV2-INTENT-01 — interpret a typed message about this line into SUGGESTED
    *  actions (confirm-first; nothing is applied server-side). */
-  parseIntent(projectId: string, lineId: string, message: string, context: IntentContext): Observable<{ actions: IntentAction[] }> {
-    return this.api.post<{ actions: IntentAction[] }>(`/api/projects-v2/${projectId}/items/${lineId}/parse-intent`, { message, context });
+  parseIntent(projectId: string, lineId: string, message: string, context: IntentContext): Observable<IntentResult> {
+    return this.api.post<IntentResult>(`/api/projects-v2/${projectId}/items/${lineId}/parse-intent`, { message, context });
   }
 
   /** pV2-BUILDUP-02 — reconcile the line's components (add/update/remove) + the
