@@ -134,3 +134,8 @@ actions** the user taps to apply. v1 action allowlist:
   apply automatically after the message — **accept / decline / suggest / send still
   ask** (never auto-run irreversible/negotiation moves). Mirrors Claude's
   "let the assistant do it".
+
+## Iteration — v2.217 (2026-09-02): send arrow inside the message field
+- The Assistant composer sits at the bottom of the rail (as before); the **up-arrow
+  send** now lives INSIDE the message field (absolute bottom-right, disabled until
+  there's text) and the separate Send button is removed. Enter still sends.

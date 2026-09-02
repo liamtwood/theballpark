@@ -165,11 +165,14 @@ interface Turn {
       </div>
 
       <div class="border-t border-hairline p-3">
-        <div class="flex items-end gap-2">
-          <textarea rows="2" class="bp-store-textarea flex-1" [placeholder]="'Message the assistant…'"
+        <!-- Send lives INSIDE the field as an up-arrow (no separate button). -->
+        <div class="relative">
+          <textarea rows="2" class="bp-store-textarea w-full pr-11" placeholder="Message the assistant…"
                     [ngModel]="draft()" (ngModelChange)="draft.set($event)"
                     (keydown.enter)="$event.preventDefault(); send()"></textarea>
-          <button type="button" class="bp-btn-grad shrink-0" [disabled]="busy() || !draft().trim()" (click)="send()">
+          <button type="button" aria-label="Send"
+                  class="absolute bottom-2.5 right-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--theme-accent)] text-[var(--theme-accent-contrast)] transition-opacity disabled:opacity-40"
+                  [disabled]="busy() || !draft().trim()" (click)="send()">
             <lucide-icon name="arrow-up" [size]="16" />
           </button>
         </div>
