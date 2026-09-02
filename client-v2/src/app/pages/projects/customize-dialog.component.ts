@@ -251,12 +251,19 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                                     [showStoreLink]="false" [showFromPrefix]="false" descriptionLabel="Item description"
                                     [lineTotal]="withMargin()"
                                     [clientDescription]="previewLine()?.quoteDescription ?? null"
-                                    [details]="previewLine()?.details ?? null"
+                                    [details]="parentDetails()" [detailsEditable]="true"
                                     [itemized]="itemizedRows()"
                                     [currencyCode]="previewLine()?.supplierCurrency ?? null"
                                     [editable]="parentSelected()"
                                     (nameChange)="parentName.set($event)" (descChange)="parentDesc.set($event)" (servicesChange)="parentServices.set($event)"
+                                    (detailsChange)="parentDetails.set($event)"
                                     closeIcon="eye" closeLabel="Hide preview" (closed)="showPreview.set(false)" />
+                  @if (parentSelected()) {
+                    <div class="mt-4 flex gap-2.5 border-t border-hairline pt-4">
+                      <button type="button" class="bp-btn-outline flex-1" (click)="$event.stopPropagation(); cancelParentEdit()">Cancel</button>
+                      <button type="button" class="bp-btn-grad flex-1" [disabled]="saving() || !loaded()" (click)="$event.stopPropagation(); saveParentEdit()">{{ saving() ? 'Saving…' : 'Save' }}</button>
+                    </div>
+                  }
                 </div>
               } @else {
                 <div class="flex justify-end">
@@ -390,7 +397,28 @@ export class CustomizeDialogComponent implements OnInit {
   protected readonly parentName = signal('');
   protected readonly parentDesc = signal('');
   protected readonly parentServices = signal('');
-  protected selectParent(): void { this.parentSelected.set(true); this.selectedRowK.set(null); this.showPreview.set(true); }
+  /** The item's free-text Details, editable in the card like the inbox. */
+  protected readonly parentDetails = linkedSignal(() => this.previewLine()?.details ?? '');
+  /** Snapshot of the four item fields when edit opens, so Cancel can revert. */
+  private parentSnap: { name: string; desc: string; services: string; details: string } | null = null;
+  /** Enter edit on the item card: snapshot once (re-clicks while editing must not
+   *  clobber it), select the parent, show the preview. */
+  protected selectParent(): void {
+    if (!this.parentSelected()) {
+      this.parentSnap = { name: this.parentName(), desc: this.parentDesc(), services: this.parentServices(), details: this.parentDetails() };
+    }
+    this.parentSelected.set(true); this.selectedRowK.set(null); this.showPreview.set(true);
+  }
+  /** Cancel item-card edit — revert to the snapshot, close edit. */
+  protected cancelParentEdit(): void {
+    if (this.parentSnap) {
+      this.parentName.set(this.parentSnap.name); this.parentDesc.set(this.parentSnap.desc);
+      this.parentServices.set(this.parentSnap.services); this.parentDetails.set(this.parentSnap.details);
+    }
+    this.parentSnap = null; this.parentSelected.set(false);
+  }
+  /** Save item-card edit — persist the buildup (incl. the item text), close edit. */
+  protected saveParentEdit(): void { this.parentSnap = null; this.parentSelected.set(false); this.save(false); }
   protected readonly saving = signal(false);
   /** True once the components have loaded from the server. Save is blocked until
    *  then, so a failed/incomplete load can't send an empty reconcile that
@@ -748,7 +776,7 @@ export class CustomizeDialogComponent implements OnInit {
   }
   private marginNum(): number | null { return this.margin() == null ? null : Number(this.margin()); }
   /** The parent item's edited name + description, for the save payload. */
-  private parentPatch(): { name?: string; description: string | null; services: string | null; quantity?: number; unit?: string | null; unitPrice?: number | null } {
+  private parentPatch(): { name?: string; description: string | null; services: string | null; details: string | null; quantity?: number; unit?: string | null; unitPrice?: number | null } {
     // The base row is the parent line itself — persist its edited base cost
     // (price_ref) / qty / unit too, but only when that row is shown/editable
     // (originalPrice != null). The base cost is stored, never re-derived.
@@ -757,6 +785,7 @@ export class CustomizeDialogComponent implements OnInit {
       name: this.parentName().trim() || undefined,
       description: this.parentDesc().trim() || null,
       services: this.parentServices().trim() || null,
+      details: this.parentDetails().trim() || null,
       ...(base ? {
         quantity: Math.max(1, Number(this.baseQty()) || 1),
         unit: this.baseUnitDraft() ?? null,

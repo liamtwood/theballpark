@@ -824,7 +824,7 @@ async function listComponents(orgId, projectId, parentLineId) {
  *  in the input is soft-deleted. Optionally sets the line's revised price
  *  (price_current) — the supplier's quote derived from the estimate. Children are
  *  private/supplier-scoped, excluded from the agent's canonical totals. */
-async function saveComponents(orgId, projectId, parentLineId, components, revisedPrice, marginPct, parentName, parentDescription, parentServices, parentQuantity, parentUnit, parentUnitPrice) {
+async function saveComponents(orgId, projectId, parentLineId, components, revisedPrice, marginPct, parentName, parentDescription, parentServices, parentQuantity, parentUnit, parentUnitPrice, parentDetails) {
   const list = Array.isArray(components) ? components : [];
   return withTransaction(async (client) => {
     const parent = await client.query(
@@ -931,6 +931,12 @@ async function saveComponents(orgId, projectId, parentLineId, components, revise
       await client.query(
         `UPDATE project_items SET install_description = $2 WHERE id = $1 AND supplier_org_id = $3`,
         [parentLineId, parentServices || null, orgId]
+      );
+    }
+    if (parentDetails !== undefined) {
+      await client.query(
+        `UPDATE project_items SET details = $2 WHERE id = $1 AND supplier_org_id = $3`,
+        [parentLineId, parentDetails || null, orgId]
       );
     }
     // Clone-up to the library: ensure every named component exists as a reusable

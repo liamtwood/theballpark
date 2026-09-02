@@ -142,10 +142,10 @@ export class ProjectService {
 
   /** pV2-BUILDUP-02 — reconcile the line's components (add/update/remove) + the
    *  revised price and the line-level margin (the supplier's estimate quote). */
-  saveComponents(projectId: string, lineId: string, components: ComponentInput[], revisedPrice: number | null, marginPct: number | null, parent?: { name?: string; description?: string | null; services?: string | null; quantity?: number; unit?: string | null; unitPrice?: number | null }): Observable<ComponentRow[]> {
+  saveComponents(projectId: string, lineId: string, components: ComponentInput[], revisedPrice: number | null, marginPct: number | null, parent?: { name?: string; description?: string | null; services?: string | null; details?: string | null; quantity?: number; unit?: string | null; unitPrice?: number | null }): Observable<ComponentRow[]> {
     return this.api.post<ComponentRow[]>(`/api/projects-v2/${projectId}/items/${lineId}/components`, {
       components, revisedPrice, marginPct, parentName: parent?.name, parentDescription: parent?.description, parentServices: parent?.services,
-      parentQuantity: parent?.quantity, parentUnit: parent?.unit, parentUnitPrice: parent?.unitPrice,
+      parentDetails: parent?.details, parentQuantity: parent?.quantity, parentUnit: parent?.unit, parentUnitPrice: parent?.unitPrice,
     });
   }
 

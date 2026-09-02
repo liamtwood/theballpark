@@ -1014,3 +1014,12 @@ Customize screen.
   clicking the preview CARD did nothing (inbox = click the card). The item card is
   now click-to-edit too (`selectParent`), so the trigger matches the inbox. The
   base-row click still selects it as well.
+
+## Iteration — v2.202 (2026-09-02): Customize item edit == inbox (Details + Save/Cancel)
+- The Customize item card edit now matches the inbox: the **Details** field is
+  visible and **editable in place** (`detailsEditable`), and the card has its own
+  **Cancel / Save** buttons.
+- `parentDetails` draft (seeded from the line), a snapshot taken on entering edit
+  so **Cancel reverts**, and **Save** persists the buildup (`save(false)`) then
+  closes. Details now persist through the save path: `parentPatch.details` →
+  `saveComponents` (`parentDetails`) → `project_items.details`.
