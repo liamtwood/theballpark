@@ -439,7 +439,7 @@ export class InboxProjectComponent {
     const it = this.selectedItem();
     if (!it) return;
     switch (key) {
-      case 'accept': this.accept(it); break;
+      case 'accept': this.accept(it); this.blinkNextMessage(); break;
       case 'suggest': this.startPropose(it); break;
       case 'info': this.requestInfo(it); break;
       case 'decline': this.decline(it); break;

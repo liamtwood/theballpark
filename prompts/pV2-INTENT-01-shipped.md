@@ -196,3 +196,10 @@ actions** the user taps to apply. v1 action allowlist:
 - The held ring used `--theme-accent` (pink) over the pink "You" bubble → invisible.
   Switched to a **high-contrast dark `outline` (--color-text)** with offset, which
   reads on any bubble and sits on top (not affected by the bubble's own shadow).
+
+## Iteration — v2.226 (2026-09-02): the actual blink bug — wrong handler
+- Root cause: the accept confirm emits `quickAction('accept')` → `onAgentQuick`, but
+  `blinkNextMessage()` was only in `onAgentAccept` (the `(accept)` output path, never
+  hit by the confirm flow). So the blink flag was never set. Added
+  `blinkNextMessage()` to the `onAgentQuick` 'accept' case. (v2.223–225's scroll +
+  high-contrast outline were still needed for it to be visible.)
