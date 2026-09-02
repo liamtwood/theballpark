@@ -127,3 +127,10 @@ actions** the user taps to apply. v1 action allowlist:
   change log ("Hi — I've updated Italian Dinner: updated the description; added Wine
   pairing at £15 per head. Let me know if that works.") → the user edits it and hits
   **Send** (posts to the conversation via the existing composer path).
+
+## Iteration — v2.216 (2026-09-02): "Auto-apply" toggle (let the Assistant do it)
+- Added an **Auto-apply** toggle in the Assistant header (default OFF = confirm-first,
+  tap Apply). When ON, parsed **buildup edits** (base cost / description / extra)
+  apply automatically after the message — **accept / decline / suggest / send still
+  ask** (never auto-run irreversible/negotiation moves). Mirrors Claude's
+  "let the assistant do it".

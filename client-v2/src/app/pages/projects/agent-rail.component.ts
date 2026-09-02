@@ -50,6 +50,10 @@ interface Turn {
       <div class="flex items-center gap-2 border-b border-hairline px-4 py-3">
         <lucide-icon name="sparkles" [size]="16" class="text-[var(--theme-accent)]" />
         <span class="bp-list-title">Assistant</span>
+        <label class="ml-auto flex cursor-pointer items-center gap-1.5 bp-caption text-muted" title="Apply changes automatically instead of tapping Apply (accept/decline still ask).">
+          <input type="checkbox" [ngModel]="autoApply()" (ngModelChange)="autoApply.set($event)" />
+          Auto-apply
+        </label>
       </div>
 
       <div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
@@ -198,6 +202,14 @@ export class AgentRailComponent {
   /** Short summaries of the changes made this session (for the update message). */
   private readonly changeLog = signal<string[]>([]);
   protected readonly draftText = signal('');
+  /** Opt-in "let the Assistant do it": auto-apply the buildup edits (accept /
+   *  decline / suggest / send still ask). Default off — confirm-first. */
+  protected readonly autoApply = signal(false);
+
+  /** The self-contained edits that are safe to auto-apply (no negotiation). */
+  private isBuildup(a: IntentAction): boolean {
+    return a.type === 'set_base_cost' || a.type === 'set_base_description' || a.type === 'upsert_extra';
+  }
 
   /** Decline reasons depend on who's declining. */
   protected readonly declineReasons = computed(() =>
@@ -273,11 +285,16 @@ export class AgentRailComponent {
       }));
       // Only surface actions the current viewer may actually take.
       const actions = (res.actions ?? []).filter((a) => this.permitted(a));
-      this.turns.update((t) => [...t, {
+      const at: Turn = {
         who: 'assistant',
         text: res.reply || (actions.length ? '' : "I couldn't turn that into an action — try naming a cost, an extra, or accept/decline."),
         actions, suggestions: res.suggestions ?? [], applied: new Set<IntentAction>(),
-      }]);
+      };
+      this.turns.update((t) => [...t, at]);
+      // "Let the Assistant do it": auto-apply the buildup edits (not negotiation).
+      if (this.autoApply()) {
+        for (const a of actions) { if (this.isBuildup(a)) await this.apply(at, a); }
+      }
     } catch {
       this.turns.update((t) => [...t, { who: 'assistant', text: 'Sorry — I had trouble with that. Please try again.' }]);
     } finally {
@@ -308,10 +325,10 @@ export class AgentRailComponent {
       turn.applied?.add(a);
       // Echo back exactly what changed; buildup edits also log a summary and offer
       // to send the counterparty an update.
-      const isBuildup = a.type === 'set_base_cost' || a.type === 'set_base_description' || a.type === 'upsert_extra';
-      if (isBuildup) this.changeLog.update((l) => [...l, this.changeSummary(a)]);
+      const buildup = this.isBuildup(a);
+      if (buildup) this.changeLog.update((l) => [...l, this.changeSummary(a)]);
       const done = this.confirmMessage(a);
-      this.turns.update((t) => done ? [...t, { who: 'assistant', text: done, wrap: isBuildup }] : [...t]);
+      this.turns.update((t) => done ? [...t, { who: 'assistant', text: done, wrap: buildup }] : [...t]);
     } catch {
       this.turns.update((t) => [...t, { who: 'assistant', text: "That didn't save — please try again or use the buttons." }]);
     } finally {
