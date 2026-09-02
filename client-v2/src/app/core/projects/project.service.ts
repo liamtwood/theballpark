@@ -56,6 +56,24 @@ export interface ComponentRow {
   image_url: string | null;
 }
 
+/** pV2-INTENT-01 — a suggested, confirm-first action parsed from a typed message
+ *  about one line. The client applies each via the existing endpoints. */
+export type IntentAction =
+  | { type: 'set_base_cost'; amount: number }
+  | { type: 'set_base_description'; text: string }
+  | { type: 'upsert_extra'; name: string; cost: number | null; qty: number | null; unit: string | null }
+  | { type: 'accept_cost' }
+  | { type: 'decline' };
+
+export interface IntentContext {
+  itemName?: string | null;
+  baseCost?: number | null;
+  unit?: string | null;
+  quantity?: number | null;
+  currencySymbol?: string | null;
+  componentNames?: string[] | null;
+}
+
 /** pV2-PROJECTS-01 — the v2 projects read path. INTERIM base
  *  `/api/projects-v2`: v1 owns the live ungated `/api/projects` until
  *  pV2-11; this is the gated, org-scoped (JWT) v2 surface. */
@@ -138,6 +156,12 @@ export class ProjectService {
    *  (and the org default to seed from) — for re-opening the estimate. */
   getComponents(projectId: string, lineId: string): Observable<ComponentsResponse> {
     return this.api.get<ComponentsResponse>(`/api/projects-v2/${projectId}/items/${lineId}/components`);
+  }
+
+  /** pV2-INTENT-01 — interpret a typed message about this line into SUGGESTED
+   *  actions (confirm-first; nothing is applied server-side). */
+  parseIntent(projectId: string, lineId: string, message: string, context: IntentContext): Observable<{ actions: IntentAction[] }> {
+    return this.api.post<{ actions: IntentAction[] }>(`/api/projects-v2/${projectId}/items/${lineId}/parse-intent`, { message, context });
   }
 
   /** pV2-BUILDUP-02 — reconcile the line's components (add/update/remove) + the

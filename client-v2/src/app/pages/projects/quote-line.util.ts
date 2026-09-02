@@ -72,6 +72,13 @@ export function unitPlain(unit: string | null): string {
   return unit ? unit.replace(/_/g, ' ') : '';
 }
 
+/** The one revised-line-total formula: base (flat) + included components + margin
+ *  ON the components only. Shared by the Customize builder (`withMargin`) and the
+ *  inbox intent-apply path so they can't drift. */
+export function revisedFromParts(baseCost: number, costTotal: number, marginPct: number): number {
+  return Math.round(baseCost + costTotal + Math.round(costTotal * ((marginPct || 0) / 100)));
+}
+
 /** A row in the derived "Itemized" table — name + how-many, no prices. */
 export interface ItemizedRow { name: string; qty: number; unit: string | null; lead?: boolean; }
 

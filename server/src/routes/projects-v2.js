@@ -16,6 +16,7 @@ const router = require('express').Router();
 const { z } = require('zod');
 const projects = require('../services/projects.service');
 const { ProjectCreateSchema, ProjectUpdateSchema } = require('../schemas/project-create.schema');
+const intent = require('../services/intent.service');
 
 // Validate every :id / :itemId slot as a UUID up front (audit M1). Without
 // this a malformed id reaches Postgres and surfaces as a 500 with a DB-shaped
@@ -249,6 +250,34 @@ router.post('/:id/items/:itemId/components', async (req, res, next) => {
     );
     if (rows === null) return res.status(404).json({ error: 'Line not found or not yours to estimate' });
     res.status(201).json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// pV2-INTENT-01 — interpret a typed inbox message into SUGGESTED actions on this
+// line (never applies them; the client confirms + applies via the endpoints
+// above). Context is advisory (feeds the prompt only); the real writes re-check
+// auth. Message capped so a giant paste can't run up tokens.
+const IntentSchema = z.object({
+  message: z.string().trim().min(1).max(2000),
+  context: z.object({
+    itemName: z.string().max(300).nullish(),
+    baseCost: z.number().nullish(),
+    unit: z.string().max(40).nullish(),
+    quantity: z.number().nullish(),
+    currencySymbol: z.string().max(4).nullish(),
+    componentNames: z.array(z.string().max(200)).max(50).nullish(),
+  }).nullish(),
+});
+router.post('/:id/items/:itemId/parse-intent', async (req, res, next) => {
+  try {
+    const parsed = IntentSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const result = await intent.parseIntent(parsed.data.message, parsed.data.context || {});
+    res.json(result);
   } catch (err) {
     next(err);
   }

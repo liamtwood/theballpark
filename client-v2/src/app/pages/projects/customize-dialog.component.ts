@@ -7,7 +7,7 @@ import { CategoryInfo, CatalogueItem } from '../../shared/catalogue/catalogue.ty
 import { ProjectService, MyComponent, ComponentInput } from '../../core/projects/project.service';
 import { StoreItemService } from '../../core/store/store-item.service';
 import { QuoteLine } from '../../core/projects/project.types';
-import { ItemizedRow, quoteLineToCatalogueItem } from './quote-line.util';
+import { ItemizedRow, quoteLineToCatalogueItem, revisedFromParts } from './quote-line.util';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { ShuttleComponent, ShuttleItem, ShuttlePick } from '../../shared/shuttle/shuttle.component';
 import { RateInputComponent } from './rate-input.component';
@@ -492,7 +492,7 @@ export class CustomizeDialogComponent implements OnInit {
   protected readonly marginAmount = computed(() => Math.round(this.costTotal() * ((Number(this.margin()) || 0) / 100)));
   /** Revised = base (flat) + customizations + their margin. Base is preserved,
    *  never overwritten, so customizing augments instead of zeroing the price. */
-  protected readonly withMargin = computed(() => Math.round(this.baseCost() + this.costTotal() + this.marginAmount()));
+  protected readonly withMargin = computed(() => revisedFromParts(this.baseCost(), this.costTotal(), Number(this.margin()) || 0));
   /** The derived Itemized rows shown live in the preview: the item leads, then
    *  each included component (name/qty/unit only). Mirrors `lineItemized` for the
    *  read-only surfaces so Customize and the inbox/rail match. */
