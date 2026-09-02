@@ -52,34 +52,48 @@ interface Turn {
           <p class="bp-body-small text-secondary">
             Tell me what you'd like to do with <span class="text-text">{{ context().itemName || 'this item' }}</span> — pick an option below, or just send me a message.
           </p>
-          <!-- Opening options (radios). Accept / Decline run the existing handlers
-               via the host; "Make a change" just invites a free-text prompt. -->
-          <div role="radiogroup" class="mt-1 space-y-1.5">
-            @if (context().canAccept) {
-              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill">
-                <input type="radio" name="agentOpt" (change)="pickOption('accept')" />
-                <span class="bp-body-small text-text">Accept the cost</span>
-              </label>
+
+          <!-- Step 1: the three opening options. -->
+          @if (step() === 'root') {
+            <div role="radiogroup" class="mt-1 space-y-1.5">
+              @if (context().canAccept) {
+                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="pickOption('accept')" /><span class="bp-body-small text-text">Accept the cost</span></label>
+              }
+              @if (context().canDecline) {
+                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('decline')" /><span class="bp-body-small text-text">{{ context().role === 'agent' ? 'Cancel the request' : 'Decline' }}</span></label>
+              }
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('change')" /><span class="bp-body-small text-text">Make a change</span></label>
+            </div>
+          }
+
+          <!-- Step 2a: decline reasons (role-aware). -->
+          @if (step() === 'decline') {
+            <p class="bp-caption text-muted">{{ context().role === 'agent' ? 'Why are you cancelling?' : 'Why are you declining?' }}</p>
+            <div role="radiogroup" class="space-y-1.5">
+              @for (r of declineReasons(); track r) {
+                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="declineReason" (change)="chooseReason(r)" /><span class="bp-body-small text-text">{{ r }}</span></label>
+              }
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="declineReason" (change)="chooseReason('__other')" /><span class="bp-body-small text-text">Other…</span></label>
+            </div>
+            @if (otherOpen()) {
+              <textarea rows="2" class="bp-store-textarea w-full" placeholder="Enter a reason…" [ngModel]="otherText()" (ngModelChange)="otherText.set($event)"></textarea>
+              <button type="button" class="bp-btn-grad" (click)="submitOther()">{{ context().role === 'agent' ? 'Cancel request' : 'Decline' }}</button>
             }
-            @if (context().canDecline) {
-              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill">
-                <input type="radio" name="agentOpt" (change)="pickOption('decline')" />
-                <span class="bp-body-small text-text">{{ context().role === 'agent' ? 'Cancel the request' : 'Decline' }}</span>
-              </label>
-            }
-            <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill">
-              <input type="radio" name="agentOpt" (change)="pickOption('change')" />
-              <span class="bp-body-small text-text">Make a change</span>
-            </label>
-          </div>
-          @if (changeMode()) {
-            <p class="bp-caption text-muted">
-              Tell me what to change — e.g.
-              {{ context().role === 'agent' ? '“ask for a fridge”, “can we get 10% off?”' : '“set the base to £120”, “add insurance at £200”.' }}
-            </p>
+            <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">← Back</button>
+          }
+
+          <!-- Step 2b: make-a-change sub-options. -->
+          @if (step() === 'change') {
+            <div class="flex flex-wrap gap-1.5">
+              <button type="button" class="bp-act bp-act--outline" (click)="quickAction.emit('suggest')">Suggest new price</button>
+              <button type="button" class="bp-act bp-act--outline" (click)="setHint('item')">Change item</button>
+              <button type="button" class="bp-act bp-act--outline" (click)="setHint('extras')">Add extras</button>
+            </div>
+            @if (hint()) { <p class="bp-caption text-muted">{{ hint() }}</p> }
             @if (context().role === 'supplier') {
               <button type="button" class="bp-caption text-[var(--theme-accent)] hover:underline" (click)="quickAction.emit('customize')">Or open the full builder →</button>
             }
+            <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">← Back</button>
           }
         }
         @for (t of turns(); track $index) {
@@ -139,19 +153,46 @@ export class AgentRailComponent {
   /** A buildup edit was applied + persisted — the host should reload the line. */
   readonly changed = output<void>();
   readonly accept = output<void>();
-  readonly decline = output<void>();
+  /** Decline/cancel with an optional reason (empty = no reason given). */
+  readonly decline = output<string>();
   readonly suggestCost = output<number>();
   readonly sendMessage = output<string>();
 
   protected readonly turns = signal<Turn[]>([]);
-  protected readonly changeMode = signal(false);
+  /** Opening flow: root → decline (reasons) | change (sub-options). */
+  protected readonly step = signal<'root' | 'decline' | 'change'>('root');
+  protected readonly otherOpen = signal(false);
+  protected readonly otherText = signal('');
+  protected readonly hint = signal('');
   protected readonly draft = signal('');
 
-  /** Opening radio pick: accept/decline run via the host; "change" just invites
-   *  a typed prompt (nothing destructive). */
-  protected pickOption(key: 'accept' | 'decline' | 'change'): void {
-    if (key === 'change') { this.changeMode.set(true); return; }
-    this.quickAction.emit(key);
+  /** Decline reasons depend on who's declining. */
+  protected readonly declineReasons = computed(() =>
+    this.context().role === 'agent'
+      ? ['Over budget', 'No longer needed', 'Going another way']
+      : ['Not available', 'Out of stock', "Can't provide this"]);
+
+  protected pickOption(key: 'accept'): void { this.quickAction.emit(key); }
+  protected reset(): void { this.step.set('root'); this.otherOpen.set(false); this.otherText.set(''); this.hint.set(''); }
+
+  /** Pick a decline reason → decline with that reason ('__other' opens a box). */
+  protected chooseReason(reason: string): void {
+    if (reason === '__other') { this.otherOpen.set(true); return; }
+    this.otherOpen.set(false);
+    this.decline.emit(reason);
+    this.reset();
+  }
+  protected submitOther(): void {
+    const t = this.otherText().trim();
+    this.decline.emit(t || 'Other');
+    this.reset();
+  }
+
+  /** A make-a-change sub-option → a tailored free-text hint (they type the rest). */
+  protected setHint(kind: 'item' | 'extras'): void {
+    this.hint.set(kind === 'item'
+      ? 'Tell me what to change on the item — name, description, or base cost (e.g. “set the base to £120”).'
+      : 'Tell me the extra to add — e.g. “add insurance at £200” or “wine pairing £15 a head”.');
   }
   protected readonly busy = signal(false);
   protected readonly applying = signal(false);
@@ -221,7 +262,7 @@ export class AgentRailComponent {
     this.applying.set(true);
     try {
       if (a.type === 'accept_cost') this.accept.emit();
-      else if (a.type === 'decline') this.decline.emit();
+      else if (a.type === 'decline') this.decline.emit('');
       else if (a.type === 'suggest_cost') this.suggestCost.emit(a.amount);
       else if (a.type === 'draft_message') this.sendMessage.emit(a.text);
       else { await this.applyBuildup(a); this.changed.emit(); }

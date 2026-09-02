@@ -293,7 +293,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
               <app-agent-rail [context]="agentContext()!"
                               (quickAction)="onAgentQuick($event)"
                               (changed)="onCustomizeChanged()"
-                              (accept)="onAgentAccept()" (decline)="onAgentDecline()"
+                              (accept)="onAgentAccept()" (decline)="onAgentDecline($event)"
                               (suggestCost)="onAgentSuggestCost($event)" (sendMessage)="onAgentSend($event)" />
             </aside>
           }
@@ -442,7 +442,18 @@ export class InboxProjectComponent {
     }
   }
   protected onAgentAccept(): void { const it = this.selectedItem(); if (it) this.accept(it); }
-  protected onAgentDecline(): void { const it = this.selectedItem(); if (it) this.decline(it); }
+  /** Decline/cancel; when the Assistant supplies a reason, post it straight away. */
+  protected async onAgentDecline(reason: string): Promise<void> {
+    const it = this.selectedItem();
+    const t = this.selectedThread();
+    if (!it) return;
+    this.decline(it); // arms the decline + prefills the composer
+    if (reason && t) {
+      const verb = this.isAgency() ? 'Cancel' : 'Decline';
+      this.draft.set(`${it.name} — ${verb} because ${reason}`);
+      await this.send(t.id);
+    }
+  }
   protected onAgentSuggestCost(total: number): void {
     const it = this.selectedItem();
     if (!it) return;

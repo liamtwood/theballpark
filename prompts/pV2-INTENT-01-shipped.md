@@ -70,3 +70,14 @@ actions** the user taps to apply. v1 action allowlist:
   **Make a change** just reveals a hint inviting a free-text prompt (and, for a
   supplier, an "open the full builder →" link → Customize). Users can ignore the
   radios and type anything. Removed the `quickActions` input + chip row.
+
+## Iteration — v2.209 (2026-09-02): nested opening options (decline reasons + change types)
+- **Decline → a reason step** (role-aware radios): supplier = Not available / Out of
+  stock / Can't provide this; agent = Over budget / No longer needed / Going another
+  way; plus **Other…** (free text). Picking a reason posts the decline WITH the
+  reason (arms `decline` + composes "{item} — Decline/Cancel because {reason}" +
+  sends). `decline` output now carries the reason string.
+- **Make a change → three sub-options:** **Suggest new price** (opens the propose
+  rate entry via `quickAction('suggest')`), **Change item** and **Add extras** (each
+  drops a tailored free-text hint to type the rest); supplier also gets "open the
+  full builder →". A **← Back** returns to the three top options.
