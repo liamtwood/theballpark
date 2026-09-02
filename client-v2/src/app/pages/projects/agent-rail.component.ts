@@ -243,7 +243,7 @@ export class AgentRailComponent {
   readonly accept = output<void>();
   /** Decline/cancel with an optional reason (empty = no reason given). */
   readonly decline = output<string>();
-  readonly suggestCost = output<{ total: number; message: string; installed: boolean }>();
+  readonly suggestCost = output<{ total: number; message: string }>();
   readonly sendMessage = output<string>();
 
   protected readonly turns = signal<Turn[]>([]);
@@ -398,7 +398,7 @@ export class AgentRailComponent {
   }
   /** Send the suggested new price (line total = cost × qty) + the message. */
   protected confirmSuggest(): void {
-    this.suggestCost.emit({ total: this.sugTotal(), message: this.sugMessage().trim(), installed: this.sugInstall() });
+    this.suggestCost.emit({ total: this.sugTotal(), message: this.sugMessage().trim() });
     this.conclude('sent');
   }
   protected readonly busy = signal(false);
@@ -481,7 +481,7 @@ export class AgentRailComponent {
     try {
       if (a.type === 'accept_cost') this.accept.emit();
       else if (a.type === 'decline') this.decline.emit('');
-      else if (a.type === 'suggest_cost') this.suggestCost.emit({ total: a.amount, message: `${this.context().itemName || 'This item'} cost updated to ${this.sym()}${a.amount.toLocaleString('en-GB')}, please see the updated item attached.`, installed: this.context().installApplies });
+      else if (a.type === 'suggest_cost') this.suggestCost.emit({ total: a.amount, message: `${this.context().itemName || 'This item'} cost updated to ${this.sym()}${a.amount.toLocaleString('en-GB')}, please see the updated item attached.` });
       else if (a.type === 'draft_message') this.sendMessage.emit(a.text);
       else { await this.applyBuildup(a); this.changed.emit(); }
       turn.applied?.add(a);

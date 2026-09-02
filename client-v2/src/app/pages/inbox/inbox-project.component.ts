@@ -503,17 +503,13 @@ export class InboxProjectComponent {
       await this.send(t.id);
     }
   }
-  protected async onAgentSuggestCost(payload: { total: number; message: string; installed: boolean }): Promise<void> {
+  protected onAgentSuggestCost(payload: { total: number; message: string }): void {
     const it = this.selectedItem();
     if (!it) return;
-    // Persist the install choice first (so the line total matches on accept), then
-    // back out the per-unit rate so the LINE total (incl install if kept) equals
-    // what was entered — otherwise install stacks on top (the 15,399.45 bug).
-    const currentlyInstalled = it.installed !== false && (it.installCost ?? 0) > 0;
-    if ((it.installCost ?? 0) > 0 && payload.installed !== currentlyInstalled) {
-      await firstValueFrom(this.projects.setQuoteItemInstalled(this.projectId(), it.id, payload.installed));
-    }
-    const rate = this.rateForLineTotal(it, payload.total, payload.installed);
+    // Back out the per-unit rate so the LINE total (using the line's ACTUAL install
+    // state) equals what was entered. We don't toggle `installed` here — that PATCH
+    // is lock-gated on an out-for-quote line (409) and would abort the send.
+    const rate = this.rateForLineTotal(it, payload.total);
     const text = payload.message?.trim() || `${it.name} cost updated to ${gbp(payload.total)} by ${this.actorName()}`;
     void this.itemAction(it.id, 'adjust', rate, text);
     this.blinkNextMessage();

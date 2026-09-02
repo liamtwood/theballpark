@@ -280,3 +280,14 @@ actions** the user taps to apply. v1 action allowlist:
   (Suggest new price / Change item / Add extras) **auto-advances** — Suggest opens
   the form immediately; Change item / Add extras drop the hint. (Back still there.)
   Removed the `changeSel`/Continue machinery.
+
+## Iteration — v2.236 (2026-09-02): FIX bad bugs — install PATCH 409 aborted the send
+- **Root cause:** `await setQuoteItemInstalled` (added v2.234) threw a **409** — that
+  PATCH is lock-gated on an out-for-quote line — which **aborted the whole handler**,
+  so Send posted **no message** and the price never changed (reopen showed the old
+  value). Removed the install-flag persistence entirely.
+- Now the entered **Total is the final price** regardless: the rate is backed out
+  against the line's **actual** install state (`rateForLineTotal(it, total)`), and
+  the message + price always post. The Install checkbox only shapes the Total you
+  enter (a lower/higher number that then becomes the final). Reopen reflects it
+  (seeds from `price_current`).
