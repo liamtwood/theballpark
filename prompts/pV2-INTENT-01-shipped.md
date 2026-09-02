@@ -253,3 +253,14 @@ actions** the user taps to apply. v1 action allowlist:
 - All four fields (**New cost / Qty / Unit / Total**) share the same size (`h-9
   w-32`); larger max so £10,000+ is fine. Fixed the unit **select** vertical
   centering (`leading-normal`, consistent height/padding).
+
+## Iteration — v2.233 (2026-09-02): Suggest price — install-aware total + seed from current (DB-checked)
+- DB check: the active Italian Dinner line has no own `install_cost` but inherits
+  **10% from the catalogue**, so a suggested £14k (rate 93.33) rendered as
+  £15,399.45 on accept (goods × 1.1). Two fixes:
+  - **Install-aware total:** the form's Total is now the LINE total (goods +
+    install); on Send the inbox back-computes the per-unit rate (`rateForLineTotal`)
+    so the line total equals what you typed — install no longer stacks on top.
+  - **Seed from current:** the form seeds `New cost` from the line's CURRENT
+    per-unit (`currentUnitCost` = price_current), not the original price_ref, so a
+    prior suggestion shows on reopen instead of the old 105/£15,750.

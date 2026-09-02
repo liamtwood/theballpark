@@ -15,7 +15,11 @@ export interface AgentRailContext {
   baseCost: number | null;   // per-unit price_ref
   unit: string | null;
   quantity: number | null;
-  currentTotal: number | null;   // the line's current (revised) total
+  currentTotal: number | null;   // the line's current (revised) LINE total (incl install)
+  currentUnitCost: number | null; // the current per-unit rate (price_current ?? price_ref)
+  installCost: number | null;    // install amount (per the unit basis), else null
+  installUnit: string | null;    // per_order | per_item | percentage
+  installApplies: boolean;       // whether install is on for this line
   deliveryDate: string | null;   // the event/delivery date (already formatted)
   acceptedAt: number | null;     // when the current viewer's side accepted (ms), else null
   currentDescription: string | null;
@@ -254,10 +258,21 @@ export class AgentRailComponent {
   /** Total is editable: it tracks cost × qty until the user overrides it. */
   protected readonly sugTotal = signal(0);
   protected readonly totalTouched = signal(false);
-  /** Recompute the total from cost × qty unless the user has overridden it. */
+  /** Add install to a goods subtotal, matching the line-total formula. */
+  private withInstall(goods: number): number {
+    const c = this.context();
+    if (!c.installApplies || c.installCost == null) return goods;
+    switch (c.installUnit) {
+      case 'per_order': return goods + c.installCost;
+      case 'percentage': return goods + goods * (c.installCost / 100);
+      default: return goods + c.installCost * Math.max(1, this.sugQty() || 1); // per_item
+    }
+  }
+  /** Recompute the LINE total (cost × qty + install) unless the user overrode it. */
   protected reseedTotal(): void {
     if (this.totalTouched()) return;
-    this.sugTotal.set(Math.round((Number(this.sugCost()) || 0) * Math.max(1, Number(this.sugQty()) || 1)));
+    const goods = (Number(this.sugCost()) || 0) * Math.max(1, Number(this.sugQty()) || 1);
+    this.sugTotal.set(Math.round(this.withInstall(goods)));
   }
   /** Unit picklist (mirrors the customize builder's list). */
   protected readonly units = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 'sheet', 'length', 'm', 'kg', 'litre', 'roll', 'pack', 'box', 'hire', 'job', 'lot'];
@@ -353,7 +368,8 @@ export class AgentRailComponent {
     const c = this.changeSel();
     if (c === 'suggest') {
       // Open the in-Assistant price form (New cost · Qty · Unit · Total + message).
-      this.sugCost.set(this.context().baseCost ?? null);
+      // Seed from the CURRENT price so a prior suggestion shows, not the original.
+      this.sugCost.set(this.context().currentUnitCost ?? null);
       this.sugQty.set(this.context().quantity ?? 1);
       this.sugUnit.set(this.context().unit ?? null);
       this.totalTouched.set(false);

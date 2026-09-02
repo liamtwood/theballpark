@@ -424,6 +424,10 @@ export class InboxProjectComponent {
       unit: it.unit ?? null,
       quantity: it.quantity ?? null,
       currentTotal: it.priceCurrent ?? it.priceRef ?? null,
+      currentUnitCost: it.unitPriceCurrent ?? it.unitPriceRef ?? null,
+      installCost: it.installCost ?? null,
+      installUnit: it.installUnit ?? null,
+      installApplies: it.installed !== false && (it.installCost ?? 0) > 0,
       deliveryDate: this.fmtEventDate(),
       acceptedAt: this.myAcceptedAt(it),
       currentDescription: it.description ?? it.line?.description ?? null,
@@ -445,6 +449,19 @@ export class InboxProjectComponent {
       case 'info': this.requestInfo(it); break;
       case 'decline': this.decline(it); break;
       case 'customize': this.toggleCustomize(it); break;
+    }
+  }
+  /** The per-unit rate that makes the line total (incl install) equal `total`
+   *  — the inverse of lineCost's install handling. */
+  private rateForLineTotal(it: InboxThreadItem, total: number): number {
+    const qty = it.quantity || 1;
+    const installed = it.installed !== false && (it.installCost ?? 0) > 0;
+    if (!installed || it.installCost == null) return total / qty;
+    const ic = it.installCost;
+    switch (it.installUnit) {
+      case 'per_order': return (total - ic) / qty;
+      case 'percentage': return total / (qty * (1 + ic / 100));
+      default: return total / qty - ic; // per_item
     }
   }
   /** When the CURRENT viewer's side accepted this line (ms), else null — the
@@ -489,7 +506,9 @@ export class InboxProjectComponent {
   protected onAgentSuggestCost(payload: { total: number; message: string }): void {
     const it = this.selectedItem();
     if (!it) return;
-    const rate = payload.total / (it.quantity || 1); // price_current is the per-unit rate
+    // Back out the per-unit rate so the LINE total (incl the inherited install)
+    // equals what was entered — otherwise install stacks on top (the 15,399.45 bug).
+    const rate = this.rateForLineTotal(it, payload.total);
     const text = payload.message?.trim() || `${it.name} cost updated to ${gbp(payload.total)} by ${this.actorName()}`;
     void this.itemAction(it.id, 'adjust', rate, text);
     this.blinkNextMessage();
