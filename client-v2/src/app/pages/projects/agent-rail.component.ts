@@ -17,6 +17,7 @@ export interface AgentRailContext {
   quantity: number | null;
   currentTotal: number | null;   // the line's current (revised) total
   deliveryDate: string | null;   // the event/delivery date (already formatted)
+  acceptedAt: number | null;     // when the current viewer's side accepted (ms), else null
   currentDescription: string | null;
   componentNames: string[];
   role: 'agent' | 'supplier';
@@ -129,8 +130,8 @@ interface Turn {
           @if (turns().length) { <p class="bp-body-small font-semibold text-text">Is there anything else?</p> }
           @if (step() === 'root') {
             <div role="radiogroup" class="space-y-1.5">
-              @if (context().canAccept) {
-                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="askAccept()" /><span class="bp-body-small text-text">Accept the cost</span></label>
+              @if (context().canAccept || context().acceptedAt) {
+                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="askAccept()" /><span class="bp-body-small text-text">Accept the cost @if (context().acceptedAt) { <span class="text-muted">(accepted {{ timeAgo(context().acceptedAt!) }})</span> }</span></label>
               }
               @if (context().canDecline) {
                 <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('decline')" /><span class="bp-body-small text-text">{{ context().role === 'agent' ? 'Cancel the request' : 'Decline' }}</span></label>

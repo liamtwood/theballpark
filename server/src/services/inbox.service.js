@@ -261,6 +261,9 @@ function toThreadItem(it, line) {
     // YOU / THEY / BOTH accepted pill (buyer = agency, seller = supplier).
     buyerAccepted: it.buyer_status === 'accepted',
     sellerAccepted: it.seller_status === 'accepted',
+    // When each side accepted (for "accepted N mins ago" in the Assistant).
+    buyerAcceptedAt: it.buyer_status === 'accepted' ? it.buyer_at : null,
+    sellerAcceptedAt: it.seller_status === 'accepted' ? it.seller_at : null,
     // pV2-INBOX-05: the SAME QuoteLine the Final Quote renders (keyed on this
     // row's project_items.id) — the inbox mounts the identical item-preview
     // card under the message rather than a bespoke copy. null if not found.

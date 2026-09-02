@@ -219,3 +219,11 @@ actions** the user taps to apply. v1 action allowlist:
   `menuOpen`) — previously it could leave the menu hidden (dead end).
 - **Send them an update** now concludes ("Sent · just now") and re-opens the
   options, instead of a bare "Sent ✓" with no next step.
+
+## Iteration — v2.229 (2026-09-02): "Accept the cost (accepted N mins ago)"
+- When the current viewer's side has already accepted the line, the **Accept the
+  cost** option now shows a muted **"(accepted N mins ago)"** and stays visible even
+  when Accept wouldn't otherwise show (terminal) — a neat way to always surface it.
+- Server exposes `buyerAcceptedAt` / `sellerAcceptedAt` on the item (from the
+  decision timestamps); the inbox passes the viewer's side as `acceptedAt` (ms) to
+  the rail; the radio shows `canAccept || acceptedAt` and appends `timeAgo`.

@@ -425,6 +425,7 @@ export class InboxProjectComponent {
       quantity: it.quantity ?? null,
       currentTotal: it.priceCurrent ?? it.priceRef ?? null,
       deliveryDate: this.fmtEventDate(),
+      acceptedAt: this.myAcceptedAt(it),
       currentDescription: it.description ?? it.line?.description ?? null,
       componentNames: it.line?.components?.map((c) => c.name) ?? it.line?.extras ?? [],
       role: this.isAgency() ? 'agent' : 'supplier',
@@ -445,6 +446,14 @@ export class InboxProjectComponent {
       case 'decline': this.decline(it); break;
       case 'customize': this.toggleCustomize(it); break;
     }
+  }
+  /** When the CURRENT viewer's side accepted this line (ms), else null — the
+   *  Assistant annotates "Accept the cost (accepted N mins ago)". */
+  private myAcceptedAt(it: InboxThreadItem): number | null {
+    const iso = this.isAgency() ? it.buyerAcceptedAt : it.sellerAcceptedAt;
+    if (!iso) return null;
+    const ms = Date.parse(iso);
+    return isNaN(ms) ? null : ms;
   }
   /** The project's event/delivery date, formatted for the Assistant confirm. */
   private fmtEventDate(): string | null {

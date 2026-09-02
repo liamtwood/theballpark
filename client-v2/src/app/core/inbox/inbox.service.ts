@@ -100,6 +100,9 @@ export interface InboxThreadItem {
   /** Latest accept per side (buyer = agency, seller = supplier). */
   buyerAccepted: boolean;
   sellerAccepted: boolean;
+  /** When each side accepted (ISO) — for "accepted N mins ago" in the Assistant. */
+  buyerAcceptedAt: string | null;
+  sellerAcceptedAt: string | null;
   /** pV2-INBOX-05: the SAME QuoteLine the Final Quote renders (keyed on this
    *  line's project_items.id) — the inbox mounts the identical item-preview
    *  card under the message. null if the server couldn't resolve it. */
