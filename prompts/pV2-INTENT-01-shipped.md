@@ -90,3 +90,9 @@ actions** the user taps to apply. v1 action allowlist:
   opens the propose entry; the other two drop a hint to type). Each step keeps a
   **Back**.
 - Removed the "open the full builder →" link from the Assistant.
+
+## Iteration — v2.211 (2026-09-02): auto-select the first item on load
+- The inbox now **auto-selects the first item** (first thread that has one) on load
+  instead of landing on thread-level chat, so you drop straight into its
+  conversation + Assistant. The pick is still preserved across reloads; it only
+  re-defaults when the selection is gone.

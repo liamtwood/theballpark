@@ -373,27 +373,29 @@ export class InboxProjectComponent {
     return [...outers.values()];
   });
 
-  /** No item is auto-selected — you land on thread-level chat (action bar
-   *  hidden). Selecting an item arms its actions; clicking it again
-   *  deselects. The visible conversation is its own pick so it survives a
-   *  deselect (Liam 2026-06-29). */
+  /** The FIRST item is auto-selected on load (Liam 2026-09-02) so you land
+   *  straight in its conversation + Assistant. Selecting arms another item;
+   *  the pick is preserved across reloads. */
   protected readonly selectedId = linkedSignal<InboxThread[], string | null>({
     source: this.threads,
     // Preserve the armed item across reloads (a send/accept/customize reloads
-    // the threads) — only drop it if that item no longer exists. Losing it here
-    // is what let replies fall back to "General" (Liam 2026-08-28).
+    // the threads) — only re-default when it's gone (else replies fell back to
+    // "General", Liam 2026-08-28). Default = the first item of the first thread
+    // that has one.
     computation: (ts, prev) => {
       const id = prev?.value ?? null;
-      return id && ts.some((t) => t.items.some((i) => i.id === id)) ? id : null;
+      if (id && ts.some((t) => t.items.some((i) => i.id === id))) return id;
+      return ts.find((t) => t.items.length)?.items[0]?.id ?? null;
     },
   });
   protected readonly selectedThreadId = linkedSignal<InboxThread[], string | null>({
     source: this.threads,
-    // Keep the current thread across reloads; default to the first only when the
-    // previous one is gone (else a reply bounced you back to thread[0]).
+    // Keep the current thread across reloads; default to the first thread that
+    // has items (matching the auto-selected item above) when the previous is gone.
     computation: (ts, prev) => {
       const id = prev?.value ?? null;
-      return id && ts.some((t) => t.id === id) ? id : (ts[0]?.id ?? null);
+      if (id && ts.some((t) => t.id === id)) return id;
+      return (ts.find((t) => t.items.length) ?? ts[0])?.id ?? null;
     },
   });
 
