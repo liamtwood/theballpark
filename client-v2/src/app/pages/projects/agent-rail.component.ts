@@ -14,6 +14,7 @@ export interface AgentRailContext {
   baseCost: number | null;   // per-unit price_ref
   unit: string | null;
   quantity: number | null;
+  currentTotal: number | null;   // the line's current (revised) total
   componentNames: string[];
   role: 'agent' | 'supplier';
   currencyCode: string | null;
@@ -57,12 +58,21 @@ interface Turn {
           @if (step() === 'root') {
             <div role="radiogroup" class="mt-1 space-y-1.5">
               @if (context().canAccept) {
-                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="pickOption('accept')" /><span class="bp-body-small text-text">Accept the cost</span></label>
+                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('accept')" /><span class="bp-body-small text-text">Accept the cost</span></label>
               }
               @if (context().canDecline) {
                 <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('decline')" /><span class="bp-body-small text-text">{{ context().role === 'agent' ? 'Cancel the request' : 'Decline' }}</span></label>
               }
               <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('change')" /><span class="bp-body-small text-text">Make a change</span></label>
+            </div>
+          }
+
+          <!-- Step 2: confirm accept. -->
+          @if (step() === 'accept') {
+            <p class="bp-body-small text-secondary">Accept the current cost@if (context().currentTotal != null) { of <span class="font-semibold text-text">{{ sym() }}{{ context().currentTotal!.toLocaleString('en-GB') }}</span>}?</p>
+            <div class="flex gap-2 pt-1">
+              <button type="button" class="bp-btn-outline" (click)="reset()">Back</button>
+              <button type="button" class="bp-btn-grad flex-1" (click)="confirmAccept()">Accept</button>
             </div>
           }
 
@@ -163,7 +173,7 @@ export class AgentRailComponent {
 
   protected readonly turns = signal<Turn[]>([]);
   /** Opening flow: root → decline (reasons) | change (sub-options). */
-  protected readonly step = signal<'root' | 'decline' | 'change'>('root');
+  protected readonly step = signal<'root' | 'accept' | 'decline' | 'change'>('root');
   protected readonly reasonSel = signal<string | null>(null);
   protected readonly changeSel = signal<'suggest' | 'item' | 'extras' | null>(null);
   protected readonly otherText = signal('');
@@ -181,7 +191,7 @@ export class AgentRailComponent {
     return !!r && (r !== '__other' || !!this.otherText().trim());
   });
 
-  protected pickOption(key: 'accept'): void { this.quickAction.emit(key); }
+  protected confirmAccept(): void { this.quickAction.emit('accept'); this.reset(); }
   protected reset(): void {
     this.step.set('root'); this.reasonSel.set(null); this.changeSel.set(null);
     this.otherText.set(''); this.hint.set('');

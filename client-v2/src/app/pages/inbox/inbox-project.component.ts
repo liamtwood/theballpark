@@ -423,6 +423,7 @@ export class InboxProjectComponent {
       baseCost: it.unitPriceRef ?? null,
       unit: it.unit ?? null,
       quantity: it.quantity ?? null,
+      currentTotal: it.priceCurrent ?? it.priceRef ?? null,
       componentNames: it.line?.components?.map((c) => c.name) ?? it.line?.extras ?? [],
       role: this.isAgency() ? 'agent' : 'supplier',
       currencyCode: it.line?.supplierCurrency ?? null,

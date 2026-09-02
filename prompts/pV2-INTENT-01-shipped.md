@@ -96,3 +96,8 @@ actions** the user taps to apply. v1 action allowlist:
   instead of landing on thread-level chat, so you drop straight into its
   conversation + Assistant. The pick is still preserved across reloads; it only
   re-defaults when the selection is gone.
+
+## Iteration — v2.212 (2026-09-02): Accept also confirms (Back / Accept)
+- Picking "Accept the cost" now opens a confirm step — "Accept the current cost of
+  £X?" with **Back** / **Accept** buttons — matching Decline / Make-a-change (no
+  fire-on-select). Added `currentTotal` to the rail context for the figure.
