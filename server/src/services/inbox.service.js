@@ -574,14 +574,20 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions, tagge
     if (taggedItemId) {
       // taggedItemId is the filter key toThreadItem emits: the catalogue
       // item_id, or the project_items row id for a custom line (CUSTOMS-01).
+      // Resolve to the thread's own TOP-LEVEL line by (project × category ×
+      // supplier) — NOT the lead brief's tags — so a line added to an existing
+      // category (which rides a LATER brief message) still tags correctly
+      // instead of falling through as an untagged "General" bubble (INBOX
+      // late-add fix, same class as v2.243).
       const nm = await db.query(
         `SELECT pi.id
            FROM project_items pi
-           JOIN message_items mtag ON mtag.project_item_id = pi.id
-          WHERE mtag.message_id = $1 AND (pi.item_id = $2 OR pi.id = $2)
-            AND pi.deleted_at IS NULL
+          WHERE pi.project_id = $1 AND pi.category_id = $2
+            AND pi.supplier_org_id IS NOT DISTINCT FROM $3
+            AND (pi.item_id = $4 OR pi.id = $4)
+            AND pi.parent_id IS NULL AND pi.deleted_at IS NULL
           LIMIT 1`,
-        [lm.id, taggedItemId]
+        [lm.project_id, lm.category_id, lm.supplier_org_id, taggedItemId]
       );
       if (nm.rows.length) tagPiIds.add(nm.rows[0].id);
     }

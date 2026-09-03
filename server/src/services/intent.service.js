@@ -32,7 +32,7 @@ ACTIONS — include one ONLY when the message clearly calls for it (else []):
 Supplier edits (the supplier changes their own line):
 - {"type":"set_base_cost","amount":<number>} — "set/change the base to X", "should be X a head".
 - {"type":"set_base_description","text":"<the FULL new description>"} — when they want to change or ADD TO the description. Return the COMPLETE updated description: keep the existing content (see "Current description" above) and weave in their change — never just the new fragment.
-- {"type":"upsert_extra","name":"<string>","cost":<number|null>,"qty":<number|null>,"unit":"<string|null>"} — add or update an add-on/extra. Match an existing component name to UPDATE, else create. "add insurance at X", "a project manager for 2 days at X/day", "bump the wine to Y".
+- {"type":"upsert_extra","name":"<string>","cost":<number|null>,"qty":<number|null>,"unit":"<string|null>"} — add or update an add-on/extra. Match an existing component name to UPDATE, else create. "add insurance at X", "a project manager for 2 days at X/day", "bump the wine to Y". Return MULTIPLE upsert_extra actions when the message names more than one — e.g. "two insurance levels: weather cover £500 and cancellation £2000" → TWO upsert_extra actions ("Weather cover" £500, "Cancellation" £2000).
 Negotiation (either side):
 - {"type":"accept_cost"} — "accept", "that works", "agreed".
 - {"type":"decline"} — "decline", "no thanks", "pass".

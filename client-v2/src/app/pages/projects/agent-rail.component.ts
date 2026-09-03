@@ -28,6 +28,11 @@ export interface AgentRailContext {
   currencyCode: string | null;
   canAccept: boolean;
   canDecline: boolean;
+  /** pV2-INTENT-02 #2 — a one-line summary of the counterparty's LAST move on
+   *  this line, assembled deterministically from thread state (status + accepts),
+   *  NOT the LLM. Shown in the intro so both sides land on a contextual prompt
+   *  ("<name> accepted £3,500 — what do you want to do?"). null → generic intro. */
+  stateSummary: string | null;
 }
 
 interface Turn {
@@ -69,11 +74,18 @@ interface Turn {
       </div>
 
       <div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
-        <!-- Persistent intro — the standing prompt stays put as history grows, so
-             the menu never feels like it vanished. -->
-        <p class="bp-body-small text-secondary">
-          Tell me what you'd like to do with <span class="text-text">{{ context().itemName || 'this item' }}</span> — pick an option below, or just send me a message.
-        </p>
+        <!-- Persistent intro — state-aware: when the counterparty has just moved,
+             lead with what they did; else the generic prompt. Stays put as history
+             grows, so the menu never feels like it vanished. -->
+        @if (context().stateSummary; as s) {
+          <p class="bp-body-small text-secondary">
+            <span class="text-text">{{ context().itemName || 'This item' }}</span> — {{ s }} What would you like to do?
+          </p>
+        } @else {
+          <p class="bp-body-small text-secondary">
+            Tell me what you'd like to do with <span class="text-text">{{ context().itemName || 'this item' }}</span> — pick an option below, or just send me a message.
+          </p>
+        }
 
         <!-- The interactive menu — the opening options / active sub-step. It sits
              directly under the intro; concluded actions + sent messages log BELOW

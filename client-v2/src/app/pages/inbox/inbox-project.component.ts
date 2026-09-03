@@ -448,8 +448,28 @@ export class InboxProjectComponent {
       currencyCode: it.line?.supplierCurrency ?? null,
       canAccept: !terminal,
       canDecline: !terminal,
+      stateSummary: this.stateSummaryFor(it),
     };
   });
+  /** pV2-INTENT-02 #2 — a one-line summary of the counterparty's last move on the
+   *  line, from thread state (status + per-side accepts). Deterministic, not LLM. */
+  private stateSummaryFor(it: InboxThreadItem): string | null {
+    const other = this.isAgency() ? 'supplier' : 'agent';
+    const total = it.priceCurrent ?? it.priceRef;
+    const amt = total != null ? gbp(total) : 'the cost';
+    const otherAccepted = this.isAgency() ? it.sellerAccepted : it.buyerAccepted;
+    if (it.buyerAccepted && it.sellerAccepted) return `both sides accepted ${amt}.`;
+    if (otherAccepted) return `the ${other} accepted ${amt}.`;
+    const st = it.status ?? '';
+    if (st === 'adjusted_by_supplier' && this.isAgency()) return `the supplier proposed ${amt}.`;
+    if (st === 'adjusted_by_agent' && !this.isAgency()) return `the agent proposed ${amt}.`;
+    if (st.startsWith('declined')) {
+      const by = st.includes('supplier') ? 'supplier' : 'agent';
+      if (by === other) return `the ${other} declined.`;
+    }
+    if (st === 'brief_sent' && !this.isAgency()) return 'you’ve been asked to quote this.';
+    return null;
+  }
   /** Show the rail (xl) when a line is selected and Customize isn't taking the pane. */
   protected readonly showAgent = computed(() => !!this.agentContext() && !this.customizing());
   protected onAgentQuick(key: string): void {
