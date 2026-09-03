@@ -113,7 +113,12 @@
 <div class="page">
 
   <h1>Ballpark — Components &amp; Item Composition</h1>
-  <p class="lead">How a catalogue item builds up from typed children — options, variants, and cost components — as one recursive tree. <strong>Design foundation (pV2-BUILDUP-01) — dormant, not yet wired.</strong></p>
+  <p class="lead">How a catalogue item builds up from typed children — options, variants, and cost components — as one recursive tree. <strong>Design foundation (pV2-BUILDUP-01) for the <em>catalogue/marketplace</em> side — that part is still dormant. See the correction: the <code>project_items</code> columns are already LIVE in the inbox buildup.</strong></p>
+
+  <div style="margin:14px 0;padding:12px 14px;border-left:4px solid #d63384;background:rgba(214,51,132,0.06);border-radius:6px;font-size:13px;line-height:1.55;">
+    <strong>⚠ Correction (2026-09-03, verified against code):</strong>
+    <code>project_items.parent_id</code> and <code>project_items.kind</code> are <strong>LIVE, not dormant.</strong> The inbox Customize / estimate buildup (pV2-BUILDUP-02/03) <strong>writes</strong> them (<code>saveComponents</code>, <code>projects.service.js:855–865</code>), <strong>reads</strong> them (<code>listComponents</code> / <code>COMPONENT_SELECT WHERE parent_id = $1</code>, <code>:792</code>), and <strong>rolls children up</strong> in the estimate/quote (top-level gate <code>pi.parent_id IS NULL</code>, <code>:494/:501/:568/:615</code> — "the private cost buildup"). Prod rows are populated (Wine/Deluxe under Italian Dinner; Woodworker/Planning/Set-Up Crew under Main Stage). So BUILDUP-01 <em>extended</em> a mechanism the inbox already uses (the RP-11 private-cost boundary) — it did not add columns to a blank slate. The genuinely dormant piece is the <strong>catalogue/marketplace-side</strong> composition (<code>items.parent_item_id</code> lineage, 0/346) — not these <code>project_items</code> columns. Both the CC architect audit and the design-review agent said "columns confirmed inert" because they grepped schema and never traced the <code>saveComponents</code> write path.
+  </div>
 
   <!-- Composition tree -->
   <div class="diagram">

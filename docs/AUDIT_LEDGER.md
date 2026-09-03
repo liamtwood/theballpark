@@ -80,7 +80,9 @@ browse-shuttle rail), `007cc41a` docs (PROGRESS.md), `76e67c46` v2.65
 project-level margin** (the existing `EstimateBreakdown` cascade); `added_by` =
 the authority/visibility line; leaf costs never reach a client surface
 (**private-cost boundary — an RP-11 shape**, see RP-11 below). Schema impact ≈
-one column; the new columns are dormant/additive (all NULL, unwired).
+one column; the new columns were dormant/additive at v2.62 (all NULL, unwired).
+
+**⚠ Correction (2026-09-03, verified against code):** `project_items.parent_id` and `project_items.kind` are **now LIVE**, not inert. The inbox Customize/estimate buildup (pV2-BUILDUP-02/03) writes them (`saveComponents`, `projects.service.js:855–865`), reads them (`listComponents`, `:792`), and rolls children up in the estimate/quote (gate `pi.parent_id IS NULL`, `:494/:501/:568/:615`); prod rows populated. So this arc *extended* the inbox's existing private-cost buildup rather than adding dormant columns to a blank slate. **Both the CC architect verdict and the design-review agent's "`kind`/`parent_id` confirmed inert" were wrong — they read the schema block but never traced the `saveComponents` write path.** Still genuinely dormant: `items.parent_item_id` (catalogue lineage, 0/346).
 
 **CC architect verdict: no blockers.** Clean on the axes that matter — `org_id`
 JWT-only; `supplierOrgId` UUID-validated + server-guarded; the supplier-tick

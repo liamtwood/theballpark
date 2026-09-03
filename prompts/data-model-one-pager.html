@@ -260,16 +260,16 @@
   <!-- Item composition (BUILDUP-01) -->
   <div class="card" style="margin-bottom: 18px; border-left: 3px solid var(--accent);">
     <h2>Item composition — buildup tree
-      <span class="pill" style="background: rgba(214,51,132,0.10); color: var(--accent);">BUILDUP-01 · dormant</span>
+      <span class="pill" style="background: rgba(214,51,132,0.10); color: var(--accent);">BUILDUP-01 · LIVE in inbox</span>
     </h2>
     <ul class="compact">
       <li><strong>One recursive node.</strong> A line nests under another via <code>project_items.parent_id</code> (self-FK). The buildup is a tree — no separate "component" table.</li>
       <li><strong>The tree is pure cost.</strong> Every node rolls up cost; the client charge sits above the roll-up; <strong>margin is the gap</strong>. A <strong>single project-level margin</strong> (the existing <code>EstimateBreakdown</code> cascade), not per-node.</li>
       <li><strong>Authorship = the authority / visibility line</strong> — who owns a node (agent vs supplier) drives what each side may see and edit. (The stamp is <code>created_by</code>; there is no <code>added_by</code> column.)</li>
       <li><strong>Private-cost boundary.</strong> Leaf costs never reach a client surface — an <strong>RP-11-shaped</strong> rule (one predicate, enforced at every place a line renders). The v2.65 fix that filters the explore pre-load to <code>editable()</code> is the same one-place-predicate discipline.</li>
-      <li><strong>Schema impact ≈ one column.</strong> New columns are <strong>dormant + additive</strong> (all NULL, unwired): <code>items.kind</code>, <code>project_items.kind</code> (VARCHAR 20), <code>project_items.parent_id</code> (UUID self-FK) + index <code>ix_project_items_parent</code>. <code>items.parent_item_id</code> / <code>derived_from_id</code> are data-empty (0 / 346) but writable <em>lineage</em> fields today — not a free composition slot.</li>
+      <li><strong>Schema impact ≈ one column.</strong> Additive: <code>items.kind</code>, <code>project_items.kind</code> (VARCHAR 20), <code>project_items.parent_id</code> (UUID self-FK) + index <code>ix_project_items_parent</code>. <strong>Correction (2026-09-03): <code>project_items.parent_id</code> / <code>kind</code> are now LIVE</strong> — the inbox Customize buildup writes + reads them (<code>saveComponents</code> / <code>listComponents</code>, <code>projects.service.js:792/:855–865</code>) and the estimate/quote rolls children up (gate <code>pi.parent_id IS NULL</code>). Still dormant: <code>items.parent_item_id</code> / <code>derived_from_id</code> (catalogue lineage, data-empty 0/346) — not a free composition slot.</li>
     </ul>
-    <p class="note" style="margin-top: 10px;">Shipped dev-only v2.62–v2.65 (architect-audited 2026-08-25, no blockers). <strong>Not yet wired</strong> — the columns are placeholders until the components / time-&amp;-materials build lands. Design record: <code>docs/PROGRESS.md</code>.</p>
+    <p class="note" style="margin-top: 10px;">Schema shipped dev-only v2.62–v2.65; <strong>wired LIVE by the inbox buildup (pV2-BUILDUP-02/03)</strong> — <code>project_items.parent_id</code> / <code>kind</code> carry the supplier's private-cost buildup today (populated in prod). The <em>catalogue/marketplace-side</em> composition is the part still to build. Design record: <code>docs/PROGRESS.md</code>.</p>
   </div>
 
   <!-- ROW: Universal patterns + Tables -->

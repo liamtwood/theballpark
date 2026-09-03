@@ -53,9 +53,19 @@ slice.
   memory (`project_recursive_lineitem_model`).
 
 **Code:**
-- **v2.62** — dormant additive schema: `items.kind`, `project_items.kind`,
-  `project_items.parent_id` (+ index). All NULL/unused; regression clean. The
+- **v2.62** — additive schema: `items.kind`, `project_items.kind`,
+  `project_items.parent_id` (+ index). Dormant *at v2.62*; regression clean. The
   key-constraint relax (same-item-twice) deferred (fringe).
+- **⚠ Correction (2026-09-03, verified against code):** `project_items.parent_id`
+  and `project_items.kind` are **now LIVE**, not dormant. The inbox Customize /
+  estimate buildup (pV2-BUILDUP-02/03) writes them (`saveComponents`,
+  `projects.service.js:855–865`), reads them (`listComponents` / `COMPONENT_SELECT`,
+  `:792`), and the estimate/quote rolls children up (top-level gate
+  `pi.parent_id IS NULL`, `:494/:501/:568/:615` — "the private cost buildup"); prod
+  rows are populated. BUILDUP-01 *extended* a mechanism the inbox already uses (the
+  RP-11 private-cost boundary). Still dormant: `items.parent_item_id` /
+  `derived_from_id` (catalogue lineage, 0/346). The 2026-08-25 audits said "confirmed
+  inert" because they read schema and never traced the `saveComponents` write path.
 - **v2.63** — UI1: supplier-item type-ahead lookup in the add-line dialog
   (pick = reference the real item, type = new custom line, tagged via
   `project_item_suppliers`). Fixed "Add button vanishes on return" (estimate
