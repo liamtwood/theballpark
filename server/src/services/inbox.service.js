@@ -18,7 +18,7 @@ const { lineTotalSql } = require('./line-total.util');
 const TaxonomyService = require('./taxonomy.service');
 const messageService = require('./message.service');
 const projectsService = require('./projects.service');
-const { getByMessage, aggregateStatus, transitionItem, recordDecision } = require('./message-item.service');
+const { getByMessage, getByMessages, aggregateStatus, transitionItem, recordDecision } = require('./message-item.service');
 
 function httpErr(message, status) {
   const e = new Error(message);
@@ -300,7 +300,9 @@ async function getSupplierThreads(supplierOrgId, projectId) {
   const tags = await fetchTags(scoped.map((m) => m.id));
   const threads = [];
   for (const g of groups.values()) {
-    const items = await getByMessage(g.lead.id);
+    // Items across ALL briefs in the category, not just the lead — items added
+    // to an existing category ride a later brief message (INBOX late-add fix).
+    const items = await getByMessages(g.messages.map((m) => m.id), { sentOnly: true });
     const lines = await projectsService.linesByIds(pool, items.map((i) => i.id));
     threads.push(makeThread(g.lead, g.messages, items, 'supplier', tags, lines));
   }
@@ -412,7 +414,9 @@ async function getAgentThreads(agencyOrgId, projectId) {
   const tags = await fetchTags(all.map((m) => m.id));
   const threads = [];
   for (const g of groups.values()) {
-    const items = await getByMessage(g.lead.id);
+    // Union across every brief in the (supplier × category) group so items added
+    // after the first outreach (a later brief message) still appear.
+    const items = await getByMessages(g.messages.map((m) => m.id), { sentOnly: true });
     const lines = await projectsService.linesByIds(pool, items.map((i) => i.id));
     threads.push(makeThread(g.lead, g.messages, items, 'agency', tags, lines));
   }

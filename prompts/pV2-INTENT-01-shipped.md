@@ -351,3 +351,19 @@ move suppliers actually make. Added a real slot for a flat line total.
   was stored: cost + total for per-unit; blank cost + flat total for flat.
 - **Verified** (read-only): example line price_current 140 × 150 + 10% = £23,100 ✓;
   flat override 25,000 wins ✓.
+
+## Iteration — v2.243 (2026-09-03): inbox — items added to an existing category now show
+Bug: agent adds items to a category that already has a thread, sends — the items
+don't appear for supplier or agent.
+
+- **Cause**: a thread read its items from only the OLDEST (lead) brief message
+  (`getByMessage(g.lead.id)`). Items added later ride a NEW brief in that category,
+  so they were invisible. (A brand-new category showed fine — its brief was the lead.)
+- **Fix**: `getByMessages(ids, { sentOnly })` unions items across ALL briefs in the
+  (category [× supplier]) group, deduped per line. Both thread builders
+  (getSupplierThreads / getAgentThreads) now pass every message in the group.
+  `getByMessage` delegates to it (unchanged behaviour for brief/message routes).
+- **sentOnly**: the union can surface a buildup child that was tagged but never sent
+  (status NULL); `sentOnly: true` (inbox only) keeps just briefed lines
+  (status IS NOT NULL). Verified on iPuck Launch: Scenic Totem (late-add to Stand
+  Structure) now shows for both roles; Staffing's 5 intact.

@@ -175,48 +175,74 @@ function aggregateStatus(items, viewer) {
     / seller_status come from the message_item_decisions satellite (latest per
     side), now keyed by project_item_id. */
 async function getByMessage(messageId, { executor = null } = {}) {
+  return getByMessages([messageId], { executor });
+}
+
+/** Whether a line belongs in a THREAD (was actually sent) vs. a pure buildup
+ *  child that only exists inside a parent's estimate. Briefing sets `status`;
+ *  un-sent components keep it NULL. Used by the inbox union (sentOnly) so those
+ *  children don't surface as standalone thread lines. */
+
+/** pV2-UNIFY-01 / INBOX fix — resolve a THREAD's items across ALL its brief
+ *  messages, not just one. When an agency adds items to a category that already
+ *  has a thread, the send tags them onto a NEW brief message; the thread's items
+ *  must be the union of message_items across every brief in the group, deduped
+ *  per project_items line (an item can be tagged by the brief AND a later reply),
+ *  else late-added items are invisible. Same columns/shape as a single message. */
+async function getByMessages(messageIds, { executor = null, sentOnly = false } = {}) {
   const db = executor || pool;
+  const ids = (messageIds || []).filter(Boolean);
+  if (!ids.length) return [];
+  // Inbox threads union across every brief, which can otherwise surface a
+  // buildup child that was tagged but never sent (status NULL). sentOnly drops
+  // those; single-message callers keep the original, unfiltered behaviour.
+  const sentFilter = sentOnly ? 'AND pi.status IS NOT NULL' : '';
   const r = await db.query(
-    `SELECT pi.id, pi.item_id,
-            COALESCE(pi.name, i.name)              AS name,
-            COALESCE(pi.description, i.description) AS description,
-            pi.quantity, pi.unit, pi.installed, pi.status,
-            pi.price_ref, pi.price_current,
-            COALESCE(pi.install_cost, i.install_cost) AS install_cost,
-            COALESCE(pi.install_unit, i.install_unit) AS install_unit,
-            i.image_url       AS item_image_url,
-            i.image_display   AS item_image_display,
-            o.id              AS supplier_org_id,
-            o.name            AS supplier_name,
-            o.logo_url        AS supplier_logo_url,
-            (${lineTotalSql('pi.price_ref')})                                          AS original_total,
-            (${lineTotalSql('COALESCE(pi.price_current, pi.price_ref)', { flat: true })}) AS revised_total,
-            pi.flat_total,
-            buyer.decision    AS buyer_status,
-            buyer.user_id     AS buyer_user_id,
-            buyer.created_at  AS buyer_at,
-            seller.decision   AS seller_status,
-            seller.user_id    AS seller_user_id,
-            seller.created_at AS seller_at
-       FROM message_items mtag
-       JOIN project_items pi ON pi.id = mtag.project_item_id
-       LEFT JOIN items i ON i.id = pi.item_id
-       LEFT JOIN orgs  o ON o.id = COALESCE(pi.supplier_org_id, i.org_id)
-       LEFT JOIN LATERAL (
-         SELECT d.decision, d.user_id, d.created_at
-           FROM message_item_decisions d
-          WHERE d.project_item_id = pi.id AND d.side = 'buyer'
-          ORDER BY d.created_at DESC LIMIT 1
-       ) buyer ON TRUE
-       LEFT JOIN LATERAL (
-         SELECT d.decision, d.user_id, d.created_at
-           FROM message_item_decisions d
-          WHERE d.project_item_id = pi.id AND d.side = 'seller'
-          ORDER BY d.created_at DESC LIMIT 1
-       ) seller ON TRUE
-      WHERE mtag.message_id = $1 AND pi.deleted_at IS NULL
-      ORDER BY pi.created_at ASC`,
-    [messageId]
+    `SELECT * FROM (
+       SELECT DISTINCT ON (pi.id)
+              pi.id, pi.item_id,
+              COALESCE(pi.name, i.name)              AS name,
+              COALESCE(pi.description, i.description) AS description,
+              pi.quantity, pi.unit, pi.installed, pi.status,
+              pi.price_ref, pi.price_current,
+              COALESCE(pi.install_cost, i.install_cost) AS install_cost,
+              COALESCE(pi.install_unit, i.install_unit) AS install_unit,
+              i.image_url       AS item_image_url,
+              i.image_display   AS item_image_display,
+              o.id              AS supplier_org_id,
+              o.name            AS supplier_name,
+              o.logo_url        AS supplier_logo_url,
+              (${lineTotalSql('pi.price_ref')})                                          AS original_total,
+              (${lineTotalSql('COALESCE(pi.price_current, pi.price_ref)', { flat: true })}) AS revised_total,
+              pi.flat_total,
+              pi.created_at,
+              buyer.decision    AS buyer_status,
+              buyer.user_id     AS buyer_user_id,
+              buyer.created_at  AS buyer_at,
+              seller.decision   AS seller_status,
+              seller.user_id    AS seller_user_id,
+              seller.created_at AS seller_at
+         FROM message_items mtag
+         JOIN project_items pi ON pi.id = mtag.project_item_id
+         LEFT JOIN items i ON i.id = pi.item_id
+         LEFT JOIN orgs  o ON o.id = COALESCE(pi.supplier_org_id, i.org_id)
+         LEFT JOIN LATERAL (
+           SELECT d.decision, d.user_id, d.created_at
+             FROM message_item_decisions d
+            WHERE d.project_item_id = pi.id AND d.side = 'buyer'
+            ORDER BY d.created_at DESC LIMIT 1
+         ) buyer ON TRUE
+         LEFT JOIN LATERAL (
+           SELECT d.decision, d.user_id, d.created_at
+             FROM message_item_decisions d
+            WHERE d.project_item_id = pi.id AND d.side = 'seller'
+            ORDER BY d.created_at DESC LIMIT 1
+         ) seller ON TRUE
+        WHERE mtag.message_id = ANY($1::uuid[]) AND pi.deleted_at IS NULL
+          ${sentFilter}
+        ORDER BY pi.id
+     ) t ORDER BY t.created_at ASC`,
+    [ids]
   );
   return r.rows;
 }
@@ -298,6 +324,7 @@ module.exports = {
   transitionItem,
   aggregateStatus,
   getByMessage,
+  getByMessages,
   getThreadByToken,
   recordDecision,
   listDecisions,
