@@ -87,7 +87,7 @@ one column; the new columns were dormant/additive at v2.62 (all NULL, unwired).
 **CC architect verdict: no blockers.** Clean on the axes that matter — `org_id`
 JWT-only; `supplierOrgId` UUID-validated + server-guarded; the supplier-tick
 write rides the existing transaction (Rule 1); the schema block additive +
-idempotent with `kind`/`parent_id` confirmed inert; tokens-only; the RP-11
+idempotent with `kind`/`parent_id` confirmed inert (superseded — now LIVE, see correction above); tokens-only; the RP-11
 private-cost boundary intact (nothing new renders internal cost client-side).
 
 | File | Lines | SHA | Status | Notes |
@@ -122,7 +122,7 @@ private-cost boundary intact (nothing new renders internal cost client-side).
 relax that would allow the same item twice — the only regression risk, not yet
 done (`migrate-schemas.js:2168–2170`); the parked `project_items` subcategory
 edge (category-only grouping for pre-loaded lines); `kind` / `parent_id` stay
-inert until buildup logic lands.
+inert until buildup logic lands (superseded — now LIVE in the inbox buildup, see correction above).
 
 **chat-side (Claude) pass:** this ledger section + the composition callout in
 `prompts/data-model-one-pager.html`. A separate Claude audit, if run, folds into

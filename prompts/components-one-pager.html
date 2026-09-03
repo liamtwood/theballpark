@@ -245,7 +245,7 @@
     <h2>Schema footprint — what's there, what's needed now, what's deferred</h2>
     <div class="row-2" style="margin-bottom:0;">
       <ul class="compact">
-        <li><strong>Present &amp; dormant</strong> (all NULL / unwired): <code>items.kind</code>, <code>project_items.kind</code> (VARCHAR 20), <code>project_items.parent_id</code> (UUID self-FK) + index <code>ix_project_items_parent</code>. Note <code>items.parent_item_id</code> / <code>derived_from_id</code> are <strong>data-empty (0 / 346) but writable lineage fields today</strong> (item create/update) — not a free slot for composition (see "Catalogue template" above).</li>
+        <li><strong>Live (inbox buildup):</strong> <code>project_items.parent_id</code> (UUID self-FK) + index <code>ix_project_items_parent</code> and <code>project_items.kind</code> (VARCHAR 20) — written + read by <code>saveComponents</code> / <code>listComponents</code> (see the correction at the top). <code>items.kind</code> backs the catalogue listing filter. <strong>Dormant:</strong> <code>items.parent_item_id</code> / <code>derived_from_id</code> are <strong>data-empty (0 / 346) but writable lineage fields today</strong> (item create/update) — not a free slot for composition (see "Catalogue template" above).</li>
         <li><strong>The one guard needed at authoring time:</strong> <code>items.kind</code> earns a second job — <em>catalogue visibility</em>. The marketplace / store listing must exclude components (<code>kind = 'primary' OR kind IS NULL</code>) the same commit components can be created, or a child fridge pops up as a standalone card.</li>
       </ul>
       <ul class="compact">
@@ -256,7 +256,7 @@
   </div>
 
   <div class="note">
-    <strong>Status:</strong> composition is a <strong>design foundation, not a live feature</strong> — the columns are dormant placeholders shipped dev-only (pV2-BUILDUP-01, v2.62–v2.65, architect-audited 2026-08-25, no blockers). Near-term footprint = authoring-in-item-context + the <code>kind</code> listing filter; everything else (pricing engine, instantiation, the % fork, the library) is a later layer that nothing here blocks. Design record: <code>docs/PROGRESS.md</code>; model memory <code>project_recursive_lineitem_model</code>.
+    <strong>Status:</strong> the <strong>catalogue/marketplace-side</strong> composition is a design foundation, not yet a live feature (pV2-BUILDUP-01, v2.62–v2.65, architect-audited 2026-08-25, no blockers). <strong>The <code>project_items</code> columns (<code>parent_id</code> / <code>kind</code>) are NOT dormant — they're live in the inbox private-cost buildup (see the correction at the top).</strong> Near-term footprint = authoring-in-item-context + the <code>kind</code> listing filter; everything else (pricing engine, instantiation, the % fork, the library) is a later layer that nothing here blocks. Design record: <code>docs/PROGRESS.md</code>; model memory <code>project_recursive_lineitem_model</code>.
   </div>
 
 </div>

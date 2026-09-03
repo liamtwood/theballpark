@@ -298,7 +298,7 @@
           <tr><td class="layer-name">projects</td><td>An event. Belongs to one client. Has many cart items, estimates, messages.</td></tr>
           <tr><td class="layer-name">categories</td><td>Marketplace taxonomy. Same names across orgs.</td></tr>
           <tr><td class="layer-name">items</td><td>A supplier's catalogue entry. Belongs to one supplier org + one category.</td></tr>
-          <tr><td class="layer-name">project_items</td><td>The cart — project ↔ item junction. <strong>Project-level</strong>, fans out per supplier on checkout. Also the <strong>buildup tree</strong>: <code>parent_id</code> nests cost-part children under a line, <code>kind</code> classifies the node <span class="pill pill--junction" style="font-size:9px;">dormant</span></td></tr>
+          <tr><td class="layer-name">project_items</td><td>The cart — project ↔ item junction. <strong>Project-level</strong>, fans out per supplier on checkout. Also the <strong>buildup tree</strong>: <code>parent_id</code> nests cost-part children under a line, <code>kind</code> classifies the node <span class="pill pill--junction" style="font-size:9px;">LIVE (inbox)</span></td></tr>
           <tr><td class="layer-name">messages</td><td>Conversation thread, one per (project, supplier). Author + body + status.</td></tr>
           <tr><td class="layer-name">message_items</td><td>Items being discussed in a message. Status pill lives here.</td></tr>
           <tr><td class="layer-name">message_item_decisions</td><td>Append-only audit per item: accept / decline / price change / qty change.</td></tr>

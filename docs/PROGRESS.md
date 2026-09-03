@@ -88,7 +88,7 @@ Files: `custom-line-dialog.component.ts` (rewritten), `project-estimate.componen
 
 Concerns for audit: the `explore` reconcile diff in `addCustom`; the
 private-cost boundary (RP-11 shape — enforce everywhere a line renders once
-components land); confirm `kind`/`parent_id` are truly inert until wired; the
+components land); confirm `kind`/`parent_id` are truly inert until wired (superseded — now LIVE, see the v2.62 correction above); the
 parked subcategory-on-existing edge (category-only grouping for pre-loaded lines).
 
 **Design-review corrections (2026-08-25, CC review of `components-one-pager.html`):**
