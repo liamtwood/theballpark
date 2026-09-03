@@ -41,6 +41,17 @@ The **Assistant** is a conversational rail on a single inbox quote line. It repl
 
 - **Buildup persistence** — `server/src/services/projects.service.js`: `saveComponents(orgId, projectId, parentLineId, components, revisedPrice, marginPct, parent{…})` reconciles child components (`parent_id`) and rolls base+components+margin into the parent `price_current`. `listComponents` reads them back for the dialog.
 
+### 1.3a Node `kind` — the type vocabulary (being separated out)
+
+`project_items.kind` classifies a node. **Live rule (v2.244+):** an Assistant **"Add extras" (Make a change)** now writes `kind='extra'` (a client-facing add-on), NOT `estimate`. The vocabulary we're settling:
+- **`estimate`** — the supplier's PRIVATE cost decomposition (T&M breakdown; Woodworker/MDF). Added via a **separate "Estimate" entry point to the *same* Customize UI** (Liam: "estimate as a separate entry point to the same UI").
+- **`extra`** — a client-facing add-on stacked on the line (insurance, wine pairing). Both count in the price. Written by the Assistant add-extra path ([agent-rail.component.ts:611](client-v2/src/app/pages/projects/agent-rail.component.ts:611)).
+- **`option`** — a client-facing ALTERNATIVE the customer picks one of. Relationship carried by `option_of_line_id`; when the options flow is built, also stamp `kind='option'`.
+- `null` — a plain top-level line (catalogue add / custom line; `addItem`/`addCustomItem` don't set kind).
+- On the CATALOGUE `items` table, `kind='component'` marks reusable component-library rows (Customize Explore only).
+
+**Nothing filters `project_items` on `kind`** (verified) — rollup gates on `parent_id IS NULL` + `included`, so retyping a child doesn't change price. `kind` is for classification/display (badge extra vs option vs estimate) and the options-vs-add-ons logic.
+
 ### 1.3 Pricing / data model (`project_items`)
 
 Per-unit: `base_price` (snapshot), `price_ref` (briefed per-unit / "Original"), `price_current` (negotiated per-unit / "Revised"). Flat override: **`flat_total`** (nullable; when set, `price_current` is NULL and it wins the line total). Install: `install_cost` + `install_unit` (`per_order`|`per_item`|`percentage`), line value overrides catalogue via `COALESCE(pi.install_cost, i.install_cost)`. Buildup: `parent_id` (component child), `margin_pct`, `kind`. **Options:** `option_of_line_id` (an alternative the customer picks — surfaces in the Quote's Options panel). Send state: `status` (NULL = cart/to-send; `brief_sent`/`adjusted_by_*`/`accepted`/`declined_*`). `quantity`, `unit`.

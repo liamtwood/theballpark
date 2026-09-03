@@ -607,8 +607,12 @@ export class AgentRailComponent {
         if (a.unit != null) hit.unit = a.unit;
         hit.included = true;
       } else {
+        // An Assistant "Add extras" (Make a change) adds a client-facing EXTRA,
+        // NOT a private cost-estimate part — tag it kind='extra' so it's distinct
+        // from the supplier's estimate buildup (which stays kind='estimate', added
+        // via the separate Estimate entry point to the same Customize UI).
         comps.push({ id: undefined, categoryId: null, name: a.name, cost: a.cost, unit: a.unit,
-          quantity: a.qty != null ? Math.max(1, Math.round(a.qty)) : 1, kind: 'estimate', included: true });
+          quantity: a.qty != null ? Math.max(1, Math.round(a.qty)) : 1, kind: 'extra', included: true });
       }
     }
 

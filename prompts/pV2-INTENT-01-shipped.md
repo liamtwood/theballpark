@@ -367,3 +367,12 @@ don't appear for supplier or agent.
   (status NULL); `sentOnly: true` (inbox only) keeps just briefed lines
   (status IS NOT NULL). Verified on iPuck Launch: Scenic Totem (late-add to Stand
   Structure) now shows for both roles; Staffing's 5 intact.
+
+## Iteration — v2.244 (2026-09-03): Assistant "Add extras" tags kind='extra', not 'estimate'
+- Separate client-facing extras from the supplier's private cost buildup. The Assistant
+  add-extra (Make a change → upsert_extra) now writes `kind='extra'` on the new component
+  (was `'estimate'`) — agent-rail.component.ts:611. Verified nothing filters project_items
+  on kind (rollup gates on parent_id IS NULL + included), so price/rollup is unchanged;
+  this is purely the type separation. `estimate` stays for the supplier cost decomposition
+  (future: a separate "Estimate" entry point to the same Customize UI); `option` reserved
+  for the options flow (option_of_line_id). Vocabulary captured in pV2-INTENT-02 §1.3a.
