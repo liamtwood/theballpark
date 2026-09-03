@@ -144,7 +144,11 @@ async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
             pi.name, pi.description, pi.base_price
        FROM project_items pi
       WHERE pi.project_id = $1 AND pi.deleted_at IS NULL
-        AND pi.status IS NULL`,
+        AND pi.status IS NULL
+        -- Only TOP-LEVEL lines fan out. A component child is part of its parent's
+        -- private cost buildup — it must NEVER be briefed independently (which would
+        -- re-own it to whichever supplier holds that category — INBOX integrity bug).
+        AND pi.parent_id IS NULL`,
     [projectId]
   );
   const linesByCat = new Map();

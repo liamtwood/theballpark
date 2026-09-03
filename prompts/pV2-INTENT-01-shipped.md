@@ -376,3 +376,15 @@ don't appear for supplier or agent.
   this is purely the type separation. `estimate` stays for the supplier cost decomposition
   (future: a separate "Estimate" entry point to the same Customize UI); `option` reserved
   for the options flow (option_of_line_id). Vocabulary captured in pV2-INTENT-02 §1.3a.
+
+## Iteration — v2.245 (2026-09-03): SEV — outreach must not fan out component children
+Bug: `sendOutreach` fanned out EVERY `status IS NULL` line grouped by category, with no
+`parent_id IS NULL` filter. A supplier's private cost-buildup children (kind=estimate)
+categorised into another band got swept into that band's outreach and **re-owned to a
+different supplier** — e.g. Main Stage's Woodworker/Planning/Set-Up Crew (Ballpark's
+Supplier, Stand Structure) were briefed to ProBuild Events under Staffing (supplier +
+category flipped). A cross-supplier leak of private cost data.
+- **Fix:** `sendOutreach` line-selection now `AND pi.parent_id IS NULL` — only top-level
+  lines fan out; component children are never independently briefed.
+- Blast radius (verified): public only, 5 child rows swept (3 cross-supplier); preview clean.
+  Existing bad rows need a one-off cleanup (reset supplier/category/status, drop the tags).
