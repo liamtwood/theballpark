@@ -42,6 +42,9 @@ export interface InboxItemAction {
   price?: number;
   /** Adjust: the new per-line install cost (raw value under the item's basis). */
   installCost?: number;
+  /** Adjust: a FLAT line total that overrides per-unit × qty. When set, the
+   *  server clears price_current (per-unit cost becomes null). */
+  flatTotal?: number;
   note?: string;
 }
 
@@ -91,6 +94,9 @@ export interface InboxThreadItem {
   /** The per-unit rate being negotiated (Cost), plus the breakdown basis. */
   unitPriceRef: number | null;
   unitPriceCurrent: number | null;
+  /** A negotiated FLAT line total that overrides per-unit × qty. When set,
+   *  unitPriceCurrent is null (the line was priced as a flat amount). */
+  flatTotal: number | null;
   quantity: number | null;
   unit: string | null;
   installed: boolean | null;

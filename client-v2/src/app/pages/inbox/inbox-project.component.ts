@@ -434,7 +434,9 @@ export class InboxProjectComponent {
       unit: it.unit ?? null,
       quantity: it.quantity ?? null,
       currentTotal: it.priceCurrent ?? it.priceRef ?? null,
-      currentUnitCost: it.unitPriceCurrent ?? it.unitPriceRef ?? null,
+      // A flat-priced line has no per-unit cost — reopen the Suggest form with a
+      // blank New cost (+ the flat Total), matching how it was stored.
+      currentUnitCost: it.flatTotal != null ? null : (it.unitPriceCurrent ?? it.unitPriceRef ?? null),
       installCost: it.installCost ?? null,
       installUnit: it.installUnit ?? null,
       installApplies: it.installed !== false && (it.installCost ?? 0) > 0,
@@ -513,16 +515,21 @@ export class InboxProjectComponent {
       await this.send(t.id);
     }
   }
-  protected onAgentSuggestCost(payload: { total: number; message: string; installed: boolean }): void {
+  protected onAgentSuggestCost(payload: { unitCost: number | null; total: number; message: string; installed: boolean }): void {
     const it = this.selectedItem();
     if (!it) return;
-    // Back out the per-unit rate for the chosen install state so the LINE total
-    // equals what was entered. Install is persisted through the NEGOTIATION adjust
-    // (installCost=0 to turn it off) — not the lock-gated /items PATCH (409).
-    const rate = this.rateForLineTotal(it, payload.total, payload.installed);
-    const installCost = payload.installed ? undefined : 0;
     const text = payload.message?.trim() || `${it.name} cost updated to ${gbp(payload.total)} by ${this.actorName()}`;
-    void this.itemAction(it.id, 'adjust', rate, text, installCost);
+    if (payload.unitCost != null) {
+      // PER-UNIT: store the per-unit cost directly (the server derives the line
+      // total via the shared formula, so no rounding drift). Install: undefined
+      // = keep the existing basis; 0 = turn it off. The server clears flat_total.
+      const installCost = payload.installed ? undefined : 0;
+      void this.itemAction(it.id, 'adjust', payload.unitCost, text, installCost);
+    } else {
+      // FLAT: store the flat line total; the server nulls price_current. Install
+      // is folded into the flat amount, so turn the per-line basis off (0).
+      void this.itemAction(it.id, 'adjust', undefined, text, 0, payload.total);
+    }
     this.blinkNextMessage();
   }
   protected onAgentSend(text: string): void {
@@ -921,12 +928,12 @@ export class InboxProjectComponent {
 
   /** A per-item action posts a matching chat line + the state change, then
    *  refreshes so the bubble + the item's pill update together. */
-  private async itemAction(itemId: string, action: 'accept' | 'adjust', price?: number, text?: string, installCost?: number): Promise<void> {
+  private async itemAction(itemId: string, action: 'accept' | 'adjust', price?: number, text?: string, installCost?: number, flatTotal?: number): Promise<void> {
     const thread = this.selectedThread();
     if (!thread || this.sending()) return;
     this.sending.set(true);
     try {
-      await firstValueFrom(this.inbox.reply(thread.id, { text, itemActions: [{ itemId, action, price, installCost }] }));
+      await firstValueFrom(this.inbox.reply(thread.id, { text, itemActions: [{ itemId, action, price, installCost, flatTotal }] }));
       this.threadsRes.reload();
     } catch {
       // Retry on the next click; shared toast surface lands later.

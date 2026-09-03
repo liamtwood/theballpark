@@ -80,7 +80,7 @@ async function listSupplierProjects(supplierOrgId) {
             ao.logo_url  AS agency_logo_url,
             MAX(pi.updated_at)  AS updated_at,
             COUNT(*)            AS item_count,
-            COALESCE(SUM(${lineTotalSql('COALESCE(pi.price_current, pi.price_ref)')}), 0) AS quote_total
+            COALESCE(SUM(${lineTotalSql('COALESCE(pi.price_current, pi.price_ref)', { flat: true })}), 0) AS quote_total
        FROM project_items pi
        LEFT JOIN items i ON i.id  = pi.item_id
        JOIN projects p   ON p.id  = pi.project_id
@@ -249,6 +249,10 @@ function toThreadItem(it, line) {
     priceCurrent: it.revised_total == null ? null : Number(it.revised_total),
     unitPriceRef: it.price_ref == null ? null : Number(it.price_ref),
     unitPriceCurrent: it.price_current == null ? null : Number(it.price_current),
+    // pV2-INTENT-01: a negotiated FLAT line total (overrides per-unit × qty).
+    // When set, unitPriceCurrent is null — the Assistant reopens with a blank
+    // New cost + this flat Total.
+    flatTotal: it.flat_total == null ? null : Number(it.flat_total),
     quantity: it.quantity == null ? null : Number(it.quantity),
     // The install basis, so the negotiation card can show the full breakdown
     // (Cost · Unit · Install · Total) and recompute the total from a new rate.
@@ -487,7 +491,7 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions, tagge
 
     const changes = [];
     for (const a of actions) {
-      const { itemId, action, price, installCost, note } = a || {};
+      const { itemId, action, price, installCost, flatTotal, note } = a || {};
       if (!itemId || !action) continue;
       // itemId is a project_items.id; it must belong to THIS thread — i.e. be
       // tagged by the lead brief message (pV2-UNIFY-01).
@@ -507,7 +511,7 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions, tagge
       let extra = null;
       switch (action) {
         case 'accept':  toStatus = 'accepted'; break;
-        case 'adjust':  toStatus = adjustStatus; extra = { price, installCost }; break;
+        case 'adjust':  toStatus = adjustStatus; extra = { price, installCost, flatTotal }; break;
         case 'decline': toStatus = declineStatus; break;
         default: continue;
       }

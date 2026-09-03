@@ -11,10 +11,16 @@
 // base_price is already snapshotted on project_items. Aliases: pi
 // (project_items) + i (items). Callers embed the fragment inside a SELECT that
 // joins those two tables under those aliases.
-function lineTotalSql(priceExpr) {
+// pV2-INTENT-01 — a line may carry a negotiated FLAT total (project_items.
+// flat_total) that OVERRIDES the per-unit × qty + install calc: a supplier can
+// just round the whole line up/down without pricing per head. When present it
+// wins; when NULL the per-unit formula stands. Pass `{ flat: true }` for the
+// "current/revised" surfaces (inbox Revised, quote current, negotiation) so the
+// override applies; the "Original" surfaces (price_ref) keep the plain formula.
+function lineTotalSql(priceExpr, { flat = false } = {}) {
   const ic = 'COALESCE(pi.install_cost, i.install_cost)';
   const iu = 'COALESCE(pi.install_unit, i.install_unit)';
-  return `
+  const perUnit = `
   COALESCE(${priceExpr}, 0) * pi.quantity
   + CASE
       WHEN NOT COALESCE(pi.installed, true) OR ${ic} IS NULL THEN 0
@@ -22,6 +28,7 @@ function lineTotalSql(priceExpr) {
       WHEN ${iu} = 'percentage' THEN COALESCE(${priceExpr}, 0) * pi.quantity * (${ic} / 100.0)
       ELSE ${ic} * pi.quantity
     END`;
+  return flat ? `COALESCE(pi.flat_total, (${perUnit}))` : perUnit;
 }
 
 // ── The ONE "is this line declined?" rule ────────────────────────────────────

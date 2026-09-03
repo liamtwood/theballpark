@@ -53,7 +53,7 @@ async function resolveStatus(code) {
 // price_ref = base_price at send — so a negotiated line reads identically on the
 // Final Quote and the inbox. Cart / Quote / Final / Inbox can't drift. Aliases:
 // pi (project_items) + i (items).
-const LINE_TOTAL_SQL = lineTotalSql('COALESCE(pi.price_current, pi.base_price)');
+const LINE_TOTAL_SQL = lineTotalSql('COALESCE(pi.price_current, pi.base_price)', { flat: true });
 
 const LIST_SELECT = `
   SELECT p.id, p.name, p.event_name, p.ref, p.status,

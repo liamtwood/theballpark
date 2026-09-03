@@ -83,7 +83,16 @@ async function transitionItem({
   // the full reason_code + note.
   const sets = ['status = $2', 'updated_at = NOW()'];
   const params = [itemId, toStatus];
-  if (finalPriceAfter != null) { sets.push(`price_current = $${params.length + 1}`); params.push(finalPriceAfter); }
+  // pV2-INTENT-01: price_current (per-unit) and flat_total (a flat line override)
+  // are mutually exclusive. Setting one clears the other, so a line can flip
+  // between "£X per head" and "£Y flat" cleanly and no stale override lingers.
+  if (extra && extra.flatTotal != null) {
+    sets.push(`flat_total = $${params.length + 1}`); params.push(extra.flatTotal);
+    sets.push('price_current = NULL');
+  } else if (finalPriceAfter != null) {
+    sets.push(`price_current = $${params.length + 1}`); params.push(finalPriceAfter);
+    sets.push('flat_total = NULL');
+  }
   // Negotiated install cost/basis override (pV2-UNIFY-01 QC) — the line's own
   // install price, winning over the catalogue value in the shared formula.
   if (extra && extra.installCost != null) { sets.push(`install_cost = $${params.length + 1}`); params.push(extra.installCost); }
@@ -180,8 +189,9 @@ async function getByMessage(messageId, { executor = null } = {}) {
             o.id              AS supplier_org_id,
             o.name            AS supplier_name,
             o.logo_url        AS supplier_logo_url,
-            (${lineTotalSql('pi.price_ref')})                            AS original_total,
-            (${lineTotalSql('COALESCE(pi.price_current, pi.price_ref)')}) AS revised_total,
+            (${lineTotalSql('pi.price_ref')})                                          AS original_total,
+            (${lineTotalSql('COALESCE(pi.price_current, pi.price_ref)', { flat: true })}) AS revised_total,
+            pi.flat_total,
             buyer.decision    AS buyer_status,
             buyer.user_id     AS buyer_user_id,
             buyer.created_at  AS buyer_at,

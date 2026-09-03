@@ -330,3 +330,24 @@ actions** the user taps to apply. v1 action allowlist:
   (no round-trip drift). So reopening shows 120 / head / £18,000, not a blank cost.
 - **Unit**: added `pr-7` so the right-aligned value sits beside the native chevron
   instead of jammed under it ("head" was too far right).
+
+## Iteration — v2.242 (2026-09-03): per-unit vs flat pricing — the `flat_total` override
+Encourage per-unit pricing but don't block the "just round the whole line up/down"
+move suppliers actually make. Added a real slot for a flat line total.
+
+- **Schema**: `project_items.flat_total numeric NULL` (additive, migrate-flat-total.js,
+  public + preview). NULL = no override → shared formula unchanged for every existing line.
+- **Shared formula** (`lineTotalSql`, the ONE per-line calc): new `{ flat: true }` mode
+  wraps it as `COALESCE(pi.flat_total, per_unit×qty+install)`. Applied to the
+  current/revised surfaces — inbox Revised, thread quote_total, projects `LINE_TOTAL_SQL`
+  — so inbox, quote AND Customize all show the identical number automatically. Original
+  (price_ref) keeps the plain formula.
+- **Write (`transitionItem`)**: price_current (per-unit) and flat_total are mutually
+  exclusive — setting one clears the other. So a line flips cleanly between "£X/head"
+  and "£Y flat" with no stale override.
+- **Assistant**: New cost present → per-unit (`price_current` = cost, `flat_total` NULL,
+  total derives → no rounding drift). New cost blank (they edited the Total) → flat
+  (`flat_total` = Total, `price_current` NULL, install off). Reopen shows exactly what
+  was stored: cost + total for per-unit; blank cost + flat total for flat.
+- **Verified** (read-only): example line price_current 140 × 150 + 10% = £23,100 ✓;
+  flat override 25,000 wins ✓.
