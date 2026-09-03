@@ -1044,3 +1044,7 @@ Customize screen.
   only) that opens the **Customize** builder — relabelled "Details" since the item
   card already lives inside it. Toggles (icon → ✕ "Close details" while open) via
   the existing `toggleCustomize`.
+
+## Iteration — v2.239 (2026-09-03): show the Details icon to the agent too
+- Dropped the supplier-only gate on the header **Details** icon — it now shows for
+  the agent as well (view the item's Customize/details).

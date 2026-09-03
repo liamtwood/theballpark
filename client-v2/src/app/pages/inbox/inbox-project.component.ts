@@ -76,13 +76,12 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                     }
                   </h2>
                   @if (selectedItem(); as it) {
-                    @if (!isAgency()) {
-                      <!-- pV2-BUILDUP — open the item's Details (the Customize
-                           builder; the item card lives inside it). -->
-                      <button type="button" class="bp-itemprev-close shrink-0" [title]="isCustomizing(it) ? 'Close details' : 'Details'" [attr.aria-label]="isCustomizing(it) ? 'Close details' : 'Details'" (click)="toggleCustomize(it)">
-                        <lucide-icon [name]="isCustomizing(it) ? 'x' : 'list-tree'" [size]="16" />
-                      </button>
-                    }
+                    <!-- pV2-BUILDUP — open the item's Details (the Customize
+                         builder; the item card lives inside it). Shown to agent
+                         + supplier. -->
+                    <button type="button" class="bp-itemprev-close shrink-0" [title]="isCustomizing(it) ? 'Close details' : 'Details'" [attr.aria-label]="isCustomizing(it) ? 'Close details' : 'Details'" (click)="toggleCustomize(it)">
+                      <lucide-icon [name]="isCustomizing(it) ? 'x' : 'list-tree'" [size]="16" />
+                    </button>
                   }
                 </div>
                 <!-- When a specific item is selected the header is ITEM-scoped
