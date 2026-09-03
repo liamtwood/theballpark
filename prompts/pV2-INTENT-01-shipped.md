@@ -304,3 +304,19 @@ actions** the user taps to apply. v1 action allowlist:
   shows Install unticked.
 - Known edge: re-ticking Install after a flat send doesn't restore the original
   catalogue % (it was zeroed); use Customize if you need it back.
+
+## Iteration — v2.240 (2026-09-03): Assistant polish — comma Total, right-aligned Unit, persistent intro + history log
+- **Total** is now a comma-grouped text input (£19,800), still editable + flat
+  source of truth (clears cost/install on edit). Number inputs can't group, so it's
+  a text input via `fmtTotal()` / `onTotalInput()`.
+- **Unit** picklist value is right-aligned (next to the chevron), consistent with
+  New cost / Qty / Total.
+- **Layout reorder**: the intro ("…pick an option below…") is now persistent at the
+  top; the interactive menu (Accept / Decline / Make a change + sub-steps) sits
+  directly beneath it; concluded actions and the message you sent log BELOW the menu
+  as history. Dropped the "Is there anything else?" heading (the intro covers it).
+- **Sent shows the message**: a sent update now keeps its own message text in the
+  history ("Italian Dinner cost updated to £19,800…") above the bold "Sent · just
+  now" line — so you can see exactly what went out.
+- **Accept is a menu step** now (not a floating turn) — Back returns to the options;
+  keeps all interaction in the top menu and the log purely below.

@@ -69,69 +69,16 @@ interface Turn {
       </div>
 
       <div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
-        @if (!turns().length) {
-          <p class="bp-body-small text-secondary">
-            Tell me what you'd like to do with <span class="text-text">{{ context().itemName || 'this item' }}</span> — pick an option below, or just send me a message.
-          </p>
-        }
-        @for (t of turns(); track $index) {
-          @if (t.who === 'you') {
-            <div class="ml-6 rounded-2xl rounded-br-sm bg-fill px-3 py-2">
-              <p class="bp-body-small text-text">{{ t.text }}</p>
-            </div>
-          } @else {
-            <div class="mr-6 space-y-2">
-              @if (t.text) { <div class="bp-md bp-body-small" [class.text-secondary]="!t.strong" [class.text-text]="t.strong" [class.font-semibold]="t.strong" [innerHTML]="t.text | md"></div> }
-              @if (t.actions?.length) {
-                <div class="flex flex-col gap-1.5">
-                  @for (a of t.actions; track $index) {
-                    <button type="button" class="flex items-center justify-between gap-2 rounded-lg border border-hairline px-3 py-2 text-left transition-colors hover:bg-fill disabled:opacity-50"
-                            [disabled]="applying() || t.applied?.has(a)" (click)="apply(t, a)">
-                      <span class="bp-body-small text-text">{{ label(a) }}</span>
-                      <span class="bp-caption shrink-0">
-                        {{ t.applied?.has(a) ? 'Done' : (isNegotiation(a) ? 'Send' : 'Apply') }}
-                      </span>
-                    </button>
-                  }
-                </div>
-              }
-              @if (t.suggestions?.length) {
-                <div class="flex flex-wrap gap-1.5">
-                  @for (s of t.suggestions; track $index) {
-                    <button type="button" class="rounded-full border border-hairline px-2.5 py-1 bp-caption text-secondary transition-colors hover:bg-fill hover:text-text"
-                            [disabled]="busy()" (click)="useSuggestion(s)">{{ s }}</button>
-                  }
-                </div>
-              }
-              @if (t.wrap) {
-                <p class="bp-caption text-muted">Anything else you'd like to change? If not:</p>
-                <button type="button" class="bp-send-btn" (click)="startDraft()">
-                  <lucide-icon name="send" [size]="14" /> Send them an update
-                </button>
-              }
-              @if (t.draft) {
-                <textarea rows="4" class="bp-store-textarea w-full" [ngModel]="draftText()" (ngModelChange)="draftText.set($event)"></textarea>
-                <button type="button" class="bp-send-btn" (click)="sendDraft()">
-                  <lucide-icon name="send" [size]="14" /> Send
-                </button>
-              }
-              @if (t.acceptConfirm) {
-                <div class="flex items-center gap-3 pt-1">
-                  <button type="button" class="bp-caption text-muted hover:text-text" (click)="dropTurn(t)">Back</button>
-                  <button type="button" class="bp-send-btn" (click)="confirmAcceptDo(t)">Accept</button>
-                </div>
-              }
-              @if (t.concluded) {
-                <p class="bp-body-small font-semibold text-text">{{ t.concluded === 'accepted' ? 'Accepted' : (t.concluded === 'declined' ? 'Declined' : 'Sent') }} · {{ timeAgo(t.at!) }}</p>
-              }
-            </div>
-          }
-        }
+        <!-- Persistent intro — the standing prompt stays put as history grows, so
+             the menu never feels like it vanished. -->
+        <p class="bp-body-small text-secondary">
+          Tell me what you'd like to do with <span class="text-text">{{ context().itemName || 'this item' }}</span> — pick an option below, or just send me a message.
+        </p>
 
-        <!-- The opening options — shown initially and re-shown after a conclusion
-             (so you're never left in limbo). -->
+        <!-- The interactive menu — the opening options / active sub-step. It sits
+             directly under the intro; concluded actions + sent messages log BELOW
+             it (so you always see what you just did). -->
         @if (showOptions()) {
-          @if (turns().length) { <p class="bp-body-small font-semibold text-text">Is there anything else?</p> }
           @if (step() === 'root') {
             <div role="radiogroup" class="space-y-1.5">
               @if (context().canAccept || context().acceptedAt) {
@@ -141,6 +88,15 @@ interface Turn {
                 <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('decline')" /><span class="bp-body-small text-text">{{ context().role === 'agent' ? 'Cancel the request' : 'Decline' }}</span></label>
               }
               <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="agentOpt" (change)="step.set('change')" /><span class="bp-body-small text-text">Make a change</span></label>
+            </div>
+          }
+          @if (step() === 'accept') {
+            <div class="space-y-2">
+              <div class="bp-md bp-body-small text-text" [innerHTML]="acceptPrompt() | md"></div>
+              <div class="flex items-center gap-3 pt-1">
+                <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">Back</button>
+                <button type="button" class="bp-send-btn" (click)="confirmAccept()">Accept</button>
+              </div>
             </div>
           }
           @if (step() === 'decline') {
@@ -184,7 +140,7 @@ interface Turn {
               </label>
               <label class="flex items-center justify-between gap-3">
                 <span class="bp-body-small text-secondary">Unit</span>
-                <select class="h-9 w-32 rounded-[var(--radius-field)] border border-hairline bg-surface px-2.5 text-md leading-normal outline-none focus:border-accent"
+                <select class="h-9 w-32 rounded-[var(--radius-field)] border border-hairline bg-surface px-2.5 text-right text-md leading-normal outline-none focus:border-accent"
                         [ngModel]="sugUnit()" (ngModelChange)="sugUnit.set($event || null)">
                   <option [ngValue]="null">—</option>
                   @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
@@ -200,8 +156,8 @@ interface Turn {
                 <span class="bp-body-small text-secondary">Total</span>
                 <div class="relative">
                   <span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 bp-body-small text-muted">{{ sym() }}</span>
-                  <input type="number" min="0" max="10000000" class="h-9 w-32 rounded-[var(--radius-field)] border border-hairline bg-surface pl-6 pr-2.5 text-right text-md font-semibold tabular-nums leading-none outline-none focus:border-accent"
-                         [ngModel]="sugTotal()" (ngModelChange)="sugTotal.set($event); totalTouched.set(true); sugCost.set(null); sugInstall.set(false); reseedMsg()" />
+                  <input type="text" inputmode="numeric" class="h-9 w-32 rounded-[var(--radius-field)] border border-hairline bg-surface pl-6 pr-2.5 text-right text-md font-semibold tabular-nums leading-none outline-none focus:border-accent"
+                         [value]="fmtTotal()" (input)="onTotalInput($any($event.target).value)" />
                 </div>
               </div>
             </div>
@@ -210,6 +166,55 @@ interface Turn {
             <div class="flex items-center gap-3 pt-1">
               <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">Back</button>
               <button type="button" class="bp-send-btn" [disabled]="!sugTotal()" (click)="confirmSuggest()">Send</button>
+            </div>
+          }
+        }
+        <!-- History log — your messages, assistant replies, and concluded actions
+             (Accepted / Declined / the update you sent), newest at the bottom. -->
+        @for (t of turns(); track $index) {
+          @if (t.who === 'you') {
+            <div class="ml-6 rounded-2xl rounded-br-sm bg-fill px-3 py-2">
+              <p class="bp-body-small text-text">{{ t.text }}</p>
+            </div>
+          } @else {
+            <div class="mr-6 space-y-2">
+              @if (t.text) { <div class="bp-md bp-body-small" [class.text-secondary]="!t.strong" [class.text-text]="t.strong" [class.font-semibold]="t.strong" [innerHTML]="t.text | md"></div> }
+              @if (t.actions?.length) {
+                <div class="flex flex-col gap-1.5">
+                  @for (a of t.actions; track $index) {
+                    <button type="button" class="flex items-center justify-between gap-2 rounded-lg border border-hairline px-3 py-2 text-left transition-colors hover:bg-fill disabled:opacity-50"
+                            [disabled]="applying() || t.applied?.has(a)" (click)="apply(t, a)">
+                      <span class="bp-body-small text-text">{{ label(a) }}</span>
+                      <span class="bp-caption shrink-0">
+                        {{ t.applied?.has(a) ? 'Done' : (isNegotiation(a) ? 'Send' : 'Apply') }}
+                      </span>
+                    </button>
+                  }
+                </div>
+              }
+              @if (t.suggestions?.length) {
+                <div class="flex flex-wrap gap-1.5">
+                  @for (s of t.suggestions; track $index) {
+                    <button type="button" class="rounded-full border border-hairline px-2.5 py-1 bp-caption text-secondary transition-colors hover:bg-fill hover:text-text"
+                            [disabled]="busy()" (click)="useSuggestion(s)">{{ s }}</button>
+                  }
+                </div>
+              }
+              @if (t.wrap) {
+                <p class="bp-caption text-muted">Anything else you'd like to change? If not:</p>
+                <button type="button" class="bp-send-btn" (click)="startDraft()">
+                  <lucide-icon name="send" [size]="14" /> Send them an update
+                </button>
+              }
+              @if (t.draft) {
+                <textarea rows="4" class="bp-store-textarea w-full" [ngModel]="draftText()" (ngModelChange)="draftText.set($event)"></textarea>
+                <button type="button" class="bp-send-btn" (click)="sendDraft()">
+                  <lucide-icon name="send" [size]="14" /> Send
+                </button>
+              }
+              @if (t.concluded) {
+                <p class="bp-body-small font-semibold text-text">{{ t.concluded === 'accepted' ? 'Accepted' : (t.concluded === 'declined' ? 'Declined' : 'Sent') }} · {{ timeAgo(t.at!) }}</p>
+              }
             </div>
           }
         }
@@ -288,6 +293,20 @@ export class AgentRailComponent {
     const goods = (Number(this.sugCost()) || 0) * Math.max(1, Number(this.sugQty()) || 1);
     this.sugTotal.set(Math.round(this.withInstall(goods)));
   }
+  /** Total shown comma-grouped (a text input — number inputs can't group). */
+  protected fmtTotal(): string {
+    const n = this.sugTotal();
+    return n ? n.toLocaleString('en-GB') : '';
+  }
+  /** Editing the Total makes it the flat source of truth: clear cost + install. */
+  protected onTotalInput(v: string): void {
+    const n = Number((v || '').replace(/[^0-9.]/g, '')) || 0;
+    this.sugTotal.set(n);
+    this.totalTouched.set(true);
+    this.sugCost.set(null);
+    this.sugInstall.set(false);
+    this.reseedMsg();
+  }
   /** Unit picklist (mirrors the customize builder's list). */
   protected readonly units = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 'sheet', 'length', 'm', 'kg', 'litre', 'roll', 'pack', 'box', 'hire', 'job', 'lot'];
   /** Keep the suggest message in sync with the total until the user edits it. */
@@ -325,30 +344,30 @@ export class AgentRailComponent {
 
   /** Ask to accept (radio OR typed): shows the total + delivery date and that a
    *  confirmation message will be sent, then Back / Accept. */
+  /** The accept confirmation prompt, shown as a step inside the menu. */
+  protected readonly acceptPrompt = signal('');
   protected askAccept(): void {
     const s = this.sym();
     const c = this.context();
     const total = c.currentTotal != null ? `**${s}${c.currentTotal.toLocaleString('en-GB')}**` : 'the current cost';
     const del = c.deliveryDate ? ` with delivery ${c.deliveryDate}` : '';
     this.reset();
-    this.menuOpen.set(false); // hide the menu while confirming
-    this.turns.update((t) => [...t, { who: 'assistant', text: `Accept ${total}${del} and send a confirmation message?`, acceptConfirm: true }]);
+    this.acceptPrompt.set(`Accept ${total}${del} and send a confirmation message?`);
+    this.step.set('accept'); // confirm inside the menu (not a floating turn)
+    this.menuOpen.set(true);
   }
-  protected confirmAcceptDo(turn: Turn): void {
-    turn.acceptConfirm = false; // collapse the buttons
+  protected confirmAccept(): void {
     this.quickAction.emit('accept'); // host accepts + posts the confirmation message
     this.conclude('accepted');
-  }
-  protected dropTurn(turn: Turn): void {
-    this.turns.update((t) => t.filter((x) => x !== turn));
-    this.menuOpen.set(true); // backing out returns to the options, never a dead end
   }
 
   /** End a flow: a bold outcome line + time-ago, then re-open the options so the
    *  user isn't stuck. */
-  private conclude(kind: 'accepted' | 'declined' | 'sent'): void {
+  private conclude(kind: 'accepted' | 'declined' | 'sent', detail?: string): void {
     this.reset();
-    this.turns.update((t) => [...t, { who: 'assistant', text: '', concluded: kind, at: Date.now() }]);
+    // A sent update keeps the message itself as history (rendered above the bold
+    // "Sent · just now" line); accept/decline have no body.
+    this.turns.update((t) => [...t, { who: 'assistant', text: detail ?? '', concluded: kind, at: Date.now() }]);
     this.menuOpen.set(true);
   }
   /** Relative time for a conclusion ("just now", "5 mins ago", "2 days ago"). */
@@ -400,8 +419,9 @@ export class AgentRailComponent {
   }
   /** Send the suggested new price (line total = cost × qty) + the message. */
   protected confirmSuggest(): void {
-    this.suggestCost.emit({ total: this.sugTotal(), message: this.sugMessage().trim(), installed: this.sugInstall() });
-    this.conclude('sent');
+    const message = this.sugMessage().trim();
+    this.suggestCost.emit({ total: this.sugTotal(), message, installed: this.sugInstall() });
+    this.conclude('sent', message);
   }
   protected readonly busy = signal(false);
   protected readonly applying = signal(false);
