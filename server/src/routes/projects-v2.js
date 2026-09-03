@@ -228,8 +228,12 @@ const ComponentsSchema = z.object({
 // GET the line's current components (re-opening the estimate).
 router.get('/:id/items/:itemId/components', async (req, res, next) => {
   try {
-    const rows = await projects.listComponents(req.user.org_id, req.params.id, req.params.itemId);
-    if (rows === null) return res.status(404).json({ error: 'Line not found or not yours to estimate' });
+    // Supplier (owns the line) → the full buildup. Else the AGENCY (owns the
+    // project) gets the client-facing view: base + extras/options only, never the
+    // supplier's private estimate parts (pV2-INTENT-02 #4 / RP-11).
+    let rows = await projects.listComponents(req.user.org_id, req.params.id, req.params.itemId);
+    if (rows === null) rows = await projects.listComponentsForAgency(req.user.org_id, req.params.id, req.params.itemId);
+    if (rows === null) return res.status(404).json({ error: 'Line not found' });
     res.json(rows);
   } catch (err) {
     next(err);

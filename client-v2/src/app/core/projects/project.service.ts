@@ -40,6 +40,9 @@ export interface ComponentsResponse {
   parentServices: string | null;
   marginPct: number | null;
   defaultMarginPct: number | null;
+  /** pV2-INTENT-02 #4 — true when this is the AGENCY's client-facing, read-only
+   *  view (base + extras/options; no private estimate parts; no Save/Send). */
+  readOnly?: boolean;
 }
 
 /** pV2-BUILDUP-02 — an existing child component (as stored), for re-open. */

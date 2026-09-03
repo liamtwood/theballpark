@@ -818,6 +818,41 @@ async function listComponents(orgId, projectId, parentLineId) {
   };
 }
 
+/** pV2-INTENT-02 #4 — the AGENCY's CLIENT-FACING view of a supplier line's
+ *  buildup: the parent + only client-facing children (extras/options,
+ *  kind <> 'estimate'). NEVER the supplier's private cost buildup (estimate) —
+ *  the RP-11 boundary. Agency-scoped: the caller must OWN THE PROJECT (they are
+ *  not the line's supplier). read-only (the agency can't save the buildup). */
+async function listComponentsForAgency(agencyOrgId, projectId, parentLineId) {
+  const parent = await pool.query(
+    `SELECT pi.name, pi.description, pi.install_description, pi.margin_pct, o.default_margin_pct
+       FROM project_items pi
+       JOIN projects proj ON proj.id = pi.project_id AND proj.org_id = $3 AND proj.deleted_at IS NULL
+       LEFT JOIN orgs o ON o.id = pi.supplier_org_id
+      WHERE pi.id = $1 AND pi.project_id = $2 AND pi.deleted_at IS NULL`,
+    [parentLineId, projectId, agencyOrgId]
+  );
+  if (!parent.rows.length) return null;
+  const r = await pool.query(
+    `SELECT id, name, base_price, unit, quantity, category_id, kind, selection_type, description, image_url
+       FROM project_items
+      WHERE parent_id = $1 AND kind IS DISTINCT FROM 'estimate' AND deleted_at IS NULL
+      ORDER BY created_at`,
+    [parentLineId]
+  );
+  const num = (v) => (v == null ? null : Number(v));
+  return {
+    components: r.rows,
+    parentName: parent.rows[0].name,
+    parentDescription: parent.rows[0].description,
+    parentServices: parent.rows[0].install_description,
+    marginPct: num(parent.rows[0].margin_pct),
+    defaultMarginPct: num(parent.rows[0].default_margin_pct),
+    // The agency view is read-only — it never authors the supplier's buildup.
+    readOnly: true,
+  };
+}
+
 /** pV2-BUILDUP-02 — RECONCILE the child components under a line the supplier was
  *  asked to quote (their own per-supplier row). Each input component with an `id`
  *  updates that child; without an `id` inserts a new one; any existing child not
@@ -1222,6 +1257,6 @@ async function recommend(orgId, projectId) {
 
 module.exports = {
   listForOrg, listClientNames, getDetail, updateDetail, create,
-  listItems, getEstimate, addItem, addCustomItem, saveComponents, listComponents, listMyComponents, removeItem, updateItem, updateLineDetails, setQuoteDescription, recommend,
+  listItems, getEstimate, addItem, addCustomItem, saveComponents, listComponents, listComponentsForAgency, listMyComponents, removeItem, updateItem, updateLineDetails, setQuoteDescription, recommend,
   resolveStatus, DEFAULT_STATUS, toCard, linesByIds,
 };

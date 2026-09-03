@@ -178,22 +178,29 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                       <button type="button" class="rounded-md p-1 text-muted hover:text-danger" [class.bp-demo-hl]="demoHl(r, 'remove')" aria-label="Remove" (click)="removeRow(r)"><lucide-icon name="trash-2" [size]="14" /></button>
                     </div>
                   }
-                  <!-- Per-card footer: Explore (category-scoped) + Add. -->
-                  <div class="flex items-center gap-4 p-3">
-                    <button type="button" class="bp-body-small inline-flex items-center gap-1 text-secondary hover:text-text" (click)="openExplore(grp.isExtras ? null : grp.categoryId)">
-                      <lucide-icon name="layout-grid" [size]="14" /> Explore components
-                    </button>
-                    <button type="button" class="bp-body-small inline-flex items-center gap-1 text-secondary hover:text-text" (click)="addRowIn(grp.isExtras ? null : grp.categoryId)">
-                      <lucide-icon name="plus" [size]="14" /> Add component
-                    </button>
-                  </div>
+                  <!-- Per-card footer: Explore (category-scoped) + Add. Hidden in
+                       the agency's read-only client-facing view. -->
+                  @if (!readOnly()) {
+                    <div class="flex items-center gap-4 p-3">
+                      <button type="button" class="bp-body-small inline-flex items-center gap-1 text-secondary hover:text-text" (click)="openExplore(grp.isExtras ? null : grp.categoryId)">
+                        <lucide-icon name="layout-grid" [size]="14" /> Explore components
+                      </button>
+                      <button type="button" class="bp-body-small inline-flex items-center gap-1 text-secondary hover:text-text" (click)="addRowIn(grp.isExtras ? null : grp.categoryId)">
+                        <lucide-icon name="plus" [size]="14" /> Add component
+                      </button>
+                    </div>
+                  }
                 </div>
                 }
               </div>
             }
 
             <div class="mt-3 flex items-center gap-2">
-              @if (itemMode()) {
+              @if (readOnly()) {
+                <!-- pV2-INTENT-02 #4 — the agency's client-facing view: read-only,
+                     no Save/Send (it never authors the supplier's buildup). -->
+                <button type="button" class="bp-btn-outline flex-1" (click)="cancel.emit()">Close</button>
+              } @else if (itemMode()) {
                 <button type="button" class="bp-btn-grad flex-1" [disabled]="saving() || !loaded()" (click)="save(false)">{{ saving() ? 'Saving…' : 'Save options' }}</button>
               } @else {
                 <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="cancel.emit()">Cancel</button>
@@ -389,6 +396,8 @@ export class CustomizeDialogComponent implements OnInit {
   protected readonly myComponents = signal<MyComponent[]>([]);
   protected readonly query = signal('');
   protected readonly rows = signal<Row[]>([]);
+  /** pV2-INTENT-02 #4 — the agency's client-facing, read-only view (no authoring). */
+  protected readonly readOnly = signal(false);
   /** The component row selected in the table — its card shows in the right rail. */
   protected readonly selectedRowK = signal<number | null>(null);
   protected readonly selectedRow = computed(() => this.rows().find((r) => r._k === this.selectedRowK()) ?? null);
@@ -534,6 +543,7 @@ export class CustomizeDialogComponent implements OnInit {
       : this.projects.getComponents(this.projectId(), this.lineId());
     load$.subscribe({
       next: (res) => {
+        this.readOnly.set(!!(res as { readOnly?: boolean }).readOnly);
         const rows = res.components.map((c) => this.rowFrom(c));
         this.rows.set(rows.length ? rows : [this.blank()]);
         // Line margin: the saved value, else the supplier org default, else 20%.
