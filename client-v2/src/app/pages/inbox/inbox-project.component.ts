@@ -67,13 +67,24 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                    (no agency line / status pill / category·items; that
                    context lives in the rail card). -->
               <div class="border-b border-hairline px-5 py-4">
-                <h2 class="bp-card-title text-lg">
+                <div class="flex items-start justify-between gap-2">
+                  <h2 class="bp-card-title text-lg">
+                    @if (selectedItem(); as it) {
+                      {{ it.name }} <span class="text-muted">· {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}</span>
+                    } @else {
+                      {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}
+                    }
+                  </h2>
                   @if (selectedItem(); as it) {
-                    {{ it.name }} <span class="text-muted">· {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}</span>
-                  } @else {
-                    {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}
+                    @if (!isAgency()) {
+                      <!-- pV2-BUILDUP — open the item's Details (the Customize
+                           builder; the item card lives inside it). -->
+                      <button type="button" class="bp-itemprev-close shrink-0" [title]="isCustomizing(it) ? 'Close details' : 'Details'" [attr.aria-label]="isCustomizing(it) ? 'Close details' : 'Details'" (click)="toggleCustomize(it)">
+                        <lucide-icon [name]="isCustomizing(it) ? 'x' : 'list-tree'" [size]="16" />
+                      </button>
+                    }
                   }
-                </h2>
+                </div>
                 <!-- When a specific item is selected the header is ITEM-scoped
                      (its own priceRef/priceCurrent) so it lines up with the item
                      card / Customize base; with no item selected it's the whole

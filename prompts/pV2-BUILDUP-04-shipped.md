@@ -1038,3 +1038,9 @@ Customize screen.
   shows when `editable()` (and the toggle hides in edit) — `@if (!collapsible ||
   expanded || editable)`. Click the card → edit (fields + Save/Cancel); More →
   peek the read-only detail.
+
+## Iteration — v2.238 (2026-09-03): "Details" icon in the inbox item header
+- Added a single **Details** icon (list-tree) to the inbox item header (supplier
+  only) that opens the **Customize** builder — relabelled "Details" since the item
+  card already lives inside it. Toggles (icon → ✕ "Close details" while open) via
+  the existing `toggleCustomize`.
