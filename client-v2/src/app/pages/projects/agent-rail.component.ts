@@ -140,7 +140,7 @@ interface Turn {
               </label>
               <label class="flex items-center justify-between gap-3">
                 <span class="bp-body-small text-secondary">Unit</span>
-                <select class="h-9 w-32 rounded-[var(--radius-field)] border border-hairline bg-surface px-2.5 text-right text-md leading-normal outline-none focus:border-accent"
+                <select class="h-9 w-32 rounded-[var(--radius-field)] border border-hairline bg-surface pl-2.5 pr-7 text-right text-md leading-normal outline-none focus:border-accent"
                         [ngModel]="sugUnit()" (ngModelChange)="sugUnit.set($event || null)">
                   <option [ngValue]="null">—</option>
                   @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
@@ -398,16 +398,17 @@ export class AgentRailComponent {
    *  form; Change item / Add extras drop a tailored hint to type the rest. */
   protected pickChange(kind: 'suggest' | 'item' | 'extras'): void {
     if (kind === 'suggest') {
-      // Open the price form. The Total (the price they'll pay) is the source of
-      // truth, seeded from the CURRENT line total; New cost starts blank (type one
-      // to switch to a per-unit calc). So a prior flat total reopens as a flat
-      // total, not a reconstructed per-head value.
-      this.sugTotal.set(Math.round(this.context().currentTotal ?? 0));
-      this.sugCost.set(null);
-      this.sugQty.set(this.context().quantity ?? 1);
-      this.sugUnit.set(this.context().unit ?? null);
-      this.sugInstall.set(this.context().installApplies);
-      this.totalTouched.set(true); // the seeded Total is authoritative until they type a cost
+      // Reopen with the STORED values: the per-unit cost (price_current) shows in
+      // New cost, and the actual line Total stays authoritative (so a round-trip
+      // can't drift a few pence off the stored total). Editing New cost flips the
+      // Total back to a live cost×qty calc; editing the Total makes it flat.
+      const c = this.context();
+      this.sugCost.set(c.currentUnitCost ?? null);
+      this.sugTotal.set(Math.round(c.currentTotal ?? 0));
+      this.sugQty.set(c.quantity ?? 1);
+      this.sugUnit.set(c.unit ?? null);
+      this.sugInstall.set(c.installApplies);
+      this.totalTouched.set(true); // stored Total stays authoritative until they retype cost/total
       this.msgTouched.set(false);
       this.reseedMsg();
       this.step.set('suggest');

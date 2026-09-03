@@ -320,3 +320,13 @@ actions** the user taps to apply. v1 action allowlist:
   now" line — so you can see exactly what went out.
 - **Accept is a menu step** now (not a floating turn) — Back returns to the options;
   keeps all interaction in the top menu and the log purely below.
+
+## Iteration — v2.241 (2026-09-03): reopen shows the stored per-head cost; unit off the chevron
+- **DB check** (public.project_items, "3 Course Italian Dinner"): base_price 105,
+  price_ref 105, **price_current 120** (per HEAD, qty 150). The per-unit cost IS
+  stored — it was never null. The "NULL" was only the reopen form blanking New cost.
+- **Fix**: `pickChange('suggest')` now seeds **New cost from the stored per-unit
+  cost** (`currentUnitCost` = price_current), keeping the line Total authoritative
+  (no round-trip drift). So reopening shows 120 / head / £18,000, not a blank cost.
+- **Unit**: added `pr-7` so the right-aligned value sits beside the native chevron
+  instead of jammed under it ("head" was too far right).
