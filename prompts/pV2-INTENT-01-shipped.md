@@ -388,3 +388,11 @@ category flipped). A cross-supplier leak of private cost data.
   lines fan out; component children are never independently briefed.
 - Blast radius (verified): public only, 5 child rows swept (3 cross-supplier); preview clean.
   Existing bad rows need a one-off cleanup (reset supplier/category/status, drop the tags).
+
+## Iteration — v2.248 (2026-09-04): INTENT-02 #5 — dedicated "Add extras" entry box + suggestion dedupe
+- Make a change → Add extras now opens its own step with a labelled entry box
+  ("What would you like to add to <Item>? Say what it is and how many — a price too…"),
+  routing the scoped request through the same parser (agent drafts the request; supplier
+  adds the component). Replaces the type-in-the-composer hint.
+- Deduped suggestion chips (case-insensitive) — the parser sometimes returned the same
+  next-step twice (QC: "Ask supplier for options" showed twice).

@@ -137,6 +137,16 @@ interface Turn {
             @if (hint()) { <p class="bp-caption text-muted">{{ hint() }}</p> }
             <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">Back</button>
           }
+          @if (step() === 'extras') {
+            <p class="bp-caption text-muted">What would you like to add to <span class="text-text">{{ context().itemName || 'this item' }}</span>? Say what it is and how many — a price too, if you have one in mind.</p>
+            <textarea rows="3" class="bp-store-textarea w-full" placeholder="e.g. 6 tablecloths · wine for 100, max £10 a head · a project manager for 2 days"
+                      [ngModel]="extraText()" (ngModelChange)="extraText.set($event)"
+                      (keydown.enter)="$event.preventDefault(); sendExtra()"></textarea>
+            <div class="flex items-center gap-3 pt-1">
+              <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">Back</button>
+              <button type="button" class="bp-send-btn" [disabled]="busy() || !extraText().trim()" (click)="sendExtra()">Send</button>
+            </div>
+          }
           @if (step() === 'suggest') {
             <p class="bp-caption text-muted">Suggest a new price:</p>
             <div class="space-y-2">
@@ -271,7 +281,7 @@ export class AgentRailComponent {
   protected readonly menuOpen = signal(false);
   protected readonly showOptions = computed(() => !this.turns().length || this.menuOpen());
   /** Opening flow: root → decline (reasons) | change (sub-options). */
-  protected readonly step = signal<'root' | 'accept' | 'decline' | 'change' | 'suggest'>('root');
+  protected readonly step = signal<'root' | 'accept' | 'decline' | 'change' | 'suggest' | 'extras'>('root');
   /** Suggest-new-price form state. */
   protected readonly sugCost = signal<number | null>(null);
   protected readonly sugQty = signal<number>(1);
@@ -429,9 +439,25 @@ export class AgentRailComponent {
       this.step.set('suggest');
       return;
     }
-    this.hint.set(kind === 'item'
-      ? 'Tell me what to change on the item — name, description, or base cost (e.g. “set the base to £120”).'
-      : 'Tell me the extra to add — e.g. “add insurance at £200” or “wine pairing £15 a head”.');
+    if (kind === 'extras') {
+      // A dedicated entry box, scoped to THIS item (pV2-INTENT-02 #5).
+      this.extraText.set('');
+      this.step.set('extras');
+      return;
+    }
+    this.hint.set('Tell me what to change on the item — name, description, or base cost (e.g. “set the base to £120”).');
+  }
+  /** Free-text for the "Add extras" box. */
+  protected readonly extraText = signal('');
+  protected sendExtra(): void {
+    const t = this.extraText().trim();
+    if (!t || this.busy()) return;
+    // Scope the request to the item so the parser treats it as an extra to add
+    // here (agent → drafts the request; supplier → adds the component).
+    this.draft.set(`Add to ${this.context().itemName || 'this item'}: ${t}`);
+    this.extraText.set('');
+    this.reset();
+    void this.send();
   }
   /** Send the suggested new price (line total = cost × qty) + the message. */
   protected confirmSuggest(): void {
@@ -488,7 +514,7 @@ export class AgentRailComponent {
       const at: Turn = {
         who: 'assistant',
         text: res.reply || (all.length ? '' : "I couldn't turn that into an action — try naming a cost, an extra, or accept/decline."),
-        actions, suggestions: res.suggestions ?? [], applied: new Set<IntentAction>(),
+        actions, suggestions: this.dedupe(res.suggestions), applied: new Set<IntentAction>(),
       };
       this.turns.update((t) => [...t, at]);
       if (hasAccept) this.askAccept();
@@ -504,6 +530,17 @@ export class AgentRailComponent {
   }
 
   protected useSuggestion(s: string): void { this.draft.set(s); void this.send(); }
+
+  /** Drop duplicate suggestion chips (case-insensitive), preserving order. */
+  private dedupe(list: string[] | undefined): string[] {
+    const seen = new Set<string>();
+    return (list ?? []).filter((s) => {
+      const k = s.trim().toLowerCase();
+      if (!k || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
 
   private permitted(a: IntentAction): boolean {
     const ctx = this.context();
