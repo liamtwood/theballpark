@@ -64,7 +64,7 @@ export interface ComponentRow {
 export type IntentAction =
   | { type: 'set_base_cost'; amount: number }
   | { type: 'set_base_description'; text: string }
-  | { type: 'upsert_extra'; name: string; cost: number | null; qty: number | null; unit: string | null }
+  | { type: 'upsert_extra'; name: string; cost: number | null; qty: number | null; unit: string | null; description?: string | null }
   | { type: 'accept_cost' }
   | { type: 'decline' }
   | { type: 'suggest_cost'; amount: number }
@@ -185,6 +185,11 @@ export class ProjectService {
       components, revisedPrice, marginPct, parentName: parent?.name, parentDescription: parent?.description, parentServices: parent?.services,
       parentDetails: parent?.details, parentQuantity: parent?.quantity, parentUnit: parent?.unit, parentUnitPrice: parent?.unitPrice,
     });
+  }
+
+  /** pV2-INTENT-02 — the AGENT adds a QUESTION (unpriced request) under a line. */
+  addQuestion(projectId: string, lineId: string, q: { name: string; quantity?: number; unit?: string | null; description?: string | null }): Observable<{ id: string }> {
+    return this.api.post<{ id: string }>(`/api/projects-v2/${projectId}/items/${lineId}/question`, q);
   }
 
   /** pV2-QUANTITY-01 — set a quote line's quantity (positive integer). */

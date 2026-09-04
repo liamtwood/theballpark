@@ -260,6 +260,28 @@ router.post('/:id/items/:itemId/components', async (req, res, next) => {
   }
 });
 
+// pV2-INTENT-02 — the AGENT adds a QUESTION (unpriced request) as a child of the
+// line. Agency-scoped (the caller owns the project); the supplier prices it later.
+const QuestionSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  quantity: z.number().int().positive().max(100000).optional(),
+  unit: z.string().max(40).nullish(),
+  description: z.string().max(2000).nullish(),
+});
+router.post('/:id/items/:itemId/question', async (req, res, next) => {
+  try {
+    const parsed = QuestionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const q = await projects.addQuestion(req.user.org_id, req.params.id, req.params.itemId, parsed.data);
+    if (q === null) return res.status(404).json({ error: 'Line not found in your project' });
+    res.status(201).json(q);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // pV2-INTENT-01 — interpret a typed inbox message into SUGGESTED actions on this
 // line (never applies them; the client confirms + applies via the endpoints
 // above). Context is advisory (feeds the prompt only); the real writes re-check

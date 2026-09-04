@@ -415,3 +415,23 @@ questions" — it had no thread context, only the typed message.
 - Prompt: answer status/"any questions" ONLY from the conversation; NEVER claim no
   questions if one is shown; surface the counterparty's unanswered ask + the matching
   action. Verified: Tunnel returns the agent's brief + "add 2 branded flags" request.
+
+## Iteration — v2.258 (2026-09-04): questions as components (kind='question')
+The agent's request is now a real, unpriced component the supplier prices — an audit
+trail + deterministic status, minimal AI.
+- **kind='question'** — a new, AGENT-creatable kind (the one component the agent may
+  write: unpriced, no commitment). `saveComponents` flips question→extra the moment a
+  cost is set.
+- **Agent Add-extras → creates the question:** the prompt returns `upsert_extra` with
+  `cost:null` + a "Requested — …" `description` (agent side); `permitted` allows
+  upsert_extra for the agent; `apply` emits `addQuestion`; the host calls
+  `POST /:id/items/:itemId/question` (agency-scoped, `projects.addQuestion`) creating a
+  `kind='question'` child on the supplier's line (created_by = agent = audit), then
+  posts the request into the thread tagged to the line.
+- **Deterministic surfacing:** getByMessages exposes `has_open_question` (EXISTS a
+  kind='question' child) → toThreadItem `hasOpenQuestion` → a yellow **"Question"** pill
+  in the left rail. No AI to detect.
+- **Resolution:** supplier prices it in Customize → question→extra (deterministic).
+  Verified E2E: addQuestion → pill true → shows in Customize as [question, cost=null].
+- AI footprint of the whole loop now: draft/structure the ask (1), + the future prose
+  answer-match. Everything else is status.

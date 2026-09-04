@@ -283,6 +283,8 @@ export class AgentRailComponent {
    *  blank) → the host stores the flat total with a null per-unit cost; else the
    *  per-unit cost is authoritative and the total derives from it. */
   readonly suggestCost = output<{ unitCost: number | null; total: number; message: string; installed: boolean }>();
+  /** pV2-INTENT-02 — the agent adds a QUESTION (unpriced request) on the line. */
+  readonly addQuestion = output<{ name: string; qty: number; unit: string | null; description: string | null }>();
   readonly sendMessage = output<string>();
 
   /** The scrolling messages area — auto-scrolled to the newest turn so the reply
@@ -579,9 +581,11 @@ export class AgentRailComponent {
     const ctx = this.context();
     if (a.type === 'accept_cost') return ctx.canAccept;
     if (a.type === 'decline') return ctx.canDecline;
-    // Supplier owns the buildup edits; the agent asks (draft_message) / counters.
-    if (a.type === 'set_base_cost' || a.type === 'set_base_description' || a.type === 'upsert_extra') return ctx.role === 'supplier';
-    return true; // suggest_cost / draft_message
+    // Base edits stay supplier-only. upsert_extra is permitted for BOTH: the
+    // supplier prices/adds a real component; the agent adds it as a QUESTION
+    // (unpriced request) — see apply().
+    if (a.type === 'set_base_cost' || a.type === 'set_base_description') return ctx.role === 'supplier';
+    return true; // upsert_extra / suggest_cost / draft_message
   }
 
   protected async apply(turn: Turn, a: IntentAction): Promise<void> {
@@ -592,6 +596,11 @@ export class AgentRailComponent {
       else if (a.type === 'decline') this.decline.emit('');
       else if (a.type === 'suggest_cost') this.suggestCost.emit({ unitCost: a.amount, total: a.amount, message: `${this.context().itemName || 'This item'} cost updated to ${this.sym()}${a.amount.toLocaleString('en-GB')}, please see the updated item attached.`, installed: this.context().installApplies });
       else if (a.type === 'draft_message') this.sendMessage.emit(a.text);
+      else if (a.type === 'upsert_extra' && this.context().role === 'agent') {
+        // The agent adds it as a QUESTION (unpriced) — the host creates the
+        // kind='question' child + posts the request; the supplier prices it later.
+        this.addQuestion.emit({ name: a.name, qty: a.qty ?? 1, unit: a.unit, description: a.description ?? null });
+      }
       else { await this.applyBuildup(a); this.changed.emit(); }
       turn.applied?.add(a);
       // Echo back exactly what changed; buildup edits also log a summary and offer

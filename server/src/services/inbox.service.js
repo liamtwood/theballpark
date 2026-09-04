@@ -257,6 +257,9 @@ function toThreadItem(it, line) {
     // When set, unitPriceCurrent is null — the Assistant reopens with a blank
     // New cost + this flat Total.
     flatTotal: it.flat_total == null ? null : Number(it.flat_total),
+    // pV2-INTENT-02: the line has an unpriced agent QUESTION child awaiting the
+    // supplier — drives the "Question" pill (deterministic, no AI).
+    hasOpenQuestion: !!it.has_open_question,
     quantity: it.quantity == null ? null : Number(it.quantity),
     // The install basis, so the negotiation card can show the full breakdown
     // (Cost · Unit · Install · Total) and recompute the total from a new rate.

@@ -853,6 +853,42 @@ async function listComponentsForAgency(agencyOrgId, projectId, parentLineId) {
   };
 }
 
+/** pV2-INTENT-02 — the AGENT adds a QUESTION (an unpriced request) as a child of
+ *  the supplier's line: kind='question', cost null. It's the one component the
+ *  agent may write (no price, no commitment) — the supplier prices it later, which
+ *  flips it to 'extra' (see saveComponents). Agency-scoped: the caller must own the
+ *  project. The child rides the LINE's supplier_org_id + category so it shows in
+ *  the supplier's Customize; created_by (audit trigger) records the agent. */
+async function addQuestion(agencyOrgId, projectId, parentLineId, { name, quantity, unit, description }) {
+  return withTransaction(async (client) => {
+    const line = await client.query(
+      `SELECT pi.supplier_org_id, pi.category_id
+         FROM project_items pi
+         JOIN projects p ON p.id = pi.project_id AND p.org_id = $3 AND p.deleted_at IS NULL
+        WHERE pi.id = $1 AND pi.project_id = $2 AND pi.deleted_at IS NULL
+        LIMIT 1`,
+      [parentLineId, projectId, agencyOrgId]
+    );
+    if (!line.rows.length) return null;
+    const { supplier_org_id, category_id } = line.rows[0];
+    const qty = Math.max(1, Math.round(Number(quantity) || 1));
+    const ins = await client.query(
+      `INSERT INTO project_items
+         (project_id, item_id, is_custom, parent_id, supplier_org_id, category_id,
+          selection_type, source, kind, name, base_price, unit, quantity, description)
+       VALUES ($1, NULL, true, $2, $3, $4, 'selected', 'custom', 'question', $5, NULL, $6, $7, $8)
+       RETURNING id`,
+      [projectId, parentLineId, supplier_org_id, category_id, String(name).slice(0, 200),
+       unit || null, qty, description || null]
+    );
+    await client.query(
+      `UPDATE project_items SET logical_line_id = id WHERE id = $1 AND logical_line_id IS NULL`,
+      [ins.rows[0].id]
+    );
+    return { id: ins.rows[0].id };
+  });
+}
+
 /** pV2-BUILDUP-02 — RECONCILE the child components under a line the supplier was
  *  asked to quote (their own per-supplier row). Each input component with an `id`
  *  updates that child; without an `id` inserts a new one; any existing child not
@@ -882,12 +918,16 @@ async function saveComponents(orgId, projectId, parentLineId, components, revise
       const qty = Math.max(1, Math.round(Number(c.quantity) || 1));
       const sel = c.included ? 'selected' : 'liked';
       const cost = c.cost == null ? null : Number(c.cost);
+      // pV2-INTENT-02 — a QUESTION (agent's unpriced request) becomes a real
+      // EXTRA the moment the supplier gives it a cost. Otherwise keep its kind
+      // (question stays a question until priced); default to estimate.
+      const kind = (c.kind === 'question' && cost != null) ? 'extra' : (c.kind || 'estimate');
       if (c.id && keep.has(c.id)) {
         await client.query(
           `UPDATE project_items SET name = $2, base_price = $3, unit = $4, quantity = $5,
              category_id = $6, kind = $7, selection_type = $8, description = $10, image_url = $11
             WHERE id = $1 AND supplier_org_id = $9`,
-          [c.id, c.name, cost, c.unit || null, qty, c.categoryId || null, c.kind || 'estimate', sel, orgId,
+          [c.id, c.name, cost, c.unit || null, qty, c.categoryId || null, kind, sel, orgId,
            c.description || null, c.image || null]
         );
       } else {
@@ -897,7 +937,7 @@ async function saveComponents(orgId, projectId, parentLineId, components, revise
               category_id, selection_type, source, kind, name, base_price, unit, quantity, description, image_url)
            VALUES ($1, NULL, true, $2, $3, $4, $5, 'custom', $6, $7, $8, $9, $10, $11, $12)
            RETURNING id`,
-          [projectId, parentLineId, orgId, c.categoryId || null, sel, c.kind || 'estimate',
+          [projectId, parentLineId, orgId, c.categoryId || null, sel, kind,
            c.name, cost, c.unit || null, qty, c.description || null, c.image || null]
         );
         await client.query(
@@ -1257,6 +1297,6 @@ async function recommend(orgId, projectId) {
 
 module.exports = {
   listForOrg, listClientNames, getDetail, updateDetail, create,
-  listItems, getEstimate, addItem, addCustomItem, saveComponents, listComponents, listComponentsForAgency, listMyComponents, removeItem, updateItem, updateLineDetails, setQuoteDescription, recommend,
+  listItems, getEstimate, addItem, addCustomItem, saveComponents, listComponents, listComponentsForAgency, addQuestion, listMyComponents, removeItem, updateItem, updateLineDetails, setQuoteDescription, recommend,
   resolveStatus, DEFAULT_STATUS, toCard, linesByIds,
 };

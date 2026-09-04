@@ -216,6 +216,8 @@ async function getByMessages(messageIds, { executor = null, sentOnly = false } =
               (${lineTotalSql('COALESCE(pi.price_current, pi.price_ref)', { flat: true })}) AS revised_total,
               pi.flat_total,
               pi.created_at,
+              EXISTS (SELECT 1 FROM project_items q
+                       WHERE q.parent_id = pi.id AND q.kind = 'question' AND q.deleted_at IS NULL) AS has_open_question,
               buyer.decision    AS buyer_status,
               buyer.user_id     AS buyer_user_id,
               buyer.created_at  AS buyer_at,

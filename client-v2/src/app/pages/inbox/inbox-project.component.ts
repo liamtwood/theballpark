@@ -304,7 +304,8 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                               (quickAction)="onAgentQuick($event)"
                               (changed)="onCustomizeChanged()"
                               (accept)="onAgentAccept()" (decline)="onAgentDecline($event)"
-                              (suggestCost)="onAgentSuggestCost($event)" (sendMessage)="onAgentSend($event)" />
+                              (suggestCost)="onAgentSuggestCost($event)" (sendMessage)="onAgentSend($event)"
+                              (addQuestion)="onAgentAddQuestion($event)" />
             </aside>
           }
         </div>
@@ -551,6 +552,28 @@ export class InboxProjectComponent {
       void this.itemAction(it.id, 'adjust', undefined, text, 0, payload.total);
     }
     this.blinkNextMessage();
+  }
+  /** pV2-INTENT-02 — the agent added a QUESTION: create the unpriced kind='question'
+   *  child on the line, then post the request into the thread (tagged to the line)
+   *  so the supplier sees it + it lands in the conversation. */
+  protected async onAgentAddQuestion(q: { name: string; qty: number; unit: string | null; description: string | null }): Promise<void> {
+    const it = this.selectedItem();
+    const t = this.selectedThread();
+    if (!it || !t || this.sending()) return;
+    this.sending.set(true);
+    try {
+      await firstValueFrom(this.projects.addQuestion(this.projectId(), it.id, {
+        name: q.name, quantity: q.qty, unit: q.unit, description: q.description,
+      }));
+      const text = q.description?.trim() || `Requested: ${q.qty}× ${q.name}`;
+      await firstValueFrom(this.inbox.reply(t.id, { text, taggedItemId: it.itemId ?? undefined }));
+      this.threadsRes.reload();
+      this.blinkNextMessage();
+    } catch {
+      // Retry on the next action; shared toast lands later.
+    } finally {
+      this.sending.set(false);
+    }
   }
   protected onAgentSend(text: string): void {
     if (!text.trim() || !this.selectedThread()) return;

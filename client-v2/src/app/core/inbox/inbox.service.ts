@@ -97,6 +97,8 @@ export interface InboxThreadItem {
   /** A negotiated FLAT line total that overrides per-unit × qty. When set,
    *  unitPriceCurrent is null (the line was priced as a flat amount). */
   flatTotal: number | null;
+  /** pV2-INTENT-02: the line has an unpriced agent QUESTION awaiting the supplier. */
+  hasOpenQuestion: boolean;
   quantity: number | null;
   unit: string | null;
   installed: boolean | null;

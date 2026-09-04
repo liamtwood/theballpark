@@ -37,20 +37,19 @@ Return exactly this shape:
 {"reply":"<one short, friendly sentence back to the user>","actions":[ ... ],"suggestions":["<short next-step chip>", ...]}
 
 ACTIONS — include one ONLY when the message clearly calls for it (else []):
+- {"type":"upsert_extra","name":"<string>","cost":<number|null>,"qty":<number|null>,"unit":"<string|null>","description":"<string|null>"} — ADD / GET / INCLUDE something on the line ("add insurance at X", "can we add 2 flags with our logo", "a project manager for 2 days"). Works for BOTH sides:
+  • SUPPLIER → a priced add-on/extra (fill cost when given). Match an existing component name to UPDATE, else create.
+  • AGENT → a QUESTION (a request the supplier will price): ALWAYS leave "cost": null, and set "description" to a short "Requested — …" note capturing the ask (e.g. "Requested — 2× 6ft×4ft flags, white, iPuck logo, top of tunnel"). Extract name (a concise item name, e.g. "Flag (with iPuck logo)"), qty, unit.
+  Return MULTIPLE upsert_extra when the message names more than one — e.g. "two insurance levels: weather cover £500 and cancellation £2000" → TWO ("Weather cover" £500, "Cancellation" £2000).
 Supplier edits (the supplier changes their own line):
 - {"type":"set_base_cost","amount":<number>} — "set/change the base to X", "should be X a head".
-- {"type":"set_base_description","text":"<the FULL new description>"} — when they want to change or ADD TO the description. Return the COMPLETE updated description: keep the existing content (see "Current description" above) and weave in their change — never just the new fragment.
-- {"type":"upsert_extra","name":"<string>","cost":<number|null>,"qty":<number|null>,"unit":"<string|null>"} — add or update an add-on/extra. Match an existing component name to UPDATE, else create. "add insurance at X", "a project manager for 2 days at X/day", "bump the wine to Y". Return MULTIPLE upsert_extra actions when the message names more than one — e.g. "two insurance levels: weather cover £500 and cancellation £2000" → TWO upsert_extra actions ("Weather cover" £500, "Cancellation" £2000).
+- {"type":"set_base_description","text":"<the FULL new description>"} — change or ADD TO the description. Return the COMPLETE updated description (keep existing content, weave in the change).
 Negotiation (either side):
 - {"type":"accept_cost"} — "accept", "that works", "agreed".
 - {"type":"decline"} — "decline", "no thanks", "pass".
 - {"type":"suggest_cost","amount":<number>} — propose a specific new TOTAL price for the line (a counter-offer). Use when a concrete number is given or derivable (e.g. "10% off" applied to the known total).
-Agent asks (the agent wants to REQUEST something from the supplier — draft the message, do NOT edit the line):
-- {"type":"draft_message","text":"<a polished, friendly request to the supplier>"} — "ask for a fridge", "can we get wine pairing", "add flags with our logo", "ask for a discount", "request a 10% reduction". Write the actual message the agent could send.
-  RULES for draft_message:
-  • When the agent asks to ADD / GET / INCLUDE something ("can we add flags…", "add insurance", "include a PM"), ALWAYS return a draft_message DIRECTLY — do not merely acknowledge and wait, and do not defer it to a suggestion chip.
-  • Keep it SHORT and ON-TOPIC: state exactly what they asked for and (optionally) ask the cost. e.g. "Hi! Could you add flags with the iPuck logo at the top of the totem, and let us know the cost? Thanks!"
-  • NEVER pad it with unrelated questions — do not interrogate about unit price, price-per-multiple, what's already included, or quantities the agent didn't mention. One ask, one message.
+Agent asks (only when NOT adding an item — e.g. a discount or a general question):
+- {"type":"draft_message","text":"<a polished, friendly request>"} — "ask for a discount", "request a 10% reduction", "what's the lead time?". Short, on-topic, one ask. Do NOT use draft_message to ADD an item — use upsert_extra (a question) for that.
 
 SUGGESTIONS — 0-3 very short next-step prompts that each map to a CONCRETE action (add an extra, suggest a price, accept, decline) — e.g. "Add wine pairing", "Suggest a lower price", "Accept the cost". NEVER meta prompts like "Review…", "Share…", "Edit…", "Keep…", or anything that just asks a question back. Omit entirely if none fit.
 
@@ -89,6 +88,9 @@ function sanitize(actions) {
         cost: coerceNum(a.cost),
         qty: coerceNum(a.qty),
         unit: typeof a.unit === 'string' && a.unit.trim() ? a.unit.trim().slice(0, 40) : null,
+        // A short "Requested — …" note capturing the ask (used as the question
+        // component's description / audit line when the AGENT adds it).
+        description: typeof a.description === 'string' && a.description.trim() ? a.description.trim().slice(0, 500) : null,
       });
     } else if (a.type === 'accept_cost') {
       out.push({ type: 'accept_cost' });

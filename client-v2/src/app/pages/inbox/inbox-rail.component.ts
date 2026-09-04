@@ -88,7 +88,12 @@ export interface RailOuter {
                 <button type="button" class="flex w-full flex-col items-start gap-1 border-b border-hairline px-3 py-2.5 pl-8 text-left last:border-b-0 hover:bg-fill"
                         [class.bp-item--selected]="it.id === selectedId()" (click)="selectItem.emit(it.id)">
                   <span class="bp-list-title w-full truncate">{{ it.name }}</span>
-                  <span [class]="'bp-spill bp-spill--' + pill(it).tone">{{ pill(it).label }}</span>
+                  <span class="flex flex-wrap items-center gap-1.5">
+                    <span [class]="'bp-spill bp-spill--' + pill(it).tone">{{ pill(it).label }}</span>
+                    @if (it.hasOpenQuestion) {
+                      <span class="bp-spill bp-spill--yellow">Question</span>
+                    }
+                  </span>
                 </button>
               }
             }
