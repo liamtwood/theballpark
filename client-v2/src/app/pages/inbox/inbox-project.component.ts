@@ -596,7 +596,11 @@ export class InboxProjectComponent {
     if (!t) return [];
     const itemId = this.selectedItem()?.itemId;
     if (!itemId) return t.messages;
-    return t.messages.filter((m) => m.taggedItemIds.length === 0 || m.taggedItemIds.includes(itemId));
+    // Under a selected item, show ONLY that item's messages. The brief and real
+    // messages are tagged, so they still appear; untagged "General" chatter is NOT
+    // broadcast under every item any more (it muddled each line's view — v2.255).
+    // General messages remain visible in the thread overview (no item selected).
+    return t.messages.filter((m) => m.taggedItemIds.includes(itemId));
   });
 
   /** A broadcast shown inside a filtered (item) view — gets the faded
