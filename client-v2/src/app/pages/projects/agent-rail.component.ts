@@ -131,20 +131,29 @@ interface Turn {
             <p class="bp-caption text-muted">What would you like to change?</p>
             <div role="radiogroup" class="space-y-1.5">
               <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="pickChange('suggest')" /><span class="bp-body-small text-text">Suggest new price</span></label>
-              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="pickChange('item')" /><span class="bp-body-small text-text">Change item</span></label>
               <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="pickChange('extras')" /><span class="bp-body-small text-text">Add extras</span></label>
+              <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-hairline px-3 py-2 transition-colors hover:bg-fill"><input type="radio" name="chg" (change)="pickChange('modify')" /><span class="bp-body-small text-text">Modify</span></label>
             </div>
-            @if (hint()) { <p class="bp-caption text-muted">{{ hint() }}</p> }
             <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">Back</button>
           }
           @if (step() === 'extras') {
             <p class="bp-caption text-muted">What would you like to add to <span class="text-text">{{ context().itemName || 'this item' }}</span>? Say what it is and how many — a price too, if you have one in mind.</p>
             <textarea rows="3" class="bp-store-textarea w-full" placeholder="e.g. 6 tablecloths · wine for 100, max £10 a head · a project manager for 2 days"
                       [ngModel]="extraText()" (ngModelChange)="extraText.set($event)"
-                      (keydown.enter)="$event.preventDefault(); sendExtra()"></textarea>
+                      (keydown.enter)="$event.preventDefault(); submitChangeBox()"></textarea>
             <div class="flex items-center gap-3 pt-1">
               <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">Back</button>
-              <button type="button" class="bp-send-btn" [disabled]="busy() || !extraText().trim()" (click)="sendExtra()">Send</button>
+              <button type="button" class="bp-send-btn" [disabled]="busy() || !extraText().trim()" (click)="submitChangeBox()">Send</button>
+            </div>
+          }
+          @if (step() === 'modify') {
+            <p class="bp-caption text-muted">What would you like to change about <span class="text-text">{{ context().itemName || 'this item' }}</span>? The name, description, or base cost.</p>
+            <textarea rows="3" class="bp-store-textarea w-full" placeholder="e.g. add branding options · rename to “Premium Totem” · set the base to £120 · reword the description"
+                      [ngModel]="extraText()" (ngModelChange)="extraText.set($event)"
+                      (keydown.enter)="$event.preventDefault(); submitChangeBox()"></textarea>
+            <div class="flex items-center gap-3 pt-1">
+              <button type="button" class="bp-caption text-muted hover:text-text" (click)="reset()">Back</button>
+              <button type="button" class="bp-send-btn" [disabled]="busy() || !extraText().trim()" (click)="submitChangeBox()">Send</button>
             </div>
           }
           @if (step() === 'suggest') {
@@ -281,7 +290,7 @@ export class AgentRailComponent {
   protected readonly menuOpen = signal(false);
   protected readonly showOptions = computed(() => !this.turns().length || this.menuOpen());
   /** Opening flow: root → decline (reasons) | change (sub-options). */
-  protected readonly step = signal<'root' | 'accept' | 'decline' | 'change' | 'suggest' | 'extras'>('root');
+  protected readonly step = signal<'root' | 'accept' | 'decline' | 'change' | 'suggest' | 'extras' | 'modify'>('root');
   /** Suggest-new-price form state. */
   protected readonly sugCost = signal<number | null>(null);
   protected readonly sugQty = signal<number>(1);
@@ -421,7 +430,7 @@ export class AgentRailComponent {
 
   /** A make-a-change pick auto-advances (no Continue): Suggest opens the price
    *  form; Change item / Add extras drop a tailored hint to type the rest. */
-  protected pickChange(kind: 'suggest' | 'item' | 'extras'): void {
+  protected pickChange(kind: 'suggest' | 'extras' | 'modify'): void {
     if (kind === 'suggest') {
       // Reopen with the STORED values: the per-unit cost (price_current) shows in
       // New cost, and the actual line Total stays authoritative (so a round-trip
@@ -439,22 +448,20 @@ export class AgentRailComponent {
       this.step.set('suggest');
       return;
     }
-    if (kind === 'extras') {
-      // A dedicated entry box, scoped to THIS item (pV2-INTENT-02 #5).
-      this.extraText.set('');
-      this.step.set('extras');
-      return;
-    }
-    this.hint.set('Tell me what to change on the item — name, description, or base cost (e.g. “set the base to £120”).');
+    // Both "Add extras" and "Modify" open the same dedicated entry box, scoped to
+    // THIS item; the parser routes each (upsert_extra vs set_base_*). (INTENT-02 #5)
+    this.extraText.set('');
+    this.step.set(kind === 'extras' ? 'extras' : 'modify');
   }
-  /** Free-text for the "Add extras" box. */
+  /** Free-text for the Add-extras / Modify box. */
   protected readonly extraText = signal('');
-  protected sendExtra(): void {
+  protected submitChangeBox(): void {
     const t = this.extraText().trim();
     if (!t || this.busy()) return;
-    // Scope the request to the item so the parser treats it as an extra to add
-    // here (agent → drafts the request; supplier → adds the component).
-    this.draft.set(`Add to ${this.context().itemName || 'this item'}: ${t}`);
+    const item = this.context().itemName || 'this item';
+    // Scope the request to the item so the parser treats it correctly: an EXTRA to
+    // add, or a MODIFICATION of the item (name/description/base cost).
+    this.draft.set(this.step() === 'modify' ? `Change ${item}: ${t}` : `Add to ${item}: ${t}`);
     this.extraText.set('');
     this.reset();
     void this.send();

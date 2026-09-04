@@ -396,3 +396,10 @@ category flipped). A cross-supplier leak of private cost data.
   adds the component). Replaces the type-in-the-composer hint.
 - Deduped suggestion chips (case-insensitive) — the parser sometimes returned the same
   next-step twice (QC: "Ask supplier for options" showed twice).
+
+## Iteration — v2.250 (2026-09-04): Make-a-change → Suggest new price / Add extras / Modify
+- Dropped "Change item"; the sub-menu is now: Suggest new price (form) · Add extras
+  (box) · Modify (box). "Add extras" and "Modify" share the dedicated free-text box,
+  scoped to the item, routing to the parser (extras → upsert_extra; modify → set_base_*).
+  Modify's box handles name / description / base cost (e.g. "add branding options",
+  "rename to X", "set the base to £120").
