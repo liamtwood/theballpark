@@ -527,8 +527,12 @@ export class AgentRailComponent {
       // Only surface actions the current viewer may actually take.
       const all = (res.actions ?? []).filter((a) => this.permitted(a));
       const hasAccept = all.some((a) => a.type === 'accept_cost');
-      // Accept goes through the same confirm step as the radio (not a plain chip).
-      const actions = all.filter((a) => a.type !== 'accept_cost');
+      // A drafted message is shown as an EDITABLE box (edit-before-send), not a
+      // one-click chip. Accept goes through the confirm step. Both are pulled out
+      // of the chip actions.
+      const draftMsg = all.find((a) => a.type === 'draft_message');
+      const actions = all.filter((a) => a.type !== 'accept_cost' && a.type !== 'draft_message');
+      const hasActionable = actions.length > 0 || hasAccept || !!draftMsg;
       const at: Turn = {
         who: 'assistant',
         text: res.reply || (all.length ? '' : "I couldn't turn that into an action — try naming a cost, an extra, or accept/decline."),
@@ -537,11 +541,16 @@ export class AgentRailComponent {
         // message, losing the thread of what you asked). So only offer them when
         // there's NO actionable path — when the parser already gave you a draft /
         // action, act on that, don't derail into a chip.
-        suggestions: (actions.length || hasAccept) ? [] : this.dedupe(res.suggestions),
+        suggestions: hasActionable ? [] : this.dedupe(res.suggestions),
         applied: new Set<IntentAction>(),
       };
       this.turns.update((t) => [...t, at]);
       if (hasAccept) this.askAccept();
+      // A drafted request → an editable box + Send (edit before it goes out).
+      if (draftMsg && draftMsg.type === 'draft_message') {
+        this.draftText.set(draftMsg.text);
+        this.turns.update((t) => [...t, { who: 'assistant', text: "Here's the message — edit it if you like, then Send:", draft: true }]);
+      }
       // "Let the Assistant do it": auto-apply the buildup edits (not negotiation).
       if (this.autoApply()) {
         for (const a of actions) { if (this.isBuildup(a)) await this.apply(at, a); }
