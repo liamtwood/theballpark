@@ -532,7 +532,13 @@ export class AgentRailComponent {
       const at: Turn = {
         who: 'assistant',
         text: res.reply || (all.length ? '' : "I couldn't turn that into an action — try naming a cost, an extra, or accept/decline."),
-        actions, suggestions: this.dedupe(res.suggestions), applied: new Set<IntentAction>(),
+        actions,
+        // Suggestion chips are context-free (tapping one sends its text as a fresh
+        // message, losing the thread of what you asked). So only offer them when
+        // there's NO actionable path — when the parser already gave you a draft /
+        // action, act on that, don't derail into a chip.
+        suggestions: (actions.length || hasAccept) ? [] : this.dedupe(res.suggestions),
+        applied: new Set<IntentAction>(),
       };
       this.turns.update((t) => [...t, at]);
       if (hasAccept) this.askAccept();
