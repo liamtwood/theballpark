@@ -613,19 +613,27 @@ export class InboxProjectComponent {
    *  the thread's first bubble ("review the item(s) below"). Each mounts the
    *  SAME preview card the Estimate rail uses, collapsed to a name bar by
    *  default. In a filtered (item-selected) view only that one line shows. */
-  private readonly briefMessageId = computed(() => this.selectedThread()?.messages[0]?.id ?? null);
   protected readonly cardsByMessage = computed(() => {
     const t = this.selectedThread();
-    const briefId = this.briefMessageId();
     const map = new Map<string, QuoteLine[]>();
-    if (!t || !briefId) return map;
+    if (!t) return map;
     const selKey = this.selectedItem()?.itemId ?? null;
-    const lines: QuoteLine[] = [];
-    for (const it of t.items) {
-      if (selKey && it.itemId !== selKey) continue;
-      if (it.line) lines.push(it.line);
+    // Attach each item's preview card to the FIRST message tagged to that item —
+    // its own brief/request. (Previously pinned to the thread's oldest message,
+    // so a late-added item's card rode a brief it wasn't tagged to and never
+    // showed once the per-item filter landed — v2.256.)
+    const lineByItemId = new Map<string, QuoteLine>();
+    for (const it of t.items) if (it.itemId && it.line) lineByItemId.set(it.itemId, it.line);
+    const targets = selKey ? [selKey] : [...lineByItemId.keys()];
+    for (const itemId of targets) {
+      const line = lineByItemId.get(itemId);
+      if (!line) continue;
+      const firstMsg = t.messages.find((m) => m.taggedItemIds.includes(itemId));
+      if (!firstMsg) continue;
+      const arr = map.get(firstMsg.id) ?? [];
+      arr.push(line);
+      map.set(firstMsg.id, arr);
     }
-    if (lines.length) map.set(briefId, lines);
     return map;
   });
 
