@@ -102,6 +102,19 @@ function sanitizeStrings(arr, cap, max) {
     .slice(0, max);
 }
 
+// A suggestion chip must map to a CONCRETE next action the user can tap — not a
+// meta-prompt that just asks THEM to do something ("Describe your branding idea",
+// "Tell me more", "What size?"). Those loop (tapping them re-asks) and there's no
+// input tied to them. Drop questions + these instruction-to-the-user openers, dedupe.
+const META_SUGGESTION = /^(describe|tell|let me know|share|what|which|how|why|review|edit|keep|consider|think|provide|explain|specify|clarify|choose|decide|give)\b/i;
+function sanitizeSuggestions(arr) {
+  const seen = new Set();
+  return sanitizeStrings(arr, 60, 8)
+    .filter((s) => !s.endsWith('?') && !META_SUGGESTION.test(s))
+    .filter((s) => { const k = s.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, 3);
+}
+
 async function parseIntent(message, context) {
   const text = String(message || '').trim();
   if (!text) return { reply: '', actions: [], suggestions: [] };
@@ -146,7 +159,7 @@ async function parseIntent(message, context) {
   return {
     reply,
     actions: sanitize(parsed && parsed.actions),
-    suggestions: sanitizeStrings(parsed && parsed.suggestions, 60, 3),
+    suggestions: sanitizeSuggestions(parsed && parsed.suggestions),
   };
 }
 

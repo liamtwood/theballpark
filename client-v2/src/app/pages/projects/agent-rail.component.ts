@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
@@ -73,7 +73,7 @@ interface Turn {
         </label>
       </div>
 
-      <div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+      <div #railScroll class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
         <!-- Persistent intro — state-aware: when the counterparty has just moved,
              lead with what they did; else the generic prompt. Stays put as history
              grows, so the menu never feels like it vanished. -->
@@ -284,6 +284,17 @@ export class AgentRailComponent {
    *  per-unit cost is authoritative and the total derives from it. */
   readonly suggestCost = output<{ unitCost: number | null; total: number; message: string; installed: boolean }>();
   readonly sendMessage = output<string>();
+
+  /** The scrolling messages area — auto-scrolled to the newest turn so the reply
+   *  and the composer just beneath it are always in view. */
+  private readonly railScroll = viewChild<ElementRef<HTMLDivElement>>('railScroll');
+  constructor() {
+    effect(() => {
+      this.turns(); this.busy(); this.step(); // re-run when the log or state changes
+      const el = this.railScroll()?.nativeElement;
+      if (el) queueMicrotask(() => { el.scrollTop = el.scrollHeight; });
+    });
+  }
 
   protected readonly turns = signal<Turn[]>([]);
   /** Re-show the opening options after a conclusion (accept/decline). */
