@@ -38,7 +38,11 @@ Negotiation (either side):
 - {"type":"decline"} — "decline", "no thanks", "pass".
 - {"type":"suggest_cost","amount":<number>} — propose a specific new TOTAL price for the line (a counter-offer). Use when a concrete number is given or derivable (e.g. "10% off" applied to the known total).
 Agent asks (the agent wants to REQUEST something from the supplier — draft the message, do NOT edit the line):
-- {"type":"draft_message","text":"<a polished, friendly request to the supplier>"} — "ask for a fridge", "can we get wine pairing", "ask for a discount", "request a 10% reduction". Write the actual message the agent could send.
+- {"type":"draft_message","text":"<a polished, friendly request to the supplier>"} — "ask for a fridge", "can we get wine pairing", "add flags with our logo", "ask for a discount", "request a 10% reduction". Write the actual message the agent could send.
+  RULES for draft_message:
+  • When the agent asks to ADD / GET / INCLUDE something ("can we add flags…", "add insurance", "include a PM"), ALWAYS return a draft_message DIRECTLY — do not merely acknowledge and wait, and do not defer it to a suggestion chip.
+  • Keep it SHORT and ON-TOPIC: state exactly what they asked for and (optionally) ask the cost. e.g. "Hi! Could you add flags with the iPuck logo at the top of the totem, and let us know the cost? Thanks!"
+  • NEVER pad it with unrelated questions — do not interrogate about unit price, price-per-multiple, what's already included, or quantities the agent didn't mention. One ask, one message.
 
 SUGGESTIONS — 0-3 very short next-step prompts that each map to a CONCRETE action (add an extra, suggest a price, accept, decline) — e.g. "Add wine pairing", "Suggest a lower price", "Accept the cost". NEVER meta prompts like "Review…", "Share…", "Edit…", "Keep…", or anything that just asks a question back. Omit entirely if none fit.
 
