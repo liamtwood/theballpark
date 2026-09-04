@@ -579,15 +579,19 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions, tagge
       // category (which rides a LATER brief message) still tags correctly
       // instead of falling through as an untagged "General" bubble (INBOX
       // late-add fix, same class as v2.243).
+      // NB: do NOT scope by category — messages.category_id is a
+      // project_categories id while project_items.category_id is a catalogue
+      // category id (different id-spaces; comparing them never matches). The
+      // thread is (project × supplier); the item_id/id is specific within it.
       const nm = await db.query(
         `SELECT pi.id
            FROM project_items pi
-          WHERE pi.project_id = $1 AND pi.category_id = $2
-            AND pi.supplier_org_id IS NOT DISTINCT FROM $3
-            AND (pi.item_id = $4 OR pi.id = $4)
+          WHERE pi.project_id = $1
+            AND pi.supplier_org_id IS NOT DISTINCT FROM $2
+            AND (pi.item_id = $3 OR pi.id = $3)
             AND pi.parent_id IS NULL AND pi.deleted_at IS NULL
           LIMIT 1`,
-        [lm.project_id, lm.category_id, lm.supplier_org_id, taggedItemId]
+        [lm.project_id, lm.supplier_org_id, taggedItemId]
       );
       if (nm.rows.length) tagPiIds.add(nm.rows[0].id);
     }
