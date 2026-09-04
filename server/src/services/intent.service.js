@@ -17,6 +17,9 @@ function buildSystemPrompt(ctx) {
   const comps = (ctx.componentNames || []).length ? (ctx.componentNames || []).join(', ') : '(none yet)';
   const sym = ctx.currencySymbol || '£';
   const role = ctx.role === 'agent' ? 'agent (the buyer)' : ctx.role === 'supplier' ? 'supplier (the seller)' : 'user';
+  const convo = Array.isArray(ctx.conversation) && ctx.conversation.length
+    ? ctx.conversation.map((m) => `${m.who}: ${m.text}`).join('\n')
+    : '(no messages yet)';
   return `You are a helpful assistant inside an event-planning app, talking to the ${role} about ONE quote line. Read their message and return ONLY valid JSON — no markdown, no prose outside the JSON, no backticks.
 
 The line being discussed:
@@ -24,6 +27,11 @@ The line being discussed:
 - Base cost: ${ctx.baseCost == null ? 'unknown' : sym + ctx.baseCost} per ${ctx.unit || 'unit'} (× qty ${ctx.quantity ?? 1})
 - Existing add-on/extra components: ${comps}
 - Current description: ${ctx.currentDescription ? JSON.stringify(ctx.currentDescription) : '(none)'}
+
+CONVERSATION SO FAR on this line (oldest first; "Agent" = the buyer, "Supplier" = the seller):
+${convo}
+
+Use the CONVERSATION to answer questions about status or "any questions from the agent/supplier?" — base such answers ONLY on what's actually there. NEVER claim there are no questions/requests if the conversation shows one. If the counterparty has an unanswered request or question (e.g. the agent asked to add flags, or asked a question), SAY SO plainly in the reply and, when it's actionable for this ${role}, propose the matching action or suggestion. Do not invent messages that aren't shown.
 
 Return exactly this shape:
 {"reply":"<one short, friendly sentence back to the user>","actions":[ ... ],"suggestions":["<short next-step chip>", ...]}

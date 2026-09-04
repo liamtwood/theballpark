@@ -610,4 +610,34 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions, tagge
   });
 }
 
-module.exports = { listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads, reply };
+/** pV2-INTENT-02 #2 — the recent conversation on ONE line, for the Assistant's
+ *  prompt so it can answer "what's the status / any questions?" truthfully and
+ *  surface the counterparty's pending asks (instead of confabulating). ORG-SCOPED:
+ *  the caller must be the line's supplier OR the project's owning agency, else null
+ *  (never leak another org's thread into the prompt — RP-11 / Rule-10). Messages
+ *  labelled by direction: outbound = Agent, inbound = Supplier. Oldest-first. */
+async function getLineConversation(orgId, projectId, lineId, { limit = 14 } = {}) {
+  const access = await pool.query(
+    `SELECT 1 FROM project_items pi
+      WHERE pi.id = $1 AND pi.project_id = $2 AND pi.deleted_at IS NULL
+        AND (pi.supplier_org_id = $3
+             OR EXISTS (SELECT 1 FROM projects p WHERE p.id = $2 AND p.org_id = $3 AND p.deleted_at IS NULL))
+      LIMIT 1`,
+    [lineId, projectId, orgId]
+  );
+  if (!access.rows.length) return null;
+  const r = await pool.query(
+    `SELECT m.body, m.direction, m.created_at
+       FROM messages m
+       JOIN message_items mi ON mi.message_id = m.id AND mi.deleted_at IS NULL
+      WHERE mi.project_item_id = $1 AND m.deleted_at IS NULL AND COALESCE(m.body,'') <> ''
+      ORDER BY m.created_at DESC LIMIT $2`,
+    [lineId, limit]
+  );
+  return r.rows.reverse().map((m) => ({
+    who: m.direction === 'outbound' ? 'Agent' : 'Supplier',
+    text: String(m.body).slice(0, 400),
+  }));
+}
+
+module.exports = { listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads, reply, getLineConversation };

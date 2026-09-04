@@ -17,6 +17,7 @@ const { z } = require('zod');
 const projects = require('../services/projects.service');
 const { ProjectCreateSchema, ProjectUpdateSchema } = require('../schemas/project-create.schema');
 const intent = require('../services/intent.service');
+const { getLineConversation } = require('../services/inbox.service');
 
 // Validate every :id / :itemId slot as a UUID up front (audit M1). Without
 // this a malformed id reaches Postgres and surfaces as a 500 with a DB-shaped
@@ -282,7 +283,15 @@ router.post('/:id/items/:itemId/parse-intent', async (req, res, next) => {
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
     }
-    const result = await intent.parseIntent(parsed.data.message, parsed.data.context || {});
+    // Feed the line's recent conversation into the prompt (org-scoped read) so the
+    // Assistant can answer status/questions truthfully and surface pending asks
+    // instead of confabulating (pV2-INTENT-02 #2). Non-fatal if it can't load.
+    const ctx = parsed.data.context || {};
+    try {
+      const conversation = await getLineConversation(req.user.org_id, req.params.id, req.params.itemId);
+      if (conversation) ctx.conversation = conversation;
+    } catch { /* proceed without conversation context */ }
+    const result = await intent.parseIntent(parsed.data.message, ctx);
     res.json(result);
   } catch (err) {
     next(err);

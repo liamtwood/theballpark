@@ -403,3 +403,15 @@ category flipped). A cross-supplier leak of private cost data.
   scoped to the item, routing to the parser (extras → upsert_extra; modify → set_base_*).
   Modify's box handles name / description / base cost (e.g. "add branding options",
   "rename to X", "set the base to £120").
+
+## Iteration — v2.257 (2026-09-04): Assistant is conversation-aware (#2 request-awareness)
+Bug: asked "any questions from the agent?", the supplier Assistant confabulated "no
+questions" — it had no thread context, only the typed message.
+- **Fix:** parse-intent now feeds the line's recent conversation into the prompt.
+  `inbox.getLineConversation(orgId, projectId, lineId)` — ORG-SCOPED (caller must be the
+  line's supplier or the project's agency; else null — RP-11/Rule-10 per the auth note),
+  returns recent messages labelled Agent (outbound) / Supplier (inbound), oldest-first.
+  Route fetches it with req.user.org_id and passes it as context.conversation.
+- Prompt: answer status/"any questions" ONLY from the conversation; NEVER claim no
+  questions if one is shown; surface the counterparty's unanswered ask + the matching
+  action. Verified: Tunnel returns the agent's brief + "add 2 branded flags" request.
