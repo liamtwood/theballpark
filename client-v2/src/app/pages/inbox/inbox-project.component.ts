@@ -75,14 +75,22 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                       {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}
                     }
                   </h2>
-                  @if (selectedItem(); as it) {
-                    <!-- pV2-BUILDUP — open the item's Details (the Customize
-                         builder; the item card lives inside it). Shown to agent
-                         + supplier. -->
-                    <button type="button" class="bp-itemprev-close shrink-0" [title]="isCustomizing(it) ? 'Close details' : 'Details'" [attr.aria-label]="isCustomizing(it) ? 'Close details' : 'Details'" (click)="toggleCustomize(it)">
-                      <lucide-icon [name]="isCustomizing(it) ? 'x' : 'list-tree'" [size]="16" />
+                  <div class="flex shrink-0 items-center gap-1.5">
+                    <!-- Toggle: AI Assistant vs the classic action buttons. -->
+                    <button type="button" class="flex items-center gap-1.5 rounded-full border border-hairline px-2.5 py-1 bp-caption transition-colors"
+                            [class.text-muted]="!useAssistant()" [class.hover:bg-fill]="!useAssistant()"
+                            [style.background]="useAssistant() ? 'var(--theme-accent)' : ''" [style.color]="useAssistant() ? '#fff' : ''"
+                            [title]="useAssistant() ? 'Using the AI Assistant — click for classic buttons' : 'Using classic buttons — click for the AI Assistant'"
+                            (click)="toggleAssistant()">
+                      <lucide-icon name="sparkles" [size]="13" /> {{ useAssistant() ? 'Assistant' : 'Buttons' }}
                     </button>
-                  }
+                    @if (selectedItem(); as it) {
+                      <!-- pV2-BUILDUP — open the item's Details (the Customize builder). -->
+                      <button type="button" class="bp-itemprev-close shrink-0" [title]="isCustomizing(it) ? 'Close details' : 'Details'" [attr.aria-label]="isCustomizing(it) ? 'Close details' : 'Details'" (click)="toggleCustomize(it)">
+                        <lucide-icon [name]="isCustomizing(it) ? 'x' : 'list-tree'" [size]="16" />
+                      </button>
+                    }
+                  </div>
                 </div>
                 <!-- When a specific item is selected the header is ITEM-scoped
                      (its own priceRef/priceCurrent) so it lines up with the item
@@ -265,6 +273,35 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                     <button type="button" class="bp-btn-outline" [disabled]="sending()" (click)="proposing.set(false)">Cancel</button>
                     <button type="button" class="bp-btn-grad" [disabled]="sending() || proposePrice() == null" (click)="submitPropose(it)">Send cost</button>
                   </div>
+                }
+              }
+
+              <!-- Classic per-line actions (the non-AI path; toggled in the header).
+                   "Suggest" opens the inline New-cost entry above; the rest act
+                   directly. Same handlers the Assistant drives. -->
+              @if (showClassicActions()) {
+                @if (selectedItem(); as it) {
+                  @if (!isTerminal(it.status)) {
+                    <div class="flex flex-wrap items-center gap-2 border-t border-hairline bg-bg px-4 py-2.5">
+                      <button type="button" class="bp-act bp-act--green" [disabled]="sending()" (click)="accept(it)">
+                        <lucide-icon name="circle-check-big" [size]="15" /> Accept Cost
+                      </button>
+                      <button type="button" class="bp-act bp-act--yellow" [disabled]="sending()" (click)="startPropose(it)">
+                        <lucide-icon name="circle-dollar-sign" [size]="15" /> Suggest New Cost
+                      </button>
+                      <button type="button" class="bp-act bp-act--gray" [disabled]="sending()" (click)="requestInfo(it)">
+                        <lucide-icon name="info" [size]="15" /> Request Information
+                      </button>
+                      <button type="button" class="bp-act bp-act--red" [disabled]="sending()" (click)="decline(it)">
+                        <lucide-icon [name]="isAgency() ? 'x' : 'circle-off'" [size]="15" /> {{ isAgency() ? 'Cancel' : 'Decline' }}
+                      </button>
+                      @if (!isAgency()) {
+                        <button type="button" class="bp-act bp-act--outline" [disabled]="sending()" (click)="toggleCustomize(it)">
+                          <lucide-icon name="list-tree" [size]="15" /> {{ isCustomizing(it) ? 'Close' : 'Customize' }}
+                        </button>
+                      }
+                    </div>
+                  }
                 }
               }
 
@@ -471,8 +508,22 @@ export class InboxProjectComponent {
     if (st === 'brief_sent' && !this.isAgency()) return 'you’ve been asked to quote this.';
     return null;
   }
-  /** Show the rail (xl) when a line is selected and Customize isn't taking the pane. */
-  protected readonly showAgent = computed(() => !!this.agentContext() && !this.customizing());
+  /** Whether to drive line actions via the AI Assistant rail (default) or the
+   *  classic per-line buttons. User-toggleable, remembered per browser. */
+  protected readonly useAssistant = signal(this.readAssistantPref());
+  private readAssistantPref(): boolean {
+    try { return localStorage.getItem('bp_use_assistant') !== '0'; } catch { return true; }
+  }
+  protected toggleAssistant(): void {
+    const next = !this.useAssistant();
+    this.useAssistant.set(next);
+    try { localStorage.setItem('bp_use_assistant', next ? '1' : '0'); } catch { /* private mode */ }
+  }
+  /** Show the rail (xl) when a line is selected, Customize isn't taking the pane,
+   *  and the user hasn't switched to the classic buttons. */
+  protected readonly showAgent = computed(() => !!this.agentContext() && !this.customizing() && this.useAssistant());
+  /** Show the classic per-line action buttons (the non-AI path). */
+  protected readonly showClassicActions = computed(() => !!this.selectedItem() && !this.customizing() && !this.useAssistant());
   protected onAgentQuick(key: string): void {
     const it = this.selectedItem();
     if (!it) return;

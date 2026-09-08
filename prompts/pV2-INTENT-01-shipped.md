@@ -435,3 +435,14 @@ trail + deterministic status, minimal AI.
   Verified E2E: addQuestion → pill true → shows in Customize as [question, cost=null].
 - AI footprint of the whole loop now: draft/structure the ask (1), + the future prose
   answer-match. Everything else is status.
+
+## Iteration — v2.259 (2026-09-08): AI Assistant ↔ classic buttons toggle
+The classic per-line action bar (Accept Cost / Suggest New Cost / Request Information /
+Cancel-Decline / Customize) was REMOVED at v2.207 (moved to the Assistant), not hidden.
+Restored it as a user choice:
+- Header toggle "Assistant / Buttons" (persisted `bp_use_assistant` in localStorage,
+  default Assistant).
+- `useAssistant` on → the Assistant rail (showAgent gated on it), classic bar hidden.
+- `useAssistant` off → the Assistant rail hidden, the classic bar shows above the
+  composer (same handlers: accept / startPropose → inline New-cost entry / requestInfo /
+  decline / toggleCustomize).
