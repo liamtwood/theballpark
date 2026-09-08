@@ -78,10 +78,14 @@ export class AppShellComponent {
     { initialValue: this.router.url },
   );
 
-  /** True on Overview (/home), the Past projects list (/projects) and a single
-   *  project's detail page (/projects/:id) — the pink workspace ground. */
+  /** True on Overview (/home), the Past projects list (/projects), a single
+   *  project's detail page (/projects/:id), and the supplier inbox (/inbox,
+   *  /inbox/:id) — every page that sits on the pink workspace ground. One class
+   *  (.bp-main--workspace) + one token (--workspace-pink) drive them all, so the
+   *  canvas changes everywhere from a single place. */
   protected readonly isWorkspace = computed(() => {
     const path = (this.url() || '').split('?')[0];
-    return path === '/home' || path === '/projects' || /^\/projects\/[^/]+$/.test(path);
+    return path === '/home' || path === '/projects' || /^\/projects\/[^/]+$/.test(path)
+      || path === '/inbox' || /^\/inbox\/[^/]+$/.test(path);
   });
 }
