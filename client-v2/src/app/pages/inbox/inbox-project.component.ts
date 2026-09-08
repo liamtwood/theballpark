@@ -151,7 +151,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
               <!-- Bubbles — on the page (parchment) ground so the white
                    agency bubbles read as cards; "You" stays gradient. In a
                    filtered (item) view, broadcasts fade + carry a General tag. -->
-              <div #msgScroll class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg px-5 py-4">
+              <div #msgScroll class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-[var(--workspace-pink)] px-5 py-4">
                 @if (selectedItem()) {
                 @for (m of visibleMessages(); track m.id; let last = $last) {
                   <div class="flex flex-col" [class.items-end]="m.mine" [class.items-start]="!m.mine">
@@ -282,7 +282,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
               @if (showClassicActions()) {
                 @if (selectedItem(); as it) {
                   @if (!isTerminal(it.status)) {
-                    <div class="flex flex-wrap items-center gap-2 border-t border-hairline bg-bg px-4 py-2.5">
+                    <div class="flex flex-wrap items-center gap-2 border-t border-hairline bg-[var(--workspace-pink)] px-4 py-2.5">
                       <button type="button" class="bp-act bp-act--green" [disabled]="sending()" (click)="accept(it)">
                         <lucide-icon name="circle-check-big" [size]="15" /> Accept Cost
                       </button>
@@ -301,7 +301,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
 
               <!-- Compose — on the parchment ground, standard field chrome +
                    a gradient Send button. -->
-              <div class="flex items-center gap-2 border-t border-hairline bg-bg px-4 py-3">
+              <div class="flex items-center gap-2 border-t border-hairline bg-[var(--workspace-pink)] px-4 py-3">
                 <div class="flex h-[42px] flex-1 items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 shadow-[var(--shadow-xs)] focus-within:border-accent">
                   <input
                     #composeInput
