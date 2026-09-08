@@ -287,19 +287,13 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                         <lucide-icon name="circle-check-big" [size]="15" /> Accept Cost
                       </button>
                       <button type="button" class="bp-act bp-act--yellow" [disabled]="sending()" (click)="startPropose(it)">
-                        <lucide-icon name="circle-dollar-sign" [size]="15" /> Suggest New Cost
+                        <lucide-icon name="circle-dollar-sign" [size]="15" /> Change Cost
                       </button>
-                      <button type="button" class="bp-act bp-act--gray" [disabled]="sending()" (click)="requestInfo(it)">
-                        <lucide-icon name="info" [size]="15" /> Request Information
-                      </button>
+                      <!-- "Delete Item" is a label for Decline (declines the line by
+                           side; never a hard delete). -->
                       <button type="button" class="bp-act bp-act--red" [disabled]="sending()" (click)="decline(it)">
-                        <lucide-icon [name]="isAgency() ? 'x' : 'circle-off'" [size]="15" /> {{ isAgency() ? 'Cancel' : 'Decline' }}
+                        <lucide-icon name="trash-2" [size]="15" /> Delete Item
                       </button>
-                      @if (!isAgency()) {
-                        <button type="button" class="bp-act bp-act--outline" [disabled]="sending()" (click)="toggleCustomize(it)">
-                          <lucide-icon name="list-tree" [size]="15" /> {{ isCustomizing(it) ? 'Close' : 'Customize' }}
-                        </button>
-                      }
                     </div>
                   }
                 }
