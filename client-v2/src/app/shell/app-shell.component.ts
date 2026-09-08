@@ -1,7 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { filter, map } from 'rxjs';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../core/auth/auth.service';
 import { WordmarkComponent } from '../shared/wordmark/wordmark.component';
@@ -48,7 +46,7 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
     <!-- Vertical paddings ride the --shell-pt/--shell-pb tokens — the SAME pair
          the vpfit height calc consumes (audit cards-F-1). The project-detail
          route paints the pink workspace ground full-bleed behind the header. -->
-    <main class="px-6 pb-[var(--shell-pb)] pt-[var(--shell-pt)]" [class.bp-main--workspace]="isWorkspace()">
+    <main class="px-6 pb-[var(--shell-pb)] pt-[var(--shell-pt)] bp-main--workspace">
       <router-outlet />
     </main>
 
@@ -58,7 +56,6 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
 })
 export class AppShellComponent {
   protected readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
 
   /** Primary nav — every destination is an existing authed route. */
   protected readonly navItems = [
@@ -70,22 +67,4 @@ export class AppShellComponent {
     { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
   ];
 
-  private readonly url = toSignal(
-    this.router.events.pipe(
-      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-      map(() => this.router.url),
-    ),
-    { initialValue: this.router.url },
-  );
-
-  /** True on Overview (/home), the Past projects list (/projects), a single
-   *  project's detail page (/projects/:id), and the supplier inbox (/inbox,
-   *  /inbox/:id) — every page that sits on the pink workspace ground. One class
-   *  (.bp-main--workspace) + one token (--workspace-pink) drive them all, so the
-   *  canvas changes everywhere from a single place. */
-  protected readonly isWorkspace = computed(() => {
-    const path = (this.url() || '').split('?')[0];
-    return path === '/home' || path === '/projects' || /^\/projects\/[^/]+$/.test(path)
-      || path === '/inbox' || /^\/inbox\/[^/]+$/.test(path);
-  });
 }

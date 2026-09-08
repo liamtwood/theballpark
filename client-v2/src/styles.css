@@ -1799,9 +1799,10 @@ input.bp-input-field::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .bp-nav-link:hover { color: var(--theme-text); background: rgba(15, 23, 42, 0.04); }
 .bp-nav-link.bp-nav-link--active { color: var(--theme-text); font-weight: 600; }
 
-/* The pink project "workspace" ground — set on the shell <main> for the
-   workspace routes, full-bleed behind the header. min-height fills the viewport
-   so short pages don't reveal the body ground below the pink (bottom gap). */
+/* The pink canvas ground — set on the shell <main> for EVERY authenticated page
+   (one class + one --workspace-pink token = one reference for the whole app),
+   full-bleed behind the header. min-height fills the viewport so short pages
+   don't reveal the body ground below the pink (bottom gap). */
 .bp-main--workspace { background: var(--workspace-pink); min-height: 100dvh; }
 
 /* Scrollbars — transparent track (shows the page/workspace ground through it,
