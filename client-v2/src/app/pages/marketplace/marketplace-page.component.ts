@@ -1,6 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 import { PageConfigService } from '../../core/config/page-config.service';
+import { AddToProjectDialogComponent, AddToProjectItem } from './add-to-project-dialog.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
 import { CatalogueFilterBandComponent } from '../../shared/catalogue/filter-band.component';
@@ -29,8 +32,10 @@ import { RightRailComponent } from './rail/right-rail.component';
     RightRailComponent,
     SupplierGridComponent,
     TabBandComponent,
+    ToastModule,
+    AddToProjectDialogComponent,
   ],
-  providers: [MarketplaceStore],
+  providers: [MarketplaceStore, MessageService],
   /* bp-vpfit (md+): the page fills the viewport exactly — hero + filter
      band anchored, the catalogue columns scroll independently. */
   host: { class: 'block bp-vpfit' },
@@ -100,7 +105,7 @@ import { RightRailComponent } from './rail/right-rail.component';
               [quoteDraftIds]="favs.quoteDraft()"
               (entitySelected)="onItemClicked($event)"
               (favouriteToggled)="favs.toggle('item', $event)"
-              (quoteToggled)="favs.toggleQuoteDraft($event)"
+              (quoteToggled)="openPicker($event)"
               (changed)="store.reloadItems()"
             />
             @if (store.hasMore()) {
@@ -116,11 +121,38 @@ import { RightRailComponent } from './rail/right-rail.component';
         <app-right-rail rail />
       </app-catalogue-layout>
     </div>
+
+    <!-- v1 feature (rebuilt): choose a project (or start new) to add the item. -->
+    <app-add-to-project-dialog
+      [item]="pickItem()"
+      (close)="pickItem.set(null)"
+      (added)="onAdded($event)"
+    />
+    <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
 })
 export class MarketplacePageComponent {
   protected readonly store = inject(MarketplaceStore);
   protected readonly favs = inject(FavouritesStore);
+  private readonly toast = inject(MessageService);
+
+  /** The item whose "Add to project" picker is open (null = closed). */
+  protected readonly pickItem = signal<AddToProjectItem | null>(null);
+
+  /** Open the project picker for the clicked item (standalone marketplace). */
+  protected openPicker(itemId: string): void {
+    const it = this.store.items().find((i) => i.id === itemId);
+    if (!it) return;
+    this.pickItem.set({ id: it.id, name: it.name, basePrice: it.basePrice, unit: it.unit });
+  }
+
+  protected onAdded(e: { projectId: string; itemName: string }): void {
+    this.toast.add({
+      severity: 'success',
+      summary: `Added ${e.itemName} to the project.`,
+      life: 4000,
+    });
+  }
 
   protected readonly modeTabs: TabBandTab[] = [
     { key: 'items', label: 'Items' },
