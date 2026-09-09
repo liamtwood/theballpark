@@ -29,7 +29,7 @@ export interface PageHeroOverride {
 /** Non-persisted defaults, applied at read time. */
 export const CONFIG_DEFAULTS = {
   heroTitleMode: 'greeting',
-  heroAlign: 'left', // launcher/home surfaces are left-aligned by default
+  heroAlign: 'center', // fallback only; per-org alignment lives in org_type_config
   heroSubtitle: 'What opportunities are we working on today?',
   creditLabel: 'Ball',
   eventLabel: 'Project',

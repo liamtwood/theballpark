@@ -15,8 +15,8 @@ import { LucideAngularModule } from 'lucide-angular';
   host: { class: 'bp-card bp-card--lifted bp-launcher-tile' },
   template: `
     <a [routerLink]="href()" [queryParams]="query()" class="bp-launcher-tile__link" [attr.aria-label]="label()">
-      <span class="bp-icon-block h-16 w-16">
-        <lucide-icon [name]="icon()" [size]="24" [strokeWidth]="1.5" />
+      <span class="bp-launcher-tile__icon">
+        <lucide-icon [name]="icon()" [size]="22" [strokeWidth]="1.5" />
       </span>
       <span class="min-w-0">
         <span class="bp-card-title bp-launcher-tile__title">{{ label() }}</span>
@@ -31,6 +31,11 @@ import { LucideAngularModule } from 'lucide-angular';
       /* Chrome comes from .bp-card .bp-card--lifted (pV2-CARDS-01 — the
          md-rest / lg-hover Figma look is the --lifted modifier; the icon
          square is the global .bp-icon-block). Only LAYOUT remains here. */
+      /* Softer, rounder launcher tiles — overrides .bp-card's --radius-card
+         (0,2,0 beats the .bp-card class so no inline style needed). */
+      :host(.bp-launcher-tile) {
+        border-radius: 28px;
+      }
       :host(:focus-within) {
         outline: 2px solid var(--theme-accent);
         outline-offset: 2px;
@@ -48,6 +53,11 @@ import { LucideAngularModule } from 'lucide-angular';
       }
       /* Type comes from .bp-card-title / .bp-card-subtitle (pV2-TYPE-01);
          these structural classes keep only layout. */
+      /* Bare icon — no container wash/box, just the accent-stroked glyph. */
+      .bp-launcher-tile__icon {
+        display: inline-flex;
+        color: var(--theme-accent);
+      }
       .bp-launcher-tile__title {
         display: block;
       }
