@@ -22,7 +22,7 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
   host: { class: 'block min-h-screen' },
   template: `
     <header class="bp-app-header fixed inset-x-0 top-0 z-40">
-      <div class="flex h-14 items-center justify-between px-6">
+      <div class="bp-header-inset flex h-14 items-center justify-between">
         <!-- Wordmark routes to /home (pV2-02b): the root is the public landing
              page; authenticated users clicking the logo belong on home. -->
         <app-wordmark link="/home" />
@@ -32,7 +32,7 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
       </div>
 
       @if (auth.isLoggedIn()) {
-        <nav class="flex items-center gap-1 overflow-x-auto px-6 pb-2">
+        <nav class="bp-header-inset flex items-center gap-1 overflow-x-auto pb-2">
           @for (item of navItems; track item.path) {
             <a [routerLink]="item.path" routerLinkActive="bp-nav-link--active"
                [routerLinkActiveOptions]="{ exact: item.exact }" class="bp-nav-link">

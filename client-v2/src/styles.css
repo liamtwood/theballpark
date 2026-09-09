@@ -270,6 +270,12 @@
   padding-right: max(24px, calc((100% - var(--workspace-max)) / 2));
 }
 
+/* Header rows share the workspace column so the logo + nav line up with the
+   page content (the bar itself stays full-bleed). */
+.bp-header-inset {
+  padding-inline: max(24px, calc((100% - var(--workspace-max)) / 2));
+}
+
 /* Hero — home */
 .bp-home-title    { font-family: var(--bp-font); font-size: var(--text-greeting); font-weight: 400; line-height: var(--leading-tight); color: var(--color-text); letter-spacing: -0.01em; }
 .bp-home-subtitle { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
