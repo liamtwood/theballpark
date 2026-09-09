@@ -53,9 +53,10 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
           </div>
         </div>
       } @else {
-        <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-          <!-- Left: the brief (upload + paste). -->
-          <div class="bp-card p-6">
+        <div class="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
+          <!-- Left: the brief (upload + paste). Fills the column so it matches
+               the right side's full height (details + button + disclaimer). -->
+          <div class="bp-card flex h-full flex-col p-6">
             <h2 class="bp-card-title">The brief</h2>
 
             <label class="mt-4 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-medium px-4 py-8 text-center hover:bg-fill">
@@ -65,10 +66,10 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
               <span class="bp-caption">.txt, .md, .csv or .rtf — or paste the text below</span>
             </label>
 
-            <label class="mt-5 block">
+            <label class="mt-5 flex flex-1 flex-col">
               <span class="bp-field-label">Brief text</span>
               <textarea
-                class="mt-1.5 h-64 w-full resize-none rounded-xl border border-hairline bg-surface p-3 text-md outline-none focus:border-accent"
+                class="mt-1.5 min-h-64 w-full flex-1 resize-none rounded-xl border border-hairline bg-surface p-3 text-md outline-none focus:border-accent"
                 placeholder="Paste the client brief: objectives, audience, dates, venue thoughts, guest numbers, deliverables, budget guidance…"
                 [value]="briefText()"
                 (input)="briefText.set($any($event.target).value)"
