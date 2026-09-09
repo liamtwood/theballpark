@@ -34,9 +34,9 @@ function natoDate(s: string): string {
     /* pV2-BUILDUP-04 workspace card — soft white on the pink ground. */
     .ed-card {
       background: var(--color-surface);
-      border: 1px solid var(--card-border);
-      border-radius: 32px;
-      box-shadow: var(--shadow-quiet);
+      border: 1px solid var(--color-border-hairline);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
     }
     .ed-label { font-size: var(--text-xs, 0.75rem); color: var(--color-text-secondary); }
     .ed-input {
@@ -86,7 +86,7 @@ function natoDate(s: string): string {
 
     <div class="ed-card p-6">
       <div class="flex items-center justify-between">
-        <span class="bp-list-title">Event details</span>
+        <h2 class="bp-card-title">Event details</h2>
         <ng-container [ngTemplateOutlet]="savedChip" />
       </div>
 
@@ -137,7 +137,7 @@ function natoDate(s: string): string {
 
     <div class="ed-card mt-4 p-6">
       <div class="flex items-center justify-between">
-        <span class="bp-list-title">Event Description</span>
+        <h2 class="bp-card-title">Event Description</h2>
         <ng-container [ngTemplateOutlet]="savedChip" />
       </div>
       <textarea class="ed-textarea mt-4" rows="3"
