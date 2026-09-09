@@ -4,7 +4,8 @@ import { firstValueFrom } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { MarketplaceStore } from '../marketplace/marketplace-store';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
-import { CatalogueSupplier } from '../../shared/catalogue/catalogue.types';
+import { CatalogueSupplier, CatalogueItem } from '../../shared/catalogue/catalogue.types';
+import { QuickViewDialogComponent } from '../marketplace/quick-view-dialog.component';
 import { CatalogueFilterBandComponent } from '../../shared/catalogue/filter-band.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
@@ -33,6 +34,7 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
     SupplierGridComponent,
     TabBandComponent,
     ProjectQuoteRailComponent,
+    QuickViewDialogComponent,
   ],
   providers: [MarketplaceStore],
   /* Viewport-fit, independent column scroll — same structure as the global
@@ -97,7 +99,9 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
             [selectedId]="store.itemId()"
             [favouriteIds]="favs.items()"
             [quoteDraftIds]="quoteIds()"
-            (entitySelected)="store.selectItem($event)"
+            [showQuickView]="true"
+            (entitySelected)="openQuickView($event)"
+            (quickView)="openQuickView($event)"
             (favouriteToggled)="favs.toggle('item', $event)"
             (quoteToggled)="onQuoteToggle($event)"
             (changed)="store.reloadItems()"
@@ -122,6 +126,14 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
         />
       </div>
     </div>
+
+    <!-- Quick View — inside a project, "Add to ballpark" adds straight to
+         THIS project's quote (no picker). -->
+    <app-quick-view-dialog
+      [item]="quickItem()"
+      (close)="quickItem.set(null)"
+      (add)="onQuickAdd($event)"
+    />
   `,
 })
 export class ProjectMarketplaceComponent {
@@ -134,6 +146,24 @@ export class ProjectMarketplaceComponent {
   private readonly route = inject(ActivatedRoute);
 
   readonly projectId = input.required<string>();
+
+  /** The item whose Quick View dialog is open (null = closed). */
+  protected readonly quickItem = signal<CatalogueItem | null>(null);
+
+  protected openQuickView(itemId: string): void {
+    this.quickItem.set(this.store.items().find((i) => i.id === itemId) ?? null);
+  }
+
+  /** Quick View "Add to ballpark" → add to THIS project's quote (no picker).
+   *  No-op with a note if it's already in the quote (toggle would remove it). */
+  protected onQuickAdd(itemId: string): void {
+    this.quickItem.set(null);
+    if (this.quoteIds().has(itemId)) {
+      this.toast.add({ severity: 'info', summary: 'Already in the ballpark.', life: 3000 });
+      return;
+    }
+    void this.onQuoteToggle(itemId);
+  }
 
   protected readonly modeTabs: TabBandTab[] = [
     { key: 'items', label: 'Items' },
