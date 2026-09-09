@@ -276,6 +276,51 @@
   padding-inline: max(24px, calc((100% - var(--workspace-max)) / 2));
 }
 
+/* Workspace edit-form field kit (the "ready to edit" rounded fields — one
+   reference for the project Event details + About Project). */
+.ed-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+.ed-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+.ed-input,
+.ed-select {
+  height: 44px;
+  width: 100%;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-hairline);
+  background: var(--color-surface);
+  padding: 0 16px;
+  font-size: var(--text-md);
+  font-family: var(--font-body);
+  color: var(--color-text);
+  outline: none;
+}
+.ed-input::placeholder { color: var(--color-text-secondary); opacity: 0.7; }
+.ed-input:focus,
+.ed-select:focus { border-color: var(--theme-accent); }
+.ed-textarea {
+  width: 100%;
+  min-height: 84px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border-hairline);
+  background: var(--color-surface);
+  padding: 12px 16px;
+  font-size: var(--text-md);
+  font-family: var(--bp-font);
+  line-height: var(--leading-normal, 1.5);
+  color: var(--color-text);
+  outline: none;
+  resize: vertical;
+}
+.ed-textarea::placeholder { color: var(--color-text-secondary); opacity: 0.7; }
+.ed-textarea:focus { border-color: var(--theme-accent); }
+
 /* Hero — home */
 .bp-home-title    { font-family: var(--bp-font); font-size: var(--text-greeting); font-weight: 400; line-height: var(--leading-tight); color: var(--color-text); letter-spacing: -0.01em; }
 .bp-home-subtitle { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }

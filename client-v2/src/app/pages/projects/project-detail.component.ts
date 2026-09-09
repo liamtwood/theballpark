@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, NgTemplateOutlet } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
@@ -12,8 +13,7 @@ import { ProjectService } from '../../core/projects/project.service';
 import { EstimateBreakdown, ProjectDetail, ProjectUpdate } from '../../core/projects/project.types';
 import { GalleryImage, PickerResult } from '../../core/media/media.types';
 import { errorDetail } from '../../core/http-error';
-import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
-import { EditSectionComponent } from '../../shared/edit-section/edit-section.component';
+import { EditFieldOption } from '../../shared/edit-field/edit-field.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
@@ -26,8 +26,6 @@ import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
 import { QuoteDocumentComponent } from './quote-document.component';
 import { SowDocumentComponent } from './sow-document.component';
-import { DetailsEditorComponent } from '../../shared/details-editor.component';
-import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { InboxProjectComponent } from '../inbox/inbox-project.component';
 import { CoachmarkComponent } from '../../shared/coachmark/coachmark.component';
 
@@ -77,8 +75,6 @@ interface DetailForm {
     CoachmarkComponent,
     PageHeroComponent,
     TabBandComponent,
-    EditSectionComponent,
-    EditFieldComponent,
     CompletenessCardComponent,
     DrawerComponent,
     ImagePickerComponent,
@@ -88,9 +84,9 @@ interface DetailForm {
     ProjectEstimateComponent,
     QuoteDocumentComponent,
     SowDocumentComponent,
-    DetailsEditorComponent,
-    MarkdownPipe,
     InboxProjectComponent,
+    FormsModule,
+    NgTemplateOutlet,
   ],
   providers: [MessageService],
   /* Viewport-fit on EVERY tab (universal rule: the hero never scrolls).
@@ -131,9 +127,21 @@ interface DetailForm {
       <div class="bp-page-body">
         @switch (tab()) {
           @case ('details') {
-            <div class="bp-settings-body mx-auto w-full px-4 pt-4 min-h-0 flex-1 overflow-y-auto">
-              <!-- Weighted "% complete" over the project's fields; each unmet
-                   item deep-links into its edit section (mirrors Profile). -->
+            <!-- Ready-to-edit rounded fields; each field saves on blur with a
+                 "Details saved" pill (mirrors the Ballpark Cost Event details). -->
+            <ng-template #savedChip>
+              @switch (detailState()) {
+                @case ('saving') { <span class="bp-pill bp-body-small text-secondary">Saving…</span> }
+                @case ('error') { <span class="bp-pill bp-pill--danger bp-body-small">Couldn't save</span> }
+                @case ('saved') {
+                  <span class="bp-pill bp-pill--success bp-body-small inline-flex items-center gap-1.5">
+                    <lucide-icon name="check" [size]="14" [strokeWidth]="2" /> Details saved
+                  </span>
+                }
+              }
+            </ng-template>
+
+            <div class="mx-auto flex min-h-0 w-full max-w-[var(--workspace-max)] flex-1 flex-col gap-4 overflow-y-auto pt-4">
               <app-completeness-card
                 [entity]="p"
                 [config]="completenessConfig"
@@ -142,131 +150,89 @@ interface DetailForm {
                 (actionClicked)="handleCompletenessAction($event)"
               />
 
-              <!-- Event details (v1 parity): Ref + Status read-only header,
-                   then editable name / venue / city. Client is read-only
-                   (changing it needs a picker — out of this slice). -->
-              <app-edit-section
-                title="Event details"
-                [editable]="true"
-                [(editing)]="editingEvent"
-                [saving]="saving()"
-                (edit)="snapshot('event')"
-                (cancelled)="restore('event')"
-                (save)="save('event')"
-              >
-                <div class="bp-field-grid-2">
-                  <app-edit-field label="Ref" density="page" [readonlyAlways]="true" [value]="p.ref ?? '—'" />
-                  <app-edit-field label="Event name" density="page" [editing]="editingEvent()" [value]="form().name" (valueChange)="patch({ name: $event })" />
-                  <app-edit-field label="Client" density="page" [editing]="editingEvent()" [value]="form().clientName" [suggestions]="clientNames()" (valueChange)="patch({ clientName: $event })" />
-                  <app-edit-field label="Client company no." density="page" [editing]="editingEvent()" [value]="form().clientCompanyNumber" (valueChange)="patch({ clientCompanyNumber: $event })" />
-                  <app-edit-field class="bp-edit-field--span2" [span2]="true" label="Client address" type="textarea" density="page" [editing]="editingEvent()" [value]="form().clientAddress" (valueChange)="patch({ clientAddress: $event })" />
-                  <app-edit-field label="Venue" density="page" [editing]="editingEvent()" [value]="form().venueName" (valueChange)="patch({ venueName: $event })" />
-                  <app-edit-field label="City" density="page" [editing]="editingEvent()" [value]="form().venueCity" (valueChange)="patch({ venueCity: $event })" />
-                  <app-edit-field class="bp-edit-field--span2" [span2]="true" label="Description" type="textarea" density="page" placeholder="Project overview — seeded from the brief; shown on the quote document." [editing]="editingEvent()" [value]="form().description" (valueChange)="patch({ description: $event })" />
+              <!-- Event details -->
+              <div #companySection class="ed-card shrink-0 p-6">
+                <div class="flex items-center justify-between">
+                  <h2 class="bp-card-title">Event details</h2>
+                  <ng-container [ngTemplateOutlet]="savedChip" />
                 </div>
-              </app-edit-section>
-
-              <app-edit-section
-                title="Event type"
-                [editable]="true"
-                [(editing)]="editingType"
-                [saving]="saving()"
-                (edit)="snapshot('type')"
-                (cancelled)="restore('type')"
-                (save)="save('type')"
-              >
-                <div class="bp-field-grid-2">
-                  <app-edit-field label="Event type" type="select" [options]="eventTypeOptions()" density="page" [editing]="editingType()" [value]="form().eventType" (valueChange)="patch({ eventType: $event })" />
-                  <app-edit-field label="Tier" type="select" [options]="tierOptions" density="page" [editing]="editingType()" [value]="form().tier" (valueChange)="patch({ tier: $event })" />
+                <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <label class="block"><span class="ed-label mb-1.5 block">Ref</span><input class="ed-input" [value]="p.ref ?? '—'" disabled /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Event name</span><input class="ed-input" [ngModel]="form().name" (ngModelChange)="patch({ name: $event })" (blur)="saveSection('event')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Client</span><input class="ed-input" [ngModel]="form().clientName" (ngModelChange)="patch({ clientName: $event })" (blur)="saveSection('event')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Client company no.</span><input class="ed-input" [ngModel]="form().clientCompanyNumber" (ngModelChange)="patch({ clientCompanyNumber: $event })" (blur)="saveSection('event')" /></label>
+                  <label class="block sm:col-span-2 lg:col-span-3"><span class="ed-label mb-1.5 block">Client address</span><textarea class="ed-textarea" rows="2" [ngModel]="form().clientAddress" (ngModelChange)="patch({ clientAddress: $event })" (blur)="saveSection('event')"></textarea></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Venue</span><input class="ed-input" [ngModel]="form().venueName" (ngModelChange)="patch({ venueName: $event })" (blur)="saveSection('event')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">City</span><input class="ed-input" [ngModel]="form().venueCity" (ngModelChange)="patch({ venueCity: $event })" (blur)="saveSection('event')" /></label>
+                  <label class="block sm:col-span-2 lg:col-span-3"><span class="ed-label mb-1.5 block">Description</span><textarea class="ed-textarea" rows="3" placeholder="Project overview — seeded from the brief; shown on the quote document." [ngModel]="form().description" (ngModelChange)="patch({ description: $event })" (blur)="saveSection('event')"></textarea></label>
                 </div>
-              </app-edit-section>
+              </div>
 
-              <app-edit-section
-                title="Logistics"
-                [editable]="true"
-                [(editing)]="editingLogistics"
-                [saving]="saving()"
-                (edit)="snapshot('logistics')"
-                (cancelled)="restore('logistics')"
-                (save)="save('logistics')"
-              >
-                <div class="bp-field-grid-2">
-                  <app-edit-field label="Event date" density="page" [editing]="editingLogistics()" [value]="form().eventDate" (valueChange)="patch({ eventDate: $event })" />
-                  <app-edit-field label="Duration (days)" type="number" density="page" [editing]="editingLogistics()" [value]="form().durationDays" (valueChange)="patch({ durationDays: $event })" />
-                  <app-edit-field label="Guest count" type="number" density="page" [editing]="editingLogistics()" [value]="form().guestCount" (valueChange)="patch({ guestCount: $event })" />
+              <!-- Event type & tier -->
+              <div class="ed-card shrink-0 p-6">
+                <div class="flex items-center justify-between">
+                  <h2 class="bp-card-title">Event type</h2>
+                  <ng-container [ngTemplateOutlet]="savedChip" />
                 </div>
-              </app-edit-section>
-
-              <!-- Financials — the per-project rates that drive the Estimate
-                   cascade (seeded from the org's Profile defaults at create). -->
-              <app-edit-section
-                title="Financials"
-                [editable]="true"
-                [(editing)]="editingFinancials"
-                [saving]="saving()"
-                (edit)="snapshot('financials')"
-                (cancelled)="restore('financials')"
-                (save)="save('financials')"
-              >
-                <div class="bp-field-grid-2">
-                  <app-edit-field label="Budget (£)" type="number" [grouping]="true" density="page" [editing]="editingFinancials()" [value]="form().budget" (valueChange)="patch({ budget: $event })" />
-                  <app-edit-field label="Margin (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().marginPct" (valueChange)="patch({ marginPct: $event })" />
-                  <app-edit-field label="Contingency (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().contingencyPct" (valueChange)="patch({ contingencyPct: $event })" />
-                  <app-edit-field label="VAT (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().vatPct" (valueChange)="patch({ vatPct: $event })" />
+                <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
+                  <label class="block"><span class="ed-label mb-1.5 block">Event type</span>
+                    <select class="ed-select" [ngModel]="form().eventType" (ngModelChange)="patch({ eventType: $event }); saveSection('type')">
+                      <option value="">—</option>
+                      @for (o of eventTypeOptions(); track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+                    </select>
+                  </label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Tier</span>
+                    <select class="ed-select" [ngModel]="form().tier" (ngModelChange)="patch({ tier: $event }); saveSection('type')">
+                      <option value="">—</option>
+                      @for (o of tierOptions; track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+                    </select>
+                  </label>
                 </div>
-              </app-edit-section>
+              </div>
 
-              <!-- pV2-BUILDUP-04 — Statement of Work content: Timeline / Payment
-                   Terms / Special Terms (free-text markdown, edited with the
-                   shared Details editor; Timeline auto-formats dates). -->
-              <app-edit-section
-                title="Statement of Work"
-                [editable]="true"
-                [(editing)]="editingSow"
-                [saving]="saving()"
-                (edit)="snapshot('sow')"
-                (cancelled)="restore('sow')"
-                (save)="save('sow')"
-              >
-                <div class="flex flex-col gap-4">
-                  <div>
-                    <span class="bp-field-label">Timeline</span>
-                    @if (editingSow()) {
-                      <app-details-editor mode="date" label="" [rows]="5" placeholder="One milestone per line, e.g. 'Install 20.08.26' — dates auto-format."
-                                          [value]="form().sowTimeline" (valueChange)="patch({ sowTimeline: $event })" />
-                    } @else if (form().sowTimeline) {
-                      <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="form().sowTimeline | md"></div>
-                    } @else { <div class="bp-caption mt-1">—</div> }
-                  </div>
-                  <div>
-                    <span class="bp-field-label">Payment Terms</span>
-                    @if (editingSow()) {
-                      <app-details-editor mode="plain" label="" [rows]="4" placeholder="e.g. 50% on signature, 50% on completion."
-                                          [value]="form().sowPaymentTerms" (valueChange)="patch({ sowPaymentTerms: $event })" />
-                    } @else if (form().sowPaymentTerms) {
-                      <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="form().sowPaymentTerms | md"></div>
-                    } @else { <div class="bp-caption mt-1">—</div> }
-                  </div>
-                  <div>
-                    <span class="bp-field-label">Special Terms</span>
-                    @if (editingSow()) {
-                      <app-details-editor mode="plain" label="" [rows]="3" placeholder="Anything bespoke to this project (default: N/A)."
-                                          [value]="form().sowSpecialTerms" (valueChange)="patch({ sowSpecialTerms: $event })" />
-                    } @else if (form().sowSpecialTerms) {
-                      <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="form().sowSpecialTerms | md"></div>
-                    } @else { <div class="bp-caption mt-1">—</div> }
-                  </div>
+              <!-- Logistics -->
+              <div class="ed-card shrink-0 p-6">
+                <div class="flex items-center justify-between">
+                  <h2 class="bp-card-title">Logistics</h2>
+                  <ng-container [ngTemplateOutlet]="savedChip" />
                 </div>
-              </app-edit-section>
+                <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-3">
+                  <label class="block"><span class="ed-label mb-1.5 block">Event date</span><input class="ed-input" [ngModel]="form().eventDate" (ngModelChange)="patch({ eventDate: $event })" (blur)="saveSection('logistics')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Duration (days)</span><input class="ed-input" type="number" [ngModel]="form().durationDays" (ngModelChange)="patch({ durationDays: $event })" (blur)="saveSection('logistics')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Guest count</span><input class="ed-input" type="number" [ngModel]="form().guestCount" (ngModelChange)="patch({ guestCount: $event })" (blur)="saveSection('logistics')" /></label>
+                </div>
+              </div>
 
-              <!-- Image (pV2-MEDIA-01b) — cover/icon picker in a drawer.
-                   shrink-0: .bp-card is overflow:hidden, so in the viewport-fit
-                   flex-column scroll region its flex min-height resolves to 0 and
-                   the card collapses under its title (desktop only — mobile is
-                   natural page scroll). Keep it at content height + let the region
-                   scroll. -->
-              <div class="bp-card p-5 shrink-0">
-                <h3 class="bp-edit-section-title">Image</h3>
+              <!-- Financials -->
+              <div class="ed-card shrink-0 p-6">
+                <div class="flex items-center justify-between">
+                  <h2 class="bp-card-title">Financials</h2>
+                  <ng-container [ngTemplateOutlet]="savedChip" />
+                </div>
+                <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <label class="block"><span class="ed-label mb-1.5 block">Budget ({{ cur() === 'USD' ? '$' : cur() === 'EUR' ? '€' : '£' }})</span><input class="ed-input" type="number" [ngModel]="form().budget" (ngModelChange)="patch({ budget: $event })" (blur)="saveSection('financials')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Margin (%)</span><input class="ed-input" type="number" [ngModel]="form().marginPct" (ngModelChange)="patch({ marginPct: $event })" (blur)="saveSection('financials')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Contingency (%)</span><input class="ed-input" type="number" [ngModel]="form().contingencyPct" (ngModelChange)="patch({ contingencyPct: $event })" (blur)="saveSection('financials')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">VAT (%)</span><input class="ed-input" type="number" [ngModel]="form().vatPct" (ngModelChange)="patch({ vatPct: $event })" (blur)="saveSection('financials')" /></label>
+                </div>
+              </div>
+
+              <!-- Statement of Work -->
+              <div class="ed-card shrink-0 p-6">
+                <div class="flex items-center justify-between">
+                  <h2 class="bp-card-title">Statement of Work</h2>
+                  <ng-container [ngTemplateOutlet]="savedChip" />
+                </div>
+                <div class="mt-4 flex flex-col gap-4">
+                  <label class="block"><span class="ed-label mb-1.5 block">Timeline</span><textarea class="ed-textarea" rows="4" placeholder="One milestone per line, e.g. 'Install 20.08.26'." [ngModel]="form().sowTimeline" (ngModelChange)="patch({ sowTimeline: $event })" (blur)="saveSection('sow')"></textarea></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Payment Terms</span><textarea class="ed-textarea" rows="3" placeholder="e.g. 50% on signature, 50% on completion." [ngModel]="form().sowPaymentTerms" (ngModelChange)="patch({ sowPaymentTerms: $event })" (blur)="saveSection('sow')"></textarea></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Special Terms</span><textarea class="ed-textarea" rows="3" placeholder="Anything bespoke to this project (default: N/A)." [ngModel]="form().sowSpecialTerms" (ngModelChange)="patch({ sowSpecialTerms: $event })" (blur)="saveSection('sow')"></textarea></label>
+                </div>
+              </div>
+
+              <!-- Image -->
+              <div class="ed-card shrink-0 p-6">
+                <h2 class="bp-card-title">Image</h2>
                 <div class="mt-3 flex flex-col items-start gap-3">
                   <div class="bp-media-preview">
                     @if (p.coverUrl) {
@@ -277,21 +243,18 @@ interface DetailForm {
                       <span class="bp-caption">No image</span>
                     }
                   </div>
-                  <div class="flex gap-2">
-                    <button type="button" class="bp-btn-outline" (click)="imgDrawer.set(true)">
-                      <lucide-icon name="square-pen" [size]="16" /> Edit
-                    </button>
-                  </div>
+                  <button type="button" class="bp-btn-outline" (click)="imgDrawer.set(true)">
+                    <lucide-icon name="square-pen" [size]="16" /> Edit
+                  </button>
                 </div>
                 @if (p.unsplashPhotographerName) {
                   <p class="bp-caption mt-2">Photo by {{ p.unsplashPhotographerName }} on Unsplash</p>
                 }
               </div>
 
-              <!-- Gallery (pV2-MEDIA-01c) — multi-image strip; "Set as cover"
-                   promotes a photo into the cover above. -->
-              <div class="bp-card p-5 shrink-0">
-                <h3 class="bp-edit-section-title">Gallery</h3>
+              <!-- Gallery -->
+              <div #mediaSection class="ed-card shrink-0 p-6">
+                <h2 class="bp-card-title">Gallery</h2>
                 <p class="bp-caption mt-1">Add up to 5 photos — hover one to reorder, set it as the cover, or remove it.</p>
                 <div class="mt-3">
                   <app-image-gallery
@@ -424,6 +387,10 @@ export class ProjectDetailComponent {
   protected readonly editingFinancials = signal(false);
   protected readonly editingSow = signal(false);
   protected readonly saving = signal(false);
+  /** Save-on-blur pill state for the always-editable About Project fields. */
+  protected readonly detailState = signal<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  /** The project's currency (for the Budget field symbol). */
+  protected readonly cur = computed(() => this.detail.value()?.currency || 'GBP');
   /** Image-picker drawer (pV2-MEDIA-01b). */
   protected readonly imgDrawer = signal(false);
   /** pV2-BUILDUP-04 — Final Quote → client-facing document overlays. */
@@ -529,54 +496,56 @@ export class ProjectDetailComponent {
 
   /** Per-section save (audit 02-F-2 lesson) — only the edited section's
    *  fields travel. Match v1's three sections. */
-  protected async save(section: Section): Promise<void> {
+  /** Build a section's ProjectUpdate patch from the current form state. */
+  private buildPatch(section: Section): ProjectUpdate {
+    const f = this.form();
+    return section === 'event'
+      ? {
+          name: f.name.trim() || undefined,
+          description: nullable(f.description),
+          clientName: nullable(f.clientName),
+          clientCompanyNumber: nullable(f.clientCompanyNumber),
+          clientAddress: nullable(f.clientAddress),
+          venueName: nullable(f.venueName),
+          venueCity: nullable(f.venueCity),
+        }
+      : section === 'type'
+        ? { eventType: nullable(f.eventType), tier: asTier(f.tier) }
+        : section === 'logistics'
+          ? {
+              eventDate: nullable(f.eventDate),
+              durationDays: numOrNull(f.durationDays),
+              guestCount: numOrNull(f.guestCount),
+            }
+          : section === 'financials'
+            ? {
+                projectBudget: numOrNull(f.budget),
+                defaultMarginPct: numOrNull(f.marginPct),
+                defaultContingencyPct: numOrNull(f.contingencyPct),
+                defaultVatPct: numOrNull(f.vatPct),
+              }
+            : {
+                sowTimeline: nullable(f.sowTimeline),
+                sowPaymentTerms: nullable(f.sowPaymentTerms),
+                sowSpecialTerms: nullable(f.sowSpecialTerms),
+              };
+  }
+
+  /** Save-on-blur (always-editable fields): persist the section, flash the
+   *  "Details saved" pill — no edit-mode toggle, no toast. */
+  protected async saveSection(section: Section): Promise<void> {
     const id = this.id();
     if (!id) return;
-    this.saving.set(true);
-    const f = this.form();
-    const patch: ProjectUpdate =
-      section === 'event'
-        ? {
-            name: f.name.trim() || undefined,
-            description: nullable(f.description),
-            clientName: nullable(f.clientName),
-            clientCompanyNumber: nullable(f.clientCompanyNumber),
-            clientAddress: nullable(f.clientAddress),
-            venueName: nullable(f.venueName),
-            venueCity: nullable(f.venueCity),
-          }
-        : section === 'type'
-          ? { eventType: nullable(f.eventType), tier: asTier(f.tier) }
-          : section === 'logistics'
-            ? {
-                eventDate: nullable(f.eventDate),
-                durationDays: numOrNull(f.durationDays),
-                guestCount: numOrNull(f.guestCount),
-              }
-            : section === 'financials'
-              ? {
-                  projectBudget: numOrNull(f.budget),
-                  defaultMarginPct: numOrNull(f.marginPct),
-                  defaultContingencyPct: numOrNull(f.contingencyPct),
-                  defaultVatPct: numOrNull(f.vatPct),
-                }
-              : {
-                  sowTimeline: nullable(f.sowTimeline),
-                  sowPaymentTerms: nullable(f.sowPaymentTerms),
-                  sowSpecialTerms: nullable(f.sowSpecialTerms),
-                };
+    this.detailState.set('saving');
     try {
-      const fresh = await firstValueFrom(this.projects.update(id, patch));
+      const fresh = await firstValueFrom(this.projects.update(id, this.buildPatch(section)));
       this.form.set(toForm(fresh));
       this.detail.set(fresh);
-      this.editingFlags[section].set(false);
-      // A newly-typed client name joins the type-ahead pool.
       if (section === 'event') this.clientNamesRes.reload();
-      this.toast.add({ severity: 'success', summary: 'Saved.', life: 3000 });
+      this.detailState.set('saved');
     } catch (err) {
-      this.toast.add({ severity: 'error', summary: "Couldn't save — please try again.", detail: errorDetail(err), life: 5000 });
-    } finally {
-      this.saving.set(false);
+      console.warn('[ProjectDetail] save failed', err);
+      this.detailState.set('error');
     }
   }
 
