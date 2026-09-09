@@ -55,5 +55,14 @@ export class StatusPillComponent {
   protected readonly bg = computed(
     () => metaColor(this.value()?.meta?.color) ?? 'var(--color-text-muted)'
   );
-  protected readonly fg = computed(() => 'var(--bp-text-on-gradient)');
+  // White text on the (mostly dark) solid fills; dark text on the light/muted
+  // fills so a pale pill stays readable (e.g. draft → --color-state-mauve).
+  protected readonly fg = computed(() =>
+    LIGHT_FILLS.has(this.value()?.meta?.color ?? '')
+      ? 'var(--color-text)'
+      : 'var(--bp-text-on-gradient)'
+  );
 }
+
+/** Meta-color tokens that are too light for white text — use dark text. */
+const LIGHT_FILLS = new Set(['--color-state-mauve']);

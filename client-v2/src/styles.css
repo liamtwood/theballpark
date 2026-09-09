@@ -68,6 +68,7 @@
   --color-state-emerald: #10b981; /* active (project) */
   --color-state-gray: #6b7280; /* draft (category) / completed */
   --color-state-gray-light: #9ca3af; /* archived / n.a. */
+  --color-state-mauve: oklch(0.96 0.006 320); /* draft (project) — muted secondary */
 
   /* ── Surface / structure tokens ──────────────────────────────────────── */
   --color-surface: #ffffff;
