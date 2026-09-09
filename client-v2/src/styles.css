@@ -1152,10 +1152,11 @@ body {
 
 /* Headline "Ballpark" total — brand gradient text, ~30px / weight 400
    (v1 .bp-card-total). Distinct from .bp-price-large (2xl/600). */
-/* Plain total — same font as the project name (no gradient; Liam 2026-09-09). */
+/* Plain total — same font as the project name, just larger (no gradient;
+   Liam 2026-09-09 — "hated that big rainbow crap"). */
 .bp-projcard__total {
   font-family: var(--bp-font);
-  font-size: var(--text-md);
+  font-size: var(--text-xl);
   font-weight: 600;
   line-height: 1.2;
   color: var(--color-text);

@@ -61,6 +61,7 @@ const LIST_SELECT = `
          p.cover_focal_x, p.cover_focal_y, p.icon_name, p.icon_color,
          p.unsplash_photographer_name, p.unsplash_photo_url,
          p.currency, p.default_contingency_pct, p.default_insurance_pct, p.default_margin_pct, p.default_vat_pct,
+         p.venue_name, p.venue_city, p.guest_count,
          p.created_at, p.updated_at,
          COALESCE(p.client_name, c.name) AS client_name,
          (SELECT COUNT(DISTINCT i.org_id)
@@ -132,6 +133,9 @@ function toCard(row) {
     ballparkCost: cardBallpark(row),
     currency: row.currency ?? 'GBP',
     supplierCount: Number(row.supplier_count ?? 0),
+    // Plain-card meta (pV2 2026-09-09): venue + head count.
+    location: row.venue_name || row.venue_city || null,
+    guestCount: row.guest_count ?? null,
     // v1 card relative-time is off updated_at (created_at fallback).
     updatedAt: row.updated_at ?? row.created_at,
   };

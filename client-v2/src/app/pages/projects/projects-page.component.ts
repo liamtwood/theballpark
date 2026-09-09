@@ -46,6 +46,12 @@ import { ProjectCardComponent } from './project-card.component';
               <app-project-card [project]="p" [now]="now()" [linkBase]="isSupplier() ? '/inbox' : '/projects'" />
             }
           </div>
+          @if (!isSupplier()) {
+            <p class="bp-caption mx-auto mt-6 max-w-[var(--workspace-max)] text-secondary">
+              Ballpark estimates are indicative and subject to supplier confirmation, final scope,
+              availability, delivery requirements and VAT.
+            </p>
+          }
         }
       </div>
     </div>

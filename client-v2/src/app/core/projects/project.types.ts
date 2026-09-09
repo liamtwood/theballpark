@@ -25,6 +25,9 @@ export interface ProjectCard {
   ballparkCost: number | null;
   currency: string;
   supplierCount: number;
+  /** Plain-card meta — venue (name → city) + head count (nullable). */
+  location: string | null;
+  guestCount: number | null;
   /** Relative-time source (v1 uses updated_at). */
   updatedAt: string;
 }
