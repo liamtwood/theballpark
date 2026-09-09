@@ -27,16 +27,20 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
       [modal]="true"
       [style]="{ width: '780px', maxWidth: '94vw' }"
     >
-      @if (item(); as it) {
-        <ng-template pTemplate="header">
+      <!-- Templates stay UNCONDITIONAL so PrimeNG's ContentChildren registers
+           them (an outer @if hid them → empty dialog); guard inside instead. -->
+      <ng-template pTemplate="header">
+        @if (item(); as it) {
           <div class="min-w-0">
             <h2 class="bp-card-title">{{ it.name }}</h2>
             @if (it.description) {
               <p class="bp-body mt-1 text-secondary">{{ it.description }}</p>
             }
           </div>
-        </ng-template>
+        }
+      </ng-template>
 
+      @if (item(); as it) {
         <div class="flex flex-col gap-4">
           <!-- Supplier profile (swipe carousel is a later pass). -->
           <a [routerLink]="['/suppliers', it.supplierId]" [queryParams]="{ view: 1 }" class="bp-qv-supplier self-start">
@@ -102,13 +106,16 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
           </p>
         </div>
 
-        <ng-template pTemplate="footer">
+      }
+
+      <ng-template pTemplate="footer">
+        @if (item(); as it) {
           <button type="button" class="bp-btn-outline" (click)="close.emit()">Close</button>
           <button type="button" class="bp-btn-grad" (click)="add.emit(it.id)">
             Add to ballpark@if (it.basePrice !== null) { &nbsp;·&nbsp;{{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }} }
           </button>
-        </ng-template>
-      }
+        }
+      </ng-template>
     </p-dialog>
   `,
   styles: [
