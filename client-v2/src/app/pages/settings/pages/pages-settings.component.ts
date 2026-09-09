@@ -2,7 +2,13 @@ import { ChangeDetectionStrategy, Component, computed, inject, resource, signal 
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/api.service';
 import { CodelistService } from '../../../core/codelists/codelist.service';
-import { PageConfigPayload, mergeConfig } from '../../../core/config/page-config.types';
+import {
+  PAGE_HERO_DEFAULTS,
+  PAGE_META,
+  PageConfigPayload,
+  PageKey,
+  mergeConfig,
+} from '../../../core/config/page-config.types';
 import { PageConfigService } from '../../../core/config/page-config.service';
 import { EditFieldComponent, EditFieldOption } from '../../../shared/edit-field/edit-field.component';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
@@ -74,8 +80,22 @@ type RoleType = (typeof ROLES)[number];
               type="text"
               [value]="cfg?.heroSubtitle ?? ''"
               placeholder="Shown under the greeting"
+              [maxLength]="240"
               [editing]="true"
               (valueChange)="save(role, { heroSubtitle: $event })"
+            />
+          </div>
+          <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
+            <span></span>
+            <span class="bp-field-label">Home eyebrow</span>
+            <app-edit-field
+              label=""
+              type="text"
+              [value]="cfg?.heroEyebrow ?? ''"
+              placeholder="{orgType} workspace"
+              [maxLength]="40"
+              [editing]="true"
+              (valueChange)="save(role, { heroEyebrow: $event || undefined })"
             />
           </div>
           <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
@@ -90,56 +110,48 @@ type RoleType = (typeof ROLES)[number];
               (valueChange)="save(role, { heroAlign: $event === 'left' ? 'left' : 'center' })"
             />
           </div>
-          <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
-            <span></span>
-            <span class="bp-field-label">Profile title</span>
-            <app-edit-field
-              label=""
-              type="text"
-              [value]="cfg?.pages?.profile?.title ?? ''"
-              placeholder="Profile"
-              [maxLength]="80"
-              [editing]="true"
-              (valueChange)="savePageHero(role, 'profile', 'title', $event)"
-            />
-          </div>
-          <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
-            <span></span>
-            <span class="bp-field-label">Profile subtitle</span>
-            <app-edit-field
-              label=""
-              type="text"
-              [value]="cfg?.pages?.profile?.subtitle ?? ''"
-              placeholder="Defaults to the organisation name"
-              [editing]="true"
-              (valueChange)="savePageHero(role, 'profile', 'subtitle', $event)"
-            />
-          </div>
-          <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
-            <span></span>
-            <span class="bp-field-label">Marketplace title</span>
-            <app-edit-field
-              label=""
-              type="text"
-              [value]="cfg?.pages?.marketplace?.title ?? ''"
-              placeholder="Marketplace"
-              [maxLength]="80"
-              [editing]="true"
-              (valueChange)="savePageHero(role, 'marketplace', 'title', $event)"
-            />
-          </div>
-          <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0">
-            <span></span>
-            <span class="bp-field-label">Marketplace subtitle</span>
-            <app-edit-field
-              label=""
-              type="text"
-              [value]="cfg?.pages?.marketplace?.subtitle ?? ''"
-              placeholder="Browse suppliers, products and services…"
-              [editing]="true"
-              (valueChange)="savePageHero(role, 'marketplace', 'subtitle', $event)"
-            />
-          </div>
+          @for (pm of pageMeta; track pm.key) {
+            @let pg = cfg?.pages?.[pm.key];
+            <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
+              <span></span>
+              <span class="bp-field-label">{{ pm.label }} eyebrow</span>
+              <app-edit-field
+                label=""
+                type="text"
+                [value]="pg?.eyebrow ?? ''"
+                [placeholder]="heroPlaceholder(pm.key, 'eyebrow')"
+                [maxLength]="40"
+                [editing]="true"
+                (valueChange)="savePageHero(role, pm.key, 'eyebrow', $event)"
+              />
+            </div>
+            <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
+              <span></span>
+              <span class="bp-field-label">{{ pm.label }} title</span>
+              <app-edit-field
+                label=""
+                type="text"
+                [value]="pg?.title ?? ''"
+                [placeholder]="heroPlaceholder(pm.key, 'title')"
+                [maxLength]="120"
+                [editing]="true"
+                (valueChange)="savePageHero(role, pm.key, 'title', $event)"
+              />
+            </div>
+            <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0">
+              <span></span>
+              <span class="bp-field-label">{{ pm.label }} subtitle</span>
+              <app-edit-field
+                label=""
+                type="text"
+                [value]="pg?.subtitle ?? ''"
+                [placeholder]="heroPlaceholder(pm.key, 'subtitle')"
+                [maxLength]="240"
+                [editing]="true"
+                (valueChange)="savePageHero(role, pm.key, 'subtitle', $event)"
+              />
+            </div>
+          }
         }
       </div>
 
@@ -155,7 +167,14 @@ export class PagesSettingsComponent {
   private readonly codelists = inject(CodelistService);
 
   protected readonly roles = ROLES;
+  protected readonly pageMeta = PAGE_META;
   protected readonly error = signal('');
+
+  /** Baseline copy shown as the field placeholder (so an unset field reveals
+   *  what will render). */
+  protected heroPlaceholder(page: PageKey, key: 'eyebrow' | 'title' | 'subtitle'): string {
+    return PAGE_HERO_DEFAULTS[page][key];
+  }
 
   /** Codelist-fed dropdowns (pV2-CODELISTS-02 — closes RP-04 here): the
    *  option space lives in page_title_mode / hero_align rows, not code. */
@@ -209,8 +228,8 @@ export class PagesSettingsComponent {
    *  marketplace save must not drop the profile keys, and vice versa). */
   protected savePageHero(
     role: RoleType,
-    page: 'profile' | 'marketplace',
-    key: 'title' | 'subtitle',
+    page: PageKey,
+    key: 'eyebrow' | 'title' | 'subtitle',
     value: string
   ): void {
     const pages = this.configs[role]()?.pages ?? {};

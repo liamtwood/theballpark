@@ -36,9 +36,9 @@ import { RightRailComponent } from './rail/right-rail.component';
   host: { class: 'block bp-vpfit' },
   template: `
     <app-page-hero
-      [back]="{ label: 'Back', href: '/home' }"
-      [title]="heroTitle()"
-      [subtitle]="heroSubtitle()"
+      [eyebrow]="hero().eyebrow"
+      [title]="hero().title"
+      [subtitle]="hero().subtitle"
     >
       <app-tab-band
         hero-actions
@@ -128,15 +128,10 @@ export class MarketplacePageComponent {
   ];
   private readonly pageConfig = inject(PageConfigService);
 
-  /** Hero rides the standard per-page settings (HERO ONLY — v1's other
-   *  marketplace view settings deliberately ignored, Liam 2026-06-12);
-   *  /settings/pages overrides win, defaults below. */
-  protected readonly heroTitle = computed(() => this.pageConfig.marketplaceTitle() || 'Marketplace');
-  protected readonly heroSubtitle = computed(
-    () =>
-      this.pageConfig.marketplaceSubtitle() ||
-      'Browse suppliers, products and services to build your project.'
-  );
+  /** Hero rides the standard per-page settings (eyebrow / title / subtitle);
+   *  /settings/pages overrides win over PAGE_HERO_DEFAULTS. HERO ONLY — v1's
+   *  other marketplace view settings deliberately ignored (Liam 2026-06-12). */
+  protected readonly hero = computed(() => this.pageConfig.pageHero('marketplace'));
 
   /** "All Categories" count = sum of the rail counts (matches the grid's
    *  unfiltered total without an extra request). */

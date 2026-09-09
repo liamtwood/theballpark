@@ -24,9 +24,9 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
   host: { class: 'block' },
   template: `
     <app-page-hero
-      [back]="{ label: 'Back', href: '/home' }"
-      [title]="'Upload or write your brief'"
-      [subtitle]="subtitle()"
+      [eyebrow]="hero().eyebrow"
+      [title]="hero().title"
+      [subtitle]="hero().subtitle"
     />
 
     <div class="bp-page-body">
@@ -99,10 +99,8 @@ export class ProjectsNewComponent {
   private readonly toast = inject(MessageService);
 
   protected readonly label = computed(() => this.pageConfig.eventLabel());
-  protected readonly subtitle = computed(
-    () =>
-      `Ballpark will read your brief, understand what you need, and build an estimated ${this.label().toLowerCase()} from the marketplace.`
-  );
+  /** Admin-driven hero (eyebrow / title / subtitle), tokens resolved. */
+  protected readonly hero = computed(() => this.pageConfig.pageHero('newProject'));
 
   protected readonly briefText = signal('');
   protected readonly fileName = signal('');

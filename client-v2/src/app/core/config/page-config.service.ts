@@ -2,7 +2,21 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../api.service';
 import { AuthService } from '../auth/auth.service';
-import { CONFIG_DEFAULTS, PageConfigPayload, mergeConfig } from './page-config.types';
+import {
+  CONFIG_DEFAULTS,
+  PAGE_HERO_DEFAULTS,
+  PageConfigPayload,
+  PageHeroOverride,
+  PageKey,
+  mergeConfig,
+} from './page-config.types';
+
+/** A page hero resolved for rendering (tokens substituted). */
+export interface ResolvedHero {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+}
 
 /** pV2-04b — signal-backed page-settings store. One config per org_type
  *  (org_type_config.payload.v2Home); loaded at bootstrap after the session,
@@ -25,14 +39,36 @@ export class PageConfigService {
   readonly eventLabel = computed(() => this._config()?.eventLabel ?? CONFIG_DEFAULTS.eventLabel);
   readonly clientLabel = computed(() => this._config()?.clientLabel ?? CONFIG_DEFAULTS.clientLabel);
 
-  /** Profile-page hero overrides (title2/subtitle2) — unset = page defaults. */
-  readonly profileTitle = computed(() => this._config()?.pages?.profile?.title ?? '');
-  readonly profileSubtitle = computed(() => this._config()?.pages?.profile?.subtitle ?? '');
+  /** Home eyebrow above the greeting — default resolves to "<ORG TYPE>
+   *  WORKSPACE" (the eyebrow style uppercases it). */
+  readonly heroEyebrow = computed(() =>
+    this.applyTokens(this._config()?.heroEyebrow || CONFIG_DEFAULTS.heroEyebrow)
+  );
 
-  /** Marketplace-page hero overrides (HERO ONLY — v1's other marketplace
-   *  view settings are deliberately ignored, Liam 2026-06-12). */
-  readonly marketplaceTitle = computed(() => this._config()?.pages?.marketplace?.title ?? '');
-  readonly marketplaceSubtitle = computed(() => this._config()?.pages?.marketplace?.subtitle ?? '');
+  /** Resolve a feature page's hero (eyebrow / title / subtitle): the role's
+   *  admin overrides win over PAGE_HERO_DEFAULTS, then {tokens} substitute.
+   *  Reactive — reads the config + session signals, so wrap the call in a
+   *  component computed(). */
+  pageHero(page: PageKey): ResolvedHero {
+    const ov: PageHeroOverride = this._config()?.pages?.[page] ?? {};
+    const def = PAGE_HERO_DEFAULTS[page];
+    return {
+      eyebrow: this.applyTokens(ov.eyebrow || def.eyebrow),
+      title: this.applyTokens(ov.title || def.title),
+      subtitle: this.applyTokens(ov.subtitle || def.subtitle),
+    };
+  }
+
+  /** Substitute the small whitelist of runtime tokens. Unknown tokens are
+   *  left literal (never blanked). */
+  private applyTokens(s: string): string {
+    const u = this.auth.user();
+    return s
+      .replace(/\{email\}/g, u?.email ?? '')
+      .replace(/\{orgName\}/g, u?.activeOrgName ?? '')
+      .replace(/\{orgType\}/g, u?.activeOrgType ?? '')
+      .replace(/\{eventLabel\}/g, this.eventLabel());
+  }
 
   /** Load the org_type's config. Called from the bootstrap initializer chain
    *  AFTER AuthService.loadSession (needs activeOrgType); orgless / signed-out

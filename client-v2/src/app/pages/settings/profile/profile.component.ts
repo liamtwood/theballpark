@@ -44,7 +44,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
   providers: [MessageService, ProfileEditService],
   host: { class: 'block' },
   template: `
-    <app-page-hero [back]="{ label: 'Back', href: '/home' }" [title]="heroTitle()" [subtitle]="heroSubtitle()" />
+    <app-page-hero [eyebrow]="hero().eyebrow" [title]="hero().title" [subtitle]="hero().subtitle" />
 
     <!-- Profile (editable) + Shopfront (consumer view). Suppliers only. -->
     @if (isSupplier()) {
@@ -274,11 +274,9 @@ export class ProfileComponent {
     this.tab.set(key === 'shopfront' ? 'shopfront' : 'profile');
   }
 
-  /** Hero (title2/subtitle2 roles): /settings/pages overrides win. */
-  protected readonly heroTitle = computed(() => this.pageConfig.profileTitle() || 'Profile');
-  protected readonly heroSubtitle = computed(
-    () => this.pageConfig.profileSubtitle() || (this.auth.user()?.activeOrgName ?? '')
-  );
+  /** Hero (eyebrow / title / subtitle): /settings/pages overrides win over
+   *  PAGE_HERO_DEFAULTS; the subtitle default resolves {email} + {orgType}. */
+  protected readonly hero = computed(() => this.pageConfig.pageHero('profile'));
 
   // Completeness deep-links scroll/enter-edit the matching editor.
   private readonly companySection = viewChild<ElementRef<HTMLElement>>('companySection');

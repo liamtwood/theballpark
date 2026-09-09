@@ -20,7 +20,7 @@ import { LucideAngularModule } from 'lucide-angular';
     '[class.bp-page-hero--dense]': 'dense()',
   },
   template: `
-    @if (back(); as b) {
+    @if (showBack && back(); as b) {
       @if (b.history) {
         <!-- History-back: returns to the exact previous URL + its state
              (e.g. the project supplier fan-out with its category selected),
@@ -178,6 +178,11 @@ export class PageHeroComponent {
    *  `history: true` makes it pop browser history (restoring the previous
    *  page + its URL state) instead of routing to `href`. */
   readonly back = input<{ label: string; href: string; history?: boolean } | null>(null);
+
+  /** Global kill-switch: back links are hidden across every page for now
+   *  (Liam, 2026-09-09 — "get rid of the back buttons across the board").
+   *  Flip to true to restore per-route back links. */
+  protected readonly showBack: boolean = false;
 
   /** History-aware back: pop to the previous entry when one exists, else
    *  route to the supplied fallback. */

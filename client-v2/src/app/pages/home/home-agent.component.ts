@@ -45,11 +45,9 @@ export class HomeAgentComponent {
     heroTitle(this.config.heroTitleMode(), this.auth.user(), this.config.heroTitleFixed())
   );
 
-  /** "<ORG TYPE> WORKSPACE" eyebrow above the greeting (project-hero style). */
-  protected readonly eyebrow = computed(() => {
-    const t = this.auth.user()?.activeOrgType;
-    return t ? `${t} workspace`.toUpperCase() : '';
-  });
+  /** Home eyebrow (admin-driven; default resolves to "<ORG TYPE> WORKSPACE").
+   *  The eyebrow style uppercases it. */
+  protected readonly eyebrow = computed(() => (this.auth.user()?.activeOrgType ? this.config.heroEyebrow() : ''));
 
   /** Org-type-keyed tile set: ballpark admins get the two admin surfaces
    *  (v2.12a), suppliers the v1.68w three-tile port (v2.12f), agencies the

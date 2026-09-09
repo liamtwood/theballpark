@@ -11,8 +11,11 @@ const { z } = require('zod');
 // other per-page marketplace settings are deliberately not modelled).
 const PageHeroOverrideSchema = z
   .object({
-    title: z.string().trim().max(80).optional(),
-    subtitle: z.string().trim().max(120).optional(),
+    // Eyebrow above the title (tracked/uppercase). Tokens allowed.
+    eyebrow: z.string().trim().max(40).optional(),
+    title: z.string().trim().max(120).optional(),
+    // Subtitles carry a sentence (+ optional {tokens}) — roomier than titles.
+    subtitle: z.string().trim().max(240).optional(),
   })
   .strip();
 
@@ -20,17 +23,21 @@ const PageConfigSchema = z
   .object({
     heroTitleMode: z.enum(['greeting', 'username', 'orgName', 'fixed']).optional(),
     heroTitleFixed: z.string().trim().max(80).optional(),
-    heroSubtitle: z.string().trim().max(120).optional(),
+    heroSubtitle: z.string().trim().max(240).optional(),
     heroAlign: z.enum(['left', 'center']).optional(),
+    // Home eyebrow (default resolves to "<ORG TYPE> WORKSPACE"). Tokens allowed.
+    heroEyebrow: z.string().trim().max(40).optional(),
 
     creditLabel: z.string().trim().min(1).max(30).optional(),
     eventLabel: z.string().trim().min(1).max(30).optional(),
     clientLabel: z.string().trim().min(1).max(30).optional(),
 
-    // Per-page hero overrides (title2/subtitle2 roles). Explicit page keys —
-    // a new configurable page adds its key here, not a free-form record.
+    // Per-page hero overrides (eyebrow / title / subtitle). Explicit page keys
+    // — a new configurable page adds its key here, not a free-form record.
     pages: z
       .object({
+        newProject: PageHeroOverrideSchema.optional(),
+        projects: PageHeroOverrideSchema.optional(),
         profile: PageHeroOverrideSchema.optional(),
         marketplace: PageHeroOverrideSchema.optional(),
       })

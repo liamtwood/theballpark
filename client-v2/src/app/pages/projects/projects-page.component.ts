@@ -24,7 +24,7 @@ import { ProjectCardComponent } from './project-card.component';
   imports: [PageHeroComponent, TabBandComponent, ProjectCardComponent],
   host: { class: 'block bp-vpfit' },
   template: `
-    <app-page-hero [back]="{ label: 'Back', href: '/home' }" [title]="heroTitle()" [subtitle]="heroSubtitle()">
+    <app-page-hero [eyebrow]="heroEyebrow()" [title]="heroTitle()" [subtitle]="heroSubtitle()">
       @if (!isSupplier()) {
         <app-tab-band hero-actions [tabs]="tabs()" [active]="bucket()" (activeChange)="bucket.set($event === 'completed' ? 'completed' : 'current')" />
       }
@@ -68,14 +68,18 @@ export class ProjectsPageComponent {
 
   /** eventLabel drives the user-visible noun (Project / Event / Job). */
   protected readonly labelPlural = computed(() => `${this.pageConfig.eventLabel()}s`);
+  /** Agency: admin-driven "Past projects" hero (PAGE_HERO_DEFAULTS +
+   *  /settings/pages). Supplier keeps its own bucket-derived hero, no eyebrow. */
+  private readonly agencyHero = computed(() => this.pageConfig.pageHero('projects'));
+  protected readonly heroEyebrow = computed(() => (this.isSupplier() ? '' : this.agencyHero().eyebrow));
   protected readonly heroTitle = computed(() => {
-    if (!this.isSupplier()) return this.labelPlural();
+    if (!this.isSupplier()) return this.agencyHero().title;
     return SUPPLIER_BUCKET_TITLES[this.bucketParam()] ?? this.labelPlural();
   });
   protected readonly heroSubtitle = computed(() =>
     this.isSupplier()
       ? `${this.labelPlural()} an agency has asked you to quote.`
-      : `Your ${this.labelPlural().toLowerCase()} — current work and completed history.`
+      : this.agencyHero().subtitle
   );
 
   protected readonly bucket = signal<'current' | 'completed'>('current');

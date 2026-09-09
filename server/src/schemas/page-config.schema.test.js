@@ -29,7 +29,15 @@ describe('PageConfigSchema', () => {
   test('bounds label lengths (1-30) and hero strings', () => {
     assert.equal(PageConfigSchema.safeParse({ creditLabel: '' }).success, false);
     assert.equal(PageConfigSchema.safeParse({ creditLabel: 'x'.repeat(31) }).success, false);
-    assert.equal(PageConfigSchema.safeParse({ heroSubtitle: 'x'.repeat(121) }).success, false);
+    assert.equal(PageConfigSchema.safeParse({ heroSubtitle: 'x'.repeat(241) }).success, false);
+    assert.equal(PageConfigSchema.safeParse({ heroSubtitle: 'x'.repeat(240) }).success, true);
+    // Eyebrow bound (40) + per-page hero keys accepted.
+    assert.equal(PageConfigSchema.safeParse({ heroEyebrow: 'x'.repeat(41) }).success, false);
+    assert.equal(
+      PageConfigSchema.safeParse({ pages: { newProject: { eyebrow: 'New project', title: 'T', subtitle: 'S' } } })
+        .success,
+      true
+    );
   });
 
   test('strips unknown keys instead of failing (e.g. pV2-04-era section flags)', () => {
