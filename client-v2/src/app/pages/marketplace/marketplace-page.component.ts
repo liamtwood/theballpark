@@ -4,6 +4,8 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { AddToProjectDialogComponent, AddToProjectItem } from './add-to-project-dialog.component';
+import { QuickViewDialogComponent } from './quick-view-dialog.component';
+import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
 import { CatalogueFilterBandComponent } from '../../shared/catalogue/filter-band.component';
@@ -34,6 +36,7 @@ import { RightRailComponent } from './rail/right-rail.component';
     TabBandComponent,
     ToastModule,
     AddToProjectDialogComponent,
+    QuickViewDialogComponent,
   ],
   providers: [MarketplaceStore, MessageService],
   /* bp-vpfit (md+): the page fills the viewport exactly — hero + filter
@@ -103,7 +106,7 @@ import { RightRailComponent } from './rail/right-rail.component';
               [selectedId]="store.itemId()"
               [favouriteIds]="favs.items()"
               [quoteDraftIds]="favs.quoteDraft()"
-              (entitySelected)="onItemClicked($event)"
+              (entitySelected)="openQuickView($event)"
               (favouriteToggled)="favs.toggle('item', $event)"
               (quoteToggled)="openPicker($event)"
               (changed)="store.reloadItems()"
@@ -122,6 +125,13 @@ import { RightRailComponent } from './rail/right-rail.component';
       </app-catalogue-layout>
     </div>
 
+    <!-- Quick View — replaces the right-rail preview (opens on item click). -->
+    <app-quick-view-dialog
+      [item]="quickItem()"
+      (close)="quickItem.set(null)"
+      (add)="onQuickAdd($event)"
+    />
+
     <!-- v1 feature (rebuilt): choose a project (or start new) to add the item. -->
     <app-add-to-project-dialog
       [item]="pickItem()"
@@ -136,8 +146,22 @@ export class MarketplacePageComponent {
   protected readonly favs = inject(FavouritesStore);
   private readonly toast = inject(MessageService);
 
+  /** The item whose Quick View dialog is open (null = closed). */
+  protected readonly quickItem = signal<CatalogueItem | null>(null);
+
   /** The item whose "Add to project" picker is open (null = closed). */
   protected readonly pickItem = signal<AddToProjectItem | null>(null);
+
+  /** Item click → Quick View dialog (replaces the right-rail selection). */
+  protected openQuickView(itemId: string): void {
+    this.quickItem.set(this.store.items().find((i) => i.id === itemId) ?? null);
+  }
+
+  /** Quick View "Add to ballpark" → close it, open the project picker. */
+  protected onQuickAdd(itemId: string): void {
+    this.quickItem.set(null);
+    this.openPicker(itemId);
+  }
 
   /** Open the project picker for the clicked item (standalone marketplace). */
   protected openPicker(itemId: string): void {
