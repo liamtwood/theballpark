@@ -62,7 +62,8 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
       } @else if (store.profile.error()) {
         <p class="bp-body-small text-warn">Couldn't load your organisation.</p>
       } @else {
-        <div class="bp-settings-body">
+        <div class="flex flex-col gap-5">
+          <!-- Profile completeness — full width across the top. -->
           @if (store.profile.value(); as org) {
             @if (store.canEdit()) {
               <app-completeness-card
@@ -75,174 +76,180 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
             }
           }
 
-          @if (store.profile.value(); as org) {
-            <!-- Branding — cover + logo (the same media component the shopfront
-                 renders); org-media owns its own editing so the section's button
-                 row stays off. -->
-            <app-edit-section title="Branding" [editable]="false">
-              <app-org-media
-                mode="edit"
-                show="banner"
-                [canEdit]="store.canEdit()"
-                [name]="org.name"
-                [subtitle]="org.description ?? ''"
-                [coverUrl]="org.coverImageUrl"
-                [logoUrl]="org.logoUrl"
-                [images]="org.images"
-                (editCover)="store.coverDrawer.set(true)"
-                (editLogo)="store.logoDrawer.set(true)"
-              />
-            </app-edit-section>
-
-            <app-drawer [(open)]="store.coverDrawer" title="Cover image">
-              <app-image-picker
-                entityType="profile"
-                [enabledTabs]="store.coverTabs"
-                [focalStep]="false"
-                [searchSeed]="org.name"
-                [currentImageUrl]="org.coverImageUrl"
-                previewAspect="4/3"
-                (chosen)="store.onPickCover($event)"
-                (removed)="store.onRemoveCover()"
-                (cancelled)="store.coverDrawer.set(false)"
-              />
-            </app-drawer>
-            <app-drawer [(open)]="store.logoDrawer" title="Logo">
-              <app-image-picker
-                entityType="profile"
-                [enabledTabs]="store.logoTabs"
-                [focalStep]="false"
-                [currentImageUrl]="org.logoUrl"
-                previewAspect="1/1"
-                (chosen)="store.onPickLogo($event)"
-                (removed)="store.onRemoveLogo()"
-                (cancelled)="store.logoDrawer.set(false)"
-              />
-            </app-drawer>
-          }
-
-          <!-- About Us — the public description blurb (orgs.description). -->
-          <app-edit-section
-            title="About Us"
-            [editable]="store.canEdit()"
-            [(editing)]="store.editingAbout"
-            [saving]="store.saving()"
-            (edit)="store.snapshot('about')"
-            (cancelled)="store.restore('about')"
-            (save)="store.save('about')"
-          >
-            @if (store.editingAbout()) {
-              <textarea
-                class="bp-store-textarea"
-                rows="5"
-                [ngModel]="store.form().description"
-                (ngModelChange)="store.patch({ description: $event })"
-                placeholder="Tell customers about your company…"
-              ></textarea>
-            } @else {
-              <p class="bp-body whitespace-pre-line text-secondary">{{ store.form().description || '—' }}</p>
-            }
-          </app-edit-section>
-
-          <app-edit-section title="Social Links" [editable]="false">
-            <p class="bp-caption">Coming soon.</p>
-          </app-edit-section>
-
-          <div #companySection>
-          <app-edit-section
-            title="Company Information"
-            [editable]="store.canEdit()"
-            [(editing)]="store.editingOrg"
-            [saving]="store.saving()"
-            (edit)="store.snapshot('org')"
-            (cancelled)="store.restore('org')"
-            (save)="store.save('org')"
-          >
-            <div class="bp-field-grid-2">
-              <app-edit-field label="Organisation name" density="page" [editing]="store.editingOrg()" [value]="store.form().name" (valueChange)="store.patch({ name: $event })" />
-              <app-edit-field label="Company number" density="page" [editing]="store.editingOrg()" [value]="store.form().companyNumber" (valueChange)="store.patch({ companyNumber: $event })" />
-              <app-edit-field label="City" density="page" [editing]="store.editingOrg()" [value]="store.form().city" (valueChange)="store.patch({ city: $event })" />
-              <app-edit-field label="Country" type="select" density="page" [filter]="true" [options]="store.countryOptions()" [editing]="store.editingOrg()" [value]="store.form().country" (valueChange)="store.patch({ country: $event })" />
-              <app-edit-field label="Address" density="page" [editing]="store.editingOrg()" [value]="store.form().address" (valueChange)="store.patch({ address: $event })" />
-              <app-edit-field label="Email" type="email" density="page" [editing]="store.editingOrg()" [value]="store.form().email" (valueChange)="store.patch({ email: $event })" />
-              <app-edit-field label="Phone" type="tel" density="page" [editing]="store.editingOrg()" [value]="store.form().phone" (valueChange)="store.patch({ phone: $event })" />
-              <app-edit-field label="Project reference prefix" density="page" [maxLength]="4" placeholder="e.g. WA" [editing]="store.editingOrg()" [value]="store.form().refPrefix" (valueChange)="store.patch({ refPrefix: $event.toUpperCase() })" />
-              <app-edit-field label="Projects numbered so far" density="page" [readonlyAlways]="true" [value]="'' + store.refCounter()" />
-            </div>
-          </app-edit-section>
-          </div>
-
-          @if (store.profile.value(); as org) {
-            <!-- Gallery — org-media's portfolio mode renders its own card + title. -->
-            <div #mediaSection>
-              <app-org-media
-                mode="edit"
-                show="portfolio"
-                [canEdit]="store.canEdit()"
-                [name]="org.name"
-                [coverUrl]="org.coverImageUrl"
-                [logoUrl]="org.logoUrl"
-                [images]="org.images"
-                (imagesChange)="store.saveImages($event)"
-                (primarySet)="store.setCover($event)"
-              />
-            </div>
-          }
-
-          <!-- Placeholders — real surfaces land later. -->
-          <app-edit-section title="Most Viewed Products This Month" [editable]="false">
-            <p class="bp-caption">Coming soon.</p>
-          </app-edit-section>
-          <app-edit-section title="Availability" [editable]="false">
-            <p class="bp-caption">Coming soon.</p>
-          </app-edit-section>
-          <app-edit-section title="Payment Information" [editable]="false">
-            <p class="bp-caption">Coming soon.</p>
-          </app-edit-section>
-
-          <app-profile-team-section [canEdit]="store.canEdit()" />
-
-          <app-edit-section
-            title="Finance"
-            [editable]="store.canEdit()"
-            [(editing)]="store.editingFin"
-            [saving]="store.saving()"
-            (edit)="store.snapshot('fin')"
-            (cancelled)="store.restore('fin')"
-            (save)="store.save('fin')"
-          >
-            <div class="bp-field-grid-3">
-              <app-edit-field label="Currency" type="select" density="page" [options]="store.currencyOptions()" [editing]="store.editingFin()" [value]="store.form().currency" (valueChange)="store.patch({ currency: $event })" />
-              <app-edit-field label="VAT" type="number" suffix="%" density="page" [editing]="store.editingFin()" [value]="store.form().vat" (valueChange)="store.patch({ vat: $event })" />
-              <app-edit-field label="Margin" type="number" suffix="%" density="page" [editing]="store.editingFin()" [value]="store.form().margin" (valueChange)="store.patch({ margin: $event })" />
-              <app-edit-field label="Contingency" type="number" suffix="%" density="page" [editing]="store.editingFin()" [value]="store.form().contingency" (valueChange)="store.patch({ contingency: $event })" />
-            </div>
-          </app-edit-section>
-
-          <!-- pV2-BUILDUP-04 — standard Terms & Conditions PDF (SOW Annex A). -->
-          @if (store.profile.value(); as org) {
-          <app-edit-section title="Terms &amp; Conditions" [editable]="false">
-            <p class="bp-caption">Your standard Terms &amp; Conditions PDF — attached as Annex A on Statements of Work.</p>
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-              @if (org.termsPdfUrl) {
-                <a [href]="org.termsPdfUrl" target="_blank" rel="noopener" class="flex items-center gap-2 bp-body-small text-text underline">
-                  <lucide-icon name="file-text" [size]="15" /> View current T&amp;Cs
-                </a>
-              } @else {
-                <span class="bp-body-small text-secondary">No T&amp;Cs uploaded yet.</span>
-              }
-              @if (store.canEdit()) {
-                <label class="bp-btn-outline flex cursor-pointer items-center gap-2">
-                  <lucide-icon name="upload" [size]="15" /> {{ store.savingTerms() ? 'Uploading…' : (org.termsPdfUrl ? 'Replace' : 'Upload PDF') }}
-                  <input type="file" accept="application/pdf" class="hidden" [disabled]="store.savingTerms()" (change)="onTermsFile($event)" />
-                </label>
-                @if (org.termsPdfUrl) {
-                  <button type="button" class="bp-body-small text-danger transition-colors hover:underline" (click)="store.removeTerms()">Remove</button>
+          <!-- Two columns: LEFT = about + company + the rest; RIGHT =
+               availability + the image containers (Branding, Gallery). -->
+          <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+            <!-- ── LEFT column ─────────────────────────────────────────── -->
+            <div class="flex flex-col gap-5">
+              <!-- About Us — the public description blurb (orgs.description). -->
+              <app-edit-section
+                title="About Us"
+                [editable]="store.canEdit()"
+                [(editing)]="store.editingAbout"
+                [saving]="store.saving()"
+                (edit)="store.snapshot('about')"
+                (cancelled)="store.restore('about')"
+                (save)="store.save('about')"
+              >
+                @if (store.editingAbout()) {
+                  <textarea
+                    class="bp-store-textarea"
+                    rows="5"
+                    [ngModel]="store.form().description"
+                    (ngModelChange)="store.patch({ description: $event })"
+                    placeholder="Tell customers about your company…"
+                  ></textarea>
+                } @else {
+                  <p class="bp-body whitespace-pre-line text-secondary">{{ store.form().description || '—' }}</p>
                 }
+              </app-edit-section>
+
+              <div #companySection>
+              <app-edit-section
+                title="Company Information"
+                [editable]="store.canEdit()"
+                [(editing)]="store.editingOrg"
+                [saving]="store.saving()"
+                (edit)="store.snapshot('org')"
+                (cancelled)="store.restore('org')"
+                (save)="store.save('org')"
+              >
+                <div class="bp-field-grid-2">
+                  <app-edit-field label="Organisation name" density="page" [editing]="store.editingOrg()" [value]="store.form().name" (valueChange)="store.patch({ name: $event })" />
+                  <app-edit-field label="Company number" density="page" [editing]="store.editingOrg()" [value]="store.form().companyNumber" (valueChange)="store.patch({ companyNumber: $event })" />
+                  <app-edit-field label="City" density="page" [editing]="store.editingOrg()" [value]="store.form().city" (valueChange)="store.patch({ city: $event })" />
+                  <app-edit-field label="Country" type="select" density="page" [filter]="true" [options]="store.countryOptions()" [editing]="store.editingOrg()" [value]="store.form().country" (valueChange)="store.patch({ country: $event })" />
+                  <app-edit-field label="Address" density="page" [editing]="store.editingOrg()" [value]="store.form().address" (valueChange)="store.patch({ address: $event })" />
+                  <app-edit-field label="Email" type="email" density="page" [editing]="store.editingOrg()" [value]="store.form().email" (valueChange)="store.patch({ email: $event })" />
+                  <app-edit-field label="Phone" type="tel" density="page" [editing]="store.editingOrg()" [value]="store.form().phone" (valueChange)="store.patch({ phone: $event })" />
+                  <app-edit-field label="Project reference prefix" density="page" [maxLength]="4" placeholder="e.g. WA" [editing]="store.editingOrg()" [value]="store.form().refPrefix" (valueChange)="store.patch({ refPrefix: $event.toUpperCase() })" />
+                  <app-edit-field label="Projects numbered so far" density="page" [readonlyAlways]="true" [value]="'' + store.refCounter()" />
+                </div>
+              </app-edit-section>
+              </div>
+
+              <app-profile-team-section [canEdit]="store.canEdit()" />
+
+              <app-edit-section
+                title="Finance"
+                [editable]="store.canEdit()"
+                [(editing)]="store.editingFin"
+                [saving]="store.saving()"
+                (edit)="store.snapshot('fin')"
+                (cancelled)="store.restore('fin')"
+                (save)="store.save('fin')"
+              >
+                <div class="bp-field-grid-3">
+                  <app-edit-field label="Currency" type="select" density="page" [options]="store.currencyOptions()" [editing]="store.editingFin()" [value]="store.form().currency" (valueChange)="store.patch({ currency: $event })" />
+                  <app-edit-field label="VAT" type="number" suffix="%" density="page" [editing]="store.editingFin()" [value]="store.form().vat" (valueChange)="store.patch({ vat: $event })" />
+                  <app-edit-field label="Margin" type="number" suffix="%" density="page" [editing]="store.editingFin()" [value]="store.form().margin" (valueChange)="store.patch({ margin: $event })" />
+                  <app-edit-field label="Contingency" type="number" suffix="%" density="page" [editing]="store.editingFin()" [value]="store.form().contingency" (valueChange)="store.patch({ contingency: $event })" />
+                </div>
+              </app-edit-section>
+
+              <!-- pV2-BUILDUP-04 — standard Terms & Conditions PDF (SOW Annex A). -->
+              @if (store.profile.value(); as org) {
+              <app-edit-section title="Terms &amp; Conditions" [editable]="false">
+                <p class="bp-caption">Your standard Terms &amp; Conditions PDF — attached as Annex A on Statements of Work.</p>
+                <div class="mt-3 flex flex-wrap items-center gap-3">
+                  @if (org.termsPdfUrl) {
+                    <a [href]="org.termsPdfUrl" target="_blank" rel="noopener" class="flex items-center gap-2 bp-body-small text-text underline">
+                      <lucide-icon name="file-text" [size]="15" /> View current T&amp;Cs
+                    </a>
+                  } @else {
+                    <span class="bp-body-small text-secondary">No T&amp;Cs uploaded yet.</span>
+                  }
+                  @if (store.canEdit()) {
+                    <label class="bp-btn-outline flex cursor-pointer items-center gap-2">
+                      <lucide-icon name="upload" [size]="15" /> {{ store.savingTerms() ? 'Uploading…' : (org.termsPdfUrl ? 'Replace' : 'Upload PDF') }}
+                      <input type="file" accept="application/pdf" class="hidden" [disabled]="store.savingTerms()" (change)="onTermsFile($event)" />
+                    </label>
+                    @if (org.termsPdfUrl) {
+                      <button type="button" class="bp-body-small text-danger transition-colors hover:underline" (click)="store.removeTerms()">Remove</button>
+                    }
+                  }
+                </div>
+              </app-edit-section>
+              }
+
+              <app-edit-section title="Social Links" [editable]="false">
+                <p class="bp-caption">Coming soon.</p>
+              </app-edit-section>
+              <app-edit-section title="Most Viewed Products This Month" [editable]="false">
+                <p class="bp-caption">Coming soon.</p>
+              </app-edit-section>
+              <app-edit-section title="Payment Information" [editable]="false">
+                <p class="bp-caption">Coming soon.</p>
+              </app-edit-section>
+            </div>
+
+            <!-- ── RIGHT column ────────────────────────────────────────── -->
+            <div class="flex flex-col gap-5">
+              <app-edit-section title="Availability" [editable]="false">
+                <p class="bp-caption">Coming soon.</p>
+              </app-edit-section>
+
+              @if (store.profile.value(); as org) {
+                <!-- Branding — cover + logo (the same media component the
+                     shopfront renders); org-media owns its own editing. -->
+                <app-edit-section title="Branding" [editable]="false">
+                  <app-org-media
+                    mode="edit"
+                    show="banner"
+                    [canEdit]="store.canEdit()"
+                    [name]="org.name"
+                    [subtitle]="org.description ?? ''"
+                    [coverUrl]="org.coverImageUrl"
+                    [logoUrl]="org.logoUrl"
+                    [images]="org.images"
+                    (editCover)="store.coverDrawer.set(true)"
+                    (editLogo)="store.logoDrawer.set(true)"
+                  />
+                </app-edit-section>
+
+                <app-drawer [(open)]="store.coverDrawer" title="Cover image">
+                  <app-image-picker
+                    entityType="profile"
+                    [enabledTabs]="store.coverTabs"
+                    [focalStep]="false"
+                    [searchSeed]="org.name"
+                    [currentImageUrl]="org.coverImageUrl"
+                    previewAspect="4/3"
+                    (chosen)="store.onPickCover($event)"
+                    (removed)="store.onRemoveCover()"
+                    (cancelled)="store.coverDrawer.set(false)"
+                  />
+                </app-drawer>
+                <app-drawer [(open)]="store.logoDrawer" title="Logo">
+                  <app-image-picker
+                    entityType="profile"
+                    [enabledTabs]="store.logoTabs"
+                    [focalStep]="false"
+                    [currentImageUrl]="org.logoUrl"
+                    previewAspect="1/1"
+                    (chosen)="store.onPickLogo($event)"
+                    (removed)="store.onRemoveLogo()"
+                    (cancelled)="store.logoDrawer.set(false)"
+                  />
+                </app-drawer>
+
+                <!-- Gallery — org-media's portfolio mode renders its own card. -->
+                <div #mediaSection>
+                  <app-org-media
+                    mode="edit"
+                    show="portfolio"
+                    [canEdit]="store.canEdit()"
+                    [name]="org.name"
+                    [coverUrl]="org.coverImageUrl"
+                    [logoUrl]="org.logoUrl"
+                    [images]="org.images"
+                    (imagesChange)="store.saveImages($event)"
+                    (primarySet)="store.setCover($event)"
+                  />
+                </div>
               }
             </div>
-          </app-edit-section>
-          }
+          </div>
         </div>
       }
     </div>
