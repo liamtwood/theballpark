@@ -115,7 +115,7 @@ import { LucideAngularModule } from 'lucide-angular';
          max-1068px column, LEFT-aligned, so the title's left edge lines up
          with the leftmost card of the centred grid below. */
       :host(.bp-page-hero--align-block) .bp-page-hero__text {
-        max-width: 1068px;
+        max-width: var(--workspace-max);
         margin-inline: auto;
         text-align: left;
       }

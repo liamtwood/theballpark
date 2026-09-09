@@ -31,7 +31,7 @@ import { LauncherTile } from './launcher-tile.types';
         }
       </div>
 
-      <div class="bp-home-launcher__grid">
+      <div class="bp-workspace-grid bp-home-launcher__grid">
         @for (tile of tiles(); track tile.href + tile.label) {
           <app-launcher-tile
             [icon]="tile.icon"
@@ -63,7 +63,7 @@ import { LauncherTile } from './launcher-tile.types';
         flex-direction: column;
         align-items: center;
         width: 100%;
-        max-width: 1068px;
+        max-width: var(--workspace-max);
       }
       .bp-home-launcher__chrome {
         text-align: center;
@@ -88,13 +88,11 @@ import { LauncherTile } from './launcher-tile.types';
       .bp-home-launcher__subtitle {
         margin: 0;
       }
-      /* 3-across, wrapping 3+2 left-aligned into the grid (v1 behaviour). */
+      /* Columns/gap/width/breakpoints live in the shared .bp-workspace-grid
+         (styles.css) so home + past projects stay in lockstep. Only the
+         center/left justify is home-specific. */
       .bp-home-launcher__grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(280px, 340px));
         justify-content: center;
-        gap: 24px;
-        width: 100%;
       }
 
       :host(.bp-home-launcher--left) .bp-home-launcher__stack {
@@ -105,19 +103,6 @@ import { LauncherTile } from './launcher-tile.types';
       }
       :host(.bp-home-launcher--left) .bp-home-launcher__grid {
         justify-content: start;
-      }
-
-      @media (max-width: 1024px) {
-        .bp-home-launcher__grid {
-          grid-template-columns: repeat(2, minmax(260px, 340px));
-        }
-      }
-      /* Title size is responsive in the --text-greeting clamp() token —
-         no per-breakpoint font override needed. */
-      @media (max-width: 640px) {
-        .bp-home-launcher__grid {
-          grid-template-columns: 1fr;
-        }
       }
     `,
   ],

@@ -150,6 +150,10 @@
      ground the project detail page sits on, the soft-white card treatment,
      and the frosted app header. Light-only (v2 is a light app). */
   --workspace-pink: oklch(0.93 0.05 5);
+  /* Shared workspace column width — the launcher stack, the tile grid and the
+     hero "block" alignment all key off this ONE value (home + past projects
+     use the same reference). */
+  --workspace-max: 1068px;
   --card-border: oklch(0.915 0.008 300);
   --shadow-quiet: 0 1px 2px rgba(17, 24, 39, 0.04), 0 1px 3px rgba(17, 24, 39, 0.05);
 
@@ -228,6 +232,23 @@
    Eyebrows use the THEMABLE --theme-text on purpose (locked decision,
    Liam 2026-06-11): they re-colour with persona presets; titles stay on
    the fixed neutral --color-text. Do not "fix". */
+
+/* Shared workspace grid — the ONE reference for the home launcher tiles and
+   the past-projects card grid. Fixed-width columns in a max-1068px block,
+   3 → 2 → 1 as it narrows. Consumers set justify + centring (mx-auto). */
+.bp-workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(280px, 340px));
+  gap: 24px;
+  width: 100%;
+  max-width: var(--workspace-max);
+}
+@media (max-width: 1024px) {
+  .bp-workspace-grid { grid-template-columns: repeat(2, minmax(260px, 340px)); }
+}
+@media (max-width: 640px) {
+  .bp-workspace-grid { grid-template-columns: 1fr; }
+}
 
 /* Hero — home */
 .bp-home-title    { font-family: var(--bp-font); font-size: var(--text-greeting); font-weight: 400; line-height: var(--leading-tight); color: var(--color-text); letter-spacing: -0.01em; }
