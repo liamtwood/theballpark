@@ -92,7 +92,7 @@ import { GalleryImage } from '../../core/media/media.types';
           </div>
         </section>
       } @else {
-        <div class="bp-card p-5">
+        <div class="rounded-[var(--radius-lg)] border border-hairline bg-surface p-5 shadow-[var(--shadow-md)]">
           <h3 class="bp-edit-section-title">Gallery</h3>
           <p class="bp-caption mt-1">Add up to 5 photos — set one as the cover (used on your supplier card).</p>
           <div class="mt-3">

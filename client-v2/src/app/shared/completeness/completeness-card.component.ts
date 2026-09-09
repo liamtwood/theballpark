@@ -16,7 +16,7 @@ import { CompletenessConfig } from './completeness.types';
   host: { class: 'block' },
   imports: [LucideAngularModule],
   template: `
-    <div class="bp-card p-5">
+    <div class="rounded-[var(--radius-lg)] border border-hairline bg-surface p-5 shadow-[var(--shadow-md)]">
       <div class="flex items-center justify-between gap-3">
         <h3 class="bp-edit-section-title">{{ title() }}</h3>
         <span class="text-md font-medium" [class.text-accent]="percent() === 100">{{ percent() }}%</span>

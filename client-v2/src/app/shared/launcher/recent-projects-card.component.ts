@@ -32,7 +32,12 @@ import { ProjectCard } from '../../core/projects/project.types';
           @for (p of recent(); track p.id) {
             <li>
               <a [routerLink]="['/projects', p.id]" class="bp-recent__row">
-                <span class="bp-recent__name">{{ p.name }}</span>
+                <span class="bp-recent__main">
+                  <span class="bp-recent__name">{{ p.name }}</span>
+                  @if (p.clientName) {
+                    <span class="bp-recent__client">{{ p.clientName }}</span>
+                  }
+                </span>
                 <span class="bp-recent__cost">
                   {{ p.ballparkCost !== null ? money(p.ballparkCost, p.currency) : '—' }}
                 </span>
@@ -112,10 +117,20 @@ import { ProjectCard } from '../../core/projects/project.types';
       .bp-recent__list li:first-child .bp-recent__row {
         border-top: none;
       }
+      .bp-recent__main {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
       .bp-recent__name {
         font-family: var(--font-body);
         font-size: var(--text-sm);
         font-weight: 500;
+      }
+      .bp-recent__client {
+        font-family: var(--font-body);
+        font-size: var(--text-xs);
+        color: var(--color-text-secondary);
       }
       .bp-recent__row:hover .bp-recent__name {
         text-decoration: underline;

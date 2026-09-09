@@ -13,7 +13,7 @@ import { LucideAngularModule } from 'lucide-angular';
   selector: 'app-edit-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule],
-  host: { class: 'block rounded-[var(--radius-card)] border border-hairline bg-surface p-6' },
+  host: { class: 'block rounded-[var(--radius-lg)] border border-hairline bg-surface p-6 shadow-[var(--shadow-md)]' },
   template: `
     <h2 class="bp-edit-section-title mb-6">{{ title() }}</h2>
     <ng-content />
