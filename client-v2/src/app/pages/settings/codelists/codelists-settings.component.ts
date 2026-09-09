@@ -29,12 +29,13 @@ import { CodelistValueRowComponent } from './codelist-value-row.component';
   host: { class: 'block' },
   template: `
     <app-page-hero
+      align="block"
       [back]="{ label: 'Back', href: '/home' }"
       title="Codelists"
       subtitle="Reference data — statuses, units, currencies. Values are added or retired, never deleted."
     />
 
-    <div class="bp-page-body">
+    <div class="bp-page-body bp-page-body--workspace">
       <div class="grid grid-cols-[260px_1fr] gap-6">
         <!-- Master: parents by application -->
         <nav class="flex flex-col gap-0.5">

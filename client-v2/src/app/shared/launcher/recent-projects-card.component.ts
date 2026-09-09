@@ -55,6 +55,7 @@ import { ProjectCard } from '../../core/projects/project.types';
         flex-direction: column;
         gap: 16px;
         padding: 24px;
+        height: 100%;
       }
       .bp-recent__head {
         display: flex;
@@ -94,6 +95,10 @@ import { ProjectCard } from '../../core/projects/project.types';
         padding: 0;
         display: flex;
         flex-direction: column;
+        /* Fill the card's height and spread the rows evenly (the card stretches
+           to the taller Next-steps card beside it). */
+        flex: 1;
+        justify-content: space-between;
       }
       .bp-recent__row {
         display: grid;
@@ -139,11 +144,11 @@ export class RecentProjectsCardComponent {
     loader: () => firstValueFrom(this.projects.list()),
   });
 
-  /** Five most-recently-updated projects (any status). */
+  /** Four most-recently-updated projects (any status). */
   protected readonly recent = computed(() =>
     [...(this.loader.value() ?? [])]
       .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
-      .slice(0, 5)
+      .slice(0, 4)
   );
 
   protected money(value: number, currency: string): string {

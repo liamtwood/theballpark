@@ -30,8 +30,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
       [subtitle]="hero().subtitle"
     />
 
-    <div class="bp-page-body">
-     <div class="bp-workspace-col">
+    <div class="bp-page-body bp-page-body--workspace">
       @if (busy()) {
         <!-- Recommend progress (mockup 160953) — steps advance as the brief is
              parsed, items matched, and the ballpark cost is built. -->
@@ -87,7 +86,6 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
           </button>
         </div>
       }
-     </div>
     </div>
 
     <!-- MessageService supplies aria-live by severity (audit F-10). -->

@@ -56,8 +56,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
     @if (isSupplier() && tab() === 'shopfront') {
       <app-profile-shopfront [orgId]="auth.user()?.activeOrgId ?? ''" />
     } @else {
-    <div class="bp-page-body">
-     <div class="bp-workspace-col">
+    <div class="bp-page-body bp-page-body--workspace">
       @if (store.profile.isLoading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
       } @else if (store.profile.error()) {
@@ -246,7 +245,6 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
           }
         </div>
       }
-     </div>
     </div>
     }
 

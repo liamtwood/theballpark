@@ -31,11 +31,11 @@ interface InviteForm {
   template: `
     @let me = auth.user();
 
-    <app-page-hero [back]="{ label: 'Back', href: '/home' }" title="Team" [subtitle]="me?.activeOrgName ?? ''">
+    <app-page-hero align="block" [back]="{ label: 'Back', href: '/home' }" title="Team" [subtitle]="me?.activeOrgName ?? ''">
       <p-button hero-actions label="+ Invite Team Member" size="small" (onClick)="openInvite()" />
     </app-page-hero>
 
-    <div class="bp-page-body">
+    <div class="bp-page-body bp-page-body--workspace">
       @if (members.isLoading()) {
         <p class="text-md text-secondary">Loading team…</p>
       } @else if (members.value(); as list) {

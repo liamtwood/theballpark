@@ -20,12 +20,13 @@ import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component'
   host: { class: 'block' },
   template: `
     <app-page-hero
+      align="block"
       [back]="{ label: 'Back', href: '/home' }"
       title="Categories"
       subtitle="Curate the marketplace categories — names, taglines, visibility and order."
     />
 
-    <div class="bp-page-body">
+    <div class="bp-page-body bp-page-body--workspace">
       @if (loader.isLoading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
       } @else if (loader.error()) {

@@ -254,13 +254,16 @@
   .bp-workspace-grid { grid-template-columns: 1fr; }
 }
 
-/* Centred workspace column — wrap a page body in this so its content lines up
-   under an align="block" hero (same centred max-1068px axis as home). Sits
-   INSIDE .bp-page-body so it shares that padding as the side gutter. */
-.bp-workspace-col {
-  width: 100%;
-  max-width: var(--workspace-max);
-  margin-inline: auto;
+/* Centred workspace column — add to .bp-page-body so its content lines up
+   under an align="block" hero (same centred max-1068px axis as home). Uses
+   symmetric side padding instead of a wrapper, so no extra DOM. */
+.bp-page-body--workspace {
+  padding-left: max(32px, calc((100% - var(--workspace-max)) / 2));
+  padding-right: max(32px, calc((100% - var(--workspace-max)) / 2));
+}
+.bp-vpfit .bp-page-body--workspace {
+  padding-left: max(24px, calc((100% - var(--workspace-max)) / 2));
+  padding-right: max(24px, calc((100% - var(--workspace-max)) / 2));
 }
 
 /* Hero — home */

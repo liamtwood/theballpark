@@ -39,15 +39,15 @@ interface Changelog {
   imports: [NgTemplateOutlet, LucideAngularModule, PageHeroComponent],
   host: { class: 'block' },
   template: `
-    <app-page-hero [back]="{ label: 'Back', href: '/home', history: true }" title="What's new" subtitle="Version history" />
+    <app-page-hero align="block" [back]="{ label: 'Back', href: '/home', history: true }" title="What's new" subtitle="Version history" />
 
-    <div class="bp-page-body">
+    <div class="bp-page-body bp-page-body--workspace">
       @if (log.isLoading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
       } @else if (log.error()) {
         <p class="bp-body-small text-warn">Couldn't load the version history.</p>
       } @else if (log.value(); as c) {
-        <div class="mx-auto flex max-w-2xl flex-col gap-6">
+        <div class="flex max-w-2xl flex-col gap-6">
           <!-- Coming next — the demo list (empty on preview builds). -->
           <section>
             <div class="flex items-baseline justify-between gap-3">

@@ -45,6 +45,7 @@ const ENV_CHIPS: { key: Env; label: string }[] = [
     <p-toast position="bottom-right" styleClass="bp-toast" />
 
     <app-page-hero
+      align="block"
       [back]="{ label: 'Home', href: '/home' }"
       [title]="'Early Access'"
       [subtitle]="'Waitlist signups, welcome-page copy, and admin notifications.'"
@@ -215,7 +216,7 @@ const ENV_CHIPS: { key: Env; label: string }[] = [
     </div>
   `,
   styles: `
-    .bp-ea-page { max-width: 1080px; margin: 0 auto; padding: 32px 24px; }
+    .bp-ea-page { padding: 32px max(24px, calc((100% - var(--workspace-max)) / 2)); }
     .bp-ea-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
     .bp-ea-title { font-size: var(--text-4xl); font-weight: 400; color: var(--color-text-strong); }
     .bp-ea-sub { font-size: var(--text-base); color: var(--color-text-secondary); margin-top: 2px; }

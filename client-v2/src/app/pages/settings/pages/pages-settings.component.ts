@@ -30,12 +30,13 @@ type RoleType = (typeof ROLES)[number];
   host: { class: 'block' },
   template: `
     <app-page-hero
+      align="block"
       [back]="{ label: 'Back', href: '/home' }"
       title="Page settings"
       subtitle="Hero defaults per customer role — changes apply to every organisation of that type."
     />
 
-    <div class="bp-page-body">
+    <div class="bp-page-body bp-page-body--workspace">
       <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
         <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-2">
           <span class="bp-table-column-header">Role</span>

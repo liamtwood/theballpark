@@ -12,11 +12,11 @@ import { Coachmark, CoachmarkService } from '../../../core/coachmark.service';
   imports: [FormsModule, PageHeroComponent],
   host: { class: 'block bp-vpfit' },
   template: `
-    <app-page-hero [back]="{ label: 'Home', href: '/home' }" title="Coachmarks"
+    <app-page-hero align="block" [back]="{ label: 'Home', href: '/home' }" title="Coachmarks"
                    subtitle="Help bubbles shown around the app" />
 
-    <div class="bp-page-body">
-      <div class="bp-settings-body mx-auto w-full px-4 pt-4">
+    <div class="bp-page-body bp-page-body--workspace">
+      <div class="bp-settings-body w-full pt-4">
         @if (loading()) {
           <p class="bp-body-small text-secondary">Loading…</p>
         } @else if (rows().length === 0) {

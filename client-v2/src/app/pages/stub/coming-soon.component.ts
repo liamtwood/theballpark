@@ -15,8 +15,8 @@ import { tileForPath } from '../../shared/launcher/launcher-tiles';
   imports: [PageHeroComponent],
   host: { class: 'block' },
   template: `
-    <app-page-hero [back]="{ label: 'Back', href: '/home' }" [title]="title()" [subtitle]="subtitle()" />
-    <div class="bp-page-body">
+    <app-page-hero align="block" [back]="{ label: 'Back', href: '/home' }" [title]="title()" [subtitle]="subtitle()" />
+    <div class="bp-page-body bp-page-body--workspace">
       <p class="bp-body-small text-secondary">
         The {{ title() }} page isn't built yet — it lands in a later prompt. The route exists so
         the home launcher navigates somewhere real instead of 404ing.
