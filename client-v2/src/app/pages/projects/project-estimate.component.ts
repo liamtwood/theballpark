@@ -69,7 +69,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
            absolutely — top aligned with the content, right aligned with the
            content edge (Liam 2026-07-07). -->
       <div class="relative">
-      <div class="mx-auto max-w-2xl">
+      <div class="mx-auto w-full max-w-[var(--workspace-max)]">
 
       <!-- Editable event details: Date / Location / Duration / Guest count /
            Budget. In-column so its edges line up with the cost cards. Each
@@ -237,6 +237,29 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
           </div>
         }
       }
+
+      <!-- Assumptions + Risks (styling now; content wired later). -->
+      <div class="mt-6 grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
+        <div class="bp-card bp-card--lifted p-6">
+          <h2 class="bp-card-title">Assumptions</h2>
+          <p class="bp-body-small mt-2 italic text-secondary">Coming soon</p>
+        </div>
+        <div class="bp-card bp-card--lifted p-6">
+          <h2 class="bp-card-title">Risks that could move the price</h2>
+          <p class="bp-body-small mt-2 italic text-secondary">Coming soon</p>
+        </div>
+      </div>
+
+      <div class="mt-6 flex items-start justify-between gap-4">
+        <p class="bp-caption text-secondary">
+          Ballpark estimates are indicative and subject to supplier confirmation, final scope,
+          availability, delivery requirements and VAT.
+        </p>
+        <!-- Delete action wired later (Liam 2026-09-09). -->
+        <button type="button" class="shrink-0 inline-flex items-center gap-1.5 bp-body-small text-danger transition-colors hover:underline" title="Delete project">
+          <lucide-icon name="trash-2" [size]="14" /> Delete project
+        </button>
+      </div>
       </div>
 
       <!-- Right preview rail hidden for now — a line click opens Quick View
