@@ -101,7 +101,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
               <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggle(g.id)">
                 <lucide-icon [name]="g.iconName || 'folder-open'" [size]="30" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
                 <span class="min-w-0 flex-1">
-                  <span class="bp-list-title block truncate text-[length:var(--text-2xl)]">{{ g.name }}</span>
+                  <span class="bp-card-title block truncate">{{ g.name }}</span>
                 </span>
                 <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
                 <lucide-icon [name]="isOpen(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
