@@ -14,18 +14,23 @@ export const AGENT_TILES: readonly LauncherTile[] = [
   {
     icon: 'folder-plus',
     label: 'New Project',
-    subtitle: 'Start a new project.',
+    subtitle: 'Upload or paste an event brief and get an editable ballpark in seconds.',
     href: '/projects/new',
   },
   {
     icon: 'folder-open',
-    label: 'Projects',
-    subtitle: 'Manage active projects and supplier conversations.',
+    label: 'Past projects',
+    subtitle: "Revisit every brief you've costed, with assumptions and line items intact.",
     href: '/projects',
   },
-  { icon: 'inbox', label: 'Inbox', subtitle: 'Messages, supplier responses and updates.', href: '/inbox' },
-  { icon: 'store', label: 'Marketplace', subtitle: 'Browse suppliers, ideas and ballpark costs.', href: '/marketplace' },
-  { icon: 'circle-user', label: 'Profile', subtitle: 'Manage your portfolio, pricing and account.', href: '/settings/profile' },
+  // Inbox + Marketplace tiles hidden from the agent home (Liam, 2026-09-09) —
+  // the routes still exist and resolve heroes via the other tile sets.
+  {
+    icon: 'circle-user',
+    label: 'Profile',
+    subtitle: 'Your details, your organisation and how you appear on Ballpark.',
+    href: '/settings/profile',
+  },
 ];
 
 /** The supplier launcher tile set (v2.12f — the port of v1.68w's supplier
