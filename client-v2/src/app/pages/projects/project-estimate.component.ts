@@ -7,7 +7,9 @@ import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { EstimateBreakdown, ProjectDetail, ProjectUpdate, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
-import { editable, hasInstall, isDeclined, isInstalled, lineCost } from './quote-line.util';
+import { editable, hasInstall, isDeclined, isInstalled, lineCost, quoteLineToCatalogueItem } from './quote-line.util';
+import { QuickViewDialogComponent } from '../marketplace/quick-view-dialog.component';
+import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { EstimateItemRowComponent } from './estimate-item-row.component';
 import { RateInputComponent } from './rate-input.component';
 import { InboxService, OutreachRosterEntry } from '../../core/inbox/inbox.service';
@@ -15,7 +17,6 @@ import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { MessageSuppliersDialogComponent, MsgSupplierCategory } from './message-suppliers-dialog.component';
 import { EventDetailsEditComponent } from './event-details-edit.component';
 import { EstimateBreakdownComponent } from './estimate-breakdown.component';
-import { EstimatePreviewRailComponent } from './estimate-preview-rail.component';
 import { CustomLineDialogComponent, CustomLine, LineSupplier, ExistingPick } from './custom-line-dialog.component';
 import { OptionsPickerComponent } from './options-picker.component';
 
@@ -54,8 +55,8 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CurrencyPipe, LucideAngularModule, MessageSuppliersDialogComponent, EstimateItemRowComponent, RateInputComponent,
-    EventDetailsEditComponent, EstimateBreakdownComponent, EstimatePreviewRailComponent, CustomLineDialogComponent,
-    OptionsPickerComponent,
+    EventDetailsEditComponent, EstimateBreakdownComponent, CustomLineDialogComponent,
+    OptionsPickerComponent, QuickViewDialogComponent,
   ],
   host: { class: 'block' },
   template: `
@@ -238,12 +239,16 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
       }
       </div>
 
-      <!-- Right rail: the selected line's marketplace card (owns its own eye). -->
+      <!-- Right preview rail hidden for now — a line click opens Quick View
+           instead (Liam 2026-09-09). Kept in code for the later pass.
       <app-estimate-preview-rail [line]="selectedLine()" [options]="selectedOptions()" [cur]="cur()"
                                  [projectId]="projectId()" [categories]="categoryOptions()" [canEdit]="selectedCanEdit()"
-                                 (exploreMore)="onExploreMore()" (changed)="onLineChanged()" />
+                                 (exploreMore)="onExploreMore()" (changed)="onLineChanged()" /> -->
       </div>
     </div>
+
+    <!-- Quick View — read-only (the line is already in the ballpark). -->
+    <app-quick-view-dialog [item]="quickItem()" [showAdd]="false" (close)="quickItem.set(null)" />
 
     <!-- Add Custom Line Item modal (Final view). -->
     @if (adding()) {
@@ -343,8 +348,14 @@ export class ProjectEstimateComponent {
       this.toast.add({ severity: 'error', summary: "Couldn't save the rate — please try again.", detail: errorDetail(err), life: 4000 });
     }
   }
+  /** The item whose Quick View dialog is open (null = closed). */
+  protected readonly quickItem = signal<CatalogueItem | null>(null);
+
   protected selectLine(l: QuoteLine): void {
     this.selectedItemId.set(l.id);
+    // Ballpark Cost tab: the right preview rail is hidden — clicking a line
+    // opens the Quick View dialog instead (read-only; already in the ballpark).
+    this.quickItem.set(quoteLineToCatalogueItem(l));
   }
 
   // ── pV2-BUILDUP-03 — the Options picker (an item's options → quote lines) ──

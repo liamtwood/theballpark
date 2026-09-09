@@ -111,9 +111,11 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
       <ng-template pTemplate="footer">
         @if (item(); as it) {
           <button type="button" class="bp-btn-outline" (click)="close.emit()">Close</button>
-          <button type="button" class="bp-btn-grad" (click)="add.emit(it.id)">
-            Add to ballpark@if (it.basePrice !== null) { &nbsp;·&nbsp;{{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }} }
-          </button>
+          @if (showAdd()) {
+            <button type="button" class="bp-btn-grad" (click)="add.emit(it.id)">
+              Add to ballpark@if (it.basePrice !== null) { &nbsp;·&nbsp;{{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }} }
+            </button>
+          }
         }
       </ng-template>
     </p-dialog>
@@ -180,6 +182,9 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 })
 export class QuickViewDialogComponent {
   readonly item = input<CatalogueItem | null>(null);
+  /** Show the "Add to ballpark" action (off when the item is already in a
+   *  project's estimate — a read-only quick view). */
+  readonly showAdd = input<boolean>(true);
   readonly close = output<void>();
   readonly add = output<string>();
 
