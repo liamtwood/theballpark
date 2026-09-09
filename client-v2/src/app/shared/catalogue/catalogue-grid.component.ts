@@ -24,9 +24,11 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
               [eager]="i < 6"
               [favourited]="favouriteIds().has(item.id)"
               [quoted]="quoteDraftIds().has(item.id)"
+              [showQuickView]="showQuickView()"
               (clicked)="entitySelected.emit($event)"
               (favouriteToggled)="favouriteToggled.emit($event)"
               (quoteToggled)="quoteToggled.emit($event)"
+              (quickView)="quickView.emit($event)"
               (changed)="changed.emit()"
               (build)="build.emit($event)"
             />
@@ -94,9 +96,11 @@ export class CatalogueGridComponent {
   readonly favouriteIds = input<ReadonlySet<string>>(new Set<string>());
   /** Draft-quote item ids (session-local until 06f) — the "+" marks. */
   readonly quoteDraftIds = input<ReadonlySet<string>>(new Set<string>());
+  readonly showQuickView = input<boolean>(false);
   readonly entitySelected = output<string>();
   readonly favouriteToggled = output<string>();
   readonly quoteToggled = output<string>();
+  readonly quickView = output<string>();
   /** An owner item-card mutated (duplicate/active/trash) — host should refresh. */
   readonly changed = output<void>();
   /** Owner clicked "Build from components" on a card — host opens the buildup. */

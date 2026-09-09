@@ -106,6 +106,8 @@ import { RightRailComponent } from './rail/right-rail.component';
               [selectedId]="store.itemId()"
               [favouriteIds]="favs.items()"
               [quoteDraftIds]="favs.quoteDraft()"
+              [showQuickView]="true"
+              (quickView)="openQuickView($event)"
               (entitySelected)="openQuickView($event)"
               (favouriteToggled)="favs.toggle('item', $event)"
               (quoteToggled)="openPicker($event)"

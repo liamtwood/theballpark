@@ -105,6 +105,9 @@ import { AuthService } from '../../core/auth/auth.service';
         <lucide-icon name="map-pin" [size]="13" [strokeWidth]="1.75" />
         <span class="bp-caption truncate">{{ item().supplierCity || item().supplierName }}</span>
       </div>
+      @if (showQuickView()) {
+        <button type="button" class="bp-qv-link mt-2" (click)="onQuickView($event)">Quick view</button>
+      }
       @if (item().ownedByActiveOrg) {
         <!-- pV2-STORE-01 — owner manages their own item from the card:
              Edit, Duplicate, Show/Hide (is_active), Trash (soft delete). -->
@@ -165,6 +168,17 @@ import { AuthService } from '../../core/auth/auth.service';
       color: var(--color-danger, var(--color-text));
       border-color: var(--color-danger, var(--color-border-hairline));
     }
+    .bp-qv-link {
+      display: inline-block;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      color: var(--theme-accent);
+    }
+    .bp-qv-link:hover { text-decoration: underline; }
   `,
 })
 export class ItemCardComponent {
@@ -183,9 +197,18 @@ export class ItemCardComponent {
   readonly favourited = input<boolean>(false);
   /** Draft-quote mark (session-local until 06f) — independent of the heart. */
   readonly quoted = input<boolean>(false);
+  /** Show the "Quick view" link (marketplace browse only). */
+  readonly showQuickView = input<boolean>(false);
   readonly clicked = output<string>();
   readonly favouriteToggled = output<string>();
   readonly quoteToggled = output<string>();
+  readonly quickView = output<string>();
+
+  /** Quick view — don't also trigger the card's navigate-on-click. */
+  protected onQuickView(e: Event): void {
+    e.stopPropagation();
+    this.quickView.emit(this.item().id);
+  }
 
   protected cardSrc(): string | null {
     return sizedImage(this.item().coverUrl, 480);
