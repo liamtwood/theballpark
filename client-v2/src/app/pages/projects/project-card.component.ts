@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ProjectCard, relativeAge } from '../../core/projects/project.types';
-import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.component';
 
 /** pV2-PROJECTS-01 — the project card, rebuilt to v1 parity (Liam,
  *  2026-06-13; reference: projects-list.component.ts): tall cover with a
@@ -15,48 +14,26 @@ import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.compon
 @Component({
   selector: 'app-project-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, RouterLink, EntityIconComponent],
-  host: { class: 'bp-card bp-card--zoom' },
+  imports: [CurrencyPipe, RouterLink],
+  host: { class: 'bp-card' },
   template: `
     <a [routerLink]="[linkBase(), project().id]" class="block no-underline text-text" [attr.aria-label]="project().name">
-      <!-- Cover: image (focal-anchored) → icon fallback → status gradient. -->
       @let proj = project();
-      <div class="bp-projcard__cover">
-        @if (proj.coverUrl) {
-          <div class="bp-projcard__img" [style.background-image]="coverBg()" [style.background-position]="focalPos()"></div>
-        } @else if (proj.iconName) {
-          <div class="bp-projcard__iconwrap">
-            <app-entity-icon [name]="proj.iconName" [color]="proj.iconColor" [size]="44" />
-          </div>
-        } @else {
-          <div
-            class="bp-projcard__img"
-            [class.bp-projcard__img--active]="proj.status !== 'draft'"
-            [class.bp-projcard__img--draft]="proj.status === 'draft'"
-          ></div>
+      <!-- Plain card (no cover image, Liam 2026-09-09). -->
+      <div class="flex flex-col gap-2 p-5">
+        @if (proj.ref) {
+          <span class="bp-ref-eyebrow self-start">{{ proj.ref }}</span>
         }
-        @if (proj.clientLogoUrl) {
-          <img class="bp-projcard__logo" [src]="proj.clientLogoUrl" alt="" />
-        }
+        <div class="truncate text-md font-semibold text-text">{{ proj.name }}</div>
         @if (proj.clientName) {
-          <span class="bp-projcard__client-chip">{{ proj.clientName }}</span>
+          <span class="bp-meta">{{ proj.clientName }}</span>
         }
-        @if (proj.unsplashPhotographerName) {
-          <span class="bp-projcard__attr">Photo: {{ proj.unsplashPhotographerName }}</span>
-        }
-      </div>
-
-      <div class="flex flex-col gap-2 px-4 pb-4 pt-3.5">
-        @if (project().ref) {
-          <span class="bp-ref-eyebrow self-start">{{ project().ref }}</span>
-        }
-        <div class="truncate text-md font-semibold text-text">{{ project().name }}</div>
         <div class="flex items-center justify-between">
-          <span class="bp-meta">{{ project().supplierCount }} supplier{{ project().supplierCount === 1 ? '' : 's' }}</span>
+          <span class="bp-meta">{{ proj.supplierCount }} supplier{{ proj.supplierCount === 1 ? '' : 's' }}</span>
           <span class="bp-meta">{{ age() }}</span>
         </div>
         <div class="mt-0.5">
-          <span class="bp-projcard__total">{{ (project().ballparkCost ?? 0) | currency: project().currency : 'symbol' : '1.0-0' }} Ballpark</span>
+          <span class="bp-projcard__total">{{ (proj.ballparkCost ?? 0) | currency: proj.currency : 'symbol' : '1.0-0' }} Ballpark</span>
         </div>
       </div>
     </a>
@@ -71,9 +48,4 @@ export class ProjectCardComponent {
   readonly linkBase = input<string>('/projects');
 
   protected readonly age = computed(() => relativeAge(this.project().updatedAt, this.now()));
-  protected readonly coverBg = computed(() => {
-    const url = this.project().coverUrl;
-    return url ? `url(${url})` : null;
-  });
-  protected readonly focalPos = computed(() => `${this.project().coverFocalX}% ${this.project().coverFocalY}%`);
 }

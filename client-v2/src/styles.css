@@ -1152,15 +1152,13 @@ body {
 
 /* Headline "Ballpark" total — brand gradient text, ~30px / weight 400
    (v1 .bp-card-total). Distinct from .bp-price-large (2xl/600). */
+/* Plain total — same font as the project name (no gradient; Liam 2026-09-09). */
 .bp-projcard__total {
   font-family: var(--bp-font);
-  font-size: var(--text-3xl);
-  font-weight: 400;
-  line-height: 1;
-  background: var(--bp-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-text);
 }
 
 /* Storefront category chip (pV2-06d). */
