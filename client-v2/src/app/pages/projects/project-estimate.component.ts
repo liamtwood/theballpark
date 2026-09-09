@@ -111,13 +111,14 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
               </button>
 
               @if (isOpen(g.id)) {
-                <div class="m-2 mt-0 overflow-hidden rounded-[var(--radius-field)] border border-hairline bg-surface">
+                <div class="flex flex-col gap-2 p-2">
                   <!-- Hard-cost lines display the marked-up price (margin baked
                        in); Fees are shown raw. -->
                   @let mk = g.isProject ? 1 : marginMarkup();
                   <!-- pV2-BUILDUP-04 — Project Coverage: Contingency (% of costs)
                        + Insurance (% or a fixed £) + a hidden Margin reference. -->
                   @if (g.isCoverage) {
+                    <div class="overflow-hidden rounded-[var(--radius-field)] border border-hairline bg-surface">
                     <div class="flex items-center gap-3 border-b border-hairline px-3 py-3">
                       <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="percent" [size]="22" /></span>
                       <div class="min-w-0 flex-1">
@@ -163,10 +164,11 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       }
                       <span class="bp-body-small w-20 shrink-0 text-right tabular-nums">{{ showMargin() ? (bd().marginAmount | currency: cur() : 'symbol' : '1.0-0') : '••••' }}</span>
                     </div>
+                    </div>
                   }
                   @for (sg of g.supplierGroups; track sg.supplierId) {
-                    <!-- Thin supplier band grouping this category's items. -->
-                    <div class="flex items-center gap-2 border-b border-hairline bg-fill px-3 py-2">
+                    <!-- Thin supplier label grouping this category's items. -->
+                    <div class="flex items-center gap-2 px-1 pt-1">
                       <lucide-icon name="store" [size]="13" class="shrink-0 text-muted" />
                       <span class="bp-meta truncate font-medium text-text">{{ sg.supplierName || 'Supplier' }}@if (sg.supplierCity) { · {{ sg.supplierCity }} }</span>
                     </div>
@@ -180,7 +182,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                         (remove)="removeLine(l)" />
                       <!-- pV2-BUILDUP-03 — the line's picked options, nested. -->
                       @for (op of optionsFor(l.id); track op.id) {
-                        <div class="flex items-center gap-2 border-b border-hairline bg-fill/40 py-2 pl-14 pr-3">
+                        <div class="ml-6 flex items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-fill py-2 pl-4 pr-3">
                           <lucide-icon name="corner-down-right" [size]="14" class="shrink-0 text-muted" />
                           <span class="min-w-0 flex-1 truncate bp-meta text-text">{{ op.name }}</span>
                           <span class="bp-meta shrink-0 tabular-nums text-secondary">{{ op.basePrice != null ? (op.basePrice * mk | currency: cur() : 'symbol' : '1.0-0') : '' }}@if (op.unit) { / {{ op.unit }} } × {{ op.quantity }}</span>

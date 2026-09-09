@@ -13,8 +13,8 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CurrencyPipe, LucideAngularModule, QtyInputComponent],
   host: {
-    class: 'flex cursor-pointer items-center gap-3 border-b border-hairline px-3 py-3',
-    '[class.bg-fill]': 'selected()',
+    class: 'flex cursor-pointer items-center gap-3 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 py-3',
+    '[class.bp-eir--selected]': 'selected()',
     // Declined/cancelled lines dim — they stay on the Final Quote for the
     // record but are excluded from every total (pV2-INBOX-05).
     '[class.opacity-55]': 'isDeclined()',
@@ -77,6 +77,14 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
       <span class="shrink-0 p-1 text-muted" title="Out for quote — locked"><lucide-icon name="lock" [size]="14" /></span>
     }
   `,
+  styles: [
+    `
+      :host(.bp-eir--selected) {
+        border-color: var(--theme-accent);
+        box-shadow: 0 0 0 1px var(--theme-accent) inset;
+      }
+    `,
+  ],
 })
 export class EstimateItemRowComponent {
   readonly line = input.required<QuoteLine>();
