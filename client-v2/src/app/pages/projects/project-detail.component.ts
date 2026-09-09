@@ -157,10 +157,13 @@ interface DetailForm {
                   <ng-container [ngTemplateOutlet]="savedChip" />
                 </div>
                 <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <label class="block"><span class="ed-label mb-1.5 block">Ref</span><input class="ed-input" [value]="p.ref ?? '—'" disabled /></label>
+                  <!-- Ref (fixed, ~8ch) + Company number (~12ch) share a line. -->
+                  <div class="flex flex-wrap items-start gap-x-5 gap-y-4 sm:col-span-2 lg:col-span-3">
+                    <label class="block w-[calc(8ch+2.5rem)]"><span class="ed-label mb-1.5 block">Ref</span><input class="ed-input" [value]="p.ref ?? '—'" disabled /></label>
+                    <label class="block w-[calc(12ch+2.5rem)]"><span class="ed-label mb-1.5 block">Client company no.</span><input class="ed-input" [ngModel]="form().clientCompanyNumber" (ngModelChange)="patch({ clientCompanyNumber: $event })" (blur)="saveSection('event')" /></label>
+                  </div>
                   <label class="block"><span class="ed-label mb-1.5 block">Event name</span><input class="ed-input" [ngModel]="form().name" (ngModelChange)="patch({ name: $event })" (blur)="saveSection('event')" /></label>
                   <label class="block"><span class="ed-label mb-1.5 block">Client</span><input class="ed-input" [ngModel]="form().clientName" (ngModelChange)="patch({ clientName: $event })" (blur)="saveSection('event')" /></label>
-                  <label class="block"><span class="ed-label mb-1.5 block">Client company no.</span><input class="ed-input" [ngModel]="form().clientCompanyNumber" (ngModelChange)="patch({ clientCompanyNumber: $event })" (blur)="saveSection('event')" /></label>
                   <label class="block sm:col-span-2 lg:col-span-3"><span class="ed-label mb-1.5 block">Client address</span><textarea class="ed-textarea" rows="2" [ngModel]="form().clientAddress" (ngModelChange)="patch({ clientAddress: $event })" (blur)="saveSection('event')"></textarea></label>
                   <label class="block"><span class="ed-label mb-1.5 block">Venue</span><input class="ed-input" [ngModel]="form().venueName" (ngModelChange)="patch({ venueName: $event })" (blur)="saveSection('event')" /></label>
                   <label class="block"><span class="ed-label mb-1.5 block">City</span><input class="ed-input" [ngModel]="form().venueCity" (ngModelChange)="patch({ venueCity: $event })" (blur)="saveSection('event')" /></label>
