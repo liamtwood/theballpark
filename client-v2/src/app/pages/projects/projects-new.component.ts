@@ -53,37 +53,76 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
           </div>
         </div>
       } @else {
-        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <!-- Upload Brief -->
+        <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+          <!-- Left: the brief (upload + paste). -->
           <div class="bp-card p-6">
-            <span class="bp-icon-block h-12 w-12"><lucide-icon name="upload" [size]="20" [strokeWidth]="1.75" /></span>
-            <h2 class="bp-card-title mt-4">Upload Brief</h2>
-            <p class="bp-card-subtitle mt-1">Upload a PDF, Word doc or presentation.</p>
-            <label class="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-medium px-4 py-8 text-center hover:bg-fill">
-              <input type="file" class="hidden" accept=".pdf,.doc,.docx,.txt,.eml" (change)="onFile($event)" />
-              <span class="bp-caption">{{ fileName() || 'Drop files here or click to browse' }}</span>
+            <h2 class="bp-card-title">The brief</h2>
+
+            <label class="mt-4 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-medium px-4 py-8 text-center hover:bg-fill">
+              <input type="file" class="hidden" accept=".txt,.md,.csv,.rtf" (change)="onFile($event)" />
+              <lucide-icon name="upload" [size]="20" [strokeWidth]="1.75" class="text-accent" />
+              <span class="bp-body-small font-medium">{{ fileName() || 'Upload a brief' }}</span>
+              <span class="bp-caption">.txt, .md, .csv or .rtf — or paste the text below</span>
+            </label>
+
+            <label class="mt-5 block">
+              <span class="bp-field-label">Brief text</span>
+              <textarea
+                class="mt-1.5 h-64 w-full resize-none rounded-xl border border-hairline bg-surface p-3 text-md outline-none focus:border-accent"
+                placeholder="Paste the client brief: objectives, audience, dates, venue thoughts, guest numbers, deliverables, budget guidance…"
+                [value]="briefText()"
+                (input)="briefText.set($any($event.target).value)"
+              ></textarea>
+              <p class="bp-caption mt-1.5">{{ briefLen() }} characters · at least {{ MIN_BRIEF }} needed</p>
             </label>
           </div>
 
-          <!-- Write Brief -->
-          <div class="bp-card p-6">
-            <span class="bp-icon-block h-12 w-12"><lucide-icon name="file-text" [size]="20" [strokeWidth]="1.75" /></span>
-            <h2 class="bp-card-title mt-4">Write Brief</h2>
-            <p class="bp-card-subtitle mt-1">Type or paste your project brief manually.</p>
-            <textarea
-              class="mt-4 h-40 w-full resize-none rounded-xl border border-hairline bg-surface p-3 text-md outline-none focus:border-accent"
-              placeholder="Start typing your project brief…"
-              [value]="briefText()"
-              (input)="briefText.set($any($event.target).value)"
-            ></textarea>
-          </div>
-        </div>
+          <!-- Right: project details + submit. -->
+          <div class="flex flex-col gap-6">
+            <div class="bp-card p-6">
+              <h2 class="bp-card-title">Project details</h2>
 
-        <div class="mt-6 flex items-center gap-3">
-          <button type="button" class="bp-btn-grad" [disabled]="!canSubmit()" (click)="submit()">
-            <lucide-icon name="sparkles" [size]="16" />
-            Build my {{ label().toLowerCase() }}
-          </button>
+              <label class="mt-4 block">
+                <span class="bp-field-label">Project name</span>
+                <input type="text" class="bp-np-input" [value]="name()" (input)="name.set($any($event.target).value)" />
+              </label>
+              <label class="mt-4 block">
+                <span class="bp-field-label">Client</span>
+                <input type="text" class="bp-np-input" [value]="client()" (input)="client.set($any($event.target).value)" />
+              </label>
+              <label class="mt-4 block">
+                <span class="bp-field-label">Event type</span>
+                <input type="text" class="bp-np-input" placeholder="Conference, launch, awards…" [value]="eventType()" (input)="eventType.set($any($event.target).value)" />
+              </label>
+              <label class="mt-4 block">
+                <span class="bp-field-label">Event date</span>
+                <input type="date" class="bp-np-input" [value]="eventDate()" (input)="eventDate.set($any($event.target).value)" />
+              </label>
+              <label class="mt-4 block">
+                <span class="bp-field-label">Location</span>
+                <input type="text" class="bp-np-input" placeholder="London" [value]="location()" (input)="location.set($any($event.target).value)" />
+              </label>
+              <div class="mt-4 grid grid-cols-2 gap-4">
+                <label class="block">
+                  <span class="bp-field-label">Guests</span>
+                  <input type="number" min="0" class="bp-np-input" [value]="guests()" (input)="guests.set($any($event.target).value)" />
+                </label>
+                <label class="block">
+                  <span class="bp-field-label">Budget (£)</span>
+                  <input type="number" min="0" class="bp-np-input" [value]="budget()" (input)="budget.set($any($event.target).value)" />
+                </label>
+              </div>
+            </div>
+
+            <button type="button" class="bp-btn-grad w-full justify-center" [disabled]="!canSubmit()" (click)="submit()">
+              <lucide-icon name="sparkles" [size]="16" />
+              Create ballpark
+            </button>
+            <p class="bp-caption">
+              Ballpark estimates are indicative and subject to supplier confirmation, final scope,
+              availability, delivery requirements and VAT.
+            </p>
+          </div>
         </div>
       }
     </div>
@@ -91,6 +130,25 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
     <!-- MessageService supplies aria-live by severity (audit F-10). -->
     <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
+  styles: [
+    `
+      .bp-np-input {
+        margin-top: 6px;
+        width: 100%;
+        border-radius: var(--radius-field, 10px);
+        border: 1px solid var(--color-border-hairline);
+        background: var(--color-surface);
+        padding: 10px 14px;
+        font-family: var(--font-body);
+        font-size: var(--text-md);
+        color: var(--color-text);
+        outline: none;
+      }
+      .bp-np-input:focus {
+        border-color: var(--theme-accent);
+      }
+    `,
+  ],
 })
 export class ProjectsNewComponent {
   private readonly ai = inject(AiService);
@@ -108,6 +166,20 @@ export class ProjectsNewComponent {
   private readonly file = signal<File | null>(null);
   protected readonly busy = signal(false);
 
+  /** Project-detail fields the user can fill directly (override the parsed
+   *  brief). All map to existing project attributes. */
+  protected readonly name = signal('');
+  protected readonly client = signal('');
+  protected readonly eventType = signal('');
+  protected readonly eventDate = signal('');
+  protected readonly location = signal('');
+  protected readonly guests = signal('');
+  protected readonly budget = signal('');
+
+  /** Minimum brief length before the AI parse is worthwhile. */
+  protected readonly MIN_BRIEF = 40;
+  protected readonly briefLen = computed(() => this.briefText().trim().length);
+
   /** Recommend progress steps (mockup 160953). `step()` is the active index. */
   protected readonly steps = [
     { icon: 'file-text', label: 'Reading brief' },
@@ -117,7 +189,9 @@ export class ProjectsNewComponent {
   ];
   protected readonly step = signal(0);
 
-  protected readonly canSubmit = computed(() => !this.busy() && (this.briefText().trim().length > 0 || !!this.file()));
+  protected readonly canSubmit = computed(
+    () => !this.busy() && (this.briefLen() >= this.MIN_BRIEF || !!this.file())
+  );
 
   protected onFile(e: Event): void {
     const f = (e.target as HTMLInputElement).files?.[0] ?? null;
@@ -139,8 +213,32 @@ export class ProjectsNewComponent {
       }
       const parsed = await firstValueFrom(this.ai.parseBrief(text));
       this.step.set(1); // finding dates & deliverables
-      const card = await firstValueFrom(this.projects.create(parsedBriefToCreate(parsed, text)));
+
+      // Manual detail fields win over the parsed brief (both map to existing
+      // project attributes). Client + Budget aren't on the create schema, so
+      // they're PATCHed straight after (create-then-update — no backend change).
+      const base = parsedBriefToCreate(parsed, text);
+      const payload = {
+        ...base,
+        name: this.name().trim() || base.name,
+        eventType: this.eventType().trim() || base.eventType,
+        eventDate: this.eventDate().trim() || base.eventDate,
+        venueName: this.location().trim() || base.venueName,
+        guestCount: this.guests().trim() ? Number(this.guests()) : base.guestCount,
+      };
+      const card = await firstValueFrom(this.projects.create(payload));
       projectId = card.id;
+
+      const detailPatch: { clientName?: string; projectBudget?: number } = {};
+      if (this.client().trim()) detailPatch.clientName = this.client().trim();
+      if (this.budget().trim()) detailPatch.projectBudget = Number(this.budget());
+      if (Object.keys(detailPatch).length) {
+        try {
+          await firstValueFrom(this.projects.update(card.id, detailPatch));
+        } catch (patchErr) {
+          console.warn('[ProjectsNew] client/budget update failed', patchErr);
+        }
+      }
 
       // Step 2 — match marketplace items (v1 recommender, per category). A
       // failure here shouldn't lose the created project: warn and still land
