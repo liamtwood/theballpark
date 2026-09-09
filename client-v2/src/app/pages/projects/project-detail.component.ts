@@ -99,7 +99,7 @@ interface DetailForm {
   host: { class: 'block bp-vpfit' },
   template: `
     @if (detail.value(); as p) {
-      <app-page-hero eyebrow="Project" [dense]="true" [back]="{ label: 'Past projects', href: '/projects' }"
+      <app-page-hero eyebrow="Project" [dense]="true" [contained]="true" [back]="{ label: 'Past projects', href: '/projects' }"
                      [title]="p.name" [subtitle]="p.ref ?? ''"
                      rightEyebrow="Ballpark"
                      [rightTitle]="(estimate.value()?.projectTotal | currency: (p.currency || 'GBP') : 'symbol' : '1.0-0') ?? '—'"

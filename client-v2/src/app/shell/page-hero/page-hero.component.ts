@@ -17,6 +17,7 @@ import { LucideAngularModule } from 'lucide-angular';
     class: 'bp-page-hero',
     '[class.bp-page-hero--align-center]': "align() === 'center'",
     '[class.bp-page-hero--align-block]': "align() === 'block'",
+    '[class.bp-page-hero--contained]': 'contained()',
     '[class.bp-page-hero--accent-none]': "accent() === 'none'",
     '[class.bp-page-hero--dense]': 'dense()',
   },
@@ -85,6 +86,13 @@ import { LucideAngularModule } from 'lucide-angular';
 
       :host(.bp-page-hero--accent-none) {
         background: transparent;
+      }
+
+      /* 'contained': keep the left text / right meta layout but sit it in the
+         shared workspace column (so the hero lines up with the page content +
+         the app header). */
+      :host(.bp-page-hero--contained) {
+        padding-inline: max(32px, calc((100% - var(--workspace-max)) / 2));
       }
 
       /* Type comes from .bp-page-back (§5); structural only here. */
@@ -226,6 +234,10 @@ export class PageHeroComponent {
 
   /** Dense meta: shrinks the eyebrow + subtitle a touch (project workspace). */
   readonly dense = input<boolean>(false);
+
+  /** Sit the hero content in the shared workspace column (keeps the left/right
+   *  layout; used by the project pages so the header aligns with the column). */
+  readonly contained = input<boolean>(false);
 
   /** Optional right-hand meta block, mirroring the left (eyebrow / title /
    *  subtitle) — e.g. BALLPARK / £26,409 / Exc. VAT. Renders when rightTitle set. */
