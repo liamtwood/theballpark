@@ -38,6 +38,9 @@ import { LauncherTile } from './launcher-tile.types';
             [query]="tile.query ?? null"
           />
         }
+        <!-- Optional extra grid child (e.g. the agent Next-steps card) — takes
+             one tile column, flows directly after the tiles. -->
+        <ng-content select="[gridExtra]" />
       </div>
     </div>
   `,

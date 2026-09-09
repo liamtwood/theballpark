@@ -12,7 +12,7 @@ export const AGENT_TILES: readonly LauncherTile[] = [
   // now opens the create flow's stub; "Past Projects" became plain Projects
   // and keeps the /projects list. Subtitles realigned to match.
   {
-    icon: 'folder-plus',
+    icon: 'circle-plus',
     label: 'New Project',
     subtitle: 'Upload or paste an event brief and get an editable ballpark in seconds.',
     href: '/projects/new',
