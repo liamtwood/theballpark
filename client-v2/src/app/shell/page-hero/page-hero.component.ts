@@ -113,11 +113,21 @@ import { LucideAngularModule } from 'lucide-angular';
 
       /* 'block' matches the home launcher: the text sits in a centred
          max-1068px column, LEFT-aligned, so the title's left edge lines up
-         with the leftmost card of the centred grid below. */
+         with the leftmost card of the centred grid below. The default
+         1fr/auto grid would centre the block within the left column only
+         (offset by the actions), so drop it here and float the actions. */
+      :host(.bp-page-hero--align-block) {
+        display: block;
+      }
       :host(.bp-page-hero--align-block) .bp-page-hero__text {
         max-width: var(--workspace-max);
         margin-inline: auto;
         text-align: left;
+      }
+      :host(.bp-page-hero--align-block) .bp-page-hero__actions {
+        position: absolute;
+        top: 28px;
+        right: 32px;
       }
 
       /* Type comes from .bp-page-title / .bp-page-subtitle (pV2-TYPE-01 —
