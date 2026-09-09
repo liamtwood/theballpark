@@ -24,7 +24,7 @@ import { ProjectCardComponent } from './project-card.component';
   imports: [PageHeroComponent, TabBandComponent, ProjectCardComponent],
   host: { class: 'block bp-vpfit' },
   template: `
-    <app-page-hero align="center" [eyebrow]="heroEyebrow()" [title]="heroTitle()" [subtitle]="heroSubtitle()">
+    <app-page-hero align="block" [eyebrow]="heroEyebrow()" [title]="heroTitle()" [subtitle]="heroSubtitle()">
       @if (!isSupplier()) {
         <app-tab-band hero-actions [tabs]="tabs()" [active]="bucket()" (activeChange)="bucket.set($event === 'completed' ? 'completed' : 'current')" />
       }
@@ -39,10 +39,10 @@ import { ProjectCardComponent } from './project-card.component';
         } @else if (visible().length === 0) {
           <p class="bp-body-small text-secondary">{{ emptyCopy() }}</p>
         } @else {
-          <!-- Home launcher 3-column grid of fixed-width cards (max 1068px),
-               centred on the page, collapsing to 2 then 1. -->
+          <!-- Home launcher layout: a centred max-1068px block with cards
+               left-aligned inside it (3 → 2 → 1 columns). -->
           <div
-            class="grid mx-auto max-w-[1068px] justify-center gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(280px,340px))]"
+            class="grid mx-auto max-w-[1068px] justify-start gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(280px,340px))]"
           >
             @for (p of visible(); track p.id) {
               <app-project-card [project]="p" [now]="now()" [linkBase]="isSupplier() ? '/inbox' : '/projects'" />

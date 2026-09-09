@@ -16,6 +16,7 @@ import { LucideAngularModule } from 'lucide-angular';
   host: {
     class: 'bp-page-hero',
     '[class.bp-page-hero--align-center]': "align() === 'center'",
+    '[class.bp-page-hero--align-block]': "align() === 'block'",
     '[class.bp-page-hero--accent-none]': "accent() === 'none'",
     '[class.bp-page-hero--dense]': 'dense()',
   },
@@ -108,6 +109,15 @@ import { LucideAngularModule } from 'lucide-angular';
 
       :host(.bp-page-hero--align-center) .bp-page-hero__text {
         text-align: center;
+      }
+
+      /* 'block' matches the home launcher: the text sits in a centred
+         max-1068px column, LEFT-aligned, so the title's left edge lines up
+         with the leftmost card of the centred grid below. */
+      :host(.bp-page-hero--align-block) .bp-page-hero__text {
+        max-width: 1068px;
+        margin-inline: auto;
+        text-align: left;
       }
 
       /* Type comes from .bp-page-title / .bp-page-subtitle (pV2-TYPE-01 —
@@ -209,8 +219,10 @@ export class PageHeroComponent {
   /** Subtitle / lede — optional. */
   readonly subtitle = input<string>('');
 
-  /** Alignment of title/subtitle text. */
-  readonly align = input<'left' | 'center'>('left');
+  /** Alignment of the title/subtitle block. 'block' matches the home
+   *  launcher: a centred max-1068px column, text left-aligned (so the title
+   *  lines up with the leftmost card of a centred grid below). */
+  readonly align = input<'left' | 'center' | 'block'>('left');
 
   /** Accent treatment. `'none'` (default) is transparent over the page
    *  background; routes opt in to the soft theme wash with `accent="theme"`. */
