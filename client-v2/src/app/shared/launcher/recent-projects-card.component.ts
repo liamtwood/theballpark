@@ -75,9 +75,12 @@ import { ProjectCard } from '../../core/projects/project.types';
         text-decoration: none;
         font-family: var(--font-body);
         font-size: var(--text-sm);
+        /* Same rest shadow as the cards (.bp-card--lifted → --shadow-md). */
+        box-shadow: var(--shadow-md);
       }
       .bp-recent__viewall:hover {
         background: var(--color-fill);
+        box-shadow: var(--shadow-lg);
       }
       .bp-recent__muted {
         margin: 0;
