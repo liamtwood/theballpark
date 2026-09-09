@@ -92,13 +92,15 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         <!-- pV2-BUILDUP-04 — the SOW's three sections: Project Costs → Fees →
              Project Coverage (contingency + insurance). Cart shows one list. -->
         @for (section of sections(); track section.label; let first = $first) {
-        <hr class="mt-6 mb-3 border-t border-hairline" />
+        <!-- Each section is ONE white container (matches Event Description);
+             its category cards are light-gray, their items white. -->
+        <div class="bp-card bp-card--lifted mt-5 p-5">
         <h2 class="bp-card-title">{{ section.label }}</h2>
-        <div class="mt-2 flex flex-col gap-2.5">
+        <div class="mt-3 flex flex-col gap-2.5">
           @for (g of section.groups; track g.id) {
             <!-- Category card — bare icon (no block around it) + name, cat
                  total right, a chevron that expands the items underneath. -->
-            <div class="bp-card bp-card--lifted overflow-hidden">
+            <div class="overflow-hidden rounded-[var(--radius-card)] bg-fill">
               <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggle(g.id)">
                 <lucide-icon [name]="g.iconName || 'folder-open'" [size]="30" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
                 <span class="min-w-0 flex-1">
@@ -109,7 +111,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
               </button>
 
               @if (isOpen(g.id)) {
-                <div class="border-t border-hairline">
+                <div class="m-2 mt-0 overflow-hidden rounded-[var(--radius-field)] border border-hairline bg-surface">
                   <!-- Hard-cost lines display the marked-up price (margin baked
                        in); Fees are shown raw. -->
                   @let mk = g.isProject ? 1 : marginMarkup();
@@ -200,9 +202,8 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                        "Custom" tag. -->
                   @if (!g.isCoverage) {
                     <div class="p-3">
-                      <button type="button" class="flex w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border border-dashed border-hairline px-3 py-3 text-secondary transition-colors hover:bg-fill hover:text-text"
-                              (click)="openAdd(g)">
-                        <lucide-icon name="plus" [size]="15" /> Add Your Own Line Item
+                      <button type="button" class="bp-msg-btn" (click)="openAdd(g)">
+                        <lucide-icon name="plus" [size]="16" /> Add Your Own Line Item
                       </button>
                     </div>
                   }
@@ -214,7 +215,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         <!-- After the scope-of-work items (Project Costs): the ballpark total
              + Message Suppliers CTA (final view). -->
         @if (first && isFinal()) {
-          <div class="bp-card bp-card--lifted mt-4 flex flex-wrap items-center justify-between gap-4 p-5">
+          <div class="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-card)] border border-hairline bg-fill p-5">
             <div class="min-w-0">
               <p class="bp-caption text-secondary">Total ballpark, excluding VAT</p>
               <p class="bp-amount-hero mt-0.5 text-text">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-0' }}</p>
@@ -229,6 +230,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
             </div>
           </div>
         }
+        </div>
         }
 
         <app-estimate-breakdown [bd]="bd()" [budget]="budget()" [cur]="cur()" />
