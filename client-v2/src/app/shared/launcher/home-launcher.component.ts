@@ -1,6 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
-import { Location } from '@angular/common';
-import { LucideAngularModule } from 'lucide-angular';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { LauncherTileComponent } from './launcher-tile.component';
 import { LauncherTile } from './launcher-tile.types';
 
@@ -14,22 +12,15 @@ import { LauncherTile } from './launcher-tile.types';
 @Component({
   selector: 'app-home-launcher',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, LauncherTileComponent],
+  imports: [LauncherTileComponent],
   host: {
     class: 'bp-home-launcher',
     '[class.bp-home-launcher--left]': "align() === 'left'",
   },
   template: `
     <div class="bp-home-launcher__stack">
-      <!-- Back row — left edge aligns with the first tile's left edge (the
-           row spans the grid width), matching v1's launcher chrome. -->
-      <div class="bp-home-launcher__backrow">
-        <button type="button" class="bp-home-launcher__back" (click)="onBack()">
-          <lucide-icon name="arrow-left" [size]="16" />
-          <span>Back</span>
-        </button>
-      </div>
-
+      <!-- No Back row — these launcher surfaces (home / supplier hub / storefront)
+           are roots, so there's nowhere to go back to. -->
       <div class="bp-home-launcher__chrome">
         <h1 class="bp-home-title bp-home-launcher__title">{{ title() }}</h1>
         @if (subtitle()) {
@@ -67,27 +58,6 @@ import { LauncherTile } from './launcher-tile.types';
         align-items: center;
         width: 100%;
         max-width: 1068px;
-      }
-      .bp-home-launcher__backrow {
-        width: 100%;
-        margin-bottom: 48px;
-        display: flex;
-        align-items: flex-start;
-      }
-      .bp-home-launcher__back {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: none;
-        border: none;
-        padding: 0;
-        cursor: pointer;
-        font-size: var(--text-md); /* family inherits --bp-font */
-        color: var(--color-text-secondary);
-        transition: color 0.15s;
-      }
-      .bp-home-launcher__back:hover {
-        color: var(--theme-accent);
       }
       .bp-home-launcher__chrome {
         text-align: center;
@@ -129,9 +99,6 @@ import { LauncherTile } from './launcher-tile.types';
       /* Title size is responsive in the --text-greeting clamp() token —
          no per-breakpoint font override needed. */
       @media (max-width: 640px) {
-        .bp-home-launcher__backrow {
-          margin-bottom: 32px;
-        }
         .bp-home-launcher__grid {
           grid-template-columns: 1fr;
         }
@@ -140,15 +107,8 @@ import { LauncherTile } from './launcher-tile.types';
   ],
 })
 export class HomeLauncherComponent {
-  private readonly location = inject(Location);
-
   readonly title = input<string>('');
   readonly subtitle = input<string>('');
-  readonly align = input<'left' | 'center'>('center');
+  readonly align = input<'left' | 'center'>('left');
   readonly tiles = input.required<readonly LauncherTile[]>();
-
-  /** v1 parity: Back uses browser history, rendered even at root. */
-  protected onBack(): void {
-    this.location.back();
-  }
 }
