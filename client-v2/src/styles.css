@@ -254,6 +254,15 @@
   .bp-workspace-grid { grid-template-columns: 1fr; }
 }
 
+/* Centred workspace column — wrap a page body in this so its content lines up
+   under an align="block" hero (same centred max-1068px axis as home). Sits
+   INSIDE .bp-page-body so it shares that padding as the side gutter. */
+.bp-workspace-col {
+  width: 100%;
+  max-width: var(--workspace-max);
+  margin-inline: auto;
+}
+
 /* Hero — home */
 .bp-home-title    { font-family: var(--bp-font); font-size: var(--text-greeting); font-weight: 400; line-height: var(--leading-tight); color: var(--color-text); letter-spacing: -0.01em; }
 .bp-home-subtitle { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }

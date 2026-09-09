@@ -44,7 +44,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
   providers: [MessageService, ProfileEditService],
   host: { class: 'block' },
   template: `
-    <app-page-hero [eyebrow]="hero().eyebrow" [title]="hero().title" [subtitle]="hero().subtitle" />
+    <app-page-hero align="block" [eyebrow]="hero().eyebrow" [title]="hero().title" [subtitle]="hero().subtitle" />
 
     <!-- Profile (editable) + Shopfront (consumer view). Suppliers only. -->
     @if (isSupplier()) {
@@ -57,6 +57,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
       <app-profile-shopfront [orgId]="auth.user()?.activeOrgId ?? ''" />
     } @else {
     <div class="bp-page-body">
+     <div class="bp-workspace-col">
       @if (store.profile.isLoading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
       } @else if (store.profile.error()) {
@@ -245,6 +246,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
           }
         </div>
       }
+     </div>
     </div>
     }
 

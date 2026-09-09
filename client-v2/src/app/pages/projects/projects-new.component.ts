@@ -24,12 +24,14 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
   host: { class: 'block' },
   template: `
     <app-page-hero
+      align="block"
       [eyebrow]="hero().eyebrow"
       [title]="hero().title"
       [subtitle]="hero().subtitle"
     />
 
     <div class="bp-page-body">
+     <div class="bp-workspace-col">
       @if (busy()) {
         <!-- Recommend progress (mockup 160953) — steps advance as the brief is
              parsed, items matched, and the ballpark cost is built. -->
@@ -85,6 +87,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
           </button>
         </div>
       }
+     </div>
     </div>
 
     <!-- MessageService supplies aria-live by severity (audit F-10). -->
