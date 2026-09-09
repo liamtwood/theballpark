@@ -97,7 +97,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
           @for (g of section.groups; track g.id) {
             <!-- Category card — bare icon (no block around it) + name, cat
                  total right, a chevron that expands the items underneath. -->
-            <div class="bp-card overflow-hidden">
+            <div class="bp-card bp-card--lifted overflow-hidden">
               <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggle(g.id)">
                 <lucide-icon [name]="g.iconName || 'folder-open'" [size]="30" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
                 <span class="min-w-0 flex-1">
