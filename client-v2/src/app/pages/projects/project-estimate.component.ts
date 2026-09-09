@@ -98,6 +98,51 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         <h2 class="bp-card-title">{{ section.label }}</h2>
         <div class="mt-3 flex flex-col gap-2.5">
           @for (g of section.groups; track g.id) {
+            @if (g.isCoverage) {
+              <!-- Contingency / Insurance / Other — each its own item card
+                   (treated like every other line item). -->
+              <div class="flex items-center gap-3 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 py-3">
+                <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="percent" [size]="22" /></span>
+                <div class="min-w-0 flex-1">
+                  <span class="bp-list-title">Contingency</span>
+                  <div class="bp-meta mt-0.5">% of project costs</div>
+                </div>
+                <app-rate-input class="shrink-0" [value]="bd().contingencyPct" label="contingency percent"
+                                (rateCommit)="saveRate({ defaultContingencyPct: $event })" (click)="$event.stopPropagation()" />
+                <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ bd().contingency | currency: cur() : 'symbol' : '1.0-0' }}</span>
+              </div>
+              <div class="flex items-center gap-3 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 py-3">
+                <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="percent" [size]="22" /></span>
+                <div class="min-w-0 flex-1">
+                  <span class="bp-list-title">Insurance</span>
+                  <div class="bp-meta mt-0.5">% of project costs</div>
+                </div>
+                <app-rate-input class="shrink-0" [value]="bd().insurancePct" label="insurance percent"
+                                (rateCommit)="saveRate({ defaultInsurancePct: $event })" (click)="$event.stopPropagation()" />
+                <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ bd().insurance | currency: cur() : 'symbol' : '1.0-0' }}</span>
+              </div>
+              <div class="flex items-center gap-3 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 py-3 text-muted">
+                <span class="bp-icon-block h-16 w-16 shrink-0 opacity-50"><lucide-icon name="percent" [size]="22" /></span>
+                <div class="min-w-0 flex-1">
+                  <span class="bp-list-title flex items-center gap-1.5 text-muted">
+                    Other
+                    <button type="button" class="rounded p-0.5 hover:text-secondary" (click)="showMargin.set(!showMargin())"
+                            [attr.aria-label]="showMargin() ? 'Hide margin' : 'Reveal margin'"
+                            [title]="showMargin() ? 'Hide margin' : 'Reveal margin'">
+                      <lucide-icon [name]="showMargin() ? 'eye-off' : 'eye'" [size]="14" />
+                    </button>
+                  </span>
+                  @if (showMargin()) {
+                    <div class="bp-meta mt-0.5">Margin % — already in Project Costs</div>
+                  }
+                </div>
+                @if (showMargin()) {
+                  <app-rate-input class="shrink-0" [value]="bd().marginPct" label="margin percent"
+                                  (rateCommit)="saveRate({ defaultMarginPct: $event })" (click)="$event.stopPropagation()" />
+                }
+                <span class="bp-body-small w-20 shrink-0 text-right tabular-nums">{{ showMargin() ? (bd().marginAmount | currency: cur() : 'symbol' : '1.0-0') : '••••' }}</span>
+              </div>
+            } @else {
             <!-- Category card — bare icon (no block around it) + name, cat
                  total right, a chevron that expands the items underneath. -->
             <div class="overflow-hidden rounded-[var(--radius-card)] bg-fill">
@@ -115,57 +160,6 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                   <!-- Hard-cost lines display the marked-up price (margin baked
                        in); Fees are shown raw. -->
                   @let mk = g.isProject ? 1 : marginMarkup();
-                  <!-- pV2-BUILDUP-04 — Project Coverage: Contingency (% of costs)
-                       + Insurance (% or a fixed £) + a hidden Margin reference. -->
-                  @if (g.isCoverage) {
-                    <div class="overflow-hidden rounded-[var(--radius-field)] border border-hairline bg-surface">
-                    <div class="flex items-center gap-3 border-b border-hairline px-3 py-3">
-                      <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="percent" [size]="22" /></span>
-                      <div class="min-w-0 flex-1">
-                        <span class="bp-list-title">Contingency</span>
-                        <div class="bp-meta mt-0.5">% of project costs</div>
-                      </div>
-                      <app-rate-input class="shrink-0" [value]="bd().contingencyPct" label="contingency percent"
-                                      (rateCommit)="saveRate({ defaultContingencyPct: $event })" (click)="$event.stopPropagation()" />
-                      <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ bd().contingency | currency: cur() : 'symbol' : '1.0-0' }}</span>
-                    </div>
-                    <div class="flex items-center gap-3 border-b border-hairline px-3 py-3">
-                      <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="percent" [size]="22" /></span>
-                      <div class="min-w-0 flex-1">
-                        <span class="bp-list-title">Insurance</span>
-                        <div class="bp-meta mt-0.5">% of project costs</div>
-                      </div>
-                      <app-rate-input class="shrink-0" [value]="bd().insurancePct" label="insurance percent"
-                                      (rateCommit)="saveRate({ defaultInsurancePct: $event })" (click)="$event.stopPropagation()" />
-                      <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ bd().insurance | currency: cur() : 'symbol' : '1.0-0' }}</span>
-                    </div>
-                    <!-- Margin — a reference row: the silent markup already baked
-                         into Project Costs, NOT added to coverage. Grayed out, with
-                         a discreet eye to reveal/hide it so a viewing client can't
-                         read the margin off the page. -->
-                    <div class="flex items-center gap-3 px-3 py-3 text-muted">
-                      <span class="bp-icon-block h-16 w-16 shrink-0 opacity-50"><lucide-icon name="percent" [size]="22" /></span>
-                      <div class="min-w-0 flex-1">
-                        <span class="bp-list-title flex items-center gap-1.5 text-muted">
-                          Other
-                          <button type="button" class="rounded p-0.5 hover:text-secondary" (click)="showMargin.set(!showMargin())"
-                                  [attr.aria-label]="showMargin() ? 'Hide margin' : 'Reveal margin'"
-                                  [title]="showMargin() ? 'Hide margin' : 'Reveal margin'">
-                            <lucide-icon [name]="showMargin() ? 'eye-off' : 'eye'" [size]="14" />
-                          </button>
-                        </span>
-                        @if (showMargin()) {
-                          <div class="bp-meta mt-0.5">Margin % — already in Project Costs</div>
-                        }
-                      </div>
-                      @if (showMargin()) {
-                        <app-rate-input class="shrink-0" [value]="bd().marginPct" label="margin percent"
-                                        (rateCommit)="saveRate({ defaultMarginPct: $event })" (click)="$event.stopPropagation()" />
-                      }
-                      <span class="bp-body-small w-20 shrink-0 text-right tabular-nums">{{ showMargin() ? (bd().marginAmount | currency: cur() : 'symbol' : '1.0-0') : '••••' }}</span>
-                    </div>
-                    </div>
-                  }
                   @for (sg of g.supplierGroups; track sg.supplierId) {
                     <!-- Thin supplier label grouping this category's items. -->
                     <div class="flex items-center gap-2 px-1 pt-1">
@@ -212,6 +206,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                 </div>
               }
             </div>
+            }
           }
         </div>
         <!-- After the scope-of-work items (Project Costs): the ballpark total
