@@ -22,7 +22,7 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
   },
   template: `
     @if (line().imageUrl) {
-      <img [src]="line().imageUrl" alt="" class="h-16 w-16 shrink-0 rounded-[var(--radius-card)] object-cover" />
+      <img [src]="line().imageUrl" alt="" class="h-16 w-16 shrink-0 rounded-[var(--radius-field)] object-cover" />
     } @else {
       <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="store" [size]="22" /></span>
     }
