@@ -54,7 +54,9 @@ import { LauncherTile } from './launcher-tile.types';
       :host {
         display: flex;
         justify-content: center;
-        padding: clamp(24px, 8vh, 80px) 24px 48px;
+        /* Shared workspace top pad (was clamp(24px,8vh,80px) — the big gap
+           Liam asked to lose); bottom keeps page breathing room. */
+        padding: var(--workspace-top) 24px 48px;
       }
       /* Stack width = the 3-tile row (3×340 + 2×24 gap) so Back's left edge
          lines up with the first tile (v1 parity). */
@@ -68,7 +70,7 @@ import { LauncherTile } from './launcher-tile.types';
       .bp-home-launcher__chrome {
         text-align: center;
         max-width: 720px;
-        margin-bottom: 48px;
+        margin-bottom: var(--workspace-gap);
       }
       /* Eyebrow above the greeting — matches the project-hero eyebrow
          (small, tracked, uppercase, secondary). */

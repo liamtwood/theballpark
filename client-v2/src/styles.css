@@ -154,6 +154,10 @@
      hero "block" alignment all key off this ONE value (home + past projects
      use the same reference). */
   --workspace-max: 1068px;
+  /* Shared workspace vertical rhythm: the top pad above the eyebrow and the
+     gap from the subtitle down to the grid. Home + past projects share both. */
+  --workspace-top: 32px;
+  --workspace-gap: 48px;
   --card-border: oklch(0.915 0.008 300);
   --shadow-quiet: 0 1px 2px rgba(17, 24, 39, 0.04), 0 1px 3px rgba(17, 24, 39, 0.05);
 

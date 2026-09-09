@@ -118,6 +118,16 @@ import { LucideAngularModule } from 'lucide-angular';
          (offset by the actions), so drop it here and float the actions. */
       :host(.bp-page-hero--align-block) {
         display: block;
+        /* Shared workspace rhythm (matches the home launcher): same top pad,
+           and a net --workspace-gap to the grid (bp-page-body adds ~12px, so
+           subtract it here). */
+        padding-top: var(--workspace-top);
+        padding-bottom: calc(var(--workspace-gap) - 12px);
+      }
+      /* Home's eyebrow has no top margin — drop the hero eyebrow's 10px so
+         the greeting starts at the same Y. */
+      :host(.bp-page-hero--align-block) .bp-page-hero__eyebrow {
+        margin-top: 0;
       }
       :host(.bp-page-hero--align-block) .bp-page-hero__text {
         max-width: var(--workspace-max);
