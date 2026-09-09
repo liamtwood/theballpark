@@ -94,13 +94,6 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         @for (section of sections(); track section.label; let first = $first) {
         <hr class="mt-6 mb-3 border-t border-hairline" />
         <h2 class="bp-card-title">{{ section.label }}</h2>
-        @if (first && isFinal()) {
-          <button type="button" class="bp-btn-grad mt-3 w-full" [disabled]="sending()" (click)="messageSuppliers()">
-            <lucide-icon name="send" [size]="16" />
-            Message Suppliers
-          </button>
-          <p class="bp-caption mb-1 mt-2 text-center">Spend a Ball, firm up cost and let's get this show on the road</p>
-        }
         <div class="mt-2 flex flex-col gap-2.5">
           @for (g of section.groups; track g.id) {
             <!-- Category card — bare icon (no block around it) + name, cat
@@ -218,6 +211,24 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
             </div>
           }
         </div>
+        <!-- After the scope-of-work items (Project Costs): the ballpark total
+             + Message Suppliers CTA (final view). -->
+        @if (first && isFinal()) {
+          <div class="bp-card bp-card--lifted mt-4 flex flex-wrap items-center justify-between gap-4 p-5">
+            <div class="min-w-0">
+              <p class="bp-caption text-secondary">Total ballpark, excluding VAT</p>
+              <p class="bp-amount-hero mt-0.5 text-text">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-0' }}</p>
+              <p class="bp-caption mt-1 text-secondary">Every costed line is backed by an approved supplier listing.</p>
+            </div>
+            <div class="flex flex-col items-end gap-1">
+              <button type="button" class="bp-msg-btn" [disabled]="sending()" (click)="messageSuppliers()">
+                <lucide-icon name="users" [size]="16" />
+                Message suppliers
+              </button>
+              <p class="bp-caption text-secondary">Sending makes this project live</p>
+            </div>
+          </div>
+        }
         }
 
         <app-estimate-breakdown [bd]="bd()" [budget]="budget()" [cur]="cur()" />
@@ -310,6 +321,32 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         (cancel)="optionsLine.set(null)" />
     }
   `,
+  styles: [
+    `
+      /* Solid brand button (no gradient) — the Message Suppliers CTA. */
+      .bp-msg-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: var(--radius-pill);
+        background: var(--theme-accent);
+        color: var(--theme-accent-contrast, #fff);
+        font-family: var(--font-body);
+        font-size: var(--text-md);
+        font-weight: 500;
+        cursor: pointer;
+      }
+      .bp-msg-btn:hover {
+        opacity: 0.92;
+      }
+      .bp-msg-btn:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+    `,
+  ],
 })
 export class ProjectEstimateComponent {
   private readonly projects = inject(ProjectService);
