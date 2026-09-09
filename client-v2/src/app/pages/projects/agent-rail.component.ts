@@ -71,6 +71,9 @@ interface Turn {
           <input type="checkbox" [ngModel]="autoApply()" (ngModelChange)="autoApply.set($event)" />
           Auto-apply
         </label>
+        <button type="button" class="bp-itemprev-close shrink-0" title="Close Assistant" aria-label="Close Assistant" (click)="close.emit()">
+          <lucide-icon name="x" [size]="16" />
+        </button>
       </div>
 
       <div #railScroll class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
@@ -285,6 +288,8 @@ export class AgentRailComponent {
   readonly suggestCost = output<{ unitCost: number | null; total: number; message: string; installed: boolean }>();
   /** pV2-INTENT-02 — the agent adds a QUESTION (unpriced request) on the line. */
   readonly addQuestion = output<{ name: string; qty: number; unit: string | null; description: string | null }>();
+  /** Close the rail (host switches back to the classic buttons). */
+  readonly close = output<void>();
   readonly sendMessage = output<string>();
 
   /** The scrolling messages area — auto-scrolled to the newest turn so the reply

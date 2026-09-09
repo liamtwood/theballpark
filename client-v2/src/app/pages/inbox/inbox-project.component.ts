@@ -76,14 +76,15 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                     }
                   </h2>
                   <div class="flex shrink-0 items-center gap-1.5">
-                    <!-- Toggle: AI Assistant vs the classic action buttons. -->
-                    <button type="button" class="flex items-center gap-1.5 rounded-full border border-hairline px-2.5 py-1 bp-caption transition-colors"
-                            [class.text-muted]="!useAssistant()" [class.hover:bg-fill]="!useAssistant()"
-                            [style.background]="useAssistant() ? 'var(--theme-accent)' : ''" [style.color]="useAssistant() ? '#fff' : ''"
-                            [title]="useAssistant() ? 'Using the AI Assistant — click for classic buttons' : 'Using classic buttons — click for the AI Assistant'"
-                            (click)="toggleAssistant()">
-                      <lucide-icon name="sparkles" [size]="13" /> {{ useAssistant() ? 'Assistant' : 'Buttons' }}
-                    </button>
+                    <!-- Open the AI Assistant. Shown only while it's CLOSED; once
+                         open, the rail's own ✕ closes it. -->
+                    @if (!useAssistant()) {
+                      <button type="button" class="flex items-center gap-1.5 rounded-full px-2.5 py-1 bp-caption text-white transition-opacity hover:opacity-90"
+                              style="background: var(--theme-accent)"
+                              title="Open the AI Assistant" (click)="toggleAssistant()">
+                        <lucide-icon name="sparkles" [size]="13" /> Assistant
+                      </button>
+                    }
                     @if (selectedItem(); as it) {
                       <!-- pV2-BUILDUP — open the item's Details (the Customize builder). -->
                       <button type="button" class="bp-itemprev-close shrink-0" [title]="isCustomizing(it) ? 'Close details' : 'Details'" [attr.aria-label]="isCustomizing(it) ? 'Close details' : 'Details'" (click)="toggleCustomize(it)">
@@ -336,7 +337,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                               (changed)="onCustomizeChanged()"
                               (accept)="onAgentAccept()" (decline)="onAgentDecline($event)"
                               (suggestCost)="onAgentSuggestCost($event)" (sendMessage)="onAgentSend($event)"
-                              (addQuestion)="onAgentAddQuestion($event)" />
+                              (addQuestion)="onAgentAddQuestion($event)" (close)="toggleAssistant()" />
             </aside>
           }
         </div>
