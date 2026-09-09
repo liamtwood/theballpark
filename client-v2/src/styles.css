@@ -290,7 +290,7 @@
 .bp-edit-section-title { font-family: var(--bp-font); font-size: var(--text-2xl); font-weight: 400; line-height: var(--leading-snug); color: var(--color-text-strong); }
 
 /* Card / tile */
-.bp-card-title    { font-family: var(--bp-font); font-size: var(--text-2xl); font-weight: 400; line-height: var(--leading-snug); color: var(--color-text); }
+.bp-card-title    { font-family: var(--bp-font); font-size: var(--text-2xl); font-weight: 400; line-height: var(--leading-snug); color: var(--color-text-strong); }
 .bp-card-subtitle { font-family: var(--bp-font); font-size: var(--text-base); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
 
 /* Drawer */

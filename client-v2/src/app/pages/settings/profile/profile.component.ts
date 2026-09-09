@@ -191,7 +191,10 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
 
               @if (store.profile.value(); as org) {
                 <!-- Branding — cover + logo (the same media component the
-                     shopfront renders); org-media owns its own editing. -->
+                     shopfront renders); org-media owns its own editing. The
+                     two drawers are wrapped WITH it so their (empty) hosts
+                     don't add extra flex gaps before Gallery. -->
+                <div>
                 <app-edit-section title="Branding" [editable]="false">
                   <app-org-media
                     mode="edit"
@@ -232,6 +235,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                     (cancelled)="store.logoDrawer.set(false)"
                   />
                 </app-drawer>
+                </div>
 
                 <!-- Gallery — org-media's portfolio mode renders its own card. -->
                 <div #mediaSection>

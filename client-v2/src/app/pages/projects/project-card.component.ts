@@ -26,7 +26,7 @@ import { StatusPillComponent } from '../../shared/status-pill/status-pill.compon
       <div class="flex flex-col gap-3 p-5">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
-            <div class="truncate text-md font-semibold text-text">{{ proj.name }}</div>
+            <div class="bp-card-title truncate">{{ proj.name }}</div>
             @if (proj.clientName) {
               <div class="bp-meta truncate">{{ proj.clientName }}</div>
             }
