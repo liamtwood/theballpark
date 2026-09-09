@@ -31,11 +31,6 @@ import { LucideAngularModule } from 'lucide-angular';
       /* Chrome comes from .bp-card .bp-card--lifted (pV2-CARDS-01 — the
          md-rest / lg-hover Figma look is the --lifted modifier; the icon
          square is the global .bp-icon-block). Only LAYOUT remains here. */
-      /* Softer, rounder launcher tiles — overrides .bp-card's --radius-card
-         (0,2,0 beats the .bp-card class so no inline style needed). */
-      :host(.bp-launcher-tile) {
-        border-radius: 28px;
-      }
       :host(:focus-within) {
         outline: 2px solid var(--theme-accent);
         outline-offset: 2px;

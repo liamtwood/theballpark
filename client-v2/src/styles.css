@@ -131,6 +131,9 @@
      v1's action-tile radius (p0019). Tiles + icon blocks + future cards
      all ride this one token. */
   --radius-card: 20px;
+  /* Larger radius for lifted "workspace" cards (home tiles, Next steps,
+     Recent projects, New project panels) — the ONE reference for that look. */
+  --radius-lg: 28px;
   --radius-pill: 999px; /* button pills — never inline 9999px */
   /* Form-control family radius (pV2-CARDS-01 QC): ONE token for the
      search box + .bp-fld + the p-select trigger — same family, same
@@ -859,6 +862,8 @@ body {
    rest, lg + -3px on hover so the lift stays visible). */
 .bp-card--lifted {
   box-shadow: var(--shadow-md);
+  /* Lifted cards carry the larger workspace radius (one reference). */
+  border-radius: var(--radius-lg);
 }
 .bp-card--lifted:hover {
   box-shadow: var(--shadow-lg);

@@ -47,9 +47,6 @@ import { LucideAngularModule } from 'lucide-angular';
   `,
   styles: [
     `
-      :host(.bp-next-steps) {
-        border-radius: 28px;
-      }
       .bp-next-steps__body {
         display: flex;
         flex-direction: column;

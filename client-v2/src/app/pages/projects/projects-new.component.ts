@@ -56,7 +56,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
         <div class="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
           <!-- Left: the brief (upload + paste). Fills the column so it matches
                the right side's full height (details + button + disclaimer). -->
-          <div class="bp-card flex h-full flex-col p-6">
+          <div class="bp-card bp-card--lifted flex h-full flex-col p-6">
             <h2 class="bp-card-title">The brief</h2>
 
             <label class="mt-4 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-medium px-4 py-8 text-center hover:bg-fill">
@@ -80,7 +80,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 
           <!-- Right: project details + submit. -->
           <div class="flex flex-col gap-6">
-            <div class="bp-card p-6">
+            <div class="bp-card bp-card--lifted p-6">
               <h2 class="bp-card-title">Project details</h2>
 
               <label class="mt-4 block">

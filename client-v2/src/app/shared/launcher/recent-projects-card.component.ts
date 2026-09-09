@@ -46,7 +46,6 @@ import { ProjectCard } from '../../core/projects/project.types';
   styles: [
     `
       :host(.bp-recent) {
-        border-radius: 28px;
         /* Two tile columns wide, sitting under New/Past projects. */
         grid-column: span 2;
       }
