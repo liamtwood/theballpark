@@ -114,7 +114,7 @@
   --text-2xl: 22px; /* all container headings: card / drawer / edit-section titles */
   --text-3xl: 42px; /* hero amount — the Ballpark cost banner + project-card total (v2.25n: 30→42, shared tier; split if the card feels big) */
   --text-hero: 40px;
-  --text-greeting: clamp(40px, 5vw, 60px); /* responsive in the token */
+  --text-greeting: clamp(30px, 3.6vw, 44px); /* responsive in the token (v2.273: smaller hero) */
 
   /* Tracking (uppercase treatments) + line heights */
   --tracking-wide: 0.05em;

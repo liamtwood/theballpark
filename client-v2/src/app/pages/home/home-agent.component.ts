@@ -20,6 +20,7 @@ import { heroTitle } from './hero-title';
   host: { class: 'bp-home-agent block' },
   template: `
     <app-home-launcher
+      [eyebrow]="eyebrow()"
       [title]="title()"
       [subtitle]="config.heroSubtitle()"
       [align]="config.heroAlign()"
@@ -43,6 +44,12 @@ export class HomeAgentComponent {
   protected readonly title = computed(() =>
     heroTitle(this.config.heroTitleMode(), this.auth.user(), this.config.heroTitleFixed())
   );
+
+  /** "<ORG TYPE> WORKSPACE" eyebrow above the greeting (project-hero style). */
+  protected readonly eyebrow = computed(() => {
+    const t = this.auth.user()?.activeOrgType;
+    return t ? `${t} workspace`.toUpperCase() : '';
+  });
 
   /** Org-type-keyed tile set: ballpark admins get the two admin surfaces
    *  (v2.12a), suppliers the v1.68w three-tile port (v2.12f), agencies the

@@ -22,6 +22,9 @@ import { LauncherTile } from './launcher-tile.types';
       <!-- No Back row — these launcher surfaces (home / supplier hub / storefront)
            are roots, so there's nowhere to go back to. -->
       <div class="bp-home-launcher__chrome">
+        @if (eyebrow()) {
+          <p class="bp-home-launcher__eyebrow">{{ eyebrow() }}</p>
+        }
         <h1 class="bp-home-title bp-home-launcher__title">{{ title() }}</h1>
         @if (subtitle()) {
           <p class="bp-home-subtitle bp-home-launcher__subtitle">{{ subtitle() }}</p>
@@ -66,6 +69,16 @@ import { LauncherTile } from './launcher-tile.types';
         text-align: center;
         max-width: 720px;
         margin-bottom: 48px;
+      }
+      /* Eyebrow above the greeting — matches the project-hero eyebrow
+         (small, tracked, uppercase, secondary). */
+      .bp-home-launcher__eyebrow {
+        margin: 0 0 6px;
+        font-size: var(--text-lg);
+        font-weight: 400;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--color-text-secondary);
       }
       /* Type comes from .bp-home-title / .bp-home-subtitle (pV2-TYPE-01);
          these structural classes keep only spacing. */
@@ -112,6 +125,8 @@ import { LauncherTile } from './launcher-tile.types';
 export class HomeLauncherComponent {
   readonly title = input<string>('');
   readonly subtitle = input<string>('');
+  /** Optional eyebrow above the title (e.g. "AGENCY WORKSPACE"). */
+  readonly eyebrow = input<string>('');
   readonly align = input<'left' | 'center'>('left');
   readonly tiles = input.required<readonly LauncherTile[]>();
 }
