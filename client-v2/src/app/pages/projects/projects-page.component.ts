@@ -39,7 +39,11 @@ import { ProjectCardComponent } from './project-card.component';
         } @else if (visible().length === 0) {
           <p class="bp-body-small text-secondary">{{ emptyCopy() }}</p>
         } @else {
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <!-- Same layout as the home launcher: left-justified 3-column grid
+               of fixed-width cards (max 1068px), collapsing to 2 then 1. -->
+          <div
+            class="grid max-w-[1068px] justify-start gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(280px,340px))]"
+          >
             @for (p of visible(); track p.id) {
               <app-project-card [project]="p" [now]="now()" [linkBase]="isSupplier() ? '/inbox' : '/projects'" />
             }
