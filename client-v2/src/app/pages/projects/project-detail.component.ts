@@ -171,10 +171,10 @@ interface DetailForm {
                 </div>
               </div>
 
-              <!-- Event type & tier -->
+              <!-- Event Logistics — type & tier + date / duration / guests -->
               <div class="ed-card shrink-0 p-6">
                 <div class="flex items-center justify-between">
-                  <h2 class="bp-card-title">Event type</h2>
+                  <h2 class="bp-card-title">Event Logistics</h2>
                   <ng-container [ngTemplateOutlet]="savedChip" />
                 </div>
                 <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
@@ -191,18 +191,10 @@ interface DetailForm {
                     </select>
                   </label>
                 </div>
-              </div>
-
-              <!-- Logistics -->
-              <div class="ed-card shrink-0 p-6">
-                <div class="flex items-center justify-between">
-                  <h2 class="bp-card-title">Logistics</h2>
-                  <ng-container [ngTemplateOutlet]="savedChip" />
-                </div>
-                <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-3">
-                  <label class="block"><span class="ed-label mb-1.5 block">Event date</span><input class="ed-input" [ngModel]="form().eventDate" (ngModelChange)="patch({ eventDate: $event })" (blur)="saveSection('logistics')" /></label>
-                  <label class="block"><span class="ed-label mb-1.5 block">Duration (days)</span><input class="ed-input" type="number" [ngModel]="form().durationDays" (ngModelChange)="patch({ durationDays: $event })" (blur)="saveSection('logistics')" /></label>
-                  <label class="block"><span class="ed-label mb-1.5 block">Guest count</span><input class="ed-input" type="number" [ngModel]="form().guestCount" (ngModelChange)="patch({ guestCount: $event })" (blur)="saveSection('logistics')" /></label>
+                <div class="mt-4 flex flex-wrap gap-x-5 gap-y-4">
+                  <label class="block w-[calc(12ch+2.5rem)]"><span class="ed-label mb-1.5 block">Event date</span><input class="ed-input" [ngModel]="form().eventDate" (ngModelChange)="patch({ eventDate: $event })" (blur)="saveSection('logistics')" /></label>
+                  <label class="block w-[calc(12ch+2.5rem)]"><span class="ed-label mb-1.5 block">Duration (days)</span><input class="ed-input" type="number" [ngModel]="form().durationDays" (ngModelChange)="patch({ durationDays: $event })" (blur)="saveSection('logistics')" /></label>
+                  <label class="block w-[calc(12ch+2.5rem)]"><span class="ed-label mb-1.5 block">Guest count</span><input class="ed-input" type="number" [ngModel]="form().guestCount" (ngModelChange)="patch({ guestCount: $event })" (blur)="saveSection('logistics')" /></label>
                 </div>
               </div>
 
@@ -213,7 +205,7 @@ interface DetailForm {
                   <ng-container [ngTemplateOutlet]="savedChip" />
                 </div>
                 <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <label class="block"><span class="ed-label mb-1.5 block">Budget ({{ cur() === 'USD' ? '$' : cur() === 'EUR' ? '€' : '£' }})</span><input class="ed-input" type="number" [ngModel]="form().budget" (ngModelChange)="patch({ budget: $event })" (blur)="saveSection('financials')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Budget ({{ cur() === 'USD' ? '$' : cur() === 'EUR' ? '€' : '£' }})</span><input class="ed-input" type="text" inputmode="numeric" [ngModel]="form().budget" (ngModelChange)="patch({ budget: $event })" (blur)="onBudgetBlur()" /></label>
                   <label class="block"><span class="ed-label mb-1.5 block">Margin (%)</span><input class="ed-input" type="number" [ngModel]="form().marginPct" (ngModelChange)="patch({ marginPct: $event })" (blur)="saveSection('financials')" /></label>
                   <label class="block"><span class="ed-label mb-1.5 block">Contingency (%)</span><input class="ed-input" type="number" [ngModel]="form().contingencyPct" (ngModelChange)="patch({ contingencyPct: $event })" (blur)="saveSection('financials')" /></label>
                   <label class="block"><span class="ed-label mb-1.5 block">VAT (%)</span><input class="ed-input" type="number" [ngModel]="form().vatPct" (ngModelChange)="patch({ vatPct: $event })" (blur)="saveSection('financials')" /></label>
@@ -522,7 +514,7 @@ export class ProjectDetailComponent {
             }
           : section === 'financials'
             ? {
-                projectBudget: numOrNull(f.budget),
+                projectBudget: numOrNull(f.budget.replace(/,/g, '')),
                 defaultMarginPct: numOrNull(f.marginPct),
                 defaultContingencyPct: numOrNull(f.contingencyPct),
                 defaultVatPct: numOrNull(f.vatPct),
@@ -532,6 +524,13 @@ export class ProjectDetailComponent {
                 sowPaymentTerms: nullable(f.sowPaymentTerms),
                 sowSpecialTerms: nullable(f.sowSpecialTerms),
               };
+  }
+
+  /** Budget blur — reflect thousands commas in the box, then save. */
+  protected onBudgetBlur(): void {
+    const n = numOrNull(this.form().budget.replace(/,/g, ''));
+    this.patch({ budget: n != null ? n.toLocaleString('en-GB') : '' });
+    void this.saveSection('financials');
   }
 
   /** Save-on-blur (always-editable fields): persist the section, flash the
@@ -648,7 +647,7 @@ function toForm(d: ProjectDetail | null): DetailForm {
     guestCount: d?.guestCount != null ? String(d.guestCount) : '',
     durationDays: d?.durationDays != null ? String(d.durationDays) : '',
     tier: d?.tier ?? '',
-    budget: d?.projectBudget != null ? String(d.projectBudget) : '',
+    budget: d?.projectBudget != null ? d.projectBudget.toLocaleString('en-GB') : '',
     marginPct: d?.defaultMarginPct != null ? String(d.defaultMarginPct) : '',
     contingencyPct: d?.defaultContingencyPct != null ? String(d.defaultContingencyPct) : '',
     vatPct: d?.defaultVatPct != null ? String(d.defaultVatPct) : '',
