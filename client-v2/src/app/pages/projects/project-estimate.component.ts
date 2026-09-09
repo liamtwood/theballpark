@@ -92,7 +92,15 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         <!-- pV2-BUILDUP-04 — the SOW's three sections: Project Costs → Fees →
              Project Coverage (contingency + insurance). Cart shows one list. -->
         @for (section of sections(); track section.label; let first = $first) {
-        <p class="bp-field-label uppercase tracking-wide" [class.mt-6]="!first">{{ section.label }}</p>
+        <hr class="mt-6 mb-3 border-t border-hairline" />
+        <h2 class="bp-card-title">{{ section.label }}</h2>
+        @if (first && isFinal()) {
+          <button type="button" class="bp-btn-grad mt-3 w-full" [disabled]="sending()" (click)="messageSuppliers()">
+            <lucide-icon name="send" [size]="16" />
+            Message Suppliers
+          </button>
+          <p class="bp-caption mb-1 mt-2 text-center">Spend a Ball, firm up cost and let's get this show on the road</p>
+        }
         <div class="mt-2 flex flex-col gap-2.5">
           @for (g of section.groups; track g.id) {
             <!-- Category card — bare icon (no block around it) + name, cat
@@ -101,7 +109,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
               <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggle(g.id)">
                 <lucide-icon [name]="g.iconName || 'folder-open'" [size]="30" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
                 <span class="min-w-0 flex-1">
-                  <span class="bp-card-title block truncate">{{ g.name }}</span>
+                  <span class="bp-list-title block truncate text-[length:var(--text-lg)]">{{ g.name }}</span>
                 </span>
                 <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
                 <lucide-icon [name]="isOpen(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
@@ -216,15 +224,10 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
 
         <p class="bp-caption mt-4">Indicative — based on marketplace base prices. Final supplier quotes and the priced rollup land with checkout.</p>
 
-        <!-- Footer — cart: Edit in marketplace + Go with this Ballpark;
-             final: Message Suppliers (spends a Ball). -->
-        @if (isFinal()) {
-          <button type="button" class="bp-btn-grad mt-5 w-full" [disabled]="sending()" (click)="messageSuppliers()">
-            <lucide-icon name="send" [size]="16" />
-            Message Suppliers
-          </button>
-          <p class="bp-caption mt-2 text-center">Spend a Ball, firm up cost and let's get this show on the road</p>
-        } @else {
+        <!-- Footer — cart only: Edit in marketplace + Go with this Ballpark.
+             (Final's Message Suppliers CTA now lives in the Project Costs
+             section header.) -->
+        @if (!isFinal()) {
           <div class="mt-5 flex gap-2.5">
             <button type="button" class="bp-btn-grad flex-1" (click)="addItems.emit()">
               <lucide-icon name="store" [size]="16" />
@@ -521,7 +524,7 @@ export class ProjectEstimateComponent {
     const out: { label: string; groups: typeof all }[] = [{ label: 'Project Costs', groups: costs }];
     if (this.isFinal()) {
       out.push({ label: 'Fees', groups: fees });
-      out.push({ label: 'Project Coverage', groups: [this.coverageGroup()] });
+      out.push({ label: 'Project Cost Summary', groups: [this.coverageGroup()] });
     } else if (fees.length) {
       out.push({ label: 'Fees', groups: fees });
     }
