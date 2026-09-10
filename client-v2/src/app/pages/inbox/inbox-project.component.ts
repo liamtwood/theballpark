@@ -246,35 +246,21 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
               @if (selectedItem(); as it) {
                 @if (!isTerminal(it.status) && proposing()) {
                   <div class="flex flex-wrap items-center gap-2 border-t border-hairline px-4 py-2.5">
-                    <span class="bp-body-small text-secondary">New cost for <span class="font-semibold text-text">{{ it.name }}</span></span>
-                    <input
-                      type="number"
-                      class="h-8 w-24 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-md outline-none focus:border-accent"
-                      [value]="proposePrice() ?? ''"
-                      [disabled]="sending()"
-                      placeholder="New rate"
-                      (input)="proposePrice.set($any($event.target).valueAsNumber)"
-                      (keydown.enter)="submitPropose(it)"
-                    />
-                    <span class="bp-body-small text-muted">/ {{ unitLabel(it) }}</span>
-                    @if (canInstall(it)) {
-                      <span class="bp-body-small text-muted">+ install</span>
+                    <span class="bp-body-small text-secondary">New total cost for <span class="font-semibold text-text">{{ it.name }}</span></span>
+                    <div class="flex h-8 items-center rounded-[var(--radius-field)] border border-hairline bg-surface pl-2.5 focus-within:border-accent">
+                      <span class="bp-body-small text-muted">£</span>
                       <input
                         type="number"
-                        class="h-8 w-20 rounded-[var(--radius-field)] border border-hairline bg-surface px-2 text-md outline-none focus:border-accent"
-                        [value]="proposeInstall() ?? ''"
+                        class="h-8 w-28 border-none bg-transparent px-1.5 text-md outline-none"
+                        [value]="proposeTotal() ?? ''"
                         [disabled]="sending()"
-                        placeholder="install"
-                        (input)="proposeInstall.set($any($event.target).valueAsNumber)"
+                        placeholder="Total"
+                        (input)="proposeTotal.set($any($event.target).valueAsNumber)"
                         (keydown.enter)="submitPropose(it)"
                       />
-                      <span class="bp-body-small text-muted">{{ it.installUnit === 'percentage' ? '%' : (it.installUnit === 'per_order' ? '/ order' : '/ ' + unitLabel(it)) }}</span>
-                    }
-                    @if (proposedTotal() != null) {
-                      <span class="bp-body-small text-secondary">= <span class="font-semibold text-text">{{ proposedTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span></span>
-                    }
+                    </div>
                     <button type="button" class="bp-btn-outline" [disabled]="sending()" (click)="proposing.set(false)">Cancel</button>
-                    <button type="button" class="bp-btn-grad" [disabled]="sending() || proposePrice() == null" (click)="submitPropose(it)">Send cost</button>
+                    <button type="button" class="bp-msg-btn" [disabled]="sending() || proposeTotal() == null" (click)="submitPropose(it)">Send cost</button>
                   </div>
                 }
               }
@@ -803,6 +789,8 @@ export class InboxProjectComponent {
   // ── Per-item actions (Accept / Propose new price) ──────────────────────
   protected readonly proposing = signal(false);
   protected readonly proposePrice = signal<number | null>(null);
+  /** The proposed FLAT line total (Change cost edits the total by default). */
+  protected readonly proposeTotal = signal<number | null>(null);
   /** The proposed per-line install cost (raw value under the item's basis). */
   protected readonly proposeInstall = signal<number | null>(null);
 
@@ -933,10 +921,8 @@ export class InboxProjectComponent {
   }
   protected startPropose(it: InboxThreadItem): void {
     this.disarmDecline(); // superseding action — see disarmDecline()
-    // Negotiate the per-unit RATE + the install cost (pV2-UNIFY-01) — the line
-    // total derives from both.
-    this.proposePrice.set(it.unitPriceCurrent ?? it.unitPriceRef ?? 0);
-    this.proposeInstall.set(it.installCost ?? null);
+    // Change cost edits the LINE TOTAL by default (saved as a flat total).
+    this.proposeTotal.set(it.priceCurrent ?? it.priceRef ?? 0);
     this.proposing.set(true);
   }
 
@@ -1015,14 +1001,19 @@ export class InboxProjectComponent {
     this.composeInput()?.nativeElement.focus();
   }
   protected async submitPropose(it: InboxThreadItem): Promise<void> {
-    // `price` is the new per-unit RATE (stored in price_current); the thread
-    // bubble + header show the derived line total so the money reads clearly.
-    const rate = this.proposePrice();
-    if (rate == null || rate < 0) return;
-    const install = this.proposeInstall();
+    // Change cost sets a FLAT line total (price_current null, flat_total set) —
+    // the 6th arg. The bubble + header then show this total directly.
+    const total = this.proposeTotal();
+    if (total == null || total < 0) return;
     const fromTotal = it.priceCurrent ?? it.priceRef ?? 0;
-    const newTotal = this.lineTotalAt(it, rate, install);
-    await this.itemAction(it.id, 'adjust', rate, `${it.name} ${gbp(fromTotal)} New Cost Suggested ${gbp(newTotal)} by ${this.actorName()}`, install ?? undefined);
+    await this.itemAction(
+      it.id,
+      'adjust',
+      undefined,
+      `${it.name} ${gbp(fromTotal)} New Cost Suggested ${gbp(total)} by ${this.actorName()}`,
+      0,
+      total,
+    );
     this.proposing.set(false);
   }
 
