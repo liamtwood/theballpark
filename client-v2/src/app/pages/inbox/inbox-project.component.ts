@@ -48,8 +48,10 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
       } @else if (threads().length === 0) {
         <p class="bp-body-small text-secondary">No quote requests in this project yet.</p>
       } @else {
-        <div class="grid min-h-0 flex-1 grid-cols-1 gap-6"
-             [ngClass]="showAgent() ? 'xl:grid-cols-[280px_1fr_340px]' : 'xl:grid-cols-[300px_1fr]'">
+        <!-- Standard workspace column: inbox rail | conversation | assistant
+             (far-right). Centred to --workspace-max like every other page. -->
+        <div class="mx-auto grid min-h-0 w-full max-w-[var(--workspace-max)] flex-1 grid-cols-1 gap-6"
+             [ngClass]="showAgent() ? 'xl:grid-cols-[260px_1fr_320px]' : 'xl:grid-cols-[280px_1fr]'">
           <!-- Left rail: project context card + thread cards + their items. -->
           <app-inbox-rail
             [project]="project()"
