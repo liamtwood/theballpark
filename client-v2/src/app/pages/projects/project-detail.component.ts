@@ -132,8 +132,11 @@ interface DetailForm {
         @switch (tab()) {
           @case ('details') {
             <!-- Ready-to-edit rounded fields; each field saves on blur with the
-                 shared "Details saved" pill (app-save-state-pill). -->
-            <div class="mx-auto flex min-h-0 w-full max-w-[var(--workspace-max)] flex-1 flex-col gap-4 overflow-y-auto pt-4">
+                 shared "Details saved" pill (app-save-state-pill). Overflow is
+                 full-width so the scrollbar sits at the window edge; content is
+                 centred in the workspace column. -->
+            <div class="min-h-0 flex-1 overflow-y-auto pt-4">
+            <div class="mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-4">
               <app-completeness-card
                 [entity]="p"
                 [config]="completenessConfig"
@@ -257,6 +260,7 @@ interface DetailForm {
                   />
                 </div>
               </div>
+            </div>
             </div>
           }
           @case ('estimate') {
