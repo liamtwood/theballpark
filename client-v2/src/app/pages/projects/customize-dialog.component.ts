@@ -250,7 +250,9 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                 <p class="bp-caption mt-3">Saved with the estimate when you Save.</p>
               </div>
             } @else if (previewItem(); as pi) {
-              @if (showPreview()) {
+              <!-- Item preview hidden for now — will be a Quick View dialog like
+                   the marketplace (flip showItemPreview to restore). -->
+              @if (showPreview() && showItemPreview) {
                 <!-- Click the card to edit (same as the inbox); the base row in
                      the grid still selects it too. -->
                 <div class="bp-card p-4" [class.cursor-pointer]="!parentSelected()" [attr.title]="parentSelected() ? null : 'Click to edit'" (click)="selectParent()">
@@ -377,6 +379,9 @@ export class CustomizeDialogComponent implements OnInit {
   readonly sendCost = output<number>();
 
   protected readonly showPreview = signal(true);
+  /** Item preview hidden for now (a Quick View dialog replaces it, like the
+   *  marketplace). Flip to true to restore the inline preview. */
+  protected readonly showItemPreview = false;
   /** The "Explore components" picker (browse the saved library, click to add). */
   protected readonly exploring = signal(false);
   /** The "Send New Cost" confirmation — the supplier confirms (and can tweak)
