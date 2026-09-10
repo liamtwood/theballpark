@@ -43,7 +43,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
                         <div class="bp-meta truncate">{{ row.clientName }}</div>
                       }
                     </div>
-                    <span class="shrink-0 bp-pill bp-body-small" [class]="pillClass(row)" [title]="hoverText(row)">
+                    <span class="shrink-0 bp-pill bp-body-small min-w-[8rem] justify-center text-center" [class]="pillClass(row)" [title]="hoverText(row)">
                       {{ pillLabel(row) }}
                     </span>
                   </div>
@@ -61,7 +61,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
                           @for (s of row.suppliers; track s.name) {
                             <div class="flex items-center justify-between gap-3">
                               <span class="min-w-0 truncate bp-body-small text-secondary">{{ s.name }}</span>
-                              <span class="shrink-0 bp-pill bp-body-small" [class]="pillClass(s)" [title]="hoverText(s)">
+                              <span class="shrink-0 bp-pill bp-body-small min-w-[8rem] justify-center text-center" [class]="pillClass(s)" [title]="hoverText(s)">
                                 {{ pillLabel(s, true) }}
                               </span>
                             </div>
