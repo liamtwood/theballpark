@@ -94,12 +94,15 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
          clip it), shown while hovering a supplier's envelope: name · message ·
          time. -->
     @if (bubble(); as b) {
-      <div class="fixed z-50 w-[320px] max-w-[90vw] rounded-2xl border border-hairline bg-surface px-4 py-3 shadow-lg"
+      <div class="fixed z-50 w-[320px] max-w-[90vw] rounded-2xl border border-hairline bg-fill px-3 py-3 shadow-lg"
            [style.left.px]="b.x" [style.top.px]="b.y">
-        <div class="bp-caption text-secondary">{{ b.name }}</div>
-        <div class="mt-1 bp-body-small text-text">{{ b.text }}</div>
+        <div class="bp-caption mb-1.5 px-1 text-secondary">{{ b.name }}</div>
+        <!-- The message in an inbox-style bubble (white on the tinted panel). -->
+        <div class="bp-bubble" style="max-width: 100%">
+          <span class="bp-bubble__body">{{ b.text }}</span>
+        </div>
         @if (b.time) {
-          <div class="mt-2 bp-caption text-muted">{{ b.time }}</div>
+          <div class="bp-caption mt-1.5 px-1 text-muted">{{ b.time }}</div>
         }
       </div>
     }
