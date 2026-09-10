@@ -471,21 +471,48 @@ async function getAgentInboxSummary(agencyOrgId) {
   for (const p of projs.rows) {
     const all = await messageService.getAll(p.id);
     if (!all.length) continue; // no outreach yet → not in the Messages list
-    const items = await getByMessages(all.map((m) => m.id), { sentOnly: true });
 
-    // Distinct supplier names (order preserved), skipping unassigned rows.
-    const suppliers = [
-      ...new Map(
-        all.filter((m) => m.supplier_org_id).map((m) => [m.supplier_org_id, m.supplier_name])
-      ).values(),
-    ];
+    // Group the project's messages by supplier, then roll up each supplier's
+    // items (deduped by line id across their category threads).
+    const bySupplier = new Map();
+    for (const m of all) {
+      if (!m.supplier_org_id) continue;
+      let g = bySupplier.get(m.supplier_org_id);
+      if (!g) {
+        g = { name: m.supplier_name, messageIds: [] };
+        bySupplier.set(m.supplier_org_id, g);
+      }
+      g.messageIds.push(m.id);
+    }
 
+    const suppliers = [];
     let waitingAgent = 0;
     let waitingSupplier = 0;
-    for (const it of items) {
-      const w = itemWaitingOn(it);
-      if (w === 'agent') waitingAgent++;
-      else if (w === 'supplier') waitingSupplier++;
+    let itemCount = 0;
+    for (const g of bySupplier.values()) {
+      const items = await getByMessages(g.messageIds, { sentOnly: true });
+      const seen = new Set();
+      let wa = 0;
+      let ws = 0;
+      let n = 0;
+      for (const it of items) {
+        if (seen.has(it.id)) continue; // same line can tag multiple briefs
+        seen.add(it.id);
+        n++;
+        const w = itemWaitingOn(it);
+        if (w === 'agent') wa++;
+        else if (w === 'supplier') ws++;
+      }
+      suppliers.push({
+        name: g.name,
+        itemCount: n,
+        waitingAgent: wa,
+        waitingSupplier: ws,
+        actionRequired: wa > 0,
+      });
+      waitingAgent += wa;
+      waitingSupplier += ws;
+      itemCount += n;
     }
 
     out.push({
@@ -493,7 +520,7 @@ async function getAgentInboxSummary(agencyOrgId) {
       name: p.name,
       clientName: p.client_name ?? null,
       suppliers,
-      itemCount: items.length,
+      itemCount,
       waitingAgent,
       waitingSupplier,
       actionRequired: waitingAgent > 0,

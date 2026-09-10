@@ -41,17 +41,26 @@ export class InboxService {
   }
 }
 
-/** One agency Messages-landing card: a project, its suppliers, and how many
- *  line items are waiting on each side. */
-export interface InboxSummaryRow {
-  id: string;
-  name: string;
-  clientName: string | null;
-  suppliers: string[];
+/** Waiting-count rollup shared by a project row and each supplier row. */
+export interface InboxWaitingCounts {
   itemCount: number;
   waitingAgent: number;
   waitingSupplier: number;
   actionRequired: boolean;
+}
+
+/** One supplier on a project, with its own waiting rollup. */
+export interface InboxSummarySupplier extends InboxWaitingCounts {
+  name: string;
+}
+
+/** One agency Messages-landing card: a project, its suppliers, and how many
+ *  line items are waiting on each side (project totals). */
+export interface InboxSummaryRow extends InboxWaitingCounts {
+  id: string;
+  name: string;
+  clientName: string | null;
+  suppliers: InboxSummarySupplier[];
 }
 
 export interface InboxItemAction {

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, resource, signal } from '@a
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
-import { InboxService, InboxSummaryRow } from '../../core/inbox/inbox.service';
+import { InboxService, InboxSummaryRow, InboxWaitingCounts } from '../../core/inbox/inbox.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 
 /** pV2-INBOX (Messages landing) — /inbox for the agency: one card per active
@@ -57,9 +57,14 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
                         {{ isOpen(row.id) ? 'Hide suppliers' : 'Show suppliers' }} ({{ row.suppliers.length }})
                       </button>
                       @if (isOpen(row.id)) {
-                        <div class="mt-1.5 flex flex-col gap-0.5 pl-5">
-                          @for (s of row.suppliers; track s) {
-                            <span class="bp-body-small text-secondary truncate">{{ s }}</span>
+                        <div class="mt-1.5 flex flex-col gap-1.5 pl-5">
+                          @for (s of row.suppliers; track s.name) {
+                            <div class="flex items-center justify-between gap-3">
+                              <span class="min-w-0 truncate bp-body-small text-secondary">{{ s.name }}</span>
+                              <span class="shrink-0 bp-pill bp-body-small" [class]="pillClass(s)" [title]="hoverText(s)">
+                                {{ pillLabel(s, true) }}
+                              </span>
+                            </div>
                           }
                         </div>
                       }
@@ -99,23 +104,24 @@ export class InboxLandingComponent {
     });
   }
 
-  /** One pill for the whole project. Action Required wins; else waiting on
-   *  suppliers; else everything settled. */
-  protected pillLabel(r: InboxSummaryRow): string {
-    if (r.actionRequired) return 'Action Required';
-    if (r.waitingSupplier > 0) return 'Awaiting suppliers';
+  /** One pill for a project OR a supplier. Action Required wins; else waiting
+   *  on the supplier(s); else everything settled. Shared so the project pill
+   *  and each supplier pill read identically. */
+  protected pillLabel(c: InboxWaitingCounts, supplier = false): string {
+    if (c.actionRequired) return 'Action Required';
+    if (c.waitingSupplier > 0) return supplier ? 'Awaiting supplier' : 'Awaiting suppliers';
     return 'All confirmed';
   }
 
-  protected pillClass(r: InboxSummaryRow): string {
-    if (r.actionRequired) return 'bp-pill--danger';
-    if (r.waitingSupplier > 0) return '';
+  protected pillClass(c: InboxWaitingCounts): string {
+    if (c.actionRequired) return 'bp-pill--danger';
+    if (c.waitingSupplier > 0) return 'bp-pill--outline';
     return 'bp-pill--success';
   }
 
   /** Hover breakdown on the pill. */
-  protected hoverText(r: InboxSummaryRow): string {
-    const items = `${r.itemCount} item${r.itemCount === 1 ? '' : 's'}`;
-    return `${items} · ${r.waitingAgent} waiting on you, ${r.waitingSupplier} waiting on the supplier`;
+  protected hoverText(c: InboxWaitingCounts): string {
+    const items = `${c.itemCount} item${c.itemCount === 1 ? '' : 's'}`;
+    return `${items} · ${c.waitingAgent} waiting on you, ${c.waitingSupplier} waiting on the supplier`;
   }
 }
