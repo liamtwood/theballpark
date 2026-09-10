@@ -439,13 +439,14 @@ function itemWaitingOn(it) {
   const s = it.status;
   const buyerAccepted = it.buyer_status === 'accepted';
   const sellerAccepted = it.seller_status === 'accepted';
-  // Settled — nobody owes an action.
+  // Settled — nobody owes an action: booked, both accepted, or declined by
+  // either side (a cancelled/declined line is done).
   if (s === 'booked' || (buyerAccepted && sellerAccepted)) return null;
-  if (s === 'declined_by_agent') return null;
-  // On the agent: the supplier has come back (quote / adjustment / accept /
-  // decline) and it's the agency's move.
+  if (s === 'declined_by_agent' || s === 'declined_by_supplier') return null;
+  // On the agent: the supplier has come back (quote / adjustment / accept)
+  // and it's the agency's move.
   if (sellerAccepted && !buyerAccepted) return 'agent';
-  if (s === 'quoted' || s === 'adjusted_by_supplier' || s === 'declined_by_supplier') return 'agent';
+  if (s === 'quoted' || s === 'adjusted_by_supplier') return 'agent';
   // On the supplier: an open agent question, the agent's counter, or a brief
   // still out for quote.
   return 'supplier';
@@ -498,6 +499,8 @@ async function getAgentInboxSummary(agencyOrgId) {
       for (const it of items) {
         if (seen.has(it.id)) continue; // same line can tag multiple briefs
         seen.add(it.id);
+        // Cancelled/declined lines are done — don't count them at all.
+        if (it.status === 'declined_by_agent' || it.status === 'declined_by_supplier') continue;
         n++;
         const w = itemWaitingOn(it);
         if (w === 'agent') wa++;

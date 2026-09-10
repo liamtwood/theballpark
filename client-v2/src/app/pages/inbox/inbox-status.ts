@@ -56,30 +56,35 @@ export function itemAction(it: InboxThreadItem, isAgency: boolean): 'me' | 'them
   const s = it.status;
   const mineAccepted = isAgency ? it.buyerAccepted : it.sellerAccepted;
   const theirsAccepted = isAgency ? it.sellerAccepted : it.buyerAccepted;
+  // Settled — no one owes an action: booked, both accepted, or declined by
+  // either side (a cancelled/declined line is done — no glisten, no action).
   if (s === 'booked' || (it.buyerAccepted && it.sellerAccepted)) return 'settled';
+  if (s === 'declined_by_agent' || s === 'declined_by_supplier') return 'settled';
   // The counterparty accepted and I haven't → my move.
   if (theirsAccepted && !mineAccepted) return 'me';
   if (isAgency) {
-    if (s === 'quoted' || s === 'adjusted_by_supplier' || s === 'declined_by_supplier') return 'me';
-    if (s === 'declined_by_agent') return 'settled';
+    if (s === 'quoted' || s === 'adjusted_by_supplier') return 'me';
     return 'them'; // brief_sent / holding / adjusted_by_agent
   }
   // Supplier viewer.
   if (s === 'brief_sent' || s === 'holding' || s === 'adjusted_by_agent') return 'me';
-  if (s === 'declined_by_supplier') return 'settled';
   return 'them';
 }
 
 /** Per-counterparty rollup for the rail header: total lines, how many are
  *  accepted (both sides / booked), and how many need the current user. */
 export function supplierRollup(items: InboxThreadItem[], isAgency: boolean): { items: number; accepted: number; action: number } {
+  let count = 0;
   let accepted = 0;
   let action = 0;
   for (const it of items) {
+    // Cancelled/declined lines are done — don't count them at all.
+    if (it.status === 'declined_by_agent' || it.status === 'declined_by_supplier') continue;
+    count++;
     if (it.status === 'booked' || (it.buyerAccepted && it.sellerAccepted)) accepted++;
     if (itemAction(it, isAgency) === 'me') action++;
   }
-  return { items: items.length, accepted, action };
+  return { items: count, accepted, action };
 }
 
 /** Whole-pound GBP for the action chat lines ("Cost Accepted £10,000"). */
