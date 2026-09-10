@@ -432,6 +432,76 @@ async function getAgentThreads(agencyOrgId, projectId) {
   return { project, threads };
 }
 
+/** Whose turn is it on one message_item (agent perspective)? Coarse + simple
+ *  for the Messages landing rollup — 'agent' | 'supplier' | null (settled).
+ *  Reads the raw message_item status + the latest per-side decisions. */
+function itemWaitingOn(it) {
+  const s = it.status;
+  const buyerAccepted = it.buyer_status === 'accepted';
+  const sellerAccepted = it.seller_status === 'accepted';
+  // Settled — nobody owes an action.
+  if (s === 'booked' || (buyerAccepted && sellerAccepted)) return null;
+  if (s === 'declined_by_agent') return null;
+  // On the agent: the supplier has come back (quote / adjustment / accept /
+  // decline) and it's the agency's move.
+  if (sellerAccepted && !buyerAccepted) return 'agent';
+  if (s === 'quoted' || s === 'adjusted_by_supplier' || s === 'declined_by_supplier') return 'agent';
+  // On the supplier: an open agent question, the agent's counter, or a brief
+  // still out for quote.
+  return 'supplier';
+}
+
+/** pV2-INBOX (Messages landing) — one rollup row per ACTIVE agency project the
+ *  agency has messaged: project name/client, the supplier names on it, and how
+ *  many line items are waiting on the agent vs the supplier. `actionRequired`
+ *  = the agent has at least one item to respond to. org from JWT (RP-INB1). */
+async function getAgentInboxSummary(agencyOrgId) {
+  const projs = await pool.query(
+    `SELECT p.id, COALESCE(p.event_name, p.name) AS name,
+            COALESCE(p.client_name, cl.name) AS client_name, p.updated_at
+       FROM projects p
+       LEFT JOIN clients cl ON cl.id = p.client_id
+      WHERE p.org_id = $1 AND p.deleted_at IS NULL
+        AND COALESCE(p.status, 'draft') NOT IN ('completed', 'archived')
+      ORDER BY p.updated_at DESC`,
+    [agencyOrgId]
+  );
+
+  const out = [];
+  for (const p of projs.rows) {
+    const all = await messageService.getAll(p.id);
+    if (!all.length) continue; // no outreach yet → not in the Messages list
+    const items = await getByMessages(all.map((m) => m.id), { sentOnly: true });
+
+    // Distinct supplier names (order preserved), skipping unassigned rows.
+    const suppliers = [
+      ...new Map(
+        all.filter((m) => m.supplier_org_id).map((m) => [m.supplier_org_id, m.supplier_name])
+      ).values(),
+    ];
+
+    let waitingAgent = 0;
+    let waitingSupplier = 0;
+    for (const it of items) {
+      const w = itemWaitingOn(it);
+      if (w === 'agent') waitingAgent++;
+      else if (w === 'supplier') waitingSupplier++;
+    }
+
+    out.push({
+      id: p.id,
+      name: p.name,
+      clientName: p.client_name ?? null,
+      suppliers,
+      itemCount: items.length,
+      waitingAgent,
+      waitingSupplier,
+      actionRequired: waitingAgent > 0,
+    });
+  }
+  return out;
+}
+
 /** pV2-INBOX-01 — the caller-supplier replies in a thread: a chat message
  *  and/or per-item actions (Accept / Propose-new-price / Decline). Identity
  *  is the JWT caller; we verify the thread (its lead brief) belongs to this
@@ -643,4 +713,4 @@ async function getLineConversation(orgId, projectId, lineId, { limit = 14 } = {}
   }));
 }
 
-module.exports = { listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads, reply, getLineConversation };
+module.exports = { listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads, getAgentInboxSummary, reply, getLineConversation };

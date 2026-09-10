@@ -141,8 +141,8 @@ export const routes: Routes = [
       },
       {
         path: 'inbox',
-        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { feature: 'Inbox' },
+        loadComponent: () =>
+          import('./pages/inbox/inbox-landing.component').then((m) => m.InboxLandingComponent),
       },
       {
         // pV2-INBOX-01 — a project's Inbox: the supplier's per-project

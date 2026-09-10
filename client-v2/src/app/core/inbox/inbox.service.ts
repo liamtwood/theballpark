@@ -33,6 +33,25 @@ export class InboxService {
   reply(threadId: string, body: InboxReplyBody): Observable<InboxReplyResult> {
     return this.api.post<InboxReplyResult>(`/api/inbox/threads/${threadId}/reply`, body);
   }
+
+  /** The agency Messages landing: one rollup row per active project the agency
+   *  has messaged (suppliers + waiting counts + actionRequired). */
+  summary(): Observable<InboxSummaryRow[]> {
+    return this.api.get<InboxSummaryRow[]>('/api/inbox/summary');
+  }
+}
+
+/** One agency Messages-landing card: a project, its suppliers, and how many
+ *  line items are waiting on each side. */
+export interface InboxSummaryRow {
+  id: string;
+  name: string;
+  clientName: string | null;
+  suppliers: string[];
+  itemCount: number;
+  waitingAgent: number;
+  waitingSupplier: number;
+  actionRequired: boolean;
 }
 
 export interface InboxItemAction {
