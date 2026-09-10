@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { InboxProjectSummary, InboxThreadItem } from '../../core/inbox/inbox.service';
-import { statusPill, supplierRollup } from './inbox-status';
+import { statusPill, supplierRollup, itemAction } from './inbox-status';
 
 /** A category thread inside an outer counterparty card — the middle band of the
  *  Final-Quote containment pattern (cat icon + name), with its item rows. */
@@ -43,8 +43,9 @@ export interface RailOuter {
          icon + name + total + chevron, expanding to category bands + items. -->
     @for (o of groups(); track o.id) {
       @let c = counts(o);
-      <!-- Glisten when the current user has an action on this supplier. -->
-      <div class="bp-card shrink-0 overflow-hidden" [class.bp-glisten]="c.action > 0">
+      <!-- Collapsed: the whole card glistens when the user has an action.
+           Expanded: only the specific item row glistens (below). -->
+      <div class="bp-card shrink-0 overflow-hidden" [class.bp-glisten]="!isExpanded(o.id) && c.action > 0">
         <!-- min-h keeps every collapsed supplier card the same height. -->
         <div class="flex min-h-[64px] w-full items-center gap-3 p-3">
           <button type="button" class="flex min-w-0 flex-1 items-center gap-3 text-left" (click)="toggle(o.id)">
@@ -90,8 +91,9 @@ export interface RailOuter {
               <!-- Item rows — name + status (You/They/Both Accepted, or the
                    negotiation state). Focuses the item in the conversation. -->
               @for (it of cat.items; track it.id) {
+                <!-- Glisten the specific line the current user must act on. -->
                 <button type="button" class="flex w-full flex-col items-start gap-1 border-b border-hairline px-3 py-2.5 pl-8 text-left last:border-b-0 hover:bg-fill"
-                        [class.bp-item--selected]="it.id === selectedId()" (click)="selectItem.emit(it.id)">
+                        [class.bp-item--selected]="it.id === selectedId()" [class.bp-glisten]="isMyAction(it)" (click)="selectItem.emit(it.id)">
                   <span class="bp-list-title w-full truncate">{{ it.name }}</span>
                   <span class="flex flex-wrap items-center gap-1.5">
                     <span [class]="'bp-spill bp-spill--' + pill(it).tone">{{ pill(it).label }}</span>
@@ -134,6 +136,11 @@ export class InboxRailComponent {
 
   protected pill(it: InboxThreadItem) {
     return statusPill(it, this.isAgency());
+  }
+
+  /** True when this line is waiting on the current user (drives the glisten). */
+  protected isMyAction(it: InboxThreadItem): boolean {
+    return itemAction(it, this.isAgency()) === 'me';
   }
 
   /** Header rollup: total items · accepted · action-required-by-me. */

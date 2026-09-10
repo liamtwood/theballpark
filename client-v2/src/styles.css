@@ -1757,7 +1757,8 @@ body {
    accent ring keeps it noticeable between sweeps. Honours reduced-motion. */
 .bp-glisten {
   position: relative;
-  /* outline (not box-shadow) so the card keeps its own lift shadow. */
+  overflow: hidden; /* contain the sweep to the element */
+  /* outline (not box-shadow) so the element keeps its own shadow/border. */
   outline: 1px solid color-mix(in srgb, var(--theme-accent) 40%, transparent);
   outline-offset: -1px;
 }
