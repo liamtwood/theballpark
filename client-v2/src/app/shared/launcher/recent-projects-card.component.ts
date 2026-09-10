@@ -158,9 +158,11 @@ export class RecentProjectsCardComponent {
     loader: () => firstValueFrom(this.projects.list()),
   });
 
-  /** Four most-recently-updated projects (any status). */
+  /** Four most-recently-updated OPEN projects — completed/archived are excluded
+   *  (they live under Past projects → Completed). */
   protected readonly recent = computed(() =>
     [...(this.loader.value() ?? [])]
+      .filter((p) => p.status !== 'completed' && p.status !== 'archived')
       .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
       .slice(0, 4)
   );
