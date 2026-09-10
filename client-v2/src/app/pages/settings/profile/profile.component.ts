@@ -60,14 +60,14 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
         <app-profile-shopfront [orgId]="auth.user()?.activeOrgId ?? ''" />
       </div>
     } @else {
-    <div class="bp-page-body bp-page-body--workspace">
+    <div class="bp-page-body">
       <div class="min-h-0 overflow-y-auto md:flex-1">
       @if (store.profile.isLoading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
       } @else if (store.profile.error()) {
         <p class="bp-body-small text-warn">Couldn't load your organisation.</p>
       } @else {
-        <div class="flex flex-col gap-5">
+        <div class="mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-5">
           <!-- Profile completeness — full width across the top. -->
           @if (store.profile.value(); as org) {
             @if (store.canEdit()) {
