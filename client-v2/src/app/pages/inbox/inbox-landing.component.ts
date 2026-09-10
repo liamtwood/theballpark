@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, resource, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { InboxService, InboxSummaryRow } from '../../core/inbox/inbox.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
@@ -12,7 +13,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 @Component({
   selector: 'app-inbox-landing',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, PageHeroComponent],
+  imports: [RouterLink, LucideAngularModule, PageHeroComponent],
   host: { class: 'block bp-vpfit' },
   template: `
     <app-page-hero
@@ -47,11 +48,20 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
                     </span>
                   </div>
 
-                  <!-- Suppliers on the project (names only). -->
+                  <!-- Suppliers on the project — collapsed behind a toggle. -->
                   @if (row.suppliers.length) {
-                    <div class="flex flex-col gap-0.5">
-                      @for (s of row.suppliers; track s) {
-                        <span class="bp-body-small text-secondary truncate">{{ s }}</span>
+                    <div>
+                      <button type="button" class="inline-flex items-center gap-1 bp-body-small text-secondary transition-colors hover:text-text"
+                              (click)="toggle(row.id, $event)">
+                        <lucide-icon [name]="isOpen(row.id) ? 'chevron-down' : 'chevron-right'" [size]="15" />
+                        {{ isOpen(row.id) ? 'Hide suppliers' : 'Show suppliers' }} ({{ row.suppliers.length }})
+                      </button>
+                      @if (isOpen(row.id)) {
+                        <div class="mt-1.5 flex flex-col gap-0.5 pl-5">
+                          @for (s of row.suppliers; track s) {
+                            <span class="bp-body-small text-secondary truncate">{{ s }}</span>
+                          }
+                        </div>
                       }
                     </div>
                   } @else {
@@ -72,6 +82,22 @@ export class InboxLandingComponent {
   protected readonly rows = resource<InboxSummaryRow[], void>({
     loader: () => firstValueFrom(this.inbox.summary()),
   });
+
+  /** Which project cards have their supplier list expanded. */
+  private readonly expanded = signal(new Set<string>());
+  protected isOpen(id: string): boolean {
+    return this.expanded().has(id);
+  }
+  /** Toggle a card's supplier list without following the card's link. */
+  protected toggle(id: string, ev: Event): void {
+    ev.preventDefault();
+    ev.stopPropagation();
+    this.expanded.update((set) => {
+      const next = new Set(set);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
 
   /** One pill for the whole project. Action Required wins; else waiting on
    *  suppliers; else everything settled. */
