@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ballpark — Coachmarks (1-pager)</title>
+<style>
+  :root {
+    --bg: #fbf7f4;
+    --surface: #ffffff;
+    --text: #1f2937;
+    --text-secondary: #6b7280;
+    --border: 1px solid #e5e7eb;
+    --radius: 12px;
+    --accent: #d63384;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+    --client: #0ea5e9;
+    --server: #8b5cf6;
+    --db: #047857;
+    --admin: #b45309;
+    --built: #047857;
+    --planned: #6b7280;
+  }
+  body {
+    margin: 0; padding: 28px 36px;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    line-height: 1.45;
+  }
+  .page { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; font-weight: 700; }
+  .lead { color: var(--text-secondary); margin: 0 0 24px; font-size: 13px; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+
+  .card {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .card h2 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin: 0 0 10px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table th, table td { text-align: left; padding: 6px 8px; vertical-align: top; }
+  table thead th {
+    color: var(--text-secondary);
+    font-weight: 600;
+    border-bottom: var(--border);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  table tbody tr { border-bottom: 1px solid #f3f4f6; }
+  table tbody tr:last-child { border-bottom: none; }
+  .col { font-weight: 600; font-size: 12px; }
+
+  ul.compact { margin: 0; padding-left: 16px; font-size: 12px; }
+  ul.compact li { margin-bottom: 5px; }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    background: #f3f4f6;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 4px;
+  }
+  .pill--built   { background: rgba(4,120,87,0.12);   color: var(--built); }
+  .pill--planned { background: #f3f4f6;               color: var(--planned); }
+
+  .diagram {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 18px;
+  }
+  .flow-svg { width: 100%; height: auto; max-height: 230px; display: block; }
+
+  .note {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #fafafa;
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+  }
+  .note strong { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Ballpark — Coachmarks</h1>
+  <p class="lead">Contextual help bubbles, <strong>defined in code</strong> and <strong>auto-registered</strong> into a table on first render; ballpark admins tune the <strong>copy + active flag</strong> — no add / delete (new ones are a dev task). Presentation is <strong>one primitive</strong>. Global platform config, no org scoping — like codelists / page-settings.</p>
+
+  <div style="margin:14px 0;padding:12px 14px;border-left:4px solid #047857;background:rgba(4,120,87,0.08);border-radius:6px;font-size:13px;line-height:1.55;">
+    <strong>✅ SHIPPED — pV2-COACHMARKS-01 (v2.173).</strong> Now live, not planned: the <code>coachmarks</code> table, the auto-register-on-render flow, the <code>/settings/coachmarks</code> admin tab (edit copy + toggle active, no add/delete), and the Ballpark Cost first instance. Any "PLANNED" tags below are historical — read them as built.
+  </div>
+
+  <!-- Flow -->
+  <div class="diagram">
+    <h2 style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin: 0 0 12px;">How a coachmark reaches the screen</h2>
+    <svg class="flow-svg" viewBox="0 0 960 210" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- admin -->
+      <g>
+        <rect x="20" y="70" width="150" height="54" rx="8" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+        <text x="95" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#b45309">Ballpark admin</text>
+        <text x="95" y="108" text-anchor="middle" font-size="9.5" fill="#6b7280">/settings/coachmarks</text>
+      </g>
+      <line x1="170" y1="97" x2="205" y2="97" stroke="#9ca3af" stroke-width="1.3"/>
+      <polygon points="205,97 198,93 198,101" fill="#9ca3af"/>
+
+      <!-- table -->
+      <g>
+        <rect x="207" y="70" width="150" height="54" rx="8" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+        <text x="282" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#047857">coachmarks</text>
+        <text x="282" y="108" text-anchor="middle" font-size="9.5" fill="#6b7280">table (3 schemas)</text>
+      </g>
+      <line x1="357" y1="97" x2="392" y2="97" stroke="#9ca3af" stroke-width="1.3"/>
+      <polygon points="392,97 385,93 385,101" fill="#9ca3af"/>
+
+      <!-- api -->
+      <g>
+        <rect x="394" y="70" width="170" height="54" rx="8" fill="#fff" stroke="#8b5cf6" stroke-width="1.5"/>
+        <text x="479" y="90" text-anchor="middle" font-size="11" font-weight="700" fill="#8b5cf6">GET /api/coachmarks</text>
+        <text x="479" y="106" text-anchor="middle" font-size="9.5" fill="#6b7280">?page=… (any authed)</text>
+      </g>
+      <line x1="564" y1="97" x2="599" y2="97" stroke="#9ca3af" stroke-width="1.3"/>
+      <polygon points="599,97 592,93 592,101" fill="#9ca3af"/>
+
+      <!-- service -->
+      <g>
+        <rect x="601" y="70" width="150" height="54" rx="8" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="676" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#0ea5e9">CoachmarkService</text>
+        <text x="676" y="108" text-anchor="middle" font-size="9.5" fill="#6b7280">fetch by page</text>
+      </g>
+      <line x1="751" y1="97" x2="786" y2="97" stroke="#9ca3af" stroke-width="1.3"/>
+      <polygon points="786,97 779,93 779,101" fill="#9ca3af"/>
+
+      <!-- bubble -->
+      <g>
+        <rect x="788" y="58" width="150" height="60" rx="10" fill="#fff" stroke="#d63384" stroke-width="1.6"/>
+        <rect x="855" y="112" width="11" height="11" rx="2" fill="#fff" stroke="#d63384" stroke-width="1.6" transform="rotate(45 860 117)"/>
+        <text x="863" y="82" text-anchor="middle" font-size="11" font-weight="700" fill="#d63384">&lt;app-coachmark&gt;</text>
+        <text x="863" y="98" text-anchor="middle" font-size="9.5" fill="#6b7280">pink bubble on the tab</text>
+      </g>
+
+      <!-- localStorage note -->
+      <g>
+        <rect x="601" y="160" width="337" height="34" rx="8" fill="#fafafa" stroke="#e5e7eb" stroke-width="1"/>
+        <text x="769" y="181" text-anchor="middle" font-size="10.5" fill="#6b7280">"Don't show again" → <tspan font-family="ui-monospace,monospace" fill="#374151">localStorage</tspan> (per browser)</text>
+      </g>
+      <line x1="676" y1="124" x2="676" y2="160" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3,3"/>
+
+      <!-- legend -->
+      <g transform="translate(20, 178)">
+        <rect x="0" y="0" width="12" height="12" rx="2" fill="#fff" stroke="#b45309" stroke-width="1.4"/>
+        <text x="17" y="10" font-size="10" fill="#374151">Admin</text>
+        <rect x="70" y="0" width="12" height="12" rx="2" fill="#fff" stroke="#047857" stroke-width="1.4"/>
+        <text x="87" y="10" font-size="10" fill="#374151">DB</text>
+        <rect x="120" y="0" width="12" height="12" rx="2" fill="#fff" stroke="#8b5cf6" stroke-width="1.4"/>
+        <text x="137" y="10" font-size="10" fill="#374151">API</text>
+        <rect x="180" y="0" width="12" height="12" rx="2" fill="#fff" stroke="#0ea5e9" stroke-width="1.4"/>
+        <text x="197" y="10" font-size="10" fill="#374151">Client</text>
+      </g>
+    </svg>
+    <p style="font-size:11px; color:var(--text-secondary); margin:10px 2px 0;"><strong>Tracking:</strong> bubbles are <strong>code-defined</strong> and auto-register (upsert) their row on first render — the table is then where admins <strong>edit the copy + toggle active</strong> (no add / delete).</p>
+  </div>
+
+  <!-- ROW: Primitive + Behaviour -->
+  <div class="row-2">
+
+    <div class="card">
+      <h2>The primitive — <code>&lt;app-coachmark&gt;</code> <span class="pill pill--built">BUILT</span></h2>
+      <p style="font-size:12px; margin:0 0 8px; color:var(--text-secondary);">One presentation component; the pink bubble per spec. <code>client-v2/.../shared/coachmark/coachmark.component.ts</code>.</p>
+      <ul class="compact">
+        <li><strong>Anatomy:</strong> white <code>--color-surface</code> card, 18rem wide, <code>--theme-accent</code> border + a 2px ring + pink glow shadow, rounded 1rem, a rotated-square <strong>tail</strong> merging into the card.</li>
+        <li><strong>Inputs:</strong> <code>key</code> (required — the dismissal id) · <code>tail</code> (<code>'up'</code>/<code>'down'</code>, default up). Body via <code>&lt;ng-content&gt;</code>. Output: <code>dismissed</code>.</li>
+        <li><strong>Foot:</strong> a "Don't show again" checkbox (left) + an "Okay" gradient button (right).</li>
+        <li><strong>Token:</strong> rides <code>--theme-accent</code> throughout (the old <code>--primary</code> mapping) — themes per org.</li>
+        <li><strong>Reusable:</strong> drop it anywhere, pass copy + tail side. First mount target: the Ballpark Cost tab.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Behaviour — Okay vs Don't-show-again</h2>
+      <ul class="compact">
+        <li><strong>Shows on mount</strong> unless previously suppressed. Renders nothing when suppressed.</li>
+        <li><strong>"Okay"</strong> = dismiss <em>this mount only</em> — it may show again next visit.</li>
+        <li><strong>"Don't show again" + Okay</strong> = never again on this browser: persists <code>bp-coachmark:&lt;key&gt;</code> = <code>1</code> in <code>localStorage</code> (try/catch for private mode).</li>
+        <li><strong>Per-browser, not per-account</strong> (localStorage). A server-side per-user flag (follows the account across devices) is the deliberate <em>later</em> option; starting with localStorage.</li>
+        <li><strong>First instance copy:</strong> "Here is your ballpark cost. Feel free to remove anything and add elements from the marketplace." (tail up, at the tab).</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- ROW: Data model + Server/Admin -->
+  <div class="row-2">
+
+    <div class="card">
+      <h2>Data model — <code>coachmarks</code> table <span class="pill pill--planned">PLANNED</span></h2>
+      <p style="font-size:12px; margin:0 0 8px; color:var(--text-secondary);">Global platform config in <code>migrate-schemas.js</code> (all 3 schemas), no org scoping — like codelists. Rows aren't authored in admin: <strong>code-defined coachmarks auto-register (upsert) their row on first render</strong> — that's the "tracking". The table then holds the admin-editable copy + active flag.</p>
+      <table>
+        <tbody>
+          <tr><td class="col">page</td><td>which surface (e.g. <code>ballpark-cost</code>)</td></tr>
+          <tr><td class="col">name</td><td>coachmark id on that page (e.g. <code>intro</code>)</td></tr>
+          <tr><td class="col">description</td><td>the coachmark body copy</td></tr>
+          <tr style="color:var(--text-secondary);"><td class="col">info</td><td>extra help text — a "more info" layer <span class="pill" style="background:rgba(180,83,9,0.12); color:var(--admin);">FUTURE · out of scope</span></td></tr>
+          <tr style="color:var(--text-secondary);"><td class="col">design</td><td>notes on the design + planned / design enhancements for this surface <span class="pill" style="background:rgba(180,83,9,0.12); color:var(--admin);">FUTURE · out of scope</span></td></tr>
+          <tr><td class="col">tail</td><td><code>up</code> / <code>down</code> (default <code>up</code>)</td></tr>
+          <tr><td class="col">is_active</td><td>show / hide (default true)</td></tr>
+          <tr><td class="col">sort_order</td><td>order when a page has several</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:11px; margin:8px 0 0; color:var(--text-secondary);">Unique on <code>(page, name)</code> · + audit columns. Client key = <code>page:name</code>. First render seeds <code>description</code> from the code default; an admin edit then wins. <strong><code>info</code> + <code>design</code> are a future extension</strong> — nullable additive columns, out of scope for the first build.</p>
+    </div>
+
+    <div class="card">
+      <h2>Server + admin <span class="pill pill--planned">PLANNED</span></h2>
+      <ul class="compact">
+        <li><strong>Read</strong> — <code>GET /api/coachmarks?page=…</code>, open to any authenticated user (the app fetches what to show).</li>
+        <li><strong>Register</strong> — an idempotent upsert on first render (any authed user): inserts the code-declared <code>(page, name, default copy, tail)</code> if absent, no-op if present. Not an admin action.</li>
+        <li><strong>Edit</strong> — <code>PATCH /api/coachmarks/:id</code> behind <code>ballparkAdminGuard</code> (<code>admin.cross_org_view</code>), limited to <code>description</code> + <code>is_active</code>. <strong>No create, no delete</strong> — the code owns which coachmarks exist.</li>
+        <li><strong>Service</strong> — <code>coachmarks.service.js</code> holds the SQL; routes stay thin (ENGINEERING Rule).</li>
+        <li><strong>Admin surface</strong> — a new <code>/settings/coachmarks</code> (ballparkAdminGuard) + <code>CoachmarksSettingsComponent</code>: a page · name · description · active table where admins <strong>edit copy + toggle active only</strong> (no add/delete). Mirrors codelists-settings' edit affordances; linked from the account-menu admin links (beside Page settings / Early access).</li>
+        <li><strong>Client</strong> — <code>CoachmarkService</code> fetches by page (and registers on first render); a tab requests <code>page='ballpark-cost'</code> and renders each active row via <code>&lt;app-coachmark&gt;</code>.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <strong>Status:</strong> the <code>&lt;app-coachmark&gt;</code> primitive is <strong>built</strong>; the data vertical (table → service → routes → <code>/settings/coachmarks</code> admin → <code>CoachmarkService</code> wiring) is <strong>planned / in build</strong> (in a separate build session). Design decisions settled: coachmarks are <strong>code-defined and auto-register on first render</strong> (the tracking); admins <strong>edit copy + toggle active only</strong> — no add/delete (new ones are a dev task); multiple per page via <code>(page, name)</code>; per-browser <code>localStorage</code> dismissal now (server-side per-user flag deferred). First live target: the Ballpark Cost tab. Spec memory: <code>project_coachmark_spec</code>.
+  </div>
+
+</div>
+</body>
+</html>

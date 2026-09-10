@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ballpark — Infrastructure (1-pager)</title>
+<style>
+  :root {
+    --bg: #fbf7f4;
+    --surface: #ffffff;
+    --text: #1f2937;
+    --text-secondary: #6b7280;
+    --border: 1px solid #e5e7eb;
+    --radius: 12px;
+    --accent: #d63384;
+    --accent-soft: linear-gradient(135deg, #fde7f0 0%, #e6f4ea 100%);
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+    --frontend: #0ea5e9;
+    --backend: #8b5cf6;
+    --db: #047857;
+    --external: #b45309;
+  }
+  body {
+    margin: 0; padding: 28px 36px;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    line-height: 1.45;
+  }
+  .page { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; font-weight: 700; }
+  .lead { color: var(--text-secondary); margin: 0 0 24px; font-size: 13px; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+
+  .card {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .card h2 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin: 0 0 10px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table th, table td { text-align: left; padding: 6px 8px; }
+  table thead th {
+    color: var(--text-secondary);
+    font-weight: 600;
+    border-bottom: var(--border);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  table tbody tr { border-bottom: 1px solid #f3f4f6; }
+  table tbody tr:last-child { border-bottom: none; }
+  .layer-name { font-weight: 600; font-size: 12px; }
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    background: #f3f4f6;
+    color: var(--text-secondary);
+    margin-left: 4px;
+  }
+  .pill--frontend { background: rgba(14,165,233,0.12); color: var(--frontend); }
+  .pill--backend  { background: rgba(139,92,246,0.12); color: var(--backend); }
+  .pill--db       { background: rgba(4,120,87,0.12);   color: var(--db); }
+  .pill--external { background: rgba(180,83,9,0.12);   color: var(--external); }
+
+  /* Architecture diagram */
+  .diagram {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 18px;
+  }
+  .arch-svg { width: 100%; height: auto; max-height: 320px; display: block; }
+
+  ul.compact { margin: 0; padding-left: 16px; font-size: 12px; }
+  ul.compact li { margin-bottom: 4px; }
+
+  .note {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #fafafa;
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+  }
+  .note strong { color: var(--text); }
+
+  .small-table td { font-size: 11px; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    background: #f3f4f6;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Ballpark — Infrastructure</h1>
+  <p class="lead">What runs where, who hosts it, and how the pieces talk to each other.</p>
+
+  <!-- Architecture diagram -->
+  <div class="diagram">
+    <h2 style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin: 0 0 12px;">Architecture at a glance</h2>
+    <svg class="arch-svg" viewBox="0 0 920 280" xmlns="http://www.w3.org/2000/svg">
+      <!-- User -->
+      <g>
+        <circle cx="60" cy="140" r="22" fill="#fff" stroke="#9ca3af" stroke-width="1.5"/>
+        <text x="60" y="146" text-anchor="middle" font-size="14" fill="#374151">User</text>
+        <text x="60" y="180" text-anchor="middle" font-size="11" fill="#6b7280">browser</text>
+      </g>
+
+      <!-- arrow -->
+      <line x1="85" y1="140" x2="155" y2="140" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <polygon points="155,140 148,136 148,144" fill="#9ca3af"/>
+
+      <!-- Frontend (Vercel) -->
+      <g>
+        <rect x="160" y="80" width="180" height="120" rx="10" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="250" y="105" text-anchor="middle" font-size="12" font-weight="700" fill="#0ea5e9">FRONTEND</text>
+        <text x="250" y="128" text-anchor="middle" font-size="13" fill="#1f2937" font-weight="600">Angular SPA</text>
+        <text x="250" y="146" text-anchor="middle" font-size="11" fill="#6b7280">v1: client-angular (v18)</text>
+        <text x="250" y="160" text-anchor="middle" font-size="11" fill="#6b7280">v2: client-v2 (v22) [building]</text>
+        <text x="250" y="184" text-anchor="middle" font-size="11" fill="#374151" font-weight="600">Vercel</text>
+      </g>
+
+      <!-- arrow -->
+      <line x1="345" y1="140" x2="425" y2="140" stroke="#9ca3af" stroke-width="1.5"/>
+      <polygon points="425,140 418,136 418,144" fill="#9ca3af"/>
+      <text x="385" y="132" text-anchor="middle" font-size="10" fill="#6b7280">HTTPS / JSON</text>
+
+      <!-- Backend (Railway) -->
+      <g>
+        <rect x="430" y="80" width="180" height="120" rx="10" fill="#fff" stroke="#8b5cf6" stroke-width="1.5"/>
+        <text x="520" y="105" text-anchor="middle" font-size="12" font-weight="700" fill="#8b5cf6">API</text>
+        <text x="520" y="128" text-anchor="middle" font-size="13" fill="#1f2937" font-weight="600">Node.js + Express</text>
+        <text x="520" y="146" text-anchor="middle" font-size="11" fill="#6b7280">JWT middleware</text>
+        <text x="520" y="160" text-anchor="middle" font-size="11" fill="#6b7280">/api/* routes</text>
+        <text x="520" y="184" text-anchor="middle" font-size="11" fill="#374151" font-weight="600">Railway</text>
+      </g>
+
+      <!-- arrow -->
+      <line x1="615" y1="140" x2="695" y2="140" stroke="#9ca3af" stroke-width="1.5"/>
+      <polygon points="695,140 688,136 688,144" fill="#9ca3af"/>
+      <text x="655" y="132" text-anchor="middle" font-size="10" fill="#6b7280">SQL / pooler</text>
+
+      <!-- Database (Supabase) -->
+      <g>
+        <rect x="700" y="80" width="180" height="120" rx="10" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+        <text x="790" y="105" text-anchor="middle" font-size="12" font-weight="700" fill="#047857">DATABASE</text>
+        <text x="790" y="128" text-anchor="middle" font-size="13" fill="#1f2937" font-weight="600">PostgreSQL 17.6</text>
+        <text x="790" y="146" text-anchor="middle" font-size="11" fill="#6b7280">schemas: public · preview · master</text>
+        <text x="790" y="160" text-anchor="middle" font-size="11" fill="#6b7280">Storage + Auth (some)</text>
+        <text x="790" y="184" text-anchor="middle" font-size="11" fill="#374151" font-weight="600">Supabase</text>
+      </g>
+
+      <!-- External services (bottom) -->
+      <g>
+        <rect x="160" y="225" width="160" height="40" rx="8" fill="#fff" stroke="#b45309" stroke-width="1"/>
+        <text x="240" y="242" text-anchor="middle" font-size="11" font-weight="600" fill="#b45309">Resend</text>
+        <text x="240" y="256" text-anchor="middle" font-size="10" fill="#6b7280">transactional email</text>
+      </g>
+      <g>
+        <rect x="330" y="225" width="160" height="40" rx="8" fill="#fff" stroke="#b45309" stroke-width="1"/>
+        <text x="410" y="242" text-anchor="middle" font-size="11" font-weight="600" fill="#b45309">Google OAuth</text>
+        <text x="410" y="256" text-anchor="middle" font-size="10" fill="#6b7280">sign-in (coming)</text>
+      </g>
+      <g>
+        <rect x="500" y="225" width="160" height="40" rx="8" fill="#fff" stroke="#b45309" stroke-width="1"/>
+        <text x="580" y="242" text-anchor="middle" font-size="11" font-weight="600" fill="#b45309">Unsplash</text>
+        <text x="580" y="256" text-anchor="middle" font-size="10" fill="#6b7280">image search</text>
+      </g>
+      <g>
+        <rect x="670" y="225" width="210" height="40" rx="8" fill="#fff" stroke="#b45309" stroke-width="1"/>
+        <text x="775" y="242" text-anchor="middle" font-size="11" font-weight="600" fill="#b45309">Anthropic API</text>
+        <text x="775" y="256" text-anchor="middle" font-size="10" fill="#6b7280">brief parsing, AI features</text>
+      </g>
+
+      <!-- Dashed line connecting backend to externals -->
+      <line x1="520" y1="200" x2="240" y2="225" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="520" y1="200" x2="410" y2="225" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="520" y1="200" x2="580" y2="225" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="520" y1="200" x2="775" y2="225" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3,3"/>
+    </svg>
+  </div>
+
+  <!-- ROW: Tech stack + Hosting -->
+  <div class="row-2">
+
+    <div class="card">
+      <h2>Tech stack</h2>
+      <table>
+        <tbody>
+          <tr>
+            <td class="layer-name">Frontend (v1)</td>
+            <td>Angular 18, PrimeNG 17, Tailwind, Lucide</td>
+          </tr>
+          <tr>
+            <td class="layer-name">Frontend (v2) <span class="pill pill--frontend">building</span></td>
+            <td>Angular 21, PrimeNG 21 (Aura), Tailwind, Lucide<br><span style="font-size:10px;color:var(--text-secondary);">PrimeNG 21 only pairs with Angular ≤ 21 — newer Angular awaits a future PrimeNG release</span></td>
+          </tr>
+          <tr>
+            <td class="layer-name">API</td>
+            <td>Node.js, Express 4, <code>pg</code> driver</td>
+          </tr>
+          <tr>
+            <td class="layer-name">Database</td>
+            <td>PostgreSQL 17.6 (Supabase-managed)</td>
+          </tr>
+          <tr>
+            <td class="layer-name">Auth (planned)</td>
+            <td>Google OAuth + JWT cookies</td>
+          </tr>
+          <tr>
+            <td class="layer-name">Email</td>
+            <td>Resend</td>
+          </tr>
+          <tr>
+            <td class="layer-name">AI</td>
+            <td>Anthropic SDK (Claude)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Hosting & environments</h2>
+      <table>
+        <tbody>
+          <tr>
+            <td class="layer-name">Frontend</td>
+            <td>Vercel <span class="pill pill--frontend">static</span></td>
+          </tr>
+          <tr>
+            <td class="layer-name">API</td>
+            <td>Railway <span class="pill pill--backend">container</span></td>
+          </tr>
+          <tr>
+            <td class="layer-name">Database</td>
+            <td>Supabase <span class="pill pill--db">managed PG</span></td>
+          </tr>
+          <tr>
+            <td class="layer-name">Storage</td>
+            <td>Supabase Storage <span class="pill pill--db">S3-compatible</span></td>
+          </tr>
+          <tr>
+            <td class="layer-name">Schemas (env split)</td>
+            <td><code>public</code> · <code>preview</code> · <code>master</code></td>
+          </tr>
+          <tr>
+            <td class="layer-name">Branches</td>
+            <td><code>dev</code> → preview · <code>master</code> → production</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- ROW: Data flow + Future -->
+  <div class="row-2">
+
+    <div class="card">
+      <h2>How a request flows</h2>
+      <ul class="compact">
+        <li>User opens <code>app.ballpark.dev</code> → Vercel serves the Angular bundle</li>
+        <li>Bundle hits <code>/api/*</code> on the Railway-hosted Node API</li>
+        <li>API validates JWT cookie, sets <code>app.current_user_id</code> session var</li>
+        <li>API queries Supabase Postgres via the pooler (Supavisor on :5432)</li>
+        <li>Audit trigger stamps <code>updated_by</code> from <code>current_user_id()</code></li>
+        <li>Response returned as JSON</li>
+        <li>External calls (Resend / Google OAuth / Unsplash / Anthropic) fan out from the API only — frontend never touches them directly</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Future-proofing <span class="pill pill--frontend">v2 work</span></h2>
+      <ul class="compact">
+        <li><strong>Runtime-configurable API URL</strong> — <code>/runtime-config.json</code> loaded at boot. No rebuild needed to point at a different API.</li>
+        <li><strong>Env-driven config</strong> in API — no hardcoded vendor URLs. Easy swap.</li>
+        <li><strong>One token bridge</strong> — Ballpark's <code>--theme-*</code> tokens map to PrimeNG Aura design tokens in a single file. No <code>.p-*</code> overrides scattered.</li>
+        <li><strong>Wrapped external services</strong> — <code>StorageService</code> / <code>EmailService</code> abstractions so vendors can be swapped without touching feature code.</li>
+        <li><strong>Self-host story</strong> — deferred for now. The above gates keep the option open: deliver as Angular static dist + Docker image + Postgres schema script + Google OAuth env vars.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <strong>Source of truth:</strong> schema migrations live in <code>server/src/db/migrate-schemas.js</code>. Every column add / table create writes to all three schemas (<code>public</code>, <code>preview</code>, <code>master</code>) explicitly — see WORKING_STANDARDS for the rule. UUIDs are generated with <code>gen_random_uuid()</code> (PG13+ built-in, schema-portable).
+    <br><br>⚠ <strong>DB host — confirm:</strong> <code>migrate-schemas.js:10</code> states the database is <strong>Railway PostgreSQL</strong> (Node connects as owner, bypassing RLS); the Supabase SDK is present but not the primary DB path. The "Supabase-managed" labels above may be stale — verify the host before relying on them.
+  </div>
+
+</div>
+</body>
+</html>

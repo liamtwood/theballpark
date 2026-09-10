@@ -117,12 +117,13 @@
   <div class="row-2">
 
     <div class="card">
-      <h2>Sign in</h2>
+      <h2>Sign in <span class="pill">v2 · live</span></h2>
       <ul class="compact">
-        <li><strong>Google</strong> — one-click sign-in</li>
-        <li><strong>Magic Link</strong> — email a one-time link (no password)</li>
-        <li>No passwords stored; auth handled by Supabase</li>
-        <li>Optional MFA available later (config only, no code change)</li>
+        <li><strong>Google OAuth</strong> — one-click, via Passport (<code>passport-google-oauth20</code>)</li>
+        <li>On callback the server upserts the user and sets a <strong>JWT session cookie</strong> <code>bp_session</code> (httpOnly, sameSite lax, 7-day)</li>
+        <li>No passwords stored by the app; identity (email + name) comes from Google</li>
+        <li><strong>Dev-only</strong> <code>POST /auth/dev/login</code> impersonates seeded users (403 in prod)</li>
+        <li>v1 (legacy, port 4200) has no cookie — it sends an <code>x-bp-user-id</code> header (a stopgap, retires with v1 at pV2-11)</li>
       </ul>
     </div>
 
@@ -169,7 +170,7 @@
         </tr>
         <tr>
           <td class="role-name">Ballpark Admin <small>org_type=ballpark</small></td>
-          <td>Anthropic-internal. Cross-org tooling for support, config, debug. Read-mostly across all orgs.</td>
+          <td>Ballpark platform team (internal). Cross-org tooling for support, config, debug. Read-mostly across all orgs.</td>
         </tr>
       </tbody>
     </table>
@@ -223,7 +224,7 @@
       <div class="flow">
         <div class="flow-step">
           <strong>1. Login</strong>
-          <small>Google / Magic Link</small>
+          <small>Google OAuth</small>
         </div>
         <div class="flow-step">
           <strong>2. Identify</strong>
@@ -239,7 +240,7 @@
   </div>
 
   <div class="note">
-    <strong>Privacy:</strong> Ballpark uses Supabase Auth. No passwords are stored by the app. Email + name come from Google or the user's Magic Link sign-in. Users can delete their account from Settings at any time.
+    <strong>Privacy &amp; authority:</strong> Sign-in is <strong>Google OAuth</strong> (Passport); the app stores no passwords. The session is a signed <strong>JWT cookie</strong> (<code>bp_session</code>) carrying <strong>identity only</strong> (<code>sub, email, org_id</code>) — never role or authority. Effective role is <strong>re-derived per request from <code>user_orgs</code></strong> (Hygiene Rule 4: JWTs carry identity, not authority). Email + name come from Google. Users can delete their account from Settings.
   </div>
 
 </div>
