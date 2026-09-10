@@ -60,4 +60,11 @@ function notDeclinedSql(statusCol = 'pi.status') {
   return `(NOT ${isDeclinedSql(statusCol)})`;
 }
 
-module.exports = { lineTotalSql, isDeclinedSql, notDeclinedSql, DECLINED_STATUS_PREFIX };
+/** JS boolean — TRUE when a line status is declined/cancelled. Matches the SAME
+ *  `declined%` prefix as isDeclinedSql so JS readers (inbox rollups) can't drift
+ *  from the SQL totals when a new `declined_*` code is added (audit F3 / RP-11). */
+function isDeclined(status) {
+  return typeof status === 'string' && status.startsWith(DECLINED_STATUS_PREFIX);
+}
+
+module.exports = { lineTotalSql, isDeclinedSql, notDeclinedSql, isDeclined, DECLINED_STATUS_PREFIX };

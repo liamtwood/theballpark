@@ -14,7 +14,7 @@
 
 const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
-const { lineTotalSql } = require('./line-total.util');
+const { lineTotalSql, isDeclined } = require('./line-total.util');
 const TaxonomyService = require('./taxonomy.service');
 const messageService = require('./message.service');
 const projectsService = require('./projects.service');
@@ -458,7 +458,7 @@ function itemWaitingOn(it) {
   // Settled — nobody owes an action: booked, both accepted, or declined by
   // either side (a cancelled/declined line is done).
   if (s === 'booked' || (buyerAccepted && sellerAccepted)) return null;
-  if (s === 'declined_by_agent' || s === 'declined_by_supplier') return null;
+  if (isDeclined(s)) return null;
   // On the agent: the supplier has come back (quote / adjustment / accept)
   // and it's the agency's move.
   if (sellerAccepted && !buyerAccepted) return 'agent';
@@ -525,7 +525,7 @@ async function getAgentInboxSummary(agencyOrgId) {
         if (seen.has(it.id)) continue; // same line can tag multiple briefs
         seen.add(it.id);
         // Cancelled/declined lines are done — don't count them at all.
-        if (it.status === 'declined_by_agent' || it.status === 'declined_by_supplier') continue;
+        if (isDeclined(it.status)) continue;
         n++;
         const w = itemWaitingOn(it);
         if (w === 'agent') {
@@ -600,7 +600,7 @@ async function getProjectOverview(agencyOrgId, projectId) {
       if (seen.has(it.id)) continue;
       seen.add(it.id);
       const s = it.status;
-      if (s === 'declined_by_agent' || s === 'declined_by_supplier') continue; // excluded
+      if (isDeclined(s)) continue; // excluded
       totalItems++;
       const agreed = s === 'booked' || (it.buyer_status === 'accepted' && it.seller_status === 'accepted');
       if (agreed) {

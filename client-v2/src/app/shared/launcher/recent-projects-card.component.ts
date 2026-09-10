@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, resource } from '
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
-import { ProjectCard } from '../../core/projects/project.types';
+import { COMPLETED_STATUSES, ProjectCard } from '../../core/projects/project.types';
 
 /** Agent home — the "Recent projects" panel (Liam, 2026-09-09). Rendered as
  *  a launcher grid child spanning two tile columns (under New/Past projects).
@@ -159,10 +159,11 @@ export class RecentProjectsCardComponent {
   });
 
   /** Four most-recently-updated OPEN projects — completed/archived are excluded
-   *  (they live under Past projects → Completed). */
+   *  (they live under Past projects → Completed). Uses the shared
+   *  COMPLETED_STATUSES set so the "open" rule can't drift. */
   protected readonly recent = computed(() =>
     [...(this.loader.value() ?? [])]
-      .filter((p) => p.status !== 'completed' && p.status !== 'archived')
+      .filter((p) => !COMPLETED_STATUSES.has(p.status))
       .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
       .slice(0, 4)
   );
