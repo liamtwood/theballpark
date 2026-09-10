@@ -54,9 +54,19 @@ export interface RailOuter {
             <span class="min-w-0 flex-1">
               <span class="bp-list-title block truncate">{{ o.label }}</span>
               @let c = counts(o);
-              <span class="bp-meta mt-0.5 block">
-                {{ c.items }} item{{ c.items === 1 ? '' : 's' }} · {{ c.accepted }} accepted ·
-                <span [class.font-semibold]="c.action > 0" [style.color]="c.action > 0 ? 'var(--theme-accent)' : null">{{ c.action }} action required</span>
+              <!-- Compact stats: items · accepted · action-required (icons keep it
+                   on one line in the narrow rail; full words on hover). -->
+              <span class="bp-meta mt-1 flex items-center gap-2.5">
+                <span class="inline-flex items-center gap-1" [title]="c.items + ' items'">
+                  <lucide-icon name="package" [size]="13" class="text-muted" />{{ c.items }}
+                </span>
+                <span class="inline-flex items-center gap-1" [title]="c.accepted + ' accepted'">
+                  <lucide-icon name="circle-check" [size]="13" class="text-muted" />{{ c.accepted }}
+                </span>
+                <span class="inline-flex items-center gap-1" [title]="c.action + ' action required'"
+                      [style.color]="c.action > 0 ? 'var(--theme-accent)' : null" [class.font-semibold]="c.action > 0">
+                  <lucide-icon name="circle-alert" [size]="13" />{{ c.action }}
+                </span>
               </span>
             </span>
           </button>
