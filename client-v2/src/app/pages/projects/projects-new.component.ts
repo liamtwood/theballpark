@@ -90,7 +90,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
               <h2 class="bp-card-title">Project details</h2>
 
               <div class="mt-4 flex gap-4">
-                <label class="block w-[calc(11ch+2.5rem)] shrink-0">
+                <label class="block w-[calc(6ch+2.5rem)] shrink-0">
                   <span class="bp-field-label">Ref</span>
                   <input type="text" class="bp-np-input" placeholder="Auto" title="Leave blank to auto-assign, or set your own" [value]="ref()" (input)="ref.set($any($event.target).value)" />
                 </label>
