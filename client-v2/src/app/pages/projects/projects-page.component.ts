@@ -39,9 +39,8 @@ import { ProjectCardComponent } from './project-card.component';
         } @else if (visible().length === 0) {
           <p class="bp-body-small text-secondary">{{ emptyCopy() }}</p>
         } @else {
-          <!-- Shared home-launcher layout (.bp-workspace-grid): a centred
-               max-1068px block, cards left-aligned inside it (3 → 2 → 1). -->
-          <div class="bp-workspace-grid mx-auto justify-start">
+          <!-- Two-wide card grid in the centred max-1068px column (1 → 2). -->
+          <div class="mx-auto grid w-full max-w-[var(--workspace-max)] grid-cols-1 gap-6 sm:grid-cols-2">
             @for (p of visible(); track p.id) {
               <app-project-card [project]="p" [now]="now()" [linkBase]="isSupplier() ? '/inbox' : '/projects'" />
             }
