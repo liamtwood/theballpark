@@ -24,14 +24,17 @@ import { ProjectCardComponent } from './project-card.component';
   imports: [PageHeroComponent, TabBandComponent, ProjectCardComponent],
   host: { class: 'block bp-vpfit' },
   template: `
-    <app-page-hero align="block" [eyebrow]="heroEyebrow()" [title]="heroTitle()" [subtitle]="heroSubtitle()">
-      @if (!isSupplier()) {
-        <app-tab-band hero-actions [tabs]="tabs()" [active]="bucket()" (activeChange)="bucket.set($event === 'completed' ? 'completed' : 'current')" />
-      }
-    </app-page-hero>
+    <app-page-hero align="block" [eyebrow]="heroEyebrow()" [title]="heroTitle()" [subtitle]="heroSubtitle()" />
 
     <div class="bp-page-body">
       <div class="min-h-0 overflow-y-auto md:flex-1">
+        <!-- Current/Completed filter lives in the work column, right-aligned so
+             its right edge lines up with the rightmost project card. -->
+        @if (!isSupplier()) {
+          <div class="mx-auto mb-4 flex w-full max-w-[var(--workspace-max)] justify-end">
+            <app-tab-band [tabs]="tabs()" [active]="bucket()" (activeChange)="bucket.set($event === 'completed' ? 'completed' : 'current')" />
+          </div>
+        }
         @if (loader.isLoading()) {
           <p class="bp-body-small text-secondary">Loading…</p>
         } @else if (loader.error()) {
