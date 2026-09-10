@@ -474,16 +474,22 @@ async function getAgentInboxSummary(agencyOrgId) {
     if (!all.length) continue; // no outreach yet → not in the Messages list
 
     // Group the project's messages by supplier, then roll up each supplier's
-    // items (deduped by line id across their category threads).
+    // items (deduped by line id across their category threads). `all` is
+    // created_at ASC, so the last bodied message we see is the latest — track
+    // it per supplier + overall for the "last message" hover.
     const bySupplier = new Map();
+    let projLastMessage = null;
     for (const m of all) {
+      const body = (m.body || '').trim();
+      if (body) projLastMessage = body;
       if (!m.supplier_org_id) continue;
       let g = bySupplier.get(m.supplier_org_id);
       if (!g) {
-        g = { name: m.supplier_name, messageIds: [] };
+        g = { name: m.supplier_name, messageIds: [], lastMessage: null };
         bySupplier.set(m.supplier_org_id, g);
       }
       g.messageIds.push(m.id);
+      if (body) g.lastMessage = body;
     }
 
     const suppliers = [];
@@ -512,6 +518,7 @@ async function getAgentInboxSummary(agencyOrgId) {
         waitingAgent: wa,
         waitingSupplier: ws,
         actionRequired: wa > 0,
+        lastMessage: truncate(g.lastMessage, 240),
       });
       waitingAgent += wa;
       waitingSupplier += ws;
@@ -527,9 +534,16 @@ async function getAgentInboxSummary(agencyOrgId) {
       waitingAgent,
       waitingSupplier,
       actionRequired: waitingAgent > 0,
+      lastMessage: truncate(projLastMessage, 240),
     });
   }
   return out;
+}
+
+/** Trim a string to `max` chars with an ellipsis (null-safe). */
+function truncate(s, max) {
+  if (!s) return null;
+  return s.length > max ? s.slice(0, max - 1).trimEnd() + '…' : s;
 }
 
 /** pV2-INBOX-01 — the caller-supplier replies in a thread: a chat message

@@ -52,6 +52,8 @@ export interface InboxWaitingCounts {
 /** One supplier on a project, with its own waiting rollup. */
 export interface InboxSummarySupplier extends InboxWaitingCounts {
   name: string;
+  /** The most recent message on this supplier's threads (for the hover). */
+  lastMessage: string | null;
 }
 
 /** One agency Messages-landing card: a project, its suppliers, and how many
@@ -61,6 +63,8 @@ export interface InboxSummaryRow extends InboxWaitingCounts {
   name: string;
   clientName: string | null;
   suppliers: InboxSummarySupplier[];
+  /** The most recent message across the project (for the hover). */
+  lastMessage: string | null;
 }
 
 export interface InboxItemAction {

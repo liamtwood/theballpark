@@ -119,8 +119,13 @@ export class InboxLandingComponent {
     return 'bp-pill--success';
   }
 
-  /** Hover breakdown on the pill. */
-  protected hoverText(c: InboxWaitingCounts): string {
+  /** Hover text on the pill: when the current user has an action, show the last
+   *  message (what they likely need to deal with); otherwise the count
+   *  breakdown. */
+  protected hoverText(c: InboxWaitingCounts & { lastMessage?: string | null }): string {
+    if (c.actionRequired && c.lastMessage) {
+      return `Needs your response — last message:\n\n“${c.lastMessage}”`;
+    }
     const items = `${c.itemCount} item${c.itemCount === 1 ? '' : 's'}`;
     return `${items} · ${c.waitingAgent} waiting on you, ${c.waitingSupplier} waiting on the supplier`;
   }
