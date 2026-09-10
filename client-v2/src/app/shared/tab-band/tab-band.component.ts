@@ -22,6 +22,7 @@ export interface TabBandTab {
   host: {
     class: 'bp-tab-band',
     '[class.bp-tab-band--even]': 'equalWidth()',
+    '[class.bp-tab-band--fill]': 'fill()',
   },
   template: `
     @for (tab of tabs(); track tab.key) {
@@ -48,4 +49,6 @@ export class TabBandComponent {
   readonly activeChange = output<string>();
   /** Give every tab an equal (fixed) width so the band reads even. */
   readonly equalWidth = input<boolean>(false);
+  /** Stretch the band to fill its container, tabs sharing the width equally. */
+  readonly fill = input<boolean>(false);
 }

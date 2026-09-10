@@ -106,7 +106,7 @@ interface DetailForm {
            overlay ABOVE the band in their own layer (absolute → no layout shift
            when they show/dismiss), tail pointing DOWN at the target tab. The
            x-offset aligns the tail with the target of the even-width tabs. -->
-      <div class="relative flex justify-center pt-3">
+      <div class="relative flex justify-center px-6 pt-3">
         @if (tab() === 'final') {
           <div class="pointer-events-none absolute bottom-full left-1/2 z-40 -translate-x-1/2 pb-2">
             <div class="-translate-x-[150px]">
@@ -122,7 +122,10 @@ interface DetailForm {
                            defaultText="Here is the marketplace. Keep track of your running estimate by going back to the Ballpark tab." />
           </div>
         }
-        <app-tab-band [tabs]="tabs()" [active]="tab()" [equalWidth]="true" (activeChange)="setTab($event)" />
+        <!-- Fill the working column so the tab band lines up with the content. -->
+        <div class="w-full max-w-[var(--workspace-max)]">
+          <app-tab-band [tabs]="tabs()" [active]="tab()" [fill]="true" (activeChange)="setTab($event)" />
+        </div>
       </div>
 
       <div class="bp-page-body">
