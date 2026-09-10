@@ -118,7 +118,13 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
               <div class="mt-4 grid grid-cols-2 gap-4">
                 <label class="block">
                   <span class="bp-field-label">Event date</span>
-                  <input type="text" class="bp-np-input" placeholder="e.g. 20 Aug 2026" title="Standard format: DD-Mmm-YYYY (free text like 'Q4' is fine too)" [value]="eventDate()" (input)="eventDate.set($any($event.target).value)" (blur)="onEventDateBlur()" />
+                  <!-- NATO display + native OS picker: the transparent date input
+                       sits over the calendar icon; picking reformats to NATO. -->
+                  <div class="relative">
+                    <input type="text" class="bp-np-input pr-10" placeholder="e.g. 20-Aug-2026" title="Standard format: DD-Mmm-YYYY (free text like 'Q4' is fine too)" [value]="eventDate()" (input)="eventDate.set($any($event.target).value)" (blur)="onEventDateBlur()" />
+                    <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted"><lucide-icon name="calendar" [size]="16" /></span>
+                    <input type="date" aria-label="Pick event date" class="absolute right-0 top-0 h-full w-11 cursor-pointer opacity-0" (change)="onEventDatePicked($any($event.target).value)" />
+                  </div>
                 </label>
                 <label class="block">
                   <span class="bp-field-label">Location</span>
@@ -254,6 +260,14 @@ export class ProjectsNewComponent {
   protected onEventDateBlur(): void {
     const v = this.eventDate().trim();
     if (v) this.eventDate.set(natoDate(v));
+  }
+
+  /** OS date picker → NATO. Build a LOCAL date from the yyyy-mm-dd parts so the
+   *  displayed day can't shift a day across time zones. */
+  protected onEventDatePicked(iso: string): void {
+    if (!iso) return;
+    const [y, m, d] = iso.split('-').map(Number);
+    this.eventDate.set(natoDate(new Date(y, m - 1, d).toDateString()));
   }
 
   protected onFile(e: Event): void {
