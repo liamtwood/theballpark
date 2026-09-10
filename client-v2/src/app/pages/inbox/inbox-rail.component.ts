@@ -37,20 +37,8 @@ export interface RailOuter {
   imports: [CurrencyPipe, LucideAngularModule],
   host: { class: 'hidden min-h-0 xl:flex xl:flex-col xl:gap-3 xl:overflow-y-auto' },
   template: `
-    @if (project(); as p) {
-      <div class="bp-card shrink-0 p-4">
-        <h3 class="bp-list-title leading-snug">{{ p.clientName ? p.clientName + ' — ' : '' }}{{ p.name }}</h3>
-        <div class="mt-2.5 flex items-center gap-1.5 text-secondary">
-          <lucide-icon name="calendar" [size]="14" [strokeWidth]="1.75" />
-          <span class="bp-body-small">{{ p.eventDate || 'Date TBC' }}</span>
-        </div>
-        <div class="mt-1.5 flex items-center gap-1.5 text-secondary">
-          <lucide-icon name="map-pin" [size]="14" [strokeWidth]="1.75" />
-          <span class="bp-body-small">{{ p.location || '—' }}</span>
-        </div>
-        <div class="mt-2 bp-meta">{{ p.agencyName }}</div>
-      </div>
-    }
+    <!-- Project context card removed — that info now lives in the conversation
+         header (Liam 2026-09-10). -->
 
     <!-- Outer counterparty cards (supplier / agency), the Final-Quote pattern:
          icon + name + total + chevron, expanding to category bands + items. -->
