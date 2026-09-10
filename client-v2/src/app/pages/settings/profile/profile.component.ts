@@ -81,10 +81,10 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
             }
           }
 
-          <!-- Two columns: LEFT = about + company + the rest; RIGHT =
-               availability + the image containers (Branding, Gallery). -->
-          <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
-            <!-- ── LEFT column ─────────────────────────────────────────── -->
+          <!-- Single column (narrow workspace): About Us → Branding → details,
+               with Availability + Gallery at the bottom. -->
+          <div class="flex flex-col gap-5">
+            <!-- ── Details ─────────────────────────────────────────────── -->
             <div class="flex flex-col gap-5">
               <!-- About Us — the public description blurb (orgs.description). -->
               <app-edit-section
@@ -108,6 +108,53 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                   <p class="bp-body whitespace-pre-line text-secondary">{{ store.form().description || '—' }}</p>
                 }
               </app-edit-section>
+
+              <!-- Branding — cover + logo, under About Us. The drawers ride WITH
+                   it so their (empty) hosts don't add stray gaps. -->
+              @if (store.profile.value(); as org) {
+                <div>
+                <app-edit-section title="Branding" [editable]="false">
+                  <app-org-media
+                    mode="edit"
+                    show="banner"
+                    [canEdit]="store.canEdit()"
+                    [name]="org.name"
+                    [subtitle]="org.description ?? ''"
+                    [coverUrl]="org.coverImageUrl"
+                    [logoUrl]="org.logoUrl"
+                    [images]="org.images"
+                    (editCover)="store.coverDrawer.set(true)"
+                    (editLogo)="store.logoDrawer.set(true)"
+                  />
+                </app-edit-section>
+
+                <app-drawer [(open)]="store.coverDrawer" title="Cover image">
+                  <app-image-picker
+                    entityType="profile"
+                    [enabledTabs]="store.coverTabs"
+                    [focalStep]="false"
+                    [searchSeed]="org.name"
+                    [currentImageUrl]="org.coverImageUrl"
+                    previewAspect="4/3"
+                    (chosen)="store.onPickCover($event)"
+                    (removed)="store.onRemoveCover()"
+                    (cancelled)="store.coverDrawer.set(false)"
+                  />
+                </app-drawer>
+                <app-drawer [(open)]="store.logoDrawer" title="Logo">
+                  <app-image-picker
+                    entityType="profile"
+                    [enabledTabs]="store.logoTabs"
+                    [focalStep]="false"
+                    [currentImageUrl]="org.logoUrl"
+                    previewAspect="1/1"
+                    (chosen)="store.onPickLogo($event)"
+                    (removed)="store.onRemoveLogo()"
+                    (cancelled)="store.logoDrawer.set(false)"
+                  />
+                </app-drawer>
+                </div>
+              }
 
               <div #companySection>
               <app-edit-section
@@ -188,60 +235,13 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
               </app-edit-section>
             </div>
 
-            <!-- ── RIGHT column ────────────────────────────────────────── -->
+            <!-- ── Bottom: Availability + Gallery ─────────────────────────── -->
             <div class="flex flex-col gap-5">
               <app-edit-section title="Availability" [editable]="false">
                 <p class="bp-caption">Coming soon.</p>
               </app-edit-section>
 
               @if (store.profile.value(); as org) {
-                <!-- Branding — cover + logo (the same media component the
-                     shopfront renders); org-media owns its own editing. The
-                     two drawers are wrapped WITH it so their (empty) hosts
-                     don't add extra flex gaps before Gallery. -->
-                <div>
-                <app-edit-section title="Branding" [editable]="false">
-                  <app-org-media
-                    mode="edit"
-                    show="banner"
-                    [canEdit]="store.canEdit()"
-                    [name]="org.name"
-                    [subtitle]="org.description ?? ''"
-                    [coverUrl]="org.coverImageUrl"
-                    [logoUrl]="org.logoUrl"
-                    [images]="org.images"
-                    (editCover)="store.coverDrawer.set(true)"
-                    (editLogo)="store.logoDrawer.set(true)"
-                  />
-                </app-edit-section>
-
-                <app-drawer [(open)]="store.coverDrawer" title="Cover image">
-                  <app-image-picker
-                    entityType="profile"
-                    [enabledTabs]="store.coverTabs"
-                    [focalStep]="false"
-                    [searchSeed]="org.name"
-                    [currentImageUrl]="org.coverImageUrl"
-                    previewAspect="4/3"
-                    (chosen)="store.onPickCover($event)"
-                    (removed)="store.onRemoveCover()"
-                    (cancelled)="store.coverDrawer.set(false)"
-                  />
-                </app-drawer>
-                <app-drawer [(open)]="store.logoDrawer" title="Logo">
-                  <app-image-picker
-                    entityType="profile"
-                    [enabledTabs]="store.logoTabs"
-                    [focalStep]="false"
-                    [currentImageUrl]="org.logoUrl"
-                    previewAspect="1/1"
-                    (chosen)="store.onPickLogo($event)"
-                    (removed)="store.onRemoveLogo()"
-                    (cancelled)="store.logoDrawer.set(false)"
-                  />
-                </app-drawer>
-                </div>
-
                 <!-- Gallery — org-media's portfolio mode renders its own card. -->
                 <div #mediaSection>
                   <app-org-media
