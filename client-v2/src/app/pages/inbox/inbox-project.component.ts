@@ -259,11 +259,11 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
               @if (showClassicActions()) {
                 @if (selectedItem(); as it) {
                   @if (!isTerminal(it.status)) {
-                    <div class="flex flex-wrap items-center gap-2 border-t border-hairline bg-bg px-4 py-2.5">
+                    <div class="flex flex-wrap items-center gap-2 border-t border-hairline bg-surface px-4 py-2.5">
                       <button type="button" class="bp-act bp-act--primary" [disabled]="sending()" (click)="accept(it)">
                         <lucide-icon name="circle-check-big" [size]="15" /> Accept Cost
                       </button>
-                      <button type="button" class="bp-act bp-act--yellow" [disabled]="sending()" (click)="startPropose(it)">
+                      <button type="button" class="bp-act bp-act--transparent" [disabled]="sending()" (click)="startPropose(it)">
                         <lucide-icon name="circle-dollar-sign" [size]="15" /> Change Cost
                       </button>
                       <!-- "Delete Item" is a label for Decline (declines the line by

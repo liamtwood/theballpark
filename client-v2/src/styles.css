@@ -1833,6 +1833,9 @@ input.bp-input-field::-webkit-inner-spin-button { -webkit-appearance: none; marg
 /* Neutral/secondary action (e.g. Customize) — outline, not a semantic soft fill. */
 .bp-act--outline { background: var(--color-surface); color: var(--color-text); border-color: var(--color-border-hairline); }
 .bp-act--outline:hover { background: var(--color-fill); }
+/* Transparent action (e.g. Change Cost) — no fill, hairline border, fills on hover. */
+.bp-act--transparent { background: transparent; color: var(--color-text); border-color: var(--color-border-hairline); }
+.bp-act--transparent:hover:not(:disabled) { background: var(--color-fill); }
 
 /* White agency bubble — reads as a card on the parchment ground. */
 .bp-bubble {
