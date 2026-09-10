@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule } from 'lucide-angular';
 import { AiService } from '../../core/ai/ai.service';
+import { CodelistService } from '../../core/codelists/codelist.service';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { ProjectService } from '../../core/projects/project.service';
 import { parsedBriefToCreate } from '../../core/projects/project.types';
@@ -99,7 +100,12 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
                 </label>
                 <label class="block">
                   <span class="bp-field-label">Event type</span>
-                  <input type="text" class="bp-np-input" placeholder="Conference, launch, awards…" [value]="eventType()" (input)="eventType.set($any($event.target).value)" />
+                  <select class="bp-np-input bp-np-select" [value]="eventType()" (change)="eventType.set($any($event.target).value)">
+                    <option value="">Select…</option>
+                    @for (o of eventTypeOptions(); track o.value) {
+                      <option [value]="o.value">{{ o.label }}</option>
+                    }
+                  </select>
                 </label>
               </div>
               <div class="mt-4 grid grid-cols-2 gap-4">
@@ -158,13 +164,33 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
       .bp-np-input:focus {
         border-color: var(--theme-accent);
       }
+      /* Native <select> arrow crowds the value — swap for a padded chevron. */
+      select.bp-np-select {
+        appearance: none;
+        -webkit-appearance: none;
+        padding-right: 2rem;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.7rem center;
+        background-size: 0.8rem;
+      }
     `,
   ],
 })
 export class ProjectsNewComponent {
   private readonly ai = inject(AiService);
   private readonly projects = inject(ProjectService);
+  private readonly codelists = inject(CodelistService);
   private readonly pageConfig = inject(PageConfigService);
+
+  /** Event type is a curated LOV (admins own it) — same list the project
+   *  detail's Event type dropdown reads. */
+  private readonly eventTypeRes = resource({
+    loader: () => this.codelists.list('event_type'),
+  });
+  protected readonly eventTypeOptions = computed(
+    () => this.eventTypeRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
+  );
   private readonly router = inject(Router);
   private readonly toast = inject(MessageService);
 
