@@ -73,11 +73,14 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                   <span class="group relative">
                     <h2 class="bp-card-title cursor-default">
                       @if (selectedItem(); as it) {
-                        {{ it.name }} <span class="text-muted">· {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}</span>
+                        {{ it.name }}
                       } @else {
                         {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}
                       }
                     </h2>
+                    @if (selectedItem()) {
+                      <div class="bp-meta mt-0.5">{{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}</div>
+                    }
                     <!-- Hover reveals Original / Revised so they're not shown all the time. -->
                     <div class="pointer-events-none absolute left-0 top-full z-30 mt-1 hidden min-w-[11rem] rounded-[var(--radius-card)] border border-hairline bg-surface p-3 shadow-[var(--shadow-md)] group-hover:block">
                       @if (selectedItem(); as it) {
