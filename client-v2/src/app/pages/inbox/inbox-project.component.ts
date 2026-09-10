@@ -70,13 +70,28 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                    context lives in the rail card). -->
               <div class="border-b border-hairline px-5 py-4">
                 <div class="flex items-start justify-between gap-2">
-                  <h2 class="bp-card-title text-lg">
-                    @if (selectedItem(); as it) {
-                      {{ it.name }} <span class="text-muted">· {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}</span>
-                    } @else {
-                      {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}
-                    }
-                  </h2>
+                  <span class="group relative">
+                    <h2 class="bp-card-title cursor-default text-lg">
+                      @if (selectedItem(); as it) {
+                        {{ it.name }} <span class="text-muted">· {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}</span>
+                      } @else {
+                        {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}
+                      }
+                    </h2>
+                    <!-- Hover reveals Original / Revised so they're not shown all the time. -->
+                    <div class="pointer-events-none absolute left-0 top-full z-30 mt-1 hidden min-w-[11rem] rounded-[var(--radius-card)] border border-hairline bg-surface p-3 shadow-[var(--shadow-md)] group-hover:block">
+                      @if (selectedItem(); as it) {
+                        <div class="flex items-center justify-between gap-6"><span class="bp-caption">Original</span><span class="bp-body-small text-secondary">{{ (it.priceRef ?? 0) | currency: 'GBP' : 'symbol' : '1.0-0' }}</span></div>
+                        <div class="mt-1 flex items-center justify-between gap-6"><span class="bp-caption">Revised</span><span class="bp-body-small font-semibold text-text">{{ (it.priceCurrent ?? it.priceRef ?? 0) | currency: 'GBP' : 'symbol' : '1.0-0' }}</span></div>
+                        @if (!isAgency() && custoTotal() != null) {
+                          <div class="mt-1 flex items-center justify-between gap-6"><span class="bp-caption">Upgrades</span><span class="bp-body-small text-secondary">{{ custoTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span></div>
+                        }
+                      } @else {
+                        <div class="flex items-center justify-between gap-6"><span class="bp-caption">Original</span><span class="bp-body-small text-secondary">{{ t.originalTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</span></div>
+                        <div class="mt-1 flex items-center justify-between gap-6"><span class="bp-caption">Revised</span><span class="bp-body-small font-semibold text-text">{{ t.revisedTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</span></div>
+                      }
+                    </div>
+                  </span>
                   <div class="flex shrink-0 items-center gap-1.5">
                     <!-- Open the AI Assistant. Shown only while it's CLOSED; once
                          open, the rail's own ✕ closes it. -->
@@ -94,38 +109,6 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                       </button>
                     }
                   </div>
-                </div>
-                <!-- When a specific item is selected the header is ITEM-scoped
-                     (its own priceRef/priceCurrent) so it lines up with the item
-                     card / Customize base; with no item selected it's the whole
-                     thread's totals. -->
-                <div class="mt-1.5 flex flex-wrap items-center gap-x-6 gap-y-1.5">
-                  @if (selectedItem(); as it) {
-                    <span>
-                      <span class="bp-caption">Original</span>
-                      <span class="bp-body-small ml-1.5 text-secondary">{{ (it.priceRef ?? 0) | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-                    </span>
-                    <span>
-                      <span class="bp-caption">Revised</span>
-                      <span class="bp-body-small ml-1.5 font-semibold text-text">{{ (it.priceCurrent ?? it.priceRef ?? 0) | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-                    </span>
-                    <!-- pV2-BUILDUP-02 — supplier's estimate buildup on the line. -->
-                    @if (!isAgency() && custoTotal() != null) {
-                      <span>
-                        <span class="bp-caption">Upgrades</span>
-                        <span class="bp-body-small ml-1.5 text-secondary">{{ custoTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-                      </span>
-                    }
-                  } @else {
-                    <span>
-                      <span class="bp-caption">Original</span>
-                      <span class="bp-body-small ml-1.5 text-secondary">{{ t.originalTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-                    </span>
-                    <span>
-                      <span class="bp-caption">Revised</span>
-                      <span class="bp-body-small ml-1.5 font-semibold text-text">{{ t.revisedTotal | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-                    </span>
-                  }
                 </div>
               </div>
 
