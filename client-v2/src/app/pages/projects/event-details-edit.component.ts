@@ -5,20 +5,9 @@ import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { ProjectDetail, ProjectUpdate } from '../../core/projects/project.types';
-import { withCommas } from '../../shared/details-format';
+import { withCommas, natoDate } from '../../shared/details-format';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/** NATO date (DD-Mmm-YYYY) when the string parses to a real date; otherwise the
- *  raw text is kept (event dates can be free text like "Q4"/"TBC"/a range). */
-function natoDate(s: string): string {
-  const t = Date.parse(s);
-  if (Number.isNaN(t)) return s;
-  const d = new Date(t);
-  return `${String(d.getDate()).padStart(2, '0')}-${MONTHS[d.getMonth()]}-${d.getFullYear()}`;
-}
 
 /** pV2-BUILDUP-04 — the editable "Event details" card at the top of the
  *  Cart/Final, replacing the read-only summary tiles. Each field saves on blur

@@ -54,6 +54,16 @@ export function detailsTotalStr(text: string | null | undefined, fallbackSym: st
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+/** The standard single-value date format: NATO (DD-Mmm-YYYY) when the string
+ *  parses to a real date; otherwise the raw text is kept (event dates can be
+ *  free text like "Q4"/"TBC"/a range). Used by every editable date field. */
+export function natoDate(s: string): string {
+  const t = Date.parse(s);
+  if (Number.isNaN(t)) return s;
+  const d = new Date(t);
+  return `${String(d.getDate()).padStart(2, '0')}-${MONTHS[d.getMonth()]}-${d.getFullYear()}`;
+}
+
 /** Normalise the FIRST numeric date in a line to NATO (DD-Mmm-YYYY) — the SOW
  *  Timeline mode's analogue of `detailsCalcLine`. Handles DD.MM.YY(YY),
  *  DD/MM/YY(YY) (UK order) and ISO YYYY-MM-DD; a 2-digit year → 20xx. Forgiving

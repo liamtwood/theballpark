@@ -6,6 +6,7 @@ import { MessageService } from 'primeng/api';
 import { LucideAngularModule } from 'lucide-angular';
 import { AiService } from '../../core/ai/ai.service';
 import { CodelistService } from '../../core/codelists/codelist.service';
+import { natoDate } from '../../shared/details-format';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { ProjectService } from '../../core/projects/project.service';
 import { parsedBriefToCreate } from '../../core/projects/project.types';
@@ -117,7 +118,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
               <div class="mt-4 grid grid-cols-2 gap-4">
                 <label class="block">
                   <span class="bp-field-label">Event date</span>
-                  <input type="date" class="bp-np-input" [value]="eventDate()" (input)="eventDate.set($any($event.target).value)" />
+                  <input type="text" class="bp-np-input" placeholder="e.g. 20 Aug 2026" title="Standard format: DD-Mmm-YYYY (free text like 'Q4' is fine too)" [value]="eventDate()" (input)="eventDate.set($any($event.target).value)" (blur)="onEventDateBlur()" />
                 </label>
                 <label class="block">
                   <span class="bp-field-label">Location</span>
@@ -247,6 +248,13 @@ export class ProjectsNewComponent {
   protected readonly canSubmit = computed(
     () => !this.busy() && (this.briefLen() >= this.MIN_BRIEF || !!this.file())
   );
+
+  /** Normalise the typed date to the standard NATO format on blur; free text
+   *  (e.g. "Q4"/"TBC") is left as-is. */
+  protected onEventDateBlur(): void {
+    const v = this.eventDate().trim();
+    if (v) this.eventDate.set(natoDate(v));
+  }
 
   protected onFile(e: Event): void {
     const f = (e.target as HTMLInputElement).files?.[0] ?? null;
