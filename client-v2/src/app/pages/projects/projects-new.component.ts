@@ -21,7 +21,10 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ToastModule, LucideAngularModule, PageHeroComponent],
   providers: [MessageService],
-  host: { class: 'block' },
+  // bp-vpfit: the PAGE never scrolls — the hero stays anchored and only the
+  // form body scrolls within itself (matches the catalogue pages). This keeps
+  // the scrollbar below the fixed header, not spanning it.
+  host: { class: 'bp-vpfit' },
   template: `
     <app-page-hero
       align="block"
@@ -31,6 +34,8 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
     />
 
     <div class="bp-page-body bp-page-body--workspace">
+      <!-- Own the overflow so the body scrolls, not the whole page. -->
+      <div class="min-h-0 flex-1 overflow-y-auto">
       @if (busy()) {
         <!-- Recommend progress (mockup 160953) — steps advance as the brief is
              parsed, items matched, and the ballpark cost is built. -->
@@ -126,6 +131,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
           </div>
         </div>
       }
+      </div>
     </div>
 
     <!-- MessageService supplies aria-live by severity (audit F-10). -->
