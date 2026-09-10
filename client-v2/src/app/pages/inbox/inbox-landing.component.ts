@@ -43,8 +43,18 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
                         <div class="bp-meta truncate">{{ row.clientName }}</div>
                       }
                     </div>
-                    <span class="shrink-0 bp-pill bp-body-small min-w-[8rem] justify-center text-center" [class]="pillClass(row)" [title]="hoverText(row)">
-                      {{ pillLabel(row) }}
+                    <span class="flex shrink-0 items-center gap-1.5">
+                      @if (row.actionRequired && row.lastMessage) {
+                        <button type="button" class="text-[var(--theme-accent)] transition-opacity hover:opacity-70"
+                                aria-label="Show last message"
+                                (click)="$event.preventDefault(); $event.stopPropagation()"
+                                (mouseenter)="showBubble($event, row.lastMessage)" (mouseleave)="hideBubble()">
+                          <lucide-icon name="mail" [size]="16" />
+                        </button>
+                      }
+                      <span class="bp-pill bp-body-small min-w-[8rem] justify-center text-center" [class]="pillClass(row)" [title]="hoverText(row)">
+                        {{ pillLabel(row) }}
+                      </span>
                     </span>
                   </div>
 
@@ -61,8 +71,18 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
                           @for (s of row.suppliers; track s.name) {
                             <div class="flex items-center justify-between gap-3">
                               <span class="min-w-0 truncate bp-body-small text-secondary">{{ s.name }}</span>
-                              <span class="shrink-0 bp-pill bp-body-small min-w-[8rem] justify-center text-center" [class]="pillClass(s)" [title]="hoverText(s)">
-                                {{ pillLabel(s, true) }}
+                              <span class="flex shrink-0 items-center gap-1.5">
+                                @if (s.actionRequired && s.lastMessage) {
+                                  <button type="button" class="text-[var(--theme-accent)] transition-opacity hover:opacity-70"
+                                          aria-label="Show last message"
+                                          (click)="$event.preventDefault(); $event.stopPropagation()"
+                                          (mouseenter)="showBubble($event, s.lastMessage)" (mouseleave)="hideBubble()">
+                                    <lucide-icon name="mail" [size]="15" />
+                                  </button>
+                                }
+                                <span class="bp-pill bp-body-small min-w-[8rem] justify-center text-center" [class]="pillClass(s)" [title]="hoverText(s)">
+                                  {{ pillLabel(s, true) }}
+                                </span>
                               </span>
                             </div>
                           }
@@ -79,6 +99,15 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
         }
       </div>
     </div>
+
+    <!-- Floating message bubble (position: fixed so the card's overflow can't
+         clip it), shown while hovering an action's envelope. -->
+    @if (bubble(); as b) {
+      <div class="fixed z-50 max-w-[300px] rounded-2xl rounded-tl-sm border border-hairline bg-surface px-3.5 py-2.5 bp-body-small text-text shadow-lg"
+           [style.left.px]="b.x" [style.top.px]="b.y">
+        {{ b.text }}
+      </div>
+    }
   `,
 })
 export class InboxLandingComponent {
@@ -119,14 +148,22 @@ export class InboxLandingComponent {
     return 'bp-pill--success';
   }
 
-  /** Hover text on the pill: when the current user has an action, show the last
-   *  message (what they likely need to deal with); otherwise the count
-   *  breakdown. */
-  protected hoverText(c: InboxWaitingCounts & { lastMessage?: string | null }): string {
-    if (c.actionRequired && c.lastMessage) {
-      return `Needs your response — last message:\n\n“${c.lastMessage}”`;
-    }
+  /** The count breakdown, shown as the pill's tooltip. */
+  protected hoverText(c: InboxWaitingCounts): string {
     const items = `${c.itemCount} item${c.itemCount === 1 ? '' : 's'}`;
     return `${items} · ${c.waitingAgent} waiting on you, ${c.waitingSupplier} waiting on the supplier`;
+  }
+
+  /** The floating message bubble shown when hovering an action's envelope. */
+  protected readonly bubble = signal<{ text: string; x: number; y: number } | null>(null);
+  protected showBubble(ev: MouseEvent, text: string | null): void {
+    if (!text) return;
+    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    // Anchor below the envelope; keep it on-screen (bubble ~ 300px wide).
+    const x = Math.max(8, Math.min(r.left, window.innerWidth - 308));
+    this.bubble.set({ text, x, y: r.bottom + 8 });
+  }
+  protected hideBubble(): void {
+    this.bubble.set(null);
   }
 }
