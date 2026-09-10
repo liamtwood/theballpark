@@ -1752,6 +1752,38 @@ body {
 .bp-pill--danger { background: var(--color-danger-soft); color: var(--color-danger); }
 .bp-pill--outline { background: transparent; color: var(--color-text-secondary); border: 1px solid var(--color-border-hairline); }
 
+/* "Glisten" — a slow theme-coloured sheen sweeping across a card to flag that
+   it needs attention (e.g. an inbox supplier with an action required). A faint
+   accent ring keeps it noticeable between sweeps. Honours reduced-motion. */
+.bp-glisten {
+  position: relative;
+  /* outline (not box-shadow) so the card keeps its own lift shadow. */
+  outline: 1px solid color-mix(in srgb, var(--theme-accent) 40%, transparent);
+  outline-offset: -1px;
+}
+.bp-glisten::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 32%,
+    color-mix(in srgb, var(--theme-accent) 22%, transparent) 50%,
+    transparent 68%
+  );
+  transform: translateX(-120%);
+  animation: bp-glisten 3.4s ease-in-out infinite;
+}
+@keyframes bp-glisten {
+  0%   { transform: translateX(-120%); }
+  60%  { transform: translateX(220%); }
+  100% { transform: translateX(220%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bp-glisten::after { animation: none; }
+}
+
 /* Add-custom / edit modal fields. */
 .bp-input-field {
   height: 38px;

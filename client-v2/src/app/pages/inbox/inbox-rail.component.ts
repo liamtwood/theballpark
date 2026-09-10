@@ -42,7 +42,9 @@ export interface RailOuter {
     <!-- Outer counterparty cards (supplier / agency), the Final-Quote pattern:
          icon + name + total + chevron, expanding to category bands + items. -->
     @for (o of groups(); track o.id) {
-      <div class="bp-card shrink-0 overflow-hidden">
+      @let c = counts(o);
+      <!-- Glisten when the current user has an action on this supplier. -->
+      <div class="bp-card shrink-0 overflow-hidden" [class.bp-glisten]="c.action > 0">
         <!-- min-h keeps every collapsed supplier card the same height. -->
         <div class="flex min-h-[64px] w-full items-center gap-3 p-3">
           <button type="button" class="flex min-w-0 flex-1 items-center gap-3 text-left" (click)="toggle(o.id)">
@@ -53,7 +55,6 @@ export interface RailOuter {
             }
             <span class="min-w-0 flex-1">
               <span class="bp-list-title block truncate">{{ o.label }}</span>
-              @let c = counts(o);
               <!-- Compact stats: items · accepted · action-required (icons keep it
                    on one line in the narrow rail; full words on hover). -->
               <span class="bp-body-small mt-1.5 flex items-center gap-3.5">
