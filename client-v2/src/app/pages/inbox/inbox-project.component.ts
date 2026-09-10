@@ -348,6 +348,13 @@ export class InboxProjectComponent {
   );
   protected readonly projectId = computed(() => this.projectIdInput() || this.routeProjectId());
 
+  /** Deep-link: ?item=<lineId> selects that line on first load (from the
+   *  Messages landing envelope). Honoured once, then normal selection takes over. */
+  private readonly wantItem = toSignal(
+    this.route.queryParamMap.pipe(map((p) => p.get('item'))),
+    { initialValue: this.route.snapshot.queryParamMap.get('item') }
+  );
+
   protected readonly threadsRes = resource({
     params: () => this.projectId() || undefined,
     loader: ({ params }) => firstValueFrom(this.inbox.projectInbox(params)),
@@ -406,6 +413,11 @@ export class InboxProjectComponent {
     // that has one.
     computation: (ts, prev) => {
       const id = prev?.value ?? null;
+      // First resolution: honour a ?item= deep-link if it exists in the threads.
+      if (!id) {
+        const want = this.wantItem();
+        if (want && ts.some((t) => t.items.some((i) => i.id === want))) return want;
+      }
       if (id && ts.some((t) => t.items.some((i) => i.id === id))) return id;
       return ts.find((t) => t.items.length)?.items[0]?.id ?? null;
     },
@@ -416,6 +428,12 @@ export class InboxProjectComponent {
     // has items (matching the auto-selected item above) when the previous is gone.
     computation: (ts, prev) => {
       const id = prev?.value ?? null;
+      // First resolution: the thread that holds the ?item= deep-link.
+      if (!id) {
+        const want = this.wantItem();
+        const t = want ? ts.find((th) => th.items.some((i) => i.id === want)) : null;
+        if (t) return t.id;
+      }
       if (id && ts.some((t) => t.id === id)) return id;
       return (ts.find((t) => t.items.length) ?? ts[0])?.id ?? null;
     },

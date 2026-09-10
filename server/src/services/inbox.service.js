@@ -504,6 +504,7 @@ async function getAgentInboxSummary(agencyOrgId) {
       let wa = 0;
       let ws = 0;
       let n = 0;
+      let actionItemId = null; // first line needing the agent — deep-link target
       for (const it of items) {
         if (seen.has(it.id)) continue; // same line can tag multiple briefs
         seen.add(it.id);
@@ -511,8 +512,10 @@ async function getAgentInboxSummary(agencyOrgId) {
         if (it.status === 'declined_by_agent' || it.status === 'declined_by_supplier') continue;
         n++;
         const w = itemWaitingOn(it);
-        if (w === 'agent') wa++;
-        else if (w === 'supplier') ws++;
+        if (w === 'agent') {
+          wa++;
+          if (!actionItemId) actionItemId = it.id;
+        } else if (w === 'supplier') ws++;
       }
       suppliers.push({
         name: g.name,
@@ -520,6 +523,7 @@ async function getAgentInboxSummary(agencyOrgId) {
         waitingAgent: wa,
         waitingSupplier: ws,
         actionRequired: wa > 0,
+        actionItemId,
         lastMessage: truncate(g.lastMessage, 240),
         lastMessageAt: g.lastMessageAt,
       });

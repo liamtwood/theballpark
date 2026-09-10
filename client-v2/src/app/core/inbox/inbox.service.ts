@@ -53,6 +53,8 @@ export interface InboxWaitingCounts {
  *  (for the envelope hover bubble). */
 export interface InboxSummarySupplier extends InboxWaitingCounts {
   name: string;
+  /** First line needing the agent — the inbox deep-link selects it. */
+  actionItemId: string | null;
   lastMessage: string | null;
   lastMessageAt: string | null;
 }

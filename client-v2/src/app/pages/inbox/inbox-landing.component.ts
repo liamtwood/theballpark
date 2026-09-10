@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, resource, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { InboxService, InboxSummaryRow, InboxSummarySupplier, InboxWaitingCounts } from '../../core/inbox/inbox.service';
@@ -64,8 +64,8 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
                               <span class="flex shrink-0 items-center gap-1.5">
                                 @if (s.actionRequired && s.lastMessage) {
                                   <button type="button" class="text-[var(--theme-accent)] transition-opacity hover:opacity-70"
-                                          aria-label="Show last message"
-                                          (click)="$event.preventDefault(); $event.stopPropagation()"
+                                          aria-label="Open the item that needs your action"
+                                          (click)="openItem($event, row.id, s)"
                                           (mouseenter)="showBubble($event, s)" (mouseleave)="hideBubble()">
                                     <lucide-icon name="mail" [size]="15" />
                                   </button>
@@ -110,6 +110,17 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 })
 export class InboxLandingComponent {
   private readonly inbox = inject(InboxService);
+  private readonly router = inject(Router);
+
+  /** Envelope click → the project's Inbox tab with the action item selected. */
+  protected openItem(ev: Event, projectId: string, s: InboxSummarySupplier): void {
+    ev.preventDefault();
+    ev.stopPropagation();
+    this.hideBubble();
+    void this.router.navigate(['/projects', projectId], {
+      queryParams: { tab: 'inbox', item: s.actionItemId },
+    });
+  }
 
   protected readonly rows = resource<InboxSummaryRow[], void>({
     loader: () => firstValueFrom(this.inbox.summary()),
