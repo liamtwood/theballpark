@@ -8,28 +8,79 @@ table (Draft / Ready / Shipped / Done), see `prompts/backlog.md`.
 
 ---
 
+> **Note (2026-09-10):** pV2-04…pV2-10 all shipped long ago (home, marketplace,
+> inbox, profile, settings). This section was ~300 versions stale — refreshed to
+> the real state at v2.376. Per-prompt detail lives in `prompts/*-shipped.md`;
+> this log is orientation only.
+
 ## In flight
 
-- **pV2-04 — Agent home + page-settings drawer** — Ready. Ports v1's agent
-  home (p0014 + p0017 + p0018 + p0019 + p0023 + p0032) to v2 patterns. New
-  components: home-agent + 6 section cards + launcher grid + page-settings
-  drawer + stub coming-soon routes. New endpoints: `/api/dashboard/*`. Auto-
-  save to `org_type_config`. 30 acceptance criteria including v2 hygiene
-  auto-fails. Single prompt, multiple commits. Chip target `[Dev v2] v2.09a`.
+- **v2 UI polish milestone (~v2.375)** — most surfaces QC-passed (home/overview,
+  projects new/past/about/live, inbox, messages landing, profile, ballpark cost,
+  draft/active, completed). **Marketplace + Reports still to finish.**
+  Audit-first + standards hardening before the prod cutover — see the 2026-09-10
+  audit (`docs/AUDIT-2026-09-10-standards-architecture.md` + `AUDIT_LEDGER.md`).
+- **Preview promote of v2.375/376** — gated on the ~300-version schema catch-up
+  (accumulated `migrate-schemas.js` + the manual audit-columns migration +
+  `org_type_config`) against the shared preview DB; CC lays out the sequence for
+  approval before running.
 
-## Backlog (drafts, not yet started)
+## Backlog (not yet started)
 
-- pV2-05 — Supplier home (variant of pV2-04 — reuses section primitives, swaps section list + launcher tile set)
-- pV2-06 — Marketplace (catalogue + cart)
-- pV2-07 — Inbox (3-column shell + tree + conversation + status pills)
-- pV2-08 — Profile / storefront
-- pV2-09 — Settings: Org / Subscription / Profile editor
-- pV2-10 — Page-settings drawer extensions (per-user overrides, more fields)
-- pV2-11 — Retire `client-angular/`, cutover to `client-v2`
+- **pV2-11 — retire `client-angular/`**, cut over to `client-v2` — removes the v1
+  `x-bp-user-id` shim + the ungated v1 routes that still read client `org_id`
+  (SUNSET-01 / TECH-DEBT-01 in the ledger).
+- **Prod / master cutover** — the deliberate first-time promote; gated on pre-prod
+  remediation (M3 messages-landing N+1, H1 re-arm the dark style guard, worst
+  behemoth extractions) + a re-audit at the prod bar.
+- **Deferred** (branch off dev when picked up): Marketplace redesign to the
+  workspace look; WhatsApp-style read receipts; per-node margin (BUILDUP v2).
 
 ---
 
 ## Shipped
+
+### 2026-09 — CATCH-UP: arcs the log skipped (≈ v2.34 → v2.376)
+
+This log fell far behind (it jumped from v2.08 to BUILDUP-01, then stopped). The
+detail lives in `prompts/*-shipped.md` (highest ship report v2.205) + git history;
+this is the orientation summary of what actually shipped, grouped by arc:
+
+- **Inbox / UNIFY / negotiation** — `pV2-INBOX-01…05`, `pV2-UNIFY-01`, `pV2-CART-01`,
+  `pV2-ESTIMATE-SINGLESOURCE-01`, `pV2-FINAL-01`, `pV2-CUSTOMS-01` (~v2.34–v2.57):
+  the v2 inbox; **UNIFY merged the line state onto `project_items`** (one line-state
+  table + one `lineTotalSql`), `message_items` demoted to a `(message_id, project_item_id)`
+  tag-join, `message_item_events/decisions` repointed to `project_items`. Per-item
+  negotiation, Cart-vs-Final split with a single server cascade, custom lines
+  (`item_id NULL`, `is_custom`).
+- **Intent / flat_total** — `pV2-INTENT-01` (v2.205) + `flat_total` (v2.242): a line's
+  free-text message parsed by Haiku into confirm-first actions (`set_base_cost`,
+  `upsert_extra`, `accept_cost`, `decline`…); `project_items.flat_total` as a flat
+  line-total override honoured by `lineTotalSql {flat:true}`.
+- **Composition SHELVED** — `pV2-BUILDUP-02…04` (v2.66–v2.67): the structured
+  Customize / item-Options UI was **shelved** (code kept, entry buttons removed;
+  "Explore More" kept; components never in the marketplace). `project_items.parent_id`/`kind`
+  stay **live** for the inbox private-cost buildup (`saveComponents`). Substitute:
+  supplier annotates the line in prose (`details` / `quote_description`).
+- **Coachmarks** — `pV2-COACHMARKS-01` (v2.173): code-defined help bubbles that
+  auto-register into a `coachmarks` table; `/settings/coachmarks` admin edits copy + active.
+- **Quote document / SOW** — client-facing Quote/SOW doc (theme, Options panel, footer;
+  server-side Puppeteer PDF deferred). `projects`/`orgs` gained the quote/SOW column set.
+- **Messages landing** (v2.348–v2.366) — agency `/inbox` landing + `GET /api/inbox/summary`,
+  per-supplier action rollups (`itemWaitingOn`/`itemAction`), envelope hover + deep-link.
+- **Overview + workspace canvas** (v2.260–v2.376) — the pink workspace canvas as the one
+  reference layout; live-project overview hero + negotiation tiles; the shared
+  `app-save-state-pill` (v2.340).
+- **Auth is LIVE** — Google OAuth → JWT cookie (`bp_session`), identity-only payload,
+  authority re-derived per request from `user_orgs` (see `prompts/auth-and-users-one-pager.html`).
+
+**Standards status — 2026-09-10 audit** (`docs/AUDIT-2026-09-10-standards-architecture.md`
++ `AUDIT_LEDGER.md`): the v2 surface is secure + correct; debt is hygiene/size/latent.
+Fixed pre-preview at **v2.376**: M1 (RP-11 declined-predicate dup) + M2 (`COMPLETED_STATUSES`
+reuse). Held for pre-prod: M3 (messages-landing N+1), H1 (re-arm the dark `check-style-guards.js`),
+the worst behemoths — then re-audit at the prod bar.
+
+---
 
 ### 2026-08-24/25 — pV2-BUILDUP-01: item composition foundations (v2.62–v2.64, dev only, pre-audit)
 

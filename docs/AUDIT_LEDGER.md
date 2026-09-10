@@ -130,6 +130,58 @@ this section.
 
 ---
 
+## 2026-09-10 audit pass — standards + architecture (client-v2 @ v2.375; `cc` + `chat` + 2 agents)
+
+Full report: `docs/AUDIT-2026-09-10-standards-architecture.md`. First broad pass since
+~v2.61 — the surface Liam QC'd (home/overview, projects, inbox, messages landing,
+profile, ballpark cost, draft/active). Marketplace + Reports excluded (unfinished).
+Two-brain: CC's client report + an independent architecture agent (added the server
++ the root cause) + a mechanical standards sweep.
+
+**Verdict: v2 surface secure + correct; debt is hygiene / size / latent — not a
+blocker for preview.** Healthy: 98/98 OnPush+standalone, zero `*ngIf`/`@Input`/`ViewChild static:true`;
+v2 routes gated + `org_id` from JWT only, UUID-validated, Zod bodies, cross-org→404,
+locked→409; `lineTotalSql` + `isDeclinedSql` single-definition; no dual source on the
+overview money figures.
+
+- **H1 [HIGH] — the style guard is DARK.** `npm run lint` (`check-style-guards.js`) exits 1
+  with ~148 violations, but only `ng build` is in the commit path, so tokens-only /
+  `.bp-*`-one-definition (Rule 2 / RP-05 / RP-07) hasn't been enforcing — *why* the debt
+  accumulated: **120 RP-05** (`.bp-*` component-local — early-access 45, recent-projects-card 13,
+  page-hero 12, launcher family), **13 raw colours** (incl. fresh `#f5add0/#d63384`/`#fff` in the
+  v2.372–375 `project-overview-hero`), 7 RP-07, 7 font-family. Guard hole: `^\s*\.bp-` misses
+  `:host(.bp-…)` (`estimate-item-row.ts:82`). **Fix (pre-prod):** wire the guard into pre-commit /
+  fail the build on it; move pure `.bp-*` to `styles.css`; sanction legit scrims/on-cover with
+  `--color-scrim`/`--color-on-cover` tokens.
+- **M1 [MED] — RP-11: declined predicate duplicated at 3 JS sites → FIXED v2.376.**
+  `inbox.service.js` (`:461/:528/:603`) hand-typed `declined` as two-value equality vs the
+  canonical `declined%` prefix (`isDeclinedSql`) — a new `declined_*` code would be counted by
+  the landing/overview but excluded by the totals. **Closed v2.376**: `isDeclined()` extracted
+  into `line-total.util.js`, used at all three sites. **New RP-11 sighting** — the class is now
+  extracted on both server (`isDeclinedSql`/`isDeclined`) and client (`quote-line.util.ts`); the
+  `DISTINCT ON` tiebreak remains the last comment-enforced RP-11 site.
+- **M2 [MED] — RP-11: active-project predicate 4th copy → FIXED v2.376.** `recent-projects-card.ts:165`
+  hand-typed `!== 'completed' && !== 'archived'` instead of the shared `COMPLETED_STATUSES` set
+  (`project.types.ts:36`). **Closed v2.376** (reuses the set). Server still has a SQL-literal copy
+  (`inbox.service.js:482 NOT IN (...)`) — parity test or serve-the-set is the durable fix.
+- **M3 [MED] — N+1 on the Messages landing (`GET /api/inbox/summary`) — HELD for pre-prod.**
+  `1 + P + Σ(suppliers)` round-trips, unbounded, no LIMIT; heavy `DISTINCT ON` + LATERAL per call.
+  Fine on preview data; hoist to set-based queries before prod volume.
+- **M4 [MED] — behemoths past the alarm caps — HELD for pre-prod.** Client >400: `inbox-project`
+  **1052** (was 600), `customize-dialog` 872, `project-estimate` 794 (was 528), `agent-rail` 723,
+  `project-detail` 707, `early-access` 532, `quote-document` 492, `item-edit` 402. Services >350:
+  `taxonomy.service` 1568, `projects.service` 1329, `inbox.service` 830. Routes >300: `projects-v2` 424.
+  Several "required before next touch" extractions were never done — this supersedes the older
+  Bloat-watch table below.
+- **LOW** — legacy edit-kit on ~7 settings/store pages (`app-edit-field` vs the `ed-*` save-on-blur
+  kit); duplicated formatters (`natoDate` dup, currency ×3, long-date ×4); 6 hand-rolled `BEGIN` in
+  services + v1 ungated routes reading client `org_id` (retire at pV2-11 — SUNSET-01 / TECH-DEBT-01).
+
+**Pre-prod gate:** M3 + H1 + the worst behemoths, then re-audit at the prod bar (the v2.61
+"formal independent audit" bar Liam set for prod cutover).
+
+---
+
 ## Diagnostic learnings — read before every audit
 
 Patterns where chat's initial hypothesis turned out wrong; root cause was
