@@ -111,6 +111,12 @@ export class ProjectService {
     return this.api.get<ProjectDetail>(`/api/projects-v2/${id}`);
   }
 
+  /** The ref the next create would auto-assign — the New Project form pre-fills
+   *  it as a proposal the user can override. A proposal, not a reservation. */
+  nextRef(): Observable<{ ref: string | null }> {
+    return this.api.get<{ ref: string | null }>('/api/projects-v2/next-ref');
+  }
+
   /** Distinct client names this org has used — feeds the About Project client
    *  type-ahead (self-populating suggestions, free text still allowed). */
   clientNames(): Observable<string[]> {

@@ -49,6 +49,17 @@ router.get('/client-names', async (req, res, next) => {
   }
 });
 
+// GET /next-ref — the ref the next create would auto-assign (a proposal the
+// New Project form pre-fills + lets the user override). org from JWT. Declared
+// before /:id so it isn't captured as a project id.
+router.get('/next-ref', async (req, res, next) => {
+  try {
+    res.json({ ref: await projects.previewNextRef(req.user.org_id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /my-components — pV2-BUILDUP-02: the caller-supplier's reusable components
 // (derived from the children they've added before) for the Customize left rail
 // + type-ahead. org from JWT. Declared before /:id.

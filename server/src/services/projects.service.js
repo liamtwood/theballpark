@@ -403,6 +403,25 @@ async function create(orgId, data) {
   });
 }
 
+/** The ref the NEXT create would auto-assign for this org — a read-only
+ *  preview (no counter bump), so the New Project form can show + let the user
+ *  override it. Mirrors create()'s prefix/format. The real value is still
+ *  allocated atomically at create; if two creates race, one gets the next
+ *  number — the preview is a proposal, not a reservation. */
+async function previewNextRef(orgId) {
+  const { rows } = await pool.query(
+    `SELECT ref_prefix, ref_counter, name FROM orgs WHERE id = $1`,
+    [orgId]
+  );
+  if (!rows.length) return null;
+  const row = rows[0];
+  const prefix =
+    (row.ref_prefix || '').trim() ||
+    ((row.name || 'BP').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'BP').toUpperCase();
+  const next = Number(row.ref_counter || 0) + 1;
+  return `${prefix.toUpperCase()}-${String(next).padStart(3, '0')}`;
+}
+
 // ── Project Quote (PROJECTS-02 slice 2) ──────────────────────────────────
 // Minimal add/remove against project_items (the full QuoteService — totals,
 // pricing, checkout — lands in 06f). Every op is org-scoped via a join to
@@ -1304,7 +1323,7 @@ async function recommend(orgId, projectId) {
 }
 
 module.exports = {
-  listForOrg, listClientNames, getDetail, updateDetail, create,
+  listForOrg, listClientNames, getDetail, updateDetail, create, previewNextRef,
   listItems, getEstimate, addItem, addCustomItem, saveComponents, listComponents, listComponentsForAgency, addQuestion, listMyComponents, removeItem, updateItem, updateLineDetails, setQuoteDescription, recommend,
   resolveStatus, DEFAULT_STATUS, toCard, linesByIds,
 };

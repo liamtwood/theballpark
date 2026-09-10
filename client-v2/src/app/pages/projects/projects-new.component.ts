@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, resource, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ToastModule } from 'primeng/toast';
@@ -216,7 +216,13 @@ export class ProjectsNewComponent {
 
   /** Project-detail fields the user can fill directly (override the parsed
    *  brief). All map to existing project attributes. */
-  protected readonly ref = signal('');
+  /** The proposed next ref (server preview). Pre-fills the Ref field; the user
+   *  can override it. A proposal, not a reservation — the real ref is allocated
+   *  at create (and a blank field still auto-assigns). */
+  private readonly nextRefRes = resource({
+    loader: () => firstValueFrom(this.projects.nextRef()),
+  });
+  protected readonly ref = linkedSignal(() => this.nextRefRes.value()?.ref ?? '');
   protected readonly name = signal('');
   protected readonly client = signal('');
   protected readonly eventType = signal('');
