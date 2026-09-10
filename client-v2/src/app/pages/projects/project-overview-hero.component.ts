@@ -52,19 +52,19 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
     <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
       <div class="bp-card p-4" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
         <span class="bp-tile-title">Working ballpark</span>
-        <span class="bp-list-title mt-1 block">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
+        <span class="bp-tile-value mt-1">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
       </div>
       <div class="bp-card p-4" [title]="'Total value of items you and the supplier have both agreed.'">
         <span class="bp-tile-title">Confirmed so far</span>
-        <span class="bp-list-title mt-1 block">{{ (o()?.confirmedTotal ?? 0) | currency: currency() : 'symbol' : '1.0-0' }}</span>
+        <span class="bp-tile-value mt-1">{{ (o()?.confirmedTotal ?? 0) | currency: currency() : 'symbol' : '1.0-0' }}</span>
       </div>
       <div class="bp-card p-4" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
         <span class="bp-tile-title">Agreed items</span>
-        <span class="bp-list-title mt-1 block">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
+        <span class="bp-tile-value mt-1">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
       </div>
       <div class="bp-card p-4" [title]="'Supplier conversations with at least one item still to agree.'">
         <span class="bp-tile-title">Open threads</span>
-        <span class="bp-list-title mt-1 block">{{ o()?.openThreads ?? 0 }}</span>
+        <span class="bp-tile-value mt-1">{{ o()?.openThreads ?? 0 }}</span>
       </div>
     </div>
   `,
@@ -80,16 +80,25 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
       cursor: pointer;
     }
     .bp-cover-btn:hover { background: var(--color-fill); }
-    /* Tile title — the standard title colour, one size smaller, all caps. */
+    /* Tile title — the standard title colour, small all-caps label. */
     .bp-tile-title {
       display: block;
       font-family: var(--bp-font);
-      font-size: var(--text-xl);
+      font-size: var(--text-md);
       font-weight: 400;
       line-height: var(--leading-snug);
       color: var(--color-text-strong);
       text-transform: uppercase;
       letter-spacing: var(--tracking-wide);
+    }
+    /* Tile value — the prominent figure. */
+    .bp-tile-value {
+      display: block;
+      font-family: var(--bp-font);
+      font-size: var(--text-xl);
+      font-weight: 600;
+      line-height: var(--leading-snug);
+      color: var(--color-text);
     }
   `],
 })

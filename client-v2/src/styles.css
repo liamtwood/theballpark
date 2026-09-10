@@ -276,6 +276,16 @@
   padding-inline: max(24px, calc((100% - var(--workspace-max)) / 2));
 }
 
+/* Reserve a stable scrollbar gutter so a scrolling body and the non-scrolling
+   hero/tabs above it share the SAME content box — their centred workspace
+   columns then line up (the scrollbar no longer shifts the body's centre).
+   Apply to every stacked region that should align: the hero, the tab band,
+   and each tab's scroll area. */
+.bp-gutter {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
 /* Standard solid brand button (no gradient) — Message suppliers, Add item,
    inbox Send, etc. */
 .bp-msg-btn {

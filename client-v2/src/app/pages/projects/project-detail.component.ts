@@ -106,8 +106,9 @@ interface DetailForm {
                        [rightTitle]="(estimate.value()?.projectTotal | currency: (p.currency || 'GBP') : 'symbol' : '1.0-0') ?? '—'"
                        rightSubtitle="Exc. VAT" />
       } @else {
-        <!-- Live project: cover hero + negotiation tiles, in the workspace column. -->
-        <div class="px-6 pt-4">
+        <!-- Live project: cover hero + negotiation tiles, in the workspace column.
+             bp-gutter reserves the scrollbar gutter so it lines up with the body. -->
+        <div class="shrink-0 bp-gutter px-6 pt-4">
           <div class="mx-auto w-full max-w-[var(--workspace-max)]">
             <app-project-overview-hero
               [project]="p"
@@ -125,7 +126,7 @@ interface DetailForm {
            overlay ABOVE the band in their own layer (absolute → no layout shift
            when they show/dismiss), tail pointing DOWN at the target tab. The
            x-offset aligns the tail with the target of the even-width tabs. -->
-      <div class="relative flex justify-center px-6 pt-3">
+      <div class="relative shrink-0 pt-3">
         @if (tab() === 'final') {
           <div class="pointer-events-none absolute bottom-full left-1/2 z-40 -translate-x-1/2 pb-2">
             <div class="-translate-x-[150px]">
@@ -141,9 +142,12 @@ interface DetailForm {
                            defaultText="Here is the marketplace. Keep track of your running estimate by going back to the Ballpark tab." />
           </div>
         }
-        <!-- Fill the working column so the tab band lines up with the content. -->
-        <div class="w-full max-w-[var(--workspace-max)]">
-          <app-tab-band [tabs]="tabs()" [active]="tab()" [fill]="true" (activeChange)="setTab($event)" />
+        <!-- Fill the working column + reserve the scrollbar gutter so the tab
+             band lines up with the hero above and the content below. -->
+        <div class="bp-gutter px-6">
+          <div class="mx-auto w-full max-w-[var(--workspace-max)]">
+            <app-tab-band [tabs]="tabs()" [active]="tab()" [fill]="true" (activeChange)="setTab($event)" />
+          </div>
         </div>
       </div>
 
@@ -154,7 +158,7 @@ interface DetailForm {
                  shared "Details saved" pill (app-save-state-pill). Overflow is
                  full-width so the scrollbar sits at the window edge; content is
                  centred in the workspace column. -->
-            <div class="min-h-0 flex-1 overflow-y-auto pt-4">
+            <div class="min-h-0 flex-1 bp-gutter pt-4">
             <div class="mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-4">
               <app-completeness-card
                 [entity]="p"
@@ -283,17 +287,17 @@ interface DetailForm {
             </div>
           }
           @case ('estimate') {
-            <div class="min-h-0 flex-1 overflow-y-auto">
+            <div class="min-h-0 flex-1 bp-gutter">
               <app-project-estimate [projectId]="p.id" [project]="p" (addItems)="addItems()" (goToFinal)="goToTab('final')" (detailsSaved)="detail.reload()" />
             </div>
           }
           @case ('final') {
-            <div class="min-h-0 flex-1 overflow-y-auto">
+            <div class="min-h-0 flex-1 bp-gutter">
               <app-project-estimate [projectId]="p.id" [project]="p" view="final" (detailsSaved)="detail.reload()" />
             </div>
           }
           @case ('reports') {
-            <div class="min-h-0 flex-1 overflow-y-auto">
+            <div class="min-h-0 flex-1 bp-gutter">
               <!-- pV2-BUILDUP-04 — the client-facing documents (open as overlays);
                    styled to match the tab band. -->
               <div class="flex justify-center pt-6">
