@@ -42,7 +42,9 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
     ProfileShopfrontComponent,
   ],
   providers: [MessageService, ProfileEditService],
-  host: { class: 'block' },
+  // bp-vpfit: hero (and the supplier tab-band) stay anchored; only the content
+  // below scrolls — the Past projects standard.
+  host: { class: 'block bp-vpfit' },
   template: `
     <app-page-hero align="block" [eyebrow]="hero().eyebrow" [title]="hero().title" [subtitle]="hero().subtitle" />
 
@@ -54,9 +56,12 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
     }
 
     @if (isSupplier() && tab() === 'shopfront') {
-      <app-profile-shopfront [orgId]="auth.user()?.activeOrgId ?? ''" />
+      <div class="min-h-0 overflow-y-auto md:flex-1">
+        <app-profile-shopfront [orgId]="auth.user()?.activeOrgId ?? ''" />
+      </div>
     } @else {
     <div class="bp-page-body bp-page-body--workspace">
+      <div class="min-h-0 overflow-y-auto md:flex-1">
       @if (store.profile.isLoading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
       } @else if (store.profile.error()) {
@@ -256,6 +261,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
           </div>
         </div>
       }
+      </div>
     </div>
     }
 
