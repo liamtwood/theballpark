@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { ProjectDetail, ProjectUpdate } from '../../core/projects/project.types';
@@ -14,7 +15,7 @@ import { SaveStatePillComponent, SaveState } from '../../shared/save-state-pill/
 @Component({
   selector: 'app-event-details-edit',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, SaveStatePillComponent],
+  imports: [FormsModule, LucideAngularModule, SaveStatePillComponent],
   host: { class: 'block' },
   styles: [`
     /* pV2-BUILDUP-04 workspace card — soft white on the pink ground. */
@@ -81,8 +82,15 @@ import { SaveStatePillComponent, SaveState } from '../../shared/save-state-pill/
 
         <label class="block">
           <span class="ed-label mb-1.5 block">Event date</span>
-          <input class="ed-input" type="text" placeholder="e.g. 31-Dec-2026 / TBC"
-                 [ngModel]="dDate()" (ngModelChange)="dDate.set($event)" (blur)="saveDate()" />
+          <!-- NATO free-text display + native OS picker: the transparent date
+               input sits over the calendar icon; picking reformats to NATO. -->
+          <div class="relative">
+            <input class="ed-input pr-11" type="text" placeholder="e.g. 31-Dec-2026 / TBC"
+                   title="Standard format: DD-Mmm-YYYY (free text like 'TBC' / 'Q4' is fine too)"
+                   [ngModel]="dDate()" (ngModelChange)="dDate.set($event)" (blur)="saveDate()" />
+            <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" style="color: var(--color-text-secondary);"><lucide-icon name="calendar" [size]="16" /></span>
+            <input type="date" aria-label="Pick event date" class="absolute right-0 top-0 h-full w-11 cursor-pointer opacity-0" (change)="onDatePicked($any($event.target).value)" />
+          </div>
         </label>
 
         <label class="block">
@@ -170,6 +178,15 @@ export class EventDetailsEditComponent {
     const next = formatted || null;
     if (next === (this.project().eventDate ?? null)) return;
     this.persist({ eventDate: next });
+  }
+
+  /** Native picker → NATO. Build a LOCAL date from the yyyy-mm-dd parts so the
+   *  UTC-parsed ISO string never shifts the day across a timezone boundary. */
+  protected onDatePicked(iso: string): void {
+    if (!iso) return;
+    const [y, m, d] = iso.split('-').map(Number);
+    this.dDate.set(natoDate(new Date(y, m - 1, d).toDateString()));
+    this.saveDate();
   }
 
   protected saveLocation(): void {
