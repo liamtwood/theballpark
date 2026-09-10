@@ -307,7 +307,7 @@
 
   <div class="note">
     <strong>Source of truth:</strong> schema migrations live in <code>server/src/db/migrate-schemas.js</code>. Every column add / table create writes to all three schemas (<code>public</code>, <code>preview</code>, <code>master</code>) explicitly — see WORKING_STANDARDS for the rule. UUIDs are generated with <code>gen_random_uuid()</code> (PG13+ built-in, schema-portable).
-    <br><br>⚠ <strong>DB host — confirm:</strong> <code>migrate-schemas.js:10</code> states the database is <strong>Railway PostgreSQL</strong> (Node connects as owner, bypassing RLS); the Supabase SDK is present but not the primary DB path. The "Supabase-managed" labels above may be stale — verify the host before relying on them.
+    <br><br><strong>DB vs deploy:</strong> the database is <strong>Supabase Postgres</strong> (the <code>public</code>/<code>preview</code>/<code>master</code> schemas). <strong>Railway hosts the Node API</strong> (compute + deploy) and connects to Supabase — it does <em>not</em> host the DB. (Heads-up for a code sweep: <code>migrate-schemas.js:10</code>'s "Railway PostgreSQL" comment is misleading and worth correcting.)
   </div>
 
 </div>
