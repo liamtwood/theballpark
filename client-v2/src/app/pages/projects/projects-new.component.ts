@@ -92,22 +92,26 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
                 <span class="bp-field-label">Project name</span>
                 <input type="text" class="bp-np-input" [value]="name()" (input)="name.set($any($event.target).value)" />
               </label>
-              <label class="mt-4 block">
-                <span class="bp-field-label">Client</span>
-                <input type="text" class="bp-np-input" [value]="client()" (input)="client.set($any($event.target).value)" />
-              </label>
-              <label class="mt-4 block">
-                <span class="bp-field-label">Event type</span>
-                <input type="text" class="bp-np-input" placeholder="Conference, launch, awards…" [value]="eventType()" (input)="eventType.set($any($event.target).value)" />
-              </label>
-              <label class="mt-4 block">
-                <span class="bp-field-label">Event date</span>
-                <input type="date" class="bp-np-input" [value]="eventDate()" (input)="eventDate.set($any($event.target).value)" />
-              </label>
-              <label class="mt-4 block">
-                <span class="bp-field-label">Location</span>
-                <input type="text" class="bp-np-input" placeholder="London" [value]="location()" (input)="location.set($any($event.target).value)" />
-              </label>
+              <div class="mt-4 grid grid-cols-2 gap-4">
+                <label class="block">
+                  <span class="bp-field-label">Client</span>
+                  <input type="text" class="bp-np-input" [value]="client()" (input)="client.set($any($event.target).value)" />
+                </label>
+                <label class="block">
+                  <span class="bp-field-label">Event type</span>
+                  <input type="text" class="bp-np-input" placeholder="Conference, launch, awards…" [value]="eventType()" (input)="eventType.set($any($event.target).value)" />
+                </label>
+              </div>
+              <div class="mt-4 grid grid-cols-2 gap-4">
+                <label class="block">
+                  <span class="bp-field-label">Event date</span>
+                  <input type="date" class="bp-np-input" [value]="eventDate()" (input)="eventDate.set($any($event.target).value)" />
+                </label>
+                <label class="block">
+                  <span class="bp-field-label">Location</span>
+                  <input type="text" class="bp-np-input" placeholder="London" [value]="location()" (input)="location.set($any($event.target).value)" />
+                </label>
+              </div>
               <div class="mt-4 grid grid-cols-2 gap-4">
                 <label class="block">
                   <span class="bp-field-label">Guests</span>
@@ -120,7 +124,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
               </div>
             </div>
 
-            <button type="button" class="bp-btn-grad w-full justify-center" [disabled]="!canSubmit()" (click)="submit()">
+            <button type="button" class="bp-msg-btn w-full justify-center" [disabled]="!canSubmit()" (click)="submit()">
               <lucide-icon name="sparkles" [size]="16" />
               Create ballpark
             </button>
