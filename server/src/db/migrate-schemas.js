@@ -322,8 +322,10 @@ const migrate = async () => {
           CHECK (selection_type IN ('selected', 'liked')),
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
-      CREATE UNIQUE INDEX IF NOT EXISTS uq_project_items_project_item
-        ON preview.project_items(project_id, item_id);
+      -- (Legacy full uq_project_items_project_item index removed — v2 fans a
+      --  line out per supplier so (project_id, item_id) is NOT unique. It's
+      --  superseded by uq_project_items_canonical (partial index, below) and
+      --  the UNIFY-01 block drops any pre-existing copy.)
 
       -- Messages
       CREATE TABLE IF NOT EXISTS preview.messages (
@@ -632,8 +634,9 @@ const migrate = async () => {
           CHECK (selection_type IN ('selected', 'liked')),
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
-      CREATE UNIQUE INDEX IF NOT EXISTS uq_project_items_project_item
-        ON public.project_items(project_id, item_id);
+      -- (Legacy full uq_project_items_project_item index removed — see the
+      --  preview block above; v2 per-supplier fan-out makes (project_id,
+      --  item_id) non-unique. Superseded by uq_project_items_canonical.)
 
       -- ── pV2-QUANTITY-01 ──────────────────────────────────────────────
       -- Quantity becomes a first-class field on the cart/quote line. A v1-era
