@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { LucideAngularModule } from 'lucide-angular';
 import { PopoverModule, Popover } from 'primeng/popover';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth/auth.service';
@@ -14,21 +15,17 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
 @Component({
   selector: 'app-user-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, PopoverModule, UserAvatarComponent],
+  imports: [RouterLink, LucideAngularModule, PopoverModule, UserAvatarComponent],
   template: `
     @if (auth.user(); as user) {
       <button
         type="button"
-        class="block cursor-pointer rounded-full transition-opacity hover:opacity-80"
+        class="bp-itemprev-close"
         (click)="menu.toggle($event)"
         aria-label="Account menu"
+        title="Account menu"
       >
-        <app-user-avatar
-          [displayName]="user.displayName"
-          [email]="user.email"
-          [imageUrl]="user.avatarUrl"
-          [size]="40"
-        />
+        <lucide-icon name="ellipsis-vertical" [size]="18" />
       </button>
 
       <p-popover #menu>
