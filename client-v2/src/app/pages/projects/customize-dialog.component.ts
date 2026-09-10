@@ -72,7 +72,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
           <span><span class="bp-caption">Revised</span> <span class="bp-price-large ml-1 tabular-nums">£{{ withMargin() | number: '1.0-0' }}</span></span>
         </div>
       </div>
-      <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
+      <div class="grid grid-cols-1 gap-5" [class]="showRightRail() ? 'lg:grid-cols-[1fr_320px]' : ''">
           <!-- CENTRE: the editable estimate, grouped by category. -->
           <div class="relative min-w-0">
 
@@ -213,7 +213,9 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
           </div>
 
           <!-- RIGHT: a selected component's card, else the item's own preview
-               card (editable in place when the item header is selected). -->
+               card (editable in place when the item header is selected). Absent
+               entirely when there's nothing to show — the estimate goes full-width. -->
+          @if (showRightRail()) {
           <div class="min-w-0">
             @if (selectedRow(); as sr) {
               <div class="bp-card p-4">
@@ -284,6 +286,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
               }
             }
           </div>
+          }
         </div>
     </div>
 
@@ -406,6 +409,12 @@ export class CustomizeDialogComponent implements OnInit {
   /** The component row selected in the table — its card shows in the right rail. */
   protected readonly selectedRowK = signal<number | null>(null);
   protected readonly selectedRow = computed(() => this.rows().find((r) => r._k === this.selectedRowK()) ?? null);
+  /** Right rail is only present when it has something to show — a selected
+   *  component's editor, or the item preview (while `showItemPreview` is on).
+   *  Otherwise the estimate takes the full width (no empty 320px column). */
+  protected readonly showRightRail = computed(() =>
+    this.selectedRow() != null || (this.showItemPreview && this.previewItem() != null),
+  );
   /** Clicking the header selects the PARENT item — the right rail becomes the
    *  editor for the item's final name + description (what the agent sees). */
   protected readonly parentSelected = signal(false);
