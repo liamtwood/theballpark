@@ -71,7 +71,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
               <div class="border-b border-hairline px-5 py-4">
                 <div class="flex items-start justify-between gap-2">
                   <span class="group relative">
-                    <h2 class="bp-card-title cursor-default text-lg">
+                    <h2 class="bp-card-title cursor-default">
                       @if (selectedItem(); as it) {
                         {{ it.name }} <span class="text-muted">· {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}</span>
                       } @else {
