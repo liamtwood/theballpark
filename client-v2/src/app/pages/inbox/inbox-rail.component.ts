@@ -1,8 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { InboxProjectSummary, InboxThreadItem } from '../../core/inbox/inbox.service';
-import { statusPill } from './inbox-status';
+import { statusPill, supplierRollup } from './inbox-status';
 
 /** A category thread inside an outer counterparty card — the middle band of the
  *  Final-Quote containment pattern (cat icon + name), with its item rows. */
@@ -34,7 +33,7 @@ export interface RailOuter {
 @Component({
   selector: 'app-inbox-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule],
+  imports: [LucideAngularModule],
   host: { class: 'hidden min-h-0 xl:flex xl:flex-col xl:gap-3 xl:overflow-y-auto' },
   template: `
     <!-- Project context card removed — that info now lives in the conversation
@@ -44,16 +43,23 @@ export interface RailOuter {
          icon + name + total + chevron, expanding to category bands + items. -->
     @for (o of groups(); track o.id) {
       <div class="bp-card shrink-0 overflow-hidden">
-        <div class="flex w-full items-center gap-3 p-3">
+        <!-- min-h keeps every collapsed supplier card the same height. -->
+        <div class="flex min-h-[64px] w-full items-center gap-3 p-3">
           <button type="button" class="flex min-w-0 flex-1 items-center gap-3 text-left" (click)="toggle(o.id)">
             @if (o.iconUrl) {
               <img [src]="o.iconUrl" alt="" class="h-9 w-9 shrink-0 rounded-[var(--radius-card)] object-cover" />
             } @else {
               <lucide-icon [name]="o.iconName || 'store'" [size]="26" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
             }
-            <span class="bp-list-title min-w-0 flex-1 truncate">{{ o.label }}</span>
+            <span class="min-w-0 flex-1">
+              <span class="bp-list-title block truncate">{{ o.label }}</span>
+              @let c = counts(o);
+              <span class="bp-meta mt-0.5 block">
+                {{ c.items }} item{{ c.items === 1 ? '' : 's' }} · {{ c.accepted }} accepted ·
+                <span [class.font-semibold]="c.action > 0" [style.color]="c.action > 0 ? 'var(--theme-accent)' : null">{{ c.action }} action required</span>
+              </span>
+            </span>
           </button>
-          <span class="bp-body-small shrink-0 text-secondary">{{ o.total | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
           <button type="button" class="shrink-0 rounded-md p-0.5 text-muted transition-colors hover:text-text"
                   [attr.aria-label]="isExpanded(o.id) ? 'Collapse' : 'Expand'" (click)="toggle(o.id)">
             <lucide-icon [name]="isExpanded(o.id) ? 'chevron-down' : 'chevron-right'" [size]="16" />
@@ -100,13 +106,14 @@ export class InboxRailComponent {
   readonly selectThread = output<string>();
   readonly selectItem = output<string>();
 
-  // Outer expand — collapsed-by-id (default expanded so the tree shows).
-  private readonly collapsed = signal<ReadonlySet<string>>(new Set());
+  // Outer expand — expanded-by-id; DEFAULT MINIMIZED (Liam 2026-09-10): the
+  // supplier cards start collapsed, showing just name + counts.
+  private readonly expanded = signal<ReadonlySet<string>>(new Set());
   protected isExpanded(id: string): boolean {
-    return !this.collapsed().has(id);
+    return this.expanded().has(id);
   }
   protected toggle(id: string): void {
-    this.collapsed.update((s) => {
+    this.expanded.update((s) => {
       const next = new Set(s);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -116,5 +123,10 @@ export class InboxRailComponent {
 
   protected pill(it: InboxThreadItem) {
     return statusPill(it, this.isAgency());
+  }
+
+  /** Header rollup: total items · accepted · action-required-by-me. */
+  protected counts(o: RailOuter) {
+    return supplierRollup(o.cats.flatMap((c) => c.items), this.isAgency());
   }
 }
