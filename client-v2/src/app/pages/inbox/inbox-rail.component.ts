@@ -56,16 +56,16 @@ export interface RailOuter {
               @let c = counts(o);
               <!-- Compact stats: items · accepted · action-required (icons keep it
                    on one line in the narrow rail; full words on hover). -->
-              <span class="bp-meta mt-1 flex items-center gap-2.5">
-                <span class="inline-flex items-center gap-1" [title]="c.items + ' items'">
-                  <lucide-icon name="package" [size]="13" class="text-muted" />{{ c.items }}
+              <span class="bp-body-small mt-1.5 flex items-center gap-3.5">
+                <span class="inline-flex items-center gap-1.5" [title]="c.items + ' items'">
+                  <lucide-icon name="package" [size]="16" class="text-muted" />{{ c.items }}
                 </span>
-                <span class="inline-flex items-center gap-1" [title]="c.accepted + ' accepted'">
-                  <lucide-icon name="circle-check" [size]="13" class="text-muted" />{{ c.accepted }}
+                <span class="inline-flex items-center gap-1.5" [title]="c.accepted + ' accepted'">
+                  <lucide-icon name="circle-check" [size]="16" class="text-muted" />{{ c.accepted }}
                 </span>
-                <span class="inline-flex items-center gap-1" [title]="c.action + ' action required'"
+                <span class="inline-flex items-center gap-1.5" [title]="c.action + ' action required'"
                       [style.color]="c.action > 0 ? 'var(--theme-accent)' : null" [class.font-semibold]="c.action > 0">
-                  <lucide-icon name="circle-alert" [size]="13" />{{ c.action }}
+                  <lucide-icon name="circle-alert" [size]="16" />{{ c.action }}
                 </span>
               </span>
             </span>
