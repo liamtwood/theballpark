@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
-import { CurrencyPipe, NgTemplateOutlet } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -21,6 +21,7 @@ import { ImagePickerComponent } from '../../shared/image-picker/image-picker.com
 import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.component';
 import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.component';
 import { CompletenessCardComponent } from '../../shared/completeness/completeness-card.component';
+import { SaveStatePillComponent } from '../../shared/save-state-pill/save-state-pill.component';
 import { CompletenessConfig } from '../../shared/completeness/completeness.types';
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
@@ -86,7 +87,7 @@ interface DetailForm {
     SowDocumentComponent,
     InboxProjectComponent,
     FormsModule,
-    NgTemplateOutlet,
+    SaveStatePillComponent,
   ],
   providers: [MessageService],
   /* Viewport-fit on EVERY tab (universal rule: the hero never scrolls).
@@ -127,20 +128,8 @@ interface DetailForm {
       <div class="bp-page-body">
         @switch (tab()) {
           @case ('details') {
-            <!-- Ready-to-edit rounded fields; each field saves on blur with a
-                 "Details saved" pill (mirrors the Ballpark Cost Event details). -->
-            <ng-template #savedChip>
-              @switch (detailState()) {
-                @case ('saving') { <span class="bp-pill bp-body-small text-secondary">Saving…</span> }
-                @case ('error') { <span class="bp-pill bp-pill--danger bp-body-small">Couldn't save</span> }
-                @case ('saved') {
-                  <span class="bp-pill bp-pill--success bp-body-small inline-flex items-center gap-1.5">
-                    <lucide-icon name="check" [size]="14" [strokeWidth]="2" /> Details saved
-                  </span>
-                }
-              }
-            </ng-template>
-
+            <!-- Ready-to-edit rounded fields; each field saves on blur with the
+                 shared "Details saved" pill (app-save-state-pill). -->
             <div class="mx-auto flex min-h-0 w-full max-w-[var(--workspace-max)] flex-1 flex-col gap-4 overflow-y-auto pt-4">
               <app-completeness-card
                 [entity]="p"
@@ -154,7 +143,7 @@ interface DetailForm {
               <div #companySection class="ed-card shrink-0 p-6">
                 <div class="flex items-center justify-between">
                   <h2 class="bp-card-title">Event details</h2>
-                  <ng-container [ngTemplateOutlet]="savedChip" />
+                  <app-save-state-pill [state]="detailState()" />
                 </div>
                 <div class="mt-4 flex flex-col gap-4">
                   <!-- Ref + Event name + Company number + Client on one line;
@@ -174,7 +163,7 @@ interface DetailForm {
               <div class="ed-card shrink-0 p-6">
                 <div class="flex items-center justify-between">
                   <h2 class="bp-card-title">Event Logistics</h2>
-                  <ng-container [ngTemplateOutlet]="savedChip" />
+                  <app-save-state-pill [state]="detailState()" />
                 </div>
                 <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
                   <label class="block"><span class="ed-label mb-1.5 block">Event type</span>
@@ -205,7 +194,7 @@ interface DetailForm {
               <div class="ed-card shrink-0 p-6">
                 <div class="flex items-center justify-between">
                   <h2 class="bp-card-title">Financials</h2>
-                  <ng-container [ngTemplateOutlet]="savedChip" />
+                  <app-save-state-pill [state]="detailState()" />
                 </div>
                 <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
                   <label class="block"><span class="ed-label mb-1.5 block">Budget ({{ cur() === 'USD' ? '$' : cur() === 'EUR' ? '€' : '£' }})</span><input class="ed-input" type="text" inputmode="numeric" [ngModel]="form().budget" (ngModelChange)="patch({ budget: $event })" (blur)="onBudgetBlur()" /></label>
@@ -219,7 +208,7 @@ interface DetailForm {
               <div class="ed-card shrink-0 p-6">
                 <div class="flex items-center justify-between">
                   <h2 class="bp-card-title">Statement of Work</h2>
-                  <ng-container [ngTemplateOutlet]="savedChip" />
+                  <app-save-state-pill [state]="detailState()" />
                 </div>
                 <div class="mt-4 flex flex-col gap-4">
                   <label class="block"><span class="ed-label mb-1.5 block">Timeline</span><textarea class="ed-textarea" rows="4" placeholder="One milestone per line, e.g. 'Install 20.08.26'." [ngModel]="form().sowTimeline" (ngModelChange)="patch({ sowTimeline: $event })" (blur)="saveSection('sow')"></textarea></label>

@@ -1,13 +1,10 @@
 import { ChangeDetectionStrategy, Component, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NgTemplateOutlet } from '@angular/common';
-import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { ProjectDetail, ProjectUpdate } from '../../core/projects/project.types';
 import { withCommas, natoDate } from '../../shared/details-format';
-
-type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+import { SaveStatePillComponent, SaveState } from '../../shared/save-state-pill/save-state-pill.component';
 
 /** pV2-BUILDUP-04 — the editable "Event details" card at the top of the
  *  Cart/Final, replacing the read-only summary tiles. Each field saves on blur
@@ -17,7 +14,7 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 @Component({
   selector: 'app-event-details-edit',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, NgTemplateOutlet, LucideAngularModule],
+  imports: [FormsModule, SaveStatePillComponent],
   host: { class: 'block' },
   styles: [`
     /* pV2-BUILDUP-04 workspace card — soft white on the pink ground. */
@@ -57,26 +54,10 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
     .ed-textarea:focus { border-color: var(--theme-accent); }
   `],
   template: `
-    <ng-template #savedChip>
-      @switch (state()) {
-        @case ('saving') {
-          <span class="bp-pill bp-body-small text-secondary">Saving…</span>
-        }
-        @case ('error') {
-          <span class="bp-pill bp-pill--danger bp-body-small">Couldn't save</span>
-        }
-        @default {
-          <span class="bp-pill bp-pill--success bp-body-small inline-flex items-center gap-1.5">
-            <lucide-icon name="check" [size]="14" [strokeWidth]="2" /> Details saved
-          </span>
-        }
-      }
-    </ng-template>
-
     <div class="ed-card p-6">
       <div class="flex items-center justify-between">
         <h2 class="bp-card-title">Event details</h2>
-        <ng-container [ngTemplateOutlet]="savedChip" />
+        <app-save-state-pill [state]="state()" [idleShowsSaved]="true" />
       </div>
 
       <div class="mt-5 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -127,7 +108,7 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
     <div class="ed-card mt-4 p-6">
       <div class="flex items-center justify-between">
         <h2 class="bp-card-title">Event Description</h2>
-        <ng-container [ngTemplateOutlet]="savedChip" />
+        <app-save-state-pill [state]="state()" [idleShowsSaved]="true" />
       </div>
       <textarea class="ed-textarea mt-4" rows="3"
                 placeholder="A short overview of the event — shown on the quote document."
