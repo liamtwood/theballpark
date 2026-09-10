@@ -478,18 +478,20 @@ async function getAgentInboxSummary(agencyOrgId) {
     // created_at ASC, so the last bodied message we see is the latest — track
     // it per supplier + overall for the "last message" hover.
     const bySupplier = new Map();
-    let projLastMessage = null;
     for (const m of all) {
-      const body = (m.body || '').trim();
-      if (body) projLastMessage = body;
       if (!m.supplier_org_id) continue;
       let g = bySupplier.get(m.supplier_org_id);
       if (!g) {
-        g = { name: m.supplier_name, messageIds: [], lastMessage: null };
+        g = { name: m.supplier_name, messageIds: [], lastMessage: null, lastMessageAt: null };
         bySupplier.set(m.supplier_org_id, g);
       }
       g.messageIds.push(m.id);
-      if (body) g.lastMessage = body;
+      const body = (m.body || '').trim();
+      if (body) {
+        // `all` is created_at ASC → the last bodied message we see is latest.
+        g.lastMessage = body;
+        g.lastMessageAt = m.created_at ?? null;
+      }
     }
 
     const suppliers = [];
@@ -519,6 +521,7 @@ async function getAgentInboxSummary(agencyOrgId) {
         waitingSupplier: ws,
         actionRequired: wa > 0,
         lastMessage: truncate(g.lastMessage, 240),
+        lastMessageAt: g.lastMessageAt,
       });
       waitingAgent += wa;
       waitingSupplier += ws;
@@ -534,7 +537,6 @@ async function getAgentInboxSummary(agencyOrgId) {
       waitingAgent,
       waitingSupplier,
       actionRequired: waitingAgent > 0,
-      lastMessage: truncate(projLastMessage, 240),
     });
   }
   return out;
