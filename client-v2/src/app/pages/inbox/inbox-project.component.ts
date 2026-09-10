@@ -319,10 +319,13 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                 <button
                   type="button"
                   class="bp-msg-btn shrink-0"
+                  style="padding-left: 12px; padding-right: 12px"
+                  title="Send"
+                  aria-label="Send"
                   [disabled]="!draft().trim() || sending() || !selectedItem()"
                   (click)="send(t.id)"
                 >
-                  <lucide-icon name="send" [size]="15" /> Send
+                  <lucide-icon name="send" [size]="16" />
                 </button>
               </div>
               }
