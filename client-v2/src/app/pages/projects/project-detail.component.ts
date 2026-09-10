@@ -343,19 +343,32 @@ export class ProjectDetailComponent {
   /** Marketplace is the default tab (PROJECTS.md) — it's where you build
    *  the project's quote. */
   protected readonly tab = computed<Tab>(() => {
-    const t = this.query().get('tab');
-    return (TABS as string[]).includes(t ?? '') ? (t as Tab) : 'final';
+    const raw = this.query().get('tab');
+    let t: Tab = (TABS as string[]).includes(raw ?? '') ? (raw as Tab) : 'final';
+    // Draft hides About/Reports/Inbox — fall back to Ballpark Cost if the URL
+    // points at a hidden tab (e.g. an old bookmark, or before the status flips).
+    if (this.isDraft() && (t === 'details' || t === 'reports' || t === 'inbox')) t = 'final';
+    return t;
   });
 
   protected readonly label = computed(() => this.pageConfig.eventLabel());
   protected readonly labelPlural = computed(() => `${this.label()}s`);
-  protected readonly tabs = computed<TabBandTab[]>(() => [
-    { key: 'details', label: 'About ' + this.label() },
-    { key: 'final', label: 'Ballpark Cost' },
-    { key: 'marketplace', label: 'Marketplace' },
-    { key: 'reports', label: 'Reports' },
-    { key: 'inbox', label: 'Inbox' },
-  ]);
+  /** A DRAFT project (not yet sent to suppliers) shows only Ballpark Cost +
+   *  Marketplace — About Project (event details already live on Ballpark Cost),
+   *  Reports and Inbox unlock once it goes Active (sent to suppliers). */
+  protected readonly isDraft = computed(() => (this.detail.value()?.status ?? 'draft') === 'draft');
+  protected readonly tabs = computed<TabBandTab[]>(() => {
+    const draft = this.isDraft();
+    const t: TabBandTab[] = [];
+    if (!draft) t.push({ key: 'details', label: 'About ' + this.label() });
+    t.push({ key: 'final', label: 'Ballpark Cost' });
+    t.push({ key: 'marketplace', label: 'Marketplace' });
+    if (!draft) {
+      t.push({ key: 'reports', label: 'Reports' });
+      t.push({ key: 'inbox', label: 'Inbox' });
+    }
+    return t;
+  });
 
   protected readonly detail = resource<ProjectDetail, string>({
     params: () => this.id(),

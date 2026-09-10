@@ -780,8 +780,11 @@ export class ProjectEstimateComponent {
       });
       this.lines.reload();
       this.est.reload();
-      // Take the agent straight to the inbox to watch for replies (Liam QC).
-      void this.router.navigate(['/inbox', this.projectId()]);
+      // First send flips the project Draft → Active (server-side), unlocking the
+      // Reports + Inbox tabs — tell the host to reload its detail so the tabs
+      // appear, then land on the project's Inbox tab to watch for replies.
+      this.detailsSaved.emit();
+      void this.router.navigate(['/projects', this.projectId()], { queryParams: { tab: 'inbox' } });
     } catch (err) {
       this.toast.add({ severity: 'error', summary: "Couldn't send the brief — please try again.", detail: errorDetail(err), life: 5000 });
     } finally {

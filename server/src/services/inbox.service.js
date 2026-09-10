@@ -127,12 +127,13 @@ async function resolveProjectCategoryId(executor, projectId, categoryId) {
  *  email) with `skip_balls` — v2 has no Balls economy yet. */
 async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
   const proj = await pool.query(
-    `SELECT org_id FROM projects WHERE id = $1 AND deleted_at IS NULL`,
+    `SELECT org_id, status FROM projects WHERE id = $1 AND deleted_at IS NULL`,
     [projectId]
   );
   if (!proj.rows.length) throw httpErr('Project not found', 404);
   // Participation: only the owning agency may fan its own project out.
   if (proj.rows[0].org_id !== agencyOrgId) throw httpErr('Project not found', 404);
+  const wasDraft = (proj.rows[0].status ?? 'draft') === 'draft';
 
   // pV2-CUSTOMS-01: fan out per LINE, not per item_id — the cart's still-to-send
   // canonical rows grouped by their own category_id (project_items.category_id,
@@ -183,6 +184,21 @@ async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
       skip_balls: true,
     });
     results.push({ categoryId, refCode: res.ref_code, suppliers: res.suppliers, requirements: res.requirements });
+  }
+
+  // First successful outreach takes the project Draft → Active (Live): the
+  // Reports + Inbox tabs unlock. Dual-write status + legacy status_id (v1
+  // compat), same as ProjectsService. Non-fatal — the briefs already sent.
+  if (wasDraft && results.length) {
+    try {
+      const { status, statusId } = await projectsService.resolveStatus('active');
+      await pool.query(
+        `UPDATE projects SET status = $2, status_id = $3, updated_at = NOW() WHERE id = $1`,
+        [projectId, status, statusId]
+      );
+    } catch (err) {
+      console.warn('[inbox] draft→active status flip failed', err);
+    }
   }
 
   return {
