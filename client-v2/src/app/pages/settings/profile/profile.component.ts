@@ -5,8 +5,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PageConfigService } from '../../../core/config/page-config.service';
-import { EditFieldComponent } from '../../../shared/edit-field/edit-field.component';
-import { EditSectionComponent } from '../../../shared/edit-section/edit-section.component';
+import { SaveStatePillComponent } from '../../../shared/save-state-pill/save-state-pill.component';
 import { DrawerComponent } from '../../../shared/drawer/drawer.component';
 import { ImagePickerComponent } from '../../../shared/image-picker/image-picker.component';
 import { OrgMediaComponent } from '../../../shared/org-media/org-media.component';
@@ -17,12 +16,13 @@ import { ProfileEditService } from './profile-edit.service';
 import { ProfileTeamSectionComponent } from './profile-team-section.component';
 import { ProfileShopfrontComponent } from './profile-shopfront.component';
 
-/** pV2 Profile — /settings/profile: the REFERENCE consumer of the page-density
- *  <app-edit-section> + <app-edit-field> standard. Two tabs (Profile editor /
- *  Shopfront preview, suppliers only). The org-editing state machine + media
- *  live in ProfileEditService; the Team roster + invite and the Shopfront body
- *  are extracted child components (STORE-01 audit bloat split). This shell owns
- *  the hero, tab band, completeness deep-links, and section layout. */
+/** pV2 Profile — /settings/profile: always-editable rounded ed-* fields that
+ *  save on blur with the shared app-save-state-pill (the workspace standard;
+ *  no Edit/Save buttons). Two tabs (Profile editor / Shopfront preview,
+ *  suppliers only). The org state machine + media live in ProfileEditService;
+ *  the Team roster + invite and the Shopfront body are extracted child
+ *  components. This shell owns the hero, tab band, completeness deep-links,
+ *  and the single-column section layout. */
 @Component({
   selector: 'app-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -31,8 +31,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
     LucideAngularModule,
     ToastModule,
     PageHeroComponent,
-    EditSectionComponent,
-    EditFieldComponent,
+    SaveStatePillComponent,
     DrawerComponent,
     ImagePickerComponent,
     OrgMediaComponent,
@@ -87,33 +86,26 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
             <!-- ── Details ─────────────────────────────────────────────── -->
             <div class="flex flex-col gap-5">
               <!-- About Us — the public description blurb (orgs.description). -->
-              <app-edit-section
-                title="About Us"
-                [editable]="store.canEdit()"
-                [(editing)]="store.editingAbout"
-                [saving]="store.saving()"
-                (edit)="store.snapshot('about')"
-                (cancelled)="store.restore('about')"
-                (save)="store.save('about')"
-              >
-                @if (store.editingAbout()) {
-                  <textarea
-                    class="bp-store-textarea"
-                    rows="5"
-                    [ngModel]="store.form().description"
-                    (ngModelChange)="store.patch({ description: $event })"
-                    placeholder="Tell customers about your company…"
-                  ></textarea>
-                } @else {
-                  <p class="bp-body whitespace-pre-line text-secondary">{{ store.form().description || '—' }}</p>
-                }
-              </app-edit-section>
+              <div class="ed-card p-6">
+                <div class="flex items-center justify-between">
+                  <h2 class="bp-card-title">About Us</h2>
+                  <app-save-state-pill [state]="store.saveState()" [idleShowsSaved]="true" />
+                </div>
+                <textarea class="ed-textarea mt-4" rows="5"
+                          placeholder="Tell customers about your company…"
+                          [disabled]="!store.canEdit()"
+                          [ngModel]="store.form().description"
+                          (ngModelChange)="store.patch({ description: $event })"
+                          (blur)="store.saveSection('about')"></textarea>
+              </div>
 
               <!-- Branding — cover + logo, under About Us. The drawers ride WITH
                    it so their (empty) hosts don't add stray gaps. -->
               @if (store.profile.value(); as org) {
                 <div>
-                <app-edit-section title="Branding" [editable]="false">
+                <div class="ed-card p-6">
+                  <h2 class="bp-card-title">Branding</h2>
+                  <div class="mt-4">
                   <app-org-media
                     mode="edit"
                     show="banner"
@@ -126,7 +118,8 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                     (editCover)="store.coverDrawer.set(true)"
                     (editLogo)="store.logoDrawer.set(true)"
                   />
-                </app-edit-section>
+                  </div>
+                </div>
 
                 <app-drawer [(open)]="store.coverDrawer" title="Cover image">
                   <app-image-picker
@@ -156,53 +149,62 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                 </div>
               }
 
-              <div #companySection>
-              <app-edit-section
-                title="Company Information"
-                [editable]="store.canEdit()"
-                [(editing)]="store.editingOrg"
-                [saving]="store.saving()"
-                (edit)="store.snapshot('org')"
-                (cancelled)="store.restore('org')"
-                (save)="store.save('org')"
-              >
-                <div class="bp-field-grid-2">
-                  <app-edit-field label="Organisation name" density="page" [editing]="store.editingOrg()" [value]="store.form().name" (valueChange)="store.patch({ name: $event })" />
-                  <app-edit-field label="Company number" density="page" [editing]="store.editingOrg()" [value]="store.form().companyNumber" (valueChange)="store.patch({ companyNumber: $event })" />
-                  <app-edit-field label="City" density="page" [editing]="store.editingOrg()" [value]="store.form().city" (valueChange)="store.patch({ city: $event })" />
-                  <app-edit-field label="Country" type="select" density="page" [filter]="true" [options]="store.countryOptions()" [editing]="store.editingOrg()" [value]="store.form().country" (valueChange)="store.patch({ country: $event })" />
-                  <app-edit-field label="Address" density="page" [editing]="store.editingOrg()" [value]="store.form().address" (valueChange)="store.patch({ address: $event })" />
-                  <app-edit-field label="Email" type="email" density="page" [editing]="store.editingOrg()" [value]="store.form().email" (valueChange)="store.patch({ email: $event })" />
-                  <app-edit-field label="Phone" type="tel" density="page" [editing]="store.editingOrg()" [value]="store.form().phone" (valueChange)="store.patch({ phone: $event })" />
-                  <app-edit-field label="Project reference prefix" density="page" [maxLength]="4" placeholder="e.g. WA" [editing]="store.editingOrg()" [value]="store.form().refPrefix" (valueChange)="store.patch({ refPrefix: $event.toUpperCase() })" />
-                  <app-edit-field label="Projects numbered so far" density="page" [readonlyAlways]="true" [value]="'' + store.refCounter()" />
+              <div #companySection class="ed-card p-6">
+                <div class="flex items-center justify-between">
+                  <h2 class="bp-card-title">Company Information</h2>
+                  <app-save-state-pill [state]="store.saveState()" [idleShowsSaved]="true" />
                 </div>
-              </app-edit-section>
+                <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
+                  <label class="block"><span class="ed-label mb-1.5 block">Organisation name</span>
+                    <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().name" (ngModelChange)="store.patch({ name: $event })" (blur)="store.saveSection('org')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Company number</span>
+                    <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().companyNumber" (ngModelChange)="store.patch({ companyNumber: $event })" (blur)="store.saveSection('org')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">City</span>
+                    <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().city" (ngModelChange)="store.patch({ city: $event })" (blur)="store.saveSection('org')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Country</span>
+                    <select class="ed-select" [disabled]="!store.canEdit()" [ngModel]="store.form().country" (ngModelChange)="store.patch({ country: $event }); store.saveSection('org')">
+                      <option value="">—</option>
+                      @for (o of store.countryOptions(); track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+                    </select></label>
+                  <label class="block sm:col-span-2"><span class="ed-label mb-1.5 block">Address</span>
+                    <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().address" (ngModelChange)="store.patch({ address: $event })" (blur)="store.saveSection('org')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Email</span>
+                    <input class="ed-input" type="email" [disabled]="!store.canEdit()" [ngModel]="store.form().email" (ngModelChange)="store.patch({ email: $event })" (blur)="store.saveSection('org')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Phone</span>
+                    <input class="ed-input" type="tel" [disabled]="!store.canEdit()" [ngModel]="store.form().phone" (ngModelChange)="store.patch({ phone: $event })" (blur)="store.saveSection('org')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Project reference prefix</span>
+                    <input class="ed-input" maxlength="4" placeholder="e.g. WA" [disabled]="!store.canEdit()" [ngModel]="store.form().refPrefix" (ngModelChange)="store.patch({ refPrefix: $event.toUpperCase() })" (blur)="store.saveSection('org')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Projects numbered so far</span>
+                    <input class="ed-input" disabled [value]="store.refCounter()" /></label>
+                </div>
               </div>
 
               <app-profile-team-section [canEdit]="store.canEdit()" />
 
-              <app-edit-section
-                title="Finance"
-                [editable]="store.canEdit()"
-                [(editing)]="store.editingFin"
-                [saving]="store.saving()"
-                (edit)="store.snapshot('fin')"
-                (cancelled)="store.restore('fin')"
-                (save)="store.save('fin')"
-              >
-                <div class="bp-field-grid-3">
-                  <app-edit-field label="Currency" type="select" density="page" [options]="store.currencyOptions()" [editing]="store.editingFin()" [value]="store.form().currency" (valueChange)="store.patch({ currency: $event })" />
-                  <app-edit-field label="VAT" type="number" suffix="%" density="page" [editing]="store.editingFin()" [value]="store.form().vat" (valueChange)="store.patch({ vat: $event })" />
-                  <app-edit-field label="Margin" type="number" suffix="%" density="page" [editing]="store.editingFin()" [value]="store.form().margin" (valueChange)="store.patch({ margin: $event })" />
-                  <app-edit-field label="Contingency" type="number" suffix="%" density="page" [editing]="store.editingFin()" [value]="store.form().contingency" (valueChange)="store.patch({ contingency: $event })" />
+              <div class="ed-card p-6">
+                <div class="flex items-center justify-between">
+                  <h2 class="bp-card-title">Finance</h2>
+                  <app-save-state-pill [state]="store.saveState()" [idleShowsSaved]="true" />
                 </div>
-              </app-edit-section>
+                <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <label class="block"><span class="ed-label mb-1.5 block">Currency</span>
+                    <select class="ed-select" [disabled]="!store.canEdit()" [ngModel]="store.form().currency" (ngModelChange)="store.patch({ currency: $event }); store.saveSection('fin')">
+                      @for (o of store.currencyOptions(); track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+                    </select></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">VAT (%)</span>
+                    <input class="ed-input" type="number" [disabled]="!store.canEdit()" [ngModel]="store.form().vat" (ngModelChange)="store.patch({ vat: $event })" (blur)="store.saveSection('fin')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Margin (%)</span>
+                    <input class="ed-input" type="number" [disabled]="!store.canEdit()" [ngModel]="store.form().margin" (ngModelChange)="store.patch({ margin: $event })" (blur)="store.saveSection('fin')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Contingency (%)</span>
+                    <input class="ed-input" type="number" [disabled]="!store.canEdit()" [ngModel]="store.form().contingency" (ngModelChange)="store.patch({ contingency: $event })" (blur)="store.saveSection('fin')" /></label>
+                </div>
+              </div>
 
               <!-- pV2-BUILDUP-04 — standard Terms & Conditions PDF (SOW Annex A). -->
               @if (store.profile.value(); as org) {
-              <app-edit-section title="Terms &amp; Conditions" [editable]="false">
-                <p class="bp-caption">Your standard Terms &amp; Conditions PDF — attached as Annex A on Statements of Work.</p>
+              <div class="ed-card p-6">
+                <h2 class="bp-card-title">Terms &amp; Conditions</h2>
+                <p class="bp-caption mt-2">Your standard Terms &amp; Conditions PDF — attached as Annex A on Statements of Work.</p>
                 <div class="mt-3 flex flex-wrap items-center gap-3">
                   @if (org.termsPdfUrl) {
                     <a [href]="org.termsPdfUrl" target="_blank" rel="noopener" class="flex items-center gap-2 bp-body-small text-text underline">
@@ -221,25 +223,29 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                     }
                   }
                 </div>
-              </app-edit-section>
+              </div>
               }
 
-              <app-edit-section title="Social Links" [editable]="false">
-                <p class="bp-caption">Coming soon.</p>
-              </app-edit-section>
-              <app-edit-section title="Most Viewed Products This Month" [editable]="false">
-                <p class="bp-caption">Coming soon.</p>
-              </app-edit-section>
-              <app-edit-section title="Payment Information" [editable]="false">
-                <p class="bp-caption">Coming soon.</p>
-              </app-edit-section>
+              <div class="ed-card p-6">
+                <h2 class="bp-card-title">Social Links</h2>
+                <p class="bp-caption mt-2">Coming soon.</p>
+              </div>
+              <div class="ed-card p-6">
+                <h2 class="bp-card-title">Most Viewed Products This Month</h2>
+                <p class="bp-caption mt-2">Coming soon.</p>
+              </div>
+              <div class="ed-card p-6">
+                <h2 class="bp-card-title">Payment Information</h2>
+                <p class="bp-caption mt-2">Coming soon.</p>
+              </div>
             </div>
 
             <!-- ── Bottom: Availability + Gallery ─────────────────────────── -->
             <div class="flex flex-col gap-5">
-              <app-edit-section title="Availability" [editable]="false">
-                <p class="bp-caption">Coming soon.</p>
-              </app-edit-section>
+              <div class="ed-card p-6">
+                <h2 class="bp-card-title">Availability</h2>
+                <p class="bp-caption mt-2">Coming soon.</p>
+              </div>
 
               @if (store.profile.value(); as org) {
                 <!-- Gallery — org-media's portfolio mode renders its own card. -->
@@ -311,8 +317,7 @@ export class ProfileComponent {
         this.scrollTo(this.mediaSection());
         break;
       case 'company':
-        this.store.snapshot('org');
-        this.store.editingOrg.set(true);
+        // Fields are always editable now — just bring the section into view.
         this.scrollTo(this.companySection());
         break;
     }

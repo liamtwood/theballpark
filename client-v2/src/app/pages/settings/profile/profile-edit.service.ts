@@ -10,6 +10,7 @@ import { GalleryImage, PickerResult, PickerTab } from '../../../core/media/media
 import { MediaService } from '../../../core/media/media.service';
 import { EditFieldOption } from '../../../shared/edit-field/edit-field.component';
 import { CompletenessConfig } from '../../../shared/completeness/completeness.types';
+import { SaveState } from '../../../shared/save-state-pill/save-state-pill.component';
 
 /** The editable form state (strings throughout — edit-field's surface). */
 export interface ProfileForm {
@@ -55,12 +56,12 @@ export class ProfileEditService {
   readonly form = signal<ProfileForm>(toForm(null));
   readonly refCounter = signal(0);
 
-  readonly editingAbout = signal(false);
-  readonly editingOrg = signal(false);
-  readonly editingFin = signal(false);
-  readonly saving = signal(false);
+  /** Save-on-blur pill state, shared across the editable sections (the standard
+   *  app-save-state-pill). */
+  readonly saveState = signal<SaveState>('idle');
 
-  /** Pencils mirror the server's PUT gate (org.manage_billing = org admins). */
+  /** Editable only by org admins (mirrors the server's PUT gate,
+   *  org.manage_billing); non-admins see the fields read-only. */
   readonly canEdit = computed(() => can(this.auth.role(), 'org.manage_billing'));
 
   // ── Codelist-fed selects (RP-04: no inline arrays) ────────────────────────
@@ -84,24 +85,18 @@ export class ProfileEditService {
     { weight: 10, label: 'Add a phone number', action: 'company', done: (o) => !!o.phone },
   ];
 
-  private snapshots: { about?: ProfileForm; org?: ProfileForm; fin?: ProfileForm } = {};
-
   patch(p: Partial<ProfileForm>): void {
     this.form.update((f) => ({ ...f, ...p }));
   }
-  snapshot(section: 'about' | 'org' | 'fin'): void {
-    this.snapshots[section] = { ...this.form() };
-  }
-  restore(section: 'about' | 'org' | 'fin'): void {
-    const snap = this.snapshots[section];
-    if (snap) this.form.set({ ...snap });
-  }
 
-  async save(section: 'about' | 'org' | 'fin'): Promise<void> {
-    this.saving.set(true);
+  /** Save-on-blur: persist one section's fields and flash the shared pill. No
+   *  edit-mode toggle, no toast — the pill is the confirmation (the standard).
+   *  Per-section payloads (audit 02-F-2): each PUT carries only its own fields,
+   *  so saving one never writes possibly-stale values from another. */
+  async saveSection(section: 'about' | 'org' | 'fin'): Promise<void> {
+    if (!this.canEdit()) return;
+    this.saveState.set('saving');
     const f = this.form();
-    // Per-section payloads (audit 02-F-2): each section's PUT carries only its
-    // own fields, so saving one never writes possibly-stale values from another.
     const patch =
       section === 'about'
         ? { description: f.description.trim() }
@@ -125,16 +120,13 @@ export class ProfileEditService {
           };
     try {
       const fresh = await firstValueFrom(this.orgs.update(patch));
+      this.profile.set(fresh);
       this.form.set(toForm(fresh));
       this.refCounter.set(fresh.refCounter);
-      if (section === 'about') this.editingAbout.set(false);
-      else if (section === 'org') this.editingOrg.set(false);
-      else this.editingFin.set(false);
-      this.toast.add({ severity: 'success', summary: 'Saved.', life: 3000 });
+      this.saveState.set('saved');
     } catch (e) {
-      this.toast.add({ severity: 'error', summary: "Couldn't save — please try again.", detail: errorDetail(e), life: 5000 });
-    } finally {
-      this.saving.set(false);
+      console.warn('[ProfileEdit] save failed', e);
+      this.saveState.set('error');
     }
   }
 
