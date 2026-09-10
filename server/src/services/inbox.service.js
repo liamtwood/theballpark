@@ -568,6 +568,54 @@ function truncate(s, max) {
   return s.length > max ? s.slice(0, max - 1).trimEnd() + '…' : s;
 }
 
+/** Live-project overview metrics (agency): value of both-sides-agreed items,
+ *  agreed vs total item counts, and how many supplier threads still have an
+ *  open item. Cancelled/declined lines are excluded. Working total comes from
+ *  the estimate cascade (client already has it). org from JWT (RP-INB1). */
+async function getProjectOverview(agencyOrgId, projectId) {
+  const proj = await pool.query(
+    `SELECT org_id FROM projects WHERE id = $1 AND deleted_at IS NULL`,
+    [projectId]
+  );
+  if (!proj.rows.length || proj.rows[0].org_id !== agencyOrgId) throw httpErr('Project not found', 404);
+
+  const all = await messageService.getAll(projectId);
+  const groups = new Map();
+  for (const m of all) {
+    const key = `${m.supplier_org_id ?? ''}|${m.category_id ?? ''}`;
+    let g = groups.get(key);
+    if (!g) { g = []; groups.set(key, g); }
+    g.push(m.id);
+  }
+
+  let confirmedTotal = 0;
+  let agreedItems = 0;
+  let totalItems = 0;
+  let openThreads = 0;
+  const seen = new Set();
+  for (const messageIds of groups.values()) {
+    const items = await getByMessages(messageIds, { sentOnly: true });
+    let threadOpen = false;
+    for (const it of items) {
+      if (seen.has(it.id)) continue;
+      seen.add(it.id);
+      const s = it.status;
+      if (s === 'declined_by_agent' || s === 'declined_by_supplier') continue; // excluded
+      totalItems++;
+      const agreed = s === 'booked' || (it.buyer_status === 'accepted' && it.seller_status === 'accepted');
+      if (agreed) {
+        agreedItems++;
+        confirmedTotal += Number(it.revised_total ?? it.original_total ?? 0);
+      } else {
+        threadOpen = true;
+      }
+    }
+    if (threadOpen) openThreads++;
+  }
+
+  return { confirmedTotal, agreedItems, totalItems, openThreads };
+}
+
 /** pV2-INBOX-01 — the caller-supplier replies in a thread: a chat message
  *  and/or per-item actions (Accept / Propose-new-price / Decline). Identity
  *  is the JWT caller; we verify the thread (its lead brief) belongs to this
@@ -779,4 +827,4 @@ async function getLineConversation(orgId, projectId, lineId, { limit = 14 } = {}
   }));
 }
 
-module.exports = { listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads, getAgentInboxSummary, reply, getLineConversation };
+module.exports = { listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads, getAgentInboxSummary, getProjectOverview, reply, getLineConversation };

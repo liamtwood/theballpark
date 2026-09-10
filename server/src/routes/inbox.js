@@ -71,6 +71,22 @@ router.get('/projects/:projectId/threads', async (req, res, next) => {
   }
 });
 
+// GET /api/inbox/projects/:projectId/overview — live-project metrics
+// (confirmed value, agreed vs total items, open threads). Agency-only; org
+// from JWT (the service verifies ownership).
+router.get('/projects/:projectId/overview', async (req, res, next) => {
+  try {
+    if (!UUID.safeParse(req.params.projectId).success) {
+      return res.status(400).json({ error: 'Invalid project id' });
+    }
+    if (req.user.org_type !== 'agency') return res.status(403).json({ error: 'Agency only' });
+    res.json(await inbox.getProjectOverview(req.user.org_id, req.params.projectId));
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
 // POST /api/inbox/threads/:threadId/reply — the supplier replies in a
 // thread: a chat message and/or per-item actions. org from JWT; the service
 // verifies the thread is theirs (RP-INB1). Gated to inbox.reply.

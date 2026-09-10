@@ -28,6 +28,8 @@ import { ProjectEstimateComponent } from './project-estimate.component';
 import { QuoteDocumentComponent } from './quote-document.component';
 import { SowDocumentComponent } from './sow-document.component';
 import { InboxProjectComponent } from '../inbox/inbox-project.component';
+import { ProjectOverviewHeroComponent } from './project-overview-hero.component';
+import { InboxService } from '../../core/inbox/inbox.service';
 import { CoachmarkComponent } from '../../shared/coachmark/coachmark.component';
 
 type Tab = 'marketplace' | 'estimate' | 'final' | 'reports' | 'details' | 'inbox';
@@ -86,6 +88,7 @@ interface DetailForm {
     QuoteDocumentComponent,
     SowDocumentComponent,
     InboxProjectComponent,
+    ProjectOverviewHeroComponent,
     FormsModule,
     SaveStatePillComponent,
   ],
@@ -96,11 +99,27 @@ interface DetailForm {
   host: { class: 'block bp-vpfit' },
   template: `
     @if (detail.value(); as p) {
-      <app-page-hero eyebrow="Project" [dense]="true" [contained]="true" [back]="{ label: 'Past projects', href: '/projects' }"
-                     [title]="p.name" [subtitle]="p.ref ?? ''"
-                     rightEyebrow="Ballpark"
-                     [rightTitle]="(estimate.value()?.projectTotal | currency: (p.currency || 'GBP') : 'symbol' : '1.0-0') ?? '—'"
-                     rightSubtitle="Exc. VAT" />
+      @if (isDraft()) {
+        <app-page-hero eyebrow="Project" [dense]="true" [contained]="true" [back]="{ label: 'Past projects', href: '/projects' }"
+                       [title]="p.name" [subtitle]="p.ref ?? ''"
+                       rightEyebrow="Ballpark"
+                       [rightTitle]="(estimate.value()?.projectTotal | currency: (p.currency || 'GBP') : 'symbol' : '1.0-0') ?? '—'"
+                       rightSubtitle="Exc. VAT" />
+      } @else {
+        <!-- Live project: cover hero + negotiation tiles, in the workspace column. -->
+        <div class="px-6 pt-4">
+          <div class="mx-auto w-full max-w-[var(--workspace-max)]">
+            <app-project-overview-hero
+              [project]="p"
+              [workingTotal]="estimate.value()?.projectTotal ?? 0"
+              [overview]="overview.value() ?? null"
+              [currency]="p.currency || 'GBP'"
+              [label]="label()"
+              (changeImage)="imgDrawer.set(true)"
+              (buildCover)="onBuildCover()" />
+          </div>
+        </div>
+      }
 
       <!-- Tabs sit just above the tab content (Liam 2026-08-28). Coachmarks
            overlay ABOVE the band in their own layer (absolute → no layout shift
@@ -332,6 +351,7 @@ export class ProjectDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly projects = inject(ProjectService);
+  private readonly inbox = inject(InboxService);
   private readonly codelists = inject(CodelistService);
   private readonly pageConfig = inject(PageConfigService);
   private readonly toast = inject(MessageService);
@@ -385,6 +405,13 @@ export class ProjectDetailComponent {
   protected readonly estimate = resource<EstimateBreakdown, string>({
     params: () => this.id(),
     loader: ({ params }) => firstValueFrom(this.projects.estimate(params, 'all')),
+  });
+
+  /** Live-project overview metrics (confirmed / agreed / open threads) — only
+   *  fetched once the project is Active (the cover hero's tiles). */
+  protected readonly overview = resource({
+    params: () => (this.isDraft() ? undefined : this.id() || undefined),
+    loader: ({ params }) => firstValueFrom(this.inbox.projectOverview(params)),
   });
 
   protected readonly form = signal<DetailForm>(toForm(null));
@@ -543,6 +570,12 @@ export class ProjectDetailComponent {
     const n = numOrNull(this.form().budget.replace(/,/g, ''));
     this.patch({ budget: n != null ? n.toLocaleString('en-GB') : '' });
     void this.saveSection('financials');
+  }
+
+  /** "Build cover from your items" — compose a cover from the project's item
+   *  images. Not built yet. */
+  protected onBuildCover(): void {
+    this.toast.add({ severity: 'info', summary: 'Build cover from your items is coming soon.', life: 4000 });
   }
 
   /** Save-on-blur (always-editable fields): persist the section, flash the

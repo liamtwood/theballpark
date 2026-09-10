@@ -22,6 +22,7 @@ import {
   CirclePlus,
   ArrowUpRight,
   EllipsisVertical,
+  Image,
   FolderKanban,
   FolderOpen,
   FolderPlus,
@@ -157,6 +158,8 @@ export const appConfig: ApplicationConfig = {
         CirclePlus, ArrowUpRight,
         // pV2 inbox — header kebab menu
         EllipsisVertical,
+        // pV2 live-project overview hero — cover action
+        Image,
         // Profile: section edit lifecycle
         SquarePen, Check, Lock,
         // v2.13a supplier sub-hubs: projects-hub stages + storefront trio

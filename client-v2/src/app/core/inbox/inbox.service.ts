@@ -39,6 +39,19 @@ export class InboxService {
   summary(): Observable<InboxSummaryRow[]> {
     return this.api.get<InboxSummaryRow[]>('/api/inbox/summary');
   }
+
+  /** Live-project overview metrics (confirmed value, agreed items, open threads). */
+  projectOverview(projectId: string): Observable<ProjectOverview> {
+    return this.api.get<ProjectOverview>(`/api/inbox/projects/${projectId}/overview`);
+  }
+}
+
+/** Live-project negotiation metrics for the overview hero tiles. */
+export interface ProjectOverview {
+  confirmedTotal: number;
+  agreedItems: number;
+  totalItems: number;
+  openThreads: number;
 }
 
 /** Waiting-count rollup shared by a project row and each supplier row. */
