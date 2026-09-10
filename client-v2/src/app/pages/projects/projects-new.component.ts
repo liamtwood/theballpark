@@ -89,10 +89,16 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
             <div class="bp-card bp-card--lifted p-6">
               <h2 class="bp-card-title">Project details</h2>
 
-              <label class="mt-4 block">
-                <span class="bp-field-label">Project name</span>
-                <input type="text" class="bp-np-input" [value]="name()" (input)="name.set($any($event.target).value)" />
-              </label>
+              <div class="mt-4 flex gap-4">
+                <label class="block w-[calc(9ch+2.5rem)] shrink-0">
+                  <span class="bp-field-label">Ref</span>
+                  <input type="text" class="bp-np-input" value="Auto-assigned" disabled title="A reference is assigned when the project is created" />
+                </label>
+                <label class="block min-w-0 flex-1">
+                  <span class="bp-field-label">Project name</span>
+                  <input type="text" class="bp-np-input" [value]="name()" (input)="name.set($any($event.target).value)" />
+                </label>
+              </div>
               <div class="mt-4 grid grid-cols-2 gap-4">
                 <label class="block">
                   <span class="bp-field-label">Client</span>
@@ -163,6 +169,11 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
       }
       .bp-np-input:focus {
         border-color: var(--theme-accent);
+      }
+      .bp-np-input:disabled {
+        background: var(--color-fill);
+        color: var(--color-text-secondary);
+        cursor: not-allowed;
       }
       /* Native <select> arrow crowds the value — swap for a padded chevron. */
       select.bp-np-select {
