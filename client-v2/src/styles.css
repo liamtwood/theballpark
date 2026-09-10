@@ -965,10 +965,8 @@ body {
   font-size: var(--text-2xl);
   font-weight: 600;
   line-height: var(--leading-snug);
-  background: var(--bp-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  /* Solid brand rose (no gradient — Liam: no rainbow). */
+  color: var(--theme-accent);
 }
 /* Small uppercase tracked accent reference — WA-026 (image 8). */
 .bp-ref-eyebrow {
@@ -1805,7 +1803,7 @@ input.bp-input-field::-webkit-inner-spin-button { -webkit-appearance: none; marg
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-width: 12rem;
+  min-width: 8rem;
   white-space: nowrap;
   padding: 8px 14px;
   border-radius: var(--radius-pill);
@@ -1818,6 +1816,8 @@ input.bp-input-field::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .bp-act:hover:not(:disabled) { box-shadow: var(--shadow-xs); }
 .bp-act:disabled { opacity: 0.55; cursor: default; }
 .bp-act--green { background: var(--color-success-soft); color: var(--color-success); }
+/* Primary action — the standard solid brand fill (matches .bp-msg-btn / Send). */
+.bp-act--primary { background: var(--theme-accent); color: var(--theme-accent-contrast, #fff); }
 .bp-act--yellow { background: var(--color-warn-soft); color: var(--color-warn); }
 .bp-act--gray { background: var(--color-fill); color: var(--color-text-secondary); }
 .bp-act--red { background: var(--color-danger-soft); color: var(--color-danger); }
@@ -1836,7 +1836,7 @@ input.bp-input-field::-webkit-inner-spin-button { -webkit-appearance: none; marg
   flex-direction: column;
   gap: 2px;
 }
-.bp-bubble--mine { background: var(--bp-gradient); border: none; color: var(--bp-text-on-gradient); }
+.bp-bubble--mine { background: var(--theme-accent); border: none; color: var(--theme-accent-contrast, var(--bp-text-on-gradient)); }
 .bp-bubble__author { font-size: 11px; font-weight: 600; opacity: 0.85; }
 .bp-bubble__body { font-size: 14px; line-height: 1.5; white-space: pre-line; }
 /* Broadcast shown inside a filtered item view — faded, with a tag. */

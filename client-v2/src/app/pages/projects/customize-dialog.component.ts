@@ -275,7 +275,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                     </div>
                   }
                 </div>
-              } @else {
+              } @else if (showItemPreview) {
                 <div class="flex justify-end">
                   <button type="button" class="bp-itemprev-close" title="Show item preview" aria-label="Show item preview" (click)="showPreview.set(true)">
                     <lucide-icon name="eye" [size]="14" />
