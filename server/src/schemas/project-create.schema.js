@@ -6,6 +6,9 @@ const { z } = require('zod');
  *  NEVER accepted here; the route supplies it from the JWT. */
 const ProjectCreateSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
+  // Custom project reference — the agency can set their own; left null/blank
+  // it's auto-assigned from the org's ref counter (PREFIX-000).
+  ref: z.string().trim().max(40).nullable().optional(),
   description: z.string().trim().max(4000).optional(),
   eventType: z.string().trim().max(100).optional(),
   eventDate: z.string().trim().max(100).optional(),

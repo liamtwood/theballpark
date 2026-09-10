@@ -363,6 +363,10 @@ async function create(orgId, data) {
       if (row.default_contingency_pct !== null) contingencyPct = Number(row.default_contingency_pct);
       if (row.default_vat_pct !== null) vatPct = Number(row.default_vat_pct);
     }
+    // A caller-supplied ref wins over the auto-assigned one; blank → automagic.
+    // (The counter still ticks so the auto sequence stays gap-tolerant/unique.)
+    const customRef = data.ref && String(data.ref).trim();
+    if (customRef) ref = customRef;
 
     const r = await client.query(
       `INSERT INTO projects (

@@ -90,9 +90,9 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
               <h2 class="bp-card-title">Project details</h2>
 
               <div class="mt-4 flex gap-4">
-                <label class="block w-[calc(9ch+2.5rem)] shrink-0">
+                <label class="block w-[calc(11ch+2.5rem)] shrink-0">
                   <span class="bp-field-label">Ref</span>
-                  <input type="text" class="bp-np-input" value="Auto-assigned" disabled title="A reference is assigned when the project is created" />
+                  <input type="text" class="bp-np-input" placeholder="Auto" title="Leave blank to auto-assign, or set your own" [value]="ref()" (input)="ref.set($any($event.target).value)" />
                 </label>
                 <label class="block min-w-0 flex-1">
                   <span class="bp-field-label">Project name</span>
@@ -216,6 +216,7 @@ export class ProjectsNewComponent {
 
   /** Project-detail fields the user can fill directly (override the parsed
    *  brief). All map to existing project attributes. */
+  protected readonly ref = signal('');
   protected readonly name = signal('');
   protected readonly client = signal('');
   protected readonly eventType = signal('');
@@ -268,6 +269,7 @@ export class ProjectsNewComponent {
       const base = parsedBriefToCreate(parsed, text);
       const payload = {
         ...base,
+        ref: this.ref().trim() || undefined,
         name: this.name().trim() || base.name,
         eventType: this.eventType().trim() || base.eventType,
         eventDate: this.eventDate().trim() || base.eventDate,

@@ -262,6 +262,8 @@ export type ProjectUpdate = Partial<{
  *  ProjectCreateSchema). org_id is NOT here — the server uses the JWT. */
 export interface ProjectCreatePayload {
   name?: string;
+  /** Custom project reference; omitted/blank → auto-assigned server-side. */
+  ref?: string;
   description?: string;
   eventType?: string;
   eventDate?: string;
