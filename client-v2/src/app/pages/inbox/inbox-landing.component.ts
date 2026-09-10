@@ -34,7 +34,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
         } @else {
           <div class="mx-auto grid w-full max-w-[var(--workspace-max)] grid-cols-1 gap-6 sm:grid-cols-2">
             @for (row of rows.value(); track row.id) {
-              <a [routerLink]="['/inbox', row.id]" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="row.name">
+              <a [routerLink]="['/projects', row.id]" [queryParams]="{ tab: 'inbox' }" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="row.name">
                 <div class="flex flex-col gap-3 p-5">
                   <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
