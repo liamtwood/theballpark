@@ -343,11 +343,11 @@ export class ProjectDetailComponent {
   protected readonly label = computed(() => this.pageConfig.eventLabel());
   protected readonly labelPlural = computed(() => `${this.label()}s`);
   protected readonly tabs = computed<TabBandTab[]>(() => [
-    { key: 'details', label: 'About ' + this.label(), icon: 'clipboard-pen' },
-    { key: 'final', label: 'Ballpark Cost', icon: 'wallet' },
-    { key: 'marketplace', label: 'Marketplace', icon: 'store' },
-    { key: 'reports', label: 'Reports', icon: 'file-text' },
-    { key: 'inbox', label: 'Inbox', icon: 'inbox' },
+    { key: 'details', label: 'About ' + this.label() },
+    { key: 'final', label: 'Ballpark Cost' },
+    { key: 'marketplace', label: 'Marketplace' },
+    { key: 'reports', label: 'Reports' },
+    { key: 'inbox', label: 'Inbox' },
   ]);
 
   protected readonly detail = resource<ProjectDetail, string>({
