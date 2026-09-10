@@ -320,32 +320,6 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         (cancel)="optionsLine.set(null)" />
     }
   `,
-  styles: [
-    `
-      /* Solid brand button (no gradient) — the Message Suppliers CTA. */
-      .bp-msg-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 20px;
-        border: none;
-        border-radius: var(--radius-pill);
-        background: var(--theme-accent);
-        color: var(--theme-accent-contrast, #fff);
-        font-family: var(--font-body);
-        font-size: var(--text-md);
-        font-weight: 500;
-        cursor: pointer;
-      }
-      .bp-msg-btn:hover {
-        opacity: 0.92;
-      }
-      .bp-msg-btn:disabled {
-        opacity: 0.5;
-        cursor: default;
-      }
-    `,
-  ],
 })
 export class ProjectEstimateComponent {
   private readonly projects = inject(ProjectService);

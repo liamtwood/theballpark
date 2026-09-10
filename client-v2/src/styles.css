@@ -276,6 +276,25 @@
   padding-inline: max(24px, calc((100% - var(--workspace-max)) / 2));
 }
 
+/* Standard solid brand button (no gradient) — Message suppliers, Add item,
+   inbox Send, etc. */
+.bp-msg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--theme-accent);
+  color: var(--theme-accent-contrast, #fff);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: 500;
+  cursor: pointer;
+}
+.bp-msg-btn:hover { opacity: 0.92; }
+.bp-msg-btn:disabled { opacity: 0.5; cursor: default; }
+
 /* Workspace edit-form field kit (the "ready to edit" rounded fields — one
    reference for the project Event details + About Project). */
 .ed-card {

@@ -318,7 +318,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                 </div>
                 <button
                   type="button"
-                  class="bp-send-btn shrink-0"
+                  class="bp-msg-btn shrink-0"
                   [disabled]="!draft().trim() || sending() || !selectedItem()"
                   (click)="send(t.id)"
                 >
