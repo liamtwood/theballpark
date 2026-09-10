@@ -95,21 +95,23 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                       }
                     </div>
                   </span>
-                  <div class="flex shrink-0 items-center gap-1.5">
-                    <!-- Open the AI Assistant. Shown only while it's CLOSED; once
-                         open, the rail's own ✕ closes it. -->
-                    @if (!useAssistant()) {
-                      <button type="button" class="flex items-center gap-1.5 rounded-full px-2.5 py-1 bp-caption text-white transition-opacity hover:opacity-90"
-                              style="background: var(--theme-accent)"
-                              title="Open the AI Assistant" (click)="toggleAssistant()">
-                        <lucide-icon name="sparkles" [size]="13" /> Assistant
-                      </button>
-                    }
-                    @if (selectedItem(); as it) {
-                      <!-- pV2-BUILDUP — open the item's Details (the Customize builder). -->
-                      <button type="button" class="bp-itemprev-close shrink-0" [title]="isCustomizing(it) ? 'Close details' : 'Details'" [attr.aria-label]="isCustomizing(it) ? 'Close details' : 'Details'" (click)="toggleCustomize(it)">
-                        <lucide-icon [name]="isCustomizing(it) ? 'x' : 'list-tree'" [size]="16" />
-                      </button>
+                  <!-- Kebab menu: Customize + Assistant. -->
+                  <div class="relative flex shrink-0 items-center">
+                    <button type="button" class="bp-itemprev-close shrink-0" title="More" aria-label="More" (click)="headerMenu.set(!headerMenu())">
+                      <lucide-icon name="ellipsis-vertical" [size]="18" />
+                    </button>
+                    @if (headerMenu()) {
+                      <div class="fixed inset-0 z-20" (click)="headerMenu.set(false)"></div>
+                      <div class="absolute right-0 top-full z-30 mt-1 min-w-[11rem] overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-surface py-1 shadow-[var(--shadow-md)]">
+                        @if (selectedItem(); as it) {
+                          <button type="button" class="flex w-full items-center gap-2 px-3 py-2 text-left bp-body-small hover:bg-fill" (click)="toggleCustomize(it); headerMenu.set(false)">
+                            <lucide-icon [name]="isCustomizing(it) ? 'x' : 'list-tree'" [size]="15" /> {{ isCustomizing(it) ? 'Close details' : 'Customize' }}
+                          </button>
+                        }
+                        <button type="button" class="flex w-full items-center gap-2 px-3 py-2 text-left bp-body-small hover:bg-fill" (click)="toggleAssistant(); headerMenu.set(false)">
+                          <lucide-icon name="sparkles" [size]="15" /> {{ useAssistant() ? 'Hide assistant' : 'Assistant' }}
+                        </button>
+                      </div>
                     }
                   </div>
                 </div>
@@ -771,6 +773,9 @@ export class InboxProjectComponent {
       this.sending.set(false);
     }
   }
+
+  /** Header kebab menu (Customize + Assistant) open state. */
+  protected readonly headerMenu = signal(false);
 
   // ── Per-item actions (Accept / Propose new price) ──────────────────────
   protected readonly proposing = signal(false);

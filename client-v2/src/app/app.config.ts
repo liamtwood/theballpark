@@ -21,6 +21,7 @@ import {
   CircleUser,
   CirclePlus,
   ArrowUpRight,
+  EllipsisVertical,
   FolderKanban,
   FolderOpen,
   FolderPlus,
@@ -154,6 +155,8 @@ export const appConfig: ApplicationConfig = {
         Settings, X, FolderPlus, FolderOpen, FolderKanban, Percent, Inbox, Store, CircleUser, ArrowLeft,
         // pV2 agent home — circle-plus tile icon + Next-steps card
         CirclePlus, ArrowUpRight,
+        // pV2 inbox — header kebab menu
+        EllipsisVertical,
         // Profile: section edit lifecycle
         SquarePen, Check, Lock,
         // v2.13a supplier sub-hubs: projects-hub stages + storefront trio
