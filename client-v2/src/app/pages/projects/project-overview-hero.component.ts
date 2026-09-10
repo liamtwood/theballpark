@@ -25,14 +25,15 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
       } @else {
         <div class="h-[220px] w-full" style="background: var(--bp-gradient, linear-gradient(135deg,#f5add0,#d63384))"></div>
       }
-      <!-- Legibility scrim -->
-      <div class="pointer-events-none absolute inset-0" style="background: linear-gradient(90deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.32) 42%, rgba(0,0,0,0) 70%)"></div>
+      <!-- Legibility scrim — stronger at the bottom-left where the text sits. -->
+      <div class="pointer-events-none absolute inset-0" style="background: linear-gradient(90deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.45) 45%, rgba(0,0,0,0.05) 78%)"></div>
+      <div class="pointer-events-none absolute inset-0" style="background: linear-gradient(0deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 55%)"></div>
 
       <div class="absolute inset-0 flex flex-col justify-end p-6">
-        <span class="bp-eyebrow text-white/85">Live {{ label() }}</span>
-        <h1 class="bp-page-title mt-0.5 text-white">{{ p.name }}</h1>
+        <span class="bp-eyebrow" style="color: rgba(255,255,255,0.85)">Live {{ label() }}</span>
+        <h1 class="bp-page-title mt-0.5" style="color: #fff">{{ p.name }}</h1>
         @if (subtitle()) {
-          <p class="bp-body-small mt-1 max-w-[60%] text-white/85">{{ subtitle() }}</p>
+          <p class="bp-body-small mt-1 max-w-[60%]" style="color: rgba(255,255,255,0.92)">{{ subtitle() }}</p>
         }
       </div>
 
@@ -50,19 +51,19 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
     <!-- Negotiation tiles -->
     <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
       <div class="bp-card p-4" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
-        <span class="bp-card-title block">Working ballpark</span>
+        <span class="bp-tile-title">Working ballpark</span>
         <span class="bp-list-title mt-1 block">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
       </div>
       <div class="bp-card p-4" [title]="'Total value of items you and the supplier have both agreed.'">
-        <span class="bp-card-title block">Confirmed so far</span>
+        <span class="bp-tile-title">Confirmed so far</span>
         <span class="bp-list-title mt-1 block">{{ (o()?.confirmedTotal ?? 0) | currency: currency() : 'symbol' : '1.0-0' }}</span>
       </div>
       <div class="bp-card p-4" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
-        <span class="bp-card-title block">Agreed items</span>
+        <span class="bp-tile-title">Agreed items</span>
         <span class="bp-list-title mt-1 block">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
       </div>
       <div class="bp-card p-4" [title]="'Supplier conversations with at least one item still to agree.'">
-        <span class="bp-card-title block">Open threads</span>
+        <span class="bp-tile-title">Open threads</span>
         <span class="bp-list-title mt-1 block">{{ o()?.openThreads ?? 0 }}</span>
       </div>
     </div>
@@ -79,6 +80,17 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
       cursor: pointer;
     }
     .bp-cover-btn:hover { background: var(--color-fill); }
+    /* Tile title — the standard title colour, one size smaller, all caps. */
+    .bp-tile-title {
+      display: block;
+      font-family: var(--bp-font);
+      font-size: var(--text-xl);
+      font-weight: 400;
+      line-height: var(--leading-snug);
+      color: var(--color-text-strong);
+      text-transform: uppercase;
+      letter-spacing: var(--tracking-wide);
+    }
   `],
 })
 export class ProjectOverviewHeroComponent {
