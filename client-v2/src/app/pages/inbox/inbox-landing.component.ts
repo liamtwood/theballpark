@@ -32,7 +32,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
         } @else if ((rows.value() ?? []).length === 0) {
           <p class="bp-body-small text-secondary">No active conversations yet. Send a project out for quotes to start one.</p>
         } @else {
-          <div class="mx-auto grid w-full max-w-[var(--workspace-max)] grid-cols-1 gap-6 sm:grid-cols-2">
+          <div class="mx-auto grid w-full max-w-[var(--workspace-max)] grid-cols-1 items-start gap-6 sm:grid-cols-2">
             @for (row of rows.value(); track row.id) {
               <a [routerLink]="['/projects', row.id]" [queryParams]="{ tab: 'inbox' }" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="row.name">
                 <div class="flex flex-col gap-3 p-5">
