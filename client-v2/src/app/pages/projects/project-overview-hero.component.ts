@@ -50,19 +50,19 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
     <!-- Negotiation tiles -->
     <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
       <div class="bp-card p-4" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
-        <span class="bp-field-label flex items-center gap-1">Working ballpark <lucide-icon name="info" [size]="12" class="text-muted" /></span>
+        <span class="bp-card-title block">Working ballpark</span>
         <span class="bp-list-title mt-1 block">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
       </div>
       <div class="bp-card p-4" [title]="'Total value of items you and the supplier have both agreed.'">
-        <span class="bp-field-label flex items-center gap-1">Confirmed so far <lucide-icon name="info" [size]="12" class="text-muted" /></span>
+        <span class="bp-card-title block">Confirmed so far</span>
         <span class="bp-list-title mt-1 block">{{ (o()?.confirmedTotal ?? 0) | currency: currency() : 'symbol' : '1.0-0' }}</span>
       </div>
       <div class="bp-card p-4" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
-        <span class="bp-field-label flex items-center gap-1">Agreed items <lucide-icon name="info" [size]="12" class="text-muted" /></span>
+        <span class="bp-card-title block">Agreed items</span>
         <span class="bp-list-title mt-1 block">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
       </div>
       <div class="bp-card p-4" [title]="'Supplier conversations with at least one item still to agree.'">
-        <span class="bp-field-label flex items-center gap-1">Open threads <lucide-icon name="info" [size]="12" class="text-muted" /></span>
+        <span class="bp-card-title block">Open threads</span>
         <span class="bp-list-title mt-1 block">{{ o()?.openThreads ?? 0 }}</span>
       </div>
     </div>
