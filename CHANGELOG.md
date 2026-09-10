@@ -11,7 +11,1830 @@ _Nothing pending — dev and preview are level._
 
 ---
 
-## ✅ On preview — currently `v2.65`
+## ✅ On preview — currently `v2.376`
+
+### v2.376 — 2026-09-10
+
+**Projects**
+
+- New **project workspace** — a cleaner, consistent layout across every page, with the working area centred and the header pinned so only the content scrolls.
+- **New project** flow redesigned: brief on the left, project details on the right, with a proposed reference, an event-type picker, and a date picker that shows dates as DD-Mmm-YYYY.
+- **Draft vs live** projects — a new project starts as a draft showing just Ballpark Cost and Marketplace; sending it to suppliers turns it live and unlocks About Project, Reports and Inbox.
+- **Live project overview** — an active project now opens on a cover-image header with at-a-glance tiles: Working ballpark, Confirmed so far, Agreed items and Open threads.
+- **About Project** and **Ballpark Cost** details are now always-editable rounded fields that save as you go, with a "Details saved" confirmation.
+- Set a project's **status** right from the Past projects cards.
+
+**Messages**
+
+- A new **Messages hub** — one card per active project showing its suppliers and a single status pill (Action required / Awaiting suppliers / All confirmed), with the counts on hover.
+- Cards flag when **you** have something to respond to, and an envelope opens the exact item that needs you.
+- Inside a project, supplier conversations start minimised with item / accepted / action-required counts, and gently highlight the line waiting on you.
+
+**Profile**
+
+- Profile is now always-editable and saves as you go — no separate Edit/Save step — with your details, branding and gallery in a single tidy column.
+
+<details><summary>Commits</summary>
+
+**Fixes**
+
+- M1/M2 pre-preview — shared declined predicate + reuse COMPLETED_STATUSES `4d3092f0`
+
+</details>
+
+### v2.375 — 2026-09-10
+
+**Fixes**
+
+- overview tile sizing + align hero/tabs/body via scrollbar gutter `d6029b67`
+
+### v2.374 — 2026-09-10
+
+**Fixes**
+
+- overview hero — white text over the cover + new tile title style `f613bf97`
+
+### v2.373 — 2026-09-10
+
+**Fixes**
+
+- overview tiles — standard title style, drop the info icon `c9b15e3a`
+
+### v2.372 — 2026-09-10
+
+**Features**
+
+- live-project overview hero — cover image + negotiation tiles `f5dfdf9d`
+
+### v2.371 — 2026-09-10
+
+**Fixes**
+
+- Recent projects excludes completed/archived `e03ac483`
+
+### v2.370 — 2026-09-10
+
+**Features**
+
+- draft projects show fewer tabs; sending to suppliers goes Active `8ee7f430`
+
+### v2.369 — 2026-09-10
+
+**Fixes**
+
+- About Project — scrollbar at the window edge `5a027ae0`
+
+### v2.368 — 2026-09-10
+
+**Features**
+
+- project detail — tab band fills the working column `b9011c4f`
+
+### v2.367 — 2026-09-10
+
+**Features**
+
+- project detail — remove tab icons (labels only) `5dd171ba`
+
+### v2.366 — 2026-09-10
+
+**Features**
+
+- Messages envelope opens the project inbox with the item selected `f5539eb5`
+
+### v2.365 — 2026-09-10
+
+**Features**
+
+- Messages landing — message in an inbox-style bubble `6c2fe7f9`
+
+### v2.364 — 2026-09-10
+
+**Features**
+
+- Messages landing — envelope on supplier only, richer message bubble `c150f734`
+
+### v2.363 — 2026-09-10
+
+**Features**
+
+- Messages landing — envelope on Action Required shows a message bubble `2c5f21a2`
+
+### v2.362 — 2026-09-10
+
+**Features**
+
+- Messages landing — hover an Action Required pill to see the last message `950dce62`
+
+### v2.361 — 2026-09-10
+
+**Fixes**
+
+- Messages landing — only the toggled card expands `15484753`
+
+### v2.360 — 2026-09-10
+
+**Features**
+
+- Messages cards drill into the project page's Inbox tab `2894697b`
+
+### v2.359 — 2026-09-10
+
+**Fixes**
+
+- cancelled/declined lines don't glisten, count, or drive status `8243e87d`
+
+### v2.357 — 2026-09-10
+
+**Features**
+
+- inbox glisten — collapsed card, then the specific item when expanded `22f85fe5`
+
+### v2.356 — 2026-09-10
+
+**Features**
+
+- inbox rail — supplier cards glisten when action is required `4e588d13`
+
+### v2.355 — 2026-09-10
+
+**Fixes**
+
+- inbox rail — bump the stat icons/text a little bigger `509be4c6`
+
+### v2.354 — 2026-09-10
+
+**Features**
+
+- inbox rail — compact icon stats (fit the narrow rail) `7d2b999c`
+
+### v2.353 — 2026-09-10
+
+**Features**
+
+- inbox rail — minimized supplier cards with item/accepted/action counts `bb0642b9`
+
+### v2.352 — 2026-09-10
+
+**Features**
+
+- inbox — transparent Change Cost button + white action bar `4c84ad35`
+
+### v2.351 — 2026-09-10
+
+**Fixes**
+
+- Messages landing — uniform pill size `ec5c2d4a`
+
+### v2.350 — 2026-09-10
+
+**Features**
+
+- Messages landing — per-supplier status pills + bordered awaiting pill `937b3a40`
+
+### v2.349 — 2026-09-10
+
+**Features**
+
+- Messages landing — collapse suppliers behind a Show suppliers toggle `9dfcd0cc`
+
+### v2.348 — 2026-09-10
+
+**Features**
+
+- Messages landing — a card per active project with one status pill `4dfec8fb`
+
+### v2.347 — 2026-09-10
+
+**Features**
+
+- Past projects — Current/Completed filter in the work column `14e2b37c`
+
+### v2.346 — 2026-09-10
+
+**Features**
+
+- change project status from the Past projects card `9bda95bf`
+
+### v2.345 — 2026-09-10
+
+**Features**
+
+- Past projects — 2 cards wide instead of 3 `50ce28ec`
+
+### v2.344 — 2026-09-10
+
+**Features**
+
+- Profile uses the save-on-blur standard (ed-* fields + shared pill) `647575be`
+
+### v2.343 — 2026-09-10
+
+**Features**
+
+- Profile single-column reorder — Branding under About, Availability + Gallery at bottom `a845283e`
+
+### v2.342 — 2026-09-10
+
+**Fixes**
+
+- Profile scrollbar at the window edge (match Past projects) `050c66c3`
+
+### v2.341 — 2026-09-10
+
+**Fixes**
+
+- Profile pins the hero — only content scrolls (Past projects standard) `81daf35e`
+
+### v2.340 — 2026-09-10
+
+**Refactors**
+
+- extract the "Details saved" pill into one shared component `1b026c9f`
+
+### v2.339 — 2026-09-10
+
+**Features**
+
+- New Project — native date picker with NATO display `7cffcff1`
+
+### v2.338 — 2026-09-10
+
+**Features**
+
+- New Project — Event date uses the standard DD-Mmm-YYYY format `4ce11d86`
+
+### v2.337 — 2026-09-10
+
+**Fixes**
+
+- New Project — narrow the Ref field to ~6 chars `7717c617`
+
+### v2.336 — 2026-09-10
+
+**Features**
+
+- New Project — pre-fill Ref with the proposed next ref `eb2ce822`
+
+### v2.335 — 2026-09-10
+
+**Features**
+
+- New Project — Ref is editable, blank auto-assigns `e8e7a92e`
+
+### v2.334 — 2026-09-10
+
+**Features**
+
+- New Project — Ref field before Project name (read-only) `799166f9`
+
+### v2.333 — 2026-09-10
+
+**Features**
+
+- New Project — Event type is the curated LOV, not free text `bb5ccb9f`
+
+### v2.332 — 2026-09-10
+
+**Features**
+
+- New Project — pair fields onto rows + standard button colour `aefae2b7`
+
+### v2.331 — 2026-09-10
+
+**Fixes**
+
+- New Project pins the hero — only the form body scrolls `9e3fe87a`
+
+### v2.330 — 2026-09-10
+
+**Fixes**
+
+- customize estimate goes full-width when the right rail is empty `a6894ac4`
+
+### v2.329 — 2026-09-10
+
+**Fixes**
+
+- kill rainbow price + dead eye; inbox action buttons + mine-bubbles use brand accent `adaffdcf`
+
+### v2.328 — 2026-09-10
+
+**Features**
+
+- header account trigger is a 3-dot menu (replaces the avatar circle) `43871657`
+
+### v2.327 — 2026-09-10
+
+**Features**
+
+- inbox header kebab menu (Customize + Assistant) `62b13f24`
+
+### v2.326 — 2026-09-10
+
+**Features**
+
+- hide the Customize item preview for now (Quick View dialog to replace it) `1397a0ba`
+
+### v2.325 — 2026-09-10
+
+**Features**
+
+- inbox header shows supplier/project name under the item name `336df831`
+
+### v2.324 — 2026-09-10
+
+**Features**
+
+- inbox conversation title uses the standard bp-card-title (drop text-lg) `5fb70946`
+
+### v2.323 — 2026-09-10
+
+**Features**
+
+- inbox header — Original/Revised move to a hover popover on the title `42846af0`
+
+### v2.322 — 2026-09-10
+
+**Features**
+
+- drop the inbox rail's project context card (info now in the header) `6487c73d`
+
+### v2.321 — 2026-09-10
+
+**Features**
+
+- Change cost edits the item TOTAL by default (flat total) `4e525bec`
+
+### v2.320 — 2026-09-10
+
+**Features**
+
+- inbox Send is icon-only (compact) with an aria-label `beecb307`
+
+### v2.319 — 2026-09-10
+
+**Features**
+
+- inbox Send uses the standard .bp-msg-btn (promoted to global) `3f41b096`
+
+### v2.318 — 2026-09-10
+
+**Features**
+
+- inbox fits the standard workspace column (list | conversation | assistant) `ad97447e`
+
+### v2.317 — 2026-09-09
+
+**Features**
+
+- About Project — reorder Event details; Venue/City to Event Logistics; date picker `62888f75`
+
+### v2.316 — 2026-09-09
+
+**Features**
+
+- About Project — merge into Event Logistics; 12ch fields; Budget thousands commas `578c2b30`
+
+### v2.315 — 2026-09-09
+
+**Features**
+
+- About Project — Ref (~8ch) + Client company no. (~12ch) share one line `133ea89b`
+
+### v2.314 — 2026-09-09
+
+**Features**
+
+- About Project — ready-to-edit rounded fields + save-on-blur + Details-saved pill `a76159d4`
+
+### v2.313 — 2026-09-09
+
+**Features**
+
+- Project Cost Summary — Contingency/Insurance/Other as item cards `4655e603`
+
+### v2.312 — 2026-09-09
+
+**Features**
+
+- item-row thumbnail radius matches the card (--radius-field) `e60f2da2`
+
+### v2.311 — 2026-09-09
+
+**Features**
+
+- each estimate line item is its own rounded white card `6a4badef`
+
+### v2.310 — 2026-09-09
+
+**Features**
+
+- estimate sections as nested containers (white > gray > white) `5aff460e`
+
+### v2.309 — 2026-09-09
+
+**Features**
+
+- ballpark total + solid Message Suppliers bar after the scope items `01003dbe`
+
+### v2.308 — 2026-09-09
+
+**Features**
+
+- estimate sections as parents — divider + card-title header, CTA in Project Costs `99a9aee5`
+
+### v2.307 — 2026-09-09
+
+**Features**
+
+- Event details/Description headers + card use the standard chrome `906d9af0`
+
+### v2.306 — 2026-09-09
+
+**Features**
+
+- project header sits in the workspace column (page-hero contained) `3dccc2a7`
+
+### v2.305 — 2026-09-09
+
+**Features**
+
+- Ballpark Cost uses the shared workspace column; add Assumptions/Risks + Delete `225954eb`
+
+### v2.304 — 2026-09-09
+
+**Features**
+
+- Ballpark Cost category headers use the unified bp-card-title font `ab02d3f5`
+
+### v2.303 — 2026-09-09
+
+**Features**
+
+- Ballpark Cost category cards use the lifted workspace chrome (28px + shadow-md) `20b5d419`
+
+### v2.302 — 2026-09-09
+
+**Chore**
+
+- merge marketplace-redesign (Quick View + logo) to dev; clean version chip `1dda5bb9`
+
+### v2.294 — 2026-09-09
+
+**Features**
+
+- marketplace "Add to project" picker (v1 feature, rebuilt) `ff51a77a`
+
+### v2.293 — 2026-09-09
+
+**Features**
+
+- unify card heading style; fix profile Branding/Gallery spacing `5188b441`
+
+### v2.292 — 2026-09-09
+
+**Features**
+
+- profile uses full width — completeness banner + two columns `d36f6bf9`
+
+### v2.291 — 2026-09-09
+
+**Features**
+
+- Recent projects show client name; profile cards match home chrome `83f0acae`
+
+### v2.290 — 2026-09-09
+
+**Features**
+
+- project draft status = muted mauve pill (codelist-driven) `7688c4b8`
+
+### v2.289 — 2026-09-09
+
+**Features**
+
+- project card redesign — lifted, status pill, venue/guests meta `74361010`
+
+### v2.288 — 2026-09-09
+
+**Features**
+
+- plain project cards — drop cover image, de-gradient the total `5ff2fddc`
+
+### v2.287 — 2026-09-09
+
+**Refactors**
+
+- --radius-lg token on .bp-card--lifted; New project cards match home `eb0c2ecb`
+
+### v2.286 — 2026-09-09
+
+**Features**
+
+- New project brief card stretches to match the right column height `c5123d89`
+
+### v2.285 — 2026-09-09
+
+**Features**
+
+- New project redesign — brief + project details form `6b9ac4ed`
+
+### v2.284 — 2026-09-09
+
+**Features**
+
+- workspace layout across simple/admin pages; Recent projects = 4, spread `71fa2e53`
+
+### v2.283 — 2026-09-09
+
+**Features**
+
+- New project + Profile adopt the shared workspace layout `7a1f1728`
+
+### v2.282 — 2026-09-09
+
+**Fixes**
+
+- unify home + past-projects vertical rhythm; lose home's top gap `6e0fbeb1`
+
+### v2.281 — 2026-09-09
+
+**Fixes**
+
+- align="block" hero centres on full width so title lines up with first card `13285973`
+
+### v2.280 — 2026-09-09
+
+**Refactors**
+
+- one shared workspace layout for home + past projects `8b56ab60`
+
+### v2.279 — 2026-09-09
+
+**Features**
+
+- Past projects matches home layout (centred 1068 block, left text) `c4ffe418`
+
+### v2.277 — 2026-09-09
+
+**Features**
+
+- centre the Past projects hero above the centred grid `2cee6e8c`
+
+### v2.276 — 2026-09-09
+
+**Features**
+
+- centre the Past projects grid on the page `5e0f7d04`
+
+### v2.275 — 2026-09-09
+
+**Features**
+
+- Past projects uses the home 3-column launcher grid `436d3178`
+
+### v2.274 — 2026-09-09
+
+**Features**
+
+- admin-driven page heroes (eyebrow/title/subtitle) + token vars; hide back `608a888f`
+
+### v2.273 — 2026-09-09
+
+**Features**
+
+- home hero — "<ORG TYPE> WORKSPACE" eyebrow + smaller greeting `c30a1ddd`
+
+### v2.272 — 2026-09-09
+
+**Features**
+
+- Recent projects "View all" gets the card shadow (--shadow-md) `5ac7ffac`
+
+### v2.271 — 2026-09-09
+
+**Features**
+
+- agent home — Recent projects + Next steps panels, circle-plus tile `e5370ace`
+
+### v2.269 — 2026-09-09
+
+**Features**
+
+- agent home tiles — hide Inbox/Marketplace, relabel + recopy `3a466d1f`
+
+### v2.267 — 2026-09-09
+
+**Features**
+
+- launcher tiles rounder + bare smaller icons; hero align via admin table `ee8e4a27`
+
+### v2.266 — 2026-09-09
+
+**Features**
+
+- launcher home — left-aligned by default, no Back row `cd0f7355`
+
+### v2.265 — 2026-09-09
+
+**Features**
+
+- Assistant toggle — colored open button; ✕ in the rail to close `c26af876`
+
+### v2.264 — 2026-09-08
+
+**Features**
+
+- pink canvas is universal — one reference for every page `16b11a98`
+
+### v2.263 — 2026-09-08
+
+**Fixes**
+
+- workspace canvas fills the viewport (no bottom gap) `0ce18c5f`
+
+### v2.262 — 2026-09-08
+
+**Fixes**
+
+- inbox uses the shared workspace canvas (one reference) `52df9c2e`
+
+### v2.261 — 2026-09-08
+
+**Features**
+
+- inbox conversation on the pink workspace canvas `df29d709`
+
+### v2.260 — 2026-09-08
+
+**Features**
+
+- classic bar = Accept Cost / Change Cost / Delete Item `946280a2`
+
+### v2.259 — 2026-09-08
+
+**Features**
+
+- toggle between the AI Assistant and the classic action buttons `6a7cac81`
+
+### v2.258 — 2026-09-04
+
+**Features**
+
+- questions as components — agent adds kind='question', supplier prices it `e6030a57`
+
+### v2.257 — 2026-09-04
+
+**Features**
+
+- Assistant is conversation-aware — answers status/questions truthfully `ebc02ff1`
+
+### v2.256 — 2026-09-04
+
+**Fixes**
+
+- item attachment rides its own brief (not the thread's oldest message) `cc0f78b8`
+
+### v2.255 — 2026-09-04
+
+**Fixes**
+
+- per-item view shows only that item's messages (no General broadcast) `5bc552d0`
+
+### v2.254 — 2026-09-04
+
+**Features**
+
+- drafted request is editable before Send `5cff5a19`
+
+### v2.253 — 2026-09-04
+
+**Fixes**
+
+- hide suggestion chips when an action/draft exists (they derail) `0e8502f0`
+
+### v2.252 — 2026-09-04
+
+**Fixes**
+
+- agent add-requests draft a direct, on-topic message `e6a10b0b`
+
+### v2.251 — 2026-09-04
+
+**Fixes**
+
+- drop meta-prompt suggestion chips + auto-scroll the Assistant rail `14c7b24d`
+
+### v2.250 — 2026-09-04
+
+**Features**
+
+- Make-a-change = Suggest new price / Add extras / Modify `5c3fe66c`
+
+### v2.249 — 2026-09-04
+
+**Fixes**
+
+- tag-to-line resolver — drop category compare (id-space mismatch) `27e81ef4`
+
+### v2.248 — 2026-09-04
+
+**Features**
+
+- INTENT-02 #5 — dedicated Add-extras entry box + suggestion dedupe `c083f874`
+
+### v2.247 — 2026-09-03
+
+**Features**
+
+- INTENT-02 #4 — agent Customize = client-facing read-only (kind <> estimate) `360f4b8f`
+
+### v2.246 — 2026-09-03
+
+**Features**
+
+- INTENT-02 #1 tag-to-line + #2 state-aware intro + multi-extra prompt `b8b88d1a`
+
+### v2.245 — 2026-09-03
+
+**Fixes**
+
+- outreach must not fan out component children (cross-supplier leak) `7b59117d`
+
+### v2.244 — 2026-09-03
+
+**Features**
+
+- Assistant "Add extras" tags kind='extra', not 'estimate' `0fb68eeb`
+
+### v2.243 — 2026-09-03
+
+**Fixes**
+
+- inbox shows items added to an existing category after first outreach `04c29a01`
+
+### v2.242 — 2026-09-03
+
+**Features**
+
+- flat_total override — per-unit vs flat line pricing `a47322dc`
+
+### v2.241 — 2026-09-03
+
+**Fixes**
+
+- Suggest reopens with stored per-head cost; unit clears the chevron `57536511`
+
+### v2.240 — 2026-09-03
+
+**Features**
+
+- Assistant — comma Total, right-aligned Unit, persistent intro + history log `461391bd`
+
+### v2.239 — 2026-09-03
+
+**Features**
+
+- show the Details icon for the agent too `9b80b338`
+
+### v2.238 — 2026-09-03
+
+**Features**
+
+- "Details" icon in the inbox item header opens Customize `11873eaf`
+
+### v2.237 — 2026-09-02
+
+**Fixes**
+
+- flat total stored & round-trips; install persisted via negotiation adjust `29f61cd9`
+
+### v2.236 — 2026-09-02
+
+**Fixes**
+
+- Suggest send aborted by lock-gated install PATCH (409) `f3203258`
+
+### v2.235 — 2026-09-02
+
+**Features**
+
+- flat total unchecks install; make-a-change auto-advances (no Continue) `e51f6220`
+
+### v2.234 — 2026-09-02
+
+**Features**
+
+- Install checkbox in the Suggest-new-price form `fd3eaec6`
+
+### v2.233 — 2026-09-02
+
+**Fixes**
+
+- Suggest price is install-aware + seeds from current (not original) `fa6ec6c3`
+
+### v2.232 — 2026-09-02
+
+**Features**
+
+- Suggest form — editable total (clears cost), uniform fields, select fix `50b57b33`
+
+### v2.231 — 2026-09-02
+
+**Features**
+
+- Suggest form — unit picklist, boxed total, editable send message `23375251`
+
+### v2.230 — 2026-09-02
+
+**Features**
+
+- in-Assistant Suggest-new-price form (cost · qty · unit · total) `810863f1`
+
+### v2.229 — 2026-09-02
+
+**Features**
+
+- show "Accept the cost (accepted N mins ago)" when already accepted `72e7b044`
+
+### v2.228 — 2026-09-02
+
+**Fixes**
+
+- close two Assistant termination gaps `fcadf399`
+
+### v2.227 — 2026-09-02
+
+**Features**
+
+- re-show options after a conclusion (+ time-ago) and shrink buttons `be93dfa7`
+
+### v2.226 — 2026-09-02
+
+**Fixes**
+
+- trigger the accept highlight on the actual handler (onAgentQuick) `d03eb339`
+
+### v2.225 — 2026-09-02
+
+**Fixes**
+
+- make the accept highlight visible — dark outline (was pink-on-pink) `0f4ed126`
+
+### v2.224 — 2026-09-02
+
+**Fixes**
+
+- highlight the accept message with a held ring (not a keyframe) `007575ef`
+
+### v2.223 — 2026-09-02
+
+**Fixes**
+
+- auto-scroll conversation to newest message (blink now visible) `798c2554`
+
+### v2.222 — 2026-09-02
+
+**Fixes**
+
+- message blink — solid accent ring + wider window `37a3146d`
+
+### v2.221 — 2026-09-02
+
+**Features**
+
+- richer Accept confirm (radio + typed) + blink the posted message `bf9eb2f2`
+
+### v2.220 — 2026-09-02
+
+**Fixes**
+
+- rail card wasn't flex — .bp-card display:block beat the flex utility `8249d189`
+
+### v2.219 — 2026-09-02
+
+**Fixes**
+
+- pin Assistant composer — fix the flex height chain `be4d0fbd`
+
+### v2.218 — 2026-09-02
+
+**Fixes**
+
+- pin Assistant composer to the bottom + visible send arrow `874864b4`
+
+### v2.217 — 2026-09-02
+
+**Features**
+
+- send arrow inside the Assistant message field `ebad35a5`
+
+### v2.216 — 2026-09-02
+
+**Features**
+
+- Auto-apply toggle — let the Assistant apply buildup edits automatically `d902d3d1`
+
+### v2.215 — 2026-09-02
+
+**Features**
+
+- Assistant wrap-up — "anything else?" + editable update message `4f483c5e`
+
+### v2.214 — 2026-09-02
+
+**Features**
+
+- Assistant echoes the change back after applying `27600e8b`
+
+### v2.213 — 2026-09-02
+
+**Fixes**
+
+- description apply via updateLineDetails, merge-not-replace, action-only suggestions `a959c3ab`
+
+### v2.212 — 2026-09-02
+
+**Features**
+
+- Accept opens a confirm step (Back / Accept) with the total `d94b034d`
+
+### v2.211 — 2026-09-02
+
+**Features**
+
+- auto-select the first inbox item on load `4a5d23d7`
+
+### v2.210 — 2026-09-02
+
+**Features**
+
+- Assistant sub-steps use radios + one action button; drop builder link `5b7b2ca1`
+
+### v2.209 — 2026-09-02
+
+**Features**
+
+- nested Assistant options — decline reasons + change sub-options `a9100b3b`
+
+### v2.208 — 2026-09-02
+
+**Features**
+
+- Assistant opens with radio options (Accept / Decline / Make a change) `8443ceb9`
+
+### v2.207 — 2026-09-02
+
+**Features**
+
+- move line actions into the Assistant as quick-action chips `37984a00`
+
+### v2.206 — 2026-09-02
+
+**Features**
+
+- conversational agent rail + inbox mount `4a9bb4eb`
+
+### v2.205 — 2026-09-02
+
+**Features**
+
+- AI intent foundation — parse a message into line actions (backend) `f8217a55`
+
+### v2.204 — 2026-09-02
+
+**Features**
+
+- compact card + More toggle in Customize `8d16b90f`
+
+### v2.203 — 2026-09-02
+
+**Features**
+
+- compact preview card with a More toggle `3e8237e5`
+
+### v2.202 — 2026-09-02
+
+**Features**
+
+- Customize item edit matches the inbox (Details editable + Save/Cancel) `d58aa736`
+
+### v2.201 — 2026-09-02
+
+**Fixes**
+
+- Customize — click the item card to edit (match the inbox) `bf7d86ec`
+
+### v2.200 — 2026-09-02
+
+**Features**
+
+- in-place line editing — one widget, fields enable in the same card `13fd4d35`
+
+### v2.199 — 2026-09-01
+
+**Features**
+
+- drop the edit button — click the item to edit `66e6735c`
+
+### v2.198 — 2026-09-01
+
+**Features**
+
+- read-only-first item preview with one permission-gated edit pencil `d31f7a79`
+
+### v2.197 — 2026-09-01
+
+**Fixes**
+
+- SEV1 — base cost is a stored value, never re-derived `585fc12a`
+
+### v2.196 — 2026-09-01
+
+**Features**
+
+- derived Itemized table (item + included components) `f77814b4`
+
+### v2.195 — 2026-09-01
+
+**Refactors**
+
+- extract app-line-preview so project previews are one object `49ab9007`
+
+### v2.194 — 2026-09-01
+
+**Features**
+
+- Customize item preview shows the live TOTAL, matches project surfaces `0692c503`
+
+### v2.193 — 2026-09-01
+
+**Features**
+
+- one consistent project-side item preview `01638bb0`
+
+### v2.192 — 2026-09-01
+
+**Fixes**
+
+- persist the base row's qty/unit on the project line `adefeb21`
+
+### v2.191 — 2026-09-01
+
+**Features**
+
+- Customize demo builds two real lines (Insurance → Project Manager) `29aa1506`
+
+### v2.190 — 2026-09-01
+
+**Features**
+
+- trashcan row-remove + save-and-switch the Customize builder `9b185080`
+
+### v2.189 — 2026-09-01
+
+**Fixes**
+
+- force card overflow:visible so the opt-in coach isn't clipped `4384c498`
+
+### v2.188 — 2026-08-31
+
+**Features**
+
+- opt-in coachmark points at the Base row `9a285036`
+
+### v2.187 — 2026-08-31
+
+**Features**
+
+- "Show me around" toggle to re-trigger the Customize demo `4caa8e9f`
+
+### v2.186 — 2026-08-31
+
+**Fixes**
+
+- coach didn't show — revert to top bubble + field glow `84960518`
+
+### v2.185 — 2026-08-31
+
+**Fixes**
+
+- demo bubble was clipped by the category card `1e4a1d0c`
+
+### v2.184 — 2026-08-31
+
+**Features**
+
+- demo bubble anchors to each field (tail points at it) `acb4d0fc`
+
+### v2.183 — 2026-08-31
+
+**Fixes**
+
+- Customize base seeds from the current price (header/dialog agree) `cbda57e5`
+
+### v2.182 — 2026-08-31
+
+**Features**
+
+- richer Customize demo narration `5373286c`
+
+### v2.181 — 2026-08-31
+
+**Features**
+
+- Customize demo wizard — opt-in "want me to show you?" `0983671a`
+
+### v2.180 — 2026-08-31
+
+**Features**
+
+- Customize coachmark on its own layer + insurance example `80935036`
+
+### v2.179 — 2026-08-31
+
+**Fixes**
+
+- generic Customize coachmark example (works for any item) `7b836894`
+
+### v2.178 — 2026-08-31
+
+**Features**
+
+- Customize teaching coachmark (+ {vars}) + hide Extras `e1c4949b`
+
+### v2.177 — 2026-08-31
+
+**Features**
+
+- inbox — no conversation until an item is selected `5e842641`
+
+### v2.176 — 2026-08-30
+
+**Features**
+
+- coachmark Okay button = solid brand rose `b317a5b0`
+
+### v2.175 — 2026-08-30
+
+**Features**
+
+- coachmarks overlay in their own layer (no layout shift) `b21867e1`
+
+### v2.174 — 2026-08-30
+
+**Features**
+
+- Marketplace coachmark `617f6a53`
+
+### v2.173 — 2026-08-30
+
+**Features**
+
+- admin-editable coachmarks (help bubbles) `feca8faa`
+
+### v2.172 — 2026-08-28
+
+**Fixes**
+
+- item-scoped thread header (fixes the diverging Revised) `3cf13c2f`
+
+### v2.171 — 2026-08-28
+
+**Fixes**
+
+- reconcile the base so the two Revised figures agree `8fe5492e`
+
+### v2.170 — 2026-08-28
+
+**Fixes**
+
+- one Revised — hide thread-header totals while customizing `12886f95`
+
+### v2.169 — 2026-08-28
+
+**Features**
+
+- rename "Customizations" to "Upgrades" `6988db74`
+
+### v2.168 — 2026-08-28
+
+**Features**
+
+- plain numeric entry — hide number-input spin arrows `5900bd35`
+
+### v2.167 — 2026-08-28
+
+**Features**
+
+- Customize Qty as a minus/plus stepper `b710c7e7`
+
+### v2.166 — 2026-08-28
+
+**Features**
+
+- fold the base row into the item's category card `f0de94a9`
+
+### v2.165 — 2026-08-28
+
+**Features**
+
+- base becomes a component-style row (cost/qty/unit/Inc) `92c35e4e`
+
+### v2.164 — 2026-08-28
+
+**Features**
+
+- editable head-count on the Customize base row `26c8a463`
+
+### v2.163 — 2026-08-28
+
+**Fixes**
+
+- Customize seeds the item's base cost (no more price drop) `d832d6f3`
+
+### v2.162 — 2026-08-28
+
+**Features**
+
+- Cancel button in the Customize footer `3649c9cd`
+
+### v2.161 — 2026-08-28
+
+**Fixes**
+
+- inbox replies require a selected item; preserve context on reload `174b4b4b`
+
+### v2.160 — 2026-08-28
+
+**Fixes**
+
+- visible Back/close on the Customize dialog `07eaac53`
+
+### v2.159 — 2026-08-28
+
+**Features**
+
+- re-enable supplier Customize in the inbox `b0bc8ed2`
+
+### v2.158 — 2026-08-28
+
+**Features**
+
+- pink workspace ground on Overview (home) `8094e152`
+
+### v2.157 — 2026-08-28
+
+**Features**
+
+- pink workspace ground on Past projects list `b4e040b5`
+
+### v2.156 — 2026-08-28
+
+**Features**
+
+- Reports buttons styled as a tab band `f4043263`
+
+### v2.155 — 2026-08-28
+
+**Features**
+
+- Event Description card + transparent scrollbar track `de3713d1`
+
+### v2.154 — 2026-08-28
+
+**Features**
+
+- tab icons + even-width tabs `02716f2c`
+
+### v2.153 — 2026-08-28
+
+**Features**
+
+- hero Ballpark figure = estimate projectTotal `08532ca8`
+
+### v2.152 — 2026-08-28
+
+**Features**
+
+- hero right-meta (Ballpark total) + swap tab order `975c00ea`
+
+### v2.151 — 2026-08-28
+
+**Features**
+
+- hero meta polish — smaller eyebrow/ref, spacing, Past projects `b2f1d5fd`
+
+### v2.150 — 2026-08-28
+
+**Features**
+
+- hero eyebrow not bold `5fb411c7`
+
+### v2.149 — 2026-08-28
+
+**Features**
+
+- size the hero eyebrow to match the ref `6cc4c622`
+
+### v2.148 — 2026-08-28
+
+**Features**
+
+- "PROJECT" eyebrow above the project name `e66c9b27`
+
+### v2.147 — 2026-08-28
+
+**Features**
+
+- project workspace redesign + default to Ballpark Cost `c595106a`
+
+### v2.146 — 2026-08-28
+
+**Features**
+
+- center the About Project tab `0084956c`
+
+### v2.145 — 2026-08-28
+
+**Features**
+
+- hide the Project Cart tab `ffd57835`
+
+### v2.144 — 2026-08-28
+
+**Features**
+
+- Reports tab holding the Quote/SOW buttons `c81ea022`
+
+### v2.143 — 2026-08-28
+
+**Features**
+
+- move the project tab band below the hero `6776c20a`
+
+### v2.142 — 2026-08-28
+
+**Features**
+
+- rename Final Quote tab to Ballpark Cost, drop the final title `9bcfd34a`
+
+### v2.141 — 2026-08-28
+
+**Features**
+
+- Event details — add Project name, reorder, NATO date, comma budget `38134a73`
+
+### v2.140 — 2026-08-28
+
+**Features**
+
+- editable Event details card on Cart/Final `6f0fd3cc`
+
+### v2.139 — 2026-08-28
+
+**Features**
+
+- Timeline 3-column table + label/date pairing `321af4eb`
+
+### v2.138 — 2026-08-28
+
+**Features**
+
+- Timeline date ranges `63e8c356`
+
+### v2.137 — 2026-08-28
+
+**Features**
+
+- SOW Timeline renders as two columns `44e19ce1`
+
+### v2.136 — 2026-08-28
+
+**Features**
+
+- SOW content sections + fees in Services & Goods `699b6fbb`
+
+### v2.135 — 2026-08-28
+
+**Fixes**
+
+- SOW party sentence spacing `9382f05b`
+
+### v2.134 — 2026-08-28
+
+**Features**
+
+- SOW party fields — company numbers + client address `d39c8039`
+
+### v2.133 — 2026-08-28
+
+**Fixes**
+
+- SOW Location uses the project venue (no city duplication) `5b363c8c`
+
+### v2.132 — 2026-08-28
+
+**Fixes**
+
+- SOW QC — ref box, Project Total label, exc. VAT `e7f678ca`
+
+### v2.131 — 2026-08-28
+
+**Features**
+
+- seamless T&C pages (pdf.js) instead of a PDF viewer `fbd1e7bd`
+
+### v2.130 — 2026-08-28
+
+**Features**
+
+- embed the T&C pages inline on the SOW `f4e996e1`
+
+### v2.129 — 2026-08-28
+
+**Features**
+
+- org T&C PDF upload (SOW Annex A) `519f0893`
+
+### v2.128 — 2026-08-28
+
+**Features**
+
+- SOW styled to match the Quote `ad47b9cc`
+
+### v2.127 — 2026-08-28
+
+**Features**
+
+- SOW document (curated skeleton) `17d8281d`
+
+### v2.126 — 2026-08-28
+
+**Fixes**
+
+- thinner Options checkbox tick `02ae4c3f`
+
+### v2.125 — 2026-08-28
+
+**Fixes**
+
+- plain neutral Options checkboxes `61e8e499`
+
+### v2.124 — 2026-08-28
+
+**Features**
+
+- reorder Options + native brand checkboxes `23fcb45d`
+
+### v2.123 — 2026-08-28
+
+**Features**
+
+- Options panel restyle — icon bands + Theme dropdown `bbfecb37`
+
+### v2.122 — 2026-08-28
+
+**Fixes**
+
+- phone line in the meta-label style (darker) `b921395d`
+
+### v2.121 — 2026-08-28
+
+**Fixes**
+
+- phone below city, labeled "Phone:" `33555000`
+
+### v2.120 — 2026-08-28
+
+**Features**
+
+- Options → Header section (Reference / Address) + phone `e59285f9`
+
+### v2.119 — 2026-08-28
+
+**Features**
+
+- "Project Summary" = the event-facts tiles `c13fdaca`
+
+### v2.118 — 2026-08-28
+
+**Features**
+
+- Options grouped into Theme / Footer / Body sections `1913a9e8`
+
+### v2.117 — 2026-08-28
+
+**Features**
+
+- Options — show created date in footer `8267a197`
+
+### v2.116 — 2026-08-28
+
+**Features**
+
+- indent the quote Overview paragraph `317cc86f`
+
+### v2.115 — 2026-08-28
+
+**Features**
+
+- project Description on About tab + quote Overview `1cc40453`
+
+### v2.114 — 2026-08-28
+
+**Features**
+
+- B&W Project Total is solid black + white text `a5ff9251`
+
+### v2.113 — 2026-08-28
+
+**Features**
+
+- Default theme uses the Ballpark brand gradient `601b848b`
+
+### v2.112 — 2026-08-28
+
+**Features**
+
+- Options panel + persist document choices per project `d2535c43`
+
+### v2.111 — 2026-08-28
+
+**Features**
+
+- quote document colour themes (Default / B&W / Pick a Colour) `7205655a`
+
+### v2.110 — 2026-08-28
+
+**Features**
+
+- center + enlarge document section titles `21dad435`
+
+### v2.109 — 2026-08-28
+
+**Features**
+
+- document sections as boxed cards + Project Summary `6412be6f`
+
+### v2.108 — 2026-08-28
+
+**Features**
+
+- title banner (company + project) + Created timestamp `40a29a66`
+
+### v2.107 — 2026-08-28
+
+**Features**
+
+- agency address wraps + meta as a shaded table `2fbcd933`
+
+### v2.106 — 2026-08-28
+
+**Features**
+
+- quote document polish — agency header + shaded totals `e700071a`
+
+### v2.105 — 2026-08-28
+
+**Features**
+
+- editable agent (quote) description per line `d17aa9ff`
+
+### v2.104 — 2026-08-27
+
+**Features**
+
+- tile value in item-title font + NATO dates `e9efe800`
+
+### v2.103 — 2026-08-27
+
+**Fixes**
+
+- document meta tiles stack the value under the label `81c7822e`
+
+### v2.102 — 2026-08-27
+
+**Fixes**
+
+- quote document footer reads just "Excludes VAT." `421f079e`
+
+### v2.101 — 2026-08-27
+
+**Features**
+
+- quote document header — Date/Location/Duration/Guests/Budget tiles `5111ce6d`
+
+### v2.100 — 2026-08-27
+
+**Features**
+
+- client-facing Quote document (read-only render + print) `f41da41a`
+
+### v2.99 — 2026-08-27
+
+**Features**
+
+- insurance is a % of project costs; drop fixed-£ mode `678e30db`
+
+### v2.98 — 2026-08-27
+
+**Features**
+
+- edit Contingency / Insurance / Margin inline on the Coverage card `215ece99`
+
+### v2.97 — 2026-08-27
+
+**Fixes**
+
+- Coverage margin row reads "Other", details hidden until the eye `4381c8a9`
+
+### v2.96 — 2026-08-27
+
+**Features**
+
+- SOW cascade — margin silently marks up Project Costs `46fae328`
+
+### v2.95 — 2026-08-27
+
+**Features**
+
+- Final Quote as 3 sections (Project Costs / Fees / Project Coverage) `4b46c650`
+
+### v2.94 — 2026-08-27
+
+**Features**
+
+- Insurance % in the estimate cascade, shown below Contingency `7f1f3204`
+
+### v2.93 — 2026-08-27
+
+**Features**
+
+- always-present 'Project' section on Final Quote + Contingency row `06b08749`
+
+### v2.92 — 2026-08-27
+
+**Fixes**
+
+- custom agency lines not treated as sendable (supplier_id null + no To-send pill) `edc287f9`
+
+### v2.91 — 2026-08-27
+
+**Fixes**
+
+- Add-from-Uncategorised no longer 400s + category picker lists all categories `25dba6f7`
+
+### v2.90 — 2026-08-27
+
+**Features**
+
+- agent edits own lines on Final Quote (shared LineEditor) `5bee6843`
+
+### v2.89 — 2026-08-27
+
+**Fixes**
+
+- Final Quote card drops 'From' prefix + store-link (match inbox) `d15f14ec`
+
+### v2.88 — 2026-08-27
+
+**Features**
+
+- Final Quote item card shows Details (reuses item-preview) `a1ae0f5b`
+
+### v2.87 — 2026-08-27
+
+**Fixes**
+
+- Details renders like Description (prose) + Enter inserts at caret `8447ea8e`
+
+### v2.86 — 2026-08-27
+
+**Fixes**
+
+- restore immediate Details calc on Enter (no bullet) `b5f9c5a0`
+
+### v2.85 — 2026-08-27
+
+**Features**
+
+- Details is a clean markdown text field (not forced-bullet components) `12bfd437`
+
+### v2.84 — 2026-08-27
+
+**Features**
+
+- markdown (bold/italic/lists) for item text + comma totals `e437d516`
+
+### v2.83 — 2026-08-27
+
+**Features**
+
+- recalc Details lines on blur so an edited operand updates `13fcf792`
+
+### v2.82 — 2026-08-27
+
+**Features**
+
+- Details calc supports N x M (x / cross / *) in addition to @ `66e81abf`
+
+### v2.81 — 2026-08-27
+
+**Features**
+
+- Details header shows a running total when costs are added `49cf2de2`
+
+### v2.80 — 2026-08-27
+
+**Features**
+
+- Details calc defaults to the supplier currency `63ae9287`
+
+### v2.79 — 2026-08-27
+
+**Features**
+
+- Details calc defaults an unsigned qty@price to project currency `6fbaf934`
+
+### v2.78 — 2026-08-27
+
+**Fixes**
+
+- Details calc echoes the sign the user typed (or none) `3ae3ccb6`
+
+### v2.77 — 2026-08-27
+
+**Features**
+
+- 'Details' section on revised card — bulleted extras as components `19eb3dfe`
+
+### v2.76 — 2026-08-27
+
+**Fixes**
+
+- actually narrow the price input (constrain via wrapper) `b65a13ce`
+
+### v2.75 — 2026-08-27
+
+**Fixes**
+
+- narrow the revised-card price input (max 999,999) `5a96f62e`
+
+### v2.74 — 2026-08-27
+
+**Features**
+
+- edit price on the revised card triggers a cost proposal `5c9cc6d3`
+
+### v2.73 — 2026-08-27
+
+**Features**
+
+- drop 'From' prefix on the revised item card price `55df2ec7`
+
+### v2.72 — 2026-08-27
+
+**Features**
+
+- revised item card appears once (latest proposal only) `c96bd1b1`
+
+### v2.71 — 2026-08-27
+
+**Features**
+
+- hide store-item link on inbox conversation cards `4ef224f1`
+
+### v2.70 — 2026-08-27
+
+**Features**
+
+- click-to-edit on the revised item card, not the original `fe0daa92`
+
+### v2.69 — 2026-08-27
+
+**Features**
+
+- edit item details inline in the conversation (click card to edit) `49165fea`
+
+### v2.68 — 2026-08-27
+
+**Features**
+
+- inbox revised item card is show/hide collapsible `af71652b`
+
+### v2.67 — 2026-08-27
+
+**Features**
+
+- pV2-BUILDUP-04 supplier edits line details (description + Services) in inbox `dbc77d28`
+
+### v2.66 — 2026-08-27
+
+**Features**
+
+- pV2-BUILDUP-03 item options + composition UI shelved `68729fca`
 
 ### v2.65 — 2026-08-25
 
@@ -21,8 +1844,7 @@ _Nothing pending — dev and preview are level._
 
 **Chore**
 
-- regenerate What's new for promote — v2.62-v2.65 now on preview `d34da5b0`
-- bump staging chip for preview promote (pV2-BUILDUP-01) `f0ba121b`
+- reconcile What's new after preview promote — dev and preview level `5767dee6`
 
 ### v2.64 — 2026-08-25
 
@@ -57,8 +1879,6 @@ _Nothing pending — dev and preview are level._
 **Chore**
 
 - reconcile What's new after preview promote — dev and preview level `63df704f`
-- regenerate What's new for promote — v2.57-v2.61 now on preview `8f144bae`
-- bump staging chip for preview promote (inbox + About Project + What's new) `a88aeb88`
 
 </details>
 
@@ -137,19 +1957,11 @@ _Nothing pending — dev and preview are level._
 
 - register the 12 missing category icons — blank category cards `cf606291`
 
-**Chore**
-
-- bump staging chip for preview promote (category icon fix) `0394393c`
-
 ### v2.55 — 2026-07-09
 
 **Fixes**
 
 - UNIFY arc audit triage — H-1 line-id rekey + M-2/M-4/M-5/L-6 + preview drift `9c266566`
-
-**Chore**
-
-- bump staging chip for preview promote (UNIFY arc) `32d55b28`
 
 ### v2.54 — 2026-07-09
 
@@ -949,10 +2761,6 @@ _Nothing pending — dev and preview are level._
 
 - welcome — Sharpe on titles, Inter on subs (Liam) `aee52d6a`
 
-**Chore**
-
-- bump staging chip for preview promote (EA hero/tile + Sharpe fonts) `ee924ec9`
-
 ### v2.33f — 2026-06-23
 
 **Features**
@@ -969,7 +2777,6 @@ _Nothing pending — dev and preview are level._
 
 **Chore**
 
-- bump staging chip for preview promote (MEDIA-01 + EA-01/02) `60ab5c3a`
 - EA-01 — source_environment default master→unknown + restamp old rows `9874c4a9`
 
 ### v2.33c — 2026-06-22

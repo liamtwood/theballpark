@@ -2,6 +2,37 @@
   "dev": [],
   "preview": [
     {
+      "version": "v2.376",
+      "date": "2026-09-10",
+      "notes": [
+        {
+          "area": "Projects",
+          "items": [
+            "New **project workspace** — a cleaner, consistent layout across every page, with the working area centred and the header pinned so only the content scrolls.",
+            "**New project** flow redesigned: brief on the left, project details on the right, with a proposed reference, an event-type picker, and a date picker that shows dates as DD-Mmm-YYYY.",
+            "**Draft vs live** projects — a new project starts as a draft showing just Ballpark Cost and Marketplace; sending it to suppliers turns it live and unlocks About Project, Reports and Inbox.",
+            "**Live project overview** — an active project now opens on a cover-image header with at-a-glance tiles: Working ballpark, Confirmed so far, Agreed items and Open threads.",
+            "**About Project** and **Ballpark Cost** details are now always-editable rounded fields that save as you go, with a \"Details saved\" confirmation.",
+            "Set a project's **status** right from the Past projects cards."
+          ]
+        },
+        {
+          "area": "Messages",
+          "items": [
+            "A new **Messages hub** — one card per active project showing its suppliers and a single status pill (Action required / Awaiting suppliers / All confirmed), with the counts on hover.",
+            "Cards flag when **you** have something to respond to, and an envelope opens the exact item that needs you.",
+            "Inside a project, supplier conversations start minimised with item / accepted / action-required counts, and gently highlight the line waiting on you."
+          ]
+        },
+        {
+          "area": "Profile",
+          "items": [
+            "Profile is now always-editable and saves as you go — no separate Edit/Save step — with your details, branding and gallery in a single tidy column."
+          ]
+        }
+      ]
+    },
+    {
       "version": "v2.61",
       "date": "2026-07-17",
       "notes": [
