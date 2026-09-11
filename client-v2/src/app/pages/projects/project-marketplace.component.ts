@@ -10,6 +10,7 @@ import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.co
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
 import { SupplierGridComponent } from '../../shared/catalogue/supplier-grid.component';
 import { ProjectMarketplaceControlsComponent } from './project-marketplace-controls.component';
+import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.component';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { ProjectService } from '../../core/projects/project.service';
 import { EstimateBreakdown, QuoteLine } from '../../core/projects/project.types';
@@ -29,6 +30,7 @@ import { errorDetail } from '../../core/http-error';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ProjectMarketplaceControlsComponent,
+    ScrollPeekComponent,
     CategoryStripComponent,
     CatalogueGridComponent,
     SupplierGridComponent,
@@ -51,13 +53,15 @@ import { errorDetail } from '../../core/http-error';
         <div class="shrink-0 p-4 pb-3">
           <app-project-marketplace-controls class="block" />
         </div>
-        <!-- The single scroll area: both rails scroll together inside. -->
-        <div class="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-          <div class="grid grid-cols-1 gap-6 xl:grid-cols-[210px_1fr]">
-            <div class="hidden xl:block">
-              <!-- White container for the categories (strip internals unchanged).
-                   Suppliers mode: the strip is scoped to the quote's categories. -->
-              <div class="bp-card p-2">
+        <!-- Rails: cats fixed (no scrollbar — a down-arrow peek) + items scroll,
+             so there's a single visible scrollbar (the items). -->
+        <div class="flex min-h-0 flex-1 gap-6 px-4 pb-4">
+          <div class="hidden w-[210px] shrink-0 min-h-0 xl:block">
+            <!-- White card for the categories (strip internals unchanged).
+                 Plain card, not the bp-card class (its display:block would beat
+                 the flex column). -->
+            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-hairline bg-surface p-2">
+              <app-scroll-peek class="min-h-0 flex-1">
                 <app-category-strip
                   [categories]="stripCategories()"
                   [activeId]="store.categoryId()"
@@ -67,10 +71,11 @@ import { errorDetail } from '../../core/http-error';
                   (categorySelected)="store.setCategory($event)"
                   (subcategorySelected)="store.setSubcategory($event)"
                 />
-              </div>
+              </app-scroll-peek>
             </div>
+          </div>
 
-            <div class="min-w-0">
+          <div class="min-h-0 min-w-0 flex-1 overflow-y-auto">
         @if (store.mode() === 'suppliers') {
           @if (relevantSuppliersRes.isLoading()) {
             <p class="bp-body-small text-secondary">Loading…</p>
@@ -118,7 +123,6 @@ import { errorDetail } from '../../core/http-error';
       <!-- Project Quote rail hidden for now (may move to a dialog). The quote
            state + handlers below (quoteLines/est/onQtyChange/onCheckout) are
            kept for that dialog; the card + still adds to the quote. TODO(quote-dialog). -->
-          </div>
         </div>
       </div>
     </div>
