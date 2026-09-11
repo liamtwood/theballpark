@@ -72,7 +72,7 @@ let uid = 0;
       background: var(--color-surface);
       border: 1px solid var(--color-border-hairline);
       border-radius: 14px;
-      box-shadow: var(--shadow-lg, 0 12px 32px rgba(0,0,0,0.14));
+      box-shadow: var(--shadow-lg);
       padding: 6px;
       max-height: 280px;
       overflow-y: auto;
