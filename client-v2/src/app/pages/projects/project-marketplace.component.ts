@@ -48,7 +48,7 @@ import { errorDetail } from '../../core/http-error';
          centred + gutter-reserved so its edges line up with the header. The
          search stays fixed at the top; only the rails scroll inside. -->
     <div class="min-h-0 flex-1 bp-gutter px-6 pt-1">
-      <div class="mx-auto flex h-full min-h-0 w-full max-w-[var(--workspace-max)] flex-col overflow-hidden rounded-[28px] border border-hairline bg-surface shadow-[var(--shadow-xs)]">
+      <div class="mx-auto flex h-full min-h-0 w-full max-w-[var(--workspace-max)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-hairline bg-surface shadow-[var(--shadow-md)]">
         <!-- Search + the 3-icon cluster (Type / Filter / View), fixed at top. -->
         <div class="shrink-0 p-4 pb-3">
           <app-project-marketplace-controls class="block" />
@@ -60,7 +60,7 @@ import { errorDetail } from '../../core/http-error';
             <!-- White card for the categories (strip internals unchanged).
                  Plain card, not the bp-card class (its display:block would beat
                  the flex column). -->
-            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-hairline bg-surface p-2">
+            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-surface p-2 shadow-[var(--shadow-xs)]">
               <app-scroll-peek class="min-h-0 flex-1">
                 <app-category-strip
                   mode="drilldown"
