@@ -62,7 +62,7 @@ import { errorDetail } from '../../core/http-error';
                   [categories]="stripCategories()"
                   [activeId]="store.categoryId()"
                   [totalCount]="store.mode() === 'suppliers' ? scopedTotal() : allItemsCount()"
-                  [subcategories]="store.mode() === 'items' ? store.subcategories() : []"
+                  [subcategories]="store.mode() === 'items' ? stripSubcategories() : []"
                   [activeSubId]="store.subcategoryId()"
                   (categorySelected)="store.setCategory($event)"
                   (subcategorySelected)="store.setSubcategory($event)"
@@ -170,10 +170,17 @@ export class ProjectMarketplaceComponent {
    *  Suppliers mode = only the categories present in this project's quote,
    *  so the agent fans out to project-relevant suppliers only. */
   protected readonly stripCategories = computed(() => {
-    if (this.store.mode() !== 'suppliers') return this.store.categories();
+    // Hide empty categories (no items) in the project Marketplace.
+    const withItems = this.store.categories().filter((c) => c.count > 0);
+    if (this.store.mode() !== 'suppliers') return withItems;
     const ids = this.quoteCategoryIds();
-    return this.store.categories().filter((c) => ids.has(c.id));
+    return withItems.filter((c) => ids.has(c.id));
   });
+
+  /** Subcategories with at least one item — empties hidden from the rail. */
+  protected readonly stripSubcategories = computed(() =>
+    this.store.subcategories().filter((s) => s.count > 0),
+  );
 
   /** The distinct categories present in this project's quote. */
   private readonly quoteCategoryIds = computed(
