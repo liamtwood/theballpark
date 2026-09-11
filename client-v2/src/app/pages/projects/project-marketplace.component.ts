@@ -42,23 +42,17 @@ import { errorDetail } from '../../core/http-error';
      rather than catalogue-layout's slot. */
   host: { class: 'flex min-h-0 flex-1 flex-col' },
   template: `
-    <!-- Search row: aligned like the hero/tab band — bp-gutter reserves the
-         scrollbar gutter and mx-auto + px-6 matches the header inset, so the
-         left/right edges line up with the header and the rails below. -->
-    <div class="shrink-0 bp-gutter px-6">
-      <div class="mx-auto w-full max-w-[var(--workspace-max)]">
-        <!-- Compact controls: search + a 3-icon cluster (Type / Filter / View).
-             Mode toggle + filters + view toggle stay hidden until a cluster
-             icon opens their row. -->
-        <app-project-marketplace-controls class="block pb-3" />
-      </div>
-    </div>
-
-    <!-- Rails: the SINGLE scroll area, same alignment so both edges line up
-         with the header. One white container holds both rails. -->
-    <div class="min-h-0 flex-1 bp-gutter px-6">
-      <div class="mx-auto w-full max-w-[var(--workspace-max)]">
-        <div class="rounded-2xl border border-hairline bg-surface p-4 shadow-[var(--shadow-xs)]">
+    <!-- One rounded white container holds EVERYTHING (search + both rails),
+         centred + gutter-reserved so its edges line up with the header. The
+         search stays fixed at the top; only the rails scroll inside. -->
+    <div class="min-h-0 flex-1 bp-gutter px-6 pt-1">
+      <div class="mx-auto flex h-full min-h-0 w-full max-w-[var(--workspace-max)] flex-col overflow-hidden rounded-[28px] border border-hairline bg-surface shadow-[var(--shadow-xs)]">
+        <!-- Search + the 3-icon cluster (Type / Filter / View), fixed at top. -->
+        <div class="shrink-0 p-4 pb-3">
+          <app-project-marketplace-controls class="block" />
+        </div>
+        <!-- The single scroll area: both rails scroll together inside. -->
+        <div class="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
           <div class="grid grid-cols-1 gap-6 xl:grid-cols-[160px_1fr]">
             <div class="hidden xl:block">
               <!-- White container for the categories (strip internals unchanged).
