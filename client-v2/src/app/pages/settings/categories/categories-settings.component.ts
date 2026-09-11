@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, inject, resource, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { CatalogueService } from '../../../core/marketplace/catalogue.service';
 import { CategoryInfo, CategoryUpdate } from '../../../shared/catalogue/catalogue.types';
-import { EditFieldComponent, EditFieldOption } from '../../../shared/edit-field/edit-field.component';
+import { SelectComponent, SelectOption } from '../../../shared/select/select.component';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 
 /** pV2-MARKET-00 — /settings/categories: the minimal ballpark-admin
@@ -16,7 +17,7 @@ import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component'
 @Component({
   selector: 'app-categories-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [EditFieldComponent, LucideAngularModule, PageHeroComponent],
+  imports: [FormsModule, SelectComponent, LucideAngularModule, PageHeroComponent],
   host: { class: 'block' },
   template: `
     <app-page-hero
@@ -55,37 +56,33 @@ import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component'
               >
                 <lucide-icon [name]="expanded() === cat.id ? 'chevron-down' : 'chevron-right'" [size]="14" />
               </button>
-              <app-edit-field
-                label=""
-                type="text"
-                [maxLength]="60"
-                [value]="cat.name"
-                [editing]="true"
-                (valueChange)="save(cat, { name: $event })"
+              <input
+                class="ed-input"
+                maxlength="60"
+                aria-label="Category name"
+                [ngModel]="cat.name"
+                (blur)="commitText($event, cat, 'name', false)"
               />
-              <app-edit-field
-                label=""
-                type="text"
-                [maxLength]="120"
+              <input
+                class="ed-input"
+                maxlength="120"
                 placeholder="Shown on the category card"
-                [value]="cat.tagline ?? ''"
-                [editing]="true"
-                (valueChange)="save(cat, { tagline: $event })"
+                aria-label="Tagline"
+                [ngModel]="cat.tagline ?? ''"
+                (blur)="commitText($event, cat, 'tagline', false)"
               />
-              <app-edit-field
-                label=""
-                type="select"
+              <app-select
+                ariaLabel="Visibility"
                 [options]="visibility"
                 [value]="cat.isActive ? 'visible' : 'hidden'"
-                [editing]="true"
-                (valueChange)="save(cat, { isActive: $event === 'visible' })"
+                (changed)="save(cat, { isActive: $event === 'visible' })"
               />
-              <app-edit-field
-                label=""
+              <input
+                class="ed-input"
                 type="number"
-                [value]="String(cat.sortOrder ?? 0)"
-                [editing]="true"
-                (valueChange)="save(cat, { sortOrder: Number($event) || 0 })"
+                aria-label="Sort order"
+                [ngModel]="String(cat.sortOrder ?? 0)"
+                (blur)="commitSort($event, cat, false)"
               />
               <span class="bp-body-small text-secondary">{{ cat.count }}</span>
             </div>
@@ -103,37 +100,33 @@ import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component'
                   [class.opacity-60]="!sub.isActive"
                 >
                   <span></span>
-                  <app-edit-field
-                    label=""
-                    type="text"
-                    [maxLength]="60"
-                    [value]="sub.name"
-                    [editing]="true"
-                    (valueChange)="saveSub(sub, { name: $event })"
+                  <input
+                    class="ed-input"
+                    maxlength="60"
+                    aria-label="Subcategory name"
+                    [ngModel]="sub.name"
+                    (blur)="commitText($event, sub, 'name', true)"
                   />
-                  <app-edit-field
-                    label=""
-                    type="text"
-                    [maxLength]="120"
+                  <input
+                    class="ed-input"
+                    maxlength="120"
                     placeholder="Shown on the subcategory chip"
-                    [value]="sub.tagline ?? ''"
-                    [editing]="true"
-                    (valueChange)="saveSub(sub, { tagline: $event })"
+                    aria-label="Tagline"
+                    [ngModel]="sub.tagline ?? ''"
+                    (blur)="commitText($event, sub, 'tagline', true)"
                   />
-                  <app-edit-field
-                    label=""
-                    type="select"
+                  <app-select
+                    ariaLabel="Visibility"
                     [options]="visibility"
                     [value]="sub.isActive ? 'visible' : 'hidden'"
-                    [editing]="true"
-                    (valueChange)="saveSub(sub, { isActive: $event === 'visible' })"
+                    (changed)="saveSub(sub, { isActive: $event === 'visible' })"
                   />
-                  <app-edit-field
-                    label=""
+                  <input
+                    class="ed-input"
                     type="number"
-                    [value]="String(sub.sortOrder ?? 0)"
-                    [editing]="true"
-                    (valueChange)="saveSub(sub, { sortOrder: Number($event) || 0 })"
+                    aria-label="Sort order"
+                    [ngModel]="String(sub.sortOrder ?? 0)"
+                    (blur)="commitSort($event, sub, true)"
                   />
                   <span class="bp-body-small text-secondary">{{ sub.count }}</span>
                 </div>
@@ -153,13 +146,32 @@ export class CategoriesSettingsComponent {
   private readonly catalogue = inject(CatalogueService);
 
   protected readonly String = String;
-  protected readonly Number = Number;
   protected readonly error = signal('');
 
-  protected readonly visibility: EditFieldOption[] = [
+  protected readonly visibility: SelectOption[] = [
     { label: 'Visible', value: 'visible' },
     { label: 'Hidden', value: 'hidden' },
   ];
+
+  /** Save-on-blur for text cells: emit only when the trimmed value changed
+   *  (parity with the legacy edit-field commitText — no redundant PATCH).
+   *  `sub` routes to the subcategory optimistic path. */
+  protected commitText(ev: Event, cat: CategoryInfo, key: 'name' | 'tagline', sub: boolean): void {
+    const next = (ev.target as HTMLInputElement).value.trim();
+    const cur = key === 'name' ? cat.name : (cat.tagline ?? '');
+    if (next === cur) return;
+    const patch: CategoryUpdate = key === 'name' ? { name: next } : { tagline: next };
+    if (sub) void this.saveSub(cat, patch);
+    else void this.save(cat, patch);
+  }
+
+  protected commitSort(ev: Event, cat: CategoryInfo, sub: boolean): void {
+    const next = (ev.target as HTMLInputElement).value.trim();
+    if (next === String(cat.sortOrder ?? 0)) return;
+    const patch: CategoryUpdate = { sortOrder: Number(next) || 0 };
+    if (sub) void this.saveSub(cat, patch);
+    else void this.save(cat, patch);
+  }
 
   /** Local optimistic copy of the curation list. */
   protected readonly categories = signal<CategoryInfo[]>([]);
