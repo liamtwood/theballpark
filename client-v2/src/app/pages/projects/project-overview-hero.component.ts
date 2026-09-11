@@ -16,59 +16,85 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
   host: { class: 'block' },
   template: `
     @let p = project();
-    <!-- Cover -->
-    <div class="relative overflow-hidden rounded-[var(--radius-lg)] border border-hairline shadow-md">
-      @if (p.coverUrl) {
-        <img [src]="p.coverUrl" alt=""
-             [style.object-position]="p.coverFocalX + '% ' + p.coverFocalY + '%'"
-             class="h-[220px] w-full object-cover" />
-      } @else {
-        <div class="h-[220px] w-full" style="background: var(--bp-gradient, linear-gradient(135deg,#f5add0,#d63384))"></div>
-      }
-      <!-- Legibility scrim — stronger at the bottom-left where the text sits. -->
-      <div class="pointer-events-none absolute inset-0" style="background: linear-gradient(90deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.45) 45%, rgba(0,0,0,0.05) 78%)"></div>
-      <div class="pointer-events-none absolute inset-0" style="background: linear-gradient(0deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 55%)"></div>
-
-      <div class="absolute inset-0 flex flex-col justify-end p-6">
-        <span class="bp-eyebrow" style="color: rgba(255,255,255,0.85)">Live {{ label() }}</span>
-        <h1 class="bp-page-title mt-0.5" style="color: #fff">{{ p.name }}</h1>
-        @if (subtitle()) {
-          <p class="bp-body-small mt-1 max-w-[60%]" style="color: rgba(255,255,255,0.92)">{{ subtitle() }}</p>
+    <!-- collapsed → the cover shrinks to a slim name band + the tiles collapse
+         away, both animated (see styles). Reverses automatically. -->
+    <div class="ovh" [class.is-collapsed]="collapsed()">
+      <!-- Cover -->
+      <div class="ovh-cover relative overflow-hidden rounded-[var(--radius-lg)] border border-hairline shadow-md">
+        @if (p.coverUrl) {
+          <img [src]="p.coverUrl" alt=""
+               [style.object-position]="p.coverFocalX + '% ' + p.coverFocalY + '%'"
+               class="h-full w-full object-cover" />
+        } @else {
+          <div class="h-full w-full" style="background: var(--bp-gradient, linear-gradient(135deg,#f5add0,#d63384))"></div>
         }
+        <!-- Legibility scrim — stronger at the bottom-left where the text sits. -->
+        <div class="pointer-events-none absolute inset-0" style="background: linear-gradient(90deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.45) 45%, rgba(0,0,0,0.05) 78%)"></div>
+        <div class="pointer-events-none absolute inset-0" style="background: linear-gradient(0deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 55%)"></div>
+
+        <div class="ovh-overlay absolute inset-0 flex flex-col justify-end">
+          <span class="ovh-eyebrow bp-eyebrow" style="color: rgba(255,255,255,0.85)">Live {{ label() }}</span>
+          <h1 class="bp-page-title mt-0.5" style="color: #fff">{{ p.name }}</h1>
+          @if (subtitle()) {
+            <p class="ovh-sub bp-body-small mt-1 max-w-[60%]" style="color: rgba(255,255,255,0.92)">{{ subtitle() }}</p>
+          }
+        </div>
+
+        <!-- Cover actions -->
+        <div class="ovh-actions absolute right-4 top-4 flex flex-wrap items-center gap-2">
+          <button type="button" class="bp-cover-btn" (click)="buildCover.emit()">
+            <lucide-icon name="sparkles" [size]="15" /> Build cover from your items
+          </button>
+          <button type="button" class="bp-cover-btn" (click)="changeImage.emit()">
+            <lucide-icon name="image" [size]="15" /> Change image
+          </button>
+        </div>
       </div>
 
-      <!-- Cover actions -->
-      <div class="absolute right-4 top-4 flex flex-wrap items-center gap-2">
-        <button type="button" class="bp-cover-btn" (click)="buildCover.emit()">
-          <lucide-icon name="sparkles" [size]="15" /> Build cover from your items
-        </button>
-        <button type="button" class="bp-cover-btn" (click)="changeImage.emit()">
-          <lucide-icon name="image" [size]="15" /> Change image
-        </button>
-      </div>
-    </div>
-
-    <!-- Negotiation tiles -->
-    <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-      <div class="bp-card p-4" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
-        <span class="bp-tile-title">Working ballpark</span>
-        <span class="bp-tile-value mt-1">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
-      </div>
-      <div class="bp-card p-4" [title]="'Total value of items you and the supplier have both agreed.'">
-        <span class="bp-tile-title">Confirmed so far</span>
-        <span class="bp-tile-value mt-1">{{ (o()?.confirmedTotal ?? 0) | currency: currency() : 'symbol' : '1.0-0' }}</span>
-      </div>
-      <div class="bp-card p-4" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
-        <span class="bp-tile-title">Agreed items</span>
-        <span class="bp-tile-value mt-1">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
-      </div>
-      <div class="bp-card p-4" [title]="'Supplier conversations with at least one item still to agree.'">
-        <span class="bp-tile-title">Open threads</span>
-        <span class="bp-tile-value mt-1">{{ o()?.openThreads ?? 0 }}</span>
+      <!-- Negotiation tiles -->
+      <div class="ovh-tiles grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div class="bp-card p-4" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
+          <span class="bp-tile-title">Working ballpark</span>
+          <span class="bp-tile-value mt-1">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
+        </div>
+        <div class="bp-card p-4" [title]="'Total value of items you and the supplier have both agreed.'">
+          <span class="bp-tile-title">Confirmed so far</span>
+          <span class="bp-tile-value mt-1">{{ (o()?.confirmedTotal ?? 0) | currency: currency() : 'symbol' : '1.0-0' }}</span>
+        </div>
+        <div class="bp-card p-4" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
+          <span class="bp-tile-title">Agreed items</span>
+          <span class="bp-tile-value mt-1">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
+        </div>
+        <div class="bp-card p-4" [title]="'Supplier conversations with at least one item still to agree.'">
+          <span class="bp-tile-title">Open threads</span>
+          <span class="bp-tile-value mt-1">{{ o()?.openThreads ?? 0 }}</span>
+        </div>
       </div>
     </div>
   `,
   styles: [`
+    /* Collapsing hero — full cover+tiles ⇄ slim name band. All animated so it
+       dissolves both ways; honours reduced-motion. */
+    .ovh-cover { height: 220px; transition: height 0.22s ease; }
+    .ovh-overlay { padding: 24px; transition: padding 0.22s ease; }
+    .ovh-eyebrow, .ovh-sub {
+      overflow: hidden;
+      transition: opacity 0.18s ease, max-height 0.22s ease, margin 0.22s ease;
+    }
+    .ovh-actions { transition: opacity 0.18s ease; }
+    .ovh-tiles {
+      max-height: 260px; opacity: 1; margin-top: 16px; overflow: hidden;
+      transition: max-height 0.22s ease, opacity 0.18s ease, margin-top 0.22s ease;
+    }
+    .ovh.is-collapsed .ovh-cover { height: 60px; }
+    .ovh.is-collapsed .ovh-overlay { padding: 8px 20px; }
+    .ovh.is-collapsed .ovh-eyebrow,
+    .ovh.is-collapsed .ovh-sub { opacity: 0; max-height: 0; margin-top: 0; margin-bottom: 0; }
+    .ovh.is-collapsed .ovh-actions { opacity: 0; pointer-events: none; }
+    .ovh.is-collapsed .ovh-tiles { max-height: 0; opacity: 0; margin-top: 0; }
+    @media (prefers-reduced-motion: reduce) {
+      .ovh-cover, .ovh-overlay, .ovh-eyebrow, .ovh-sub, .ovh-actions, .ovh-tiles { transition: none; }
+    }
     .bp-cover-btn {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 8px 14px;
@@ -108,6 +134,8 @@ export class ProjectOverviewHeroComponent {
   readonly overview = input<ProjectOverview | null>(null);
   readonly currency = input<string>('GBP');
   readonly label = input<string>('project');
+  /** Collapse to a slim name band (work tabs) — reverses automatically. */
+  readonly collapsed = input<boolean>(false);
 
   readonly changeImage = output<void>();
   readonly buildCover = output<void>();

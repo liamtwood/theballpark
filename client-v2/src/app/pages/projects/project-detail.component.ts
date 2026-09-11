@@ -115,6 +115,7 @@ interface DetailForm {
           <div class="mx-auto w-full max-w-[var(--workspace-max)]">
             <app-project-overview-hero
               [project]="p"
+              [collapsed]="heroCollapsed()"
               [workingTotal]="estimate.value()?.projectTotal ?? 0"
               [overview]="overview.value() ?? null"
               [currency]="p.currency || 'GBP'"
@@ -379,6 +380,12 @@ export class ProjectDetailComponent {
     if (this.isDraft() && (t === 'details' || t === 'reports' || t === 'inbox')) t = 'final';
     return t;
   });
+
+  /** Work-dense tabs collapse the overview hero to a slim name band to reclaim
+   *  space (reverses automatically on the way back). Full hero stays on the
+   *  landing (Ballpark Cost) + About Project. Reusable — add tabs here. */
+  private readonly COLLAPSE_HERO_TABS = new Set<Tab>(['marketplace', 'reports', 'inbox']);
+  protected readonly heroCollapsed = computed(() => this.COLLAPSE_HERO_TABS.has(this.tab()));
 
   protected readonly label = computed(() => this.pageConfig.eventLabel());
   protected readonly labelPlural = computed(() => `${this.label()}s`);
