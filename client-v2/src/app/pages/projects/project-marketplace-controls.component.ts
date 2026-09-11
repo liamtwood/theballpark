@@ -64,7 +64,7 @@ type Panel = 'type' | 'filter' | 'view';
       <div class="mt-3 flex flex-wrap items-center gap-3">
         @switch (p) {
           @case ('type') {
-            <app-tab-band [tabs]="modeTabs" [active]="store.mode()" (activeChange)="store.setMode($event)" />
+            <app-tab-band [tabs]="modeTabs()" [active]="store.mode()" (activeChange)="store.setMode($event)" />
           }
           @case ('filter') {
             @if (store.mode() === 'items') {
@@ -103,10 +103,12 @@ export class ProjectMarketplaceControlsComponent {
     this.panel.update((cur) => (cur === p ? null : p));
   }
 
-  protected readonly modeTabs: TabBandTab[] = [
-    { key: 'items', label: 'Items' },
-    { key: 'suppliers', label: 'Suppliers' },
-  ];
+  /** Counts on the Type toggle (same circle badges as Current/Completed).
+   *  Items = total catalogue items; Suppliers = distinct suppliers. 0 → no badge. */
+  protected readonly modeTabs = computed<TabBandTab[]>(() => [
+    { key: 'items', label: 'Items', badge: this.store.categories().reduce((s, c) => s + c.count, 0) || undefined },
+    { key: 'suppliers', label: 'Suppliers', badge: this.store.supplierOptions().length || undefined },
+  ]);
 
   protected readonly priceOptions: SelectOption[] = [
     { label: 'Any price', value: 'any' },
