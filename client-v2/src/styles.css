@@ -790,7 +790,7 @@ body {
   background: var(--theme-accent);
   color: var(--theme-accent-contrast, #fff);
   font-family: var(--font-body);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: 500;
   line-height: var(--leading-normal);
   cursor: pointer;

@@ -27,7 +27,7 @@ import { CategoryInfo } from './catalogue.types';
           <div class="mb-1.5 flex items-center gap-2">
             <button type="button" class="bp-catstrip-back" aria-label="Back to all categories"
                     (click)="categorySelected.emit(null)">
-              <lucide-icon name="arrow-big-left" [size]="18" [strokeWidth]="1.75" />
+              <lucide-icon name="chevron-left" [size]="16" />
             </button>
             <button type="button" class="bp-catstrip-pill" (click)="subcategorySelected.emit(null)">
               <span class="truncate">{{ cat.name }}</span>
