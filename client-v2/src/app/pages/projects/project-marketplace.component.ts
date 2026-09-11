@@ -63,6 +63,7 @@ import { errorDetail } from '../../core/http-error';
             <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-hairline bg-surface p-2">
               <app-scroll-peek class="min-h-0 flex-1">
                 <app-category-strip
+                  mode="drilldown"
                   [categories]="stripCategories()"
                   [activeId]="store.categoryId()"
                   [totalCount]="store.mode() === 'suppliers' ? scopedTotal() : allItemsCount()"

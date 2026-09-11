@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, linkedSignal, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { CategoryInfo } from './catalogue.types';
 
@@ -16,6 +16,50 @@ import { CategoryInfo } from './catalogue.types';
   imports: [LucideAngularModule],
   host: { class: 'block' },
   template: `
+    @if (mode() === 'drilldown') {
+      <!-- Drill-down: one level at a time. Top = All + categories (chevron
+           hints "open"); click drills into a category to show its subcategories
+           with a back row. Reverses via the back / "All Categories" row. -->
+      <nav class="flex flex-col gap-0.5">
+        @if (activeCat(); as cat) {
+          <button type="button" class="bp-catstrip-row" (click)="categorySelected.emit(null)">
+            <span class="flex min-w-0 items-center gap-1.5 truncate">
+              <lucide-icon name="chevron-left" [size]="14" class="text-muted" /> All Categories
+            </span>
+          </button>
+          <button type="button" class="bp-catstrip-row"
+                  [class.bp-catstrip-row--active]="!activeSubId()"
+                  (click)="subcategorySelected.emit(null)">
+            <span class="truncate">All {{ cat.name }}</span>
+            <span class="bp-meta">{{ cat.count }}</span>
+          </button>
+          @for (sub of subcategories(); track sub.id) {
+            <button type="button" class="bp-catstrip-row bp-catstrip-row--sub"
+                    [class.bp-catstrip-row--active]="activeSubId() === sub.id"
+                    (click)="subcategorySelected.emit(activeSubId() === sub.id ? null : sub.id)">
+              <span class="truncate">{{ sub.name }}</span>
+              <span class="bp-meta">{{ sub.count }}</span>
+            </button>
+          }
+        } @else {
+          <button type="button" class="bp-catstrip-row"
+                  [class.bp-catstrip-row--active]="!activeId()"
+                  (click)="categorySelected.emit(null)">
+            <span class="truncate">{{ allLabel() }}</span>
+            <span class="bp-meta">{{ totalCount() }}</span>
+          </button>
+          @for (cat of categories(); track cat.id) {
+            <button type="button" class="bp-catstrip-row" (click)="categorySelected.emit(cat.id)">
+              <span class="truncate">{{ cat.name }}</span>
+              <span class="flex items-center gap-1.5">
+                <span class="bp-meta">{{ cat.count }}</span>
+                <lucide-icon name="chevron-right" [size]="13" class="text-muted" />
+              </span>
+            </button>
+          }
+        }
+      </nav>
+    } @else {
     <nav class="flex flex-col gap-0.5">
       <button
         type="button"
@@ -74,10 +118,13 @@ import { CategoryInfo } from './catalogue.types';
         }
       }
     </nav>
+    }
   `,
 })
 export class CategoryStripComponent {
   readonly categories = input.required<readonly CategoryInfo[]>();
+  /** 'tree' (default) = expandable v1 rail; 'drilldown' = one level at a time. */
+  readonly mode = input<'tree' | 'drilldown'>('tree');
   readonly activeId = input<string | null>(null);
   readonly totalCount = input<number>(0);
   /** Label for the top "all" row. Defaults to "All Categories"; the
@@ -89,6 +136,11 @@ export class CategoryStripComponent {
   readonly activeSubId = input<string | null>(null);
   readonly categorySelected = output<string | null>();
   readonly subcategorySelected = output<string | null>();
+
+  /** The drilled-into category (drill-down mode) — null at the top level. */
+  protected readonly activeCat = computed(
+    () => this.categories().find((c) => c.id === this.activeId()) ?? null,
+  );
 
   /** Expansion follows selection (auto-open on select) but the chevron
    *  can collapse without deselecting; re-selecting reopens. */
