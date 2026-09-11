@@ -1,33 +1,24 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
+import { TooltipModule } from 'primeng/tooltip';
 import { MarketplaceStore } from './marketplace-store';
 import { CatalogueSearchComponent } from '../../shared/catalogue/catalogue-search.component';
 import { ViewToggleComponent } from '../../shared/catalogue/view-toggle.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
-import { SelectComponent, SelectOption } from '../../shared/select/select.component';
-import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
 
-type Panel = 'type' | 'filter' | 'view';
-
-/** Marketplace controls — compact by default: a search box + a 3-icon cluster
- *  (same pill container as the view toggle). Clicking a cluster icon reveals ONE
- *  options row below the search (one at a time):
- *    • Type   → Items / Suppliers (the mode toggle, hidden by default)
- *    • Filter → price / tier / supplier
- *    • View   → card / list / table (the existing view toggle)
- *  Store-driven (injects the route's MarketplaceStore) — SHARED by both the
- *  global marketplace page and the in-project Marketplace tab (they mount it via
- *  app-marketplace-workspace so the whole chrome is one definition). */
+/** Marketplace controls — a search box + a 3-icon cluster (same pill container
+ *  as the view toggle). Each icon toggles INDEPENDENTLY (on/off), with a hover
+ *  tooltip:
+ *    • Item or supplier → the mode toggle appears on the LEFT below the search
+ *    • Filter           → the filter row shows ABOVE the grid (rendered by the
+ *                         workspace via store.filtersOpen — it belongs over the
+ *                         first grid item, not here)
+ *    • View             → the view toggle appears on the RIGHT below the search
+ *  Store-driven — SHARED by the global marketplace page and the in-project tab. */
 @Component({
   selector: 'app-marketplace-controls',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    LucideAngularModule,
-    CatalogueSearchComponent,
-    ViewToggleComponent,
-    TabBandComponent,
-    SelectComponent,
-  ],
+  imports: [LucideAngularModule, TooltipModule, CatalogueSearchComponent, ViewToggleComponent, TabBandComponent],
   host: { class: 'block' },
   template: `
     <!-- Row 1: prominent full-width search + count + the 3-icon cluster. -->
@@ -43,54 +34,39 @@ type Panel = 'type' | 'filter' | 'view';
 
       <span class="bp-caption shrink-0 text-secondary">{{ store.total() }} items</span>
 
-      <!-- Same container style as app-view-toggle. Each icon toggles its row. -->
+      <!-- Same container style as app-view-toggle. Each icon toggles on/off. -->
       <div class="inline-flex items-center gap-1 rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
-        <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="panel() === 'type'"
-          aria-label="Browse items or suppliers" (click)="toggle('type')">
+        <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="typeOpen()"
+          pTooltip="Item or supplier" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
+          aria-label="Item or supplier" (click)="typeOpen.set(!typeOpen())">
           <lucide-icon name="arrow-left-right" [size]="15" />
         </button>
-        <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="panel() === 'filter'"
-          aria-label="Filters" (click)="toggle('filter')">
+        <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="store.filtersOpen()"
+          pTooltip="Filter" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
+          aria-label="Filter" (click)="store.filtersOpen.set(!store.filtersOpen())">
           <lucide-icon name="sliders-horizontal" [size]="15" />
         </button>
-        <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="panel() === 'view'"
-          aria-label="View" (click)="toggle('view')">
+        <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="viewOpen()"
+          pTooltip="View" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
+          aria-label="View" (click)="viewOpen.set(!viewOpen())">
           <lucide-icon name="layout-grid" [size]="15" />
         </button>
       </div>
     </div>
 
-    <!-- Row 2: the active cluster icon's options (one at a time). -->
-    @if (panel(); as p) {
-      <div class="mt-3 flex flex-wrap items-center gap-3">
-        @switch (p) {
-          @case ('type') {
+    <!-- Row 2: Item/Supplier on the LEFT, View on the RIGHT (each independent). -->
+    @if (typeOpen() || viewOpen()) {
+      <div class="mt-3 flex items-center justify-between gap-3">
+        <div>
+          @if (typeOpen()) {
             <app-tab-band [tabs]="modeTabs()" [active]="store.mode()" (activeChange)="store.setMode($event)" />
           }
-          @case ('filter') {
-            @if (store.mode() === 'items') {
-              <app-select ariaLabel="Price" class="w-40" [options]="priceOptions"
-                [value]="store.priceBracket() ?? 'any'"
-                (changed)="store.setPriceBracket($event === 'any' ? null : $event)" />
-              <app-select ariaLabel="Tier" class="w-32" [options]="tierOptions"
-                [value]="store.tier() ?? 'any'"
-                (changed)="store.setTier($event === 'any' ? null : $event)" />
-              <app-select ariaLabel="Supplier" class="w-44" [options]="supplierOptions()"
-                [value]="store.supplierId() ?? 'any'"
-                (changed)="store.setSupplier($event === 'any' ? null : $event)" />
-              @if (store.hasFilters()) {
-                <button type="button"
-                  class="bp-caption cursor-pointer border-none bg-transparent text-secondary underline hover:text-text"
-                  (click)="store.clearFilters()">Clear filters</button>
-              }
-            } @else {
-              <span class="bp-caption text-secondary">Filters apply to items — switch Type to Items.</span>
-            }
-          }
-          @case ('view') {
+        </div>
+        <div>
+          @if (viewOpen()) {
             <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
           }
-        }
+        </div>
       </div>
     }
   `,
@@ -98,33 +74,15 @@ type Panel = 'type' | 'filter' | 'view';
 export class MarketplaceControlsComponent {
   protected readonly store = inject(MarketplaceStore);
 
-  /** Which options row is open (null = compact, just search + cluster). */
-  protected readonly panel = signal<Panel | null>(null);
-  protected toggle(p: Panel): void {
-    this.panel.update((cur) => (cur === p ? null : p));
-  }
+  /** Independent on/off for the Type + View rows (Filter lives on the store so
+   *  the workspace can render it above the grid). */
+  protected readonly typeOpen = signal(false);
+  protected readonly viewOpen = signal(false);
 
   /** Counts on the Type toggle (same circle badges as Current/Completed).
    *  Items = total catalogue items; Suppliers = distinct suppliers. 0 → no badge. */
   protected readonly modeTabs = computed<TabBandTab[]>(() => [
     { key: 'items', label: 'Items', badge: this.store.categories().reduce((s, c) => s + c.count, 0) || undefined },
     { key: 'suppliers', label: 'Suppliers', badge: this.store.supplierOptions().length || undefined },
-  ]);
-
-  protected readonly priceOptions: SelectOption[] = [
-    { label: 'Any price', value: 'any' },
-    ...PRICE_BRACKETS.map((b) => ({ label: b.label, value: b.key })),
-  ];
-
-  protected readonly tierOptions: SelectOption[] = [
-    { label: 'Any tier', value: 'any' },
-    { label: 'Basic', value: 'basic' },
-    { label: 'Mid', value: 'mid' },
-    { label: 'Premium', value: 'premium' },
-  ];
-
-  protected readonly supplierOptions = computed<SelectOption[]>(() => [
-    { label: 'Any supplier', value: 'any' },
-    ...this.store.supplierOptions().map((s) => ({ label: `${s.name} (${s.count})`, value: s.id })),
   ]);
 }

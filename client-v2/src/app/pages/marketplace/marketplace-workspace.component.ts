@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { MarketplaceStore } from './marketplace-store';
 import { MarketplaceControlsComponent } from './marketplace-controls.component';
+import { MarketplaceFiltersComponent } from './marketplace-filters.component';
 import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.component';
 
 /** The shared marketplace WORKSPACE chrome — one rounded white container holding
@@ -13,7 +15,7 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
 @Component({
   selector: 'app-marketplace-workspace',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MarketplaceControlsComponent, ScrollPeekComponent],
+  imports: [MarketplaceControlsComponent, MarketplaceFiltersComponent, ScrollPeekComponent],
   host: { class: 'flex min-h-0 flex-1 flex-col' },
   template: `
     <!-- Rounded white container, centred + gutter-reserved so its edges line up
@@ -36,6 +38,10 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
           </div>
 
           <div class="min-h-0 min-w-0 flex-1 overflow-y-auto">
+            <!-- Filter row sits above the grid (over the first item) when on. -->
+            @if (store.filtersOpen()) {
+              <app-marketplace-filters class="mb-3 block" />
+            }
             <ng-content />
           </div>
         </div>
@@ -43,4 +49,6 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
     </div>
   `,
 })
-export class MarketplaceWorkspaceComponent {}
+export class MarketplaceWorkspaceComponent {
+  protected readonly store = inject(MarketplaceStore);
+}

@@ -144,6 +144,10 @@ export class MarketplaceStore {
   readonly total = signal(0);
   readonly hasMore = signal(false);
 
+  /** UI: whether the filter row is showing (toggled from the controls cluster;
+   *  the filter row itself renders above the grid in the workspace). */
+  readonly filtersOpen = signal(false);
+
   readonly itemsRes = resource({
     params: () => {
       const bracket = bracketFor(this.priceBracket());
