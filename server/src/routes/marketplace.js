@@ -22,12 +22,18 @@ const { requireActiveMembership } = require('../middleware/require-active-member
 const { CategoryUpdateSchema } = require('../schemas/category-admin.schema');
 const { ItemsQuerySchema, PAGE_SIZE } = require('../schemas/marketplace-query.schema');
 
-/** Top-level catalogue categories + live item counts. Counts roll up from
- *  active, non-deleted items (items point at TOP-LEVEL categories via
- *  category_id; subcategory_id is a separate axis). */
+/** Top-level catalogue categories + live item counts. Counts must match what
+ *  the browse grid actually lists (active + APPROVED, top-level items only —
+ *  no components/children), and must equal the sum of the subcategory counts
+ *  (which already filter approved). Otherwise the pill over-counts (e.g. 9 vs
+ *  the 5 shown). Items point at TOP-LEVEL categories via category_id;
+ *  subcategory_id is a separate axis. */
 const SELECT_CATEGORIES = `
   SELECT c.id, c.name, c.tagline, c.icon_name, c.is_active, c.sort_order,
-         COUNT(i.id) FILTER (WHERE i.deleted_at IS NULL AND i.is_active) AS item_count
+         COUNT(i.id) FILTER (WHERE i.deleted_at IS NULL AND i.is_active
+                               AND i.approval_status = 'approved'
+                               AND i.kind IS DISTINCT FROM 'component'
+                               AND i.parent_item_id IS NULL) AS item_count
     FROM categories c
     LEFT JOIN items i ON i.category_id = c.id
    WHERE c.deleted_at IS NULL
@@ -155,7 +161,9 @@ router.get('/categories/:id/subcategories', async (req, res, next) => {
     const r = await pool.query(
       `SELECT c.id, c.name, c.tagline, c.icon_name, c.is_active, c.sort_order,
               COUNT(i.id) FILTER (WHERE i.deleted_at IS NULL AND i.is_active
-                                    AND i.approval_status = 'approved') AS item_count
+                                    AND i.approval_status = 'approved'
+                                    AND i.kind IS DISTINCT FROM 'component'
+                                    AND i.parent_item_id IS NULL) AS item_count
          FROM categories c
          LEFT JOIN items i ON i.subcategory_id = c.id
         WHERE c.deleted_at IS NULL AND c.namespace = 'catalogue'
