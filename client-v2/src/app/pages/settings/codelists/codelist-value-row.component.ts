@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { CodelistValue, CodelistValuePatch } from '../../../core/codelists/codelist.types';
-import { EditFieldComponent, EditFieldOption } from '../../../shared/edit-field/edit-field.component';
+import { SelectComponent, SelectOption } from '../../../shared/select/select.component';
 import { StatusPillComponent } from '../../../shared/status-pill/status-pill.component';
 
 /** pV2-CODELISTS-02 (audit F-7 extraction) — ONE value row of the
@@ -10,7 +11,7 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
 @Component({
   selector: 'app-codelist-value-row',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [EditFieldComponent, StatusPillComponent],
+  imports: [FormsModule, SelectComponent, StatusPillComponent],
   host: {
     class:
       'grid grid-cols-[110px_1fr_80px_70px_120px_110px] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0',
@@ -21,9 +22,9 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
       {{ value().code }}@if (value().isDefault) {<span class="bp-meta"> ★</span>}
     </span>
     @if (editable()) {
-      <app-edit-field label="" type="text" [maxLength]="100" [value]="value().label" [editing]="true" (valueChange)="save.emit({ label: $event })" />
-      <app-edit-field label="" type="text" [maxLength]="20" [value]="value().symbol ?? ''" [editing]="true" (valueChange)="save.emit({ symbol: $event })" />
-      <app-edit-field label="" type="number" [value]="String(value().sortOrder ?? 0)" [editing]="true" (valueChange)="save.emit({ sortOrder: Number($event) || 0 })" />
+      <input class="ed-input" maxlength="100" aria-label="Label" [ngModel]="value().label" (blur)="commitText($event, 'label')" />
+      <input class="ed-input" maxlength="20" aria-label="Symbol" [ngModel]="value().symbol ?? ''" (blur)="commitText($event, 'symbol')" />
+      <input class="ed-input" type="number" aria-label="Sort order" [ngModel]="String(value().sortOrder ?? 0)" (blur)="commitSort($event)" />
     } @else {
       <span class="bp-body-small truncate">{{ value().label }}</span>
       <span class="bp-body-small text-secondary">{{ value().symbol ?? '—' }}</span>
@@ -36,19 +37,16 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
         <span class="bp-meta">—</span>
       }
     </span>
-    <app-edit-field
-      label=""
-      type="select"
+    <app-select
+      ariaLabel="Visibility"
       [options]="visibility"
       [value]="value().isActive ? 'visible' : 'hidden'"
-      [editing]="true"
-      (valueChange)="toggleActive.emit($event === 'visible')"
+      (changed)="toggleActive.emit($event === 'visible')"
     />
   `,
 })
 export class CodelistValueRowComponent {
   protected readonly String = String;
-  protected readonly Number = Number;
 
   readonly listName = input.required<string>();
   readonly value = input.required<CodelistValue>();
@@ -60,8 +58,26 @@ export class CodelistValueRowComponent {
 
   /** Binary UI mapping of isActive — deliberately NOT a codelist
    *  (CODELISTS.md: booleans stay booleans). */
-  protected readonly visibility: EditFieldOption[] = [
+  protected readonly visibility: SelectOption[] = [
     { label: 'Visible', value: 'visible' },
     { label: 'Hidden', value: 'hidden' },
   ];
+
+  /** Save-on-blur: emit only when the trimmed text actually changed (parity
+   *  with the legacy edit-field commitText — no redundant PATCH). */
+  protected commitText(ev: Event, key: 'label' | 'symbol'): void {
+    const next = (ev.target as HTMLInputElement).value.trim();
+    if (key === 'label') {
+      if (next !== this.value().label) this.save.emit({ label: next });
+    } else if (next !== (this.value().symbol ?? '')) {
+      this.save.emit({ symbol: next });
+    }
+  }
+
+  protected commitSort(ev: Event): void {
+    const next = (ev.target as HTMLInputElement).value.trim();
+    if (next !== String(this.value().sortOrder ?? 0)) {
+      this.save.emit({ sortOrder: Number(next) || 0 });
+    }
+  }
 }
