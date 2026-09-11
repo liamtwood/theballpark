@@ -53,10 +53,7 @@ import { CategoryInfo } from './catalogue.types';
           @for (cat of categories(); track cat.id) {
             <button type="button" class="bp-catstrip-row" (click)="categorySelected.emit(cat.id)">
               <span class="truncate">{{ cat.name }}</span>
-              <span class="flex items-center gap-1.5">
-                <span class="bp-meta">{{ cat.count }}</span>
-                <lucide-icon name="chevron-right" [size]="13" class="text-muted" />
-              </span>
+              <span class="bp-meta">{{ cat.count }}</span>
             </button>
           }
         }
