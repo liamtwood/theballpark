@@ -42,35 +42,41 @@ import { errorDetail } from '../../core/http-error';
      rather than catalogue-layout's slot. */
   host: { class: 'flex min-h-0 flex-1 flex-col' },
   template: `
-    <!-- Items / Suppliers — the same mode toggle the global marketplace
-         uses. Suppliers mode is the per-category supplier fan-out, scoped
-         to the project's quote categories (pV2-INBOX-02). -->
-    <!-- Constrain the strip + catalogue to the workspace column so this tab
-         lines up with the other project pages (About/Estimate/Final). -->
-    <div class="mx-auto flex min-h-0 w-full max-w-[var(--workspace-max)] flex-1 flex-col">
-    <!-- Compact controls: search + a 3-icon cluster (Type / Filter / View).
-         The mode toggle + filters + view toggle are hidden until a cluster
-         icon opens their row. -->
-    <app-project-marketplace-controls class="pb-3" />
-
-    <!-- One scroll for both rails: the grid scrolls as a unit (single
-         scrollbar), not a scrollbar per column. Search stays fixed above. -->
-    <div class="grid min-h-0 flex-1 grid-cols-1 gap-6 overflow-y-auto xl:grid-cols-[160px_1fr]">
-      <div class="hidden xl:block">
-        <!-- Suppliers mode: the strip is scoped to the quote's categories
-             (no "All" browse) so only project-relevant suppliers surface. -->
-        <app-category-strip
-          [categories]="stripCategories()"
-          [activeId]="store.categoryId()"
-          [totalCount]="store.mode() === 'suppliers' ? scopedTotal() : allItemsCount()"
-          [subcategories]="store.mode() === 'items' ? store.subcategories() : []"
-          [activeSubId]="store.subcategoryId()"
-          (categorySelected)="store.setCategory($event)"
-          (subcategorySelected)="store.setSubcategory($event)"
-        />
+    <!-- Search row: aligned like the hero/tab band — bp-gutter reserves the
+         scrollbar gutter and mx-auto + px-6 matches the header inset, so the
+         left/right edges line up with the header and the rails below. -->
+    <div class="shrink-0 bp-gutter px-6">
+      <div class="mx-auto w-full max-w-[var(--workspace-max)]">
+        <!-- Compact controls: search + a 3-icon cluster (Type / Filter / View).
+             Mode toggle + filters + view toggle stay hidden until a cluster
+             icon opens their row. -->
+        <app-project-marketplace-controls class="block pb-3" />
       </div>
+    </div>
 
-      <div class="min-w-0">
+    <!-- Rails: the SINGLE scroll area, same alignment so both edges line up
+         with the header. One white container holds both rails. -->
+    <div class="min-h-0 flex-1 bp-gutter px-6">
+      <div class="mx-auto w-full max-w-[var(--workspace-max)]">
+        <div class="rounded-2xl border border-hairline bg-surface p-4 shadow-[var(--shadow-xs)]">
+          <div class="grid grid-cols-1 gap-6 xl:grid-cols-[160px_1fr]">
+            <div class="hidden xl:block">
+              <!-- White container for the categories (strip internals unchanged).
+                   Suppliers mode: the strip is scoped to the quote's categories. -->
+              <div class="bp-card p-2">
+                <app-category-strip
+                  [categories]="stripCategories()"
+                  [activeId]="store.categoryId()"
+                  [totalCount]="store.mode() === 'suppliers' ? scopedTotal() : allItemsCount()"
+                  [subcategories]="store.mode() === 'items' ? store.subcategories() : []"
+                  [activeSubId]="store.subcategoryId()"
+                  (categorySelected)="store.setCategory($event)"
+                  (subcategorySelected)="store.setSubcategory($event)"
+                />
+              </div>
+            </div>
+
+            <div class="min-w-0">
         @if (store.mode() === 'suppliers') {
           @if (relevantSuppliersRes.isLoading()) {
             <p class="bp-body-small text-secondary">Loading…</p>
@@ -118,7 +124,9 @@ import { errorDetail } from '../../core/http-error';
       <!-- Project Quote rail hidden for now (may move to a dialog). The quote
            state + handlers below (quoteLines/est/onQtyChange/onCheckout) are
            kept for that dialog; the card + still adds to the quote. TODO(quote-dialog). -->
-    </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Quick View — inside a project, "Add to ballpark" adds straight to
