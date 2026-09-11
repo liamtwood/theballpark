@@ -30,7 +30,8 @@ import { CategoryInfo } from './catalogue.types';
               <lucide-icon name="arrow-big-left" [size]="18" [strokeWidth]="1.75" />
             </button>
             <button type="button" class="bp-catstrip-pill" (click)="subcategorySelected.emit(null)">
-              <span>{{ cat.name }} ({{ cat.count }})</span>
+              <span class="truncate">{{ cat.name }}</span>
+              <span class="shrink-0">{{ cat.count }}</span>
             </button>
           </div>
           <!-- Subcategories — NOT indented (the pill already gives the context). -->
