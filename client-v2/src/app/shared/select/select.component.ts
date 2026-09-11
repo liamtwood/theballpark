@@ -40,69 +40,17 @@ let uid = 0;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [OverlayModule, LucideAngularModule],
   host: { class: 'block' },
-  styles: [`
-    .sel-trigger {
-      display: flex; align-items: center; gap: 8px;
-      height: 44px; width: 100%;
-      border-radius: var(--radius-pill);
-      border: 1px solid var(--color-border-hairline);
-      background: var(--color-surface);
-      padding: 0 14px 0 16px;
-      font-size: var(--text-md);
-      font-family: var(--font-body);
-      color: var(--color-text);
-      text-align: left;
-      cursor: pointer;
-      outline: none;
-    }
-    .sel-trigger:focus-visible,
-    .sel-trigger.is-open { border-color: var(--theme-accent); }
-    .sel-trigger:disabled { background: var(--color-fill); color: var(--color-text-secondary); cursor: not-allowed; }
-    .sel-value { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sel-value.is-placeholder { color: var(--color-text-secondary); opacity: 0.7; }
-    /* Chevron is quiet by default — appears on hover / focus / open, like the
-       native number-input spinner (Liam's call). */
-    .sel-chev { flex: 0 0 auto; color: var(--color-text-secondary); opacity: 0; transition: opacity 0.15s ease, transform 0.15s ease; }
-    .sel-trigger:hover .sel-chev,
-    .sel-trigger:focus-visible .sel-chev,
-    .sel-trigger.is-open .sel-chev { opacity: 1; }
-    .sel-trigger.is-open .sel-chev { transform: rotate(180deg); }
-
-    .sel-panel {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border-hairline);
-      border-radius: 14px;
-      box-shadow: var(--shadow-lg);
-      padding: 6px;
-      max-height: 280px;
-      overflow-y: auto;
-      font-family: var(--font-body);
-    }
-    .sel-option {
-      display: flex; align-items: center; gap: 10px;
-      padding: 9px 12px;
-      border-radius: 9px;
-      font-size: var(--text-md);
-      color: var(--color-text);
-      cursor: pointer;
-      user-select: none;
-    }
-    .sel-option-label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sel-option .sel-check { flex: 0 0 auto; color: var(--theme-accent); opacity: 0; }
-    .sel-option.is-selected .sel-check { opacity: 1; }
-    .sel-option.is-active { background: var(--color-fill); }
-    .sel-option.is-disabled { color: var(--color-text-secondary); opacity: 0.5; cursor: not-allowed; }
-    .sel-sep { height: 1px; margin: 5px 8px; background: var(--color-border-hairline); }
-    .sel-empty { padding: 10px 12px; font-size: var(--text-sm); color: var(--color-text-secondary); }
-  `],
+  // Styles live in styles.css as `.bp-select-*` (one-definition rule + the
+  // panel renders in the CDK overlay at the document root, so its chrome must
+  // be global, not component-scoped).
   template: `
-    <button #trigger type="button" class="sel-trigger" [class.is-open]="open()" [disabled]="disabled()"
+    <button #trigger type="button" class="bp-select-trigger" [class.is-open]="open()" [disabled]="disabled()"
       role="combobox" aria-haspopup="listbox" [attr.aria-expanded]="open()"
       [attr.aria-label]="ariaLabel() || null"
       [attr.aria-activedescendant]="open() && activeIndex() >= 0 ? optId(activeIndex()) : null"
       (click)="toggle()" (keydown)="onKeydown($event)">
-      <span class="sel-value" [class.is-placeholder]="!selectedLabel()">{{ selectedLabel() || placeholder() }}</span>
-      <lucide-icon class="sel-chev" name="chevron-down" [size]="16" />
+      <span class="bp-select-value" [class.is-placeholder]="!selectedLabel()">{{ selectedLabel() || placeholder() }}</span>
+      <lucide-icon class="bp-select-chev" name="chevron-down" [size]="16" />
     </button>
 
     <ng-template cdkConnectedOverlay
@@ -113,10 +61,10 @@ let uid = 0;
       [cdkConnectedOverlayViewportMargin]="8"
       (overlayOutsideClick)="close()"
       (detach)="close()">
-      <div class="sel-panel" role="listbox" [attr.aria-label]="ariaLabel() || null">
+      <div class="bp-select-panel" role="listbox" [attr.aria-label]="ariaLabel() || null">
         @for (o of options(); track o.value; let i = $index; let first = $first) {
-          @if (o.separatorBefore && !first) { <div class="sel-sep"></div> }
-          <div class="sel-option"
+          @if (o.separatorBefore && !first) { <div class="bp-select-sep"></div> }
+          <div class="bp-select-option"
             [id]="optId(i)"
             role="option"
             [attr.aria-selected]="o.value === value()"
@@ -125,11 +73,11 @@ let uid = 0;
             [class.is-disabled]="o.disabled"
             (click)="pick(o)"
             (mouseenter)="activeIndex.set(i)">
-            <span class="sel-option-label">{{ o.label }}</span>
-            <lucide-icon class="sel-check" name="check" [size]="16" />
+            <span class="bp-select-option-label">{{ o.label }}</span>
+            <lucide-icon class="bp-select-check" name="check" [size]="16" />
           </div>
         } @empty {
-          <div class="sel-empty">No options</div>
+          <div class="bp-select-empty">No options</div>
         }
       </div>
     </ng-template>
