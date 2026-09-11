@@ -6,11 +6,10 @@ import { MarketplaceStore } from '../marketplace/marketplace-store';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { CatalogueSupplier, CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { QuickViewDialogComponent } from '../marketplace/quick-view-dialog.component';
-import { CatalogueFilterBandComponent } from '../../shared/catalogue/filter-band.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
 import { SupplierGridComponent } from '../../shared/catalogue/supplier-grid.component';
-import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
+import { ProjectMarketplaceControlsComponent } from './project-marketplace-controls.component';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { ProjectService } from '../../core/projects/project.service';
 import { EstimateBreakdown, QuoteLine } from '../../core/projects/project.types';
@@ -29,11 +28,10 @@ import { errorDetail } from '../../core/http-error';
   selector: 'app-project-marketplace',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CatalogueFilterBandComponent,
+    ProjectMarketplaceControlsComponent,
     CategoryStripComponent,
     CatalogueGridComponent,
     SupplierGridComponent,
-    TabBandComponent,
     QuickViewDialogComponent,
   ],
   providers: [MarketplaceStore],
@@ -50,15 +48,10 @@ import { errorDetail } from '../../core/http-error';
     <!-- Constrain the strip + catalogue to the workspace column so this tab
          lines up with the other project pages (About/Estimate/Final). -->
     <div class="mx-auto flex min-h-0 w-full max-w-[var(--workspace-max)] flex-1 flex-col">
-    <div class="flex justify-center pb-3">
-      <app-tab-band [tabs]="modeTabs" [active]="store.mode()" (activeChange)="store.setMode($event)" />
-    </div>
-
-    <!-- Item filters only apply to the Items grid (the supplier filter is
-         meaningless in supplier mode). -->
-    @if (store.mode() === 'items') {
-      <app-catalogue-filter-band [showSupplier]="true" />
-    }
+    <!-- Compact controls: search + a 3-icon cluster (Type / Filter / View).
+         The mode toggle + filters + view toggle are hidden until a cluster
+         icon opens their row. -->
+    <app-project-marketplace-controls class="pb-3" />
 
     <div class="grid min-h-0 flex-1 grid-cols-1 gap-6 xl:grid-cols-[210px_1fr]">
       <div class="hidden min-h-0 xl:block xl:overflow-y-auto">
@@ -163,11 +156,6 @@ export class ProjectMarketplaceComponent {
     }
     void this.onQuoteToggle(itemId);
   }
-
-  protected readonly modeTabs: TabBandTab[] = [
-    { key: 'items', label: 'Items' },
-    { key: 'suppliers', label: 'Suppliers' },
-  ];
 
   /** "All Categories" count = sum of the rail counts (no extra request). */
   protected readonly allItemsCount = computed(() =>

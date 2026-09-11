@@ -13,6 +13,8 @@ import Aura from '@primeuix/themes/aura';
 import {
   LucideAngularModule,
   ArrowLeft,
+  ArrowLeftRight,
+  SlidersHorizontal,
   Check,
   ChevronLeft,
   Lock,
@@ -168,6 +170,8 @@ export const appConfig: ApplicationConfig = {
         Tags,
         // pV2-06a — marketplace browse (search box + view toggle)
         Search, LayoutGrid, List, Table,
+        // project Marketplace controls cluster (type / filter / view)
+        ArrowLeftRight, SlidersHorizontal,
         // pV2-06d — favourites + storefront contact
         Heart, Globe, Phone, Mail, MapPin,
         // pV2-06-subcats — curation expanders
