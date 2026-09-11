@@ -23,18 +23,16 @@ import { CategoryInfo } from './catalogue.types';
            Pills: transparent on the gray rail, white on hover, pink when selected. -->
       <nav class="flex flex-col gap-1 bp-catstrip--pills">
         @if (activeCat(); as cat) {
-          <!-- Header: << back to all, then the active-category pill (accent).
-               Clicking the pill clears the subcategory (all in category). -->
-          <div class="mb-1.5 flex items-center gap-2">
-            <button type="button" class="bp-catstrip-back" aria-label="Back to all categories"
-                    (click)="categorySelected.emit(null)">
-              <lucide-icon name="chevron-left" [size]="16" />
-            </button>
-            <button type="button" class="bp-catstrip-pill" (click)="subcategorySelected.emit(null)">
+          <!-- The header pill IS the back control: back chevron + category name
+               + count. Clicking it returns to All Categories. -->
+          <button type="button" class="bp-catstrip-pill mb-1.5" aria-label="Back to all categories"
+                  (click)="categorySelected.emit(null)">
+            <span class="flex min-w-0 items-center gap-1.5">
+              <lucide-icon name="chevron-left" [size]="16" class="shrink-0" />
               <span class="truncate">{{ cat.name }}</span>
-              <span class="bp-count-badge">{{ cat.count }}</span>
-            </button>
-          </div>
+            </span>
+            <span class="bp-count-badge">{{ cat.count }}</span>
+          </button>
           <!-- Subcategories — NOT indented (the pill already gives the context). -->
           @for (sub of subcategories(); track sub.id) {
             <button type="button" class="bp-catstrip-row"

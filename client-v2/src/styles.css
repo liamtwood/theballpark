@@ -784,21 +784,8 @@ body {
   font-size: var(--text-2xs);
   font-weight: 600;
 }
-/* Drill-down header: a back affordance + the active-category pill (accent). */
-.bp-catstrip-back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  flex: none;
-  border: none;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-.bp-catstrip-back:hover { background: var(--color-fill); color: var(--color-text); }
+/* Drill-down header pill (accent) — includes the back chevron; clicking it
+   returns to All Categories. */
 .bp-catstrip-pill {
   display: flex;
   flex: 1 1 auto;
