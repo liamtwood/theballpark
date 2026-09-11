@@ -784,7 +784,9 @@ body {
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
-  padding: 4px 12px;
+  /* Match .bp-catstrip-row's padding so this pill and the active All-Categories
+     pill (.bp-catstrip-row--pill) are the same height. */
+  padding: 7px 12px;
   border: none;
   border-radius: var(--radius-pill);
   background: var(--theme-accent);
