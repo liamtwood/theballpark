@@ -14,6 +14,7 @@ import {
   LucideAngularModule,
   ArrowLeft,
   ArrowLeftRight,
+  ArrowBigLeft,
   ChevronsLeft,
   SlidersHorizontal,
   Check,
@@ -172,7 +173,7 @@ export const appConfig: ApplicationConfig = {
         // pV2-06a — marketplace browse (search box + view toggle)
         Search, LayoutGrid, List, Table,
         // project Marketplace controls cluster (type / filter / view) + drill-down back
-        ArrowLeftRight, SlidersHorizontal, ChevronsLeft,
+        ArrowLeftRight, SlidersHorizontal, ChevronsLeft, ArrowBigLeft,
         // pV2-06d — favourites + storefront contact
         Heart, Globe, Phone, Mail, MapPin,
         // pV2-06-subcats — curation expanders
