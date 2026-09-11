@@ -34,7 +34,7 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
 
         <div class="ovh-overlay absolute inset-0 flex flex-col justify-end">
           <span class="ovh-eyebrow bp-eyebrow" style="color: rgba(255,255,255,0.85)">Live {{ label() }}</span>
-          <h1 class="bp-page-title mt-0.5" style="color: #fff">{{ p.name }}</h1>
+          <h1 class="ovh-name bp-page-title mt-0.5" style="color: #fff">{{ p.name }}</h1>
           @if (subtitle()) {
             <p class="ovh-sub bp-body-small mt-1 max-w-[60%]" style="color: rgba(255,255,255,0.92)">{{ subtitle() }}</p>
           }
@@ -82,6 +82,8 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
       transition: opacity 0.24s ease, max-height 0.3s ease, margin 0.3s ease;
     }
     .ovh-actions { transition: opacity 0.24s ease; }
+    .ovh-name { transition: font-size 0.3s ease; }
+    .ovh.is-collapsed .ovh-name { font-size: var(--text-2xl); }
     .ovh-tiles {
       max-height: 260px; opacity: 1; margin-top: 16px; overflow: hidden;
       transition: max-height 0.3s ease, opacity 0.24s ease, margin-top 0.3s ease;
@@ -93,7 +95,7 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
     .ovh.is-collapsed .ovh-actions { opacity: 0; pointer-events: none; }
     .ovh.is-collapsed .ovh-tiles { max-height: 0; opacity: 0; margin-top: 0; }
     @media (prefers-reduced-motion: reduce) {
-      .ovh-cover, .ovh-overlay, .ovh-eyebrow, .ovh-sub, .ovh-actions, .ovh-tiles { transition: none; }
+      .ovh-cover, .ovh-overlay, .ovh-eyebrow, .ovh-sub, .ovh-actions, .ovh-tiles, .ovh-name { transition: none; }
     }
     .bp-cover-btn {
       display: inline-flex; align-items: center; gap: 6px;
