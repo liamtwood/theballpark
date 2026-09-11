@@ -1047,6 +1047,16 @@ body {
   flex: 1;
   justify-content: center;
 }
+/* Project main tab band: gray container, tabs white on hover, accent-pink when
+   selected — matches the drill-down cat pills. Scoped to --fill (project tabs
+   only); the compact toggles keep the white-band / soft-active look. */
+.bp-tab-band--fill { background: var(--color-fill); }
+.bp-tab-band--fill .bp-tab:hover { background: var(--color-surface); }
+.bp-tab-band--fill .bp-tab--active,
+.bp-tab-band--fill .bp-tab--active:hover {
+  background: var(--theme-accent);
+  color: var(--theme-accent-contrast, #fff);
+}
 .bp-tab__badge {
   display: inline-flex;
   align-items: center;
