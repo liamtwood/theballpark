@@ -12,6 +12,7 @@ import { ProjectService } from '../../core/projects/project.service';
 import { parsedBriefToCreate } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
+import { SelectComponent } from '../../shared/select/select.component';
 
 /** pV2-PROJECTS-03 (scoped — brief → project, no items) — /projects/new
  *  per add-project-1.png: Upload Brief OR Write Brief. The AI parses the
@@ -21,7 +22,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 @Component({
   selector: 'app-projects-new',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ToastModule, LucideAngularModule, PageHeroComponent],
+  imports: [ToastModule, LucideAngularModule, PageHeroComponent, SelectComponent],
   providers: [MessageService],
   // bp-vpfit: the PAGE never scrolls — the hero stays anchored and only the
   // form body scrolls within itself (matches the catalogue pages). This keeps
@@ -92,53 +93,48 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 
               <div class="mt-4 flex gap-4">
                 <label class="block w-[calc(6ch+2.5rem)] shrink-0">
-                  <span class="bp-field-label">Ref</span>
-                  <input type="text" class="bp-np-input" placeholder="Auto" title="Leave blank to auto-assign, or set your own" [value]="ref()" (input)="ref.set($any($event.target).value)" />
+                  <span class="ed-label mb-1.5 block">Ref</span>
+                  <input type="text" class="ed-input" placeholder="Auto" title="Leave blank to auto-assign, or set your own" [value]="ref()" (input)="ref.set($any($event.target).value)" />
                 </label>
                 <label class="block min-w-0 flex-1">
-                  <span class="bp-field-label">Project name</span>
-                  <input type="text" class="bp-np-input" [value]="name()" (input)="name.set($any($event.target).value)" />
+                  <span class="ed-label mb-1.5 block">Project name</span>
+                  <input type="text" class="ed-input" [value]="name()" (input)="name.set($any($event.target).value)" />
                 </label>
               </div>
               <div class="mt-4 grid grid-cols-2 gap-4">
                 <label class="block">
-                  <span class="bp-field-label">Client</span>
-                  <input type="text" class="bp-np-input" [value]="client()" (input)="client.set($any($event.target).value)" />
+                  <span class="ed-label mb-1.5 block">Client</span>
+                  <input type="text" class="ed-input" [value]="client()" (input)="client.set($any($event.target).value)" />
                 </label>
                 <label class="block">
-                  <span class="bp-field-label">Event type</span>
-                  <select class="bp-np-input bp-np-select" [value]="eventType()" (change)="eventType.set($any($event.target).value)">
-                    <option value="">Select…</option>
-                    @for (o of eventTypeOptions(); track o.value) {
-                      <option [value]="o.value">{{ o.label }}</option>
-                    }
-                  </select>
+                  <span class="ed-label mb-1.5 block">Event type</span>
+                  <app-select ariaLabel="Event type" placeholder="Select…" [options]="eventTypeOptions()" [value]="eventType()" (changed)="eventType.set($event)" />
                 </label>
               </div>
               <div class="mt-4 grid grid-cols-2 gap-4">
                 <label class="block">
-                  <span class="bp-field-label">Event date</span>
+                  <span class="ed-label mb-1.5 block">Event date</span>
                   <!-- NATO display + native OS picker: the transparent date input
                        sits over the calendar icon; picking reformats to NATO. -->
                   <div class="relative">
-                    <input type="text" class="bp-np-input pr-10" placeholder="e.g. 20-Aug-2026" title="Standard format: DD-Mmm-YYYY (free text like 'Q4' is fine too)" [value]="eventDate()" (input)="eventDate.set($any($event.target).value)" (blur)="onEventDateBlur()" />
+                    <input type="text" class="ed-input pr-10" placeholder="e.g. 20-Aug-2026" title="Standard format: DD-Mmm-YYYY (free text like 'Q4' is fine too)" [value]="eventDate()" (input)="eventDate.set($any($event.target).value)" (blur)="onEventDateBlur()" />
                     <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted"><lucide-icon name="calendar" [size]="16" /></span>
                     <input type="date" aria-label="Pick event date" class="absolute right-0 top-0 h-full w-11 cursor-pointer opacity-0" (change)="onEventDatePicked($any($event.target).value)" />
                   </div>
                 </label>
                 <label class="block">
-                  <span class="bp-field-label">Location</span>
-                  <input type="text" class="bp-np-input" placeholder="London" [value]="location()" (input)="location.set($any($event.target).value)" />
+                  <span class="ed-label mb-1.5 block">Location</span>
+                  <input type="text" class="ed-input" placeholder="London" [value]="location()" (input)="location.set($any($event.target).value)" />
                 </label>
               </div>
               <div class="mt-4 grid grid-cols-2 gap-4">
                 <label class="block">
-                  <span class="bp-field-label">Guests</span>
-                  <input type="number" min="0" class="bp-np-input" [value]="guests()" (input)="guests.set($any($event.target).value)" />
+                  <span class="ed-label mb-1.5 block">Guests</span>
+                  <input type="number" min="0" class="ed-input" [value]="guests()" (input)="guests.set($any($event.target).value)" />
                 </label>
                 <label class="block">
-                  <span class="bp-field-label">Budget (£)</span>
-                  <input type="number" min="0" class="bp-np-input" [value]="budget()" (input)="budget.set($any($event.target).value)" />
+                  <span class="ed-label mb-1.5 block">Budget (£)</span>
+                  <input type="number" min="0" class="ed-input" [value]="budget()" (input)="budget.set($any($event.target).value)" />
                 </label>
               </div>
             </div>
@@ -160,40 +156,6 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
     <!-- MessageService supplies aria-live by severity (audit F-10). -->
     <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
-  styles: [
-    `
-      .bp-np-input {
-        margin-top: 6px;
-        width: 100%;
-        border-radius: var(--radius-field, 10px);
-        border: 1px solid var(--color-border-hairline);
-        background: var(--color-surface);
-        padding: 10px 14px;
-        font-family: var(--font-body);
-        font-size: var(--text-md);
-        color: var(--color-text);
-        outline: none;
-      }
-      .bp-np-input:focus {
-        border-color: var(--theme-accent);
-      }
-      .bp-np-input:disabled {
-        background: var(--color-fill);
-        color: var(--color-text-secondary);
-        cursor: not-allowed;
-      }
-      /* Native <select> arrow crowds the value — swap for a padded chevron. */
-      select.bp-np-select {
-        appearance: none;
-        -webkit-appearance: none;
-        padding-right: 2rem;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 0.7rem center;
-        background-size: 0.8rem;
-      }
-    `,
-  ],
 })
 export class ProjectsNewComponent {
   private readonly ai = inject(AiService);
