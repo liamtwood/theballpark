@@ -753,6 +753,38 @@ body {
   color: var(--color-text);
   font-weight: 500;
 }
+/* Drill-down header: a back affordance + the active-category pill (accent). */
+.bp-catstrip-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.bp-catstrip-back:hover { background: var(--color-fill); color: var(--color-text); }
+.bp-catstrip-pill {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  padding: 4px 12px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--theme-accent);
+  color: var(--theme-accent-contrast, #fff);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: var(--leading-normal);
+  cursor: pointer;
+}
+.bp-catstrip-pill > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Item-card / preview imagery. */
 .bp-item-card__img {

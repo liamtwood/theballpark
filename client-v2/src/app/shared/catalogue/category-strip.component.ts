@@ -22,19 +22,20 @@ import { CategoryInfo } from './catalogue.types';
            with a back row. Reverses via the back / "All Categories" row. -->
       <nav class="flex flex-col gap-0.5">
         @if (activeCat(); as cat) {
-          <button type="button" class="bp-catstrip-row" (click)="categorySelected.emit(null)">
-            <span class="flex min-w-0 items-center gap-1.5 truncate">
-              <lucide-icon name="chevron-left" [size]="14" class="text-muted" /> All Categories
-            </span>
-          </button>
-          <button type="button" class="bp-catstrip-row"
-                  [class.bp-catstrip-row--active]="!activeSubId()"
-                  (click)="subcategorySelected.emit(null)">
-            <span class="truncate">All {{ cat.name }}</span>
-            <span class="bp-meta">{{ cat.count }}</span>
-          </button>
+          <!-- Header: << back to all, then the active-category pill (accent).
+               Clicking the pill clears the subcategory (all in category). -->
+          <div class="mb-1.5 flex items-center gap-2">
+            <button type="button" class="bp-catstrip-back" aria-label="Back to all categories"
+                    (click)="categorySelected.emit(null)">
+              <lucide-icon name="chevrons-left" [size]="16" />
+            </button>
+            <button type="button" class="bp-catstrip-pill" (click)="subcategorySelected.emit(null)">
+              <span>{{ cat.name }} ({{ cat.count }})</span>
+            </button>
+          </div>
+          <!-- Subcategories — NOT indented (the pill already gives the context). -->
           @for (sub of subcategories(); track sub.id) {
-            <button type="button" class="bp-catstrip-row bp-catstrip-row--sub"
+            <button type="button" class="bp-catstrip-row"
                     [class.bp-catstrip-row--active]="activeSubId() === sub.id"
                     (click)="subcategorySelected.emit(activeSubId() === sub.id ? null : sub.id)">
               <span class="truncate">{{ sub.name }}</span>
