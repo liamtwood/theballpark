@@ -15,7 +15,8 @@ import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { ProjectService } from '../../core/projects/project.service';
 import { EstimateBreakdown, QuoteLine } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
-import { ProjectQuoteRailComponent } from './project-quote-rail.component';
+// ProjectQuoteRailComponent import intentionally removed while the rail is
+// hidden (may return as a dialog) — the quote state/handlers stay in the class.
 
 /** pV2-PROJECTS-02 slice 2 — the inside-project Marketplace tab. The SAME
  *  catalogue engine the global marketplace + supplier store mount (RP-06,
@@ -33,7 +34,6 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
     CatalogueGridComponent,
     SupplierGridComponent,
     TabBandComponent,
-    ProjectQuoteRailComponent,
     QuickViewDialogComponent,
   ],
   providers: [MarketplaceStore],
@@ -57,7 +57,7 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
       <app-catalogue-filter-band [showSupplier]="true" />
     }
 
-    <div class="grid min-h-0 flex-1 grid-cols-1 gap-6 xl:grid-cols-[210px_1fr_320px]">
+    <div class="grid min-h-0 flex-1 grid-cols-1 gap-6 xl:grid-cols-[210px_1fr]">
       <div class="hidden min-h-0 xl:block xl:overflow-y-auto">
         <!-- Suppliers mode: the strip is scoped to the quote's categories
              (no "All" browse) so only project-relevant suppliers surface. -->
@@ -116,15 +116,9 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
         }
       </div>
 
-      <div class="min-h-0 xl:overflow-y-auto">
-        <app-project-quote-rail
-          [lines]="quoteLines()"
-          [breakdown]="est.value() ?? null"
-          (removed)="onQuoteToggle($event)"
-          (qtyChanged)="onQtyChange($event.itemId, $event.quantity)"
-          (checkout)="onCheckout()"
-        />
-      </div>
+      <!-- Project Quote rail hidden for now (may move to a dialog). The quote
+           state + handlers below (quoteLines/est/onQtyChange/onCheckout) are
+           kept for that dialog; the card + still adds to the quote. TODO(quote-dialog). -->
     </div>
 
     <!-- Quick View — inside a project, "Add to ballpark" adds straight to
