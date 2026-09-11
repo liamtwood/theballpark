@@ -32,7 +32,7 @@ import { CategoryInfo } from './catalogue.types';
             </button>
             <button type="button" class="bp-catstrip-pill" (click)="subcategorySelected.emit(null)">
               <span class="truncate">{{ cat.name }}</span>
-              <span class="shrink-0">{{ cat.count }}</span>
+              <span class="bp-count-badge">{{ cat.count }}</span>
             </button>
           </div>
           <!-- Subcategories — NOT indented (the pill already gives the context). -->
@@ -41,7 +41,7 @@ import { CategoryInfo } from './catalogue.types';
                     [class.bp-catstrip-row--pill]="activeSubId() === sub.id"
                     (click)="subcategorySelected.emit(activeSubId() === sub.id ? null : sub.id)">
               <span class="truncate">{{ sub.name }}</span>
-              <span class="bp-meta">{{ sub.count }}</span>
+              <span class="bp-count-badge">{{ sub.count }}</span>
             </button>
           }
         } @else {
@@ -49,12 +49,12 @@ import { CategoryInfo } from './catalogue.types';
                   [class.bp-catstrip-row--pill]="!activeId()"
                   (click)="categorySelected.emit(null)">
             <span class="truncate">{{ allLabel() }}</span>
-            <span class="bp-meta">{{ totalCount() }}</span>
+            <span class="bp-count-badge">{{ totalCount() }}</span>
           </button>
           @for (cat of categories(); track cat.id) {
             <button type="button" class="bp-catstrip-row" (click)="categorySelected.emit(cat.id)">
               <span class="truncate">{{ cat.name }}</span>
-              <span class="bp-meta">{{ cat.count }}</span>
+              <span class="bp-count-badge">{{ cat.count }}</span>
             </button>
           }
         }
