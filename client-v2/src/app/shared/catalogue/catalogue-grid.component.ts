@@ -14,9 +14,11 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
   template: `
     @switch (viewMode()) {
       @case ('card') {
-        <!-- 2xl goes 4-up: the rail is hidden in card view, so the wide
-             middle would otherwise stretch cards past the fold. -->
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <!-- Loose (default, full-width surfaces): 2xl goes 4-up. Dense: for a
+             constrained column (project Marketplace in the workspace column) —
+             caps at 3-up so cards land ~25% smaller and never cram to 4 in the
+             narrow column. -->
+        <div [class]="'grid gap-4 ' + (dense() ? denseCols : looseCols)">
           @for (item of items(); track item.id; let i = $index) {
             <app-item-card
               [item]="item"
@@ -91,6 +93,10 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
 export class CatalogueGridComponent {
   readonly items = input.required<readonly CatalogueItem[]>();
   readonly viewMode = input<ViewMode>('card');
+  /** Denser card grid for a constrained column (project Marketplace). */
+  readonly dense = input<boolean>(false);
+  protected readonly looseCols = 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4';
+  protected readonly denseCols = 'grid-cols-2 xl:grid-cols-3';
   readonly selectedId = input<string | null>(null);
   /** Favourited item ids (org-scoped) — hearts on the card view. */
   readonly favouriteIds = input<ReadonlySet<string>>(new Set<string>());

@@ -47,6 +47,9 @@ import { errorDetail } from '../../core/http-error';
     <!-- Items / Suppliers — the same mode toggle the global marketplace
          uses. Suppliers mode is the per-category supplier fan-out, scoped
          to the project's quote categories (pV2-INBOX-02). -->
+    <!-- Constrain the strip + catalogue to the workspace column so this tab
+         lines up with the other project pages (About/Estimate/Final). -->
+    <div class="mx-auto flex min-h-0 w-full max-w-[var(--workspace-max)] flex-1 flex-col">
     <div class="flex justify-center pb-3">
       <app-tab-band [tabs]="modeTabs" [active]="store.mode()" (activeChange)="store.setMode($event)" />
     </div>
@@ -100,6 +103,7 @@ import { errorDetail } from '../../core/http-error';
             [favouriteIds]="favs.items()"
             [quoteDraftIds]="quoteIds()"
             [showQuickView]="true"
+            [dense]="true"
             (entitySelected)="openQuickView($event)"
             (quickView)="openQuickView($event)"
             (favouriteToggled)="favs.toggle('item', $event)"
@@ -119,6 +123,7 @@ import { errorDetail } from '../../core/http-error';
       <!-- Project Quote rail hidden for now (may move to a dialog). The quote
            state + handlers below (quoteLines/est/onQtyChange/onCheckout) are
            kept for that dialog; the card + still adds to the quote. TODO(quote-dialog). -->
+    </div>
     </div>
 
     <!-- Quick View — inside a project, "Add to ballpark" adds straight to
