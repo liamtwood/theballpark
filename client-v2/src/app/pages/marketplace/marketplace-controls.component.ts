@@ -5,6 +5,7 @@ import { MarketplaceStore } from './marketplace-store';
 import { CatalogueSearchComponent } from '../../shared/catalogue/catalogue-search.component';
 import { ViewToggleComponent } from '../../shared/catalogue/view-toggle.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
+import { MarketplaceFiltersComponent } from './marketplace-filters.component';
 
 /** Marketplace controls — a search box + a 3-icon cluster (same pill container
  *  as the view toggle). Each icon toggles INDEPENDENTLY (on/off), with a hover
@@ -18,7 +19,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
 @Component({
   selector: 'app-marketplace-controls',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, TooltipModule, CatalogueSearchComponent, ViewToggleComponent, TabBandComponent],
+  imports: [LucideAngularModule, TooltipModule, CatalogueSearchComponent, ViewToggleComponent, TabBandComponent, MarketplaceFiltersComponent],
   host: { class: 'block' },
   template: `
     <!-- Row 1: prominent full-width search + count + the 3-icon cluster. -->
@@ -41,9 +42,9 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
           aria-label="Item or supplier" (click)="typeOpen.set(!typeOpen())">
           <lucide-icon name="arrow-left-right" [size]="15" />
         </button>
-        <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="store.filtersOpen()"
+        <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="filterOpen()"
           pTooltip="Filter" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
-          aria-label="Filter" (click)="store.filtersOpen.set(!store.filtersOpen())">
+          aria-label="Filter" (click)="filterOpen.set(!filterOpen())">
           <lucide-icon name="sliders-horizontal" [size]="15" />
         </button>
         <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="viewOpen()"
@@ -54,17 +55,30 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
       </div>
     </div>
 
-    <!-- Row 2: Item/Supplier on the LEFT, View on the RIGHT (each independent). -->
-    @if (typeOpen() || viewOpen()) {
-      <div class="mt-3 flex items-center justify-between gap-3">
-        <div>
+    <!-- Row 2: LEFT column (cat-container width) stacks Type + Filter, each
+         titled; View titled on the RIGHT. Each section is independent. -->
+    @if (typeOpen() || filterOpen() || viewOpen()) {
+      <div class="mt-3 flex items-start justify-between gap-6">
+        <div class="flex w-[210px] shrink-0 flex-col gap-4">
           @if (typeOpen()) {
-            <app-tab-band [tabs]="modeTabs" [active]="store.mode()" (activeChange)="store.setMode($event)" />
+            <div>
+              <span class="bp-field-label mb-1.5 block">Type</span>
+              <app-tab-band [tabs]="modeTabs" [active]="store.mode()" [fill]="true" (activeChange)="store.setMode($event)" />
+            </div>
+          }
+          @if (filterOpen()) {
+            <div>
+              <span class="bp-field-label mb-1.5 block">Filter</span>
+              <app-marketplace-filters />
+            </div>
           }
         </div>
         <div>
           @if (viewOpen()) {
-            <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
+            <div>
+              <span class="bp-field-label mb-1.5 block">View</span>
+              <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
+            </div>
           }
         </div>
       </div>
@@ -77,6 +91,7 @@ export class MarketplaceControlsComponent {
   /** Independent on/off for the Type + View rows (Filter lives on the store so
    *  the workspace can render it above the grid). */
   protected readonly typeOpen = signal(false);
+  protected readonly filterOpen = signal(false);
   protected readonly viewOpen = signal(false);
 
   protected readonly modeTabs: TabBandTab[] = [
