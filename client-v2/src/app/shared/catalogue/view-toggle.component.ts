@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
+import { TooltipModule } from 'primeng/tooltip';
 import { ViewMode } from './catalogue.types';
 
 /** pV2-06d (v2.15c audit fix) — the card/list/table toggle as a shared
@@ -8,7 +9,7 @@ import { ViewMode } from './catalogue.types';
 @Component({
   selector: 'app-view-toggle',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, TooltipModule],
   host: {
     class: 'inline-flex items-center gap-1 rounded-[var(--radius-pill)] border border-hairline bg-surface p-1',
   },
@@ -19,6 +20,9 @@ import { ViewMode } from './catalogue.types';
         class="bp-viewtoggle"
         [class.bp-viewtoggle--active]="active() === v.mode"
         [attr.aria-label]="v.label"
+        [pTooltip]="v.label"
+        tooltipStyleClass="bp-tooltip"
+        tooltipPosition="top"
         (click)="activeChange.emit(v.mode)"
       >
         <lucide-icon [name]="v.icon" [size]="15" />

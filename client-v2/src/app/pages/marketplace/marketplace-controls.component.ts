@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { TooltipModule } from 'primeng/tooltip';
 import { MarketplaceStore } from './marketplace-store';
@@ -59,7 +59,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
       <div class="mt-3 flex items-center justify-between gap-3">
         <div>
           @if (typeOpen()) {
-            <app-tab-band [tabs]="modeTabs()" [active]="store.mode()" (activeChange)="store.setMode($event)" />
+            <app-tab-band [tabs]="modeTabs" [active]="store.mode()" (activeChange)="store.setMode($event)" />
           }
         </div>
         <div>
@@ -79,10 +79,8 @@ export class MarketplaceControlsComponent {
   protected readonly typeOpen = signal(false);
   protected readonly viewOpen = signal(false);
 
-  /** Counts on the Type toggle (same circle badges as Current/Completed).
-   *  Items = total catalogue items; Suppliers = distinct suppliers. 0 → no badge. */
-  protected readonly modeTabs = computed<TabBandTab[]>(() => [
-    { key: 'items', label: 'Items', badge: this.store.categories().reduce((s, c) => s + c.count, 0) || undefined },
-    { key: 'suppliers', label: 'Suppliers', badge: this.store.supplierOptions().length || undefined },
-  ]);
+  protected readonly modeTabs: TabBandTab[] = [
+    { key: 'items', label: 'Items' },
+    { key: 'suppliers', label: 'Suppliers' },
+  ];
 }
