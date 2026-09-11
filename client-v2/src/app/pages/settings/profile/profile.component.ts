@@ -12,6 +12,7 @@ import { OrgMediaComponent } from '../../../shared/org-media/org-media.component
 import { CompletenessCardComponent } from '../../../shared/completeness/completeness-card.component';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../../shared/tab-band/tab-band.component';
+import { SelectComponent, SelectOption } from '../../../shared/select/select.component';
 import { ProfileEditService } from './profile-edit.service';
 import { ProfileTeamSectionComponent } from './profile-team-section.component';
 import { ProfileShopfrontComponent } from './profile-shopfront.component';
@@ -39,6 +40,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
     TabBandComponent,
     ProfileTeamSectionComponent,
     ProfileShopfrontComponent,
+    SelectComponent,
   ],
   providers: [MessageService, ProfileEditService],
   // bp-vpfit: hero (and the supplier tab-band) stay anchored; only the content
@@ -162,10 +164,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                   <label class="block"><span class="ed-label mb-1.5 block">City</span>
                     <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().city" (ngModelChange)="store.patch({ city: $event })" (blur)="store.saveSection('org')" /></label>
                   <label class="block"><span class="ed-label mb-1.5 block">Country</span>
-                    <select class="ed-select" [disabled]="!store.canEdit()" [ngModel]="store.form().country" (ngModelChange)="store.patch({ country: $event }); store.saveSection('org')">
-                      <option value="">—</option>
-                      @for (o of store.countryOptions(); track o.value) { <option [value]="o.value">{{ o.label }}</option> }
-                    </select></label>
+                    <app-select ariaLabel="Country" [filter]="true" [disabled]="!store.canEdit()" [options]="countrySelectOptions()" [value]="store.form().country" (changed)="store.patch({ country: $event }); store.saveSection('org')" /></label>
                   <label class="block sm:col-span-2"><span class="ed-label mb-1.5 block">Address</span>
                     <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().address" (ngModelChange)="store.patch({ address: $event })" (blur)="store.saveSection('org')" /></label>
                   <label class="block"><span class="ed-label mb-1.5 block">Email</span>
@@ -188,9 +187,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                 </div>
                 <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
                   <label class="block"><span class="ed-label mb-1.5 block">Currency</span>
-                    <select class="ed-select" [disabled]="!store.canEdit()" [ngModel]="store.form().currency" (ngModelChange)="store.patch({ currency: $event }); store.saveSection('fin')">
-                      @for (o of store.currencyOptions(); track o.value) { <option [value]="o.value">{{ o.label }}</option> }
-                    </select></label>
+                    <app-select ariaLabel="Currency" [disabled]="!store.canEdit()" [options]="store.currencyOptions()" [value]="store.form().currency" (changed)="store.patch({ currency: $event }); store.saveSection('fin')" /></label>
                   <label class="block"><span class="ed-label mb-1.5 block">VAT (%)</span>
                     <input class="ed-input" type="number" [disabled]="!store.canEdit()" [ngModel]="store.form().vat" (ngModelChange)="store.patch({ vat: $event })" (blur)="store.saveSection('fin')" /></label>
                   <label class="block"><span class="ed-label mb-1.5 block">Margin (%)</span>
@@ -278,6 +275,11 @@ export class ProfileComponent {
   protected readonly auth = inject(AuthService);
   private readonly pageConfig = inject(PageConfigService);
   protected readonly store = inject(ProfileEditService);
+
+  /** Country list is long → app-select with type-ahead; leading "—" clears it. */
+  protected readonly countrySelectOptions = computed<SelectOption[]>(
+    () => [{ value: '', label: '—' }, ...this.store.countryOptions()],
+  );
 
   // ── Profile / Shopfront tabs (suppliers only). ────────────────────────────
   protected readonly isSupplier = computed(() => this.auth.user()?.activeOrgType === 'supplier');

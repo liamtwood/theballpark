@@ -60,9 +60,17 @@ let uid = 0;
       [cdkConnectedOverlayPositions]="positions"
       [cdkConnectedOverlayViewportMargin]="8"
       (overlayOutsideClick)="close()"
+      (attach)="onAttach()"
       (detach)="close()">
       <div class="bp-select-panel" role="listbox" [attr.aria-label]="ariaLabel() || null">
-        @for (o of options(); track o.value; let i = $index; let first = $first) {
+        @if (filter()) {
+          <div class="bp-select-searchwrap">
+            <input [id]="searchId" class="bp-select-search" type="text" autocomplete="off"
+              placeholder="Type to filter…" [attr.aria-label]="'Filter ' + (ariaLabel() || 'options')"
+              [value]="query()" (input)="onQuery($any($event.target).value)" (keydown)="onKeydown($event)" />
+          </div>
+        }
+        @for (o of visibleOptions(); track o.value; let i = $index; let first = $first) {
           @if (o.separatorBefore && !first) { <div class="bp-select-sep"></div> }
           <div class="bp-select-option"
             [id]="optId(i)"
@@ -77,7 +85,7 @@ let uid = 0;
             <lucide-icon class="bp-select-check" name="check" [size]="16" />
           </div>
         } @empty {
-          <div class="bp-select-empty">No options</div>
+          <div class="bp-select-empty">{{ query() ? 'No matches' : 'No options' }}</div>
         }
       </div>
     </ng-template>
@@ -92,6 +100,8 @@ export class SelectComponent {
   readonly placeholder = input<string>('—');
   readonly disabled = input<boolean>(false);
   readonly ariaLabel = input<string>();
+  /** Show a type-ahead filter box at the top of the panel (for long lists). */
+  readonly filter = input<boolean>(false);
 
   /** Fires with the new value when the selection changes (parity with (change)). */
   readonly changed = output<string>();
@@ -99,9 +109,11 @@ export class SelectComponent {
   protected readonly open = signal(false);
   protected readonly activeIndex = signal(-1);
   protected readonly panelWidth = signal<number | string>('auto');
+  protected readonly query = signal('');
 
   private readonly trigger = viewChild.required<ElementRef<HTMLButtonElement>>('trigger');
   private readonly id = ++uid;
+  protected readonly searchId = `sel-${this.id}-search`;
 
   /** Below-then-above, left-aligned; the overlay flips when there's no room. */
   protected readonly positions = [
@@ -113,14 +125,32 @@ export class SelectComponent {
     () => this.options().find((o) => o.value === this.value())?.label ?? '',
   );
 
+  /** Options after the type-ahead filter (identity when filter off / empty). */
+  protected readonly visibleOptions = computed<SelectOption[]>(() => {
+    const q = this.query().trim().toLowerCase();
+    const all = this.options();
+    return this.filter() && q ? all.filter((o) => o.label.toLowerCase().includes(q)) : all;
+  });
+
   constructor() {
     // Keep the active row on the current selection each time the panel opens.
     effect(() => {
       if (this.open()) {
-        const sel = this.options().findIndex((o) => o.value === this.value());
+        const vis = this.visibleOptions();
+        const sel = vis.findIndex((o) => o.value === this.value());
         this.activeIndex.set(sel >= 0 ? sel : this.firstEnabled());
       }
     });
+  }
+
+  /** Focus the filter box when the panel attaches (long-list ergonomics). */
+  protected onAttach(): void {
+    if (this.filter()) queueMicrotask(() => document.getElementById(this.searchId)?.focus());
+  }
+
+  protected onQuery(v: string): void {
+    this.query.set(v);
+    this.activeIndex.set(this.firstEnabled());
   }
 
   protected optId(i: number): string {
@@ -133,6 +163,7 @@ export class SelectComponent {
   }
 
   private openPanel(): void {
+    this.query.set('');
     this.panelWidth.set(this.trigger().nativeElement.offsetWidth);
     this.open.set(true);
   }
@@ -140,6 +171,7 @@ export class SelectComponent {
   protected close(): void {
     if (!this.open()) return;
     this.open.set(false);
+    this.query.set('');
     this.trigger().nativeElement.focus();
   }
 
@@ -153,7 +185,6 @@ export class SelectComponent {
   }
 
   protected onKeydown(e: KeyboardEvent): void {
-    const opts = this.options();
     if (!this.open()) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
@@ -161,6 +192,8 @@ export class SelectComponent {
       }
       return;
     }
+    // In filter mode focus is in the search box — let space/Home/End edit text.
+    const inFilter = this.filter();
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
@@ -171,17 +204,23 @@ export class SelectComponent {
         this.activeIndex.set(this.step(-1));
         break;
       case 'Home':
+        if (inFilter) break;
         e.preventDefault();
         this.activeIndex.set(this.firstEnabled());
         break;
       case 'End':
+        if (inFilter) break;
         e.preventDefault();
         this.activeIndex.set(this.lastEnabled());
         break;
-      case 'Enter':
       case ' ':
+        if (inFilter) break; // typing a space into the filter box
         e.preventDefault();
-        { const o = opts[this.activeIndex()]; if (o) this.pick(o); }
+        { const o = this.visibleOptions()[this.activeIndex()]; if (o) this.pick(o); }
+        break;
+      case 'Enter':
+        e.preventDefault();
+        { const o = this.visibleOptions()[this.activeIndex()]; if (o) this.pick(o); }
         break;
       case 'Escape':
         e.preventDefault();
@@ -195,7 +234,7 @@ export class SelectComponent {
 
   /** Move the active index by ±1, skipping disabled options, clamped at the ends. */
   private step(dir: 1 | -1): number {
-    const opts = this.options();
+    const opts = this.visibleOptions();
     let i = this.activeIndex();
     for (let n = 0; n < opts.length; n++) {
       i += dir;
@@ -206,11 +245,11 @@ export class SelectComponent {
   }
 
   private firstEnabled(): number {
-    return this.options().findIndex((o) => !o.disabled);
+    return this.visibleOptions().findIndex((o) => !o.disabled);
   }
 
   private lastEnabled(): number {
-    const opts = this.options();
+    const opts = this.visibleOptions();
     for (let i = opts.length - 1; i >= 0; i--) if (!opts[i].disabled) return i;
     return -1;
   }
