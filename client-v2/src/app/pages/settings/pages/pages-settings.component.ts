@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/api.service';
 import { CodelistService } from '../../../core/codelists/codelist.service';
@@ -10,7 +11,7 @@ import {
   mergeConfig,
 } from '../../../core/config/page-config.types';
 import { PageConfigService } from '../../../core/config/page-config.service';
-import { EditFieldComponent, EditFieldOption } from '../../../shared/edit-field/edit-field.component';
+import { SelectComponent, SelectOption } from '../../../shared/select/select.component';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 
 /** The two customer org types whose page settings the table edits. */
@@ -26,7 +27,7 @@ type RoleType = (typeof ROLES)[number];
 @Component({
   selector: 'app-pages-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [EditFieldComponent, PageHeroComponent],
+  imports: [FormsModule, SelectComponent, PageHeroComponent],
   host: { class: 'block' },
   template: `
     <app-page-hero
@@ -49,66 +50,59 @@ type RoleType = (typeof ROLES)[number];
           <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
             <span class="bp-body-small capitalize">{{ role }}</span>
             <span class="bp-field-label">Home title</span>
-            <app-edit-field
-              label=""
-              type="select"
+            <app-select
+              ariaLabel="Home title"
               [options]="titleModes()"
               [value]="cfg?.heroTitleMode ?? 'greeting'"
-              [editing]="true"
-              (valueChange)="save(role, { heroTitleMode: asTitleMode($event) })"
+              (changed)="save(role, { heroTitleMode: asTitleMode($event) })"
             />
           </div>
           @if ((cfg?.heroTitleMode ?? 'greeting') === 'fixed') {
             <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
               <span></span>
               <span class="bp-field-label">Title text</span>
-              <app-edit-field
-                label=""
-                type="text"
-                [value]="cfg?.heroTitleFixed ?? ''"
+              <input
+                class="ed-input"
+                maxlength="80"
                 placeholder="e.g. Mission Control"
-                [maxLength]="80"
-                [editing]="true"
-                (valueChange)="save(role, { heroTitleFixed: $event })"
+                aria-label="Title text"
+                [ngModel]="cfg?.heroTitleFixed ?? ''"
+                (blur)="commitHero($event, role, 'heroTitleFixed')"
               />
             </div>
           }
           <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
             <span></span>
             <span class="bp-field-label">Home subtitle</span>
-            <app-edit-field
-              label=""
-              type="text"
-              [value]="cfg?.heroSubtitle ?? ''"
+            <input
+              class="ed-input"
+              maxlength="240"
               placeholder="Shown under the greeting"
-              [maxLength]="240"
-              [editing]="true"
-              (valueChange)="save(role, { heroSubtitle: $event })"
+              aria-label="Home subtitle"
+              [ngModel]="cfg?.heroSubtitle ?? ''"
+              (blur)="commitHero($event, role, 'heroSubtitle')"
             />
           </div>
           <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
             <span></span>
             <span class="bp-field-label">Home eyebrow</span>
-            <app-edit-field
-              label=""
-              type="text"
-              [value]="cfg?.heroEyebrow ?? ''"
+            <input
+              class="ed-input"
+              maxlength="40"
               placeholder="{orgType} workspace"
-              [maxLength]="40"
-              [editing]="true"
-              (valueChange)="save(role, { heroEyebrow: $event || undefined })"
+              aria-label="Home eyebrow"
+              [ngModel]="cfg?.heroEyebrow ?? ''"
+              (blur)="commitHero($event, role, 'heroEyebrow')"
             />
           </div>
           <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
             <span></span>
             <span class="bp-field-label">Position</span>
-            <app-edit-field
-              label=""
-              type="select"
+            <app-select
+              ariaLabel="Position"
               [options]="aligns()"
               [value]="cfg?.heroAlign ?? 'center'"
-              [editing]="true"
-              (valueChange)="save(role, { heroAlign: $event === 'left' ? 'left' : 'center' })"
+              (changed)="save(role, { heroAlign: $event === 'left' ? 'left' : 'center' })"
             />
           </div>
           @for (pm of pageMeta; track pm.key) {
@@ -116,40 +110,37 @@ type RoleType = (typeof ROLES)[number];
             <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
               <span></span>
               <span class="bp-field-label">{{ pm.label }} eyebrow</span>
-              <app-edit-field
-                label=""
-                type="text"
-                [value]="pg?.eyebrow ?? ''"
+              <input
+                class="ed-input"
+                maxlength="40"
                 [placeholder]="heroPlaceholder(pm.key, 'eyebrow')"
-                [maxLength]="40"
-                [editing]="true"
-                (valueChange)="savePageHero(role, pm.key, 'eyebrow', $event)"
+                [attr.aria-label]="pm.label + ' eyebrow'"
+                [ngModel]="pg?.eyebrow ?? ''"
+                (blur)="commitPageHero($event, role, pm.key, 'eyebrow')"
               />
             </div>
             <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
               <span></span>
               <span class="bp-field-label">{{ pm.label }} title</span>
-              <app-edit-field
-                label=""
-                type="text"
-                [value]="pg?.title ?? ''"
+              <input
+                class="ed-input"
+                maxlength="120"
                 [placeholder]="heroPlaceholder(pm.key, 'title')"
-                [maxLength]="120"
-                [editing]="true"
-                (valueChange)="savePageHero(role, pm.key, 'title', $event)"
+                [attr.aria-label]="pm.label + ' title'"
+                [ngModel]="pg?.title ?? ''"
+                (blur)="commitPageHero($event, role, pm.key, 'title')"
               />
             </div>
             <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0">
               <span></span>
               <span class="bp-field-label">{{ pm.label }} subtitle</span>
-              <app-edit-field
-                label=""
-                type="text"
-                [value]="pg?.subtitle ?? ''"
+              <input
+                class="ed-input"
+                maxlength="240"
                 [placeholder]="heroPlaceholder(pm.key, 'subtitle')"
-                [maxLength]="240"
-                [editing]="true"
-                (valueChange)="savePageHero(role, pm.key, 'subtitle', $event)"
+                [attr.aria-label]="pm.label + ' subtitle'"
+                [ngModel]="pg?.subtitle ?? ''"
+                (blur)="commitPageHero($event, role, pm.key, 'subtitle')"
               />
             </div>
           }
@@ -185,10 +176,10 @@ export class PagesSettingsComponent {
   private readonly alignRes = resource({
     loader: () => this.codelists.list('hero_align'),
   });
-  protected readonly titleModes = computed<EditFieldOption[]>(
+  protected readonly titleModes = computed<SelectOption[]>(
     () => this.titleModeRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
   );
-  protected readonly aligns = computed<EditFieldOption[]>(
+  protected readonly aligns = computed<SelectOption[]>(
     () => this.alignRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
   );
 
@@ -217,6 +208,37 @@ export class PagesSettingsComponent {
 
   protected configFor(role: RoleType): PageConfigPayload | null {
     return this.configs[role]();
+  }
+
+  /** Save-on-blur for the home-hero text fields: emit only when the trimmed
+   *  value changed (parity with the legacy edit-field commitText — no
+   *  redundant PUT). heroEyebrow clears to undefined when emptied. */
+  protected commitHero(
+    ev: Event,
+    role: RoleType,
+    key: 'heroTitleFixed' | 'heroSubtitle' | 'heroEyebrow'
+  ): void {
+    const next = (ev.target as HTMLInputElement).value.trim();
+    if (next === (this.configFor(role)?.[key] ?? '')) return;
+    const patch: Partial<PageConfigPayload> =
+      key === 'heroTitleFixed'
+        ? { heroTitleFixed: next }
+        : key === 'heroSubtitle'
+        ? { heroSubtitle: next }
+        : { heroEyebrow: next || undefined };
+    void this.save(role, patch);
+  }
+
+  /** Save-on-blur for the per-page hero overrides, guarded on change. */
+  protected commitPageHero(
+    ev: Event,
+    role: RoleType,
+    page: PageKey,
+    key: 'eyebrow' | 'title' | 'subtitle'
+  ): void {
+    const next = (ev.target as HTMLInputElement).value.trim();
+    if (next === (this.configFor(role)?.pages?.[page]?.[key] ?? '')) return;
+    this.savePageHero(role, page, key, next);
   }
 
   protected asTitleMode(v: string): PageConfigPayload['heroTitleMode'] {
