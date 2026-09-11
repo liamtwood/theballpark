@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
@@ -10,7 +11,6 @@ import {
   CodelistValue,
   CodelistValuePatch,
 } from '../../../core/codelists/codelist.types';
-import { EditFieldComponent } from '../../../shared/edit-field/edit-field.component';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 import { CodelistValueRowComponent } from './codelist-value-row.component';
 
@@ -24,7 +24,7 @@ import { CodelistValueRowComponent } from './codelist-value-row.component';
 @Component({
   selector: 'app-codelists-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CodelistValueRowComponent, EditFieldComponent, LucideAngularModule, PageHeroComponent, ToastModule],
+  imports: [CodelistValueRowComponent, FormsModule, LucideAngularModule, PageHeroComponent, ToastModule],
   providers: [MessageService],
   host: { class: 'block' },
   template: `
@@ -93,9 +93,9 @@ import { CodelistValueRowComponent } from './codelist-value-row.component';
               <!-- Add value — ballpark lists only (locked rule 1) -->
               @if (parent.type === 'ballpark') {
                 <div class="grid grid-cols-[110px_1fr_80px_70px_120px_110px] items-center gap-x-4 bg-fill px-4 py-2">
-                  <app-edit-field label="" type="text" [maxLength]="50" placeholder="code" [value]="draft().code" [editing]="true" (valueChange)="patchDraft({ code: $event })" />
-                  <app-edit-field label="" type="text" [maxLength]="100" placeholder="Label" [value]="draft().label" [editing]="true" (valueChange)="patchDraft({ label: $event })" />
-                  <app-edit-field label="" type="text" [maxLength]="20" placeholder="£" [value]="draft().symbol" [editing]="true" (valueChange)="patchDraft({ symbol: $event })" />
+                  <input class="ed-input" maxlength="50" placeholder="code" aria-label="Code" [ngModel]="draft().code" (ngModelChange)="patchDraft({ code: $event })" />
+                  <input class="ed-input" maxlength="100" placeholder="Label" aria-label="Label" [ngModel]="draft().label" (ngModelChange)="patchDraft({ label: $event })" />
+                  <input class="ed-input" maxlength="20" placeholder="£" aria-label="Symbol" [ngModel]="draft().symbol" (ngModelChange)="patchDraft({ symbol: $event })" />
                   <span></span>
                   <span></span>
                   <button type="button" class="bp-btn-outline !px-4 !py-1.5" [disabled]="!draft().code || !draft().label" (click)="add(parent)">
