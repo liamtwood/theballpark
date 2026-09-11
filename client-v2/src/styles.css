@@ -1008,7 +1008,9 @@ body {
   padding: 4px;
   border: 1px solid var(--color-border-hairline);
   border-radius: var(--radius-pill);
-  background: var(--color-surface);
+  /* Gray rail; tabs white on hover, accent-pink when selected (the pill
+     standard — matches the drill-down cat rail). */
+  background: var(--color-fill);
 }
 .bp-tab {
   display: inline-flex;
@@ -1024,11 +1026,11 @@ body {
   cursor: pointer;
 }
 .bp-tab:hover {
-  background: var(--color-fill);
+  background: var(--color-surface);
 }
 .bp-tab--active {
-  background: var(--theme-soft);
-  color: var(--color-text);
+  background: var(--theme-accent);
+  color: var(--theme-accent-contrast, #fff);
   font-weight: 500;
 }
 
@@ -1047,16 +1049,6 @@ body {
   flex: 1;
   justify-content: center;
 }
-/* Project main tab band: gray container, tabs white on hover, accent-pink when
-   selected — matches the drill-down cat pills. Scoped to --fill (project tabs
-   only); the compact toggles keep the white-band / soft-active look. */
-.bp-tab-band--fill { background: var(--color-fill); }
-.bp-tab-band--fill .bp-tab:hover { background: var(--color-surface); }
-.bp-tab-band--fill .bp-tab--active,
-.bp-tab-band--fill .bp-tab--active:hover {
-  background: var(--theme-accent);
-  color: var(--theme-accent-contrast, #fff);
-}
 .bp-tab__badge {
   display: inline-flex;
   align-items: center;
@@ -1069,6 +1061,11 @@ body {
   color: var(--theme-accent-contrast);
   font-size: var(--text-2xs);
   font-weight: 600;
+}
+/* On the active (pink) tab, invert the badge so it stays legible. */
+.bp-tab--active .bp-tab__badge {
+  background: var(--theme-accent-contrast, #fff);
+  color: var(--theme-accent);
 }
 
 /* ═══ Cards (CARDS.md — locked chrome foundation, pV2-CARDS-01) ══════════
