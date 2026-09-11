@@ -75,16 +75,16 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
   styles: [`
     /* Collapsing hero — full cover+tiles ⇄ slim name band. All animated so it
        dissolves both ways; honours reduced-motion. */
-    .ovh-cover { height: 220px; transition: height 0.15s ease; }
-    .ovh-overlay { padding: 24px; transition: padding 0.15s ease; }
+    .ovh-cover { height: 220px; transition: height 0.3s ease; }
+    .ovh-overlay { padding: 24px; transition: padding 0.3s ease; }
     .ovh-eyebrow, .ovh-sub {
       overflow: hidden;
-      transition: opacity 0.12s ease, max-height 0.15s ease, margin 0.15s ease;
+      transition: opacity 0.24s ease, max-height 0.3s ease, margin 0.3s ease;
     }
-    .ovh-actions { transition: opacity 0.12s ease; }
+    .ovh-actions { transition: opacity 0.24s ease; }
     .ovh-tiles {
       max-height: 260px; opacity: 1; margin-top: 16px; overflow: hidden;
-      transition: max-height 0.15s ease, opacity 0.12s ease, margin-top 0.15s ease;
+      transition: max-height 0.3s ease, opacity 0.24s ease, margin-top 0.3s ease;
     }
     .ovh.is-collapsed .ovh-cover { height: 72px; }
     .ovh.is-collapsed .ovh-overlay { padding: 12px 20px; }
