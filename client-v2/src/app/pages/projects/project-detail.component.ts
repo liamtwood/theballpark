@@ -14,6 +14,7 @@ import { EstimateBreakdown, ProjectDetail, ProjectUpdate } from '../../core/proj
 import { GalleryImage, PickerResult } from '../../core/media/media.types';
 import { errorDetail } from '../../core/http-error';
 import { EditFieldOption } from '../../shared/edit-field/edit-field.component';
+import { SelectComponent, SelectOption } from '../../shared/select/select.component';
 import { natoDate } from '../../shared/details-format';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
@@ -78,6 +79,7 @@ interface DetailForm {
     LucideAngularModule,
     CoachmarkComponent,
     PageHeroComponent,
+    SelectComponent,
     TabBandComponent,
     CompletenessCardComponent,
     DrawerComponent,
@@ -197,16 +199,10 @@ interface DetailForm {
                 </div>
                 <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
                   <label class="block"><span class="ed-label mb-1.5 block">Event type</span>
-                    <select class="ed-select" [ngModel]="form().eventType" (ngModelChange)="patch({ eventType: $event }); saveSection('type')">
-                      <option value="">—</option>
-                      @for (o of eventTypeOptions(); track o.value) { <option [value]="o.value">{{ o.label }}</option> }
-                    </select>
+                    <app-select ariaLabel="Event type" [options]="eventTypeSelectOptions()" [value]="form().eventType" (changed)="patch({ eventType: $event }); saveSection('type')" />
                   </label>
                   <label class="block"><span class="ed-label mb-1.5 block">Tier</span>
-                    <select class="ed-select" [ngModel]="form().tier" (ngModelChange)="patch({ tier: $event }); saveSection('type')">
-                      <option value="">—</option>
-                      @for (o of tierOptions; track o.value) { <option [value]="o.value">{{ o.label }}</option> }
-                    </select>
+                    <app-select ariaLabel="Tier" [options]="tierSelectOptions" [value]="form().tier" (changed)="patch({ tier: $event }); saveSection('type')" />
                   </label>
                 </div>
                 <div class="mt-4 flex flex-wrap gap-x-5 gap-y-4">
@@ -450,6 +446,11 @@ export class ProjectDetailComponent {
     { label: 'Professional', value: 'professional' },
     { label: 'Premium', value: 'premium' },
   ];
+  /** app-select options — a leading "—" (none) row keeps the native clear. */
+  protected readonly tierSelectOptions: SelectOption[] = [
+    { value: '', label: '—' },
+    ...this.tierOptions,
+  ];
 
   // Status shows as a pill (hero + Event details, v1 parity); transitions
   // get a dedicated allowed_next_codes control later, not a free dropdown.
@@ -458,6 +459,9 @@ export class ProjectDetailComponent {
   });
   protected readonly eventTypeOptions = computed<EditFieldOption[]>(
     () => this.eventTypeRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
+  );
+  protected readonly eventTypeSelectOptions = computed<SelectOption[]>(
+    () => [{ value: '', label: '—' }, ...this.eventTypeOptions()],
   );
 
   /** Distinct client names this org has used — the Client field's type-ahead. */
