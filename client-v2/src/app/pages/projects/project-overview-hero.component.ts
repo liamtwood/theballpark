@@ -89,7 +89,7 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
       transition: max-height 0.3s ease, opacity 0.24s ease, margin-top 0.3s ease;
     }
     .ovh.is-collapsed .ovh-cover { height: 72px; }
-    .ovh.is-collapsed .ovh-overlay { padding: 12px 20px; }
+    .ovh.is-collapsed .ovh-overlay { padding: 12px 20px; justify-content: center; }
     .ovh.is-collapsed .ovh-eyebrow,
     .ovh.is-collapsed .ovh-sub { opacity: 0; max-height: 0; margin-top: 0; margin-bottom: 0; }
     .ovh.is-collapsed .ovh-actions { opacity: 0; pointer-events: none; }
