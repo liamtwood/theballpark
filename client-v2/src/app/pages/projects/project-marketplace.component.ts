@@ -53,7 +53,7 @@ import { errorDetail } from '../../core/http-error';
         </div>
         <!-- The single scroll area: both rails scroll together inside. -->
         <div class="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-          <div class="grid grid-cols-1 gap-6 xl:grid-cols-[160px_1fr]">
+          <div class="grid grid-cols-1 gap-6 xl:grid-cols-[210px_1fr]">
             <div class="hidden xl:block">
               <!-- White container for the categories (strip internals unchanged).
                    Suppliers mode: the strip is scoped to the quote's categories. -->
