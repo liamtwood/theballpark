@@ -75,19 +75,19 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
   styles: [`
     /* Collapsing hero — full cover+tiles ⇄ slim name band. All animated so it
        dissolves both ways; honours reduced-motion. */
-    .ovh-cover { height: 220px; transition: height 0.22s ease; }
-    .ovh-overlay { padding: 24px; transition: padding 0.22s ease; }
+    .ovh-cover { height: 220px; transition: height 0.15s ease; }
+    .ovh-overlay { padding: 24px; transition: padding 0.15s ease; }
     .ovh-eyebrow, .ovh-sub {
       overflow: hidden;
-      transition: opacity 0.18s ease, max-height 0.22s ease, margin 0.22s ease;
+      transition: opacity 0.12s ease, max-height 0.15s ease, margin 0.15s ease;
     }
-    .ovh-actions { transition: opacity 0.18s ease; }
+    .ovh-actions { transition: opacity 0.12s ease; }
     .ovh-tiles {
       max-height: 260px; opacity: 1; margin-top: 16px; overflow: hidden;
-      transition: max-height 0.22s ease, opacity 0.18s ease, margin-top 0.22s ease;
+      transition: max-height 0.15s ease, opacity 0.12s ease, margin-top 0.15s ease;
     }
-    .ovh.is-collapsed .ovh-cover { height: 60px; }
-    .ovh.is-collapsed .ovh-overlay { padding: 8px 20px; }
+    .ovh.is-collapsed .ovh-cover { height: 72px; }
+    .ovh.is-collapsed .ovh-overlay { padding: 12px 20px; }
     .ovh.is-collapsed .ovh-eyebrow,
     .ovh.is-collapsed .ovh-sub { opacity: 0; max-height: 0; margin-top: 0; margin-bottom: 0; }
     .ovh.is-collapsed .ovh-actions { opacity: 0; pointer-events: none; }
