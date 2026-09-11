@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ballpark — Item Attributes (1-pager)</title>
+<style>
+  :root {
+    --bg: #fbf7f4;
+    --surface: #ffffff;
+    --text: #1f2937;
+    --text-secondary: #6b7280;
+    --border: 1px solid #e5e7eb;
+    --radius: 12px;
+    --accent: #d63384;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+    --admin: #0ea5e9;
+    --supplier: #b45309;
+    --store: #8b5cf6;
+    --ok: #047857;
+  }
+  body {
+    margin: 0; padding: 28px 36px;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    line-height: 1.45;
+  }
+  .page { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; font-weight: 700; }
+  .lead { color: var(--text-secondary); margin: 0 0 24px; font-size: 13px; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+
+  .card {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .card h2 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin: 0 0 10px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table th, table td { text-align: left; padding: 6px 8px; vertical-align: top; }
+  table thead th {
+    color: var(--text-secondary);
+    font-weight: 600;
+    border-bottom: var(--border);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  table tbody tr { border-bottom: 1px solid #f3f4f6; }
+  table tbody tr:last-child { border-bottom: none; }
+  .layer-name { font-weight: 600; font-size: 12px; }
+
+  ul.compact { margin: 0; padding-left: 16px; font-size: 12px; }
+  ul.compact li { margin-bottom: 4px; }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    background: #f3f4f6;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 4px;
+  }
+  .pill--p1 { background: rgba(214,51,132,0.10); color: var(--accent); }
+  .pill--p2 { background: rgba(107,114,128,0.14); color: var(--text-secondary); }
+
+  .flow {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 18px;
+  }
+  .flow-svg { width: 100%; height: auto; max-height: 360px; display: block; }
+
+  .note {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #fafafa;
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+  }
+  .note strong { color: var(--text); }
+  .mono-block {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; background: #f9fafb; border: var(--border);
+    border-radius: 6px; padding: 10px 12px; margin: 8px 0 0; white-space: pre;
+    overflow-x: auto; color: #374151;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Ballpark — Item Attributes</h1>
+  <p class="lead">Supplier-entered "additional details" on marketplace items — admin-curated, codelist-driven, profile-templated. Rides entirely on existing ref-codelist machinery: no new tables, no new admin UI.</p>
+
+  <!-- FLOW -->
+  <div class="flow">
+    <h2 style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin: 0 0 12px;">How it flows — admin defines · category templates · supplier fills · item shows</h2>
+    <svg class="flow-svg" viewBox="0 0 960 360" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- ADMIN column -->
+      <text x="150" y="16" text-anchor="middle" font-size="10" font-weight="700" letter-spacing="0.06em" fill="#0ea5e9">ADMIN · existing codelist UI</text>
+
+      <g>
+        <rect x="30" y="28" width="240" height="52" rx="6" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="150" y="48" text-anchor="middle" font-size="12" font-weight="700" fill="#0ea5e9">item_attribute</text>
+        <text x="150" y="65" text-anchor="middle" font-size="9" fill="#6b7280">Derig · Power · Pieces · Outdoor? · Fire</text>
+      </g>
+
+      <g>
+        <rect x="30" y="96" width="240" height="52" rx="6" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="150" y="116" text-anchor="middle" font-size="12" font-weight="700" fill="#0ea5e9">option codelists</text>
+        <text x="150" y="133" text-anchor="middle" font-size="9" fill="#6b7280">yes_no · fire_rating (Flammable / …)</text>
+      </g>
+      <!-- list-type attribute points at an option codelist -->
+      <line x1="150" y1="80" x2="150" y2="96" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="196" y="92" font-size="8" fill="#9ca3af">list → options_list</text>
+
+      <g>
+        <rect x="30" y="164" width="240" height="52" rx="6" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="150" y="184" text-anchor="middle" font-size="12" font-weight="700" fill="#0ea5e9">item_attribute_profile</text>
+        <text x="150" y="201" text-anchor="middle" font-size="9" fill="#6b7280">Profile 1 = { fixed set of attributes }</text>
+      </g>
+
+      <!-- CATEGORY -->
+      <text x="480" y="16" text-anchor="middle" font-size="10" font-weight="700" letter-spacing="0.06em" fill="#6b7280">CATEGORY · existing categories admin</text>
+      <g>
+        <rect x="380" y="164" width="200" height="52" rx="6" fill="#fff" stroke="#6b7280" stroke-width="1.5"/>
+        <text x="480" y="184" text-anchor="middle" font-size="12" font-weight="700" fill="#374151">category → profile</text>
+        <text x="480" y="201" text-anchor="middle" font-size="9" fill="#6b7280">Catering → Profile 1</text>
+      </g>
+      <line x1="270" y1="190" x2="380" y2="190" stroke="#9ca3af" stroke-width="1"/>
+
+      <!-- SUPPLIER -->
+      <text x="800" y="16" text-anchor="middle" font-size="10" font-weight="700" letter-spacing="0.06em" fill="#b45309">SUPPLIER · new UI</text>
+      <g>
+        <rect x="660" y="28" width="270" height="120" rx="6" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+        <text x="795" y="48" text-anchor="middle" font-size="12" font-weight="700" fill="#b45309">Item editor — "Additional details"</text>
+        <text x="795" y="70" text-anchor="middle" font-size="9.5" fill="#6b7280">Profile 1's fixed fields appear, pre-labelled</text>
+        <text x="795" y="86" text-anchor="middle" font-size="9.5" fill="#6b7280">typed input per value_type</text>
+        <rect x="690" y="100" width="210" height="30" rx="6" fill="#fff7ed" stroke="#b45309" stroke-width="1"/>
+        <text x="795" y="119" text-anchor="middle" font-size="10" font-weight="600" fill="#b45309">+ More → pick any other attribute</text>
+      </g>
+      <line x1="580" y1="188" x2="640" y2="188" stroke="#9ca3af" stroke-width="1"/>
+      <line x1="640" y1="188" x2="640" y2="118" stroke="#9ca3af" stroke-width="1"/>
+      <line x1="640" y1="118" x2="660" y2="118" stroke="#9ca3af" stroke-width="1"/>
+      <!-- More pulls from full item_attribute list -->
+      <path d="M270,54 C480,54 470,112 690,114" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3 3"/>
+
+      <!-- STORE -->
+      <g>
+        <rect x="330" y="262" width="300" height="52" rx="6" fill="#fff" stroke="#8b5cf6" stroke-width="1.5"/>
+        <text x="480" y="282" text-anchor="middle" font-size="12" font-weight="700" fill="#8b5cf6">items.attributes  (JSONB)</text>
+        <text x="480" y="299" text-anchor="middle" font-size="9" fill="#6b7280">[ { key, value } ]  ·  list-type stores the code</text>
+      </g>
+      <line x1="795" y1="148" x2="795" y2="288" stroke="#9ca3af" stroke-width="1"/>
+      <line x1="795" y1="288" x2="630" y2="288" stroke="#9ca3af" stroke-width="1"/>
+
+      <!-- DISPLAY -->
+      <g>
+        <rect x="30" y="262" width="240" height="52" rx="6" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+        <text x="150" y="282" text-anchor="middle" font-size="12" font-weight="700" fill="#047857">Item view — "Additional details"</text>
+        <text x="150" y="299" text-anchor="middle" font-size="9" fill="#6b7280">label + value, resolved from codelist</text>
+      </g>
+      <line x1="330" y1="288" x2="270" y2="288" stroke="#9ca3af" stroke-width="1"/>
+
+      <!-- Legend -->
+      <g transform="translate(30, 338)">
+        <rect x="0" y="0" width="12" height="12" rx="2" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="18" y="10" font-size="10" fill="#374151">Admin (codelists)</text>
+        <rect x="150" y="0" width="12" height="12" rx="2" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+        <text x="168" y="10" font-size="10" fill="#374151">Supplier (new UI)</text>
+        <rect x="300" y="0" width="12" height="12" rx="2" fill="#fff" stroke="#8b5cf6" stroke-width="1.5"/>
+        <text x="318" y="10" font-size="10" fill="#374151">Storage (existing JSONB)</text>
+        <rect x="470" y="0" width="12" height="12" rx="2" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+        <text x="488" y="10" font-size="10" fill="#374151">Read-only display</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Attribute model -->
+  <div class="card" style="margin-bottom: 18px; border-left: 3px solid var(--accent);">
+    <h2>Attribute model — one codelist, four value types</h2>
+    <p style="font-size:12px; margin:0 0 8px;">Each <code>item_attribute</code> value (a <code>ballpark</code>-type list, so admins add values, suppliers never can) carries its display type in the existing <code>meta</code> JSONB — <strong>no schema change.</strong></p>
+    <table>
+      <thead><tr><th>value_type</th><th>Input shown to supplier</th><th>Stored in bag</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td class="layer-name">number</td><td>Numeric field</td><td>number</td><td>Pieces = <code>100</code></td></tr>
+        <tr><td class="layer-name">char</td><td>Single-line text</td><td>string</td><td>Colour = <code>"Slate"</code></td></tr>
+        <tr><td class="layer-name">description</td><td>Multi-line textarea</td><td>string</td><td>Derig = <code>"We deinstall within 48 hrs of the event."</code></td></tr>
+        <tr><td class="layer-name">list</td><td>Dropdown from another codelist (<code>meta.options_list</code>)</td><td>the chosen <strong>code</strong></td><td>Fire = <code>fire_rating</code> → "Flame-resistant"; Outdoor? = <code>yes_no</code></td></tr>
+      </tbody>
+    </table>
+    <div class="mono-block">item_attribute value meta:
+  { "value_type": "description" }
+  { "value_type": "list", "options_list": "fire_rating" }</div>
+  </div>
+
+  <!-- ROW: reuse + storage -->
+  <div class="row-2">
+    <div class="card">
+      <h2>Rides on existing machinery</h2>
+      <ul class="compact">
+        <li><strong>Attributes + profiles + option sets</strong> are all <code>shared.reference_codelists</code> / <code>..._values</code> rows — curated in the admin codelist screen you already have.</li>
+        <li><strong>Type + options + membership</strong> live in the values' existing <code>meta</code> JSONB. No new columns, no migration on the codelist tables.</li>
+        <li><strong>Only <code>ballpark</code>-type lists are admin-extendable</strong> (locked rule 1, <code>codelist.service.js</code>) — this is exactly the proliferation control we want.</li>
+        <li><strong>Values land in <code>items.attributes</code></strong> — the JSONB bag that already exists (currently <code>{}</code> on every item; dormant since BUILDUP).</li>
+        <li><strong>Category → profile</strong> reuses the existing categories admin screen (one profile code on the category).</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Storage &amp; rendering</h2>
+      <ul class="compact">
+        <li><strong>Ordered array</strong> in <code>items.attributes</code> so display order is preserved and duplicates are impossible-by-choice.</li>
+        <li><strong>List-type stores the code</strong>, not the label — label resolves from the source codelist at render, so an admin rename updates every item.</li>
+        <li><strong>Label + type resolve from the codelist</strong> at display, same pattern as status pills — the bag holds keys + raw values only.</li>
+        <li><strong>Graceful empty</strong> — an item with <code>[]</code> shows no "Additional details" block.</li>
+      </ul>
+      <div class="mono-block">items.attributes =
+  [ { "key": "derig",  "value": "We deinstall within 48 hrs…" },
+    { "key": "pieces", "value": 100 },
+    { "key": "fire",   "value": "flame_resistant" } ]</div>
+    </div>
+  </div>
+
+  <!-- ROW: profiles + supplier flow -->
+  <div class="row-2">
+    <div class="card">
+      <h2>Profiles — fixed sets, per category</h2>
+      <ul class="compact">
+        <li><strong><code>item_attribute_profile</code></strong> codelist; each value's <code>meta.attributes</code> = ordered member attribute codes.</li>
+        <li><strong>Assigned to a category</strong> (Catering → Profile 1). Adding an item in that category auto-renders that fixed set.</li>
+        <li><strong>Purpose:</strong> make the common fields appear automatically — less hunting, consistent data across suppliers.</li>
+        <li><strong>"More" escape hatch:</strong> supplier can still add any other existing attribute beyond the profile.</li>
+        <li>Category-level for now; per-item override deferred.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Supplier flow</h2>
+      <ul class="compact">
+        <li>Fill the normal fields (name, cost, unit…).</li>
+        <li>Profile's fixed attributes appear below, pre-labelled, with the right input per type.</li>
+        <li>Fields are <strong>optional</strong> — leave blank / remove any that don't apply.</li>
+        <li><strong>+ More</strong> → pick any other existing attribute + enter a value.</li>
+        <li>Saves to <code>items.attributes</code>; shows on the item view (and later the quote) automatically.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ROW: decisions + phases -->
+  <div class="row-2">
+    <div class="card">
+      <h2>Decisions locked</h2>
+      <ul class="compact">
+        <li><strong>Admin-only</strong> attribute creation; suppliers pick, never invent.</li>
+        <li><strong>attributes = display-only spec sheet</strong> (prose / enums). Distinct from <code>tags</code> = the filterable taxonomy facets.</li>
+        <li>Profile at <strong>category</strong> level; item override later.</li>
+        <li>Profile fields <strong>optional</strong> + removable per item.</li>
+        <li>Profiles and ad-hoc "More" <strong>coexist</strong>.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Build phases</h2>
+      <table>
+        <tbody>
+          <tr><td class="layer-name">Phase 1 <span class="pill pill--p1">first</span></td><td><code>item_attribute</code> codelist (with <code>meta.value_type</code> incl. <code>list</code>) + supplier "Additional details" editor ("More" picker, typed inputs) + read-only display block.</td></tr>
+          <tr><td class="layer-name">Phase 2 <span class="pill pill--p2">next</span></td><td><code>item_attribute_profile</code> codelist + category→profile assignment + auto-prefill of the fixed set.</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:12px; margin:8px 0 0; color: var(--text-secondary);">Only genuinely new code is supplier-side (editor + display). Everything admin does is data entry in screens that already exist.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>For review:</strong> (1) storing the ordered array in <code>items.attributes</code> replaces the current <code>{}</code> shape — safe, since the bag is empty on every item today, but confirm nothing reads it as an object. (2) List-type stores the code and resolves the label at render — consistent with the codelist pattern; the alternative (store label) trades rename-safety for read simplicity. (3) Category→profile is a single profile code on the category; multi-profile / per-item override intentionally deferred. Design record: <code>[[project_item_attributes_arc]]</code> memory + this page.
+  </div>
+
+</div>
+</body>
+</html>
