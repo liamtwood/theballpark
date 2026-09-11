@@ -7,8 +7,6 @@ import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../../core/auth/auth.service';
 import { errorDetail } from '../../../core/http-error';
 import { TeamService, TeamMember } from '../../../core/team/team.service';
-import { EditSectionComponent } from '../../../shared/edit-section/edit-section.component';
-import { EditFieldComponent } from '../../../shared/edit-field/edit-field.component';
 import { DrawerComponent } from '../../../shared/drawer/drawer.component';
 import { UserAvatarComponent } from '../../../shared/user-avatar/user-avatar.component';
 
@@ -29,9 +27,11 @@ interface InviteForm {
   selector: 'app-profile-team-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
-  imports: [FormsModule, ToggleSwitchModule, LucideAngularModule, EditSectionComponent, EditFieldComponent, DrawerComponent, UserAvatarComponent],
+  imports: [FormsModule, ToggleSwitchModule, LucideAngularModule, DrawerComponent, UserAvatarComponent],
   template: `
-    <app-edit-section title="Team Members" [editable]="false">
+    <div class="ed-card p-6">
+      <h2 class="bp-card-title">Team Members</h2>
+      <div class="mt-4">
       @if (team.value(); as members) {
         <div class="flex flex-col gap-4">
           @for (m of members; track m.userId ?? m.email) {
@@ -55,13 +55,17 @@ interface InviteForm {
           <lucide-icon name="plus" [size]="15" /> Invite Team Member
         </button>
       }
-    </app-edit-section>
+      </div>
+    </div>
 
     <app-drawer [(open)]="inviteDrawer" title="Invite team member">
       <div class="flex flex-col gap-5">
-        <app-edit-field label="Email" type="email" density="page" [editing]="true" [value]="inviteForm().email" (valueChange)="patchInvite({ email: $event })" />
-        <app-edit-field label="Display name" density="page" [editing]="true" [value]="inviteForm().displayName" (valueChange)="patchInvite({ displayName: $event })" />
-        <app-edit-field label="Job title" density="page" [editing]="true" [value]="inviteForm().jobTitle" (valueChange)="patchInvite({ jobTitle: $event })" />
+        <label class="block"><span class="ed-label mb-1.5 block">Email</span>
+          <input class="ed-input" type="email" [ngModel]="inviteForm().email" (ngModelChange)="patchInvite({ email: $event })" /></label>
+        <label class="block"><span class="ed-label mb-1.5 block">Display name</span>
+          <input class="ed-input" [ngModel]="inviteForm().displayName" (ngModelChange)="patchInvite({ displayName: $event })" /></label>
+        <label class="block"><span class="ed-label mb-1.5 block">Job title</span>
+          <input class="ed-input" [ngModel]="inviteForm().jobTitle" (ngModelChange)="patchInvite({ jobTitle: $event })" /></label>
         <label class="flex items-center gap-2.5">
           <span class="bp-field-label">Admin</span>
           <p-toggleswitch
