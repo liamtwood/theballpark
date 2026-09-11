@@ -7,14 +7,9 @@ import { ViewToggleComponent } from '../../shared/catalogue/view-toggle.componen
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { MarketplaceFiltersComponent } from './marketplace-filters.component';
 
-/** Marketplace controls — a search box + a 3-icon cluster (same pill container
- *  as the view toggle). Each icon toggles INDEPENDENTLY (on/off), with a hover
- *  tooltip:
- *    • Item or supplier → the mode toggle appears on the LEFT below the search
- *    • Filter           → the filter row shows ABOVE the grid (rendered by the
- *                         workspace via store.filtersOpen — it belongs over the
- *                         first grid item, not here)
- *    • View             → the view toggle appears on the RIGHT below the search
+/** Marketplace controls — a search box + a single options icon next to it.
+ *  Clicking the icon reveals ONE horizontal line below the search with Type
+ *  (Items|Suppliers), Filter (price/tier/supplier) and View (card/list/table).
  *  Store-driven — SHARED by the global marketplace page and the in-project tab. */
 @Component({
   selector: 'app-marketplace-controls',
@@ -35,52 +30,22 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
 
       <span class="bp-caption shrink-0 text-secondary">{{ store.total() }} items</span>
 
-      <!-- Same container style as app-view-toggle. Each icon toggles on/off. -->
-      <div class="inline-flex items-center gap-1 rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
-        <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="typeOpen()"
-          pTooltip="Item or supplier" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
-          aria-label="Item or supplier" (click)="typeOpen.set(!typeOpen())">
-          <lucide-icon name="arrow-left-right" [size]="15" />
-        </button>
-        <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="filterOpen()"
-          pTooltip="Filter" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
-          aria-label="Filter" (click)="filterOpen.set(!filterOpen())">
+      <!-- One options icon; opens the Type / Filter / View row below. -->
+      <div class="inline-flex items-center rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
+        <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="open()"
+          pTooltip="Type, filter & view" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
+          aria-label="Type, filter and view options" (click)="open.set(!open())">
           <lucide-icon name="sliders-horizontal" [size]="15" />
-        </button>
-        <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="viewOpen()"
-          pTooltip="View" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
-          aria-label="View" (click)="viewOpen.set(!viewOpen())">
-          <lucide-icon name="layout-grid" [size]="15" />
         </button>
       </div>
     </div>
 
-    <!-- Row 2: LEFT column (cat-container width) stacks Type + Filter, each
-         titled; View titled on the RIGHT. Each section is independent. -->
-    @if (typeOpen() || filterOpen() || viewOpen()) {
-      <div class="mt-3 flex items-start justify-between gap-6">
-        <div class="flex w-[210px] shrink-0 flex-col gap-4">
-          @if (typeOpen()) {
-            <div>
-              <span class="bp-field-label mb-1.5 block">Type</span>
-              <app-tab-band [tabs]="modeTabs" [active]="store.mode()" [fill]="true" (activeChange)="store.setMode($event)" />
-            </div>
-          }
-          @if (filterOpen()) {
-            <div>
-              <span class="bp-field-label mb-1.5 block">Filter</span>
-              <app-marketplace-filters />
-            </div>
-          }
-        </div>
-        <div>
-          @if (viewOpen()) {
-            <div>
-              <span class="bp-field-label mb-1.5 block">View</span>
-              <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
-            </div>
-          }
-        </div>
+    <!-- Row 2: Type, Filter and View, all in one horizontal line. -->
+    @if (open()) {
+      <div class="mt-3 flex flex-wrap items-center gap-4">
+        <app-tab-band [tabs]="modeTabs" [active]="store.mode()" (activeChange)="store.setMode($event)" />
+        <app-marketplace-filters />
+        <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
       </div>
     }
   `,
@@ -88,11 +53,8 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
 export class MarketplaceControlsComponent {
   protected readonly store = inject(MarketplaceStore);
 
-  /** Independent on/off for the Type + View rows (Filter lives on the store so
-   *  the workspace can render it above the grid). */
-  protected readonly typeOpen = signal(false);
-  protected readonly filterOpen = signal(false);
-  protected readonly viewOpen = signal(false);
+  /** One toggle: reveals the Type / Filter / View options line. */
+  protected readonly open = signal(false);
 
   protected readonly modeTabs: TabBandTab[] = [
     { key: 'items', label: 'Items' },

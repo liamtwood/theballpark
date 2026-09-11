@@ -4,8 +4,7 @@ import { SelectComponent, SelectOption } from '../../shared/select/select.compon
 import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
 
 /** The marketplace filter row — price / tier / supplier selects + clear.
- *  Store-driven; stacked vertically (full-width) in the controls' left column
- *  under the Type toggle when the Filter cluster icon is on. Item-mode only
+ *  Store-driven; a horizontal row in the controls' options line. Item-mode only
  *  (price/tier/supplier don't fit supplier rows). */
 @Component({
   selector: 'app-marketplace-filters',
@@ -14,19 +13,19 @@ import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
   host: { class: 'block' },
   template: `
     @if (store.mode() === 'items') {
-      <div class="flex flex-col gap-2">
-        <app-select ariaLabel="Price" class="block w-full" [options]="priceOptions"
+      <div class="flex flex-wrap items-center gap-3">
+        <app-select ariaLabel="Price" class="w-40" [options]="priceOptions"
           [value]="store.priceBracket() ?? 'any'"
           (changed)="store.setPriceBracket($event === 'any' ? null : $event)" />
-        <app-select ariaLabel="Tier" class="block w-full" [options]="tierOptions"
+        <app-select ariaLabel="Tier" class="w-32" [options]="tierOptions"
           [value]="store.tier() ?? 'any'"
           (changed)="store.setTier($event === 'any' ? null : $event)" />
-        <app-select ariaLabel="Supplier" class="block w-full" [options]="supplierOptions()"
+        <app-select ariaLabel="Supplier" class="w-44" [options]="supplierOptions()"
           [value]="store.supplierId() ?? 'any'"
           (changed)="store.setSupplier($event === 'any' ? null : $event)" />
         @if (store.hasFilters()) {
           <button type="button"
-            class="bp-caption cursor-pointer self-start border-none bg-transparent text-secondary underline hover:text-text"
+            class="bp-caption cursor-pointer border-none bg-transparent text-secondary underline hover:text-text"
             (click)="store.clearFilters()">Clear filters</button>
         }
       </div>
