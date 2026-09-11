@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { MarketplaceStore } from '../marketplace/marketplace-store';
+import { MarketplaceStore } from './marketplace-store';
 import { CatalogueSearchComponent } from '../../shared/catalogue/catalogue-search.component';
 import { ViewToggleComponent } from '../../shared/catalogue/view-toggle.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
@@ -9,16 +9,17 @@ import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
 
 type Panel = 'type' | 'filter' | 'view';
 
-/** Project Marketplace controls — compact by default: a search box + a 3-icon
- *  cluster (same pill container as the view toggle). Clicking a cluster icon
- *  reveals ONE options row below the search (one at a time):
+/** Marketplace controls — compact by default: a search box + a 3-icon cluster
+ *  (same pill container as the view toggle). Clicking a cluster icon reveals ONE
+ *  options row below the search (one at a time):
  *    • Type   → Items / Suppliers (the mode toggle, hidden by default)
  *    • Filter → price / tier / supplier
  *    • View   → card / list / table (the existing view toggle)
- *  Project-scoped (injects the route's MarketplaceStore) so the shared
- *  filter-band used by the global marketplace/store is untouched. */
+ *  Store-driven (injects the route's MarketplaceStore) — SHARED by both the
+ *  global marketplace page and the in-project Marketplace tab (they mount it via
+ *  app-marketplace-workspace so the whole chrome is one definition). */
 @Component({
-  selector: 'app-project-marketplace-controls',
+  selector: 'app-marketplace-controls',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     LucideAngularModule,
@@ -94,7 +95,7 @@ type Panel = 'type' | 'filter' | 'view';
     }
   `,
 })
-export class ProjectMarketplaceControlsComponent {
+export class MarketplaceControlsComponent {
   protected readonly store = inject(MarketplaceStore);
 
   /** Which options row is open (null = compact, just search + cluster). */

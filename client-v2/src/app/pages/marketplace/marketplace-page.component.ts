@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { LucideAngularModule } from 'lucide-angular';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { PageConfigService } from '../../core/config/page-config.service';
@@ -8,14 +7,11 @@ import { QuickViewDialogComponent } from './quick-view-dialog.component';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
-import { CatalogueFilterBandComponent } from '../../shared/catalogue/filter-band.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
-import { CatalogueLayoutComponent } from '../../shared/catalogue/catalogue-layout.component';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { SupplierGridComponent } from '../../shared/catalogue/supplier-grid.component';
-import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { MarketplaceStore } from './marketplace-store';
-import { RightRailComponent } from './rail/right-rail.component';
+import { MarketplaceWorkspaceComponent } from './marketplace-workspace.component';
 
 /** pV2-06a — /marketplace: the browse foundation (MARKETPLACE.md five
  *  regions). Route shell only — mounts hero + search row + the three
@@ -25,15 +21,11 @@ import { RightRailComponent } from './rail/right-rail.component';
   selector: 'app-marketplace-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    LucideAngularModule,
     PageHeroComponent,
+    MarketplaceWorkspaceComponent,
     CategoryStripComponent,
-    CatalogueFilterBandComponent,
     CatalogueGridComponent,
-    CatalogueLayoutComponent,
-    RightRailComponent,
     SupplierGridComponent,
-    TabBandComponent,
     ToastModule,
     AddToProjectDialogComponent,
     QuickViewDialogComponent,
@@ -47,87 +39,76 @@ import { RightRailComponent } from './rail/right-rail.component';
       [eyebrow]="hero().eyebrow"
       [title]="hero().title"
       [subtitle]="hero().subtitle"
-    >
-      <app-tab-band
-        hero-actions
-        [tabs]="modeTabs"
-        [active]="store.mode()"
-        (activeChange)="store.setMode($event)"
-      />
-    </app-page-hero>
+    />
 
     <div class="bp-page-body">
-      <!-- Search + filters + view toggle — the SHARED band (RP-06: every
-           MarketplaceStore consumer mounts it). -->
-      <app-catalogue-filter-band [showSupplier]="true" />
-
-      <!-- Three regions on the shared layout shell -->
-      <app-catalogue-layout>
+      <!-- SHARED marketplace chrome (same objects as the in-project tab):
+           container + search/cluster + gray drill-down rail + dense grid. The
+           "+" here opens the Add-to-project picker (vs the project tab's quote). -->
+      <app-marketplace-workspace>
         <app-category-strip
           strip
-          [categories]="store.categories()"
+          mode="drilldown"
+          [categories]="stripCategories()"
           [activeId]="store.categoryId()"
           [totalCount]="allItemsCount()"
-          [subcategories]="store.mode() === 'items' ? store.subcategories() : []"
+          [subcategories]="store.mode() === 'items' ? stripSubcategories() : []"
           [activeSubId]="store.subcategoryId()"
           (categorySelected)="store.setCategory($event)"
           (subcategorySelected)="store.setSubcategory($event)"
         />
 
-        <div>
-          @if (store.mode() === 'suppliers') {
-            @if (store.suppliersRes.isLoading() && store.supplierRows().length === 0) {
-              <p class="bp-body-small text-secondary">Loading…</p>
-            } @else if (store.supplierRows().length === 0) {
-              <p class="bp-body-small text-secondary">No suppliers match.</p>
-            } @else {
-              <app-supplier-grid
-                [suppliers]="store.supplierRows()"
-                [viewMode]="store.viewMode()"
-                [favouriteIds]="favs.suppliers()"
-                (favouriteToggled)="favs.toggle('supplier', $event)"
-              />
-              @if (store.suppliersHasMore()) {
-                <div class="mt-6 flex justify-center">
-                  <button type="button" class="bp-btn-outline" (click)="store.showMore()">Show more</button>
-                </div>
-              }
-            }
-          } @else if (store.loadingFirstPage()) {
+        @if (store.mode() === 'suppliers') {
+          @if (store.suppliersRes.isLoading() && store.supplierRows().length === 0) {
             <p class="bp-body-small text-secondary">Loading…</p>
-          } @else if (store.itemsRes.error()) {
-            <p class="bp-body-small text-warn">Couldn't load the marketplace.</p>
-          } @else if (store.items().length === 0) {
-            <p class="bp-body-small text-secondary">No items match — try a different search or category.</p>
+          } @else if (store.supplierRows().length === 0) {
+            <p class="bp-body-small text-secondary">No suppliers match.</p>
           } @else {
-            <app-catalogue-grid
-              [items]="store.items()"
+            <app-supplier-grid
+              [suppliers]="store.supplierRows()"
               [viewMode]="store.viewMode()"
-              [selectedId]="store.itemId()"
-              [favouriteIds]="favs.items()"
-              [quoteDraftIds]="favs.quoteDraft()"
-              [showQuickView]="true"
-              (quickView)="openQuickView($event)"
-              (entitySelected)="openQuickView($event)"
-              (favouriteToggled)="favs.toggle('item', $event)"
-              (quoteToggled)="openPicker($event)"
-              (changed)="store.reloadItems()"
+              [favouriteIds]="favs.suppliers()"
+              (favouriteToggled)="favs.toggle('supplier', $event)"
             />
-            @if (store.hasMore()) {
+            @if (store.suppliersHasMore()) {
               <div class="mt-6 flex justify-center">
-                <button type="button" class="bp-btn-outline" [disabled]="store.loadingMore()" (click)="store.showMore()">
-                  {{ store.loadingMore() ? 'Loading…' : 'Show more' }}
-                </button>
+                <button type="button" class="bp-btn-outline" (click)="store.showMore()">Show more</button>
               </div>
             }
           }
-        </div>
-
-        <app-right-rail rail />
-      </app-catalogue-layout>
+        } @else if (store.loadingFirstPage()) {
+          <p class="bp-body-small text-secondary">Loading…</p>
+        } @else if (store.itemsRes.error()) {
+          <p class="bp-body-small text-warn">Couldn't load the marketplace.</p>
+        } @else if (store.items().length === 0) {
+          <p class="bp-body-small text-secondary">No items match — try a different search or category.</p>
+        } @else {
+          <app-catalogue-grid
+            [items]="store.items()"
+            [viewMode]="store.viewMode()"
+            [selectedId]="store.itemId()"
+            [favouriteIds]="favs.items()"
+            [quoteDraftIds]="favs.quoteDraft()"
+            [showQuickView]="true"
+            [dense]="true"
+            (quickView)="openQuickView($event)"
+            (entitySelected)="openQuickView($event)"
+            (favouriteToggled)="favs.toggle('item', $event)"
+            (quoteToggled)="openPicker($event)"
+            (changed)="store.reloadItems()"
+          />
+          @if (store.hasMore()) {
+            <div class="mt-6 flex justify-center">
+              <button type="button" class="bp-btn-outline" [disabled]="store.loadingMore()" (click)="store.showMore()">
+                {{ store.loadingMore() ? 'Loading…' : 'Show more' }}
+              </button>
+            </div>
+          }
+        }
+      </app-marketplace-workspace>
     </div>
 
-    <!-- Quick View — replaces the right-rail preview (opens on item click). -->
+    <!-- Quick View — opens on item click (Add → the project picker). -->
     <app-quick-view-dialog
       [item]="quickItem()"
       (close)="quickItem.set(null)"
@@ -180,11 +161,11 @@ export class MarketplacePageComponent {
     });
   }
 
-  protected readonly modeTabs: TabBandTab[] = [
-    { key: 'items', label: 'Items' },
-    { key: 'suppliers', label: 'Suppliers' },
-  ];
   private readonly pageConfig = inject(PageConfigService);
+
+  /** Hide empty categories/subcats in the rail — matches the in-project tab. */
+  protected readonly stripCategories = computed(() => this.store.categories().filter((c) => c.count > 0));
+  protected readonly stripSubcategories = computed(() => this.store.subcategories().filter((s) => s.count > 0));
 
   /** Hero rides the standard per-page settings (eyebrow / title / subtitle);
    *  /settings/pages overrides win over PAGE_HERO_DEFAULTS. HERO ONLY — v1's
@@ -195,10 +176,5 @@ export class MarketplacePageComponent {
    *  unfiltered total without an extra request). */
   protected allItemsCount(): number {
     return this.store.categories().reduce((sum, c) => sum + c.count, 0);
-  }
-
-  protected onItemClicked(id: string): void {
-    // Toggle: clicking the selected card clears the selection.
-    this.store.selectItem(this.store.itemId() === id ? null : id);
   }
 }

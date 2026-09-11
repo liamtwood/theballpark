@@ -9,8 +9,7 @@ import { QuickViewDialogComponent } from '../marketplace/quick-view-dialog.compo
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
 import { SupplierGridComponent } from '../../shared/catalogue/supplier-grid.component';
-import { ProjectMarketplaceControlsComponent } from './project-marketplace-controls.component';
-import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.component';
+import { MarketplaceWorkspaceComponent } from '../marketplace/marketplace-workspace.component';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { ProjectService } from '../../core/projects/project.service';
 import { EstimateBreakdown, QuoteLine } from '../../core/projects/project.types';
@@ -29,8 +28,7 @@ import { errorDetail } from '../../core/http-error';
   selector: 'app-project-marketplace',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    ProjectMarketplaceControlsComponent,
-    ScrollPeekComponent,
+    MarketplaceWorkspaceComponent,
     CategoryStripComponent,
     CatalogueGridComponent,
     SupplierGridComponent,
@@ -44,89 +42,66 @@ import { errorDetail } from '../../core/http-error';
      rather than catalogue-layout's slot. */
   host: { class: 'flex min-h-0 flex-1 flex-col' },
   template: `
-    <!-- One rounded white container holds EVERYTHING (search + both rails),
-         centred + gutter-reserved so its edges line up with the header. The
-         search stays fixed at the top; only the rails scroll inside. -->
-    <div class="min-h-0 flex-1 bp-gutter px-6 pt-1">
-      <div class="mx-auto flex h-full min-h-0 w-full max-w-[var(--workspace-max)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-hairline bg-surface shadow-[var(--shadow-md)]">
-        <!-- Search + the 3-icon cluster (Type / Filter / View), fixed at top. -->
-        <div class="shrink-0 p-4 pb-3">
-          <app-project-marketplace-controls class="block" />
-        </div>
-        <!-- Rails: cats fixed (no scrollbar — a down-arrow peek) + items scroll,
-             so there's a single visible scrollbar (the items). -->
-        <div class="flex min-h-0 flex-1 gap-6 px-4 pb-4">
-          <div class="hidden w-[210px] shrink-0 min-h-0 xl:block">
-            <!-- White card for the categories (strip internals unchanged).
-                 Plain card, not the bp-card class (its display:block would beat
-                 the flex column). -->
-            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-fill p-2">
-              <app-scroll-peek class="min-h-0 flex-1">
-                <app-category-strip
-                  mode="drilldown"
-                  [categories]="stripCategories()"
-                  [activeId]="store.categoryId()"
-                  [totalCount]="store.mode() === 'suppliers' ? scopedTotal() : allItemsCount()"
-                  [subcategories]="store.mode() === 'items' ? stripSubcategories() : []"
-                  [activeSubId]="store.subcategoryId()"
-                  (categorySelected)="store.setCategory($event)"
-                  (subcategorySelected)="store.setSubcategory($event)"
-                />
-              </app-scroll-peek>
-            </div>
-          </div>
+    <!-- Shared marketplace chrome (container + search/cluster + gray drill-down
+         rail + grid). Project-specific bits are the strip data + the card "+"
+         (adds to THIS project's quote). The quote rail is parked for a future
+         dialog — TODO(quote-dialog). -->
+    <app-marketplace-workspace>
+      <app-category-strip
+        strip
+        mode="drilldown"
+        [categories]="stripCategories()"
+        [activeId]="store.categoryId()"
+        [totalCount]="store.mode() === 'suppliers' ? scopedTotal() : allItemsCount()"
+        [subcategories]="store.mode() === 'items' ? stripSubcategories() : []"
+        [activeSubId]="store.subcategoryId()"
+        (categorySelected)="store.setCategory($event)"
+        (subcategorySelected)="store.setSubcategory($event)"
+      />
 
-          <div class="min-h-0 min-w-0 flex-1 overflow-y-auto">
-        @if (store.mode() === 'suppliers') {
-          @if (relevantSuppliersRes.isLoading()) {
-            <p class="bp-body-small text-secondary">Loading…</p>
-          } @else if (relevantSuppliers().length === 0) {
-            <p class="bp-body-small text-secondary">
-              No suppliers serve {{ store.categoryId() ? 'this category' : 'your project categories' }} yet.
-            </p>
-          } @else {
-            <app-supplier-grid
-              [suppliers]="relevantSuppliers()"
-              [viewMode]="store.viewMode()"
-              [favouriteIds]="favs.suppliers()"
-              (favouriteToggled)="favs.toggle('supplier', $event)"
-            />
-          }
-        } @else if (store.loadingFirstPage()) {
+      @if (store.mode() === 'suppliers') {
+        @if (relevantSuppliersRes.isLoading()) {
           <p class="bp-body-small text-secondary">Loading…</p>
-        } @else if (store.items().length === 0) {
-          <p class="bp-body-small text-secondary">No items match — try a different search or category.</p>
+        } @else if (relevantSuppliers().length === 0) {
+          <p class="bp-body-small text-secondary">
+            No suppliers serve {{ store.categoryId() ? 'this category' : 'your project categories' }} yet.
+          </p>
         } @else {
-          <app-catalogue-grid
-            [items]="store.items()"
+          <app-supplier-grid
+            [suppliers]="relevantSuppliers()"
             [viewMode]="store.viewMode()"
-            [selectedId]="store.itemId()"
-            [favouriteIds]="favs.items()"
-            [quoteDraftIds]="quoteIds()"
-            [showQuickView]="true"
-            [dense]="true"
-            (entitySelected)="openQuickView($event)"
-            (quickView)="openQuickView($event)"
-            (favouriteToggled)="favs.toggle('item', $event)"
-            (quoteToggled)="onQuoteToggle($event)"
-            (changed)="store.reloadItems()"
+            [favouriteIds]="favs.suppliers()"
+            (favouriteToggled)="favs.toggle('supplier', $event)"
           />
-          @if (store.hasMore()) {
-            <div class="mt-6 flex justify-center">
-              <button type="button" class="bp-btn-outline" [disabled]="store.loadingMore()" (click)="store.showMore()">
-                {{ store.loadingMore() ? 'Loading…' : 'Show more' }}
-              </button>
-            </div>
-          }
         }
-      </div>
-
-      <!-- Project Quote rail hidden for now (may move to a dialog). The quote
-           state + handlers below (quoteLines/est/onQtyChange/onCheckout) are
-           kept for that dialog; the card + still adds to the quote. TODO(quote-dialog). -->
-        </div>
-      </div>
-    </div>
+      } @else if (store.loadingFirstPage()) {
+        <p class="bp-body-small text-secondary">Loading…</p>
+      } @else if (store.items().length === 0) {
+        <p class="bp-body-small text-secondary">No items match — try a different search or category.</p>
+      } @else {
+        <app-catalogue-grid
+          [items]="store.items()"
+          [viewMode]="store.viewMode()"
+          [selectedId]="store.itemId()"
+          [favouriteIds]="favs.items()"
+          [quoteDraftIds]="quoteIds()"
+          [showQuickView]="true"
+          [dense]="true"
+          (entitySelected)="openQuickView($event)"
+          (quickView)="openQuickView($event)"
+          (favouriteToggled)="favs.toggle('item', $event)"
+          (quoteToggled)="onQuoteToggle($event)"
+          (changed)="store.reloadItems()"
+        />
+        @if (store.hasMore()) {
+          <div class="mt-6 flex justify-center">
+            <button type="button" class="bp-btn-outline" [disabled]="store.loadingMore()" (click)="store.showMore()">
+              {{ store.loadingMore() ? 'Loading…' : 'Show more' }}
+            </button>
+          </div>
+        }
+      }
+    </app-marketplace-workspace>
 
     <!-- Quick View — inside a project, "Add to ballpark" adds straight to
          THIS project's quote (no picker). -->
