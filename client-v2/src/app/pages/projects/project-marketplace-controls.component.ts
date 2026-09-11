@@ -29,18 +29,21 @@ type Panel = 'type' | 'filter' | 'view';
   ],
   host: { class: 'block' },
   template: `
-    <!-- Row 1: search + the 3-icon cluster (compact default). -->
+    <!-- Row 1: prominent full-width search + count + the 3-icon cluster. -->
     <div class="flex items-center gap-3">
-      <div class="min-w-0 max-w-md flex-1">
+      <div class="min-w-0 flex-1">
         <app-catalogue-search
+          [large]="true"
           [value]="store.search()"
           [count]="store.total()"
           (valueChange)="store.setSearch($event)"
         />
       </div>
 
+      <span class="bp-caption shrink-0 text-secondary">{{ store.total() }} items</span>
+
       <!-- Same container style as app-view-toggle. Each icon toggles its row. -->
-      <div class="ml-auto inline-flex items-center gap-1 rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
+      <div class="inline-flex items-center gap-1 rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
         <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="panel() === 'type'"
           aria-label="Browse items or suppliers" (click)="toggle('type')">
           <lucide-icon name="arrow-left-right" [size]="15" />

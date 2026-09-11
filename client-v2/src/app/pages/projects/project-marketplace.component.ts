@@ -53,8 +53,10 @@ import { errorDetail } from '../../core/http-error';
          icon opens their row. -->
     <app-project-marketplace-controls class="pb-3" />
 
-    <div class="grid min-h-0 flex-1 grid-cols-1 gap-6 xl:grid-cols-[210px_1fr]">
-      <div class="hidden min-h-0 xl:block xl:overflow-y-auto">
+    <!-- One scroll for both rails: the grid scrolls as a unit (single
+         scrollbar), not a scrollbar per column. Search stays fixed above. -->
+    <div class="grid min-h-0 flex-1 grid-cols-1 gap-6 overflow-y-auto xl:grid-cols-[160px_1fr]">
+      <div class="hidden xl:block">
         <!-- Suppliers mode: the strip is scoped to the quote's categories
              (no "All" browse) so only project-relevant suppliers surface. -->
         <app-category-strip
@@ -68,7 +70,7 @@ import { errorDetail } from '../../core/http-error';
         />
       </div>
 
-      <div class="min-h-0 min-w-0 xl:overflow-y-auto xl:pr-1">
+      <div class="min-w-0">
         @if (store.mode() === 'suppliers') {
           @if (relevantSuppliersRes.isLoading()) {
             <p class="bp-body-small text-secondary">Loading…</p>

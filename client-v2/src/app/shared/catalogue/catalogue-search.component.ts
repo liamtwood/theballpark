@@ -15,9 +15,12 @@ import { LucideAngularModule } from 'lucide-angular';
   imports: [LucideAngularModule],
   host: { class: 'block' },
   template: `
-    <!-- 34px matches the band's edit-field selects (one control rhythm). -->
-    <div class="flex h-[34px] items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-surface px-4 shadow-[var(--shadow-xs)] focus-within:border-accent">
-      <lucide-icon name="search" [size]="15" class="text-muted" />
+    <!-- Default 34px matches the band's selects (one control rhythm). Large is
+         the prominent standalone search (project Marketplace): taller + pill. -->
+    <div [class]="large()
+      ? 'flex h-[52px] items-center gap-3 rounded-[var(--radius-pill)] border border-hairline bg-surface px-5 shadow-[var(--shadow-xs)] focus-within:border-accent'
+      : 'flex h-[34px] items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-surface px-4 shadow-[var(--shadow-xs)] focus-within:border-accent'">
+      <lucide-icon name="search" [size]="large() ? 18 : 15" class="text-muted" />
       <input
         type="search"
         class="w-full border-none bg-transparent p-0 text-md outline-none ring-0 placeholder:text-muted focus:ring-0"
@@ -31,6 +34,8 @@ import { LucideAngularModule } from 'lucide-angular';
 export class CatalogueSearchComponent implements OnDestroy {
   readonly value = input<string>('');
   readonly count = input<number>(0);
+  /** Prominent standalone search (taller + pill) — off = the compact band box. */
+  readonly large = input<boolean>(false);
   readonly valueChange = output<string>();
 
   private timer: ReturnType<typeof setTimeout> | null = null;

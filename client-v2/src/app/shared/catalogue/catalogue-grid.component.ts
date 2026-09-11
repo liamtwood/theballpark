@@ -96,7 +96,7 @@ export class CatalogueGridComponent {
   /** Denser card grid for a constrained column (project Marketplace). */
   readonly dense = input<boolean>(false);
   protected readonly looseCols = 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4';
-  protected readonly denseCols = 'grid-cols-2 xl:grid-cols-3';
+  protected readonly denseCols = 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4';
   readonly selectedId = input<string | null>(null);
   /** Favourited item ids (org-scoped) — hearts on the card view. */
   readonly favouriteIds = input<ReadonlySet<string>>(new Set<string>());
