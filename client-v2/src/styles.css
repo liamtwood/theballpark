@@ -753,6 +753,15 @@ body {
   color: var(--color-text);
   font-weight: 500;
 }
+/* Drill-down selected state — the accent pill look (matches .bp-catstrip-pill). */
+.bp-catstrip-row--pill,
+.bp-catstrip-row--pill:hover {
+  background: var(--theme-accent);
+  color: var(--theme-accent-contrast, #fff);
+  border-radius: var(--radius-pill);
+  font-weight: 500;
+}
+.bp-catstrip-row--pill .bp-meta { color: var(--theme-accent-contrast, #fff); }
 /* Drill-down header: a back affordance + the active-category pill (accent). */
 .bp-catstrip-back {
   display: inline-flex;

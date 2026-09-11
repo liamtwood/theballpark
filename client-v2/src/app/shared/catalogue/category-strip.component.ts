@@ -45,7 +45,7 @@ import { CategoryInfo } from './catalogue.types';
           }
         } @else {
           <button type="button" class="bp-catstrip-row"
-                  [class.bp-catstrip-row--active]="!activeId()"
+                  [class.bp-catstrip-row--pill]="!activeId()"
                   (click)="categorySelected.emit(null)">
             <span class="truncate">{{ allLabel() }}</span>
             <span class="bp-meta">{{ totalCount() }}</span>
