@@ -14,6 +14,7 @@ import { EstimateBreakdown, ProjectDetail, ProjectUpdate } from '../../core/proj
 import { GalleryImage, PickerResult } from '../../core/media/media.types';
 import { errorDetail } from '../../core/http-error';
 import { EditFieldOption } from '../../shared/edit-field/edit-field.component';
+import { natoDate } from '../../shared/details-format';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
@@ -209,7 +210,15 @@ interface DetailForm {
                   </label>
                 </div>
                 <div class="mt-4 flex flex-wrap gap-x-5 gap-y-4">
-                  <label class="block w-[calc(12ch+2.5rem)]"><span class="ed-label mb-1.5 block">Event date</span><input class="ed-input" type="date" [ngModel]="form().eventDate" (ngModelChange)="patch({ eventDate: $event })" (blur)="saveSection('logistics')" (change)="saveSection('logistics')" /></label>
+                  <label class="block w-[calc(12ch+2.5rem)]"><span class="ed-label mb-1.5 block">Event date</span>
+                    <!-- NATO display + native OS picker: the transparent date input
+                         sits over the calendar icon; picking reformats to NATO. -->
+                    <div class="relative">
+                      <input class="ed-input pr-10" type="text" placeholder="e.g. 20-Aug-2026" title="Standard format: DD-Mmm-YYYY (free text like 'TBC' / 'Q4' is fine too)" [ngModel]="form().eventDate" (ngModelChange)="patch({ eventDate: $event })" (blur)="onEventDateBlur()" />
+                      <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" style="color: var(--color-text-secondary);"><lucide-icon name="calendar" [size]="16" /></span>
+                      <input type="date" aria-label="Pick event date" class="absolute right-0 top-0 h-full w-11 cursor-pointer opacity-0" (change)="onEventDatePicked($any($event.target).value)" />
+                    </div>
+                  </label>
                   <label class="block w-[calc(12ch+2.5rem)]"><span class="ed-label mb-1.5 block">Duration (days)</span><input class="ed-input" type="number" [ngModel]="form().durationDays" (ngModelChange)="patch({ durationDays: $event })" (blur)="saveSection('logistics')" /></label>
                   <label class="block w-[calc(12ch+2.5rem)]"><span class="ed-label mb-1.5 block">Guest count</span><input class="ed-input" type="number" [ngModel]="form().guestCount" (ngModelChange)="patch({ guestCount: $event })" (blur)="saveSection('logistics')" /></label>
                 </div>
@@ -483,6 +492,23 @@ export class ProjectDetailComponent {
 
   protected patch(p: Partial<DetailForm>): void {
     this.form.update((f) => ({ ...f, ...p }));
+  }
+
+  /** Native OS picker → NATO, then save. Build a LOCAL date from the yyyy-mm-dd
+   *  parts so the UTC-parsed ISO never shifts the day across a timezone boundary. */
+  protected onEventDatePicked(iso: string): void {
+    if (!iso) return;
+    const [y, m, d] = iso.split('-').map(Number);
+    this.patch({ eventDate: natoDate(new Date(y, m - 1, d).toDateString()) });
+    void this.saveSection('logistics');
+  }
+
+  /** Normalise the typed date to NATO on blur (free text like "TBC"/"Q4" is left
+   *  as-is), then save. */
+  protected onEventDateBlur(): void {
+    const v = this.form().eventDate.trim();
+    if (v) this.patch({ eventDate: natoDate(v) });
+    void this.saveSection('logistics');
   }
 
   protected snapshot(section: Section): void {
