@@ -762,6 +762,12 @@ body {
   font-weight: 500;
 }
 .bp-catstrip-row--pill .bp-meta { color: var(--theme-accent-contrast, #fff); }
+/* Drill-down on a gray rail (project Marketplace): rows are transparent pills,
+   white on hover, pink when selected. */
+.bp-catstrip--pills .bp-catstrip-row { border-radius: var(--radius-pill); }
+.bp-catstrip--pills .bp-catstrip-row:hover { background: var(--color-surface); }
+.bp-catstrip--pills .bp-catstrip-row--pill,
+.bp-catstrip--pills .bp-catstrip-row--pill:hover { background: var(--theme-accent); }
 /* Drill-down header: a back affordance + the active-category pill (accent). */
 .bp-catstrip-back {
   display: inline-flex;

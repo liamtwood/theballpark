@@ -19,8 +19,9 @@ import { CategoryInfo } from './catalogue.types';
     @if (mode() === 'drilldown') {
       <!-- Drill-down: one level at a time. Top = All + categories (chevron
            hints "open"); click drills into a category to show its subcategories
-           with a back row. Reverses via the back / "All Categories" row. -->
-      <nav class="flex flex-col gap-0.5">
+           with a back row. Reverses via the back / "All Categories" row.
+           Pills: transparent on the gray rail, white on hover, pink when selected. -->
+      <nav class="flex flex-col gap-1 bp-catstrip--pills">
         @if (activeCat(); as cat) {
           <!-- Header: << back to all, then the active-category pill (accent).
                Clicking the pill clears the subcategory (all in category). -->
@@ -37,7 +38,7 @@ import { CategoryInfo } from './catalogue.types';
           <!-- Subcategories — NOT indented (the pill already gives the context). -->
           @for (sub of subcategories(); track sub.id) {
             <button type="button" class="bp-catstrip-row"
-                    [class.bp-catstrip-row--active]="activeSubId() === sub.id"
+                    [class.bp-catstrip-row--pill]="activeSubId() === sub.id"
                     (click)="subcategorySelected.emit(activeSubId() === sub.id ? null : sub.id)">
               <span class="truncate">{{ sub.name }}</span>
               <span class="bp-meta">{{ sub.count }}</span>

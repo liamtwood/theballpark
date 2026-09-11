@@ -60,7 +60,7 @@ import { errorDetail } from '../../core/http-error';
             <!-- White card for the categories (strip internals unchanged).
                  Plain card, not the bp-card class (its display:block would beat
                  the flex column). -->
-            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-surface p-2 shadow-[var(--shadow-xs)]">
+            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-fill p-2">
               <app-scroll-peek class="min-h-0 flex-1">
                 <app-category-strip
                   mode="drilldown"
