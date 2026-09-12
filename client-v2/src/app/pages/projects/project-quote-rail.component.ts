@@ -17,7 +17,7 @@ import { isDeclined } from './quote-line.util';
   host: { class: 'bp-card block p-4' },
   template: `
     <div class="flex items-baseline justify-between">
-      <h3 class="bp-card-title text-md">Project Quote</h3>
+      <h3 class="bp-card-title text-md">Project Costs</h3>
       <span class="bp-meta">{{ visibleLines().length }} item{{ visibleLines().length === 1 ? '' : 's' }}</span>
     </div>
 

@@ -44,8 +44,8 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
       @if (showCart()) {
         <div class="inline-flex items-center rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
           <button type="button" class="bp-viewtoggle relative" [class.bp-viewtoggle--active]="cartOpen()"
-            pTooltip="Project quote" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
-            aria-label="Show project quote" (click)="cartToggled.emit()">
+            pTooltip="Project costs" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
+            aria-label="Show project costs" (click)="cartToggled.emit()">
             <lucide-icon name="shopping-cart" [size]="15" />
             @if (cartCount() > 0) {
               <span class="bp-count-badge absolute -right-1.5 -top-1.5">{{ cartCount() }}</span>
