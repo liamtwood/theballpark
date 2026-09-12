@@ -32,7 +32,7 @@ import { isDeclined } from './quote-line.util';
           <span class="bp-field-label">Subtotal</span>
           <span class="text-md font-semibold text-text">{{ headlineTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
         </div>
-        <button type="button" class="bp-btn-grad mt-3 w-full" (click)="checkout.emit()">
+        <button type="button" class="bp-btn-accent mt-3 w-full" (click)="checkout.emit()">
           Go to Ballpark
         </button>
       </div>

@@ -577,7 +577,8 @@ body {
    .bp-btn-grad    — the vivid brand CTA (edit-form Save changes per the v1
                      standard; landing/hero CTAs). Scarce on purpose. */
 .bp-btn-outline,
-.bp-btn-grad {
+.bp-btn-grad,
+.bp-btn-accent {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -636,6 +637,31 @@ body {
 }
 .bp-btn-grad:focus-visible {
   outline: 2px solid rgba(var(--bp-gradient-shadow-rgb), 1);
+  outline-offset: 2px;
+}
+
+/* .bp-btn-accent — solid dark-pink CTA (--theme-accent), matching the Ballpark
+   Cost Project Fees accent box. The project-cart "Go to Ballpark" CTA. */
+.bp-btn-accent {
+  background: var(--theme-accent);
+  color: var(--theme-accent-contrast, #fff);
+  box-shadow: var(--shadow-xs);
+}
+.bp-btn-accent:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.bp-btn-accent:active {
+  transform: translateY(0);
+}
+.bp-btn-accent:disabled {
+  opacity: 0.55;
+  cursor: default;
+  box-shadow: none;
+  transform: none;
+}
+.bp-btn-accent:focus-visible {
+  outline: 2px solid var(--theme-accent);
   outline-offset: 2px;
 }
 
