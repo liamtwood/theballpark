@@ -214,9 +214,10 @@ export class ProjectMarketplaceComponent {
   protected readonly quoteLines = signal<QuoteLine[]>([]);
   protected readonly quoteIds = computed(() => new Set(this.quoteLines().map((l) => l.itemId)));
 
-  /** Cart-badge count — matches the rail (declined lines drop off). */
+  /** Cart-badge count — matches the rail (declined + fee lines drop off; fees
+   *  are the null-category lines, managed on Ballpark Cost, not the cart). */
   protected readonly visibleQuoteCount = computed(
-    () => this.quoteLines().filter((l) => !isDeclined(l)).length,
+    () => this.quoteLines().filter((l) => !isDeclined(l) && l.categoryId != null).length,
   );
 
   private readonly loader = resource<QuoteLine[], string>({
