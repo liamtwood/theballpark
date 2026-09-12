@@ -212,14 +212,17 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         <!-- Each section (final view) ends with a matching summary card. The
              final "Project Cost Summary" carries the grand ballpark total + the
              Message Suppliers CTA. -->
-        @if (isFinal()) {
+        <!-- Project Costs + Fees each get a summary card; the grand total lives
+             in the "Project Total" container below. Only Project Costs carries
+             the Message Suppliers CTA. -->
+        @if (isFinal() && section.label !== 'Project Cost Summary') {
           <div class="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-card)] border border-hairline bg-fill p-5">
             <div class="min-w-0">
               <p class="bp-caption text-secondary">{{ summaryCaption(section.label) }}</p>
               <p class="bp-amount-hero mt-0.5 text-text">{{ summaryAmount(section.label) | currency: cur() : 'symbol' : '1.0-0' }}</p>
               <p class="bp-caption mt-1 text-secondary">{{ summaryNote(section.label) }}</p>
             </div>
-            @if (section.label === 'Project Cost Summary') {
+            @if (section.label === 'Project Costs') {
               <div class="flex flex-col items-end gap-1">
                 <button type="button" class="bp-msg-btn" [disabled]="sending()" (click)="messageSuppliers()">
                   <lucide-icon name="users" [size]="16" />
@@ -233,7 +236,12 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         </div>
         }
 
-        <app-estimate-breakdown [bd]="bd()" [budget]="budget()" [cur]="cur()" />
+        <!-- Project Total — the rollup (costs / coverage / fees / total + budget)
+             in its own titled container, matching the section cards. -->
+        <div class="bp-card bp-card--lifted mt-5 p-5">
+          <h2 class="bp-card-title">Project Total</h2>
+          <app-estimate-breakdown [bd]="bd()" [budget]="budget()" [cur]="cur()" />
+        </div>
 
         <p class="bp-caption mt-4">Indicative — based on marketplace base prices. Final supplier quotes and the priced rollup land with checkout.</p>
 
