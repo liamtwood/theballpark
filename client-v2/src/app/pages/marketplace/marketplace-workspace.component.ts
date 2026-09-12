@@ -16,43 +16,48 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
   imports: [MarketplaceControlsComponent, ScrollPeekComponent],
   host: { class: 'flex min-h-0 flex-1 flex-col' },
   template: `
-    <!-- Rounded white container, centred + gutter-reserved so its edges line up
-         with the header. Search fixed at the top; only the grid scrolls. -->
-    <div class="min-h-0 flex-1 bp-gutter px-6 pt-1">
-      <div class="mx-auto flex h-full min-h-0 w-full max-w-[var(--workspace-max)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-hairline bg-surface shadow-[var(--shadow-md)]">
-        <div class="shrink-0 p-4 pb-3">
-          <app-marketplace-controls
-            class="block"
-            [showCart]="showCart()"
-            [cartCount]="cartCount()"
-            [cartOpen]="cartOpen()"
-            (cartToggled)="cartOpen.set(!cartOpen())"
-          />
-        </div>
-        <!-- Rails: cats fixed (no scrollbar — down-arrow peek) + grid scrolls +
-             (project only) the quote cart on the right when toggled open. -->
-        <div class="flex min-h-0 flex-1 gap-6 px-4 pb-4">
-          <div class="hidden w-[210px] shrink-0 min-h-0 xl:block">
-            <!-- Gray card for the categories. Plain card, not the bp-card class
-                 (its display:block would beat the flex column). -->
-            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-fill p-2">
-              <app-scroll-peek class="min-h-0 flex-1">
-                <ng-content select="[strip]" />
-              </app-scroll-peek>
+    <!-- Row: the centred workspace container + (project only) the quote cart in
+         the RIGHT screen gutter — so the cart uses the empty space beside the
+         workspace rather than squeezing the grid. -->
+    <div class="flex min-h-0 flex-1">
+      <!-- Rounded white container, centred + gutter-reserved so its edges line up
+           with the header. Search fixed at the top; only the grid scrolls. -->
+      <div class="min-h-0 min-w-0 flex-1 bp-gutter px-6 pt-1">
+        <div class="mx-auto flex h-full min-h-0 w-full max-w-[var(--workspace-max)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-hairline bg-surface shadow-[var(--shadow-md)]">
+          <div class="shrink-0 p-4 pb-3">
+            <app-marketplace-controls
+              class="block"
+              [showCart]="showCart()"
+              [cartCount]="cartCount()"
+              [cartOpen]="cartOpen()"
+              (cartToggled)="cartOpen.set(!cartOpen())"
+            />
+          </div>
+          <!-- Rails: cats fixed (no scrollbar — down-arrow peek) + grid scrolls. -->
+          <div class="flex min-h-0 flex-1 gap-6 px-4 pb-4">
+            <div class="hidden w-[210px] shrink-0 min-h-0 xl:block">
+              <!-- Gray card for the categories. Plain card, not the bp-card class
+                   (its display:block would beat the flex column). -->
+              <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-fill p-2">
+                <app-scroll-peek class="min-h-0 flex-1">
+                  <ng-content select="[strip]" />
+                </app-scroll-peek>
+              </div>
+            </div>
+
+            <div class="min-h-0 min-w-0 flex-1 overflow-y-auto">
+              <ng-content />
             </div>
           </div>
-
-          <div class="min-h-0 min-w-0 flex-1 overflow-y-auto">
-            <ng-content />
-          </div>
-
-          @if (showCart() && cartOpen()) {
-            <div class="w-[300px] shrink-0 min-h-0 overflow-y-auto">
-              <ng-content select="[cart]" />
-            </div>
-          }
         </div>
       </div>
+
+      <!-- Quote cart in the right gutter (project only, when toggled open). -->
+      @if (showCart() && cartOpen()) {
+        <aside class="w-[320px] shrink-0 min-h-0 overflow-y-auto pr-6 pt-1">
+          <ng-content select="[cart]" />
+        </aside>
+      }
     </div>
   `,
 })
