@@ -2,6 +2,33 @@
   "dev": [],
   "preview": [
     {
+      "version": "v2.440",
+      "date": "2026-09-12",
+      "notes": [
+        {
+          "area": "Marketplace",
+          "items": [
+            "**Redesigned marketplace** — a prominent search with a single options button that reveals type (Items / Suppliers), filters and view all on one line, drill-down category browsing, and denser cards. The same layout now powers both the global marketplace and the in-project Marketplace tab.",
+            "Switch freely between **Card, List and Table** views."
+          ]
+        },
+        {
+          "area": "Projects",
+          "items": [
+            "**Project Costs cart** — inside a project's Marketplace tab, add catalogue items with the **+** on a card, then open the cart from the right to review your running **Project Costs** subtotal and jump straight to Ballpark Cost.",
+            "**Ballpark Cost** tidy-up — each section (Project Costs, Fees, Project Provisions) now has a matching summary card with a clear total, the sections collapse to just their totals when you arrive, and there's a dedicated **Project Total** container. Fees are highlighted in the brand accent.",
+            "**Event date** on About Project now has a proper date-picker."
+          ]
+        },
+        {
+          "area": "Everywhere",
+          "items": [
+            "Rounded, consistent **dropdowns** replace the old square menus across settings and edit forms."
+          ]
+        }
+      ]
+    },
+    {
       "version": "v2.376",
       "date": "2026-09-10",
       "notes": [

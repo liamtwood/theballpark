@@ -7,11 +7,420 @@
 
 ## 🚧 On dev — NOT yet on preview
 
-_Nothing pending — dev and preview are level._
+These are live on **dev** only — the demo list. Promoting `dev` → `preview` ships 1 version.
+
+### v2.441 — 2026-09-12
+
+**Fixes**
+
+- project cart — add an X to close it (overlay covered the toggle) `c8a0bcbf`
 
 ---
 
-## ✅ On preview — currently `v2.376`
+## ✅ On preview — currently `v2.440`
+
+### v2.440 — 2026-09-12
+
+**Marketplace**
+
+- **Redesigned marketplace** — a prominent search with a single options button that reveals type (Items / Suppliers), filters and view all on one line, drill-down category browsing, and denser cards. The same layout now powers both the global marketplace and the in-project Marketplace tab.
+- Switch freely between **Card, List and Table** views.
+
+**Projects**
+
+- **Project Costs cart** — inside a project's Marketplace tab, add catalogue items with the **+** on a card, then open the cart from the right to review your running **Project Costs** subtotal and jump straight to Ballpark Cost.
+- **Ballpark Cost** tidy-up — each section (Project Costs, Fees, Project Provisions) now has a matching summary card with a clear total, the sections collapse to just their totals when you arrive, and there's a dedicated **Project Total** container. Fees are highlighted in the brand accent.
+- **Event date** on About Project now has a proper date-picker.
+
+**Everywhere**
+
+- Rounded, consistent **dropdowns** replace the old square menus across settings and edit forms.
+
+<details><summary>Commits</summary>
+
+**Features**
+
+- rename the project cart to "Project Costs" for consistency `b9ac74e8`
+
+</details>
+
+### v2.439 — 2026-09-12
+
+**Fixes**
+
+- project cart Subtotal shows Project Costs, not Project Total `45ce82f4`
+
+### v2.438 — 2026-09-12
+
+**Fixes**
+
+- project cart hides fee lines (null-category) entirely `77149860`
+
+### v2.437 — 2026-09-12
+
+**Fixes**
+
+- project cart labels the fees bucket "Fees", not "Uncategorised" `7309498f`
+
+### v2.436 — 2026-09-12
+
+**Features**
+
+- project cart — Go to Ballpark CTA in solid dark-pink accent `8af13d0f`
+
+### v2.435 — 2026-09-12
+
+**Features**
+
+- project cart — simple Subtotal + Go to Ballpark at the top `0f00a059`
+
+### v2.434 — 2026-09-12
+
+**Features**
+
+- project cart is a right-edge flyover overlay (Amazon-style) `fbf1274d`
+
+### v2.433 — 2026-09-12
+
+**Features**
+
+- project cart uses the right screen gutter, not the middle column `acc4c55c`
+
+### v2.432 — 2026-09-12
+
+**Features**
+
+- project marketplace — rekindle the quote cart via a cart toggle `9d6e8983`
+
+### v2.431 — 2026-09-12
+
+**Features**
+
+- Ballpark Cost — Project Fees total box in dark-pink accent `b5be29d2`
+
+### v2.430 — 2026-09-12
+
+**Features**
+
+- Ballpark Cost — rename Provisions, reorder rollup, collapsible containers `c71c19e9`
+
+### v2.429 — 2026-09-12
+
+**Features**
+
+- Ballpark Cost — gray total box on every section incl Project Total `73afb627`
+
+### v2.428 — 2026-09-12
+
+**Features**
+
+- Ballpark Cost — Project Total container + Message CTA on Project Costs only `ca1b238a`
+
+### v2.427 — 2026-09-12
+
+**Features**
+
+- Ballpark Cost — matching summary card per section `f69928bf`
+
+### v2.426 — 2026-09-12
+
+**Chore**
+
+- delete dead EditSectionComponent `be45bc73`
+
+### v2.425 — 2026-09-11
+
+**Features**
+
+- marketplace options — bold Type/Filter/View titles `27cdf798`
+
+### v2.424 — 2026-09-11
+
+**Features**
+
+- marketplace options — titled Type/Filter/View, aligned + equal height `a156d379`
+
+### v2.423 — 2026-09-11
+
+**Features**
+
+- marketplace — one options icon reveals Type/Filter/View in a line `fb9f077b`
+
+### v2.422 — 2026-09-11
+
+**Features**
+
+- marketplace options — titled sections (Type/Filter/View) `a9c85b7d`
+
+### v2.421 — 2026-09-11
+
+**Features**
+
+- view-toggle tooltips + drop Items/Suppliers counts + pin filter `c0227638`
+
+### v2.420 — 2026-09-11
+
+**Features**
+
+- marketplace cluster — independent toggles + repositioned options `e634dee8`
+
+### v2.419 — 2026-09-11
+
+**Refactors**
+
+- share marketplace UI — global page + project tab use one chrome `3d05bd33`
+
+### v2.418 — 2026-09-11
+
+**Features**
+
+- drill-down header pill includes the back chevron `8557c2a3`
+
+### v2.417 — 2026-09-11
+
+**Features**
+
+- drill-down cat/subcat counts as dark-pink circle badges `520f9122`
+
+### v2.416 — 2026-09-11
+
+**Features**
+
+- tone down dark pink + Items/Suppliers counts `7e2d3e7e`
+
+### v2.415 — 2026-09-11
+
+**Features**
+
+- tab band standard — gray rail, white-on-hover, pink selected (all bands) `08c7b2eb`
+
+### v2.414 — 2026-09-11
+
+**Features**
+
+- project main tab band — gray container, white-on-hover, pink selected `34c954c8`
+
+### v2.413 — 2026-09-11
+
+**Features**
+
+- drill-down rail — gray container, white-on-hover pills, pink selected `4abe1698`
+
+### v2.412 — 2026-09-11
+
+**Fixes**
+
+- project Marketplace containers use standard shadow + radius tokens `c869801b`
+
+### v2.411 — 2026-09-11
+
+**Fixes**
+
+- marketplace category counts exclude components (match the grid) `39d2a997`
+
+### v2.410 — 2026-09-11
+
+**Fixes**
+
+- drill-down pill height matches the All-Categories pill `8c95c820`
+
+### v2.409 — 2026-09-11
+
+**Features**
+
+- drill-down — chevron-left back (matches scroll-peek) + uniform font size `546ec3a7`
+
+### v2.408 — 2026-09-11
+
+**Features**
+
+- drill-down — selected 'All Categories' uses the accent pill look `f5894e95`
+
+### v2.407 — 2026-09-11
+
+**Features**
+
+- drill-down — drop the > chevron on top-level categories `71aa36ef`
+
+### v2.406 — 2026-09-11
+
+**Features**
+
+- drill-down pill count right-aligned to match subcat counts `fa697620`
+
+### v2.405 — 2026-09-11
+
+**Features**
+
+- drill-down header — uniform-width pill + hollow back arrow `11cee554`
+
+### v2.404 — 2026-09-11
+
+**Features**
+
+- drill-down header — << back + accent category pill, flat subcats `ca3c7652`
+
+### v2.403 — 2026-09-11
+
+**Features**
+
+- category rail drill-down mode (scoped to project Marketplace) `ff94591d`
+
+### v2.402 — 2026-09-11
+
+**Fixes**
+
+- collapsing hero — vertically centre the name in the collapsed band `dae53496`
+
+### v2.401 — 2026-09-11
+
+**Features**
+
+- collapsing hero — shrink the project name on collapse `6ce2319e`
+
+### v2.400 — 2026-09-11
+
+**Fixes**
+
+- collapsing hero — slower transition (0.3s / 0.24s) `af614df2`
+
+### v2.399 — 2026-09-11
+
+**Fixes**
+
+- collapsing hero — bigger name band (72px) + snappier transition `380f7af2`
+
+### v2.398 — 2026-09-11
+
+**Features**
+
+- collapsing project hero on work tabs (animated, auto-reverse) `63e968ae`
+
+### v2.397 — 2026-09-11
+
+**Features**
+
+- project Marketplace — category rail peeks (no scrollbar, down arrow) `3c24e031`
+
+### v2.396 — 2026-09-11
+
+**Features**
+
+- project Marketplace — hide empty categories/subcategories `8734fc77`
+
+### v2.395 — 2026-09-11
+
+**Features**
+
+- project Marketplace — 3-up cards + wider category container `2591b451`
+
+### v2.394 — 2026-09-11
+
+**Features**
+
+- project Marketplace — search inside the container, more rounded `395c93fb`
+
+### v2.393 — 2026-09-11
+
+**Features**
+
+- project Marketplace containers + header alignment `34d7d030`
+
+### v2.392 — 2026-09-11
+
+**Features**
+
+- project Marketplace — mockup restyle + single scroll `1f1ee140`
+
+### v2.391 — 2026-09-11
+
+**Features**
+
+- project Marketplace — compact search + 3-icon controls cluster `a0994bb0`
+
+### v2.390 — 2026-09-11
+
+**Features**
+
+- constrain project Marketplace to the workspace column + dense cards `82c4927c`
+
+### v2.389 — 2026-09-11
+
+**Features**
+
+- hide the Project Quote rail on the project Marketplace tab `d4e66660`
+
+### v2.388 — 2026-09-11
+
+**Refactors**
+
+- migrate pages settings off legacy edit-kit to ed-*/app-select `ed561f1b`
+
+### v2.387 — 2026-09-11
+
+**Refactors**
+
+- migrate categories settings off legacy edit-kit to ed-*/app-select `bc9a79bf`
+
+### v2.386 — 2026-09-11
+
+**Refactors**
+
+- migrate codelists settings add-row off legacy edit-kit to ed-* `828f2691`
+
+### v2.385 — 2026-09-11
+
+**Refactors**
+
+- migrate codelist value row off legacy edit-kit to ed-*/app-select `2341ab9e`
+
+### v2.384 — 2026-09-11
+
+**Refactors**
+
+- migrate profile team section off legacy edit-kit to ed-*/app-select `b7526c7d`
+
+### v2.383 — 2026-09-11
+
+**Features**
+
+- New Project — align fields to ed-* look + Event type is app-select `295b429f`
+
+### v2.382 — 2026-09-11
+
+**Features**
+
+- app-select type-ahead filter + convert profile Country/Currency `03c28a61`
+
+### v2.381 — 2026-09-11
+
+**Refactors**
+
+- move app-select CSS to styles.css as .bp-select-* (guard-clean) `61acd22e`
+
+### v2.380 — 2026-09-11
+
+**Fixes**
+
+- app-select uses --shadow-lg token, not a raw rgba fallback `f3d182b1`
+
+### v2.379 — 2026-09-11
+
+**Features**
+
+- shared app-select — a rounded dropdown (LOV) to replace native <select> `f26d26fb`
+
+### v2.378 — 2026-09-11
+
+**Fixes**
+
+- About Project Event date uses the standard NATO + native date-picker widget `745e242a`
+
+### v2.377 — 2026-09-10
+
+**Fixes**
+
+- Ballpark Cost Event date gets a native date picker `9709ea2e`
 
 ### v2.376 — 2026-09-10
 
@@ -39,6 +448,10 @@ _Nothing pending — dev and preview are level._
 **Fixes**
 
 - M1/M2 pre-preview — shared declined predicate + reuse COMPLETED_STATUSES `4d3092f0`
+
+**Docs**
+
+- What's new — curated release note for the v2 UI arc promote `632d9295`
 
 </details>
 
