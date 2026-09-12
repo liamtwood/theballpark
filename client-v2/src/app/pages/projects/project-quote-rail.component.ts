@@ -73,7 +73,8 @@ import { isDeclined } from './quote-line.util';
 export class ProjectQuoteRailComponent {
   readonly lines = input.required<QuoteLine[]>();
   /** The server estimate cascade — null until loaded. When present the headline
-   *  Subtotal shows the authoritative Project Total; else a base subtotal. */
+   *  Subtotal shows Project Costs (the cart's categorised items, marked up);
+   *  else a base subtotal. Fees/provisions are excluded — they're not in the cart. */
   readonly breakdown = input<EstimateBreakdown | null>(null);
   readonly removed = output<string>();
   readonly qtyChanged = output<{ itemId: string; quantity: number }>();
@@ -96,7 +97,9 @@ export class ProjectQuoteRailComponent {
     this.visibleLines().reduce((sum, l) => sum + (l.basePrice ?? 0) * (l.quantity ?? 1), 0)
   );
 
-  /** The headline Subtotal (ex-VAT): the server Project Total once the cascade
-   *  has loaded (matches Ballpark Cost), else the indicative base subtotal. */
-  protected readonly headlineTotal = computed(() => this.breakdown()?.projectTotal ?? this.subtotal());
+  /** The headline Subtotal (ex-VAT): Project Costs from the server cascade once
+   *  loaded (matches Ballpark Cost's Project Costs — the cart's categorised
+   *  items, marked up, excluding fees/provisions), else the indicative base
+   *  subtotal. */
+  protected readonly headlineTotal = computed(() => this.breakdown()?.projectCosts ?? this.subtotal());
 }
