@@ -44,7 +44,7 @@ let uid = 0;
   // panel renders in the CDK overlay at the document root, so its chrome must
   // be global, not component-scoped).
   template: `
-    <button #trigger type="button" class="bp-select-trigger" [class.is-open]="open()" [disabled]="disabled()"
+    <button #trigger type="button" class="bp-select-trigger" [class.bp-select-trigger--sm]="compact()" [class.is-open]="open()" [disabled]="disabled()"
       role="combobox" aria-haspopup="listbox" [attr.aria-expanded]="open()"
       [attr.aria-label]="ariaLabel() || null"
       [attr.aria-activedescendant]="open() && activeIndex() >= 0 ? optId(activeIndex()) : null"
@@ -99,6 +99,8 @@ export class SelectComponent {
   /** Shown when nothing is selected. */
   readonly placeholder = input<string>('—');
   readonly disabled = input<boolean>(false);
+  /** 40px trigger (matches the view/tab pills) instead of the default 44px. */
+  readonly compact = input<boolean>(false);
   readonly ariaLabel = input<string>();
   /** Show a type-ahead filter box at the top of the panel (for long lists). */
   readonly filter = input<boolean>(false);

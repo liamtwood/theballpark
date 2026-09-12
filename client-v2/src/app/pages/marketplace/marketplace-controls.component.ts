@@ -40,12 +40,25 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
       </div>
     </div>
 
-    <!-- Row 2: Type, Filter and View, all in one horizontal line. -->
+    <!-- Row 2: Type (left, cat-container width) · Filter (left-aligned with the
+         first item card) · View (right) — each titled, all the same 40px control
+         height. gap-6 matches the rails gap so Filter lines up over the grid. -->
     @if (open()) {
-      <div class="mt-3 flex flex-wrap items-center gap-4">
-        <app-tab-band [tabs]="modeTabs" [active]="store.mode()" (activeChange)="store.setMode($event)" />
-        <app-marketplace-filters />
-        <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
+      <div class="mt-3 flex items-start gap-6">
+        <div class="w-[210px] shrink-0">
+          <span class="bp-field-label mb-1.5 block">Type</span>
+          <app-tab-band [tabs]="modeTabs" [active]="store.mode()" [fill]="true" [compact]="true" (activeChange)="store.setMode($event)" />
+        </div>
+        <div class="flex min-w-0 flex-1 items-start justify-between gap-4">
+          <div>
+            <span class="bp-field-label mb-1.5 block">Filter</span>
+            <app-marketplace-filters />
+          </div>
+          <div>
+            <span class="bp-field-label mb-1.5 block">View</span>
+            <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
+          </div>
+        </div>
       </div>
     }
   `,

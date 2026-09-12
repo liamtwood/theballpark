@@ -23,6 +23,7 @@ export interface TabBandTab {
     class: 'bp-tab-band',
     '[class.bp-tab-band--even]': 'equalWidth()',
     '[class.bp-tab-band--fill]': 'fill()',
+    '[class.bp-tab-band--sm]': 'compact()',
   },
   template: `
     @for (tab of tabs(); track tab.key) {
@@ -51,4 +52,6 @@ export class TabBandComponent {
   readonly equalWidth = input<boolean>(false);
   /** Stretch the band to fill its container, tabs sharing the width equally. */
   readonly fill = input<boolean>(false);
+  /** 40px band (matches the view toggle / compact selects). */
+  readonly compact = input<boolean>(false);
 }

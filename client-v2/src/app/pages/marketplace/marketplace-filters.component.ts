@@ -14,13 +14,13 @@ import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
   template: `
     @if (store.mode() === 'items') {
       <div class="flex flex-wrap items-center gap-3">
-        <app-select ariaLabel="Price" class="w-40" [options]="priceOptions"
+        <app-select ariaLabel="Price" class="w-40" [compact]="true" [options]="priceOptions"
           [value]="store.priceBracket() ?? 'any'"
           (changed)="store.setPriceBracket($event === 'any' ? null : $event)" />
-        <app-select ariaLabel="Tier" class="w-32" [options]="tierOptions"
+        <app-select ariaLabel="Tier" class="w-32" [compact]="true" [options]="tierOptions"
           [value]="store.tier() ?? 'any'"
           (changed)="store.setTier($event === 'any' ? null : $event)" />
-        <app-select ariaLabel="Supplier" class="w-44" [options]="supplierOptions()"
+        <app-select ariaLabel="Supplier" class="w-44" [compact]="true" [options]="supplierOptions()"
           [value]="store.supplierId() ?? 'any'"
           (changed)="store.setSupplier($event === 'any' ? null : $event)" />
         @if (store.hasFilters()) {
