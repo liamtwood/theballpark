@@ -222,7 +222,10 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
              cards are hidden); only Project Costs carries the Message Suppliers
              CTA. The grand total's box lives in the Project Total container. -->
         @if (isFinal()) {
-          <div class="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-card)] border border-hairline bg-fill p-5">
+          <div class="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-card)] border p-5"
+               [class.bg-fill]="section.label !== 'Project Fees'"
+               [class.border-hairline]="section.label !== 'Project Fees'"
+               [class.bp-total-accent]="section.label === 'Project Fees'">
             <div class="min-w-0">
               <p class="bp-caption text-secondary">{{ summaryCaption(section.label) }}</p>
               <p class="bp-amount-hero mt-0.5 text-text">{{ summaryAmount(section.label) | currency: cur() : 'symbol' : '1.0-0' }}</p>

@@ -381,6 +381,10 @@
 .bp-select-trigger.is-open { border-color: var(--theme-accent); }
 /* Compact 40px trigger (matches the view/tab pills in the marketplace filter). */
 .bp-select-trigger--sm { height: 40px; }
+
+/* Accent total box — dark-pink fill + white text (Ballpark Cost: Project Fees). */
+.bp-total-accent { background: var(--theme-accent); border-color: var(--theme-accent); }
+.bp-total-accent p { color: var(--theme-accent-contrast, #fff); }
 .bp-select-trigger:disabled { background: var(--color-fill); color: var(--color-text-secondary); cursor: not-allowed; }
 .bp-select-value { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bp-select-value.is-placeholder { color: var(--color-text-secondary); opacity: 0.7; }
