@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { TooltipModule } from 'primeng/tooltip';
 import { MarketplaceStore } from './marketplace-store';
@@ -38,6 +38,21 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
           <lucide-icon name="sliders-horizontal" [size]="15" />
         </button>
       </div>
+
+      <!-- Project quote cart — toggles the right-side rail. Only shown inside a
+           project (showCart); the global marketplace never mounts it. -->
+      @if (showCart()) {
+        <div class="inline-flex items-center rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
+          <button type="button" class="bp-viewtoggle relative" [class.bp-viewtoggle--active]="cartOpen()"
+            pTooltip="Project quote" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
+            aria-label="Show project quote" (click)="cartToggled.emit()">
+            <lucide-icon name="shopping-cart" [size]="15" />
+            @if (cartCount() > 0) {
+              <span class="bp-count-badge absolute -right-1.5 -top-1.5">{{ cartCount() }}</span>
+            }
+          </button>
+        </div>
+      }
     </div>
 
     <!-- Row 2: Type (left, cat-container width) · Filter (left-aligned with the
@@ -65,6 +80,13 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
 })
 export class MarketplaceControlsComponent {
   protected readonly store = inject(MarketplaceStore);
+
+  /** Project-only quote cart affordance. Off by default → the global
+   *  marketplace shows no cart; the in-project tab passes these through. */
+  readonly showCart = input(false);
+  readonly cartCount = input(0);
+  readonly cartOpen = input(false);
+  readonly cartToggled = output<void>();
 
   /** One toggle: reveals the Type / Filter / View options line. */
   protected readonly open = signal(false);

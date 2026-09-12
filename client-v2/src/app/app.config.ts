@@ -103,6 +103,8 @@ import {
   // @for, the cards after it). These complete the 24-icon category set.
   Bug, Camera, CircleHelp, ClipboardPen, FlaskConical, Lightbulb, Monitor,
   PersonStanding, ShoppingBag, Signature, Ticket, Wrench,
+  // project Marketplace — quote cart toggle
+  ShoppingCart,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -193,6 +195,8 @@ export const appConfig: ApplicationConfig = {
         // Remaining DB category-seed icons (were unregistered → blank cards)
         Bug, Camera, CircleHelp, ClipboardPen, FlaskConical, Lightbulb, Monitor,
         PersonStanding, ShoppingBag, Signature, Ticket, Wrench,
+        // project Marketplace — quote cart toggle
+        ShoppingCart,
         // pV2-PROJECTS-02 — Estimate summary cards (Date/Location/Duration/Guests/Budget)
         Calendar, Users, Wallet,
         // pV2-MEDIA-01c — gallery tile actions

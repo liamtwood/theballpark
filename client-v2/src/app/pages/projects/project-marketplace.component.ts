@@ -14,8 +14,8 @@ import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { ProjectService } from '../../core/projects/project.service';
 import { EstimateBreakdown, QuoteLine } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
-// ProjectQuoteRailComponent import intentionally removed while the rail is
-// hidden (may return as a dialog) — the quote state/handlers stay in the class.
+import { ProjectQuoteRailComponent } from './project-quote-rail.component';
+import { isDeclined } from './quote-line.util';
 
 /** pV2-PROJECTS-02 slice 2 — the inside-project Marketplace tab. The SAME
  *  catalogue engine the global marketplace + supplier store mount (RP-06,
@@ -33,6 +33,7 @@ import { errorDetail } from '../../core/http-error';
     CatalogueGridComponent,
     SupplierGridComponent,
     QuickViewDialogComponent,
+    ProjectQuoteRailComponent,
   ],
   providers: [MarketplaceStore],
   /* Viewport-fit, independent column scroll — same structure as the global
@@ -43,10 +44,10 @@ import { errorDetail } from '../../core/http-error';
   host: { class: 'flex min-h-0 flex-1 flex-col' },
   template: `
     <!-- Shared marketplace chrome (container + search/cluster + gray drill-down
-         rail + grid). Project-specific bits are the strip data + the card "+"
-         (adds to THIS project's quote). The quote rail is parked for a future
-         dialog — TODO(quote-dialog). -->
-    <app-marketplace-workspace>
+         rail + grid). Project-specific bits are the strip data, the card "+"
+         (adds to THIS project's quote) and the quote cart rail on the right —
+         toggled by the cart icon in the controls. -->
+    <app-marketplace-workspace [showCart]="true" [cartCount]="visibleQuoteCount()">
       <app-category-strip
         strip
         mode="drilldown"
@@ -101,6 +102,17 @@ import { errorDetail } from '../../core/http-error';
           </div>
         }
       }
+
+      <!-- The project quote cart (the card we hid) — projected into the
+           workspace's right-side slot; shows only when the cart is toggled. -->
+      <app-project-quote-rail
+        cart
+        [lines]="quoteLines()"
+        [breakdown]="est.value() ?? null"
+        (removed)="onQuoteToggle($event)"
+        (qtyChanged)="onQtyChange($event.itemId, $event.quantity)"
+        (checkout)="onCheckout()"
+      />
     </app-marketplace-workspace>
 
     <!-- Quick View — inside a project, "Add to ballpark" adds straight to
@@ -201,6 +213,11 @@ export class ProjectMarketplaceComponent {
 
   protected readonly quoteLines = signal<QuoteLine[]>([]);
   protected readonly quoteIds = computed(() => new Set(this.quoteLines().map((l) => l.itemId)));
+
+  /** Cart-badge count — matches the rail (declined lines drop off). */
+  protected readonly visibleQuoteCount = computed(
+    () => this.quoteLines().filter((l) => !isDeclined(l)).length,
+  );
 
   private readonly loader = resource<QuoteLine[], string>({
     params: () => this.projectId(),

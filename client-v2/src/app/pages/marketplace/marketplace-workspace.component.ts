@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
 import { MarketplaceControlsComponent } from './marketplace-controls.component';
 import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.component';
 
@@ -21,9 +21,16 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
     <div class="min-h-0 flex-1 bp-gutter px-6 pt-1">
       <div class="mx-auto flex h-full min-h-0 w-full max-w-[var(--workspace-max)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-hairline bg-surface shadow-[var(--shadow-md)]">
         <div class="shrink-0 p-4 pb-3">
-          <app-marketplace-controls class="block" />
+          <app-marketplace-controls
+            class="block"
+            [showCart]="showCart()"
+            [cartCount]="cartCount()"
+            [cartOpen]="cartOpen()"
+            (cartToggled)="cartOpen.set(!cartOpen())"
+          />
         </div>
-        <!-- Rails: cats fixed (no scrollbar — down-arrow peek) + grid scrolls. -->
+        <!-- Rails: cats fixed (no scrollbar — down-arrow peek) + grid scrolls +
+             (project only) the quote cart on the right when toggled open. -->
         <div class="flex min-h-0 flex-1 gap-6 px-4 pb-4">
           <div class="hidden w-[210px] shrink-0 min-h-0 xl:block">
             <!-- Gray card for the categories. Plain card, not the bp-card class
@@ -38,9 +45,23 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
           <div class="min-h-0 min-w-0 flex-1 overflow-y-auto">
             <ng-content />
           </div>
+
+          @if (showCart() && cartOpen()) {
+            <div class="w-[300px] shrink-0 min-h-0 overflow-y-auto">
+              <ng-content select="[cart]" />
+            </div>
+          }
         </div>
       </div>
     </div>
   `,
 })
-export class MarketplaceWorkspaceComponent {}
+export class MarketplaceWorkspaceComponent {
+  /** Project-only quote cart: shows the toggle in the controls + the right-side
+   *  `[cart]` slot. Off by default so the global marketplace is unchanged. */
+  readonly showCart = input(false);
+  readonly cartCount = input(0);
+
+  /** Whether the right-side cart rail is open (toggled from the controls). */
+  protected readonly cartOpen = signal(false);
+}
