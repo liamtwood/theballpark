@@ -84,8 +84,13 @@ export class ProjectQuoteRailComponent {
   protected readonly visibleLines = computed(() => this.lines().filter((l) => !isDeclined(l)));
 
   /** Cart lines grouped by category (shared helper — same grouping as the
-   *  Estimate tab). Server returns lines category-ordered → display order. */
-  protected readonly groups = computed(() => groupByCategory(this.visibleLines()));
+   *  Estimate tab). Server returns lines category-ordered → display order.
+   *  '__none' is the uncategorised bucket, which by the server's pricing model
+   *  IS the agent's Fees — label it "Fees" to match Ballpark Cost / the SOW
+   *  (never show a client-facing "Uncategorised"). */
+  protected readonly groups = computed(() =>
+    groupByCategory(this.visibleLines()).map((g) => (g.id === '__none' ? { ...g, name: 'Fees' } : g)),
+  );
 
   /** Base-price subtotal — indicative, used until the cascade loads. */
   private readonly subtotal = computed(() =>
