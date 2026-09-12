@@ -17,16 +17,11 @@ import { EstimateBreakdown } from '../../core/projects/project.types';
         <span>Project Costs</span><span class="tabular-nums">{{ bd().projectCosts | currency: cur() : 'symbol' : '1.0-0' }}</span>
       </div>
       <div class="flex justify-between bp-body-small text-secondary">
-        <span>Project Coverage</span><span class="tabular-nums">{{ bd().coverage | currency: cur() : 'symbol' : '1.0-0' }}</span>
-      </div>
-      <div class="flex justify-between bp-body-small text-secondary">
         <span>Project Fees</span><span class="tabular-nums">{{ bd().fees | currency: cur() : 'symbol' : '1.0-0' }}</span>
       </div>
-    </div>
-    <!-- Grand total in a gray box, matching each section's total box. -->
-    <div class="mt-4 rounded-[var(--radius-card)] border border-hairline bg-fill p-5">
-      <p class="bp-caption text-secondary">Project Total, excluding VAT</p>
-      <p class="bp-amount-hero mt-0.5 text-text">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-0' }}</p>
+      <div class="flex justify-between bp-body-small text-secondary">
+        <span>Project Provisions</span><span class="tabular-nums">{{ bd().coverage | currency: cur() : 'symbol' : '1.0-0' }}</span>
+      </div>
     </div>
 
     @if (budget() > 0) {

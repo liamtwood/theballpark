@@ -95,7 +95,15 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         <!-- Each section is ONE white container (matches Event Description);
              its category cards are light-gray, their items white. -->
         <div class="bp-card bp-card--lifted mt-5 p-5">
-        <h2 class="bp-card-title">{{ section.label }}</h2>
+        @if (isFinal()) {
+          <button type="button" class="flex w-full items-center justify-between text-left" (click)="toggleBox(section.label)">
+            <h2 class="bp-card-title">{{ section.label }}</h2>
+            <lucide-icon [name]="isBoxOpen(section.label) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
+          </button>
+        } @else {
+          <h2 class="bp-card-title">{{ section.label }}</h2>
+        }
+        @if (!isFinal() || isBoxOpen(section.label)) {
         <div class="mt-3 flex flex-col gap-2.5">
           @for (g of section.groups; track g.id) {
             @if (g.isCoverage) {
@@ -209,12 +217,10 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
             }
           }
         </div>
-        <!-- Each section (final view) ends with a matching summary card. The
-             final "Project Cost Summary" carries the grand ballpark total + the
-             Message Suppliers CTA. -->
-        <!-- Every section gets a gray total box; only Project Costs carries the
-             Message Suppliers CTA. The grand total's box lives in the Project
-             Total container below. -->
+        }
+        <!-- Every section shows a gray total box (always visible, even when the
+             cards are hidden); only Project Costs carries the Message Suppliers
+             CTA. The grand total's box lives in the Project Total container. -->
         @if (isFinal()) {
           <div class="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-card)] border border-hairline bg-fill p-5">
             <div class="min-w-0">
@@ -236,11 +242,25 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         </div>
         }
 
-        <!-- Project Total — the rollup (costs / coverage / fees / total + budget)
-             in its own titled container, matching the section cards. -->
+        <!-- Project Total — the rollup (costs / fees / provisions + budget) in
+             its own titled container; the gray grand-total box stays visible even
+             when the rollup is minimized. -->
         <div class="bp-card bp-card--lifted mt-5 p-5">
-          <h2 class="bp-card-title">Project Total</h2>
-          <app-estimate-breakdown [bd]="bd()" [budget]="budget()" [cur]="cur()" />
+          @if (isFinal()) {
+            <button type="button" class="flex w-full items-center justify-between text-left" (click)="toggleBox('Project Total')">
+              <h2 class="bp-card-title">Project Total</h2>
+              <lucide-icon [name]="isBoxOpen('Project Total') ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
+            </button>
+          } @else {
+            <h2 class="bp-card-title">Project Total</h2>
+          }
+          @if (!isFinal() || isBoxOpen('Project Total')) {
+            <app-estimate-breakdown [bd]="bd()" [budget]="budget()" [cur]="cur()" />
+          }
+          <div class="mt-4 rounded-[var(--radius-card)] border border-hairline bg-fill p-5">
+            <p class="bp-caption text-secondary">Project Total, excluding VAT</p>
+            <p class="bp-amount-hero mt-0.5 text-text">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-0' }}</p>
+          </div>
         </div>
 
         <p class="bp-caption mt-4">Indicative — based on marketplace base prices. Final supplier quotes and the priced rollup land with checkout.</p>
@@ -545,7 +565,7 @@ export class ProjectEstimateComponent {
     const out: { label: string; groups: typeof all }[] = [{ label: 'Project Costs', groups: costs }];
     if (this.isFinal()) {
       out.push({ label: 'Fees', groups: fees });
-      out.push({ label: 'Project Cost Summary', groups: [this.coverageGroup()] });
+      out.push({ label: 'Project Provisions', groups: [this.coverageGroup()] });
     } else if (fees.length) {
       out.push({ label: 'Fees', groups: fees });
     }
@@ -557,20 +577,35 @@ export class ProjectEstimateComponent {
   protected summaryCaption(label: string): string {
     return label === 'Fees'
       ? 'Total fees, excluding VAT'
-      : label === 'Project Cost Summary'
-        ? 'Total coverage, excluding VAT'
+      : label === 'Project Provisions'
+        ? 'Total provisions, excluding VAT'
         : 'Project costs, excluding VAT';
   }
   protected summaryAmount(label: string): number {
     const b = this.bd();
-    return label === 'Fees' ? b.fees : label === 'Project Cost Summary' ? b.coverage : b.projectCosts;
+    return label === 'Fees' ? b.fees : label === 'Project Provisions' ? b.coverage : b.projectCosts;
   }
   protected summaryNote(label: string): string {
     return label === 'Fees'
       ? 'Your agency fees — never marked up.'
-      : label === 'Project Cost Summary'
+      : label === 'Project Provisions'
         ? 'Contingency + insurance on the project costs.'
         : 'Every costed line is backed by an approved supplier listing.';
+  }
+
+  /** The summary containers (Project Costs / Fees / Project Provisions / Project
+   *  Total) start MINIMIZED on the Final view — title + gray box only. Click a
+   *  title to show/hide its cards. Empty set = all collapsed. */
+  protected readonly boxOpen = signal<ReadonlySet<string>>(new Set());
+  protected isBoxOpen(label: string): boolean {
+    return this.boxOpen().has(label);
+  }
+  protected toggleBox(label: string): void {
+    this.boxOpen.update((s) => {
+      const next = new Set(s);
+      next.has(label) ? next.delete(label) : next.add(label);
+      return next;
+    });
   }
 
   // Track COLLAPSED categories (not expanded) so the default — and every new
