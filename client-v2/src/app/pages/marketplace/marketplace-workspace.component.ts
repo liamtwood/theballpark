@@ -16,10 +16,10 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
   imports: [MarketplaceControlsComponent, ScrollPeekComponent],
   host: { class: 'flex min-h-0 flex-1 flex-col' },
   template: `
-    <!-- Row: the centred workspace container + (project only) the quote cart in
-         the RIGHT screen gutter — so the cart uses the empty space beside the
-         workspace rather than squeezing the grid. -->
-    <div class="flex min-h-0 flex-1">
+    <!-- Row (relative anchor): the centred workspace container + (project only)
+         the quote cart as a RIGHT-edge flyover overlay — Amazon-style, it sits
+         on top of the right gutter and does NOT reflow the workspace. -->
+    <div class="relative flex min-h-0 flex-1">
       <!-- Rounded white container, centred + gutter-reserved so its edges line up
            with the header. Search fixed at the top; only the grid scrolls. -->
       <div class="min-h-0 min-w-0 flex-1 bp-gutter px-6 pt-1">
@@ -52,9 +52,10 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
         </div>
       </div>
 
-      <!-- Quote cart in the right gutter (project only, when toggled open). -->
+      <!-- Quote cart — a right-edge flyover overlay (project only, when toggled).
+           Absolute so it floats over the right gutter without reflowing the grid. -->
       @if (showCart() && cartOpen()) {
-        <aside class="w-[320px] shrink-0 min-h-0 overflow-y-auto pr-6 pt-1">
+        <aside class="absolute right-0 top-0 bottom-0 z-20 w-[320px] overflow-y-auto pr-6 pt-1">
           <ng-content select="[cart]" />
         </aside>
       }
