@@ -209,22 +209,25 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
             }
           }
         </div>
-        <!-- After the scope-of-work items (Project Costs): the ballpark total
-             + Message Suppliers CTA (final view). -->
-        @if (first && isFinal()) {
+        <!-- Each section (final view) ends with a matching summary card. The
+             final "Project Cost Summary" carries the grand ballpark total + the
+             Message Suppliers CTA. -->
+        @if (isFinal()) {
           <div class="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-card)] border border-hairline bg-fill p-5">
             <div class="min-w-0">
-              <p class="bp-caption text-secondary">Total ballpark, excluding VAT</p>
-              <p class="bp-amount-hero mt-0.5 text-text">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-0' }}</p>
-              <p class="bp-caption mt-1 text-secondary">Every costed line is backed by an approved supplier listing.</p>
+              <p class="bp-caption text-secondary">{{ summaryCaption(section.label) }}</p>
+              <p class="bp-amount-hero mt-0.5 text-text">{{ summaryAmount(section.label) | currency: cur() : 'symbol' : '1.0-0' }}</p>
+              <p class="bp-caption mt-1 text-secondary">{{ summaryNote(section.label) }}</p>
             </div>
-            <div class="flex flex-col items-end gap-1">
-              <button type="button" class="bp-msg-btn" [disabled]="sending()" (click)="messageSuppliers()">
-                <lucide-icon name="users" [size]="16" />
-                Message suppliers
-              </button>
-              <p class="bp-caption text-secondary">Sending makes this project live</p>
-            </div>
+            @if (section.label === 'Project Cost Summary') {
+              <div class="flex flex-col items-end gap-1">
+                <button type="button" class="bp-msg-btn" [disabled]="sending()" (click)="messageSuppliers()">
+                  <lucide-icon name="users" [size]="16" />
+                  Message suppliers
+                </button>
+                <p class="bp-caption text-secondary">Sending makes this project live</p>
+              </div>
+            }
           </div>
         }
         </div>
@@ -540,6 +543,27 @@ export class ProjectEstimateComponent {
     }
     return out.filter((s) => s.groups.length);
   });
+
+  /** Per-section summary card content (Final view). Project Costs → its subtotal;
+   *  Fees → fee lines; Project Cost Summary → the grand ballpark (ex-VAT). */
+  protected summaryCaption(label: string): string {
+    return label === 'Fees'
+      ? 'Total fees, excluding VAT'
+      : label === 'Project Cost Summary'
+        ? 'Total ballpark, excluding VAT'
+        : 'Project costs, excluding VAT';
+  }
+  protected summaryAmount(label: string): number {
+    const b = this.bd();
+    return label === 'Fees' ? b.fees : label === 'Project Cost Summary' ? b.projectTotal : b.projectCosts;
+  }
+  protected summaryNote(label: string): string {
+    return label === 'Fees'
+      ? 'Your agency fees — never marked up.'
+      : label === 'Project Cost Summary'
+        ? 'Project costs + fees + coverage, excluding VAT.'
+        : 'Every costed line is backed by an approved supplier listing.';
+  }
 
   // Track COLLAPSED categories (not expanded) so the default — and every new
   // category, and the state after a navigate-away-and-back — is EXPANDED. This
