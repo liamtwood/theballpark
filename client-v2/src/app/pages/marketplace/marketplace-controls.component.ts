@@ -46,16 +46,16 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
     @if (open()) {
       <div class="mt-3 flex items-start gap-6">
         <div class="w-[210px] shrink-0">
-          <span class="bp-field-label mb-1.5 block">Type</span>
+          <span class="bp-field-label mb-1.5 block font-bold text-text">Type</span>
           <app-tab-band [tabs]="modeTabs" [active]="store.mode()" [fill]="true" [compact]="true" (activeChange)="store.setMode($event)" />
         </div>
         <div class="flex min-w-0 flex-1 items-start justify-between gap-4">
           <div>
-            <span class="bp-field-label mb-1.5 block">Filter</span>
+            <span class="bp-field-label mb-1.5 block font-bold text-text">Filter</span>
             <app-marketplace-filters />
           </div>
           <div>
-            <span class="bp-field-label mb-1.5 block">View</span>
+            <span class="bp-field-label mb-1.5 block font-bold text-text">View</span>
             <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
           </div>
         </div>
