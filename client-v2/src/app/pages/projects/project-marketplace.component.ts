@@ -47,7 +47,7 @@ import { isDeclined } from './quote-line.util';
          rail + grid). Project-specific bits are the strip data, the card "+"
          (adds to THIS project's quote) and the quote cart rail on the right —
          toggled by the cart icon in the controls. -->
-    <app-marketplace-workspace [showCart]="true" [cartCount]="visibleQuoteCount()">
+    <app-marketplace-workspace [showCart]="true" [cartCount]="visibleQuoteCount()" [(cartOpen)]="cartOpen">
       <app-category-strip
         strip
         mode="drilldown"
@@ -112,6 +112,7 @@ import { isDeclined } from './quote-line.util';
         (removed)="onQuoteToggle($event)"
         (qtyChanged)="onQtyChange($event.itemId, $event.quantity)"
         (checkout)="onCheckout()"
+        (close)="cartOpen.set(false)"
       />
     </app-marketplace-workspace>
 
@@ -134,6 +135,9 @@ export class ProjectMarketplaceComponent {
   private readonly route = inject(ActivatedRoute);
 
   readonly projectId = input.required<string>();
+
+  /** Whether the project-costs cart rail is open (two-way with the workspace). */
+  protected readonly cartOpen = signal(false);
 
   /** The item whose Quick View dialog is open (null = closed). */
   protected readonly quickItem = signal<CatalogueItem | null>(null);

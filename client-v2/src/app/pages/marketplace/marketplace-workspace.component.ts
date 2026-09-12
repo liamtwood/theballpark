@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, model } from '@angular/core';
 import { MarketplaceControlsComponent } from './marketplace-controls.component';
 import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.component';
 
@@ -53,9 +53,10 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
       </div>
 
       <!-- Quote cart — a right-edge flyover overlay (project only, when toggled).
-           Absolute so it floats over the right gutter without reflowing the grid. -->
+           Absolute + flush to the right edge so it floats over the gutter
+           without reflowing the grid; its own X (in the card header) closes it. -->
       @if (showCart() && cartOpen()) {
-        <aside class="absolute right-0 top-0 bottom-0 z-20 w-[320px] overflow-y-auto pr-6 pt-1">
+        <aside class="absolute right-0 top-0 bottom-0 z-20 w-[320px] overflow-y-auto pr-3 pt-1">
           <ng-content select="[cart]" />
         </aside>
       }
@@ -68,6 +69,7 @@ export class MarketplaceWorkspaceComponent {
   readonly showCart = input(false);
   readonly cartCount = input(0);
 
-  /** Whether the right-side cart rail is open (toggled from the controls). */
-  protected readonly cartOpen = signal(false);
+  /** Whether the right-side cart rail is open. Two-way so the projected cart can
+   *  close itself (its X) while the controls toggle also drives it. */
+  readonly cartOpen = model(false);
 }

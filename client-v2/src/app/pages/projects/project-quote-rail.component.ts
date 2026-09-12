@@ -16,9 +16,15 @@ import { isDeclined } from './quote-line.util';
   imports: [CurrencyPipe, LucideAngularModule, QtyInputComponent],
   host: { class: 'bp-card block p-4' },
   template: `
-    <div class="flex items-baseline justify-between">
+    <div class="flex items-center justify-between gap-2">
       <h3 class="bp-card-title text-md">Project Costs</h3>
-      <span class="bp-meta">{{ visibleLines().length }} item{{ visibleLines().length === 1 ? '' : 's' }}</span>
+      <div class="flex items-center gap-2">
+        <span class="bp-meta">{{ visibleLines().length }} item{{ visibleLines().length === 1 ? '' : 's' }}</span>
+        <button type="button" class="-mr-1 shrink-0 rounded-md p-1 text-muted hover:bg-fill hover:text-text"
+          aria-label="Close project costs" (click)="close.emit()">
+          <lucide-icon name="x" [size]="16" />
+        </button>
+      </div>
     </div>
 
     @if (visibleLines().length === 0) {
@@ -79,6 +85,8 @@ export class ProjectQuoteRailComponent {
   readonly removed = output<string>();
   readonly qtyChanged = output<{ itemId: string; quantity: number }>();
   readonly checkout = output<void>();
+  /** Close the cart panel (X in the header). */
+  readonly close = output<void>();
 
   /** Lines shown in the Project Quote. Declined/cancelled lines drop off (out of
    *  scope), and so do the agent's Fees — lines with no catalogue category
