@@ -36,6 +36,7 @@ import { MarketplaceWorkspaceComponent } from './marketplace-workspace.component
   host: { class: 'block bp-vpfit' },
   template: `
     <app-page-hero
+      align="block"
       [eyebrow]="hero().eyebrow"
       [title]="hero().title"
       [subtitle]="hero().subtitle"
