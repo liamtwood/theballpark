@@ -212,10 +212,10 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         <!-- Each section (final view) ends with a matching summary card. The
              final "Project Cost Summary" carries the grand ballpark total + the
              Message Suppliers CTA. -->
-        <!-- Project Costs + Fees each get a summary card; the grand total lives
-             in the "Project Total" container below. Only Project Costs carries
-             the Message Suppliers CTA. -->
-        @if (isFinal() && section.label !== 'Project Cost Summary') {
+        <!-- Every section gets a gray total box; only Project Costs carries the
+             Message Suppliers CTA. The grand total's box lives in the Project
+             Total container below. -->
+        @if (isFinal()) {
           <div class="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-card)] border border-hairline bg-fill p-5">
             <div class="min-w-0">
               <p class="bp-caption text-secondary">{{ summaryCaption(section.label) }}</p>
@@ -558,18 +558,18 @@ export class ProjectEstimateComponent {
     return label === 'Fees'
       ? 'Total fees, excluding VAT'
       : label === 'Project Cost Summary'
-        ? 'Total ballpark, excluding VAT'
+        ? 'Total coverage, excluding VAT'
         : 'Project costs, excluding VAT';
   }
   protected summaryAmount(label: string): number {
     const b = this.bd();
-    return label === 'Fees' ? b.fees : label === 'Project Cost Summary' ? b.projectTotal : b.projectCosts;
+    return label === 'Fees' ? b.fees : label === 'Project Cost Summary' ? b.coverage : b.projectCosts;
   }
   protected summaryNote(label: string): string {
     return label === 'Fees'
       ? 'Your agency fees — never marked up.'
       : label === 'Project Cost Summary'
-        ? 'Project costs + fees + coverage, excluding VAT.'
+        ? 'Contingency + insurance on the project costs.'
         : 'Every costed line is backed by an approved supplier listing.';
   }
 
