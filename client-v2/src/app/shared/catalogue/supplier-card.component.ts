@@ -46,10 +46,8 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
             {{ inQuote() ? 'Added to Quote' : 'Add to Quote' }}
           </button>
         } @else {
-          <span class="bp-btn-grad mt-3 w-full">
-            <lucide-icon name="arrow-right" [size]="16" />
-            View supplier
-          </span>
+          <!-- Not a button — a text link cue (the whole card is the link). -->
+          <span class="store-link mt-3 block">Visit the {{ supplier().name }} Store</span>
         }
       </div>
     </a>
@@ -65,6 +63,14 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
     >
       <lucide-icon name="heart" [size]="15" />
     </button>
+  `,
+  styles: `
+    .store-link {
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      color: var(--theme-accent);
+    }
+    .store-link:hover { text-decoration: underline; }
   `,
 })
 export class SupplierCardComponent {
