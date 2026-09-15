@@ -45,7 +45,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
   host: { class: 'block bp-vpfit' },
   template: `
     @if (detail.value(); as sup) {
-      <app-page-hero align="block" [back]="heroBack()" [title]="sup.name" [subtitle]="sup.city ?? ''">
+      <app-page-hero align="block" [eyebrow]="heroEyebrow()" [back]="heroBack()" [title]="sup.name" [subtitle]="sup.city ?? ''">
         <div hero-actions class="flex items-center gap-3">
           @if (isOwner()) {
             <!-- pV2-STORE-01 — owner manages their own shop here. -->
@@ -189,6 +189,10 @@ export class SupplierDetailComponent {
 
   /** Wishlist (favourite) is a buyer action — agency viewers only. */
   protected readonly isAgent = computed(() => this.auth.user()?.activeOrgType === 'agency');
+
+  /** Hero eyebrow (uppercased by the hero) — "My Shop" for the owner, else the
+   *  public "Storefront". Mirrors the "Supplier workspace" eyebrow on overview. */
+  protected readonly heroEyebrow = computed(() => (this.isOwner() ? 'My Shop' : 'Storefront'));
 
   /** The storefront's subcat-card grid rows (pV2-CARDS-01 QC #5). */
   protected readonly subcats = resource({
