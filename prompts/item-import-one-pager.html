@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ballpark — Item Import (1-pager)</title>
+<style>
+  :root {
+    --bg: #fbf7f4;
+    --surface: #ffffff;
+    --text: #1f2937;
+    --text-secondary: #6b7280;
+    --border: 1px solid #e5e7eb;
+    --radius: 12px;
+    --accent: #d63384;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+    --supplier: #b45309;
+    --staging: #8b5cf6;
+    --review: #0ea5e9;
+    --prod: #047857;
+  }
+  body { margin:0; padding:28px 36px; background:var(--bg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:var(--text); line-height:1.45; }
+  .page { max-width:1000px; margin:0 auto; }
+  h1 { font-size:24px; margin:0 0 4px; font-weight:700; }
+  .lead { color:var(--text-secondary); margin:0 0 24px; font-size:13px; }
+  .row-2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
+  .card { background:var(--surface); border:var(--border); border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow); }
+  .card h2 { font-size:11px; font-weight:700; letter-spacing:0.08em; color:var(--text-secondary); text-transform:uppercase; margin:0 0 10px; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  table th, table td { text-align:left; padding:6px 8px; vertical-align:top; }
+  table thead th { color:var(--text-secondary); font-weight:600; border-bottom:var(--border); font-size:10px; text-transform:uppercase; letter-spacing:0.04em; }
+  table tbody tr { border-bottom:1px solid #f3f4f6; }
+  table tbody tr:last-child { border-bottom:none; }
+  .k { font-weight:700; font-size:12px; }
+  ul.compact { margin:0; padding-left:16px; font-size:12px; }
+  ul.compact li { margin-bottom:5px; }
+  code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; background:#f3f4f6; padding:1px 5px; border-radius:3px; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:600; margin-left:4px; }
+  .pill--in { background:rgba(4,120,87,0.12); color:var(--prod); }
+  .pill--p2 { background:rgba(139,92,246,0.12); color:var(--staging); }
+  .pill--out { background:#f3f4f6; color:var(--text-secondary); }
+  .flow { background:var(--surface); border:var(--border); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); margin-bottom:18px; }
+  .flow-svg { width:100%; height:auto; max-height:320px; display:block; }
+  .note { font-size:12px; color:var(--text-secondary); margin-top:12px; padding:10px 12px; background:#fafafa; border-left:3px solid var(--accent); border-radius:4px; }
+  .note strong { color:var(--text); }
+  .mono-block { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; background:#f9fafb; border:var(--border); border-radius:6px; padding:10px 12px; margin:8px 0 0; white-space:pre; overflow-x:auto; color:#374151; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Ballpark — Item Import (Create from File)</h1>
+  <p class="lead">Supplier bulk-creates draft items from a spreadsheet. A small staging-ETL: <strong>load relaxed → validate/quarantine → transfer only the clean rows → purge staging</strong>, so production never sees the garbage. SKU-keyed upsert makes re-imports idempotent. Everything lands as <strong>drafts</strong> → normal approval. <span class="pill pill--in">V1 scope</span></p>
+
+  <!-- FLOW -->
+  <div class="flow">
+    <h2 style="font-size:11px; font-weight:700; letter-spacing:0.08em; color:var(--text-secondary); text-transform:uppercase; margin:0 0 12px;">The pipeline — load · transform · review · transfer · purge</h2>
+    <svg class="flow-svg" viewBox="0 0 960 300" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- lane labels -->
+      <text x="95"  y="14" text-anchor="middle" font-size="9.5" font-weight="700" letter-spacing="0.05em" fill="#b45309">SUPPLIER</text>
+      <text x="455" y="14" text-anchor="middle" font-size="9.5" font-weight="700" letter-spacing="0.05em" fill="#8b5cf6">STAGING (relaxed, ephemeral)</text>
+      <text x="865" y="14" text-anchor="middle" font-size="9.5" font-weight="700" letter-spacing="0.05em" fill="#047857">PRODUCTION</text>
+
+      <!-- 1 template + upload -->
+      <g>
+        <rect x="20" y="70" width="150" height="70" rx="8" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+        <text x="95" y="92" text-anchor="middle" font-size="11" font-weight="700" fill="#b45309">Template → Upload</text>
+        <text x="95" y="109" text-anchor="middle" font-size="9" fill="#6b7280">per-category CSV/xlsx</text>
+        <text x="95" y="123" text-anchor="middle" font-size="9" fill="#6b7280">+ codelist reference sheet</text>
+      </g>
+      <line x1="170" y1="105" x2="205" y2="105" stroke="#9ca3af" stroke-width="1.3"/><polygon points="205,105 198,101 198,109" fill="#9ca3af"/>
+
+      <!-- 2 LOAD -->
+      <g>
+        <rect x="207" y="70" width="150" height="70" rx="8" fill="#fff" stroke="#8b5cf6" stroke-width="1.5"/>
+        <text x="282" y="90" text-anchor="middle" font-size="11" font-weight="700" fill="#8b5cf6">LOAD</text>
+        <text x="282" y="106" text-anchor="middle" font-size="9" fill="#6b7280">→ import_rows</text>
+        <text x="282" y="120" text-anchor="middle" font-size="9" fill="#6b7280">nullable text, never crashes</text>
+      </g>
+      <line x1="357" y1="105" x2="392" y2="105" stroke="#9ca3af" stroke-width="1.3"/><polygon points="392,105 385,101 385,109" fill="#9ca3af"/>
+
+      <!-- 3 TRANSFORM -->
+      <g>
+        <rect x="394" y="70" width="150" height="70" rx="8" fill="#fff" stroke="#8b5cf6" stroke-width="1.5"/>
+        <text x="469" y="90" text-anchor="middle" font-size="11" font-weight="700" fill="#8b5cf6">TRANSFORM</text>
+        <text x="469" y="106" text-anchor="middle" font-size="9" fill="#6b7280">cast + validate</text>
+        <text x="469" y="120" text-anchor="middle" font-size="9" fill="#6b7280">bad → is_quarantined + notes</text>
+      </g>
+      <line x1="544" y1="105" x2="579" y2="105" stroke="#9ca3af" stroke-width="1.3"/><polygon points="579,105 572,101 572,109" fill="#9ca3af"/>
+
+      <!-- 4 REVIEW -->
+      <g>
+        <rect x="581" y="70" width="150" height="70" rx="8" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="656" y="90" text-anchor="middle" font-size="11" font-weight="700" fill="#0ea5e9">Review grid</text>
+        <text x="656" y="106" text-anchor="middle" font-size="9" fill="#6b7280">green ready / red errors</text>
+        <text x="656" y="120" text-anchor="middle" font-size="9" fill="#6b7280">fix in place · skip</text>
+      </g>
+      <line x1="731" y1="105" x2="766" y2="105" stroke="#9ca3af" stroke-width="1.3"/><polygon points="766,105 759,101 759,109" fill="#9ca3af"/>
+      <text x="748" y="98" text-anchor="middle" font-size="8" fill="#6b7280">confirm</text>
+
+      <!-- 5 TRANSFER -->
+      <g>
+        <rect x="768" y="70" width="172" height="70" rx="8" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+        <text x="854" y="90" text-anchor="middle" font-size="11" font-weight="700" fill="#047857">TRANSFER → items</text>
+        <text x="854" y="106" text-anchor="middle" font-size="9" fill="#6b7280">atomic INSERT…SELECT</text>
+        <text x="854" y="120" text-anchor="middle" font-size="9" fill="#6b7280">as drafts · SKU upsert</text>
+      </g>
+
+      <!-- PURGE -->
+      <g>
+        <rect x="330" y="200" width="290" height="40" rx="8" fill="#fafafa" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4 3"/>
+        <text x="475" y="219" text-anchor="middle" font-size="10" font-weight="600" fill="#8b5cf6">PURGE</text>
+        <text x="475" y="233" text-anchor="middle" font-size="9" fill="#6b7280">truncate the batch's staging rows once transferred — junk never persists</text>
+      </g>
+      <line x1="469" y1="140" x2="469" y2="200" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3 3"/>
+      <line x1="854" y1="140" x2="854" y2="220" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3 3"/>
+      <line x1="620" y1="220" x2="854" y2="220" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3 3"/>
+
+      <!-- legend -->
+      <g transform="translate(20, 270)">
+        <rect x="0" y="0" width="12" height="12" rx="2" fill="#fff" stroke="#b45309" stroke-width="1.4"/><text x="17" y="10" font-size="10" fill="#374151">Supplier</text>
+        <rect x="110" y="0" width="12" height="12" rx="2" fill="#fff" stroke="#8b5cf6" stroke-width="1.4"/><text x="127" y="10" font-size="10" fill="#374151">Staging (ephemeral)</text>
+        <rect x="290" y="0" width="12" height="12" rx="2" fill="#fff" stroke="#0ea5e9" stroke-width="1.4"/><text x="307" y="10" font-size="10" fill="#374151">Review</text>
+        <rect x="390" y="0" width="12" height="12" rx="2" fill="#fff" stroke="#047857" stroke-width="1.4"/><text x="407" y="10" font-size="10" fill="#374151">Production (drafts)</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- ROW: ETL + Template -->
+  <div class="row-2">
+    <div class="card" style="border-left:3px solid var(--staging);">
+      <h2>Staging-ETL lifecycle</h2>
+      <ul class="compact">
+        <li><strong>LOAD (relaxed):</strong> accept any structurally-valid file; every cell lands as nullable text in <code>import_rows</code> — a bad value never crashes the upload.</li>
+        <li><strong>TRANSFORM (quarantine):</strong> cast strings → numbers, check required fields + codelist membership. Rows that break rules are marked <code>is_quarantined = true</code> with <code>validation_notes</code>, not dropped.</li>
+        <li><strong>TRANSFER (atomic):</strong> on confirm, one transaction <code>INSERT … SELECT</code>s the clean rows into <code>items</code> as drafts. Instant at supplier scale (hundreds of rows).</li>
+        <li><strong>PURGE:</strong> truncate the batch's staging rows after transfer — production never carries import junk.</li>
+        <li><strong>Staging = tables, not a schema</strong> (<code>import_batches</code> + <code>import_rows</code>) — same isolation, no fight with the <code>migrate-schemas.js</code> 3-schema model.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Template &amp; validation</h2>
+      <ul class="compact">
+        <li><strong>Per-category template</strong> (CSV + xlsx): name, subcategory, unit, base price, install cost/unit, lead time, description. <strong>Subcategory is a picked column</strong> (from the reference sheet), not free text — no AI needed in V1.</li>
+        <li><strong>Reference sheet</strong> lists valid subcategories (for the chosen category), units and tiers — suppliers pick known values.</li>
+        <li><strong>Validated per row</strong> against the existing <code>StoreItemCreateSchema</code> + codelists (unknown unit / bad category / non-numeric price / missing name → quarantined with a reason).</li>
+        <li><strong>Org from JWT</strong> — never trusted from the file.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ROW: SKU upsert + schema -->
+  <div class="row-2">
+    <div class="card">
+      <h2>SKU-keyed upsert — "handled or provided"</h2>
+      <ul class="compact">
+        <li><strong>Nullable <code>items.sku</code></strong> = the supplier's own key when they have one, else NULL (our <code>id</code> is the real PK).</li>
+        <li><strong>Partial unique</strong> <code>(org_id, sku) WHERE sku IS NOT NULL AND deleted_at IS NULL</code> — provided SKUs are unique per org; any number of NULL-SKU items coexist.</li>
+        <li><strong>Provided SKU → upsert</strong> on <code>(org_id, sku)</code>: a re-import cleanly updates the existing draft (catalogue refresh).</li>
+        <li><strong>No SKU → dedupe on name</strong> (<code>items(org_id, lower(trim(name)))</code>) → skip + report.</li>
+        <li>So the skip-vs-update question is <strong>keyed, not a global toggle</strong>: SKU = update-in-place, no SKU = skip.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Schema footprint</h2>
+      <ul class="compact">
+        <li><strong>New (staging, all 3 schemas):</strong> <code>import_batches</code> (org, filename, status, counts, audit) + <code>import_rows</code> (batch_id, row_num, raw + nullable-text cols, <code>is_quarantined</code>, <code>validation_notes</code>, <code>target_item_id</code>).</li>
+        <li><strong>Additive:</strong> <code>items.sku</code> (nullable) + the partial unique index.</li>
+        <li><strong>Everything else already exists</strong> — <code>attributes</code>, <code>kind</code>, <code>subcategory_id</code>, <code>images</code>, <code>pending_classification</code>, the draft→approval flow. No core rewrite.</li>
+      </ul>
+      <div class="mono-block">POST /api/store/items/import   → parse file → staging batch
+GET  /api/store/items/import/:batch  → review grid
+POST /api/store/items/import/:batch/confirm → transfer + purge</div>
+    </div>
+  </div>
+
+  <!-- ROW: scope -->
+  <div class="card" style="margin-bottom:18px;">
+    <h2>Scope — V1 vs later (the schema hooks are already there)</h2>
+    <table>
+      <tbody>
+        <tr><td class="k">V1 <span class="pill pill--in">this ship</span></td><td>Template → upload → staging (load-relaxed → validate/quarantine) → review grid (fix/skip) → atomic transfer to <strong>draft</strong> items (parent-only, base kind) → submit for approval. SKU-keyed upsert. Core fields only.</td></tr>
+        <tr><td class="k">AI micro-sort <span class="pill pill--p2">Phase 2</span></td><td>Supplier drops their <em>own</em> file; AI maps their columns → our schema and infers <code>subcategory_id</code> within the chosen macro-category (anchor-locked, no cross-category hallucination), staged in <code>pending_classification</code> for review. Reuses the brief-parsing infra.</td></tr>
+        <tr><td class="k">Images <span class="pill pill--p2">Phase 3</span></td><td>Zip-folder ingestion + filename/SKU matching + drag-drop-on-grid; decoupled <code>image_approval_status</code> so image approval is tracked independently of text edits.</td></tr>
+        <tr><td class="k">Out of V1 <span class="pill pill--out">later / parked</span></td><td>Item profiles &amp; attributes (parked pending customer — template gains attribute columns when they ship); BOM <code>option</code>/<code>addon</code> + <code>option_group_id</code> (V2, schema-dormant); off-peak scheduling (not needed — transfer is instant at this scale).</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>Decisions locked:</strong> staging <em>tables</em> + a clean transfer step (Liam); SKU nullable = handled-or-provided, keyed upsert; images Phase 3; drop off-peak scheduling; import decoupled from the parked item-profiles. <strong>One open call:</strong> V1 uses a <em>picked</em> subcategory column (deterministic, no AI) with AI micro-sort as Phase 2 — confirm you're happy deferring AI, or want it in V1. Design record: this page.
+  </div>
+
+</div>
+</body>
+</html>
