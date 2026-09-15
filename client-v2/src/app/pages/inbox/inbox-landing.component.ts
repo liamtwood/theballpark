@@ -1,30 +1,53 @@
-import { ChangeDetectionStrategy, Component, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
+import { AuthService } from '../../core/auth/auth.service';
 import { InboxService, InboxSummaryRow, InboxSummarySupplier, InboxWaitingCounts } from '../../core/inbox/inbox.service';
+import { ProjectCard } from '../../core/projects/project.types';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
+import { ProjectCardComponent } from '../projects/project-card.component';
 
-/** pV2-INBOX (Messages landing) — /inbox for the agency: one card per active
- *  project it's negotiating, each listing its suppliers and a SINGLE project
- *  status pill. "Action Required" when the agent has ≥1 item to respond to;
- *  hovering the pill breaks down the waiting counts. Click → the project inbox.
+/** pV2-INBOX (Messages landing) — /inbox. Persona-aware:
+ *  - AGENCY: one card per active project it's negotiating, each listing its
+ *    suppliers + a SINGLE project status pill (Action Required / Awaiting /
+ *    All confirmed); hovering the pill breaks down the waiting counts.
+ *  - SUPPLIER: the quote-request projects an agency has reached out about
+ *    (the SAME shared ProjectCard the supplier Projects hub uses), each
+ *    drilling into that project's conversation (/inbox/:projectId).
+ *  The agency /summary endpoint returns [] to suppliers by design, so the
+ *  supplier branch loads the gated supplier feed instead.
  *  Layout follows the Past projects standard (bp-vpfit + centred 2-wide grid). */
 @Component({
   selector: 'app-inbox-landing',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, LucideAngularModule, PageHeroComponent],
+  imports: [RouterLink, LucideAngularModule, PageHeroComponent, ProjectCardComponent],
   host: { class: 'block bp-vpfit' },
   template: `
     <app-page-hero
       align="block"
       eyebrow="Messages"
       title="Your conversations"
-      subtitle="Projects you're negotiating with suppliers."
+      [subtitle]="heroSubtitle()"
     />
 
     <div class="bp-page-body">
       <div class="min-h-0 overflow-y-auto md:flex-1">
+        @if (isSupplier()) {
+          @if (supplierRows.isLoading()) {
+            <p class="bp-body-small text-secondary">Loading…</p>
+          } @else if (supplierRows.error()) {
+            <p class="bp-body-small text-warn">Couldn't load your conversations.</p>
+          } @else if ((supplierRows.value() ?? []).length === 0) {
+            <p class="bp-body-small text-secondary">No conversations yet — an agency will reach out here.</p>
+          } @else {
+            <div class="mx-auto grid w-full max-w-[var(--workspace-max)] grid-cols-1 gap-6 sm:grid-cols-2">
+              @for (p of supplierRows.value(); track p.id) {
+                <app-project-card [project]="p" [now]="now()" linkBase="/inbox" />
+              }
+            </div>
+          }
+        } @else {
         @if (rows.isLoading()) {
           <p class="bp-body-small text-secondary">Loading…</p>
         } @else if (rows.error()) {
@@ -87,6 +110,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
             }
           </div>
         }
+        }
       </div>
     </div>
 
@@ -111,6 +135,28 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 export class InboxLandingComponent {
   private readonly inbox = inject(InboxService);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
+
+  /** Suppliers get their quote-request conversations (the gated supplier feed +
+   *  the shared ProjectCard), not the agency /summary rollup. */
+  protected readonly isSupplier = computed(() => this.auth.user()?.activeOrgType === 'supplier');
+
+  protected readonly heroSubtitle = computed(() =>
+    this.isSupplier()
+      ? 'Projects an agency has asked you to quote.'
+      : "Projects you're negotiating with suppliers.",
+  );
+
+  /** Card clock (relative times) — matches the Projects hub. */
+  protected readonly now = signal(Date.now());
+
+  /** Supplier conversation list — the SAME gated feed the Projects hub uses.
+   *  Only hits the network for suppliers (agency short-circuits to []). */
+  protected readonly supplierRows = resource<ProjectCard[], boolean>({
+    params: () => this.isSupplier(),
+    loader: ({ params: supplier }) =>
+      supplier ? firstValueFrom(this.inbox.supplierProjects()) : Promise.resolve([]),
+  });
 
   /** Envelope click → the project's Inbox tab with the action item selected. */
   protected openItem(ev: Event, projectId: string, s: InboxSummarySupplier): void {
@@ -122,8 +168,12 @@ export class InboxLandingComponent {
     });
   }
 
-  protected readonly rows = resource<InboxSummaryRow[], void>({
-    loader: () => firstValueFrom(this.inbox.summary()),
+  /** Agency Messages rollup — only hits the network for the agency (the
+   *  /summary endpoint returns [] to suppliers anyway; skip the call). */
+  protected readonly rows = resource<InboxSummaryRow[], boolean>({
+    params: () => !this.isSupplier(),
+    loader: ({ params: agency }) =>
+      agency ? firstValueFrom(this.inbox.summary()) : Promise.resolve([]),
   });
 
   /** Which project cards have their supplier list expanded. */
