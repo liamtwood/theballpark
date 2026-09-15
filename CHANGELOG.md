@@ -7,17 +7,175 @@
 
 ## 🚧 On dev — NOT yet on preview
 
-These are live on **dev** only — the demo list. Promoting `dev` → `preview` ships 1 version.
+_Nothing pending — dev and preview are level._
+
+---
+
+## ✅ On preview — currently `v2.464`
+
+### v2.464 — 2026-09-15
+
+**For suppliers**
+
+- **A tailored supplier experience** across the whole app — your own navigation (Projects, Messages, Marketplace, My Shop), so agency-only actions like "New project" no longer appear.
+- **Supplier home dashboard** — your recent quote requests alongside a "what needs you" list: drafts to submit, items to fix and resubmit, and approved items ready to promote — each with a live count that opens My Shop pre-filtered.
+- **Messages** now shows your real conversations (one card per quote request), each opening the project's thread.
+- **My Shop** moved onto the same clean Marketplace layout, with filters to find your draft, pending, rejected or hidden items.
+- **Storefront** simplified to two clear tiles — **My Shop** (your products) and **My Shopfront** (your brand page).
+
+**Marketplace**
+
+- Click any item card to open **Quick View** — a quick peek without leaving the page.
+
+**Everywhere**
+
+- Tidier, consistent page headers (aligned to the working column) and a smaller, calmer home greeting.
+
+<details><summary>Commits</summary>
+
+**Fixes**
+
+- supplier projects list hero gets an eyebrow `0a3c60af`
+
+</details>
+
+### v2.463 — 2026-09-15
+
+**Fixes**
+
+- supplier per-project inbox hero — eyebrow + column alignment `2db70bff`
+
+### v2.462 — 2026-09-15
+
+**Features**
+
+- Storefront hub — eyebrow header + My Shop / My Shopfront tiles `2faacf09`
+
+### v2.461 — 2026-09-15
+
+**Fixes**
+
+- Recent projects rows sit at the top (no spread gaps) `4253c5b9`
+
+### v2.460 — 2026-09-15
+
+**Fixes**
+
+- supplier item counts match the grid (exclude components/children) `bfa6ed3e`
+
+### v2.459 — 2026-09-15
+
+**Fixes**
+
+- marketplace item card click opens Quick View, not the item page `ff02f2bc`
+
+### v2.458 — 2026-09-15
+
+**Features**
+
+- supplier home dashboard — Recent projects + status Next steps `0858ce0a`
+
+### v2.457 — 2026-09-15
+
+**Fixes**
+
+- smaller home greeting + My Shop hero eyebrow `a6a67c3a`
+
+### v2.456 — 2026-09-15
+
+**Fixes**
+
+- center the Profile Shopfront in the working column + rename visibility "All" `d7a76ef0`
+
+### v2.455 — 2026-09-15
+
+**Fixes**
+
+- guard agency-only project routes from suppliers `289c5267`
+
+### v2.454 — 2026-09-15
+
+**Fixes**
+
+- close supplier buyer-leaks (Quick View add, wishlist heart, role codes) `5ac48bdb`
+
+### v2.453 — 2026-09-15
+
+**Fixes**
+
+- storefront panel uses the shared working column `b3fbbe51`
+
+### v2.452 — 2026-09-15
+
+**Fixes**
+
+- supplier project buckets filter by status (Completed = done only) `631e7d71`
+
+### v2.451 — 2026-09-15
+
+**Fixes**
+
+- restore owner status + visibility filters in My Shop `8e32fb49`
+
+### v2.450 — 2026-09-15
+
+**Fixes**
+
+- supplier Projects hub hero matches the agency Projects page `70792b01`
+
+### v2.449 — 2026-09-15
+
+**Fixes**
+
+- supplier-detail hero aligns to the working column (align=block) `6ccf6e26`
+
+### v2.448 — 2026-09-15
+
+**Chore**
+
+- delete dead marketplace chrome after the store migration `4d7bc0a3`
+
+### v2.447 — 2026-09-15
+
+**Features**
+
+- supplier Store tab onto the shared marketplace workspace `324e2174`
+
+### v2.446 — 2026-09-15
+
+**Fixes**
+
+- supplier Messages landing shows real conversations, not empty `75a749db`
+
+### v2.445 — 2026-09-15
+
+**Fixes**
+
+- persona-aware top nav — suppliers lose New project / Past projects `b94449b1`
+
+### v2.444 — 2026-09-12
+
+**Fixes**
+
+- marketplace hero aligns to the working column (align=block) `cb70f4e2`
+
+### v2.443 — 2026-09-12
+
+**Fixes**
+
+- supplier card — replace "View supplier" button with a "Visit the <name> Store" link `53e55bf7`
+
+### v2.442 — 2026-09-12
+
+**Docs**
+
+- What's new — curated v2.440 release note for the preview promote `fbfbbddc`
 
 ### v2.441 — 2026-09-12
 
 **Fixes**
 
 - project cart — add an X to close it (overlay covered the toggle) `c8a0bcbf`
-
----
-
-## ✅ On preview — currently `v2.440`
 
 ### v2.440 — 2026-09-12
 
