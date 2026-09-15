@@ -13,7 +13,7 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
   selector: 'app-storefront-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule, SubcatCardComponent, OrgMediaComponent],
-  host: { class: 'mx-auto flex w-full max-w-4xl flex-col gap-8' },
+  host: { class: 'mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-8' },
   template: `
     <!-- 1. Hero banner — cover photo alone, full-width (logo moved to Company
          Information below, v2.34s). -->
