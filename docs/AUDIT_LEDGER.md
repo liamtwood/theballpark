@@ -125,7 +125,7 @@ edge (category-only grouping for pre-loaded lines); `kind` / `parent_id` stay
 inert until buildup logic lands (superseded — now LIVE in the inbox buildup, see correction above).
 
 **chat-side (Claude) pass:** this ledger section + the composition callout in
-`prompts/data-model-one-pager.html`. A separate Claude audit, if run, folds into
+`docs/data-model-one-pager.html`. A separate Claude audit, if run, folds into
 this section.
 
 ---

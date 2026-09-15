@@ -72,7 +72,7 @@ this is the orientation summary of what actually shipped, grouped by arc:
   reference layout; live-project overview hero + negotiation tiles; the shared
   `app-save-state-pill` (v2.340).
 - **Auth is LIVE** — Google OAuth → JWT cookie (`bp_session`), identity-only payload,
-  authority re-derived per request from `user_orgs` (see `prompts/auth-and-users-one-pager.html`).
+  authority re-derived per request from `user_orgs` (see `docs/auth-and-users-one-pager.html`).
 
 **Standards status — 2026-09-10 audit** (`docs/AUDIT-2026-09-10-standards-architecture.md`
 + `AUDIT_LEDGER.md`): the v2 surface is secure + correct; debt is hygiene/size/latent.

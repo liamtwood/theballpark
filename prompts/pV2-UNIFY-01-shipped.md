@@ -1,7 +1,7 @@
 # pV2-UNIFY-01 — one line-state table (`project_items`); `message_items` → tag join
 
 **Shipped:** 2026-07-08, chip `[Dev v2] v2.47`
-**Prompt:** `docs/pV2-UNIFY-01-PROMPT.md`
+**Prompt:** `prompts/pV2-UNIFY-01-PROMPT.md`
 
 ## Why
 

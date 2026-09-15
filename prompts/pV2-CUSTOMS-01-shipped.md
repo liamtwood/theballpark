@@ -1,7 +1,7 @@
 # pV2-CUSTOMS-01 — custom line items in the pure-clone shape
 
 **Shipped:** 2026-07-09, chip `[Dev v2] v2.53`
-**Prompt:** `docs/pV2-CUSTOMS-01-PROMPT.md` · lands on top of UNIFY-01a (v2.52)
+**Prompt:** `prompts/pV2-CUSTOMS-01-PROMPT.md` · lands on top of UNIFY-01a (v2.52)
 
 ## Why
 

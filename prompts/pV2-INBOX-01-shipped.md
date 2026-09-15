@@ -1,6 +1,6 @@
 # pV2-INBOX-01 — v2 Inbox foundation (gated façade + supplier-first UI)
 
-Canonical brief: `docs/pV2-INBOX-01-PROMPT.md`. Built in QC-able slices
+Canonical brief: `prompts/pV2-INBOX-01-PROMPT.md`. Built in QC-able slices
 (Liam's call, 2026-06-25) — supplier flow first, Liam QCs each slice
 visually before the next lands.
 

@@ -5,7 +5,7 @@
 1. `WORKING_STANDARDS.md`
 2. `prompts/cc-onboarding.md`
 3. `prompts/auth-and-users-plan.md` (the auth plan — auth provider, role taxonomy, permissions, login UX, build order)
-4. `prompts/auth-and-users-one-pager.html` (visual reference for stakeholder view)
+4. `docs/auth-and-users-one-pager.html` (visual reference for stakeholder view)
 5. `prompts/pV2-01-scaffold-client-v2-shipped.md` (confirm scaffold is in place)
 6. This prompt
 
