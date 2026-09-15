@@ -19,13 +19,14 @@ import { StorefrontPanelComponent } from '../../suppliers/storefront-panel.compo
       @if (shopfront.isLoading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
       } @else if (shopfront.value(); as sup) {
-        <div class="bp-settings-body">
-          <app-storefront-panel
-            [supplier]="sup"
-            [subcategories]="shopfrontSubcats.value() ?? []"
-            (subcategorySelected)="openStoreSubcat($event)"
-          />
-        </div>
+        <!-- No .bp-settings-body wrap (720px, left-aligned) — the storefront
+             panel is mx-auto max-w-workspace, so it centres in the working
+             column like the hero + other pages. -->
+        <app-storefront-panel
+          [supplier]="sup"
+          [subcategories]="shopfrontSubcats.value() ?? []"
+          (subcategorySelected)="openStoreSubcat($event)"
+        />
       } @else {
         <p class="bp-body-small text-warn">Couldn't load your shopfront.</p>
       }

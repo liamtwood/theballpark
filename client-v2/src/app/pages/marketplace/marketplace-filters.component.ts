@@ -78,7 +78,7 @@ export class MarketplaceFiltersComponent {
 
   /** Owner / ballpark-admin publish-state (visibility) filter. */
   protected readonly activeOptions: SelectOption[] = [
-    { label: 'All', value: 'all' },
+    { label: 'Active & Inactive', value: 'all' },
     { label: 'Active', value: 'active' },
     { label: 'Inactive', value: 'inactive' },
   ];
