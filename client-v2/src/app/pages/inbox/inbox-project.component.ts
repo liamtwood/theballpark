@@ -33,7 +33,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
   host: { '[class]': 'hostClass()' },
   template: `
     @if (!embedded()) {
-      <app-page-hero [back]="{ label: 'Back', href: '/projects', history: true }" title="Inbox" [subtitle]="heroSubtitle()" />
+      <app-page-hero align="block" eyebrow="Messages" [back]="{ label: 'Back', href: '/inbox', history: true }" title="Inbox" [subtitle]="heroSubtitle()" />
     }
 
     <div [class]="embedded() ? 'flex min-h-0 flex-1 flex-col px-4 pt-4' : 'bp-page-body'">
