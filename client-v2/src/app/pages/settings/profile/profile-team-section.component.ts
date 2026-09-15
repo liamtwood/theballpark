@@ -134,13 +134,15 @@ export class ProfileTeamSectionComponent {
     }
   }
 
-  /** Display role: the member's job title, else their effective role. */
+  /** Display role: the member's job title, else a humanised effective role
+   *  (never the raw underscored enum). */
   protected memberRole(m: TeamMember): string {
     if (m.jobTitle) return m.jobTitle;
     const t = this.auth.user()?.activeOrgType;
-    return t === 'ballpark' ? 'ballpark_admin'
-      : t === 'agency' ? (m.isAdmin ? 'agency_admin' : 'agency_member')
-      : t === 'supplier' ? (m.isAdmin ? 'supplier_admin' : 'supplier_member')
-      : (m.isAdmin ? 'admin' : 'member');
+    const admin = m.isAdmin ? 'Admin' : 'Member';
+    return t === 'ballpark' ? 'Ballpark admin'
+      : t === 'agency' ? `Agency ${admin.toLowerCase()}`
+      : t === 'supplier' ? `Supplier ${admin.toLowerCase()}`
+      : admin;
   }
 }

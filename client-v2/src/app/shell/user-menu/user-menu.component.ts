@@ -41,7 +41,7 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
             <div class="min-w-0">
               <div class="truncate text-md font-semibold">{{ user.displayName ?? user.email }}</div>
               <div class="truncate text-sm text-secondary">
-                {{ user.role }} · {{ user.activeOrgName }}
+                {{ roleLabel(user.role) }} · {{ user.activeOrgName }}
               </div>
             </div>
           </div>
@@ -111,5 +111,13 @@ export class UserMenuComponent {
   protected signOut(menu: Popover): void {
     menu.hide();
     void this.auth.logout();
+  }
+
+  /** Humanise a raw role code for display — "supplier_admin" → "Supplier admin"
+   *  (never show the underscored enum to a user). */
+  protected roleLabel(role: string | null | undefined): string {
+    if (!role) return '';
+    const words = role.replace(/_/g, ' ').trim();
+    return words ? words.charAt(0).toUpperCase() + words.slice(1) : '';
   }
 }

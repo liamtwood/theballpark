@@ -8,6 +8,7 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
+import { AuthService } from '../../core/auth/auth.service';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { SupplierGridComponent } from '../../shared/catalogue/supplier-grid.component';
 import { MarketplaceStore } from './marketplace-store';
@@ -109,9 +110,11 @@ import { MarketplaceWorkspaceComponent } from './marketplace-workspace.component
       </app-marketplace-workspace>
     </div>
 
-    <!-- Quick View — opens on item click (Add → the project picker). -->
+    <!-- Quick View — opens on item click. "Add to ballpark" is a buyer action,
+         so it only shows for agencies (suppliers browse but can't add). -->
     <app-quick-view-dialog
       [item]="quickItem()"
+      [showAdd]="isAgent()"
       (close)="quickItem.set(null)"
       (add)="onQuickAdd($event)"
     />
@@ -128,7 +131,11 @@ import { MarketplaceWorkspaceComponent } from './marketplace-workspace.component
 export class MarketplacePageComponent {
   protected readonly store = inject(MarketplaceStore);
   protected readonly favs = inject(FavouritesStore);
+  private readonly auth = inject(AuthService);
   private readonly toast = inject(MessageService);
+
+  /** Buyer actions (Add to ballpark) are agency-only; suppliers browse. */
+  protected readonly isAgent = computed(() => this.auth.user()?.activeOrgType === 'agency');
 
   /** The item whose Quick View dialog is open (null = closed). */
   protected readonly quickItem = signal<CatalogueItem | null>(null);

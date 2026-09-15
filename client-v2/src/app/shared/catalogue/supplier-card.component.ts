@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { TooltipModule } from 'primeng/tooltip';
+import { AuthService } from '../../core/auth/auth.service';
 import { CatalogueSupplier, sizedImage } from './catalogue.types';
 
 /** pV2-CARDS-01 — the catalog supplier card per CARDS.md image 3 (Rocket
@@ -51,18 +52,21 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
         }
       </div>
     </a>
-    <button
-      type="button"
-      class="bp-fav-btn"
-      [class.bp-fav-btn--on]="favourited()"
-      [attr.aria-label]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
-      [pTooltip]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
-      tooltipStyleClass="bp-tooltip"
-      tooltipPosition="top"
-      (click)="favouriteToggled.emit(supplier().id)"
-    >
-      <lucide-icon name="heart" [size]="15" />
-    </button>
+    <!-- Wishlist is a buyer (agency) action — hidden for suppliers/others. -->
+    @if (isAgent()) {
+      <button
+        type="button"
+        class="bp-fav-btn"
+        [class.bp-fav-btn--on]="favourited()"
+        [attr.aria-label]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
+        [pTooltip]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
+        tooltipStyleClass="bp-tooltip"
+        tooltipPosition="top"
+        (click)="favouriteToggled.emit(supplier().id)"
+      >
+        <lucide-icon name="heart" [size]="15" />
+      </button>
+    }
   `,
   styles: `
     .store-link {
@@ -74,6 +78,10 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
   `,
 })
 export class SupplierCardComponent {
+  private readonly auth = inject(AuthService);
+  /** Wishlist heart is a buyer (agency) action only. */
+  protected readonly isAgent = computed(() => this.auth.user()?.activeOrgType === 'agency');
+
   readonly supplier = input.required<CatalogueSupplier>();
   readonly favourited = input<boolean>(false);
   readonly favouriteToggled = output<string>();

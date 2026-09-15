@@ -52,7 +52,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
             <a routerLink="/store/items/new" class="bp-btn-grad">
               <lucide-icon name="plus" [size]="15" /> Add product
             </a>
-          } @else {
+          } @else if (isAgent()) {
             <button
               type="button"
               class="bp-fav-btn !static"
@@ -186,6 +186,9 @@ export class SupplierDetailComponent {
     const id = this.store.pinnedSupplierId();
     return !!id && this.auth.user()?.activeOrgId === id;
   });
+
+  /** Wishlist (favourite) is a buyer action — agency viewers only. */
+  protected readonly isAgent = computed(() => this.auth.user()?.activeOrgType === 'agency');
 
   /** The storefront's subcat-card grid rows (pV2-CARDS-01 QC #5). */
   protected readonly subcats = resource({
