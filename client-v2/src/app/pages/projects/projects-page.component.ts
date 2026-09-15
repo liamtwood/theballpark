@@ -81,7 +81,9 @@ export class ProjectsPageComponent {
   /** Agency: admin-driven "Past projects" hero (PAGE_HERO_DEFAULTS +
    *  /settings/pages). Supplier keeps its own bucket-derived hero, no eyebrow. */
   private readonly agencyHero = computed(() => this.pageConfig.pageHero('projects'));
-  protected readonly heroEyebrow = computed(() => (this.isSupplier() ? '' : this.agencyHero().eyebrow));
+  protected readonly heroEyebrow = computed(() =>
+    this.isSupplier() ? this.labelPlural() : this.agencyHero().eyebrow,
+  );
   protected readonly heroTitle = computed(() => {
     if (!this.isSupplier()) return this.agencyHero().title;
     return SUPPLIER_BUCKET_TITLES[this.bucketParam()] ?? this.labelPlural();
