@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ballpark — Taxonomy &amp; Categories (1-pager)</title>
+<style>
+  :root {
+    --bg:#fbf7f4; --surface:#fff; --text:#1f2937; --text-secondary:#6b7280;
+    --border:1px solid #e5e7eb; --radius:12px; --accent:#d63384; --shadow:0 1px 2px rgba(0,0,0,0.04);
+    --hier:#0ea5e9; --facet:#8b5cf6; --ai:#d63384; --prod:#047857; --v1:#b45309;
+  }
+  body { margin:0; padding:28px 36px; background:var(--bg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:var(--text); line-height:1.45; }
+  .page { max-width:1000px; margin:0 auto; }
+  h1 { font-size:24px; margin:0 0 4px; font-weight:700; }
+  .lead { color:var(--text-secondary); margin:0 0 16px; font-size:13px; }
+  .row-2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
+  .card { background:var(--surface); border:var(--border); border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow); }
+  .card h2 { font-size:11px; font-weight:700; letter-spacing:0.08em; color:var(--text-secondary); text-transform:uppercase; margin:0 0 10px; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  table th,table td { text-align:left; padding:6px 8px; vertical-align:top; }
+  table thead th { color:var(--text-secondary); font-weight:600; border-bottom:var(--border); font-size:10px; text-transform:uppercase; letter-spacing:0.04em; }
+  table tbody tr { border-bottom:1px solid #f3f4f6; } table tbody tr:last-child { border-bottom:none; }
+  .k { font-weight:700; font-size:12px; }
+  ul.compact { margin:0; padding-left:16px; font-size:12px; } ul.compact li { margin-bottom:5px; }
+  code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; background:#f3f4f6; padding:1px 5px; border-radius:3px; }
+  .flow { background:var(--surface); border:var(--border); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); margin-bottom:18px; }
+  .flow-svg { width:100%; height:auto; max-height:260px; display:block; }
+  .note { font-size:12px; color:var(--text-secondary); margin-top:12px; padding:10px 12px; background:#fafafa; border-left:3px solid var(--accent); border-radius:4px; }
+  .note strong { color:var(--text); }
+  .banner { margin:0 0 18px; padding:12px 14px; border-left:4px solid var(--v1); background:rgba(180,83,9,0.07); border-radius:6px; font-size:13px; line-height:1.55; }
+  .mono-block { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; background:#f9fafb; border:var(--border); border-radius:6px; padding:10px 12px; margin:8px 0 0; white-space:pre; overflow-x:auto; color:#374151; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Ballpark — Taxonomy &amp; Categories</h1>
+  <p class="lead">How catalogue items are organised: a fixed <strong>category → subcategory</strong> hierarchy, a separate <strong>tag</strong> facet system, and an <strong>AI auto-classifier</strong> that sorts items into both. All on the <code>categories</code>/<code>tag</code> tables — subcategories are just child categories.</p>
+
+  <div class="banner">
+    <strong>⚠ Adoption status — the crucial reality:</strong> the taxonomy <strong>backend is fully built and running</strong>, but only the <strong>hierarchy</strong> (category + subcategory browse &amp; admin curation) is adopted in <strong>v2</strong>. The <strong>tag facet</strong> and the whole <strong>AI classification</strong> workflow (<code>/api/taxonomy/*</code>, <code>taxonomy.service</code>) run <strong>through the v1 client only</strong> — <code>client-v2</code> makes zero calls to it, and v2 item-edit is a <strong>category-select only</strong> (no subcategory field, no tags, no AI). So "is subcat working in v2?" → the <em>data + browse</em> yes; <em>classifying/tagging an item</em> is v1-only.
+  </div>
+
+  <!-- FLOW: classification pipeline + what lands on the item -->
+  <div class="flow">
+    <h2 style="font-size:11px; font-weight:700; letter-spacing:0.08em; color:var(--text-secondary); text-transform:uppercase; margin:0 0 12px;">Auto-classification — item text in, hierarchy + facets out</h2>
+    <svg class="flow-svg" viewBox="0 0 960 230" xmlns="http://www.w3.org/2000/svg">
+      <!-- pipeline -->
+      <g>
+        <rect x="14" y="30" width="150" height="48" rx="8" fill="#fff" stroke="#9ca3af" stroke-width="1.4"/>
+        <text x="89" y="50" text-anchor="middle" font-size="11" font-weight="700" fill="#374151">Item text</text>
+        <text x="89" y="66" text-anchor="middle" font-size="9" fill="#6b7280">name + description</text>
+      </g>
+      <line x1="164" y1="54" x2="196" y2="54" stroke="#9ca3af" stroke-width="1.3"/><polygon points="196,54 189,50 189,58" fill="#9ca3af"/>
+      <g>
+        <rect x="198" y="30" width="180" height="48" rx="8" fill="#fff" stroke="#d63384" stroke-width="1.6"/>
+        <text x="288" y="50" text-anchor="middle" font-size="11" font-weight="700" fill="#d63384">classifyItem · Haiku</text>
+        <text x="288" y="66" text-anchor="middle" font-size="9" fill="#6b7280">anchor-locked to the 15 macros</text>
+      </g>
+      <line x1="378" y1="54" x2="410" y2="54" stroke="#9ca3af" stroke-width="1.3"/><polygon points="410,54 403,50 403,58" fill="#9ca3af"/>
+      <g>
+        <rect x="412" y="30" width="180" height="48" rx="8" fill="#fafafa" stroke="#9ca3af" stroke-width="1.4" stroke-dasharray="4 3"/>
+        <text x="502" y="50" text-anchor="middle" font-size="11" font-weight="700" fill="#374151">pending_classification</text>
+        <text x="502" y="66" text-anchor="middle" font-size="9" fill="#6b7280">suggestion + confidence (staged)</text>
+      </g>
+      <line x1="592" y1="54" x2="624" y2="54" stroke="#9ca3af" stroke-width="1.3"/><polygon points="624,54 617,50 617,58" fill="#9ca3af"/>
+      <text x="608" y="46" text-anchor="middle" font-size="8" fill="#6b7280">review</text>
+      <g>
+        <rect x="626" y="30" width="160" height="48" rx="8" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+        <text x="706" y="50" text-anchor="middle" font-size="11" font-weight="700" fill="#047857">applyClassification</text>
+        <text x="706" y="66" text-anchor="middle" font-size="9" fill="#6b7280">commit (or edit) → items</text>
+      </g>
+      <line x1="786" y1="54" x2="818" y2="54" stroke="#9ca3af" stroke-width="1.3"/><polygon points="818,54 811,50 811,58" fill="#9ca3af"/>
+      <g>
+        <rect x="820" y="30" width="126" height="48" rx="8" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+        <text x="883" y="50" text-anchor="middle" font-size="11" font-weight="700" fill="#047857">items</text>
+        <text x="883" y="66" text-anchor="middle" font-size="9" fill="#6b7280">the catalogue row</text>
+      </g>
+
+      <!-- what lands on the item: two axes -->
+      <text x="30" y="120" font-size="10" font-weight="700" letter-spacing="0.05em" fill="#6b7280">WHAT LANDS ON THE ITEM — TWO AXES</text>
+      <g>
+        <rect x="30" y="132" width="270" height="66" rx="8" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+        <text x="165" y="152" text-anchor="middle" font-size="11" font-weight="700" fill="#0ea5e9">Hierarchy (one placement)</text>
+        <text x="165" y="169" text-anchor="middle" font-size="9.5" fill="#6b7280">category_id → 1 of 15 macros</text>
+        <text x="165" y="184" text-anchor="middle" font-size="9.5" fill="#6b7280">subcategory_id → a child (parent_id)</text>
+      </g>
+      <g>
+        <rect x="320" y="132" width="270" height="66" rx="8" fill="#fff" stroke="#8b5cf6" stroke-width="1.5"/>
+        <text x="455" y="152" text-anchor="middle" font-size="11" font-weight="700" fill="#8b5cf6">Facet (many, filterable)</text>
+        <text x="455" y="169" text-anchor="middle" font-size="9.5" fill="#6b7280">tags via supplier_item_tag</text>
+        <text x="455" y="184" text-anchor="middle" font-size="9.5" fill="#6b7280">grouped by dimension (event-type…)</text>
+      </g>
+      <line x1="883" y1="78" x2="883" y2="165" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3 3"/>
+      <line x1="883" y1="165" x2="590" y2="165" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3 3"/>
+
+      <text x="30" y="218" font-size="9.5" fill="#b45309">Pipeline + tags run in v1 only today · v2 uses the hierarchy (browse + curation), not the classifier</text>
+    </svg>
+  </div>
+
+  <!-- ROW: hierarchy + tags -->
+  <div class="row-2">
+    <div class="card" style="border-left:3px solid var(--hier);">
+      <h2>The hierarchy — categories &amp; subcategories</h2>
+      <ul class="compact">
+        <li><strong>One table, self-referential.</strong> <code>categories(id, name, parent_id, namespace, icon_name, sort_order, cover_image_url, is_active…)</code>. A <strong>subcategory is a <code>categories</code> row with <code>parent_id</code> set</strong>; top-level macros have <code>parent_id IS NULL</code>.</li>
+        <li><strong>15 fixed macro categories</strong> (≈131 subcategories). Seeded across <code>seed.js</code> + idempotent ensures in <code>migrate-schemas.js</code>; canonical list + children in <code>migrate-taxonomy-v2.js</code> (<code>PARENTS</code> / children map).</li>
+        <li><strong><code>namespace</code></strong> splits <code>'catalogue'</code> (marketplace) from <code>'feedback'</code> — same table, different trees.</li>
+        <li><strong>Item placement:</strong> <code>items.category_id</code> = the macro; <code>items.subcategory_id</code> = a child. A trigger enforces the subcategory's <code>parent_id</code> equals the item's <code>category_id</code>.</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left:3px solid var(--facet);">
+      <h2>The facet — tags (a separate axis)</h2>
+      <ul class="compact">
+        <li><strong><code>tag</code> table:</strong> <code>(id, category_id, dimension, label)</code>, <code>UNIQUE(category_id, dimension, label)</code> — tags are <strong>scoped to a macro category</strong> and grouped by a <strong><code>dimension</code></strong> (e.g. <code>stand-size</code>, <code>setting</code>, <code>event-type</code>).</li>
+        <li><strong>Item ↔ tag = <code>supplier_item_tag</code></strong> (<code>UNIQUE(item_id, tag_id)</code>), with a trigger rejecting any tag whose <code>category_id ≠ item.category_id</code>.</li>
+        <li><strong>Hierarchy vs facet:</strong> category/subcategory is <em>one</em> placement per item; tags are <em>many</em>, dimension-scoped, and the intended <strong>filter</strong> axis.</li>
+        <li><strong><code>event-type</code> is deliberately duplicated</strong> across ~12 categories (Option-A) because the tag→item trigger needs same-category tags; <code>eventTypes()</code> unions them for a cross-category "All" filter.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ROW: services + surface -->
+  <div class="row-2">
+    <div class="card">
+      <h2>Services</h2>
+      <ul class="compact">
+        <li><strong><code>category.service.js</code></strong> (96 lines) — thin, namespace-aware CRUD over <code>categories</code> (<code>getAll</code>/<code>getByNamespace</code>/<code>create</code>/<code>update</code>/<code>softDelete</code>). A flat gateway, no tree.</li>
+        <li><strong><code>taxonomy.service.js</code></strong> (~1568 lines, <code>HAIKU_MODEL</code>) — the classifier + curation engine: <code>loadTaxonomy</code> (tree) · <code>classifyItem</code> (AI → category/subcategory/tags/confidence, staged to <code>pending_classification</code>) · <code>applyClassification</code> (trigger-safe commit) · <code>suggestSubcategory</code> / <code>backfillSubcategories</code> · <code>setItemTags</code> · <code>getDimensions</code> · <code>eventTypes</code> · <code>matchItems</code> (Brief-tab matcher) · RFQ helpers (<code>requestQuotes</code>…).</li>
+      </ul>
+      <p style="font-size:11px; margin:8px 0 0; color:var(--text-secondary);"><strong>Behemoth watch:</strong> <code>taxonomy.service.js</code> at 1568 lines is the largest service — a split candidate (classifier vs Brief-matcher vs RFQ).</p>
+    </div>
+    <div class="card">
+      <h2>Surface (routes + v2 client)</h2>
+      <ul class="compact">
+        <li><strong><code>/api/v2/marketplace/categories*</code></strong> — v2 browse rail + counts, admin curation (<code>PATCH</code>, gated), and <code>GET /categories/:id/subcategories</code>. This is what v2 uses.</li>
+        <li><strong><code>/api/taxonomy/*</code></strong> — the full classify / apply / tags / dimensions / match / RFQ surface. Mounted &amp; live, but called <strong>only by <code>client-angular</code> (v1)</strong>.</li>
+        <li><strong><code>/api/categories</code></strong> (v1) — read-only since v2.14c; writes moved to the gated v2 marketplace route.</li>
+        <li><strong>v2 client:</strong> <code>catalogue.service</code> + <code>category-strip</code>/<code>subcat-card</code> (browse), <code>categories-settings</code> (top-level curation only), <code>item-edit</code> (<strong>category select only</strong>).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Live vs shelved / stale:</strong> the backend (service + <code>/api/taxonomy</code> routes + DB triggers + idempotent migrations) is <strong>complete and not dormant</strong> — the gap is purely that <strong>v2's UI hasn't adopted the tag facet or the AI-classification workflow</strong> (they live behind v1). <code>getDimensions</code>'s own comment flags the v2 marketplace tag-filter as future. <strong>Stale remnants:</strong> the pre-v2 free-text <code>categories.tags[]</code> + <code>items.tags[]</code> arrays (superseded by <code>tag</code>/<code>supplier_item_tag</code>), and <code>categories.icon</code> (legacy) coexisting with <code>icon_name</code>/<code>icon_color</code>. <strong>Relevant to item-import:</strong> Phase-2 AI micro-sort reuses <code>classifyItem</code>/<code>suggestSubcategory</code> (not net-new); but even V1 "picked subcategory" needs a <strong>new v2 write path</strong> — v2 item-edit can't set <code>subcategory_id</code> today.
+  </div>
+
+</div>
+</body>
+</html>
