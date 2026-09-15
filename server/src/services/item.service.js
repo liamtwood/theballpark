@@ -402,4 +402,31 @@ async function listOptions(itemId) {
   return r.rows.map(toItemComponent);
 }
 
-module.exports = { getAll, getById, getTagsByCategory, countsByCategory, create, update, softDelete, duplicate, listComponents, saveComponents, listOptions };
+/** Status rollup for ONE org's own items (supplier home "Next steps"): drafts
+ *  to submit, rejected to fix, approved-but-inactive ready to promote, plus the
+ *  live + total. Non-deleted only; org scoped by the caller (never the body). */
+async function statusCountsForOrg(orgId) {
+  const r = await pool.query(
+    `SELECT
+       COUNT(*) FILTER (WHERE approval_status = 'draft')                          AS draft,
+       COUNT(*) FILTER (WHERE approval_status = 'pending')                        AS pending,
+       COUNT(*) FILTER (WHERE approval_status = 'rejected')                       AS rejected,
+       COUNT(*) FILTER (WHERE approval_status = 'approved' AND is_active = false) AS ready_to_promote,
+       COUNT(*) FILTER (WHERE approval_status = 'approved' AND is_active = true)  AS live,
+       COUNT(*)                                                                   AS total
+     FROM items
+     WHERE org_id = $1 AND deleted_at IS NULL`,
+    [orgId]
+  );
+  const row = r.rows[0] || {};
+  return {
+    draft: Number(row.draft ?? 0),
+    pending: Number(row.pending ?? 0),
+    rejected: Number(row.rejected ?? 0),
+    readyToPromote: Number(row.ready_to_promote ?? 0),
+    live: Number(row.live ?? 0),
+    total: Number(row.total ?? 0),
+  };
+}
+
+module.exports = { getAll, getById, getTagsByCategory, countsByCategory, create, update, softDelete, duplicate, listComponents, saveComponents, listOptions, statusCountsForOrg };

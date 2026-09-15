@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { AuthService } from '../../core/auth/auth.service';
+import { InboxService } from '../../core/inbox/inbox.service';
 import { ProjectService } from '../../core/projects/project.service';
 import { COMPLETED_STATUSES, ProjectCard } from '../../core/projects/project.types';
 
@@ -18,7 +20,7 @@ import { COMPLETED_STATUSES, ProjectCard } from '../../core/projects/project.typ
     <div class="bp-recent__body">
       <header class="bp-recent__head">
         <h2 class="bp-card-title bp-recent__title">Recent projects</h2>
-        <a routerLink="/projects" class="bp-recent__viewall">View all</a>
+        <a [routerLink]="viewAllLink()" class="bp-recent__viewall">View all</a>
       </header>
 
       @if (loader.isLoading()) {
@@ -26,12 +28,12 @@ import { COMPLETED_STATUSES, ProjectCard } from '../../core/projects/project.typ
       } @else if (loader.error()) {
         <p class="bp-recent__muted">Couldn't load your projects.</p>
       } @else if (recent().length === 0) {
-        <p class="bp-recent__muted">No projects yet — start one from New project.</p>
+        <p class="bp-recent__muted">{{ emptyCopy() }}</p>
       } @else {
         <ul class="bp-recent__list">
           @for (p of recent(); track p.id) {
             <li>
-              <a [routerLink]="['/projects', p.id]" class="bp-recent__row">
+              <a [routerLink]="[linkBase(), p.id]" class="bp-recent__row">
                 <span class="bp-recent__main">
                   <span class="bp-recent__name">{{ p.name }}</span>
                   @if (p.clientName) {
@@ -152,10 +154,24 @@ import { COMPLETED_STATUSES, ProjectCard } from '../../core/projects/project.typ
 })
 export class RecentProjectsCardComponent {
   private readonly projects = inject(ProjectService);
+  private readonly inbox = inject(InboxService);
+  private readonly auth = inject(AuthService);
 
-  protected readonly loader = resource<ProjectCard[], true>({
-    params: () => true,
-    loader: () => firstValueFrom(this.projects.list()),
+  /** Supplier "Recent projects" = the quote-request feed (drilling into the
+   *  supplier conversation surface), not the agency's own projects. */
+  private readonly isSupplier = computed(() => this.auth.user()?.activeOrgType === 'supplier');
+  protected readonly linkBase = computed(() => (this.isSupplier() ? '/inbox' : '/projects'));
+  protected readonly viewAllLink = computed(() => (this.isSupplier() ? '/projects-hub' : '/projects'));
+  protected readonly emptyCopy = computed(() =>
+    this.isSupplier()
+      ? 'No quote requests yet — an agency will reach out here.'
+      : 'No projects yet — start one from New project.',
+  );
+
+  protected readonly loader = resource<ProjectCard[], boolean>({
+    params: () => this.isSupplier(),
+    loader: ({ params: supplier }) =>
+      firstValueFrom(supplier ? this.inbox.supplierProjects() : this.projects.list()),
   });
 
   /** Four most-recently-updated OPEN projects — completed/archived are excluded

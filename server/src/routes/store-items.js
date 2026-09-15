@@ -19,6 +19,15 @@ const { StoreItemCreateSchema, StoreItemUpdateSchema } = require('../schemas/sto
 
 router.use(requireActiveMembership('item.create'));
 
+// GET /api/store/items/counts — status rollup for the caller's org, feeding the
+// supplier home "Next steps" (drafts to submit, rejected to fix, approved-but-
+// inactive ready to promote). MUST precede GET /:id. org from JWT.
+router.get('/counts', async (req, res, next) => {
+  try {
+    res.json(await ItemService.statusCountsForOrg(req.user.org_id));
+  } catch (err) { next(err); }
+});
+
 // pV2-BUILDUP-03 — an item's composition (options/components): child items via
 // parent_item_id. Same shape the Customize UI already consumes.
 const ItemComponentsSchema = z.object({
