@@ -230,6 +230,14 @@ export class ItemCardComponent {
    *  and view for agents. The Edit button below is the owner's explicit edit. */
   protected open(): void {
     const owned = this.item().ownedByActiveOrg;
+    // Browse surfaces (marketplace / supplier store as a buyer) can't edit, so a
+    // card click opens the Quick View DIALOG — same as the "Quick view" link.
+    // Owners navigate to their editor instead (My Store); other read-only
+    // surfaces without quick view fall back to the read-only item page.
+    if (!owned && this.showQuickView()) {
+      this.quickView.emit(this.item().id);
+      return;
+    }
     void this.router.navigate(
       ['/store/items', this.item().id],
       owned ? {} : { queryParams: { view: 1 } }
