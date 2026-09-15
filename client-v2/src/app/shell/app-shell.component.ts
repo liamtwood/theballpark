@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../core/auth/auth.service';
@@ -33,7 +33,7 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
 
       @if (auth.isLoggedIn()) {
         <nav class="bp-header-inset flex items-center gap-1 overflow-x-auto pb-2">
-          @for (item of navItems; track item.path) {
+          @for (item of navItems(); track item.path) {
             <a [routerLink]="item.path" routerLinkActive="bp-nav-link--active"
                [routerLinkActiveOptions]="{ exact: item.exact }" class="bp-nav-link">
               <lucide-icon [name]="item.icon" [size]="16" [strokeWidth]="1.75" />{{ item.label }}
@@ -57,14 +57,33 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
 export class AppShellComponent {
   protected readonly auth = inject(AuthService);
 
-  /** Primary nav — every destination is an existing authed route. */
-  protected readonly navItems = [
-    { label: 'Overview', path: '/home', icon: 'layout-grid', exact: true },
-    { label: 'New project', path: '/projects/new', icon: 'folder-plus', exact: true },
-    { label: 'Past projects', path: '/projects', icon: 'folder-open', exact: true },
-    { label: 'Messages', path: '/inbox', icon: 'message-square', exact: false },
-    { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
-    { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
-  ];
-
+  /** Primary nav, persona-aware. Suppliers manage incoming work + their shop —
+   *  New project / Past projects are agency-only (a supplier can't create a
+   *  brief), so their nav mirrors the supplier launcher tiles instead. Every
+   *  destination is an existing authed route. */
+  protected readonly navItems = computed(() =>
+    this.auth.user()?.activeOrgType === 'supplier' ? SUPPLIER_NAV : AGENCY_NAV,
+  );
 }
+
+interface NavItem { label: string; path: string; icon: string; exact: boolean; }
+
+/** Agency (default) — create + track projects, message suppliers, browse. */
+const AGENCY_NAV: readonly NavItem[] = [
+  { label: 'Overview', path: '/home', icon: 'layout-grid', exact: true },
+  { label: 'New project', path: '/projects/new', icon: 'folder-plus', exact: true },
+  { label: 'Past projects', path: '/projects', icon: 'folder-open', exact: true },
+  { label: 'Messages', path: '/inbox', icon: 'message-square', exact: false },
+  { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
+  { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
+];
+
+/** Supplier — incoming work + conversations + their storefront (no create). */
+const SUPPLIER_NAV: readonly NavItem[] = [
+  { label: 'Overview', path: '/home', icon: 'layout-grid', exact: true },
+  { label: 'Projects', path: '/projects-hub', icon: 'folder-open', exact: false },
+  { label: 'Messages', path: '/inbox', icon: 'message-square', exact: false },
+  { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
+  { label: 'My Shop', path: '/store', icon: 'package', exact: false },
+  { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
+];
