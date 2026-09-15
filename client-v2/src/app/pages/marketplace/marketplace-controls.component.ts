@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { TooltipModule } from 'primeng/tooltip';
 import { MarketplaceStore } from './marketplace-store';
@@ -60,10 +60,14 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
          height. gap-6 matches the rails gap so Filter lines up over the grid. -->
     @if (open()) {
       <div class="mt-3 flex items-start gap-6">
-        <div class="w-[210px] shrink-0">
-          <span class="bp-field-label mb-1.5 block font-bold text-text">Type</span>
-          <app-tab-band [tabs]="modeTabs" [active]="store.mode()" [fill]="true" [compact]="true" (activeChange)="store.setMode($event)" />
-        </div>
+        <!-- Type (Items|Suppliers) is meaningless on a pinned single-supplier
+             store (supplier-detail's Store tab) — hide it there. -->
+        @if (!pinned()) {
+          <div class="w-[210px] shrink-0">
+            <span class="bp-field-label mb-1.5 block font-bold text-text">Type</span>
+            <app-tab-band [tabs]="modeTabs" [active]="store.mode()" [fill]="true" [compact]="true" (activeChange)="store.setMode($event)" />
+          </div>
+        }
         <div class="flex min-w-0 flex-1 items-start justify-between gap-4">
           <div>
             <span class="bp-field-label mb-1.5 block font-bold text-text">Filter</span>
@@ -87,6 +91,9 @@ export class MarketplaceControlsComponent {
   readonly cartCount = input(0);
   readonly cartOpen = input(false);
   readonly cartToggled = output<void>();
+
+  /** Pinned single-supplier store (supplier-detail) — no Items|Suppliers Type. */
+  protected readonly pinned = computed(() => !!this.store.pinnedSupplierId());
 
   /** One toggle: reveals the Type / Filter / View options line. */
   protected readonly open = signal(false);

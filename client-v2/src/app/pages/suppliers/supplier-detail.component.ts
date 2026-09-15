@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { LucideAngularModule } from 'lucide-angular';
@@ -6,12 +6,11 @@ import { AuthService } from '../../core/auth/auth.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { MarketplaceStore } from '../marketplace/marketplace-store';
-import { RightRailComponent } from '../marketplace/rail/right-rail.component';
+import { MarketplaceWorkspaceComponent } from '../marketplace/marketplace-workspace.component';
+import { QuickViewDialogComponent } from '../marketplace/quick-view-dialog.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
-import { CatalogueFilterBandComponent } from '../../shared/catalogue/filter-band.component';
-import { CatalogueLayoutComponent } from '../../shared/catalogue/catalogue-layout.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
-import { SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
+import { CatalogueItem, SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
 import { StorefrontPanelComponent } from './storefront-panel.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
@@ -32,10 +31,9 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
     PageHeroComponent,
     TabBandComponent,
     CatalogueGridComponent,
-    CatalogueLayoutComponent,
     CategoryStripComponent,
-    RightRailComponent,
-    CatalogueFilterBandComponent,
+    MarketplaceWorkspaceComponent,
+    QuickViewDialogComponent,
     StorefrontPanelComponent,
   ],
   providers: [MarketplaceStore],
@@ -85,17 +83,17 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
             (subcategorySelected)="openStoreSubcat($event)"
           />
         } @else {
-          <!-- STORE — the marketplace engine, pinned to this supplier. -->
-          <!-- The shared search/filter band (RP-06 extraction) — supplier
-               select off (the store is already pinned to one). -->
-          <app-catalogue-filter-band />
-          <app-catalogue-layout>
+          <!-- STORE — the SHARED marketplace workspace, pinned to this supplier.
+               Same chrome as the global + in-project marketplace; the controls
+               self-hide the Items|Suppliers type + supplier filter when pinned. -->
+          <app-marketplace-workspace>
             <app-category-strip
               strip
+              mode="drilldown"
               [categories]="storeCategories(sup)"
               [activeId]="store.categoryId()"
               [totalCount]="supplierTotal(sup)"
-              [subcategories]="store.subcategories()"
+              [subcategories]="storeSubcategories()"
               [activeSubId]="store.subcategoryId()"
               (categorySelected)="store.setCategory($event)"
               (subcategorySelected)="store.setSubcategory($event)"
@@ -110,7 +108,10 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
                 [selectedId]="store.itemId()"
                 [favouriteIds]="favs.items()"
                 [quoteDraftIds]="favs.quoteDraft()"
-                (entitySelected)="toggleItem($event)"
+                [showQuickView]="true"
+                [dense]="true"
+                (entitySelected)="openQuickView($event)"
+                (quickView)="openQuickView($event)"
                 (favouriteToggled)="favs.toggle('item', $event)"
                 (quoteToggled)="favs.toggleQuoteDraft($event)"
                 (changed)="store.reloadItems()"
@@ -123,11 +124,13 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
                 </div>
               }
             }
-
-            <app-right-rail rail />
-          </app-catalogue-layout>
+          </app-marketplace-workspace>
         }
       </div>
+
+      <!-- Item Quick View — a peek (no add-to-project here; buyers add via the
+           card + / the global marketplace). -->
+      <app-quick-view-dialog [item]="quickItem()" [showAdd]="false" (close)="quickItem.set(null)" />
     } @else if (detail.error()) {
       <div class="bp-page-body"><p class="bp-body-small text-warn">Supplier not found.</p></div>
     } @else {
@@ -227,21 +230,33 @@ export class SupplierDetailComponent {
       .catch((err) => console.warn('[SupplierDetail] navigation failed', err));
   }
 
-  protected toggleItem(id: string): void {
-    this.store.selectItem(this.store.itemId() === id ? null : id);
+  /** The item whose Quick View dialog is open (null = closed). */
+  protected readonly quickItem = signal<CatalogueItem | null>(null);
+
+  protected openQuickView(itemId: string): void {
+    this.quickItem.set(this.store.items().find((i) => i.id === itemId) ?? null);
   }
 
-  /** The strip wants CategoryInfo-ish rows — adapt the detail's counts. */
+  /** Drill-down rail: only subcategories with items (empties hidden), matching
+   *  the marketplace pages. */
+  protected readonly storeSubcategories = computed(() =>
+    this.store.subcategories().filter((s) => s.count > 0),
+  );
+
+  /** The strip wants CategoryInfo-ish rows — adapt the detail's counts, hiding
+   *  empty categories (matches the marketplace drill-down rail). */
   protected storeCategories(sup: SupplierDetail) {
-    return sup.categories.map((c) => ({
-      id: c.id,
-      name: c.name,
-      count: c.count,
-      tagline: null,
-      iconName: null,
-      isActive: true,
-      sortOrder: null,
-    }));
+    return sup.categories
+      .filter((c) => c.count > 0)
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        count: c.count,
+        tagline: null,
+        iconName: null,
+        isActive: true,
+        sortOrder: null,
+      }));
   }
 
   protected categoryName(sup: SupplierDetail, id: string): string {
