@@ -101,10 +101,10 @@ import { COMPLETED_STATUSES, ProjectCard } from '../../core/projects/project.typ
         padding: 0;
         display: flex;
         flex-direction: column;
-        /* Fill the card's height and spread the rows evenly (the card stretches
-           to the taller Next-steps card beside it). */
-        flex: 1;
-        justify-content: space-between;
+        /* Rows sit together at the top — the card may stretch to the taller
+           Next-steps card beside it, but we don't spread the rows to fill it
+           (space-between left big gaps with only 2–3 projects). */
+        gap: 2px;
       }
       .bp-recent__row {
         display: grid;
