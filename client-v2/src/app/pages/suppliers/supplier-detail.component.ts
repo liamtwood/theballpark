@@ -45,7 +45,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
   host: { class: 'block bp-vpfit' },
   template: `
     @if (detail.value(); as sup) {
-      <app-page-hero [back]="heroBack()" [title]="sup.name" [subtitle]="sup.city ?? ''">
+      <app-page-hero align="block" [back]="heroBack()" [title]="sup.name" [subtitle]="sup.city ?? ''">
         <div hero-actions class="flex items-center gap-3">
           @if (isOwner()) {
             <!-- pV2-STORE-01 — owner manages their own shop here. -->
