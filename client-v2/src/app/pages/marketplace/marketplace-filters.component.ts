@@ -26,6 +26,16 @@ import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
             [value]="store.supplierId() ?? 'any'"
             (changed)="store.setSupplier($event === 'any' ? null : $event)" />
         }
+        <!-- Owner / ballpark-admin only: approval status + publish state, so an
+             owner can find pending / rejected / hidden (inactive) items. -->
+        @if (store.showStatusFilters()) {
+          <app-select ariaLabel="Approval status" class="w-40" [compact]="true" [options]="statusOptions"
+            [value]="store.statusFilter() ?? 'all'"
+            (changed)="store.setStatusFilter($event)" />
+          <app-select ariaLabel="Visibility" class="w-36" [compact]="true" [options]="activeOptions"
+            [value]="store.activeFilter() ?? 'all'"
+            (changed)="store.setActiveFilter($event)" />
+        }
         @if (store.hasFilters()) {
           <button type="button"
             class="bp-caption cursor-pointer border-none bg-transparent text-secondary underline hover:text-text"
@@ -56,4 +66,20 @@ export class MarketplaceFiltersComponent {
     { label: 'Any supplier', value: 'any' },
     ...this.store.supplierOptions().map((s) => ({ label: `${s.name} (${s.count})`, value: s.id })),
   ]);
+
+  /** Owner / ballpark-admin approval-status filter. */
+  protected readonly statusOptions: SelectOption[] = [
+    { label: 'Any status', value: 'all' },
+    { label: 'Draft', value: 'draft' },
+    { label: 'Pending', value: 'pending' },
+    { label: 'Approved', value: 'approved' },
+    { label: 'Rejected', value: 'rejected' },
+  ];
+
+  /** Owner / ballpark-admin publish-state (visibility) filter. */
+  protected readonly activeOptions: SelectOption[] = [
+    { label: 'All', value: 'all' },
+    { label: 'Active', value: 'active' },
+    { label: 'Inactive', value: 'inactive' },
+  ];
 }
