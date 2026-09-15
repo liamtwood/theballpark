@@ -4,6 +4,7 @@ import { requiresOrgGuard } from './core/auth/requires-org.guard';
 import { needsOnboardingGuard } from './core/auth/needs-onboarding.guard';
 import { adminGuard } from './core/auth/admin.guard';
 import { ballparkAdminGuard } from './core/auth/ballpark-admin.guard';
+import { agencyOnlyGuard, projectDetailAccessGuard } from './core/auth/project-access.guard';
 
 export const routes: Routes = [
   {
@@ -123,6 +124,7 @@ export const routes: Routes = [
         // The agent New Project tile's create flow (v2.12g split — was the
         // same /projects target as the list tile).
         path: 'projects/new',
+        canActivate: [agencyOnlyGuard], // suppliers can't author a brief → /home
         loadComponent: () =>
           import('./pages/projects/projects-new.component').then((m) => m.ProjectsNewComponent),
       },
@@ -136,6 +138,7 @@ export const routes: Routes = [
         // pV2-PROJECTS-02 — the inside-project view (3 tabs). Must sit
         // AFTER 'projects/new' so that matches first.
         path: 'projects/:id',
+        canActivate: [projectDetailAccessGuard], // suppliers → /inbox/:id (their surface)
         loadComponent: () =>
           import('./pages/projects/project-detail.component').then((m) => m.ProjectDetailComponent),
       },
