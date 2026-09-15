@@ -415,7 +415,9 @@ async function statusCountsForOrg(orgId) {
        COUNT(*) FILTER (WHERE approval_status = 'approved' AND is_active = true)  AS live,
        COUNT(*)                                                                   AS total
      FROM items
-     WHERE org_id = $1 AND deleted_at IS NULL`,
+     WHERE org_id = $1 AND deleted_at IS NULL
+       AND kind IS DISTINCT FROM 'component'
+       AND parent_item_id IS NULL`,
     [orgId]
   );
   const row = r.rows[0] || {};
