@@ -115,15 +115,26 @@ export class ProjectsPageComponent {
   });
 
   protected readonly visible = computed(() => {
-    // Supplier feed is already the quote-request set — no status bucketing
-    // (live/completed supplier buckets are a later slice).
-    if (this.isSupplier()) return this.all();
+    const all = this.all();
+    if (this.isSupplier()) {
+      // Bucket the supplier's quote-request feed by project status.
+      // Completed = done only (completed/archived — never draft/active);
+      // Quoting/Live = the open requests (everything not completed).
+      const b = this.bucketParam();
+      if (b === 'completed') return all.filter((p) => COMPLETED_STATUSES.has(p.status));
+      if (b === 'quoting' || b === 'live') return all.filter((p) => !COMPLETED_STATUSES.has(p.status));
+      return all;
+    }
     const completed = this.bucket() === 'completed';
-    return this.all().filter((p) => COMPLETED_STATUSES.has(p.status) === completed);
+    return all.filter((p) => COMPLETED_STATUSES.has(p.status) === completed);
   });
 
   protected readonly emptyCopy = computed(() => {
-    if (this.isSupplier()) return 'No quote requests yet — an agency will reach out here.';
+    if (this.isSupplier()) {
+      return this.bucketParam() === 'completed'
+        ? 'No completed projects yet.'
+        : 'No quote requests yet — an agency will reach out here.';
+    }
     return this.bucket() === 'completed'
       ? `No completed ${this.labelPlural().toLowerCase()} yet.`
       : `No ${this.labelPlural().toLowerCase()} yet — start one from the home screen.`;
