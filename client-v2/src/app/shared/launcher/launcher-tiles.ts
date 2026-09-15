@@ -140,29 +140,24 @@ export const PROJECTS_HUB_TILES: readonly LauncherTile[] = [
 ];
 
 /** The supplier Storefront hub (v2.13a as "Marketplace Profile", renamed
- *  v2.13b per §14: storefront = the public-face hub). The Profile tile
- *  lands on the REAL /settings/profile; the rest stub until their arcs.
- *  "My Shop" is UI copy over the §14 internal /store route (store =
- *  catalogue) — never hard-code customer labels as routes. */
+ *  v2.13b per §14: storefront = the public-face hub). Two tiles (v2.462):
+ *  My Shop = the item catalogue (/store); My Shopfront = the brand storefront
+ *  (Profile's Shopfront tab). Marketplace lives in the nav; Profile is its own
+ *  nav item. "My Shop"/"My Shopfront" are UI copy over the §14 internal routes
+ *  — never hard-code customer labels as routes. */
 export const STOREFRONT_TILES: readonly LauncherTile[] = [
-  {
-    icon: 'store',
-    label: 'Marketplace',
-    subtitle: 'Browse the Ballpark Marketplace, explore suppliers and discover opportunities.',
-    href: '/marketplace',
-  },
   {
     icon: 'package',
     label: 'My Shop',
-    subtitle:
-      'Manage how your company appears within Ballpark Marketplace. Update your storefront, branding and profile.',
+    subtitle: 'Manage your products — add, edit, submit for approval, and publish to the Marketplace.',
     href: '/store',
   },
   {
     icon: 'building-2',
-    label: 'Profile',
-    subtitle: 'Manage company information, payment details, team members and account settings.',
+    label: 'My Shopfront',
+    subtitle: 'Manage how your company appears to buyers — branding, gallery and company information.',
     href: '/settings/profile',
+    query: { tab: 'shopfront' },
   },
 ];
 

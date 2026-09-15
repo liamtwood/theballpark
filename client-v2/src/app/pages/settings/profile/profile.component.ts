@@ -1,4 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
+import { map } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { ToastModule } from 'primeng/toast';
@@ -283,7 +286,17 @@ export class ProfileComponent {
 
   // ── Profile / Shopfront tabs (suppliers only). ────────────────────────────
   protected readonly isSupplier = computed(() => this.auth.user()?.activeOrgType === 'supplier');
-  protected readonly tab = signal<'profile' | 'shopfront'>('profile');
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  /** Tab lives in the URL (?tab=shopfront) so the Storefront hub's "My
+   *  Shopfront" tile can deep-link straight to it. */
+  private readonly tabParam = toSignal(
+    this.route.queryParamMap.pipe(map((p) => p.get('tab'))),
+    { initialValue: this.route.snapshot.queryParamMap.get('tab') },
+  );
+  protected readonly tab = computed<'profile' | 'shopfront'>(() =>
+    this.tabParam() === 'shopfront' ? 'shopfront' : 'profile',
+  );
   protected readonly tabs: TabBandTab[] = [
     { key: 'profile', label: 'Profile' },
     { key: 'shopfront', label: 'Shopfront' },
@@ -296,7 +309,11 @@ export class ProfileComponent {
     input.value = '';
   }
   protected setTab(key: string): void {
-    this.tab.set(key === 'shopfront' ? 'shopfront' : 'profile');
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab: key === 'shopfront' ? 'shopfront' : null },
+      queryParamsHandling: 'merge',
+    });
   }
 
   /** Hero (eyebrow / title / subtitle): /settings/pages overrides win over
