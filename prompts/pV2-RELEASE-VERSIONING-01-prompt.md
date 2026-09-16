@@ -17,9 +17,12 @@ note + About update a fixed per-promote step so it's consistent every release.
   - fixes / small tweaks → **PATCH** (v0.1.0 → v0.1.1)
   - feature bundle → **MINOR** (v0.1.x → v0.2.0)
   - prod launch (GA) → **MAJOR** (→ v1.0.0)
-- **Current preview = `v0.1.0`** (built from `v2.464`).
-- **Next promote** (the pV2-PROJ-UX-01 fix bundle) = **`v0.1.1`** (built from
-  whatever dev build ships, ~v2.469).
+- **v0.1.0 = the "Ballpark Base Release"** — the FIRST release under this scheme,
+  and it IS this upcoming promote (built from the promoted dev build, ~v2.469+).
+  Its note (`docs/release-notes/v0.1.0.md`) describes the whole product, not a
+  delta. It supersedes the old unversioned `v2.464` preview entry as the
+  client-facing headline.
+- **Next promote after v0.1.0** → `v0.1.1` (patch) or `v0.2.0` (features).
 - **`v1.0.0` reserved for prod GA.**
 - Every release is **stamped with its source build**: "Preview v0.1.0 · built
   from v2.464".
