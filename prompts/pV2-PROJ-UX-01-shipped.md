@@ -56,6 +56,16 @@ up the now-dead `addItems` output (project-estimate) + its binding and the
 `addItems()` handler (project-detail).
 **Files:** project-estimate.component.ts, project-detail.component.ts.
 
+## Iteration — v2.467 (2026-09-16)
+**Triggered by QC (Liam):** #2 (supplier name) should extend to the **marketplace
+item cards** too. The card previously showed `supplierCity || supplierName` (city
+won, hiding the supplier name).
+**Done:** `item-card.component.ts` now shows a `supplierMeta` line — supplier name
+with the city appended ("Rocket Food · London"), falling back to whichever exists;
+icon changed map-pin → store. Applies everywhere the shared item card renders
+(global + in-project marketplace, supplier store).
+**Files:** shared/catalogue/item-card.component.ts.
+
 ## QC notes
 (Liam)
 

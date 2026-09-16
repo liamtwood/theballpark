@@ -102,8 +102,8 @@ import { AuthService } from '../../core/auth/auth.service';
         }
       </div>
       <div class="mt-1.5 flex items-center gap-1 text-secondary">
-        <lucide-icon name="map-pin" [size]="13" [strokeWidth]="1.75" />
-        <span class="bp-caption truncate">{{ item().supplierCity || item().supplierName }}</span>
+        <lucide-icon name="store" [size]="13" [strokeWidth]="1.75" />
+        <span class="bp-caption truncate">{{ supplierMeta() }}</span>
       </div>
       @if (showQuickView()) {
         <button type="button" class="bp-qv-link mt-2" (click)="onQuickView($event)">Quick view</button>
@@ -189,6 +189,14 @@ export class ItemCardComponent {
 
   /** Wishlist / Add-to-Quote are buyer actions — agency users only. */
   protected readonly isAgent = computed(() => this.auth.user()?.activeOrgType === 'agency');
+
+  /** Card meta: the supplier name, with the city appended when both exist
+   *  ("Rocket Food · London") — falls back to whichever is present. */
+  protected readonly supplierMeta = computed(() => {
+    const n = this.item().supplierName;
+    const c = this.item().supplierCity;
+    return n && c ? `${n} · ${c}` : (n || c || '');
+  });
 
   readonly item = input.required<CatalogueItem>();
   readonly selected = input<boolean>(false);
