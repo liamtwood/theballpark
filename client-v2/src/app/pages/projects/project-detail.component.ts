@@ -318,9 +318,9 @@ interface DetailForm {
               </div>
             </div>
             @if (docView()) {
-              <!-- Opened from Reports, but "Back to builder" belongs on Ballpark
-                   Cost — close the overlay AND switch to the final tab. -->
-              <app-quote-document [projectId]="p.id" [project]="p" (close)="docView.set(false); setTab('final')" />
+              <!-- Close returns to Reports, where the document was opened (Liam
+                   QC 2026-09-16). -->
+              <app-quote-document [projectId]="p.id" [project]="p" (close)="docView.set(false)" />
             }
             @if (sowView()) {
               <app-sow-document [projectId]="p.id" [project]="p" (close)="sowView.set(false)" />

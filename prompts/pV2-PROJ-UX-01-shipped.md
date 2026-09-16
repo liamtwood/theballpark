@@ -66,8 +66,18 @@ icon changed map-pin → store. Applies everywhere the shared item card renders
 (global + in-project marketplace, supplier store).
 **Files:** shared/catalogue/item-card.component.ts.
 
+## Iteration — v2.468 (2026-09-16)
+**Triggered by QC (Liam):** #3 — Back from the quote document should return to the
+**Reports** tab (where it was opened), NOT Ballpark Cost. This reverses the spec's
+original assumption; Liam's call wins.
+**Done:** reverted the quote-document `(close)` to `docView.set(false)` (reveals
+Reports underneath), and relabelled the doc's action-bar button "Back to builder"
+→ **"Back"** so it isn't mislabelled. (SOW doc already returned to Reports.)
+**Files:** project-detail.component.ts, quote-document.component.ts.
+
 ## QC notes
-(Liam)
+(Liam) — QC round 1: #3,5,6,7,8,9,10 OK; #8 badge logic to be solidified later;
+#1,#2 not tested. #4 fixed this iteration (back → Reports).
 
 ## Chat audit
 (chat)
