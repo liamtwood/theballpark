@@ -17,15 +17,16 @@ note + About update a fixed per-promote step so it's consistent every release.
   - fixes / small tweaks → **PATCH** (v0.1.0 → v0.1.1)
   - feature bundle → **MINOR** (v0.1.x → v0.2.0)
   - prod launch (GA) → **MAJOR** (→ v1.0.0)
-- **v0.1.0 = the "Ballpark Base Release"** — the FIRST release under this scheme,
-  and it IS this upcoming promote (built from the promoted dev build, ~v2.469+).
-  Its note (`docs/release-notes/v0.1.0.md`) describes the whole product, not a
-  delta. It supersedes the old unversioned `v2.464` preview entry as the
-  client-facing headline.
-- **Next promote after v0.1.0** → `v0.1.1` (patch) or `v0.2.0` (features).
-- **`v1.0.0` reserved for prod GA.**
-- Every release is **stamped with its source build**: "Preview v0.1.0 · built
-  from v2.464".
+- **This prompt lands the MACHINERY** (fields, chip, About, changelog re-key).
+  The per-release *value* is set by the release runbook
+  (`pV2-RELEASE-SEQUENCE-01`), not hardcoded here.
+- **v0.1.0** = the "Ballpark Base Release" baseline (current preview, built from
+  `v2.464`; note `docs/release-notes/v0.1.0.md`) — the changelog history entry.
+- **v0.1.1** = the FIRST actual promote carrying this machinery (the Beth bug
+  fixes). So set staging **release = v0.1.1** when this + FEEDBACK-REF promote.
+- **v0.1.2** = project tidy (next promote). `v1.0.0` reserved for prod GA.
+- Every release is **stamped with its source build**: "Preview v0.1.1 · built
+  from v2.NNN".
 
 **Single source of truth:** the release version lives in the environment file;
 the chip, About, and What's New all read from it (or from `changelog.json`
@@ -38,10 +39,10 @@ derived on promote) so they can never disagree.
 ### 1. Environment fields — `environment.staging.ts` / `.prod.ts` / `.ts`
 Replace the single `versionChip` string with structured version fields:
 ```ts
-// environment.staging.ts
-release: 'v0.1.0',      // client-facing
-build:   'v2.464',      // source dev build (traceability)
-versionChip: 'Preview v0.1.0',   // derived label the chip shows
+// environment.staging.ts  (set to the version being promoted — v0.1.1 first)
+release: 'v0.1.1',      // client-facing
+build:   'v2.NNN',      // source dev build (traceability)
+versionChip: 'Preview v0.1.1',   // derived label the chip shows
 ```
 - `environment.prod.ts`: `release: 'v1.0.0'` (reserved), `build` set at cutover,
   chip `'v1.0.0'`.
@@ -52,8 +53,8 @@ versionChip: 'Preview v0.1.0',   // derived label the chip shows
 
 ### 2. Version chip + About — `shell/user-menu/user-menu.component.ts` (+ chip)
 - The visible version everywhere the client sees it shows the **release**
-  headline: **"Preview v0.1.0"**, with the build as a small secondary
-  ("build v2.464") — e.g. on hover, or a muted sub-line.
+  headline: **"Preview v0.1.1"**, with the build as a small secondary
+  ("build v2.NNN") — e.g. on hover, or a muted sub-line.
 - The **About** line in the user menu reads `release` + `build` from
   `environment` (single source) — so it updates automatically each release with
   no separate edit.
@@ -88,18 +89,18 @@ This checklist is the "consistent each release" guarantee.
 ---
 
 ## Set current state now
-- `environment.staging.ts` → `release: 'v0.1.0'`, `build: 'v2.464'`, chip
-  `'Preview v0.1.0'`.
-- Add/mark the current preview changelog entry (the `v2.464` one) with
-  `release: 'v0.1.0'`.
-- (The **v0.1.1** entry gets written when the pV2-PROJ-UX-01 bundle promotes —
-  not in this prompt; this prompt just lands the scheme + v0.1.0 baseline.)
+- `environment.staging.ts` → `release: 'v0.1.1'`, `build: '<promoted v2.NNN>'`,
+  chip `'Preview v0.1.1'` (this ships as part of the v0.1.1 bugs promote — see
+  `pV2-RELEASE-SEQUENCE-01`).
+- Keep the **v0.1.0** base entry (`docs/release-notes/v0.1.0.md`) in
+  `changelog.json` history as the baseline; add the **v0.1.1** entry (fixes
+  table) for this promote.
 
 ---
 
 ## Acceptance
 - [ ] `environment.staging.ts` carries `release` + `build`; chip shows
-      "Preview v0.1.0".
+      "Preview v0.1.1".
 - [ ] User-menu About shows release headline + build sub-label, read from env.
 - [ ] What's New preview section headlines the release version + "built from
       v2.464".
