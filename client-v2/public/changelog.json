@@ -3,104 +3,183 @@
   "preview": [
     {
       "version": "v0.1.1",
+      "name": "Bug fixes (Beth review)",
       "build": "v2.471",
       "date": "2026-09-16",
-      "notes": [
+      "datetime": "2026-09-16 18:47",
+      "env": "preview",
+      "notes": [],
+      "fixes": [
         {
-          "area": "Bug fixes (Beth review)",
-          "items": [
-            "**F-00087** — Cart shows a single **\"Go with this Ballpark\"** (removed the redundant \"Edit in marketplace\"). *Reported by Beth Pizey*",
-            "**F-00088** — **Supplier name** now shown on the estimate/cart item rows and the marketplace item cards. *Reported by Beth Pizey*",
-            "**F-00089** — **Back** from the Quote / SOW document returns to Reports (where it opened); the button reads \"Back\". *Reported by Beth Pizey*",
-            "**F-00090** — **Inbox** tab now sits next to Overview in the project workspace. *Reported by Beth Pizey*",
-            "**F-00091** — Messaging suppliers lands on the **live Overview**, with an attention badge on the Inbox tab. *Reported by Beth Pizey*"
-          ]
+          "ref": "F-00087",
+          "reporter": "Beth Pizey",
+          "text": "Cart shows a single \"Go with this Ballpark\" (removed the redundant \"Edit in marketplace\")",
+          "done": true
+        },
+        {
+          "ref": "F-00088",
+          "reporter": "Beth Pizey",
+          "text": "Supplier name now shown on the estimate/cart item rows and the marketplace item cards",
+          "done": true
+        },
+        {
+          "ref": "F-00089",
+          "reporter": "Beth Pizey",
+          "text": "Back from the Quote / SOW document returns to Reports (where it opened); the button reads \"Back\"",
+          "done": true
+        },
+        {
+          "ref": "F-00090",
+          "reporter": "Beth Pizey",
+          "text": "Inbox tab now sits next to Overview in the project workspace",
+          "done": true
+        },
+        {
+          "ref": "F-00091",
+          "reporter": "Beth Pizey",
+          "text": "Messaging suppliers lands on the live Overview, with an attention badge on the Inbox tab",
+          "done": true
         }
       ]
     },
     {
       "version": "v0.1.0",
+      "name": "Ballpark Base Release",
       "build": "v2.464",
       "date": "2026-09-16",
+      "datetime": "2026-09-16 12:00",
+      "env": "preview",
       "notes": [
         {
           "area": "Ballpark Base Release",
           "items": [
-            "**Agent** (event agency) — build a project from a brief, ballpark the cost, message suppliers, quote the client.",
-            "**Supplier** — list products, run a shop & storefront, respond to quote requests.",
-            "**Admin** — curate the taxonomy, approve items, manage roles & codelists."
+            {
+              "type": "new",
+              "text": "Agent (event agency) — build a project from a brief, ballpark the cost, message suppliers, quote the client."
+            },
+            {
+              "type": "new",
+              "text": "Supplier — list products, run a shop & storefront, respond to quote requests."
+            },
+            {
+              "type": "new",
+              "text": "Admin — curate the taxonomy, approve items, manage roles & codelists."
+            }
           ]
         },
         {
           "area": "Projects",
           "items": [
-            "AI-first project creation from a written brief; a project workspace (Overview · Inbox · Ballpark Cost · Marketplace · Reports); cost estimate with quantities, margin, contingency, VAT & insurance; a live-project flow once suppliers are messaged."
+            {
+              "type": "new",
+              "text": "AI-first project creation from a written brief; a project workspace (Overview · Inbox · Ballpark Cost · Marketplace · Reports); cost estimate with quantities, margin, contingency, VAT & insurance; a live-project flow once suppliers are messaged."
+            }
           ]
         },
         {
           "area": "Marketplace",
           "items": [
-            "Browse by category → subcategory with dense item cards (Supplier · City) and Quick View; filters; available both globally and inside a project."
+            {
+              "type": "new",
+              "text": "Browse by category → subcategory with dense item cards (Supplier · City) and Quick View; filters; available both globally and inside a project."
+            }
           ]
         },
         {
           "area": "Shop Front",
           "items": [
-            "**Supplier** — My Shop (your products) and My Shopfront (your brand page) on the shared Marketplace layout, plus a supplier home dashboard of what needs you."
+            {
+              "type": "new",
+              "text": "Supplier — My Shop (your products) and My Shopfront (your brand page) on the shared Marketplace layout, plus a supplier home dashboard of what needs you."
+            }
           ]
         },
         {
           "area": "Items",
           "items": [
-            "Catalogue items with per-unit or flat pricing, units, install cost, tier, and an image gallery."
+            {
+              "type": "new",
+              "text": "Catalogue items with per-unit or flat pricing, units, install cost, tier, and an image gallery."
+            }
           ]
         },
         {
           "area": "Taxonomy & Categories",
           "items": [
-            "15 macro categories with curated subcategories; browse + admin curation across the marketplace."
+            {
+              "type": "new",
+              "text": "15 macro categories with curated subcategories; browse + admin curation across the marketplace."
+            }
           ]
         },
         {
           "area": "Inbox",
           "items": [
-            "Per-supplier message threads with an inbox landing (per-supplier action rollups) and quote requests raised from a project."
+            {
+              "type": "new",
+              "text": "Per-supplier message threads with an inbox landing (per-supplier action rollups) and quote requests raised from a project."
+            }
           ]
         },
         {
           "area": "AI Agent",
           "items": [
-            "Parses a written brief into a structured project and suggests/matches marketplace items."
+            {
+              "type": "new",
+              "text": "Parses a written brief into a structured project and suggests/matches marketplace items."
+            }
           ]
         },
         {
           "area": "SOW & Invoice",
           "items": [
-            "Client-facing quote document in an SOW layout (timeline, payment terms, special terms) with themed presentation."
+            {
+              "type": "new",
+              "text": "Client-facing quote document in an SOW layout (timeline, payment terms, special terms) with themed presentation."
+            }
           ]
         },
         {
           "area": "Clients",
           "items": [
-            "Client records (company details, address) attached to projects and reusable across them."
+            {
+              "type": "new",
+              "text": "Client records (company details, address) attached to projects and reusable across them."
+            }
           ]
         },
         {
           "area": "Coachmarks",
           "items": [
-            "In-app guided help — contextual coachmark tips that explain features as you go; admins can tweak the copy."
+            {
+              "type": "new",
+              "text": "In-app guided help — contextual coachmark tips that explain features as you go; admins can tweak the copy."
+            }
           ]
         },
         {
           "area": "Platform & Admin",
           "items": [
-            "**Approval** — admin approves item imagery before it goes live; suppliers submit and resubmit; text & pricing edits don't force re-approval.",
-            "**Codelists** — centralised reference lists (statuses, units, etc.) driving consistent, controlled dropdowns.",
-            "**Feedback** — issue / enhancement / QC tracking (internal today; no customer-facing page yet).",
-            "**Security & Roles** — Google sign-in; org-based roles (agent / supplier / admin) with permissions re-derived per request; identity-only sessions."
+            {
+              "type": "new",
+              "text": "Approval — admin approves item imagery before it goes live; suppliers submit and resubmit; text & pricing edits don't force re-approval."
+            },
+            {
+              "type": "new",
+              "text": "Codelists — centralised reference lists (statuses, units, etc.) driving consistent, controlled dropdowns."
+            },
+            {
+              "type": "new",
+              "text": "Feedback — issue / enhancement / QC tracking (internal today; no customer-facing page yet)."
+            },
+            {
+              "type": "new",
+              "text": "Security & Roles — Google sign-in; org-based roles (agent / supplier / admin) with permissions re-derived per request; identity-only sessions."
+            }
           ]
         }
-      ]
+      ],
+      "fixes": []
     }
   ]
 }

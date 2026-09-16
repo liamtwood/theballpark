@@ -93,6 +93,14 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
             >
               What's new
             </a>
+            <!-- Feedback — report an issue + view your own (pV2-WHATSNEW-REDESIGN-01). -->
+            <a
+              routerLink="/feedback"
+              class="block w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md text-text no-underline hover:bg-fill"
+              (click)="menu.hide()"
+            >
+              Feedback
+            </a>
             <button
               type="button"
               class="w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md text-text hover:bg-fill"

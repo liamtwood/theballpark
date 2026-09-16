@@ -256,9 +256,24 @@ async function remove(id) {
   await pool.query('UPDATE shared.feedback SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL', [id]);
 }
 
+/** The signed-in user's own issues (My issues table) — newest first, with the
+ *  area category name. Scoped by submitted_by = the caller's JWT id. */
+async function listByUser(userId) {
+  const result = await pool.query(
+    `SELECT f.id, f.ref, f.type, f.title, f.status, f.description, f.notes,
+            f.created_at, ac.name AS area_name
+       FROM shared.feedback f
+       LEFT JOIN shared.feedback_categories ac ON ac.id = f.area_category_id
+      WHERE f.object_type = 'issue' AND f.deleted_at IS NULL AND f.submitted_by = $1
+      ORDER BY f.created_at DESC`,
+    [userId]
+  );
+  return result.rows;
+}
+
 module.exports = {
   getAll, getById, getFolders, getIssues, getToday, getChildren,
-  getVersions,
+  getVersions, listByUser,
   create, patch, remove,
   getCategories, createCategory, patchCategory, removeCategory
 };

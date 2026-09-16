@@ -1,44 +1,34 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../environments/environment';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 
-/** Curated customer-facing notes (docs/release-notes/<version>.md), grouped by
- *  product area. Versions without a notes file aren't in the payload at all. */
-interface ChangeNote {
-  area: string;
-  items: string[];
-}
-interface ChangeVersion {
+interface NoteItem { type: string; text: string; }
+interface NoteArea { area: string; items: NoteItem[]; }
+interface Fix { ref: string; reporter: string; text: string; done: boolean; }
+interface ChangeEntry {
   version: string;
-  /** Source build a client release was cut from (preview entries only). */
+  name?: string;
   build?: string;
   date: string;
-  notes: ChangeNote[];
+  datetime?: string;
+  env: 'preview' | 'dev';
+  notes: NoteArea[];
+  fixes: Fix[];
 }
-/** The two sections are EXPLICIT in the file — this page renders them verbatim
- *  and computes no split, so it can't disagree with reality on any environment
- *  (audit 2026-07-17 B3). Whatever branch `npm run changelog` runs on decides. */
-interface Changelog {
-  dev: ChangeVersion[];
-  preview: ChangeVersion[];
-}
+interface Changelog { dev: ChangeEntry[]; preview: ChangeEntry[]; }
 
-/** Version history — the in-app view of CHANGELOG.md, reached from the user
- *  menu (above Sign out). Reads `public/changelog.json`, which
- *  `npm run changelog` derives from the versioned git history — so this page
- *  and CHANGELOG.md can't disagree.
- *
- *  The point is the SPLIT: "On dev — not yet on preview" is the demo list
- *  (features to show a customer before the next promote); the rest is what
- *  preview already has (Liam, 2026-07-17). */
+/** pV2-WHATSNEW-REDESIGN-01 — master-detail What's New. Left rail lists releases
+ *  grouped On preview / On dev (version + name + date·time); right pane shows the
+ *  selected release: a fixes table for a patch, or typed area sections for a
+ *  base/feature release. Reads the release-keyed client-v2/public/changelog.json
+ *  (npm run changelog). Structured content — no raw markdown. */
 @Component({
   selector: 'app-whats-new',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, LucideAngularModule, PageHeroComponent],
+  imports: [LucideAngularModule, PageHeroComponent],
   host: { class: 'block' },
   template: `
     <app-page-hero align="block" [back]="{ label: 'Back', href: '/home', history: true }" title="What's new" subtitle="Version history" />
@@ -49,98 +39,145 @@ interface Changelog {
       } @else if (log.error()) {
         <p class="bp-body-small text-warn">Couldn't load the version history.</p>
       } @else if (log.value(); as c) {
-        <div class="flex max-w-2xl flex-col gap-6">
-          <!-- Coming next — the demo list (empty on preview builds). -->
-          <section>
-            <div class="flex items-baseline justify-between gap-3">
-              <h2 class="bp-card-title text-lg">On dev — not yet on preview</h2>
-              @if (c.dev.length) {
-                <span class="bp-pill bp-pill--warn shrink-0">{{ c.dev.length }} version{{ c.dev.length === 1 ? '' : 's' }}</span>
-              }
-            </div>
-            @if (c.dev.length) {
-              <p class="bp-caption mt-1">Live on dev only — ready to demo before the next promote.</p>
-              <div class="mt-3 flex flex-col gap-2.5">
-                @for (v of c.dev; track v.version) {
-                  <div class="bp-card p-4">
-                    <ng-container [ngTemplateOutlet]="versionBlock" [ngTemplateOutletContext]="{ $implicit: v }" />
-                  </div>
-                }
-              </div>
-            } @else {
-              <p class="bp-caption mt-1 inline-flex items-center gap-1.5">
-                <lucide-icon name="check" [size]="14" class="text-accent" />
-                Nothing pending — dev and preview are level.
-              </p>
-            }
-          </section>
-
-          <!-- Already on preview. -->
-          <section>
-            <div class="flex items-baseline justify-between gap-3">
-              <h2 class="bp-card-title text-lg">On preview</h2>
-              @if (c.preview.length) {
-                <span class="bp-pill bp-pill--success shrink-0">{{ c.preview.length }} version{{ c.preview.length === 1 ? '' : 's' }}</span>
-              }
-            </div>
+        <div class="grid gap-6 md:grid-cols-[280px_1fr]">
+          <!-- Left rail: grouped release hierarchy. -->
+          <aside class="bp-card bp-card--lifted flex flex-col gap-1 p-2">
             @if (c.preview.length) {
-              <p class="bp-caption mt-1">Already promoted — what the customer can see today.</p>
-              <div class="mt-3 flex flex-col gap-2.5">
-                @for (v of previewShown(); track v.version) {
-                  <div class="bp-card p-4">
-                    <ng-container [ngTemplateOutlet]="versionBlock" [ngTemplateOutletContext]="{ $implicit: v }" />
+              <div class="bp-field-label px-2 pb-1 pt-2">On preview</div>
+              @for (v of c.preview; track v.env + v.version) {
+                <button type="button" class="rounded-[var(--radius-field)] px-3 py-2 text-left transition-colors"
+                        [class.bg-soft]="isActive(v)" [class.hover:bg-fill]="!isActive(v)" (click)="select(v)">
+                  <div class="flex items-center gap-2">
+                    <span class="bp-body-small font-semibold" [class.text-accent]="isActive(v)">{{ v.version }}</span>
+                    @if (v.name) { <span class="bp-caption truncate text-secondary">{{ v.name }}</span> }
                   </div>
-                }
-              </div>
-              @if (c.preview.length > previewShown().length) {
-                <button type="button" class="bp-btn-outline mt-3 w-full" (click)="showAll.set(true)">
-                  Show all {{ c.preview.length }} versions
+                  <div class="bp-meta">{{ v.datetime || v.date }}</div>
                 </button>
               }
-            } @else {
-              <p class="bp-caption mt-1">Nothing documented yet.</p>
+            }
+            @if (c.dev.length) {
+              <div class="bp-field-label px-2 pb-1 pt-3">On dev — not yet promoted</div>
+              @for (v of c.dev; track v.env + v.version) {
+                <button type="button" class="rounded-[var(--radius-field)] px-3 py-2 text-left transition-colors"
+                        [class.bg-soft]="isActive(v)" [class.hover:bg-fill]="!isActive(v)" (click)="select(v)">
+                  <div class="bp-body-small font-semibold" [class.text-accent]="isActive(v)">{{ v.version }}</div>
+                  <div class="bp-meta">{{ v.datetime || v.date }}</div>
+                </button>
+              }
+            }
+          </aside>
+
+          <!-- Right detail: the selected release. -->
+          <section>
+            @if (selected(); as v) {
+              <div class="bp-card bp-card--lifted p-6">
+                <header class="flex flex-wrap items-start justify-between gap-3 border-b border-hairline pb-4">
+                  <div class="min-w-0">
+                    <h2 class="bp-card-title">{{ v.version }}@if (v.name) { <span class="text-secondary"> · {{ v.name }}</span> }</h2>
+                    @if (v.build) { <p class="bp-caption mt-1 text-muted">built from {{ v.build }}</p> }
+                  </div>
+                  <div class="flex shrink-0 items-center gap-2">
+                    <span class="bp-pill bp-body-small" [class]="v.env === 'preview' ? 'bp-pill--success' : 'bp-pill--warn'">
+                      {{ v.env === 'preview' ? 'Preview' : 'Dev' }}
+                    </span>
+                    <span class="bp-meta">{{ v.datetime || v.date }}</span>
+                  </div>
+                </header>
+
+                @if (v.fixes.length) {
+                  <!-- Patch release → fixes table. -->
+                  <table class="mt-4 w-full border-collapse">
+                    <thead>
+                      <tr class="border-b border-hairline text-left">
+                        <th class="bp-field-label pb-2 pr-4">Ref</th>
+                        <th class="bp-field-label pb-2 pr-4">Fixed</th>
+                        <th class="bp-field-label pb-2 pr-4">Reported by</th>
+                        <th class="bp-field-label pb-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (f of v.fixes; track f.ref) {
+                        <tr class="border-b border-hairline last:border-b-0 align-top">
+                          <td class="py-2.5 pr-4"><span class="bp-ref-eyebrow">{{ f.ref }}</span></td>
+                          <td class="py-2.5 pr-4 bp-body-small text-text">{{ f.text }}</td>
+                          <td class="py-2.5 pr-4 bp-body-small text-secondary">{{ f.reporter }}</td>
+                          <td class="py-2.5">
+                            @if (f.done) { <lucide-icon name="circle-check" [size]="16" class="text-success" /> }
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                } @else {
+                  <!-- Base / feature release → typed area sections. -->
+                  <div class="mt-4 flex flex-col gap-5">
+                    @for (a of v.notes; track a.area) {
+                      <div>
+                        <div class="flex items-center gap-2">
+                          <span class="bp-icon-block h-7 w-7"><lucide-icon [name]="areaIcon(a.area)" [size]="15" /></span>
+                          <h3 class="bp-edit-section-title text-md">{{ a.area }}</h3>
+                        </div>
+                        <ul class="mt-2 flex flex-col gap-2">
+                          @for (it of a.items; track it.text) {
+                            <li class="flex items-start gap-2">
+                              <span class="bp-pill bp-body-small mt-0.5 shrink-0" [class]="chipClass(it.type)">{{ chipLabel(it.type) }}</span>
+                              <span class="bp-body-small text-secondary">{{ it.text }}</span>
+                            </li>
+                          }
+                        </ul>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
             }
           </section>
         </div>
       }
     </div>
-
-    <!-- One version: number + date, then its curated notes by product area. -->
-    <ng-template #versionBlock let-v>
-      <div class="flex items-baseline justify-between gap-3">
-        <span class="bp-list-title">{{ v.version }}</span>
-        <span class="bp-meta shrink-0">{{ v.date }}</span>
-      </div>
-      @if (v.build) {
-        <div class="bp-caption text-muted">built from {{ v.build }}</div>
-      }
-      @for (n of v.notes; track n.area) {
-        <div class="mt-3">
-          <span class="bp-field-label">{{ n.area }}</span>
-          <ul class="mt-1.5 flex list-disc flex-col gap-1.5 pl-4">
-            @for (item of n.items; track item) {
-              <li class="bp-body-small text-secondary">{{ item }}</li>
-            }
-          </ul>
-        </div>
-      }
-    </ng-template>
   `,
 })
 export class WhatsNewComponent {
   private readonly http = inject(HttpClient);
 
-  /** Cache-bust on the build chip: the file is regenerated per ship, and a
-   *  stale cached copy would silently show the wrong demo list. */
   protected readonly log = resource<Changelog, void>({
-    loader: () =>
-      firstValueFrom(this.http.get<Changelog>(`/changelog.json?v=${encodeURIComponent(environment.versionChip)}`)),
+    loader: () => firstValueFrom(this.http.get<Changelog>(`/changelog.json?v=${encodeURIComponent(environment.build)}`)),
   });
 
-  /** Preview history grows over time — show the recent slice, expand on demand. */
-  protected readonly showAll = signal(false);
-  protected readonly previewShown = computed(() => {
-    const all = this.log.value()?.preview ?? [];
-    return this.showAll() ? all : all.slice(0, 8);
+  /** Selected release key ("env:version"); defaults to the newest preview. */
+  private readonly selectedKey = signal<string | null>(null);
+  private readonly keyOf = (v: ChangeEntry) => `${v.env}:${v.version}`;
+
+  protected readonly selected = computed<ChangeEntry | null>(() => {
+    const c = this.log.value();
+    if (!c) return null;
+    const all = [...c.preview, ...c.dev];
+    if (!all.length) return null;
+    return all.find((v) => this.keyOf(v) === this.selectedKey()) ?? c.preview[0] ?? c.dev[0] ?? null;
   });
+
+  protected isActive(v: ChangeEntry): boolean {
+    const sel = this.selected();
+    return !!sel && this.keyOf(sel) === this.keyOf(v);
+  }
+  protected select(v: ChangeEntry): void {
+    this.selectedKey.set(this.keyOf(v));
+  }
+
+  protected chipLabel(t: string): string {
+    return t === 'improved' ? 'Improved' : t === 'fixed' ? 'Fixed' : 'New';
+  }
+  protected chipClass(t: string): string {
+    return t === 'improved' ? 'bp-pill--info' : t === 'fixed' ? 'bp-pill--warn' : 'bp-pill--success';
+  }
+
+  private readonly AREA_ICONS: Record<string, string> = {
+    Projects: 'folder-kanban', Marketplace: 'store', 'Shop Front': 'package', Items: 'package',
+    'Taxonomy & Categories': 'tags', Inbox: 'inbox', 'AI Agent': 'sparkles', 'SOW & Invoice': 'file-text',
+    Clients: 'building-2', Coachmarks: 'lightbulb', 'Platform & Admin': 'settings', 'Ballpark Base Release': 'rocket',
+    'Bug fixes (Beth review)': 'wrench',
+  };
+  protected areaIcon(area: string): string {
+    return this.AREA_ICONS[area] ?? 'sparkles';
+  }
 }

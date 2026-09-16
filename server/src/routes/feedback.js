@@ -1,5 +1,15 @@
 const router = require('express').Router();
+const { z } = require('zod');
 const FeedbackService = require('../services/feedback.service');
+const { authenticate } = require('../middleware/authenticate');
+const { FeedbackCreateSchema } = require('../schemas/feedback-create.schema');
+
+// GET /api/feedback/mine — the signed-in user's own issues (My issues table).
+// JWT-derived scope: submitted_by = req.user.id, NEVER a client-supplied id
+// (same rule as org_id). Must precede GET /:id.
+router.get('/mine', authenticate, async (req, res, next) => {
+  try { res.json(await FeedbackService.listByUser(req.user.id)); } catch (err) { next(err); }
+});
 
 router.get('/', async (req, res, next) => {
   try {
@@ -66,8 +76,23 @@ router.get('/:id/issues', async (req, res, next) => {
   try { res.json(await FeedbackService.getIssues(req.params.id)); } catch (err) { next(err); }
 });
 
-router.post('/', async (req, res, next) => {
-  try { res.status(201).json(await FeedbackService.create(req.body)); } catch (err) { next(err); }
+// Create a feedback issue (Report an issue dialog). SECURED: submitted_by +
+// environment are set server-side from the JWT/config, never the body; the body
+// is Zod-validated to the safe fields only (privileged fields stripped).
+router.post('/', authenticate, async (req, res, next) => {
+  try {
+    const parsed = FeedbackCreateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid feedback', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const created = await FeedbackService.create({
+      ...parsed.data,
+      object_type: 'issue',
+      submitted_by: req.user.id, // JWT identity — never the body
+      environment: process.env.APP_SCHEMA || 'public',
+    });
+    res.status(201).json(created);
+  } catch (err) { next(err); }
 });
 
 router.patch('/:id', async (req, res, next) => {

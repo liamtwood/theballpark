@@ -50,6 +50,12 @@ export const routes: Routes = [
           import('./pages/whats-new/whats-new.component').then((m) => m.WhatsNewComponent),
       },
       {
+        // pV2-WHATSNEW-REDESIGN-01 — Feedback: report an issue + your own issues.
+        path: 'feedback',
+        loadComponent: () =>
+          import('./pages/feedback/feedback-page.component').then((m) => m.FeedbackPageComponent),
+      },
+      {
         // Settings → Team (pV2-03). Admin-only on top of the shell's requiresOrgGuard.
         path: 'settings/team',
         canActivate: [adminGuard],

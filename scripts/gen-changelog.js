@@ -5,14 +5,16 @@
  *   npm run changelog
  *
  * Two-track versioning (pV2-RELEASE-VERSIONING-01):
- * - **Preview section** is CLIENT-RELEASE-keyed. Each promote curates a
- *   release note `docs/release-notes/v<MAJOR.MINOR.PATCH>.md` with a meta line
- *   `<!-- Release: v0.1.1 · <title> · <YYYY-MM-DD> · built from v2.NNN -->` and
- *   `## Area` / `- bullet` body. The What's New page headlines the release
- *   version + "built from vX.NNN".
- * - **"On dev — not yet on preview"** stays BUILD-keyed (the internal demo
- *   list): versioned commits `origin/preview..dev` that carry a build-keyed
- *   note file `docs/release-notes/<v2.NNN>.md` (rare; usually empty).
+ * - PREVIEW section = client-RELEASE-keyed. Each promote curates
+ *   `docs/release-notes/v<MAJOR.MINOR.PATCH>.md` with a meta line
+ *   `<!-- Release: v0.1.1 · <name> · <YYYY-MM-DD HH:MM> · built from v2.NNN -->`
+ *   and a body of EITHER `## Fixes` (patch → fixes table) OR `## Area` sections
+ *   with typed bullets `- new|improved|fixed: <text>` (base/feature).
+ * - DEV section ("not yet promoted") = build-keyed pending commits carrying a
+ *   `docs/release-notes/<v2.NNN>.md` note (rare; usually empty).
+ *
+ * Each changelog.json entry (pV2-WHATSNEW-REDESIGN-01 renders these):
+ *   { version, name, build, date, datetime, env, notes:[{area,items:[{type,text}]}], fixes:[{ref,reporter,text,done}] }
  */
 const { execSync } = require('child_process');
 const { writeFileSync, readFileSync, existsSync, readdirSync } = require('fs');
@@ -22,72 +24,81 @@ const REPO = join(__dirname, '..');
 const NOTES_DIR = join(REPO, 'docs', 'release-notes');
 const git = (cmd) => execSync(`git ${cmd}`, { cwd: REPO, encoding: 'utf8' }).trim();
 
-/** `type(vX.YZ): subject` — the repo's commit convention. */
 const VERSIONED = /^(\w+)\((v[\d]+\.[\d]+[a-z]*)\):\s*(.+)$/;
-const TYPE_LABEL = { feat: 'Features', fix: 'Fixes', perf: 'Performance', refactor: 'Refactors' };
-const TYPE_ORDER = ['feat', 'fix', 'perf', 'refactor', 'chore', 'docs', 'test', 'style'];
 
 function commits(range) {
   const out = git(`log ${range} --no-merges --date=short --format=%h%ad%s`);
   if (!out) return [];
-  return out
-    .split('\n')
-    .map((line) => {
-      const [hash, date, subject] = line.split('');
-      const m = VERSIONED.exec(subject || '');
-      if (!m) return null;
-      return { hash, date, type: m[1], version: m[2], subject: m[3] };
-    })
-    .filter(Boolean);
+  return out.split('\n').map((line) => {
+    const [hash, date, subject] = line.split('');
+    const m = VERSIONED.exec(subject || '');
+    return m ? { hash, date, version: m[2] } : null;
+  }).filter(Boolean);
 }
 
-function byVersion(list) {
-  const groups = new Map();
-  for (const c of list) {
-    if (!groups.has(c.version)) groups.set(c.version, { version: c.version, date: c.date, items: [] });
-    groups.get(c.version).items.push(c);
-  }
-  return [...groups.values()];
+/** First versioned commit date per version (newest-first order preserved). */
+function versionDates(list) {
+  const seen = new Map();
+  for (const c of list) if (!seen.has(c.version)) seen.set(c.version, c.date);
+  return seen;
 }
 
-/** Parse a release/notes markdown body into `[{area, items[]}]` (## heading →
- *  `- bullet`). Ignores the `<!-- Release: … -->` meta comment + prose. */
-function parseAreas(text) {
-  const areas = [];
+const strip = (s) => (s || '').replace(/\*\*/g, '').trim();
+
+/** Parse a note/release markdown body into { notes[], fixes[] }. */
+function parseSections(text) {
+  const notes = [];
+  const fixes = [];
+  let mode = null; // 'fixes' | 'area'
+  let area = null;
   for (const raw of text.split('\n')) {
     const line = raw.trim();
-    const heading = /^#{2,6}\s+(.+)$/.exec(line); // ## Area (not the # title)
-    if (heading) { areas.push({ area: heading[1].trim(), items: [] }); continue; }
-    const bullet = /^[-*]\s+(.+)$/.exec(line);
-    if (bullet && areas.length) areas[areas.length - 1].items.push(bullet[1].trim());
+    const h = /^#{2,6}\s+(.+)$/.exec(line);
+    if (h) {
+      const name = h[1].trim();
+      if (/^fixes$/i.test(name)) { mode = 'fixes'; area = null; }
+      else { mode = 'area'; area = { area: name, items: [] }; notes.push(area); }
+      continue;
+    }
+    const b = /^[-*]\s+(.+)$/.exec(line);
+    if (!b) continue;
+    const body = b[1].trim();
+    if (mode === 'fixes') {
+      const cols = body.split('·').map((s) => s.trim());
+      fixes.push({
+        ref: cols[0] || '',
+        reporter: cols[1] || '',
+        text: strip(cols[2]),
+        done: /✓|done|yes|fixed/i.test(cols[3] || ''),
+      });
+    } else if (area) {
+      const tm = /^(new|improved|fixed):\s*(.+)$/i.exec(body);
+      area.items.push({ type: (tm ? tm[1] : 'new').toLowerCase(), text: strip(tm ? tm[2] : body) });
+    }
   }
-  return areas.filter((a) => a.items.length);
+  return { notes: notes.filter((a) => a.items.length), fixes };
 }
 
-/** Build-keyed note for a v2.NNN version (the dev/demo section). */
-function readBuildNotes(version) {
-  const path = join(NOTES_DIR, `${version}.md`);
-  if (!existsSync(path)) return null;
-  const areas = parseAreas(readFileSync(path, 'utf8'));
-  return areas.length ? areas : null;
+/** Build one entry from a release-notes file. */
+function parseFile(path, { version, env, date }) {
+  const raw = readFileSync(path, 'utf8');
+  const meta = (raw.match(/<!--([\s\S]*?)-->/) || [])[1] || '';
+  const segs = meta.split('·').map((s) => s.trim());
+  const name = env === 'preview' ? (segs[1] || '') : '';
+  const datetime = (meta.match(/\d{4}-\d{2}-\d{2}(?:\s+\d{2}:\d{2})?/) || [])[0] || date || '';
+  const day = (datetime.match(/\d{4}-\d{2}-\d{2}/) || [])[0] || date || '';
+  const build = (meta.match(/built from\s+(v[\d.]+)/i) || [])[1] || '';
+  const { notes, fixes } = parseSections(raw);
+  return { version, name, build, date: day, datetime, env, notes, fixes };
 }
 
-/** Release-keyed preview entries: docs/release-notes/v{0,1}.*.md, newest first.
- *  Meta comment supplies the source build + date. */
+/** Release-keyed preview entries: docs/release-notes/v{0,1}.*.md, newest first. */
 function releaseEntries() {
-  const files = readdirSync(NOTES_DIR).filter((f) => /^v[01]\.\d+\.\d+\.md$/.test(f));
-  const out = [];
-  for (const f of files) {
-    const release = f.replace(/\.md$/, '');
-    const raw = readFileSync(join(NOTES_DIR, f), 'utf8');
-    const meta = (raw.match(/<!--([\s\S]*?)-->/) || [])[1] || '';
-    const build = (meta.match(/built from\s+(v[\d.]+)/i) || [])[1] || '';
-    const date = (meta.match(/(\d{4}-\d{2}-\d{2})/) || [])[1] || '';
-    const notes = parseAreas(raw);
-    if (notes.length) out.push({ version: release, build, date, notes });
-  }
-  out.sort((a, b) => cmpSemver(b.version, a.version));
-  return out;
+  return readdirSync(NOTES_DIR)
+    .filter((f) => /^v[01]\.\d+\.\d+\.md$/.test(f))
+    .map((f) => parseFile(join(NOTES_DIR, f), { version: f.replace(/\.md$/, ''), env: 'preview' }))
+    .filter((e) => e.notes.length || e.fixes.length)
+    .sort((a, b) => cmpSemver(b.version, a.version));
 }
 function cmpSemver(a, b) {
   const pa = a.replace(/^v/, '').split('.').map(Number);
@@ -96,87 +107,70 @@ function cmpSemver(a, b) {
   return 0;
 }
 
-function groupTypes(g) {
-  const rank = (t) => (TYPE_ORDER.indexOf(t) < 0 ? 99 : TYPE_ORDER.indexOf(t));
-  return [...new Set(g.items.map((i) => i.type))]
-    .sort((a, b) => rank(a) - rank(b))
-    .map((t) => ({
-      type: t,
-      label: TYPE_LABEL[t] ?? t[0].toUpperCase() + t.slice(1),
-      items: g.items.filter((i) => i.type === t).map((i) => ({ subject: i.subject, hash: i.hash })),
-    }));
+/** Pending (dev) entries: build versions on origin/preview..dev that carry a
+ *  build-keyed note file. Same shape as preview entries. */
+function pendingEntries() {
+  const list = commits('origin/preview..dev');
+  const dates = versionDates(list);
+  const out = [];
+  for (const [version, date] of dates) {
+    const path = join(NOTES_DIR, `${version}.md`);
+    if (!existsSync(path)) continue;
+    const e = parseFile(path, { version, env: 'dev', date });
+    if (e.notes.length || e.fixes.length) out.push(e);
+  }
+  return out;
 }
 
-/** A pending (dev) version for CHANGELOG.md — build-keyed. */
-function renderPending(g) {
-  const lines = [`### ${g.version} — ${g.date}`, ''];
-  const notes = readBuildNotes(g.version);
-  if (notes) {
-    for (const a of notes) { lines.push(`**${a.area}**`, ''); for (const item of a.items) lines.push(`- ${item}`); lines.push(''); }
-    lines.push('<details><summary>Commits</summary>', '');
-  }
-  for (const grp of groupTypes(g)) {
-    lines.push(`**${grp.label}**`, '');
-    for (const i of grp.items) lines.push(`- ${i.subject} \`${i.hash}\``);
+function renderEntry(e) {
+  const head = `### ${e.version}${e.name ? ` — ${e.name}` : ''}${e.build ? ` · built from ${e.build}` : ''}${e.datetime ? ` · ${e.datetime}` : ''}`;
+  const lines = [head, ''];
+  for (const a of e.notes) {
+    lines.push(`**${a.area}**`, '');
+    for (const it of a.items) lines.push(`- [${it.type}] ${it.text}`);
     lines.push('');
   }
-  if (notes) lines.push('</details>', '');
-  return lines.join('\n');
-}
-
-/** A release entry for CHANGELOG.md — release-keyed. */
-function renderRelease(e) {
-  const lines = [`### ${e.version}${e.build ? ` — built from ${e.build}` : ''}${e.date ? ` · ${e.date}` : ''}`, ''];
-  for (const a of e.notes) { lines.push(`**${a.area}**`, ''); for (const item of a.items) lines.push(`- ${item}`); lines.push(''); }
+  if (e.fixes.length) {
+    lines.push('**Fixes**', '');
+    for (const f of e.fixes) lines.push(`- ${f.ref} · ${f.reporter} · ${f.text}${f.done ? ' · ✓' : ''}`);
+    lines.push('');
+  }
   return lines.join('\n');
 }
 
 function main() {
   try { execSync('git fetch origin --quiet', { cwd: REPO, stdio: 'ignore' }); } catch { /* offline ok */ }
+  try { git('rev-parse --verify origin/preview'); } catch { console.error('[changelog] no origin/preview ref'); process.exit(1); }
 
-  let previewRef = 'origin/preview';
-  try { git(`rev-parse --verify ${previewRef}`); } catch { console.error(`[changelog] no ${previewRef} ref`); process.exit(1); }
+  const preview = releaseEntries();
+  const dev = pendingEntries();
+  const current = preview[0]?.version ?? '(unknown)';
 
-  const pending = byVersion(commits(`${previewRef}..dev`));
-  const releases = releaseEntries();
-  const currentRelease = releases[0]?.version ?? '(unknown)';
-
-  const out = [
+  const md = [
     '# Changelog',
     '',
     '> Generated by `npm run changelog` — **do not edit by hand**.',
-    '> Preview = client releases (docs/release-notes/v*.md); dev = pending builds.',
-    '',
-    '---',
     '',
     '## 🚧 On dev — NOT yet on preview',
     '',
-    pending.length
-      ? `Live on **dev** only — the demo list. ${pending.length} build${pending.length === 1 ? '' : 's'} pending the next promote.`
-      : '_Nothing pending — dev and preview are level._',
+    dev.length ? `${dev.length} build${dev.length === 1 ? '' : 's'} pending the next promote.` : '_Nothing pending — dev and preview are level._',
     '',
-    ...pending.map(renderPending),
+    ...dev.map(renderEntry),
     '---',
     '',
-    `## ✅ On preview — current release \`${currentRelease}\``,
+    `## ✅ On preview — current release \`${current}\``,
     '',
-    ...releases.map(renderRelease),
+    ...preview.map(renderEntry),
   ].join('\n');
-  writeFileSync(join(REPO, 'CHANGELOG.md'), out.replace(/\n{3,}/g, '\n\n'), 'utf8');
+  writeFileSync(join(REPO, 'CHANGELOG.md'), md.replace(/\n{3,}/g, '\n\n'), 'utf8');
 
-  // In-app What's New (user menu → above Sign out): dev = build-keyed pending
-  // (internal demo list); preview = release-keyed (client releases + source build).
-  const json = {
-    dev: pending
-      .map((g) => { const notes = readBuildNotes(g.version); return notes ? { version: g.version, date: g.date, notes } : null; })
-      .filter(Boolean),
-    preview: releases,
-  };
-  writeFileSync(join(REPO, 'client-v2', 'public', 'changelog.json'), JSON.stringify(json, null, 2), 'utf8');
-
-  console.log(
-    `[changelog] preview release=${currentRelease} · releases=${releases.map((r) => r.version).join(', ') || 'none'} · pending builds=${pending.length} · wrote CHANGELOG.md + changelog.json`
+  writeFileSync(
+    join(REPO, 'client-v2', 'public', 'changelog.json'),
+    JSON.stringify({ dev, preview }, null, 2),
+    'utf8'
   );
+
+  console.log(`[changelog] preview=${preview.map((r) => r.version).join(', ') || 'none'} · pending=${dev.length} · wrote CHANGELOG.md + changelog.json`);
 }
 
 main();
