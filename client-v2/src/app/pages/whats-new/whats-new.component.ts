@@ -105,22 +105,24 @@ interface Changelog { dev: ChangeEntry[]; preview: ChangeEntry[]; }
                     }
                   </div>
                 } @else {
-                  <!-- Base / feature release → typed area sections. -->
-                  <div class="mt-4 flex flex-col gap-5">
-                    @for (a of v.notes; track a.area) {
-                      <div>
-                        <div class="flex items-center gap-2">
-                          <span class="bp-icon-block h-7 w-7"><lucide-icon [name]="areaIcon(a.area)" [size]="15" /></span>
-                          <h3 class="bp-edit-section-title text-md">{{ a.area }}</h3>
-                        </div>
-                        <ul class="mt-2 flex flex-col gap-2">
-                          @for (it of a.items; track it.text) {
-                            <li class="flex items-start gap-2">
-                              <span class="bp-pill bp-body-small mt-0.5 shrink-0" [class]="chipClass(it.type)">{{ chipLabel(it.type) }}</span>
-                              <span class="bp-body-small text-secondary">{{ it.text }}</span>
-                            </li>
+                  <!-- Base / feature release → typed table (Area · Type · What's new). -->
+                  <div class="mt-4 overflow-hidden rounded-xl border border-hairline bg-surface">
+                    <div class="grid grid-cols-[180px_120px_minmax(0,1fr)] gap-x-4 border-b border-hairline bg-fill px-4 py-2">
+                      <span class="bp-table-column-header">Area</span>
+                      <span class="bp-table-column-header">Type</span>
+                      <span class="bp-table-column-header">What's new</span>
+                    </div>
+                    @for (r of noteRows(v.notes); track $index) {
+                      <div class="grid grid-cols-[180px_120px_minmax(0,1fr)] items-start gap-x-4 border-b border-hairline px-4 py-2.5 last:border-b-0"
+                           [class.border-t-2]="r.first && !$first">
+                        <span class="flex items-center gap-2">
+                          @if (r.first) {
+                            <span class="bp-icon-block h-6 w-6 shrink-0"><lucide-icon [name]="areaIcon(r.area)" [size]="13" /></span>
+                            <span class="bp-body-small font-medium text-text">{{ r.area }}</span>
                           }
-                        </ul>
+                        </span>
+                        <span><span class="bp-pill bp-body-small" [class]="chipClass(r.type)">{{ chipLabel(r.type) }}</span></span>
+                        <span class="bp-body-small text-secondary">{{ r.text }}</span>
                       </div>
                     }
                   </div>
@@ -170,6 +172,16 @@ export class WhatsNewComponent {
     if (!y || !m || !day) return dt;
     const nato = `${day}-${this.MONTHS[+m - 1] ?? m}-${y}`;
     return t ? `${nato} · ${t}` : nato;
+  }
+
+  /** Flatten typed area notes into table rows; `first` marks the first row of
+   *  each area so the Area cell shows once (grouped look). */
+  protected noteRows(notes: NoteArea[]): { area: string; type: string; text: string; first: boolean }[] {
+    const out: { area: string; type: string; text: string; first: boolean }[] = [];
+    for (const a of notes) {
+      a.items.forEach((it, i) => out.push({ area: a.area, type: it.type, text: it.text, first: i === 0 }));
+    }
+    return out;
   }
 
   protected chipLabel(t: string): string {
