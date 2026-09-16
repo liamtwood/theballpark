@@ -59,14 +59,17 @@
           "area": "Ballpark Base Release",
           "items": [
             {
+              "ref": "EP-00001",
               "type": "new",
               "text": "Agent (event agency) — build a project from a brief, ballpark the cost, message suppliers, quote the client."
             },
             {
+              "ref": "EP-00002",
               "type": "new",
               "text": "Supplier — list products, run a shop & storefront, respond to quote requests."
             },
             {
+              "ref": "EP-00003",
               "type": "new",
               "text": "Admin — curate the taxonomy, approve items, manage roles & codelists."
             }
@@ -76,6 +79,7 @@
           "area": "Projects",
           "items": [
             {
+              "ref": "EP-00004",
               "type": "new",
               "text": "AI-first project creation from a written brief; a project workspace (Overview · Inbox · Ballpark Cost · Marketplace · Reports); cost estimate with quantities, margin, contingency, VAT & insurance; a live-project flow once suppliers are messaged."
             }
@@ -85,6 +89,7 @@
           "area": "Marketplace",
           "items": [
             {
+              "ref": "EP-00005",
               "type": "new",
               "text": "Browse by category → subcategory with dense item cards (Supplier · City) and Quick View; filters; available both globally and inside a project."
             }
@@ -94,6 +99,7 @@
           "area": "Shop Front",
           "items": [
             {
+              "ref": "EP-00006",
               "type": "new",
               "text": "Supplier — My Shop (your products) and My Shopfront (your brand page) on the shared Marketplace layout, plus a supplier home dashboard of what needs you."
             }
@@ -103,6 +109,7 @@
           "area": "Items",
           "items": [
             {
+              "ref": "EP-00007",
               "type": "new",
               "text": "Catalogue items with per-unit or flat pricing, units, install cost, tier, and an image gallery."
             }
@@ -112,6 +119,7 @@
           "area": "Taxonomy & Categories",
           "items": [
             {
+              "ref": "EP-00008",
               "type": "new",
               "text": "15 macro categories with curated subcategories; browse + admin curation across the marketplace."
             }
@@ -121,6 +129,7 @@
           "area": "Inbox",
           "items": [
             {
+              "ref": "EP-00009",
               "type": "new",
               "text": "Per-supplier message threads with an inbox landing (per-supplier action rollups) and quote requests raised from a project."
             }
@@ -130,6 +139,7 @@
           "area": "AI Agent",
           "items": [
             {
+              "ref": "EP-00010",
               "type": "new",
               "text": "Parses a written brief into a structured project and suggests/matches marketplace items."
             }
@@ -139,6 +149,7 @@
           "area": "SOW & Invoice",
           "items": [
             {
+              "ref": "EP-00011",
               "type": "new",
               "text": "Client-facing quote document in an SOW layout (timeline, payment terms, special terms) with themed presentation."
             }
@@ -148,6 +159,7 @@
           "area": "Clients",
           "items": [
             {
+              "ref": "EP-00012",
               "type": "new",
               "text": "Client records (company details, address) attached to projects and reusable across them."
             }
@@ -157,6 +169,7 @@
           "area": "Coachmarks",
           "items": [
             {
+              "ref": "EP-00013",
               "type": "new",
               "text": "In-app guided help — contextual coachmark tips that explain features as you go; admins can tweak the copy."
             }
@@ -166,18 +179,22 @@
           "area": "Platform & Admin",
           "items": [
             {
+              "ref": "EP-00014",
               "type": "new",
               "text": "Approval — admin approves item imagery before it goes live; suppliers submit and resubmit; text & pricing edits don't force re-approval."
             },
             {
+              "ref": "EP-00015",
               "type": "new",
               "text": "Codelists — centralised reference lists (statuses, units, etc.) driving consistent, controlled dropdowns."
             },
             {
+              "ref": "EP-00016",
               "type": "new",
               "text": "Feedback — issue / enhancement / QC tracking (internal today; no customer-facing page yet)."
             },
             {
+              "ref": "EP-00017",
               "type": "new",
               "text": "Security & Roles — Google sign-in; org-based roles (agent / supplier / admin) with permissions re-derived per request; identity-only sessions."
             }

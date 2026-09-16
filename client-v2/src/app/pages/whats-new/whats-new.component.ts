@@ -5,7 +5,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../environments/environment';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 
-interface NoteItem { type: string; text: string; }
+interface NoteItem { ref?: string; type: string; text: string; }
 interface NoteArea { area: string; items: NoteItem[]; }
 interface Fix { ref: string; type: string; reporter: string; text: string; done: boolean; }
 interface ChangeEntry {
@@ -105,27 +105,30 @@ interface Changelog { dev: ChangeEntry[]; preview: ChangeEntry[]; }
                     }
                   </div>
                 } @else {
-                  <!-- Base / feature release → typed table (Area · Type · What's new). -->
-                  <div class="mt-4 overflow-hidden rounded-xl border border-hairline bg-surface">
-                    <div class="grid grid-cols-[180px_120px_minmax(0,1fr)] gap-x-4 border-b border-hairline bg-fill px-4 py-2">
-                      <span class="bp-table-column-header">Area</span>
-                      <span class="bp-table-column-header">Type</span>
-                      <span class="bp-table-column-header">What's new</span>
-                    </div>
-                    @for (r of noteRows(v.notes); track $index) {
-                      <div class="grid grid-cols-[180px_120px_minmax(0,1fr)] items-start gap-x-4 border-b border-hairline px-4 py-2.5 last:border-b-0"
-                           [class.border-t-2]="r.first && !$first">
-                        <span class="flex items-center gap-2">
-                          @if (r.first) {
-                            <span class="bp-icon-block h-6 w-6 shrink-0"><lucide-icon [name]="areaIcon(r.area)" [size]="13" /></span>
-                            <span class="bp-body-small font-medium text-text">{{ r.area }}</span>
-                          }
-                        </span>
-                        <span><span class="bp-pill bp-body-small" [class]="chipClass(r.type)">{{ chipLabel(r.type) }}</span></span>
-                        <span class="bp-body-small text-secondary">{{ r.text }}</span>
+                  <!-- Base / feature release → one heading + table per area; each
+                       item is an epic (EP-#####). -->
+                  @for (a of v.notes; track a.area) {
+                    <section class="mt-6 first:mt-4">
+                      <div class="mb-2 flex items-center gap-2">
+                        <span class="bp-icon-block h-7 w-7 shrink-0"><lucide-icon [name]="areaIcon(a.area)" [size]="15" /></span>
+                        <h3 class="bp-card-subtitle text-text">{{ a.area }}</h3>
                       </div>
-                    }
-                  </div>
+                      <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
+                        <div class="grid grid-cols-[100px_120px_minmax(0,1fr)] gap-x-4 border-b border-hairline bg-fill px-4 py-2">
+                          <span class="bp-table-column-header">Ref</span>
+                          <span class="bp-table-column-header">Type</span>
+                          <span class="bp-table-column-header">What's new</span>
+                        </div>
+                        @for (it of a.items; track $index) {
+                          <div class="grid grid-cols-[100px_120px_minmax(0,1fr)] items-start gap-x-4 border-b border-hairline px-4 py-2.5 last:border-b-0">
+                            <span class="bp-ref-eyebrow whitespace-nowrap">{{ it.ref || '—' }}</span>
+                            <span><span class="bp-pill bp-body-small" [class]="chipClass(it.type)">{{ chipLabel(it.type) }}</span></span>
+                            <span class="bp-body-small text-secondary">{{ it.text }}</span>
+                          </div>
+                        }
+                      </div>
+                    </section>
+                  }
                 }
               </div>
             }
@@ -172,16 +175,6 @@ export class WhatsNewComponent {
     if (!y || !m || !day) return dt;
     const nato = `${day}-${this.MONTHS[+m - 1] ?? m}-${y}`;
     return t ? `${nato} · ${t}` : nato;
-  }
-
-  /** Flatten typed area notes into table rows; `first` marks the first row of
-   *  each area so the Area cell shows once (grouped look). */
-  protected noteRows(notes: NoteArea[]): { area: string; type: string; text: string; first: boolean }[] {
-    const out: { area: string; type: string; text: string; first: boolean }[] = [];
-    for (const a of notes) {
-      a.items.forEach((it, i) => out.push({ area: a.area, type: it.type, text: it.text, first: i === 0 }));
-    }
-    return out;
   }
 
   protected chipLabel(t: string): string {

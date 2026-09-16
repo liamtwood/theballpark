@@ -14,7 +14,7 @@
  *   `docs/release-notes/<v2.NNN>.md` note (rare; usually empty).
  *
  * Each changelog.json entry (pV2-WHATSNEW-REDESIGN-01 renders these):
- *   { version, name, build, date, datetime, env, notes:[{area,items:[{type,text}]}], fixes:[{ref,reporter,text,done}] }
+ *   { version, name, build, date, datetime, env, notes:[{area,items:[{ref,type,text}]}], fixes:[{ref,type,reporter,text,done}] }
  */
 const { execSync } = require('child_process');
 const { writeFileSync, readFileSync, existsSync, readdirSync } = require('fs');
@@ -74,8 +74,19 @@ function parseSections(text) {
         done: /✓|done|yes|fixed/i.test(cols[4] || ''),
       });
     } else if (area) {
-      const tm = /^(new|improved|fixed):\s*(.+)$/i.exec(body);
-      area.items.push({ type: (tm ? tm[1] : 'new').toLowerCase(), text: strip(tm ? tm[2] : body) });
+      // Two shapes: "EP-##### · Type · <text>" (epic ref, text may contain ·)
+      // or legacy "new|improved|fixed: <text>" / plain bullet (default new).
+      const cols = body.split('·').map((s) => s.trim());
+      if (/^[A-Z]{2}-\d+$/i.test(cols[0])) {
+        area.items.push({
+          ref: cols[0].toUpperCase(),
+          type: (cols[1] || 'new').toLowerCase(),
+          text: strip(cols.slice(2).join(' · ')),
+        });
+      } else {
+        const tm = /^(new|improved|fixed):\s*(.+)$/i.exec(body);
+        area.items.push({ ref: '', type: (tm ? tm[1] : 'new').toLowerCase(), text: strip(tm ? tm[2] : body) });
+      }
     }
   }
   return { notes: notes.filter((a) => a.items.length), fixes };
