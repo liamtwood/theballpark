@@ -72,9 +72,20 @@ release version AND enrich the schema so the redesigned page
 - Each **note item** becomes structured: `{ type, text }` where `type` ∈
   `new | improved | fixed` — so the page can show typed chips instead of raw
   markdown. (This kills the current raw-`**bold**` rendering bug.)
-- **Patch releases** may carry a `fixes` array: `{ ref, reporter, text, done }`
-  (from `shared.feedback` where `target_version = <release>`, or written in the
-  `.md`). The page renders these as the fixes table.
+- **Patch releases** carry a `fixes` array **populated from the database at
+  promote, then frozen** — NOT hand-written, NOT a live render-time query:
+  - A generator step queries `shared.feedback` WHERE `target_version=<release>`
+    AND `status='done'` → `{ ref, reporter, text, done }` rows → writes them into
+    the release-note file / `changelog.json` **once**, at promote time.
+  - **Immutable once released.** After a version is promoted, its fixes list is a
+    permanent snapshot — the generator must NOT overwrite/regenerate an already-
+    released version (idempotent no-op if the version already exists in
+    `changelog.json`). Only the not-yet-promoted version can be (re)generated.
+  - `reporter` = the issue's `submitted_by` → user name; `ref` = the `F-#####`;
+    `text` = a client-safe line (issue title, tidied). The page renders these
+    read-only as the fixes table — no edit path.
+  - Net: stamping an issue's `target_version` + promoting = it appears
+    automatically; nobody types or later edits the list.
 - `gen-changelog.js`: parse `name` + item `type` + `datetime` from the
   release-notes file (header + typed bullets) into `changelog.json`.
 - Release-notes files named by release (`docs/release-notes/v0.1.1.md`). The
