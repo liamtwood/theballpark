@@ -851,10 +851,11 @@ export class ProjectEstimateComponent {
       this.lines.reload();
       this.est.reload();
       // First send flips the project Draft → Active (server-side), unlocking the
-      // Reports + Inbox tabs — tell the host to reload its detail so the tabs
-      // appear, then land on the project's Inbox tab to watch for replies.
+      // About / Inbox / Reports tabs — tell the host to reload its detail so the
+      // tabs appear, then land on the live Overview (About); the Inbox tab sits
+      // right beside it with an attention badge for the replies to come.
       this.detailsSaved.emit();
-      void this.router.navigate(['/projects', this.projectId()], { queryParams: { tab: 'inbox' } });
+      void this.router.navigate(['/projects', this.projectId()], { queryParams: { tab: 'details' } });
     } catch (err) {
       this.toast.add({ severity: 'error', summary: "Couldn't send the brief — please try again.", detail: errorDetail(err), life: 5000 });
     } finally {

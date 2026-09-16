@@ -39,6 +39,9 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
           <span [class]="pill()">{{ label() }}</span>
         }
       </div>
+      @if (line().supplierName) {
+        <div class="bp-meta mt-0.5 truncate">{{ line().supplierName }}</div>
+      }
       @if (line().basePrice != null || line().unit) {
         <div class="bp-meta mt-0.5">{{ line().basePrice != null ? (displayUnit() | currency: cur() : 'symbol' : '1.0-0') : '' }}@if (line().unit) { / {{ unitText() }} }</div>
       }

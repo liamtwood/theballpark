@@ -318,7 +318,9 @@ interface DetailForm {
               </div>
             </div>
             @if (docView()) {
-              <app-quote-document [projectId]="p.id" [project]="p" (close)="docView.set(false)" />
+              <!-- Opened from Reports, but "Back to builder" belongs on Ballpark
+                   Cost — close the overlay AND switch to the final tab. -->
+              <app-quote-document [projectId]="p.id" [project]="p" (close)="docView.set(false); setTab('final')" />
             }
             @if (sowView()) {
               <app-sow-document [projectId]="p.id" [project]="p" (close)="sowView.set(false)" />
@@ -396,13 +398,16 @@ export class ProjectDetailComponent {
   protected readonly tabs = computed<TabBandTab[]>(() => {
     const draft = this.isDraft();
     const t: TabBandTab[] = [];
-    if (!draft) t.push({ key: 'details', label: 'About ' + this.label() });
+    if (!draft) {
+      t.push({ key: 'details', label: 'About ' + this.label() });
+      // Inbox sits right after About; its badge lights when there are open
+      // threads (e.g. straight after messaging suppliers) — read from the
+      // already-fetched project overview, no extra request.
+      t.push({ key: 'inbox', label: 'Inbox', badge: this.overview.value()?.openThreads || undefined });
+    }
     t.push({ key: 'final', label: 'Ballpark Cost' });
     t.push({ key: 'marketplace', label: 'Marketplace' });
-    if (!draft) {
-      t.push({ key: 'reports', label: 'Reports' });
-      t.push({ key: 'inbox', label: 'Inbox' });
-    }
+    if (!draft) t.push({ key: 'reports', label: 'Reports' });
     return t;
   });
 
