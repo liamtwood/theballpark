@@ -72,6 +72,15 @@ release version AND enrich the schema so the redesigned page
 - Each **note item** becomes structured: `{ type, text }` where `type` ∈
   `new | improved | fixed` — so the page can show typed chips instead of raw
   markdown. (This kills the current raw-`**bold**` rendering bug.)
+- **Note content is DB-populated then frozen (both kinds):**
+  - **Base / feature releases** → the area sections + entries populate from
+    **epics**: `shared.feedback` WHERE `feedback_category='Epic'` AND
+    `target_version=<release>`, grouped by `area`, each entry `{ ref: EP-#####,
+    type: new|improved|fixed, text }`. (v0.1.0's 17 epics `EP-00001…17` are the
+    source of the base note — the `docs/release-notes/v0.1.0.md` prose is the
+    fallback/mirror.)
+  - **Patch releases** → the `fixes` table populates from **issues** (below).
+  - Same freeze rule for both: generated once at promote, immutable after.
 - **Patch releases** carry a `fixes` array **populated from the database at
   promote, then frozen** — NOT hand-written, NOT a live render-time query:
   - A generator step queries `shared.feedback` WHERE `target_version=<release>`

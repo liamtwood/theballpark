@@ -10,29 +10,43 @@ idea as project `ref` (BP-019) and message `ref_code` (WA-001).
 
 ## Scheme (decided)
 
-**One flat, global sequence** — `F-<NNNNN>`, zero-padded to 5: `F-00001`,
-`F-00002`, …
+**Two flat, prefix-scoped sequences** on one shared `ref` column:
+- **`F-<NNNNN>`** — issues (Bug, Enhancement, Question, Prompt). `F-00001`…
+- **`EP-<NNNNN>`** — **epics** (feedback_category = `Epic`). `EP-00001`…
 
-- **Type-independent by design.** The ref does NOT encode Bug/Enhancement/
-  Question — so reclassifying an issue's type never changes its ref. (This is
-  the whole point: one stream, stable id, `type` is just a mutable attribute.)
-- One shared sequence across all issue rows (not per-type, not per-project).
-- Applies to `object_type = 'issue'` rows (Bug, Enhancement, Question, Prompt,
-  Test Case all share the stream). Folders (`object_type = 'folder'`) don't need
-  a ref — skip them.
+- **Type-independent within a stream.** The ref does NOT encode Bug/Enhancement/
+  Question — reclassifying an issue's type never changes its ref.
+- **Prefix by record kind, not by type:** epics (category `Epic`) → `EP-`;
+  everything else that gets a ref → `F-`.
+- Applies to `object_type = 'issue'` rows. **Exclude `type='test_case'`** from
+  the `F-` stream (test cases keep their UUID / TC identity). Folders
+  (`object_type='folder'`) don't get a ref — skip them.
+
+**Already seeded (do NOT overwrite):** the `ref` column exists, and **17 epics
+`EP-00001…EP-00017`** (the v0.1.0 base release) are already assigned. Chat added
+the column + these rows manually. The `EP-` sequence must continue **from 18**;
+the `F-` sequence starts fresh. The backfill must skip any row that already has
+a `ref`.
 
 ---
 
 ## Changes
 
 ### 1. Schema — `server/src/db/migrate-schemas.js`
-- Add `ref VARCHAR(12)` to `shared.feedback` (nullable — additive).
-- Create a dedicated sequence for the number (concurrency-safe by construction —
-  no advisory lock or retry needed):
+- `ref VARCHAR(16)` on `shared.feedback` — **already added by chat; make it
+  idempotent** so migrate-schemas is the source of truth without conflict:
   ```sql
-  CREATE SEQUENCE IF NOT EXISTS shared.feedback_ref_seq;
+  ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS ref VARCHAR(16);
   ```
-- Unique partial index so refs never collide:
+- **Two** sequences (concurrency-safe, no locks). Set `feedback_epic_seq` to
+  start past the seeded epics (currently 17):
+  ```sql
+  CREATE SEQUENCE IF NOT EXISTS shared.feedback_ref_seq;                 -- F-
+  CREATE SEQUENCE IF NOT EXISTS shared.feedback_epic_seq START WITH 18;  -- EP-
+  ```
+  (If the sequence already exists, `setval` it to `max(EP number)` so it never
+  re-issues an assigned EP-.)
+- Unique partial index (already added by chat; keep idempotent):
   ```sql
   CREATE UNIQUE INDEX IF NOT EXISTS uq_feedback_ref
     ON shared.feedback (ref) WHERE ref IS NOT NULL AND deleted_at IS NULL;
@@ -41,13 +55,14 @@ idea as project `ref` (BP-019) and message `ref_code` (WA-001).
   handling; don't loop it through public/preview/master like app tables.
 
 ### 2. Ref generation — `server/src/services/feedback.service.js`
-- In `create(data)`, for issue rows assign:
+- In `create(data)`, assign a ref by record kind:
   ```
-  ref = 'F-' || lpad(nextval('shared.feedback_ref_seq')::text, 5, '0')
+  epic  (feedback_category = 'Epic') → 'EP-' || lpad(nextval('shared.feedback_epic_seq')::text, 5, '0')
+  issue (not test_case, not folder)  → 'F-'  || lpad(nextval('shared.feedback_ref_seq')::text,  5, '0')
   ```
-  Set it in the same INSERT (or a `SELECT nextval` immediately before). The
-  sequence guarantees uniqueness without locks or max+1 races. Skip ref for
-  `object_type = 'folder'`.
+  Set it in the same INSERT (or `SELECT nextval` just before). Sequences
+  guarantee uniqueness without locks/retries. Skip ref for `object_type =
+  'folder'` and for `type='test_case'`. **Never overwrite an existing `ref`.**
 - No hand-rolled transactions needed for this (sequence is atomic); if you touch
   more than one write, use the project's transaction helper (hygiene Rule 1).
 
