@@ -71,6 +71,27 @@ A user-facing "Report an issue" dialog that writes to the feedback subsystem
   Confirmation shows the new **`F-#####`** ref ("Logged as F-000xx — thanks").
 - On success, clear + close; on error, keep the draft and show a message.
 
+## Part C — "My issues" table (view your own submitted issues)
+
+The read companion to Part B — the v2 realisation of the "view feedback" half of
+`project_feedback_page_roadmap`. Group B + C as a **Feedback** page (user-menu
+entry "Feedback"): the **My issues** table with a **"Report an issue"** button
+(opens the Part B dialog) in the page hero.
+
+- **Simple table**, standard layout/tokens: columns **Ref (`F-#####`) · Type
+  (Bug/Enh/Q) · Area · Title · Status · Date**. Status = a standard soft status
+  pill (open / in_progress / done → grey / blue / green per
+  `feedback_action_button_colors`). Newest first.
+- **Row → detail** (title, description/notes, status) — a drawer or a
+  `/feedback/:ref` view; keep it simple.
+- **Scope to the signed-in user.** Add a `mine` filter to
+  `feedback.service.list` / `GET /api/feedback?mine=1` that filters
+  `submitted_by = req.user.id` — **derived server-side from the JWT, never a
+  client-supplied user id** (same rule as `org_id`). Empty state: "No issues yet
+  — spotted something? Report an issue."
+- The `F-#####` ref shows once `pV2-FEEDBACK-REF-01` has backfilled; until then
+  fall back to a short id.
+
 ### SECURITY — must fix on the create path
 `POST /api/feedback` currently passes `req.body` straight to `create()`. The
 dialog's submission MUST NOT let the client set identity/trust fields:
@@ -94,6 +115,9 @@ dialog's submission MUST NOT let the client set identity/trust fields:
       base/feature renders **areas + typed chips**; no raw markdown visible.
 - [ ] Report Issue dialog creates a `shared.feedback` issue via the standard
       dialog + app-select; confirmation shows the `F-` ref.
+- [ ] "My issues" table lists the signed-in user's own issues (Ref · Type · Area
+      · Title · Status pill · Date), row → detail; `mine` filter is JWT-derived,
+      not client-supplied; empty state present.
 - [ ] `submitted_by` comes from JWT, not body; environment server-side; Zod
       validation added; API audit checklist in ship report.
 - [ ] Responsive (panes stack); Lucide icons; OnPush/signals/resource.
