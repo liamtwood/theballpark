@@ -34,7 +34,7 @@ import { isDeclined } from './quote-line.util';
     <!-- Action bar (screen only — hidden on print). -->
     <div class="quote-doc__bar sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-hairline bg-surface px-5 py-3">
       <button type="button" class="flex items-center gap-2 bp-body-small text-secondary transition-colors hover:text-text" (click)="close.emit()">
-        <lucide-icon name="arrow-left" [size]="16" /> Back to builder
+        <lucide-icon name="arrow-left" [size]="16" /> Back
       </button>
       <button type="button" class="bp-btn-grad flex items-center gap-2" (click)="print()">
         <lucide-icon name="printer" [size]="15" /> Print / Save PDF
