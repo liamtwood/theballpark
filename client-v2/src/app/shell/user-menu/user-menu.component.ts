@@ -76,7 +76,14 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
           <!-- Build chip + sign out (the chip moved here off the floating
                footer — Liam, 2026-06-12). -->
           <div class="mt-2 border-t border-hairline pt-2">
-            <div class="bp-meta px-1 pb-1">{{ versionChip }}</div>
+            <!-- About: client release headline + source build (single source =
+                 environment). Dev's chip already IS the build, so skip the sub. -->
+            <div class="px-1 pb-1">
+              <div class="bp-meta">{{ versionChip }}</div>
+              @if (release !== 'dev') {
+                <div class="bp-caption text-muted">built from {{ build }}</div>
+              }
+            </div>
             <!-- Version history — what's on dev vs already on preview
                  (the demo list). Liam, 2026-07-17. -->
             <a
@@ -104,6 +111,8 @@ export class UserMenuComponent {
 
   /** The build chip — lives here since the floating footer retired. */
   protected readonly versionChip = environment.versionChip;
+  protected readonly release = environment.release;
+  protected readonly build = environment.build;
 
   /** Page-settings link mirrors the route's ballparkAdminGuard gate. */
   protected readonly canEditPageSettings = computed(() => can(this.auth.role(), 'admin.cross_org_view'));

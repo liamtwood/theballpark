@@ -2,166 +2,102 @@
   "dev": [],
   "preview": [
     {
-      "version": "v2.464",
-      "date": "2026-09-15",
+      "version": "v0.1.1",
+      "build": "v2.471",
+      "date": "2026-09-16",
       "notes": [
         {
-          "area": "For suppliers",
+          "area": "Bug fixes (Beth review)",
           "items": [
-            "**A tailored supplier experience** across the whole app — your own navigation (Projects, Messages, Marketplace, My Shop), so agency-only actions like \"New project\" no longer appear.",
-            "**Supplier home dashboard** — your recent quote requests alongside a \"what needs you\" list: drafts to submit, items to fix and resubmit, and approved items ready to promote — each with a live count that opens My Shop pre-filtered.",
-            "**Messages** now shows your real conversations (one card per quote request), each opening the project's thread.",
-            "**My Shop** moved onto the same clean Marketplace layout, with filters to find your draft, pending, rejected or hidden items.",
-            "**Storefront** simplified to two clear tiles — **My Shop** (your products) and **My Shopfront** (your brand page)."
-          ]
-        },
-        {
-          "area": "Marketplace",
-          "items": [
-            "Click any item card to open **Quick View** — a quick peek without leaving the page."
-          ]
-        },
-        {
-          "area": "Everywhere",
-          "items": [
-            "Tidier, consistent page headers (aligned to the working column) and a smaller, calmer home greeting."
+            "**F-00087** — Cart shows a single **\"Go with this Ballpark\"** (removed the redundant \"Edit in marketplace\"). *Reported by Beth Pizey*",
+            "**F-00088** — **Supplier name** now shown on the estimate/cart item rows and the marketplace item cards. *Reported by Beth Pizey*",
+            "**F-00089** — **Back** from the Quote / SOW document returns to Reports (where it opened); the button reads \"Back\". *Reported by Beth Pizey*",
+            "**F-00090** — **Inbox** tab now sits next to Overview in the project workspace. *Reported by Beth Pizey*",
+            "**F-00091** — Messaging suppliers lands on the **live Overview**, with an attention badge on the Inbox tab. *Reported by Beth Pizey*"
           ]
         }
       ]
     },
     {
-      "version": "v2.440",
-      "date": "2026-09-12",
+      "version": "v0.1.0",
+      "build": "v2.464",
+      "date": "2026-09-16",
       "notes": [
         {
-          "area": "Marketplace",
+          "area": "Ballpark Base Release",
           "items": [
-            "**Redesigned marketplace** — a prominent search with a single options button that reveals type (Items / Suppliers), filters and view all on one line, drill-down category browsing, and denser cards. The same layout now powers both the global marketplace and the in-project Marketplace tab.",
-            "Switch freely between **Card, List and Table** views."
+            "**Agent** (event agency) — build a project from a brief, ballpark the cost, message suppliers, quote the client.",
+            "**Supplier** — list products, run a shop & storefront, respond to quote requests.",
+            "**Admin** — curate the taxonomy, approve items, manage roles & codelists."
           ]
         },
         {
           "area": "Projects",
           "items": [
-            "**Project Costs cart** — inside a project's Marketplace tab, add catalogue items with the **+** on a card, then open the cart from the right to review your running **Project Costs** subtotal and jump straight to Ballpark Cost.",
-            "**Ballpark Cost** tidy-up — each section (Project Costs, Fees, Project Provisions) now has a matching summary card with a clear total, the sections collapse to just their totals when you arrive, and there's a dedicated **Project Total** container. Fees are highlighted in the brand accent.",
-            "**Event date** on About Project now has a proper date-picker."
+            "AI-first project creation from a written brief; a project workspace (Overview · Inbox · Ballpark Cost · Marketplace · Reports); cost estimate with quantities, margin, contingency, VAT & insurance; a live-project flow once suppliers are messaged."
           ]
         },
         {
-          "area": "Everywhere",
+          "area": "Marketplace",
           "items": [
-            "Rounded, consistent **dropdowns** replace the old square menus across settings and edit forms."
-          ]
-        }
-      ]
-    },
-    {
-      "version": "v2.376",
-      "date": "2026-09-10",
-      "notes": [
-        {
-          "area": "Projects",
-          "items": [
-            "New **project workspace** — a cleaner, consistent layout across every page, with the working area centred and the header pinned so only the content scrolls.",
-            "**New project** flow redesigned: brief on the left, project details on the right, with a proposed reference, an event-type picker, and a date picker that shows dates as DD-Mmm-YYYY.",
-            "**Draft vs live** projects — a new project starts as a draft showing just Ballpark Cost and Marketplace; sending it to suppliers turns it live and unlocks About Project, Reports and Inbox.",
-            "**Live project overview** — an active project now opens on a cover-image header with at-a-glance tiles: Working ballpark, Confirmed so far, Agreed items and Open threads.",
-            "**About Project** and **Ballpark Cost** details are now always-editable rounded fields that save as you go, with a \"Details saved\" confirmation.",
-            "Set a project's **status** right from the Past projects cards."
+            "Browse by category → subcategory with dense item cards (Supplier · City) and Quick View; filters; available both globally and inside a project."
           ]
         },
         {
-          "area": "Messages",
+          "area": "Shop Front",
           "items": [
-            "A new **Messages hub** — one card per active project showing its suppliers and a single status pill (Action required / Awaiting suppliers / All confirmed), with the counts on hover.",
-            "Cards flag when **you** have something to respond to, and an envelope opens the exact item that needs you.",
-            "Inside a project, supplier conversations start minimised with item / accepted / action-required counts, and gently highlight the line waiting on you."
+            "**Supplier** — My Shop (your products) and My Shopfront (your brand page) on the shared Marketplace layout, plus a supplier home dashboard of what needs you."
           ]
         },
         {
-          "area": "Profile",
+          "area": "Items",
           "items": [
-            "Profile is now always-editable and saves as you go — no separate Edit/Save step — with your details, branding and gallery in a single tidy column."
-          ]
-        }
-      ]
-    },
-    {
-      "version": "v2.61",
-      "date": "2026-07-17",
-      "notes": [
-        {
-          "area": "Project > Inbox",
-          "items": [
-            "Fixed: declining an item, then changing your mind and choosing Accept, Suggest New Cost or Request Information instead, could still decline the item on your next message. Those actions now cancel the pending decline.",
-            "Fixed: the conversation no longer reloads and lose your place after every message — the item you had selected stays selected, collapsed suppliers stay collapsed, and the cursor stays in the message box so you can keep typing.",
-            "The client name now shows on the supplier's inbox card, matching the project."
+            "Catalogue items with per-unit or flat pricing, units, install cost, tier, and an image gallery."
           ]
         },
         {
-          "area": "Project > Final Quote",
+          "area": "Taxonomy & Categories",
           "items": [
-            "Fixed: where an item was sent to two suppliers and one declined, the Final Quote could show the declined supplier's line while the totals counted the other supplier's live quote. The quote and the totals now always agree on the same line."
-          ]
-        }
-      ]
-    },
-    {
-      "version": "v2.60",
-      "date": "2026-07-17",
-      "notes": [
-        {
-          "area": "Platform",
-          "items": [
-            "Version history — a \"What's new\" link in the account menu (above Sign out), showing what's on dev and not yet released to preview, and what preview already has."
-          ]
-        }
-      ]
-    },
-    {
-      "version": "v2.59",
-      "date": "2026-07-17",
-      "notes": [
-        {
-          "area": "Project > About Project",
-          "items": [
-            "Project completeness added — a weighted \"% complete\" card at the top of About Project, matching the one on Profile. It scores the key project fields (cover image, client, event type, date, venue, city, guests, duration, budget and rates) and lists what's missing. Each suggestion is a link that opens the right section ready to edit.",
-            "Client is now a real field on the project, and editable. Previously the client was only part of the project name, so it couldn't be reported on or reused.",
-            "Client type-ahead — as you type a client name it predicts from clients you've used before, but you can still type anything. New names are added to the suggestions automatically, so there's no list to set up or maintain.",
-            "Budget now displays with thousands separators (50,000 rather than 50000)."
-          ]
-        }
-      ]
-    },
-    {
-      "version": "v2.58",
-      "date": "2026-07-10",
-      "notes": [
-        {
-          "area": "Project > About Project",
-          "items": [
-            "Budget is now shown and editable in the Financials section, alongside Margin, Contingency and VAT. The budget feeds the Estimate's budget bar, so the Project Quote and Final Quote show whether you're within or over budget."
-          ]
-        }
-      ]
-    },
-    {
-      "version": "v2.57",
-      "date": "2026-07-10",
-      "notes": [
-        {
-          "area": "Project > Inbox",
-          "items": [
-            "Item cards added to thread — item cards are displayed in the conversation thread. This allows each user to review the details of each item being quoted. We reused the standard item card used on the quotes pages for consistency.",
-            "The left rail styling was changed to be consistent with the Project and Final Quote that also show items, nested by Category. We reused the standard nested items used on the quotes pages for consistency.",
-            "For Inbox items we added Decline/Cancel (in addition to Accept, Suggest New Cost and Request Information). The decline option allows suppliers to reject a requested item (maybe out of stock or can't be delivered as requested) and for Agents to decline an item. Each party must provide a reason for decline. Sellers see \"Decline\" and buyers see \"Cancel\"."
+            "15 macro categories with curated subcategories; browse + admin curation across the marketplace."
           ]
         },
         {
-          "area": "Project > Final Quote",
+          "area": "Inbox",
           "items": [
-            "When items are declined they are excluded from the totals on the Final Quote, and declined items are styled to show they were declined with a strikethrough. Declined items are not displayed at all in the Project Quote."
+            "Per-supplier message threads with an inbox landing (per-supplier action rollups) and quote requests raised from a project."
+          ]
+        },
+        {
+          "area": "AI Agent",
+          "items": [
+            "Parses a written brief into a structured project and suggests/matches marketplace items."
+          ]
+        },
+        {
+          "area": "SOW & Invoice",
+          "items": [
+            "Client-facing quote document in an SOW layout (timeline, payment terms, special terms) with themed presentation."
+          ]
+        },
+        {
+          "area": "Clients",
+          "items": [
+            "Client records (company details, address) attached to projects and reusable across them."
+          ]
+        },
+        {
+          "area": "Coachmarks",
+          "items": [
+            "In-app guided help — contextual coachmark tips that explain features as you go; admins can tweak the copy."
+          ]
+        },
+        {
+          "area": "Platform & Admin",
+          "items": [
+            "**Approval** — admin approves item imagery before it goes live; suppliers submit and resubmit; text & pricing edits don't force re-approval.",
+            "**Codelists** — centralised reference lists (statuses, units, etc.) driving consistent, controlled dropdowns.",
+            "**Feedback** — issue / enhancement / QC tracking (internal today; no customer-facing page yet).",
+            "**Security & Roles** — Google sign-in; org-based roles (agent / supplier / admin) with permissions re-derived per request; identity-only sessions."
           ]
         }
       ]

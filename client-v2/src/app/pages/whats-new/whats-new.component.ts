@@ -14,6 +14,8 @@ interface ChangeNote {
 }
 interface ChangeVersion {
   version: string;
+  /** Source build a client release was cut from (preview entries only). */
+  build?: string;
   date: string;
   notes: ChangeNote[];
 }
@@ -109,6 +111,9 @@ interface Changelog {
         <span class="bp-list-title">{{ v.version }}</span>
         <span class="bp-meta shrink-0">{{ v.date }}</span>
       </div>
+      @if (v.build) {
+        <div class="bp-caption text-muted">built from {{ v.build }}</div>
+      }
       @for (n of v.notes; track n.area) {
         <div class="mt-3">
           <span class="bp-field-label">{{ n.area }}</span>
