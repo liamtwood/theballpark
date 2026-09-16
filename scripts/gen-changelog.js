@@ -64,12 +64,14 @@ function parseSections(text) {
     if (!b) continue;
     const body = b[1].trim();
     if (mode === 'fixes') {
+      // "F-00087 · Enhancement · Beth Pizey · <text> · ✓"
       const cols = body.split('·').map((s) => s.trim());
       fixes.push({
         ref: cols[0] || '',
-        reporter: cols[1] || '',
-        text: strip(cols[2]),
-        done: /✓|done|yes|fixed/i.test(cols[3] || ''),
+        type: cols[1] || '',
+        reporter: cols[2] || '',
+        text: strip(cols[3]),
+        done: /✓|done|yes|fixed/i.test(cols[4] || ''),
       });
     } else if (area) {
       const tm = /^(new|improved|fixed):\s*(.+)$/i.exec(body);

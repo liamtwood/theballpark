@@ -7,7 +7,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 
 interface NoteItem { type: string; text: string; }
 interface NoteArea { area: string; items: NoteItem[]; }
-interface Fix { ref: string; reporter: string; text: string; done: boolean; }
+interface Fix { ref: string; type: string; reporter: string; text: string; done: boolean; }
 interface ChangeEntry {
   version: string;
   name?: string;
@@ -85,29 +85,25 @@ interface Changelog { dev: ChangeEntry[]; preview: ChangeEntry[]; }
                 </header>
 
                 @if (v.fixes.length) {
-                  <!-- Patch release → fixes table. -->
-                  <table class="mt-4 w-full border-collapse">
-                    <thead>
-                      <tr class="border-b border-hairline text-left">
-                        <th class="bp-field-label pb-2 pr-4">Ref</th>
-                        <th class="bp-field-label pb-2 pr-4">Fixed</th>
-                        <th class="bp-field-label pb-2 pr-4">Reported by</th>
-                        <th class="bp-field-label pb-2"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (f of v.fixes; track f.ref) {
-                        <tr class="border-b border-hairline last:border-b-0 align-top">
-                          <td class="py-2.5 pr-4"><span class="bp-ref-eyebrow">{{ f.ref }}</span></td>
-                          <td class="py-2.5 pr-4 bp-body-small text-text">{{ f.text }}</td>
-                          <td class="py-2.5 pr-4 bp-body-small text-secondary">{{ f.reporter }}</td>
-                          <td class="py-2.5">
-                            @if (f.done) { <lucide-icon name="circle-check" [size]="16" class="text-success" /> }
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
+                  <!-- Patch release → fixes table (standard table-view grid). -->
+                  <div class="mt-4 overflow-hidden rounded-xl border border-hairline bg-surface">
+                    <div class="grid grid-cols-[90px_120px_minmax(0,1fr)_130px_40px] gap-x-4 border-b border-hairline bg-fill px-4 py-2">
+                      <span class="bp-table-column-header">Ref</span>
+                      <span class="bp-table-column-header">Type</span>
+                      <span class="bp-table-column-header">Fixed</span>
+                      <span class="bp-table-column-header">Reported by</span>
+                      <span class="bp-table-column-header"></span>
+                    </div>
+                    @for (f of v.fixes; track f.ref) {
+                      <div class="grid grid-cols-[90px_120px_minmax(0,1fr)_130px_40px] items-start gap-x-4 border-b border-hairline px-4 py-2.5 last:border-b-0">
+                        <span class="bp-ref-eyebrow whitespace-nowrap">{{ f.ref }}</span>
+                        <span class="bp-body-small text-secondary">{{ f.type }}</span>
+                        <span class="bp-body-small text-text">{{ f.text }}</span>
+                        <span class="bp-body-small whitespace-nowrap text-secondary">{{ f.reporter }}</span>
+                        <span>@if (f.done) { <lucide-icon name="circle-check" [size]="16" class="text-success" /> }</span>
+                      </div>
+                    }
+                  </div>
                 } @else {
                   <!-- Base / feature release → typed area sections. -->
                   <div class="mt-4 flex flex-col gap-5">

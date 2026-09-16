@@ -12,30 +12,35 @@
       "fixes": [
         {
           "ref": "F-00087",
+          "type": "Enhancement",
           "reporter": "Beth Pizey",
           "text": "Cart shows a single \"Go with this Ballpark\" (removed the redundant \"Edit in marketplace\")",
           "done": true
         },
         {
           "ref": "F-00088",
+          "type": "Enhancement",
           "reporter": "Beth Pizey",
           "text": "Supplier name now shown on the estimate/cart item rows and the marketplace item cards",
           "done": true
         },
         {
           "ref": "F-00089",
+          "type": "Bug",
           "reporter": "Beth Pizey",
           "text": "Back from the Quote / SOW document returns to Reports (where it opened); the button reads \"Back\"",
           "done": true
         },
         {
           "ref": "F-00090",
+          "type": "Enhancement",
           "reporter": "Beth Pizey",
           "text": "Inbox tab now sits next to Overview in the project workspace",
           "done": true
         },
         {
           "ref": "F-00091",
+          "type": "Enhancement",
           "reporter": "Beth Pizey",
           "text": "Messaging suppliers lands on the live Overview, with an attention badge on the Inbox tab",
           "done": true
