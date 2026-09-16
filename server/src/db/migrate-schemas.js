@@ -1526,6 +1526,17 @@ const migrate = async () => {
       ALTER TABLE shared.feedback
         ADD COLUMN IF NOT EXISTS pages TEXT[] DEFAULT '{}';
 
+      -- pV2-FEEDBACK-REF-01: a short human ref (F-00001) so issues are
+      -- addressable in conversation/UI (like project ref / message ref_code).
+      -- Flat, global, type-INDEPENDENT sequence (reclassifying type never changes
+      -- the ref); issue rows only. Additive — nullable column + dedicated
+      -- sequence (concurrency-safe) + unique partial index.
+      ALTER TABLE shared.feedback
+        ADD COLUMN IF NOT EXISTS ref VARCHAR(12);
+      CREATE SEQUENCE IF NOT EXISTS shared.feedback_ref_seq;
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_feedback_ref
+        ON shared.feedback (ref) WHERE ref IS NOT NULL AND deleted_at IS NULL;
+
       -- shared.feedback_categories now holds 3 namespaces: folder, issue, area.
       -- Drop the single-column UNIQUE(name) constraint (auto-named
       -- feedback_categories_name_key) and replace with UNIQUE(name, namespace)

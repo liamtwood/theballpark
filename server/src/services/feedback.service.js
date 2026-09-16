@@ -131,8 +131,15 @@ async function create(data) {
         title, notes, page_url, submitted_by, environment,
         owner, due_date, event_date, parent_id, agenda,
         type, meeting_time, description, object_type, tags, area,
-        priority, target_version, pages, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, COALESCE($24, 'open'))
+        priority, target_version, pages, status, ref)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, COALESCE($24, 'open'),
+       -- pV2-FEEDBACK-REF-01: issue rows get F-NNNNN from the dedicated sequence
+       -- (atomic, no locks). Folders get no ref; test cases are excluded from
+       -- the ref stream (QC artifacts, not referenceable issues — per the
+       -- RELEASE-SEQUENCE runbook default).
+       CASE WHEN COALESCE($18, 'issue') <> 'folder' AND COALESCE($15, '') <> 'test_case'
+            THEN 'F-' || lpad(nextval('shared.feedback_ref_seq')::text, 5, '0')
+            ELSE NULL END)
      RETURNING *`,
     [
       category_id || null, subcategory_id || null, feedback_category_id || null, area_category_id || null,
