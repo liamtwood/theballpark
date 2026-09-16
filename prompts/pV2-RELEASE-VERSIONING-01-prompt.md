@@ -59,20 +59,26 @@ versionChip: 'Preview v0.1.1',   // derived label the chip shows
   `environment` (single source) — so it updates automatically each release with
   no separate edit.
 
-### 3. Release notes / What's New — keep the pipeline, add the release headline
+### 3. Release notes / What's New data — keep the pipeline, enrich the schema
 The existing pipeline (`docs/release-notes/<ver>.md` → `scripts/gen-changelog.js`
-→ `client-v2/public/changelog.json` → `pages/whats-new`) stays. Re-key the
-**client-facing headline** to the release version:
-- Add a `release` field to each **preview** entry in `changelog.json`
-  (headline `v0.1.1`), keeping `version` (build `v2.469`) for traceability.
-- `whats-new.component.ts`: the **preview** section headlines the **release**
-  version + date + "built from vX.NNN". (The "on dev — not yet on preview"
-  section can stay build-keyed — it's the internal demo list.)
-- `gen-changelog.js`: carry the `release` through from the release-notes file's
-  header/frontmatter into `changelog.json`.
-- Release-notes file: name it by release (`docs/release-notes/v0.1.1.md`) or add
-  a `release:` header line — CC's call, but the release version must be the
-  human headline.
+→ `client-v2/public/changelog.json` → `pages/whats-new`) stays. Re-key to the
+release version AND enrich the schema so the redesigned page
+(`pV2-WHATSNEW-REDESIGN-01`) has structured data to render:
+- Each **version entry** in `changelog.json` gains:
+  - `release` (headline, e.g. `v0.1.1`), keeping `version` (build) for trace.
+  - **`name`** — the release name (e.g. "Ballpark Base Release", "Bug fixes").
+  - **`datetime`** — promote timestamp (date **+ time**), not just `date`.
+    Source it from the promote (or the Release record's timestamp).
+- Each **note item** becomes structured: `{ type, text }` where `type` ∈
+  `new | improved | fixed` — so the page can show typed chips instead of raw
+  markdown. (This kills the current raw-`**bold**` rendering bug.)
+- **Patch releases** may carry a `fixes` array: `{ ref, reporter, text, done }`
+  (from `shared.feedback` where `target_version = <release>`, or written in the
+  `.md`). The page renders these as the fixes table.
+- `gen-changelog.js`: parse `name` + item `type` + `datetime` from the
+  release-notes file (header + typed bullets) into `changelog.json`.
+- Release-notes files named by release (`docs/release-notes/v0.1.1.md`). The
+  base note `docs/release-notes/v0.1.0.md` stays as the history entry.
 
 ### 4. Promote playbook — make it consistent every release
 Update the promote checklist (wherever it lives — `project_preview_deploy_playbook`
