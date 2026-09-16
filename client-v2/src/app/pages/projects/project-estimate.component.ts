@@ -268,16 +268,13 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
 
         <p class="bp-caption mt-4">Indicative — based on marketplace base prices. Final supplier quotes and the priced rollup land with checkout.</p>
 
-        <!-- Footer — cart only: Edit in marketplace + Go with this Ballpark.
-             (Final's Message Suppliers CTA now lives in the Project Costs
-             section header.) -->
+        <!-- Footer — cart only: Go with this Ballpark. "Edit in marketplace"
+             was removed (v2.466): in the draft flow Marketplace is already a
+             top tab, so the button was redundant. (Final's Message Suppliers
+             CTA lives in the Project Costs section header.) -->
         @if (!isFinal()) {
           <div class="mt-5 flex gap-2.5">
-            <button type="button" class="bp-btn-grad flex-1" (click)="addItems.emit()">
-              <lucide-icon name="store" [size]="16" />
-              Edit in marketplace
-            </button>
-            <button type="button" class="bp-btn-outline flex-1" (click)="goToFinal.emit()">
+            <button type="button" class="bp-btn-grad flex-1" (click)="goToFinal.emit()">
               Go with this Ballpark
               <lucide-icon name="arrow-right" [size]="16" />
             </button>
@@ -370,8 +367,6 @@ export class ProjectEstimateComponent {
   /** cart = editable "To Send" slice; final = everything + status badges +
    *  custom lines. Same layout, one switch. */
   readonly view = input<'cart' | 'final'>('cart');
-  /** "Edit in marketplace" — the Marketplace tab in item-browse mode (cart). */
-  readonly addItems = output<void>();
   /** "Go with this Ballpark" — jump to the Final Quote tab (cart). */
   readonly goToFinal = output<void>();
   /** An event-details field was saved → host reloads its project resource. */

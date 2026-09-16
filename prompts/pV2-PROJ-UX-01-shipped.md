@@ -45,6 +45,17 @@ Also note: the cart (`!isFinal()`) currently has no "Message suppliers" at all �
 - **tab-band model:** no change needed — `TabBandTab.badge?: number` already existed and renders via `.bp-tab__badge`.
 - **Draft edge case:** the Inbox tab (and its badge) only exists for non-draft projects; the badge reads `overview` which is only fetched when non-draft — consistent, no draft-time fetch.
 
+## Iteration — v2.466 (2026-09-16)
+**Triggered by QC (Liam's #1 call):** in the draft "add new project" flow only two
+tabs show (Ballpark Cost + Marketplace), so the cart footer's **"Edit in
+marketplace"** button is redundant (Marketplace is already a top tab) — remove it
+rather than collapse to "Message suppliers".
+**Done:** removed the "Edit in marketplace" button; the footer is now the single
+**"Go with this Ballpark"** CTA (promoted to the primary gradient button). Cleaned
+up the now-dead `addItems` output (project-estimate) + its binding and the
+`addItems()` handler (project-detail).
+**Files:** project-estimate.component.ts, project-detail.component.ts.
+
 ## QC notes
 (Liam)
 

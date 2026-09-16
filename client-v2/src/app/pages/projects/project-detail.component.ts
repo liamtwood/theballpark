@@ -294,7 +294,7 @@ interface DetailForm {
           }
           @case ('estimate') {
             <div class="min-h-0 flex-1 bp-gutter">
-              <app-project-estimate [projectId]="p.id" [project]="p" (addItems)="addItems()" (goToFinal)="goToTab('final')" (detailsSaved)="detail.reload()" />
+              <app-project-estimate [projectId]="p.id" [project]="p" (goToFinal)="goToTab('final')" (detailsSaved)="detail.reload()" />
             </div>
           }
           @case ('final') {
@@ -488,14 +488,6 @@ export class ProjectDetailComponent {
     if (t === 'final') this.estimate.reload();
     this.router
       .navigate([], { relativeTo: this.route, queryParams: { tab: t }, queryParamsHandling: 'merge' })
-      .catch((err) => console.warn('[ProjectDetail] nav failed', err));
-  }
-
-  /** "Add more items" (Estimate tab) → the Marketplace tab in item-browse
-   *  mode (mode:null — the marketplace store treats absence as items). */
-  protected addItems(): void {
-    this.router
-      .navigate([], { relativeTo: this.route, queryParams: { tab: 'marketplace', mode: null }, queryParamsHandling: 'merge' })
       .catch((err) => console.warn('[ProjectDetail] nav failed', err));
   }
 
