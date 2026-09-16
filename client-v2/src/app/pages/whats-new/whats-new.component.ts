@@ -51,7 +51,7 @@ interface Changelog { dev: ChangeEntry[]; preview: ChangeEntry[]; }
                     <span class="bp-body-small font-semibold" [class.text-accent]="isActive(v)">{{ v.version }}</span>
                     @if (v.name) { <span class="bp-caption truncate text-secondary">{{ v.name }}</span> }
                   </div>
-                  <div class="bp-meta">{{ v.datetime || v.date }}</div>
+                  <div class="bp-meta">{{ fmtWhen(v.datetime || v.date) }}</div>
                 </button>
               }
             }
@@ -61,7 +61,7 @@ interface Changelog { dev: ChangeEntry[]; preview: ChangeEntry[]; }
                 <button type="button" class="rounded-[var(--radius-field)] px-3 py-2 text-left transition-colors"
                         [class.bg-soft]="isActive(v)" [class.hover:bg-fill]="!isActive(v)" (click)="select(v)">
                   <div class="bp-body-small font-semibold" [class.text-accent]="isActive(v)">{{ v.version }}</div>
-                  <div class="bp-meta">{{ v.datetime || v.date }}</div>
+                  <div class="bp-meta">{{ fmtWhen(v.datetime || v.date) }}</div>
                 </button>
               }
             }
@@ -80,7 +80,7 @@ interface Changelog { dev: ChangeEntry[]; preview: ChangeEntry[]; }
                     <span class="bp-pill bp-body-small" [class]="v.env === 'preview' ? 'bp-pill--success' : 'bp-pill--warn'">
                       {{ v.env === 'preview' ? 'Preview' : 'Dev' }}
                     </span>
-                    <span class="bp-meta">{{ v.datetime || v.date }}</span>
+                    <span class="bp-meta">{{ fmtWhen(v.datetime || v.date) }}</span>
                   </div>
                 </header>
 
@@ -162,6 +162,18 @@ export class WhatsNewComponent {
   }
   protected select(v: ChangeEntry): void {
     this.selectedKey.set(this.keyOf(v));
+  }
+
+  /** NATO date (DD-Mmm-YYYY), keeping any "HH:MM" time. Input is the
+   *  release-note meta datetime, e.g. "2026-09-16 18:47". */
+  private readonly MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  protected fmtWhen(dt: string): string {
+    if (!dt) return '';
+    const [d, t] = dt.split(' ');
+    const [y, m, day] = d.split('-');
+    if (!y || !m || !day) return dt;
+    const nato = `${day}-${this.MONTHS[+m - 1] ?? m}-${y}`;
+    return t ? `${nato} · ${t}` : nato;
   }
 
   protected chipLabel(t: string): string {
