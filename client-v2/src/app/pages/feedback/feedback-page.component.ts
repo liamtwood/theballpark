@@ -35,37 +35,39 @@ import { ReportIssueDialogComponent } from './report-issue-dialog.component';
             </div>
           } @else {
             <div class="bp-card bp-card--lifted overflow-hidden">
-              <table class="w-full border-collapse">
-                <thead>
-                  <tr class="border-b border-hairline text-left">
-                    <th class="bp-field-label px-4 py-3">Ref</th>
-                    <th class="bp-field-label px-4 py-3">Type</th>
-                    <th class="bp-field-label px-4 py-3">Area</th>
-                    <th class="bp-field-label px-4 py-3">Title</th>
-                    <th class="bp-field-label px-4 py-3">Status</th>
-                    <th class="bp-field-label px-4 py-3">Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (i of issues.value(); track i.id) {
-                    <tr class="cursor-pointer border-b border-hairline last:border-b-0 hover:bg-fill" (click)="toggle(i.id)">
-                      <td class="px-4 py-3"><span class="bp-ref-eyebrow">{{ i.ref ?? '—' }}</span></td>
-                      <td class="px-4 py-3 bp-body-small text-secondary">{{ typeLabel(i.type) }}</td>
-                      <td class="px-4 py-3 bp-body-small text-secondary">{{ i.area_name ?? '—' }}</td>
-                      <td class="px-4 py-3 bp-body-small text-text">{{ i.title }}</td>
-                      <td class="px-4 py-3"><span class="bp-pill bp-body-small" [class]="statusPill(i.status)">{{ statusLabel(i.status) }}</span></td>
-                      <td class="px-4 py-3 bp-meta">{{ i.created_at | date: 'd MMM y' }}</td>
+              <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                  <thead>
+                    <tr class="border-b border-hairline text-left">
+                      <th class="bp-field-label whitespace-nowrap px-4 py-3">Ref</th>
+                      <th class="bp-field-label whitespace-nowrap px-4 py-3">Type</th>
+                      <th class="bp-field-label whitespace-nowrap px-4 py-3">Area</th>
+                      <th class="bp-field-label px-4 py-3">Title</th>
+                      <th class="bp-field-label whitespace-nowrap px-4 py-3">Status</th>
+                      <th class="bp-field-label whitespace-nowrap px-4 py-3">Date</th>
                     </tr>
-                    @if (openId() === i.id && (i.description || i.notes)) {
-                      <tr class="border-b border-hairline last:border-b-0 bg-fill">
-                        <td colspan="6" class="px-4 py-3">
-                          <p class="bp-body-small whitespace-pre-line text-secondary">{{ i.description || i.notes }}</p>
-                        </td>
+                  </thead>
+                  <tbody>
+                    @for (i of issues.value(); track i.id) {
+                      <tr class="cursor-pointer border-b border-hairline last:border-b-0 hover:bg-fill" (click)="toggle(i.id)">
+                        <td class="whitespace-nowrap px-4 py-3"><span class="bp-ref-eyebrow">{{ i.ref ?? '—' }}</span></td>
+                        <td class="whitespace-nowrap px-4 py-3 bp-body-small text-secondary">{{ typeLabel(i.type) }}</td>
+                        <td class="whitespace-nowrap px-4 py-3 bp-body-small text-secondary">{{ i.area_name ?? '—' }}</td>
+                        <td class="whitespace-nowrap px-4 py-3 bp-body-small text-text">{{ i.title }}</td>
+                        <td class="whitespace-nowrap px-4 py-3"><span class="bp-pill bp-body-small" [class]="statusPill(i.status)">{{ statusLabel(i.status) }}</span></td>
+                        <td class="whitespace-nowrap px-4 py-3 bp-meta">{{ i.created_at | date: 'dd-MMM-y' }}</td>
                       </tr>
+                      @if (openId() === i.id && (i.description || i.notes)) {
+                        <tr class="border-b border-hairline last:border-b-0 bg-fill">
+                          <td colspan="6" class="px-4 py-3">
+                            <p class="bp-body-small whitespace-pre-line text-secondary">{{ i.description || i.notes }}</p>
+                          </td>
+                        </tr>
+                      }
                     }
-                  }
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
           }
         </div>
