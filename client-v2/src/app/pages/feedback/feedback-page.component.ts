@@ -34,40 +34,35 @@ import { ReportIssueDialogComponent } from './report-issue-dialog.component';
               <button type="button" class="bp-btn-accent mt-3" (click)="openReport()">Report an issue</button>
             </div>
           } @else {
-            <div class="bp-card bp-card--lifted overflow-hidden">
-              <div class="overflow-x-auto">
-                <table class="w-full border-collapse">
-                  <thead>
-                    <tr class="border-b border-hairline text-left">
-                      <th class="bp-field-label whitespace-nowrap px-4 py-3">Ref</th>
-                      <th class="bp-field-label whitespace-nowrap px-4 py-3">Type</th>
-                      <th class="bp-field-label whitespace-nowrap px-4 py-3">Area</th>
-                      <th class="bp-field-label px-4 py-3">Title</th>
-                      <th class="bp-field-label whitespace-nowrap px-4 py-3">Status</th>
-                      <th class="bp-field-label whitespace-nowrap px-4 py-3">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (i of issues.value(); track i.id) {
-                      <tr class="cursor-pointer border-b border-hairline last:border-b-0 hover:bg-fill" (click)="toggle(i.id)">
-                        <td class="whitespace-nowrap px-4 py-3"><span class="bp-ref-eyebrow">{{ i.ref ?? '—' }}</span></td>
-                        <td class="whitespace-nowrap px-4 py-3 bp-body-small text-secondary">{{ typeLabel(i.type) }}</td>
-                        <td class="whitespace-nowrap px-4 py-3 bp-body-small text-secondary">{{ i.area_name ?? '—' }}</td>
-                        <td class="whitespace-nowrap px-4 py-3 bp-body-small text-text">{{ i.title }}</td>
-                        <td class="whitespace-nowrap px-4 py-3"><span class="bp-pill bp-body-small" [class]="statusPill(i.status)">{{ statusLabel(i.status) }}</span></td>
-                        <td class="whitespace-nowrap px-4 py-3 bp-meta">{{ i.created_at | date: 'dd-MMM-y' }}</td>
-                      </tr>
-                      @if (openId() === i.id && (i.description || i.notes)) {
-                        <tr class="border-b border-hairline last:border-b-0 bg-fill">
-                          <td colspan="6" class="px-4 py-3">
-                            <p class="bp-body-small whitespace-pre-line text-secondary">{{ i.description || i.notes }}</p>
-                          </td>
-                        </tr>
-                      }
-                    }
-                  </tbody>
-                </table>
+            <!-- Standard table view (matches the marketplace table): a grid with
+                 a gray header row, hairline dividers, truncating cells. Ref +
+                 Title stay on one line (nowrap / truncate). -->
+            <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
+              <div class="grid grid-cols-[110px_120px_140px_minmax(0,1.6fr)_120px_120px] gap-x-4 border-b border-hairline bg-fill px-4 py-2">
+                <span class="bp-table-column-header">Ref</span>
+                <span class="bp-table-column-header">Type</span>
+                <span class="bp-table-column-header">Area</span>
+                <span class="bp-table-column-header">Title</span>
+                <span class="bp-table-column-header">Status</span>
+                <span class="bp-table-column-header">Date</span>
               </div>
+              @for (i of issues.value(); track i.id) {
+                <button type="button"
+                        class="grid w-full cursor-pointer grid-cols-[110px_120px_140px_minmax(0,1.6fr)_120px_120px] items-center gap-x-4 border-b border-hairline px-4 py-2.5 text-left last:border-b-0 hover:bg-fill"
+                        [class.bg-fill]="openId() === i.id" (click)="toggle(i.id)">
+                  <span class="bp-ref-eyebrow whitespace-nowrap">{{ i.ref ?? '—' }}</span>
+                  <span class="bp-body-small truncate text-secondary">{{ typeLabel(i.type) }}</span>
+                  <span class="bp-body-small truncate text-secondary">{{ i.area_name ?? '—' }}</span>
+                  <span class="truncate text-base text-text">{{ i.title }}</span>
+                  <span><span class="bp-pill bp-body-small" [class]="statusPill(i.status)">{{ statusLabel(i.status) }}</span></span>
+                  <span class="bp-body-small whitespace-nowrap text-secondary">{{ i.created_at | date: 'dd-MMM-y' }}</span>
+                </button>
+                @if (openId() === i.id && (i.description || i.notes)) {
+                  <div class="border-b border-hairline bg-fill px-4 py-3 last:border-b-0">
+                    <p class="bp-body-small whitespace-pre-line text-secondary">{{ i.description || i.notes }}</p>
+                  </div>
+                }
+              }
             </div>
           }
         </div>
