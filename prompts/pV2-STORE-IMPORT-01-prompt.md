@@ -2,7 +2,7 @@
 
 **Type:** server + client-v2 · the item-onboarding arc
 **Owner:** CC implements + commits. Chat authored this. Tracker:
-**FR-00202** (load) · **FR-00204** (foundations) · **FR-00208** (profiles),
+**FR-00202** (load) · **FR-00204** (foundations) · **FR-00208** (unit-driven fields),
 all under Items/Taxonomy epics. Target **v0.2.0**.
 **Design docs:** `docs/item-import-one-pager.html`, `docs/item-attributes-one-pager.html`,
 `docs/item-taxonomy-arc-roadmap.md`.
@@ -13,13 +13,16 @@ Build in the order below; each part is shippable on its own.
 ## Guiding principles (hold throughout)
 - **Codelists for every flat vocabulary.** Reuse the existing engine
   (`reference_codelists` + `reference_codelist_values` + `codelist.service.js`) —
-  do NOT invent a parallel one. Tier, mood, attributes are all codelists.
+  do NOT invent a parallel one. Tier, mood, unit, time_unit are all codelists.
+- **No profiles, no `item_type`.** Every item shares ONE universal core; the
+  chosen **`unit`** is the single selector that adds *at most one* conditional
+  field, via `item_unit.meta.needs`. Category is NOT the decider.
 - **code = canonical / label = flexible.** Logic, matching and storage key off
   `code`; the display is `label` and can be relabelled freely (statuses already
   work this way; Jira-style). Synonyms collapse to one code + a chosen label —
   which is also the anti-proliferation firewall.
-- **No AI in V1.** Subcategory is *picked*; attributes/tags/tier come from the
-  profile + codelist matching. The classifier (Phase 2) is out of scope here.
+- **No AI in V1.** Subcategory is *picked*; tags/tier come from the codelist +
+  the review grid. The classifier (Phase 2) is out of scope here.
 - **org_id is sacred** — from the created supplier org / JWT, never the file.
 - **Controlled extension only** — new vocabulary enters only via the
   human-gated "should we add?" gate (a new `reference_codelist_values` row, or a
@@ -35,55 +38,84 @@ Build in the order below; each part is shippable on its own.
      `items.tier`: `basic→Budget`, `mid→Standard`, `premium→Premium`; leave
      nulls. NB distinct from the existing **`budget_tier`** codelist, which is the
      *project* tier (`projects.tier`: starter/professional/premium) — don't touch
-     that. `unit`/`time_unit` are already codelists (`item_unit`, `item_time_unit`)
-     — reuse, don't recreate.
+     that.
+   - **`item_unit` / `item_time_unit`** are already codelists — **reuse**, but
+     **prune `item_unit` hard to 6** (more choice = more work for suppliers,
+     importers and the review grid): **each · head · platter · sqm · linear_m ·
+     cbm**. Each generic unit absorbs its synonyms (`each` ← unit/item/pair/set/
+     package/pallet/panel/letter/load; `head` ← cover; `platter` ← table; `sqm` ←
+     sqft). Deactivate the rest (`is_active=false`, keep rows for history) and
+     **re-point existing items** onto the kept unit. Also **remove the time
+     values (`day/hour/event/half_day/month`) from `item_unit`** — time lives
+     only in `item_time_unit`; `unit` stays the noun. Add **`meta.needs`** to the
+     6 kept values (appendix).
    - **`mood`** — Relaxed · Celebratory · Impressive · Sophisticated · Intimate
      (hidden in UI for now; classifier-fed later).
-   - **`item_attribute`** — each value is an attribute (`dimension`, `material`,
-     `power`, `serves`, `lead_time`, …); `meta` JSONB carries
-     `{ value_type: number|char|description|list, unit?, required?, filterable? }`.
-   - **list-type attribute values** — a codelist per `list` attribute (its
-     allowed options).
+   - **`item_attribute`** — holds the structured extras that land in
+     `items.attributes`; each value carries `meta { value_type:
+     number|char|description|list, unit?, filterable? }`. V1 needs exactly one:
+     **`size`** (`value_type: number`, the measure for area/volume/length units).
 2. **`items.attributes`** default → `'[]'` (ordered array `[{key, value}]`; the
-   `key` = the `item_attribute` code, resolved to label/type at render).
-3. **Write-path** — extend **item-edit** so it can set `subcategory_id` + tags +
-   **tier** + **attributes** (today: category-only). This is the keystone —
-   profiles and import both write through it. app-select reads the codelists;
-   `subcategory_id` respects the existing `parent_id = category_id` trigger.
+   `key` = the `item_attribute` code, e.g. `size`, resolved to label/type at
+   render).
+3. **Write-path** — extend **item-edit** to set the **universal core** + the
+   unit-driven conditional (`serves` or `size`) + `time_unit` + `subcategory_id`
+   + tags + tier (today: category-only). This is the keystone — import writes
+   through it too. app-select reads the codelists; `subcategory_id` respects the
+   existing `parent_id = category_id` trigger.
 
-## Part B — `item_type` (the commercial archetype) — BUILD FIRST
-The "profile" collapses to a single **derivable `item_type`** on the item —
-**Purchase · Rent · Service · Catering** — not per-category machinery. It's what the
-item is *commercially* (a fridge and a par-can are both **Rent**), and everything
-(pricing, quantity, which fields show) keys off it.
+## Part B — Unit-driven fields (no profiles, no item_type) — BUILD FIRST
+Every item has a **universal core** (always shown). The chosen **`unit`** is the
+single selector that adds *at most one* conditional field, declared on the unit
+itself as `item_unit.meta.needs`. There is **no `item_type` column** and **no
+per-category profile machinery** — the real item table already carries
+everything (`serves`, `time_unit`, `install_*`), and the unit tells the form
+what to reveal.
 
-- **`item_type` codelist** (same `reference_codelists` engine): values
-  **All · Catering · Purchase · Rent · Service**, each `meta` = behaviour flags
-  `{ shows: [serves|time_unit], quantity_rule, pricing_rule }`. `All` is the base
-  (universal fields, default); the others specialise on top.
-- **`items.item_type`** — new column (additive, nullable; a codelist value). NB
-  `kind` is taken by the shelved composition work — use `item_type`.
-- **Set it by pick-or-derive:** manual create → app-select; import → **derive**:
-  `serves present→Catering`, `time_unit∈(day,week)→Rent`, `unit=hour→Service`,
-  else `Purchase` (default `All`; all confirmable in the review grid).
-- **Behaviour keys off it** (uses ONLY existing fields):
-  - All / Purchase → qty × base_price
-  - Rent → qty × base_price × periods (`time_unit`)
-  - Catering → ⌈guests ÷ `serves`⌉ × base_price (auto-quantity)
-  - Service → base_price × hours × people (`time_unit`=hour)
-  - item-edit shows `serves` for Catering, `time_unit` for Rent/Service;
-    everything else is universal.
-- **Spec attributes** (`dimension`, `material`, `power`…) are a **later,
-  separate** concern — they live in `items.attributes` (JSONB) when a category
-  needs them, via an `item_attribute` codelist. NOT required for V1.
-- **Item-edit renders** — the universal fields always, plus the `item_type`-
-  driven ones (`serves` for Catering, `time_unit` for Rent/Service), plus subcat
-  (categories) + tags (tag table, by category) + tier (universal). Save to the
-  item.
-- **Pilot: Catering (= the Catering type)** — prove `item_type` end-to-end on
-  Catering first: pick/derive → `serves` shows → auto-quantity (⌈guests ÷
-  serves⌉) → pricing. Catering is the unique/richest type; the generic
-  Purchase/Rent/Service follow from the same mechanism.
+**Universal core (always on):**
+`name` · `description` · `currency` · `base_price` · `unit` · `install_description`
+· `install_cost` · `install_unit` · `lead_time_days` · `location_coverage`
+(plus index fields: `category_id`, `subcategory_id`, `tags`, `tier`, images.)
+
+**Unit-driven conditional** — `item_unit.meta.needs` names the one extra field:
+
+Unit is pruned to **6** (see Part A). `guest_count` is collected on the
+**project**, never the item.
+
+| unit | `meta.needs` | field the form adds | quantity at quote |
+|---|---|---|---|
+| **each** | — | (none) | `qty` (line) |
+| **head** | — | (none) | `guest_count` (project) |
+| **platter** | `serves` | **`serves`** appears | ⌈guests ÷ serves⌉ × base_price |
+| **sqm · linear_m · cbm** | `size` | **`size`** appears (→ `attributes`) | size × base_price |
+
+**Time is an orthogonal multiplier, not a unit.** `time_unit` (own column, own
+codelist) is an optional toggle on ANY item — "is this time-based?". When set,
+the **time attributes** (`time_unit` + periods) appear and pricing gains
+`× periods`. A chair (`unit=each`) rented by the `day` needs no special unit —
+just `time_unit=day`.
+
+**Pricing / quantity (all in `line-total.util.js`):**
+`count × base_price × (periods?) + install_cost`, where **count** =
+- `qty` — each/size (size's count = the `size` value),
+- `guest_count` — head/cover,
+- `⌈guest_count ÷ serves⌉` — platter/table;
+then `× periods` when `time_unit` is set; then `+ install_cost` (billed per
+`install_unit`).
+
+**Mandatory stance:** hard-required stays `name` + `category_id` only.
+`serves`/`size`/`time_unit` **warn, don't block** when the unit calls for them;
+`subcategory_id` warns.
+
+**Item-edit renders:** the universal core always, plus the one `unit.meta.needs`
+field (`serves` or `size`), plus the optional `time_unit` toggle, plus subcat
+(categories) + tags (tag table, by category) + tier. Save to the item.
+
+**Pilot: the canapé tray** (`docs` example — `unit` should be **`platter`**,
+`serves=50`): pick `platter` → `serves` appears → auto-quantity ⌈guests÷serves⌉ →
+pricing + install. Then prove the other bases on one supplier: a `sqm` floor
+(size appears), an `each` glass-pack (nothing extra), an `each` + `time_unit=day`
+chair (time appears). One supplier/category holds them all.
 
 ## Part C — Import pipeline (load → prepare → review → transfer)
 Oracle-style ETL as staging TABLES (not a schema).
@@ -93,14 +125,15 @@ Oracle-style ETL as staging TABLES (not a schema).
    `import_rows` (all-nullable strings). Only structural/delimiter errors fail.
    The file carries a **category column per row**.
 3. **PREPARE — by category.** Group rows by category (validate against the 15
-   macros → error/quarantine if bad); **derive `item_type`** (from unit/serves/
-   time_unit) per row; determine tags, tier, subcategory (+ any spec attributes
-   later). Outcomes per row: **clean · warning · error · quarantine** with
-   `validation_notes`.
+   macros → error/quarantine if bad). Resolve `unit` → look up `meta.needs` →
+   **require the field it names** (`serves` for platter/table; `size` for
+   measures) and `time_unit` if the row is time-based; determine tags, tier,
+   subcategory. Outcomes per row: **clean · warning · error · quarantine** with
+   `validation_notes` (e.g. "unit=platter but no serves").
 4. **REVIEW grid — by category, one at a time.** Fix inline; resolve quarantine.
    **"Should we add?" alerts** — when a row implies a **subcat / tag / tier /
-   attribute / attribute-value** not in the vocabulary, surface an add-prompt
-   (admin approves → the controlled add: a `reference_codelist_values` row, or a
+   unit / attribute** not in the vocabulary, surface an add-prompt (admin
+   approves → the controlled add: a `reference_codelist_values` row, or a
    tag/subcat via its table, in the current schema). Never silently drop.
 5. **① Loader accepts** (data valid) → **TRANSFER** — atomic `INSERT … SELECT`
    into `items` as **normal `pending` items** (as if manually added: not
@@ -120,29 +153,30 @@ Oracle-style ETL as staging TABLES (not a schema).
 
 ---
 
-## Build order (ship in slices) — item_type first
-1. **Seed codelists**: `tier` (+ backfill) · `mood` · **`item_type`**
-   (Purchase/Rent/Service/Catering + behaviour `meta`). (`item_attribute`/`dimension`
-   deferred — not V1.)
-2. **`items.item_type` + write-path**: item-edit sets `item_type` **per item**
-   (independent of category); it drives `serves`/`time_unit` visibility +
-   pricing/quantity. Prove across a **mix** — a Catering platter, a Rent tablecloth,
-   a Purchase glass-pack, a Service bartender — *one supplier/category can hold
-   all four*.
-3. **Import** (C): **derive `item_type` per row** (from unit/serves/time_unit,
-   NOT category); group by category only for tags/subcat/review; PREPARE/REVIEW →
-   TRANSFER + `import_batch_id`.
+## Build order (ship in slices) — unit-driven core first
+1. **Seed codelists**: `item_tier` (+ backfill) · `mood` · `item_attribute`
+   (`size`); **add `meta.needs` to `item_unit`** + strip time values out of it.
+2. **Universal core + write-path**: item-edit renders the 10 core fields, and
+   `unit.meta.needs` reveals `serves` (platter/table) or `size` (measures);
+   `time_unit` is the optional multiplier toggle. Prove across a **mix** on one
+   supplier — a platter (serves → ⌈guests÷serves⌉), a `sqm` floor (size), an
+   `each` glass-pack, an `each` + `time_unit=day` chair (periods).
+3. **Import** (C): resolve `unit` per row → enforce `meta.needs`; group by
+   category for tags/subcat/review; PREPARE/REVIEW → TRANSFER + `import_batch_id`.
 Foundation (1-2) is codelist seed + one form; import (3) is the only heavy build.
 
 ## Acceptance (high level — expand per slice in the shipped file)
-- [ ] `tier`/`mood`/`item_type` seeded as codelists (item_type carries behaviour
-      meta); `items.tier` backfilled.
-- [ ] item-edit sets `item_type` per item (category-independent); `serves` shows
-      for Catering, `time_unit` for Rent/Service; pricing/quantity branch per type.
-- [ ] A **mixed** catalogue (Catering + Rent + Purchase items in one supplier) each
-      gets the right type + behaviour (esp. Catering's ⌈guests÷serves⌉ auto-qty).
-- [ ] Import derives `item_type` per row (category-agnostic); a mixed-category
-      xls loads → prepares by category → transfers as `pending` items tagged with
+- [ ] `item_tier`/`mood`/`item_attribute(size)` seeded; `items.tier` backfilled;
+      `item_unit` values carry `meta.needs` and time values removed from it.
+- [ ] item-edit shows the universal core always; picking a **platter/table** unit
+      reveals `serves`; a **measure** unit reveals `size` (→ `attributes`);
+      `time_unit` toggles the periods multiplier. Nothing extra for plain counts.
+- [ ] Quantity/pricing branch correctly per basis (esp. platter's
+      ⌈guests÷serves⌉ and the `× periods` + `install_cost` terms).
+- [ ] A **mixed** catalogue (platter + measure + count + rented-count in one
+      supplier) each gets the right field + math.
+- [ ] Import resolves unit → enforces `meta.needs` per row; a mixed-category xls
+      loads → prepares by category → transfers as `pending` items tagged with
       `import_batch_id`.
 - [ ] "Should we add?" adds a codelist/tag/subcat value (human-gated); nothing
       auto-mints.
@@ -152,34 +186,46 @@ Foundation (1-2) is codelist seed + one form; import (3) is the only heavy build
       new route). No AI calls in V1.
 
 ## Concerns not in spec
-Standard section. Flag: profile storage (codelist meta vs light table — CC's
-call, but reuse codelist infra if it fits); the `items.attributes` default flip;
-and any migrate-schemas additions (import tables, `items.import_batch_id`).
+Standard section. Flag: the `items.attributes` default flip; pruning `item_unit`
+to 6 + stripping time values (data re-point for affected items); and any
+migrate-schemas additions (import tables, `items.import_batch_id`).
+
+**Profiles — deferred, gated on new attributes.** V1 needs none: the universal
+core + `unit.meta.needs` (`serves`/`size`) + `time_unit` cover every current
+item (real `items` table confirmed). Profiles (category- or kind-scoped
+attribute *sets*) re-enter **only when `items.attributes` grows past `size`** —
+i.e. when we add spec attributes like power/material/dimensions that apply to
+some categories and not others. That is the deferred item-attributes arc, not
+this one. Don't build profile machinery until a real new attribute demands it.
 
 ---
 
-## Appendix — `item_type` seed (paste-ready)
-`reference_codelists`: `list_name='item_type'`, `consumer_table='items'`,
-`consumer_column='item_type'`, `default_code='all'`, description "Commercial type
-— how an item is transacted."
+## Appendix — `item_unit.meta.needs` (paste-ready)
+No new codelist — a `meta` edit on the existing `item_unit` values. `needs` is
+`null` for plain counts, `"serves"` for portion units, `"size"` for measures.
 
-`reference_codelist_values` (list_name='item_type'):
-| code | label | sort | meta |
+Keep 6; deactivate the rest (`is_active=false`, keep rows for history) and
+re-point existing items.
+
+| code | label | `meta.needs` | absorbs (deactivate + re-point) |
 |---|---|---|---|
-| all | All | 0 | `{ "shows": [], "quantity": "qty", "pricing": "qty * base_price" }` (default/base) |
-| purchase | Purchase | 1 | `{ "shows": [], "quantity": "qty", "pricing": "qty * base_price" }` |
-| rent | Rent | 2 | `{ "shows": ["time_unit"], "quantity": "qty * periods", "pricing": "qty * base_price * periods" }` |
-| service | Service | 3 | `{ "shows": ["time_unit"], "quantity": "hours * people", "pricing": "base_price * hours * people" }` |
-| catering | Catering | 4 | `{ "shows": ["serves"], "quantity": "ceil(guests / serves)", "pricing": "ceil(guests / serves) * base_price" }` |
+| each | Each | — | unit · item · pair · set · package · pallet · panel · letter · load |
+| head | Head | — | cover |
+| platter | Platter | `serves` | table |
+| sqm | Square Metres | `size` | sqft |
+| linear_m | Linear Metres | `size` | — |
+| cbm | Cubic Metres | `size` | — |
 
-**Derivation** (import default + create hint): `serves present → catering` ·
-`time_unit ∈ (day,week) → rent` · `unit=hour → service` · else `→ purchase`
-(fallback `all`). Confirmable in the review grid.
+**Removed from `item_unit`** (move to `item_time_unit` only): `day`, `hour`,
+`event`, `half_day`, `month`. `unit` = the noun; `time_unit` = the optional
+periods multiplier.
 
-Quantity/pricing inputs come from context: `periods` = event duration,
-`guests` = project `guest_count`, `hours`/`people` = line inputs — so
-`line-total.util.js` branches on `item_type`.
+**`item_attribute` seed (V1 = one value):**
+| code | label | meta |
+|---|---|---|
+| size | Size | `{ "value_type": "number", "filterable": true }` |
 
-**Mandatory stance:** hard-required stays `name` + `category_id` only; `item_type`
-defaults to `all`; type-specific fields (`serves`/`time_unit`) and `subcategory_id`
-**warn, don't block**.
+Quantity/pricing inputs come from context: `periods` = event duration /
+line input, `guest_count` = project, `serves`/`size` = the item — so
+`line-total.util.js` selects the count basis from the unit and layers
+`× periods` + `install_cost`.
