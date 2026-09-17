@@ -105,6 +105,8 @@ import {
   PersonStanding, ShoppingBag, Signature, Ticket, Wrench,
   // project Marketplace — quote cart toggle
   ShoppingCart,
+  // pV2-WHATSNEW — base-release group icon (Platform & Admin)
+  Shield,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -197,6 +199,8 @@ export const appConfig: ApplicationConfig = {
         PersonStanding, ShoppingBag, Signature, Ticket, Wrench,
         // project Marketplace — quote cart toggle
         ShoppingCart,
+        // pV2-WHATSNEW — base-release group icon (Platform & Admin)
+        Shield,
         // pV2-PROJECTS-02 — Estimate summary cards (Date/Location/Duration/Guests/Budget)
         Calendar, Users, Wallet,
         // pV2-MEDIA-01c — gallery tile actions

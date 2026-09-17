@@ -50,6 +50,35 @@ Previously `POST /api/feedback` passed `req.body` straight to `create()` with **
 - **My-issues row detail** is a simple inline expand (description/notes), not a drawer/route — kept simple per the spec.
 - **Area-category picker** uses `GET /api/feedback/categories?namespace=area` (15 area rows exist).
 
+## Iteration — base-release polish: Group → Feature column, no "New" chip (2026-09-17, v2.479)
+**Triggered by:** updated prompt + mockup — base release renders **Group (icon) →
+epic rows: `Ref (EP-#####) · Feature · What's new`**, Feature as its own bold
+column, and the "New" chip dropped (a base release is all-New — redundant).
+
+**What changed (code only; v0.1.0.md content is f4/chat's domain, read-only to me)**
+- **`whats-new.component.ts`** — base `@else` block rebuilt: one table per
+  **group** (`v.notes[].area` = the group), each with a group heading (Lucide
+  icon + name) and a 3-col grid **Ref · Feature · What's new**. Feature is bold;
+  **no type chip when `type==='new'`** — an Improved/Fixed chip shows only on
+  non-New rows (future mixed releases). `NoteItem` gains `feature?`. `AREA_ICONS`
+  remapped to the four groups (Organizations & Roles→users, Project→folder-kanban,
+  Marketplace→store, Platform & Admin→shield). Fixes table unchanged.
+- **`gen-changelog.js`** — base bullets parse `EP-#### · Type · **Feature** — text`
+  into `{ref,type,feature,text}`: feature = the **bold** run, text = after the
+  em-dash (blurb may contain `·`, e.g. "Overview · Inbox · …" — preserved).
+- **`app.config.ts`** — registered Lucide `Shield` (Platform & Admin group icon).
+- Regenerated `changelog.json` (4 groups, 19 epics). Chip → v2.479.
+
+**Deviations from the mockup (flagged, deliberate)**
+- **Fixes table keeps its Type column.** The mockup drops it, but Liam explicitly
+  asked for Type at the v2.476 QC — his QC beats the mockup.
+- **v0.1.1 fix refs still show `F-`** because `docs/release-notes/v0.1.1.md` (f4's
+  content file) still carries `F-00087…`. The mockup shows `BE-00087…`. Per the
+  session split I don't edit that note — asked f4 to switch it F-→BE-; the page
+  renders whatever the note carries, so it flips automatically once f4 updates it.
+- **No per-release summary line** (the mockup's `.summary`). Cosmetic, not in the
+  acceptance criteria — skipped this pass; easy to add if wanted.
+
 ## QC notes
 (Liam)
 

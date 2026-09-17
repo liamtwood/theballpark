@@ -11,38 +11,45 @@
       "notes": [],
       "fixes": [
         {
-          "ref": "F-00087",
+          "ref": "BE-00087",
           "type": "Enhancement",
           "reporter": "Beth Pizey",
           "text": "Cart shows a single \"Go with this Ballpark\" (removed the redundant \"Edit in marketplace\")",
           "done": true
         },
         {
-          "ref": "F-00088",
+          "ref": "BE-00088",
           "type": "Enhancement",
           "reporter": "Beth Pizey",
-          "text": "Supplier name now shown on the estimate/cart item rows and the marketplace item cards",
+          "text": "Supplier name now shown on the estimate/cart item rows",
           "done": true
         },
         {
-          "ref": "F-00089",
+          "ref": "BE-00089",
           "type": "Bug",
           "reporter": "Beth Pizey",
           "text": "Back from the Quote / SOW document returns to Reports (where it opened); the button reads \"Back\"",
           "done": true
         },
         {
-          "ref": "F-00090",
+          "ref": "BE-00090",
           "type": "Enhancement",
           "reporter": "Beth Pizey",
           "text": "Inbox tab now sits next to Overview in the project workspace",
           "done": true
         },
         {
-          "ref": "F-00091",
+          "ref": "BE-00091",
           "type": "Enhancement",
           "reporter": "Beth Pizey",
           "text": "Messaging suppliers lands on the live Overview, with an attention badge on the Inbox tab",
+          "done": true
+        },
+        {
+          "ref": "BE-00093",
+          "type": "Enhancement",
+          "reporter": "Liam Wood",
+          "text": "Supplier name now shown on the marketplace + supplier-store item cards (no longer hidden behind the city)",
           "done": true
         }
       ]
@@ -56,32 +63,72 @@
       "env": "preview",
       "notes": [
         {
-          "area": "Ballpark Base Release",
+          "area": "Organizations & Roles",
           "items": [
             {
               "ref": "EP-00001",
               "type": "new",
-              "text": "Agent (event agency) — build a project from a brief, ballpark the cost, message suppliers, quote the client."
+              "feature": "Agent",
+              "text": "build a project from a brief, ballpark the cost, message suppliers, quote the client."
             },
             {
               "ref": "EP-00002",
               "type": "new",
-              "text": "Supplier — list products, run a shop & storefront, respond to quote requests."
+              "feature": "Supplier",
+              "text": "list products, run a shop & storefront, respond to quote requests."
             },
             {
               "ref": "EP-00003",
               "type": "new",
-              "text": "Admin — curate the taxonomy, approve items, manage roles & codelists."
+              "feature": "Admin",
+              "text": "curate the taxonomy, approve items, manage roles & codelists."
+            },
+            {
+              "ref": "EP-00004",
+              "type": "new",
+              "feature": "Org",
+              "text": "multi-tenant organisations: every agency and supplier is an org; members join via user_orgs with a derived effective role; all data and settings are org-scoped."
+            },
+            {
+              "ref": "EP-00005",
+              "type": "new",
+              "feature": "Profile",
+              "text": "user profile & account settings: your details, preferences, and sign-in identity."
             }
           ]
         },
         {
-          "area": "Projects",
+          "area": "Project",
           "items": [
             {
-              "ref": "EP-00004",
+              "ref": "EP-00006",
               "type": "new",
+              "feature": "Projects",
               "text": "AI-first project creation from a written brief; a project workspace (Overview · Inbox · Ballpark Cost · Marketplace · Reports); cost estimate with quantities, margin, contingency, VAT & insurance; a live-project flow once suppliers are messaged."
+            },
+            {
+              "ref": "EP-00007",
+              "type": "new",
+              "feature": "Inbox",
+              "text": "per-supplier message threads with an inbox landing (per-supplier action rollups) and quote requests raised from a project."
+            },
+            {
+              "ref": "EP-00008",
+              "type": "new",
+              "feature": "AI Agent",
+              "text": "parses a written brief into a structured project and suggests/matches marketplace items."
+            },
+            {
+              "ref": "EP-00009",
+              "type": "new",
+              "feature": "Clients",
+              "text": "client records (company details, address) attached to projects and reusable across them."
+            },
+            {
+              "ref": "EP-00018",
+              "type": "new",
+              "feature": "SOW & Invoice",
+              "text": "client-facing quote document in an SOW layout (timeline, payment terms, special terms) with themed presentation."
             }
           ]
         },
@@ -89,89 +136,22 @@
           "area": "Marketplace",
           "items": [
             {
-              "ref": "EP-00005",
-              "type": "new",
-              "text": "Browse by category → subcategory with dense item cards (Supplier · City) and Quick View; filters; available both globally and inside a project."
-            }
-          ]
-        },
-        {
-          "area": "Shop Front",
-          "items": [
-            {
-              "ref": "EP-00006",
-              "type": "new",
-              "text": "Supplier — My Shop (your products) and My Shopfront (your brand page) on the shared Marketplace layout, plus a supplier home dashboard of what needs you."
-            }
-          ]
-        },
-        {
-          "area": "Items",
-          "items": [
-            {
-              "ref": "EP-00007",
-              "type": "new",
-              "text": "Catalogue items with per-unit or flat pricing, units, install cost, tier, and an image gallery."
-            }
-          ]
-        },
-        {
-          "area": "Taxonomy & Categories",
-          "items": [
-            {
-              "ref": "EP-00008",
-              "type": "new",
-              "text": "15 macro categories with curated subcategories; browse + admin curation across the marketplace."
-            }
-          ]
-        },
-        {
-          "area": "Inbox",
-          "items": [
-            {
-              "ref": "EP-00009",
-              "type": "new",
-              "text": "Per-supplier message threads with an inbox landing (per-supplier action rollups) and quote requests raised from a project."
-            }
-          ]
-        },
-        {
-          "area": "AI Agent",
-          "items": [
-            {
               "ref": "EP-00010",
               "type": "new",
-              "text": "Parses a written brief into a structured project and suggests/matches marketplace items."
-            }
-          ]
-        },
-        {
-          "area": "SOW & Invoice",
-          "items": [
+              "feature": "Catalogue",
+              "text": "browse by category → subcategory with dense item cards (Supplier · City) and Quick View; filters; available both globally and inside a project."
+            },
             {
               "ref": "EP-00011",
               "type": "new",
-              "text": "Client-facing quote document in an SOW layout (timeline, payment terms, special terms) with themed presentation."
-            }
-          ]
-        },
-        {
-          "area": "Clients",
-          "items": [
+              "feature": "Supplier Shopfront",
+              "text": "My Shop (your products) and My Shopfront (your brand page) on the shared Marketplace layout, plus a supplier home dashboard of what needs you."
+            },
             {
               "ref": "EP-00012",
               "type": "new",
-              "text": "Client records (company details, address) attached to projects and reusable across them."
-            }
-          ]
-        },
-        {
-          "area": "Coachmarks",
-          "items": [
-            {
-              "ref": "EP-00013",
-              "type": "new",
-              "text": "In-app guided help — contextual coachmark tips that explain features as you go; admins can tweak the copy."
+              "feature": "Items",
+              "text": "catalogue items with per-unit or flat pricing, units, install cost, tier, and an image gallery."
             }
           ]
         },
@@ -179,24 +159,40 @@
           "area": "Platform & Admin",
           "items": [
             {
+              "ref": "EP-00013",
+              "type": "new",
+              "feature": "Taxonomy & Categories",
+              "text": "15 macro categories with curated subcategories; browse + admin curation across the marketplace."
+            },
+            {
               "ref": "EP-00014",
               "type": "new",
-              "text": "Approval — admin approves item imagery before it goes live; suppliers submit and resubmit; text & pricing edits don't force re-approval."
+              "feature": "Approval",
+              "text": "admin approves item imagery before it goes live; suppliers submit and resubmit; text & pricing edits don't force re-approval."
             },
             {
               "ref": "EP-00015",
               "type": "new",
-              "text": "Codelists — centralised reference lists (statuses, units, etc.) driving consistent, controlled dropdowns."
+              "feature": "Codelists",
+              "text": "centralised reference lists (statuses, units, etc.) driving consistent, controlled dropdowns."
             },
             {
               "ref": "EP-00016",
               "type": "new",
-              "text": "Feedback — issue / enhancement / QC tracking (internal today; no customer-facing page yet)."
+              "feature": "Requirements Management",
+              "text": "the tracking subsystem behind the roadmap itself: epics, requirements, enhancements, feedback and QC test cases, with EP-/F- refs, statuses, target-versions and releases."
             },
             {
               "ref": "EP-00017",
               "type": "new",
-              "text": "Security & Roles — Google sign-in; org-based roles (agent / supplier / admin) with permissions re-derived per request; identity-only sessions."
+              "feature": "Security & Roles",
+              "text": "Google sign-in; org-based roles (agent / supplier / admin) with permissions re-derived per request; identity-only sessions."
+            },
+            {
+              "ref": "EP-00019",
+              "type": "new",
+              "feature": "Coachmarks",
+              "text": "in-app guided help; contextual coachmark tips that explain features as you go; admins can tweak the copy."
             }
           ]
         }

@@ -5,7 +5,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../environments/environment';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 
-interface NoteItem { ref?: string; type: string; text: string; }
+interface NoteItem { ref?: string; type: string; feature?: string; text: string; }
 interface NoteArea { area: string; items: NoteItem[]; }
 interface Fix { ref: string; type: string; reporter: string; text: string; done: boolean; }
 interface ChangeEntry {
@@ -105,28 +105,28 @@ interface Changelog { dev: ChangeEntry[]; preview: ChangeEntry[]; }
                     }
                   </div>
                 } @else {
-                  <!-- Base / feature release → one heading + table per area; each
-                       item is an epic (EP-#####). -->
-                  @for (a of v.notes; track a.area) {
-                    <section class="mt-6 first:mt-4">
-                      <div class="mb-2 flex items-center gap-2">
-                        <span class="bp-icon-block h-7 w-7 shrink-0"><lucide-icon [name]="areaIcon(a.area)" [size]="15" /></span>
-                        <h3 class="bp-card-subtitle text-text">{{ a.area }}</h3>
+                  <!-- Base / feature release → one table per GROUP; each row is an
+                       epic: Ref (EP-#####) · Feature · What's new. A base release
+                       is all-New, so no type chip (redundant); a mixed feature
+                       release shows an Improved/Fixed chip only on non-New rows. -->
+                  @for (g of v.notes; track g.area) {
+                    <section class="mt-7 first:mt-5">
+                      <div class="mb-1 flex items-center gap-2.5 border-b border-hairline pb-2">
+                        <span class="bp-icon-block h-7 w-7 shrink-0"><lucide-icon [name]="areaIcon(g.area)" [size]="15" /></span>
+                        <h3 class="bp-card-subtitle text-text">{{ g.area }}</h3>
                       </div>
-                      <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
-                        <div class="grid grid-cols-[100px_120px_minmax(0,1fr)] gap-x-4 border-b border-hairline bg-fill px-4 py-2">
-                          <span class="bp-table-column-header">Ref</span>
-                          <span class="bp-table-column-header">Type</span>
-                          <span class="bp-table-column-header">What's new</span>
+                      <div class="grid grid-cols-[88px_168px_minmax(0,1fr)] gap-x-4 border-b border-hairline px-1 pb-2 pt-2.5">
+                        <span class="bp-table-column-header">Ref</span>
+                        <span class="bp-table-column-header">Feature</span>
+                        <span class="bp-table-column-header">What's new</span>
+                      </div>
+                      @for (it of g.items; track $index) {
+                        <div class="grid grid-cols-[88px_168px_minmax(0,1fr)] items-baseline gap-x-4 border-b border-hairline px-1 py-2.5 last:border-b-0">
+                          <span class="bp-ref-eyebrow whitespace-nowrap">{{ it.ref || '—' }}</span>
+                          <span class="bp-body-small font-semibold text-text">{{ it.feature || '—' }}@if (it.type !== 'new') {<span class="bp-pill bp-body-small ml-1.5" [class]="chipClass(it.type)">{{ chipLabel(it.type) }}</span>}</span>
+                          <span class="bp-body-small text-secondary">{{ it.text }}</span>
                         </div>
-                        @for (it of a.items; track $index) {
-                          <div class="grid grid-cols-[100px_120px_minmax(0,1fr)] items-start gap-x-4 border-b border-hairline px-4 py-2.5 last:border-b-0">
-                            <span class="bp-ref-eyebrow whitespace-nowrap">{{ it.ref || '—' }}</span>
-                            <span><span class="bp-pill bp-body-small" [class]="chipClass(it.type)">{{ chipLabel(it.type) }}</span></span>
-                            <span class="bp-body-small text-secondary">{{ it.text }}</span>
-                          </div>
-                        }
-                      </div>
+                      }
                     </section>
                   }
                 }
@@ -184,11 +184,10 @@ export class WhatsNewComponent {
     return t === 'improved' ? 'bp-pill--info' : t === 'fixed' ? 'bp-pill--warn' : 'bp-pill--success';
   }
 
+  // Epic groups (the base-release headings) → Lucide icon (matches the mockup).
   private readonly AREA_ICONS: Record<string, string> = {
-    Projects: 'folder-kanban', Marketplace: 'store', 'Shop Front': 'package', Items: 'package',
-    'Taxonomy & Categories': 'tags', Inbox: 'inbox', 'AI Agent': 'sparkles', 'SOW & Invoice': 'file-text',
-    Clients: 'building-2', Coachmarks: 'lightbulb', 'Platform & Admin': 'settings', 'Ballpark Base Release': 'rocket',
-    'Bug fixes (Beth review)': 'wrench',
+    'Organizations & Roles': 'users', Project: 'folder-kanban', Marketplace: 'store',
+    'Platform & Admin': 'shield',
   };
   protected areaIcon(area: string): string {
     return this.AREA_ICONS[area] ?? 'sparkles';

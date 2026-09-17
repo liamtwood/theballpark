@@ -14,63 +14,42 @@ _Nothing pending — dev and preview are level._
 
 **Fixes**
 
-- F-00087 · Beth Pizey · Cart shows a single "Go with this Ballpark" (removed the redundant "Edit in marketplace") · ✓
-- F-00088 · Beth Pizey · Supplier name now shown on the estimate/cart item rows and the marketplace item cards · ✓
-- F-00089 · Beth Pizey · Back from the Quote / SOW document returns to Reports (where it opened); the button reads "Back" · ✓
-- F-00090 · Beth Pizey · Inbox tab now sits next to Overview in the project workspace · ✓
-- F-00091 · Beth Pizey · Messaging suppliers lands on the live Overview, with an attention badge on the Inbox tab · ✓
+- BE-00087 · Beth Pizey · Cart shows a single "Go with this Ballpark" (removed the redundant "Edit in marketplace") · ✓
+- BE-00088 · Beth Pizey · Supplier name now shown on the estimate/cart item rows · ✓
+- BE-00089 · Beth Pizey · Back from the Quote / SOW document returns to Reports (where it opened); the button reads "Back" · ✓
+- BE-00090 · Beth Pizey · Inbox tab now sits next to Overview in the project workspace · ✓
+- BE-00091 · Beth Pizey · Messaging suppliers lands on the live Overview, with an attention badge on the Inbox tab · ✓
+- BE-00093 · Liam Wood · Supplier name now shown on the marketplace + supplier-store item cards (no longer hidden behind the city) · ✓
 
 ### v0.1.0 — Ballpark Base Release · built from v2.464 · 2026-09-16 12:00
 
-**Ballpark Base Release**
+**Organizations & Roles**
 
-- [new] Agent (event agency) — build a project from a brief, ballpark the cost, message suppliers, quote the client.
-- [new] Supplier — list products, run a shop & storefront, respond to quote requests.
-- [new] Admin — curate the taxonomy, approve items, manage roles & codelists.
+- [new] build a project from a brief, ballpark the cost, message suppliers, quote the client.
+- [new] list products, run a shop & storefront, respond to quote requests.
+- [new] curate the taxonomy, approve items, manage roles & codelists.
+- [new] multi-tenant organisations: every agency and supplier is an org; members join via user_orgs with a derived effective role; all data and settings are org-scoped.
+- [new] user profile & account settings: your details, preferences, and sign-in identity.
 
-**Projects**
+**Project**
 
 - [new] AI-first project creation from a written brief; a project workspace (Overview · Inbox · Ballpark Cost · Marketplace · Reports); cost estimate with quantities, margin, contingency, VAT & insurance; a live-project flow once suppliers are messaged.
+- [new] per-supplier message threads with an inbox landing (per-supplier action rollups) and quote requests raised from a project.
+- [new] parses a written brief into a structured project and suggests/matches marketplace items.
+- [new] client records (company details, address) attached to projects and reusable across them.
+- [new] client-facing quote document in an SOW layout (timeline, payment terms, special terms) with themed presentation.
 
 **Marketplace**
 
-- [new] Browse by category → subcategory with dense item cards (Supplier · City) and Quick View; filters; available both globally and inside a project.
-
-**Shop Front**
-
-- [new] Supplier — My Shop (your products) and My Shopfront (your brand page) on the shared Marketplace layout, plus a supplier home dashboard of what needs you.
-
-**Items**
-
-- [new] Catalogue items with per-unit or flat pricing, units, install cost, tier, and an image gallery.
-
-**Taxonomy & Categories**
-
-- [new] 15 macro categories with curated subcategories; browse + admin curation across the marketplace.
-
-**Inbox**
-
-- [new] Per-supplier message threads with an inbox landing (per-supplier action rollups) and quote requests raised from a project.
-
-**AI Agent**
-
-- [new] Parses a written brief into a structured project and suggests/matches marketplace items.
-
-**SOW & Invoice**
-
-- [new] Client-facing quote document in an SOW layout (timeline, payment terms, special terms) with themed presentation.
-
-**Clients**
-
-- [new] Client records (company details, address) attached to projects and reusable across them.
-
-**Coachmarks**
-
-- [new] In-app guided help — contextual coachmark tips that explain features as you go; admins can tweak the copy.
+- [new] browse by category → subcategory with dense item cards (Supplier · City) and Quick View; filters; available both globally and inside a project.
+- [new] My Shop (your products) and My Shopfront (your brand page) on the shared Marketplace layout, plus a supplier home dashboard of what needs you.
+- [new] catalogue items with per-unit or flat pricing, units, install cost, tier, and an image gallery.
 
 **Platform & Admin**
 
-- [new] Approval — admin approves item imagery before it goes live; suppliers submit and resubmit; text & pricing edits don't force re-approval.
-- [new] Codelists — centralised reference lists (statuses, units, etc.) driving consistent, controlled dropdowns.
-- [new] Feedback — issue / enhancement / QC tracking (internal today; no customer-facing page yet).
-- [new] Security & Roles — Google sign-in; org-based roles (agent / supplier / admin) with permissions re-derived per request; identity-only sessions.
+- [new] 15 macro categories with curated subcategories; browse + admin curation across the marketplace.
+- [new] admin approves item imagery before it goes live; suppliers submit and resubmit; text & pricing edits don't force re-approval.
+- [new] centralised reference lists (statuses, units, etc.) driving consistent, controlled dropdowns.
+- [new] the tracking subsystem behind the roadmap itself: epics, requirements, enhancements, feedback and QC test cases, with EP-/F- refs, statuses, target-versions and releases.
+- [new] Google sign-in; org-based roles (agent / supplier / admin) with permissions re-derived per request; identity-only sessions.
+- [new] in-app guided help; contextual coachmark tips that explain features as you go; admins can tweak the copy.
