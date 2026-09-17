@@ -38,13 +38,14 @@ Replace the current single-column wall-of-bullets (`pages/whats-new`) with a
   muted. Then the body, by release kind:
   - **Patch release** (has `fixes`) → a **fixes table**: `Ref · Fixed · Reported
     by · ✓`. `Ref` = the `F-#####` chip; reporter from the issue; ✓ where done.
-  - **Base / feature release** (has `notes` by area) → **area sections**: each
-    area = a Lucide icon chip + area name, then entries each led by a **typed
-    chip** — **New / Improved / Fixed** — + benefit-led text.
-- **Typed chips** = new small pill variants built from **soft tokens**
-  (New = success/green, Improved = info/blue, Fixed = warn/amber — align to the
-  soft-fill family in `feedback_action_button_colors`). Add as reusable classes,
-  don't inline.
+  - **Base / feature release** → grouped by **group → columns**: a group header
+    (Lucide icon + group name), then a lightweight 3-column table —
+    **Ref (`EP-#####`) · Feature · What's new**. The **Feature** (epic area) is
+    its **own column** (aligned, bold), NOT inline bold in the text. **No "New"
+    column** — a base release is all-New, so the label is redundant. (If a future
+    feature release mixes types, show a small **Improved/Fixed** chip only on the
+    non-New rows; never a "New" chip.)
+  - Source: epics for the group/feature/text; see RELEASE-VERSIONING-01.
 - **Render structured content, not markdown** — bind `{type,text}` fields; the
   current raw `**bold**` leakage must be gone.
 - Responsive: the two panes stack to one column on narrow (rail on top).

@@ -47,15 +47,13 @@
   .group-ic{width:28px;height:28px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex-shrink:0}
   .group-ic svg{width:16px;height:16px}
   .group-name{font-size:15px;font-weight:800;letter-spacing:-.01em;color:var(--ink)}
-  .entry{display:flex;gap:9px;padding:9px 0;align-items:flex-start;border-bottom:1px solid #f6f2ef}
+  .entry{display:grid;grid-template-columns:82px 172px 1fr;gap:14px;padding:10px 0;align-items:baseline;border-bottom:1px solid #f6f2ef}
   .entry:last-child{border-bottom:none}
-  .tag{flex-shrink:0;font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:3px 7px;border-radius:6px;margin-top:2px}
-  .t-new{background:var(--new-bg);color:var(--new-fg)}
-  .t-imp{background:var(--imp-bg);color:var(--imp-fg)}
-  .t-fix{background:var(--fix-bg);color:var(--fix-fg)}
-  .epref{flex-shrink:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:3px 7px;border-radius:6px;margin-top:2px}
-  .entry p{margin:0;font-size:14.5px;color:var(--ink)}
-  .entry b{font-weight:700}
+  .epref{justify-self:start;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:3px 7px;border-radius:6px}
+  .ep-feature{font-weight:700;font-size:14px;color:var(--ink)}
+  .entry p{margin:0;font-size:14px;color:var(--ink-2)}
+  .col-h{display:grid;grid-template-columns:82px 172px 1fr;gap:14px;margin-top:10px;padding-bottom:6px;border-bottom:1px solid var(--line);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  @media(max-width:560px){.entry,.col-h{grid-template-columns:70px 1fr}.entry p{grid-column:1/-1}}
 
   .fixes{width:100%;border-collapse:collapse;margin-top:16px;font-size:14px}
   .fixes th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:0 10px 8px;border-bottom:1px solid var(--line)}
@@ -89,9 +87,9 @@
     store:'<path d=\"M3 9l1-5h16l1 5M5 9v11h14V9M9 13h6\"/>',
     shield:'<path d=\"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z\"/>'
   };
-  function entry(ref, area, text, type){ type=type||'new'; const cls={new:'t-new',improved:'t-imp',fixed:'t-fix'}[type]; const lbl={new:'New',improved:'Improved',fixed:'Fixed'}[type];
-    return '<div class=\"entry\"><span class=\"tag '+cls+'\">'+lbl+'</span><span class=\"epref\">'+ref+'</span><p><b>'+area+'</b> — '+text+'</p></div>'; }
-  function group(name, icon, rows){ return '<div class=\"group\"><div class=\"group-h\"><span class=\"group-ic\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\">'+IC[icon]+'</svg></span><span class=\"group-name\">'+name+'</span></div>'+rows.join('')+'</div>'; }
+  function entry(ref, area, text){
+    return '<div class=\"entry\"><span class=\"epref\">'+ref+'</span><span class=\"ep-feature\">'+area+'</span><p>'+text+'</p></div>'; }
+  function group(name, icon, rows){ return '<div class=\"group\"><div class=\"group-h\"><span class=\"group-ic\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\">'+IC[icon]+'</svg></span><span class=\"group-name\">'+name+'</span></div><div class=\"col-h\"><span>Ref</span><span>Feature</span><span>What&rsquo;s new</span></div>'+rows.join('')+'</div>'; }
 
   const RELEASES = {
     v011: `
