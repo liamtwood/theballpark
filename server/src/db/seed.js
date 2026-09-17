@@ -274,13 +274,12 @@ const seed = async () => {
       `INSERT INTO projects (
         org_id, client_id, name, description, event_name, event_date,
         venue_name, venue_city, venue_address, guest_count,
-        stand_size, stand_width_m, stand_depth_m, stand_type,
         project_notes, project_budget, share_budget_with_suppliers,
         default_margin_pct, default_contingency_pct, default_vat_pct,
         total_ballpark_cost, total_base_cost, total_client_cost,
         tier, status_id, created_by
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22
       ) RETURNING id`,
       [
         agencyId, clientIds[0],
@@ -289,7 +288,6 @@ const seed = async () => {
         'London Tech Week', 'June 2026',
         'ExCeL London', 'London', 'Royal Victoria Dock, 1 Western Gateway, London E16 1XL',
         500,
-        'large', 12, 6, 'space_only',
         'Client wants a bold, modern design with lots of technology. Meeting rooms on upper deck. Budget is firm.',
         85000, false,
         15, 5, 20,
@@ -400,13 +398,12 @@ const seed = async () => {
       `INSERT INTO projects (
         org_id, client_id, name, description, event_name, event_date,
         venue_name, venue_city, venue_address, guest_count,
-        stand_size, stand_width_m, stand_depth_m, stand_type,
         project_notes, project_budget, share_budget_with_suppliers,
         default_margin_pct, default_contingency_pct, default_vat_pct,
         total_ballpark_cost, total_base_cost, total_client_cost,
         tier, status_id, created_by
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22
       ) RETURNING id`,
       [
         agencyId, clientIds[1],
@@ -415,7 +412,6 @@ const seed = async () => {
         'Food & Drink Expo', 'April 2026',
         'NEC Birmingham', 'Birmingham', 'North Avenue, Marston Green, Birmingham B40 1NT',
         200,
-        'medium', 6, 4, 'shell_scheme',
         'Natural, eco-friendly look. Lots of product display space. Sampling counter is essential. Keep within budget.',
         18000, true,
         15, 5, 20,

@@ -11,15 +11,9 @@ export interface Project {
   venue_city?: string;
   venue_address?: string;
   guest_count?: number;
-  stand_size?: string;
-  stand_width_m?: number;
-  stand_depth_m?: number;
-  stand_type?: string;
   project_notes?: string;
   raw_brief_text?: string;
   parsed_brief_json?: any;
-  ai_hints?: string;
-  missing_fields?: string;
   project_budget?: number;
   share_budget_with_suppliers?: boolean;
   default_margin_pct?: number;

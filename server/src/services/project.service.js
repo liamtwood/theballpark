@@ -73,9 +73,8 @@ async function getById(id) {
 async function create(data) {
   let {
     org_id, client_id, name, description, event_name, event_date,
-    venue_name, venue_city, venue_address, guest_count, stand_size,
-    stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
-    parsed_brief_json, ai_hints, missing_fields, project_budget,
+    venue_name, venue_city, venue_address, guest_count, project_notes, raw_brief_text,
+    parsed_brief_json, project_budget,
     share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
     default_vat_pct, tier, status_id,
     // v1.30: extended so the create-project intake modal can persist
@@ -160,19 +159,17 @@ async function create(data) {
   const result = await pool.query(
     `INSERT INTO projects (
       org_id, client_id, name, description, event_name, event_date,
-      venue_name, venue_city, venue_address, guest_count, stand_size,
-      stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
-      parsed_brief_json, ai_hints, missing_fields, project_budget,
+      venue_name, venue_city, venue_address, guest_count, project_notes, raw_brief_text,
+      parsed_brief_json, project_budget,
       share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
       default_vat_pct, tier, status_id,
       event_type, duration_days, po_ref, currency,
       ref
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31) RETURNING *`,
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25) RETURNING *`,
     [
       org_id, client_id, name, description, event_name, event_date,
-      venue_name, venue_city, venue_address, guest_count, stand_size,
-      stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
-      parsed_brief_json, ai_hints, missing_fields, project_budget,
+      venue_name, venue_city, venue_address, guest_count, project_notes, raw_brief_text,
+      parsed_brief_json, project_budget,
       share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
       default_vat_pct, tier, status_id,
       event_type, duration_days, po_ref, currency,
@@ -185,9 +182,8 @@ async function create(data) {
 async function update(id, data) {
   let {
     org_id, client_id, name, description, event_name, event_date,
-    venue_name, venue_city, venue_address, guest_count, stand_size,
-    stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
-    parsed_brief_json, ai_hints, missing_fields, project_budget,
+    venue_name, venue_city, venue_address, guest_count, project_notes, raw_brief_text,
+    parsed_brief_json, project_budget,
     share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
     default_vat_pct, tier, status_id, cover_image_url, client_logo_url, card_color,
     event_type, duration_days, po_ref, currency
@@ -211,30 +207,26 @@ async function update(id, data) {
       event_name = COALESCE($5, event_name), event_date = COALESCE($6, event_date),
       venue_name = COALESCE($7, venue_name), venue_city = COALESCE($8, venue_city),
       venue_address = COALESCE($9, venue_address), guest_count = COALESCE($10, guest_count),
-      stand_size = COALESCE($11, stand_size), stand_width_m = COALESCE($12, stand_width_m),
-      stand_depth_m = COALESCE($13, stand_depth_m), stand_type = COALESCE($14, stand_type),
-      project_notes = COALESCE($15, project_notes), raw_brief_text = COALESCE($16, raw_brief_text),
-      parsed_brief_json = COALESCE($17, parsed_brief_json), ai_hints = COALESCE($18, ai_hints),
-      missing_fields = COALESCE($19, missing_fields), project_budget = COALESCE($20, project_budget),
-      share_budget_with_suppliers = COALESCE($21, share_budget_with_suppliers),
-      default_margin_pct = COALESCE($22, default_margin_pct),
-      default_contingency_pct = COALESCE($23, default_contingency_pct),
-      default_vat_pct = COALESCE($24, default_vat_pct),
-      tier = COALESCE($25, tier), status_id = COALESCE($26, status_id),
-      cover_image_url = COALESCE($27, cover_image_url),
-      client_logo_url = COALESCE($28, client_logo_url),
-      card_color = COALESCE($29, card_color),
-      event_type = COALESCE($30, event_type),
-      duration_days = COALESCE($31, duration_days),
-      po_ref = COALESCE($32, po_ref),
-      currency = COALESCE($33, currency),
+      project_notes = COALESCE($11, project_notes), raw_brief_text = COALESCE($12, raw_brief_text),
+      parsed_brief_json = COALESCE($13, parsed_brief_json), project_budget = COALESCE($14, project_budget),
+      share_budget_with_suppliers = COALESCE($15, share_budget_with_suppliers),
+      default_margin_pct = COALESCE($16, default_margin_pct),
+      default_contingency_pct = COALESCE($17, default_contingency_pct),
+      default_vat_pct = COALESCE($18, default_vat_pct),
+      tier = COALESCE($19, tier), status_id = COALESCE($20, status_id),
+      cover_image_url = COALESCE($21, cover_image_url),
+      client_logo_url = COALESCE($22, client_logo_url),
+      card_color = COALESCE($23, card_color),
+      event_type = COALESCE($24, event_type),
+      duration_days = COALESCE($25, duration_days),
+      po_ref = COALESCE($26, po_ref),
+      currency = COALESCE($27, currency),
       updated_at = NOW()
-     WHERE id = $34`,
+     WHERE id = $28`,
     [
       org_id, client_id, name, description, event_name, event_date,
-      venue_name, venue_city, venue_address, guest_count, stand_size,
-      stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
-      parsed_brief_json, ai_hints, missing_fields, project_budget,
+      venue_name, venue_city, venue_address, guest_count, project_notes, raw_brief_text,
+      parsed_brief_json, project_budget,
       share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
       default_vat_pct, tier, status_id, cover_image_url, client_logo_url, card_color,
       event_type, duration_days, po_ref, currency, id
@@ -273,17 +265,17 @@ async function duplicate(id) {
     `INSERT INTO projects (
        org_id, client_id, name, description,
        event_name, event_date, venue_name, venue_city, venue_address,
-       guest_count, stand_size, stand_width_m, stand_depth_m, stand_type,
+       guest_count,
        project_budget, default_margin_pct, default_contingency_pct,
        default_vat_pct, tier, event_type, duration_days,
        cover_image_url, client_logo_url, card_color
      )
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
      RETURNING *`,
     [
       src.org_id, src.client_id, `Copy of ${src.name}`, src.description,
       src.event_name, src.event_date, src.venue_name, src.venue_city, src.venue_address,
-      src.guest_count, src.stand_size, src.stand_width_m, src.stand_depth_m, src.stand_type,
+      src.guest_count,
       src.project_budget, src.default_margin_pct, src.default_contingency_pct,
       src.default_vat_pct, src.tier, src.event_type, src.duration_days,
       src.cover_image_url, src.client_logo_url, src.card_color

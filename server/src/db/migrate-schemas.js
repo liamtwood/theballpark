@@ -190,15 +190,9 @@ const migrate = async () => {
         venue_city VARCHAR(255),
         venue_address TEXT,
         guest_count INTEGER,
-        stand_size VARCHAR(20),
-        stand_width_m NUMERIC(6,2),
-        stand_depth_m NUMERIC(6,2),
-        stand_type VARCHAR(20),
         project_notes TEXT,
         raw_brief_text TEXT,
         parsed_brief_json JSONB,
-        ai_hints TEXT,
-        missing_fields TEXT,
         project_budget NUMERIC(12,2),
         share_budget_with_suppliers BOOLEAN DEFAULT false,
         default_margin_pct NUMERIC(5,2),
@@ -774,6 +768,30 @@ const migrate = async () => {
       ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
       ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
       ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
+
+      -- pV2-PROJ-TIDY-01: drop 6 dead/redundant projects columns (idempotent).
+      -- ai_hints / missing_fields → 0-data, superseded by parsed_brief_json;
+      -- stand_* → v1 exhibition legacy, unused in v2. status_id is DELIBERATELY
+      -- KEPT (still load-bearing: v1 status JOIN + v2/v1 dual-write + the inbox
+      -- live-flip) — its decommission is tracked separately as BE-00094.
+      ALTER TABLE public.projects  DROP COLUMN IF EXISTS ai_hints;
+      ALTER TABLE preview.projects DROP COLUMN IF EXISTS ai_hints;
+      ALTER TABLE master.projects  DROP COLUMN IF EXISTS ai_hints;
+      ALTER TABLE public.projects  DROP COLUMN IF EXISTS missing_fields;
+      ALTER TABLE preview.projects DROP COLUMN IF EXISTS missing_fields;
+      ALTER TABLE master.projects  DROP COLUMN IF EXISTS missing_fields;
+      ALTER TABLE public.projects  DROP COLUMN IF EXISTS stand_size;
+      ALTER TABLE preview.projects DROP COLUMN IF EXISTS stand_size;
+      ALTER TABLE master.projects  DROP COLUMN IF EXISTS stand_size;
+      ALTER TABLE public.projects  DROP COLUMN IF EXISTS stand_width_m;
+      ALTER TABLE preview.projects DROP COLUMN IF EXISTS stand_width_m;
+      ALTER TABLE master.projects  DROP COLUMN IF EXISTS stand_width_m;
+      ALTER TABLE public.projects  DROP COLUMN IF EXISTS stand_depth_m;
+      ALTER TABLE preview.projects DROP COLUMN IF EXISTS stand_depth_m;
+      ALTER TABLE master.projects  DROP COLUMN IF EXISTS stand_depth_m;
+      ALTER TABLE public.projects  DROP COLUMN IF EXISTS stand_type;
+      ALTER TABLE preview.projects DROP COLUMN IF EXISTS stand_type;
+      ALTER TABLE master.projects  DROP COLUMN IF EXISTS stand_type;
 
       -- pV2-MEDIA-01b: project media. cover_image_url / client_logo_url /
       -- card_color already exist; add the Lucide icon fallback (cover-less
