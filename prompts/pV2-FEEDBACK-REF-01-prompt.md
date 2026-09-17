@@ -1,95 +1,100 @@
-# pV2-FEEDBACK-REF-01 — Human-readable ref codes for feedback issues
+# pV2-FEEDBACK-REF-01 — Human-readable ref codes for the tracker
 
 **Type:** server + schema (additive) · small UI surface
 **Owner:** CC implements + commits. Chat authored this spec.
-**Why:** `shared.feedback` rows are only addressable by UUID today. Add a short,
-human ref (`F-00001`) so issues can be referenced in conversation and UI — same
-idea as project `ref` (BP-019) and message `ref_code` (WA-001).
+**Why:** `shared.feedback` rows need short human refs (like project `BP-019`).
+The tracker is a requirements-management system with a clear hierarchy, so refs
+are **prefix-scoped by level**.
+
+**Note:** v2.470 already built a single `F-` generator + backfill. This spec
+**supersedes** that: switch `F-` → `BE-`, and add the `EP-` and `FR-` streams.
+The data is already migrated (see "Already seeded").
 
 ---
 
-## Scheme (decided)
+## Scheme (decided) — three streams, one `ref` column
 
-**Two flat, prefix-scoped sequences** on one shared `ref` column:
-- **`F-<NNNNN>`** — issues (Bug, Enhancement, Question, Prompt). `F-00001`…
-- **`EP-<NNNNN>`** — **epics** (feedback_category = `Epic`). `EP-00001`…
+**Hierarchy: EP → FR → BE → Test Case.**
 
-- **Type-independent within a stream.** The ref does NOT encode Bug/Enhancement/
-  Question — reclassifying an issue's type never changes its ref.
-- **Prefix by record kind, not by type:** epics (category `Epic`) → `EP-`;
-  everything else that gets a ref → `F-`.
-- Applies to `object_type = 'issue'` rows. **Exclude `type='test_case'`** from
-  the `F-` stream (test cases keep their UUID / TC identity). Folders
-  (`object_type='folder'`) don't get a ref — skip them.
+| Prefix | Level | Category | Numbering |
+|---|---|---|---|
+| **`EP-`** | Epic (feature area) | `Epic` | from 20 (1–19 seeded) |
+| **`FR-`** | Functional Requirement (planned capability under an epic) | `Requirement` | **from 207** (201–206 seeded; 1–200 = backfill room) |
+| **`BE-`** | **Bug / Enhancement / Question** (issue-level work) | Bug, Enhancement, Question, Prompt | from 93 (1–92 seeded) |
+| — | Test Case | `Test Case` | no ref (UUID) |
 
-**Already seeded (do NOT overwrite):** the `ref` column exists, and **19 epics
-`EP-00001…EP-00019`** (the v0.1.0 base release) are already assigned. Chat added
-the column + these rows manually. The `EP-` sequence must continue **from 20**;
-the `F-` sequence starts fresh. The backfill must skip any row that already has
-a `ref`.
+- **`BE-` is type-independent.** A "question" often turns out to be a bug, a
+  "bug" an enhancement — they all start as *something to investigate*. So Bug /
+  Enhancement / Question **share the BE- stream**, and reclassifying between them
+  **never changes the ref** (the type is a mutable attribute; the id is stable).
+- **`EP-` / `FR-` are levels** (an epic never becomes a requirement) → stable
+  prefixes of their own.
+- Folders (`object_type='folder'` — releases, test runs) and Test Cases get **no
+  ref**.
+
+---
+
+## Already seeded (do NOT overwrite)
+The `ref` column + `uq_feedback_ref` index exist, and refs are assigned:
+- **19 epics** `EP-00001…EP-00019` (v0.1.0 base release)
+- **6 requirements** `FR-00201…FR-00206` (the roadmap items)
+- **92 issues** `BE-00001…BE-00092` (backfilled)
+
+The generators must **continue past these**, and the backfill must **skip any
+row that already has a `ref`**.
 
 ---
 
 ## Changes
 
-### 1. Schema — `server/src/db/migrate-schemas.js`
-- `ref VARCHAR(16)` on `shared.feedback` — **already added by chat; make it
-  idempotent** so migrate-schemas is the source of truth without conflict:
-  ```sql
-  ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS ref VARCHAR(16);
-  ```
-- **Two** sequences (concurrency-safe, no locks). Set `feedback_epic_seq` to
-  start past the seeded epics (currently 19):
-  ```sql
-  CREATE SEQUENCE IF NOT EXISTS shared.feedback_ref_seq;                 -- F-
-  CREATE SEQUENCE IF NOT EXISTS shared.feedback_epic_seq START WITH 20;  -- EP-
-  ```
-  (If the sequence already exists, `setval` it to `max(EP number)` so it never
-  re-issues an assigned EP-.)
-- Unique partial index (already added by chat; keep idempotent):
-  ```sql
-  CREATE UNIQUE INDEX IF NOT EXISTS uq_feedback_ref
-    ON shared.feedback (ref) WHERE ref IS NOT NULL AND deleted_at IS NULL;
-  ```
-- `feedback` is in the `shared` schema — follow the file's existing shared-schema
-  handling; don't loop it through public/preview/master like app tables.
+### 1. Schema — `server/src/db/migrate-schemas.js` (idempotent; already applied to dev)
+```sql
+ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS ref VARCHAR(16);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_feedback_ref
+  ON shared.feedback (ref) WHERE ref IS NOT NULL AND deleted_at IS NULL;
+-- three sequences, started past the seeded max
+CREATE SEQUENCE IF NOT EXISTS shared.feedback_be_seq   START WITH 93;   -- BE-
+CREATE SEQUENCE IF NOT EXISTS shared.feedback_epic_seq START WITH 20;   -- EP-
+CREATE SEQUENCE IF NOT EXISTS shared.feedback_fr_seq   START WITH 207;  -- FR-
+```
+If a sequence already exists, `setval` it to `max(number for that prefix)` so it
+never re-issues an assigned ref. `feedback` is in the `shared` schema — follow
+the file's shared-schema handling.
 
 ### 2. Ref generation — `server/src/services/feedback.service.js`
-- In `create(data)`, assign a ref by record kind:
-  ```
-  epic  (feedback_category = 'Epic') → 'EP-' || lpad(nextval('shared.feedback_epic_seq')::text, 5, '0')
-  issue (not test_case, not folder)  → 'F-'  || lpad(nextval('shared.feedback_ref_seq')::text,  5, '0')
-  ```
-  Set it in the same INSERT (or `SELECT nextval` just before). Sequences
-  guarantee uniqueness without locks/retries. Skip ref for `object_type =
-  'folder'` and for `type='test_case'`. **Never overwrite an existing `ref`.**
-- No hand-rolled transactions needed for this (sequence is atomic); if you touch
-  more than one write, use the project's transaction helper (hygiene Rule 1).
+Replace the v2.470 single-`F-` logic. In `create(data)`, assign by
+`feedback_category` name:
+```
+Epic         → 'EP-' || lpad(nextval('shared.feedback_epic_seq')::text, 5, '0')
+Requirement  → 'FR-' || lpad(nextval('shared.feedback_fr_seq')::text,   5, '0')
+else (Bug/Enhancement/Question/Prompt, object_type='issue', not test_case)
+             → 'BE-' || lpad(nextval('shared.feedback_be_seq')::text,   5, '0')
+```
+Skip ref for `object_type='folder'` and `type='test_case'`. **Never overwrite an
+existing `ref`.** Set it in the same INSERT (or `SELECT nextval` just before) —
+sequences are atomic, no locks.
 
-### 3. Backfill — one-time migration (e.g. `server/src/db/migrate-feedback-ref.js`)
-- Assign `ref` to all existing non-deleted `object_type='issue'` rows lacking
-  one, **ordered by `created_at ASC`** (chronological numbering), pulling from
-  the same sequence.
-- Then ensure the sequence is past the highest assigned value (it will be, since
-  the backfill draws from it) so new creates continue cleanly.
-- Idempotent — skip rows that already have a ref.
+### 3. Backfill — already done for the 92 BE + 19 EP + 6 FR
+The one-time backfill is complete (chat ran it). Keep a guarded migration that
+assigns refs to any *future* unref'd issue rows chronologically, skipping rows
+that already have one — idempotent.
 
-### 4. Surface the ref (light UI)
-- Wherever feedback rows are listed/rendered today (the feedback drawer/list),
-  show `ref` as the leading identifier — a small mono chip `F-00001` before the
-  title. Backend + list display only; no new page.
+### 4. Surface the ref (light UI) — mostly built (v2.470–478)
+The My-issues table + What's New already show the ref. Just ensure they render
+whatever prefix the row carries (BE-/EP-/FR-), not a hard-coded `F-`.
 
 ---
 
 ## Acceptance
-- [ ] New issue via `create()` gets `F-NNNNN` from the sequence.
-- [ ] Reclassifying an issue's `type` leaves its `ref` unchanged.
-- [ ] Backfill assigns chronological refs to all existing issues; re-run is a
-      no-op; sequence continues past the max.
-- [ ] `uq_feedback_ref` prevents duplicates; concurrent creates don't collide.
-- [ ] Ref shows in the feedback list/drawer.
-- [ ] migrate-schemas.js updated; server boots; one build. Bump chip.
+- [ ] New Bug/Enhancement/Question → `BE-`; new Requirement → `FR-`; new Epic →
+      `EP-`; each from its sequence, continuing past the seeded max.
+- [ ] Reclassifying Bug↔Enhancement↔Question leaves the `BE-` ref unchanged.
+- [ ] No row gets two refs; `uq_feedback_ref` holds; test cases/folders get none.
+- [ ] UI shows the row's actual prefix (no hard-coded `F-`).
+- [ ] Server boots; one build; chip bumped.
 
 ## Concerns not in spec
-Standard section. The 5 client-feedback issues just logged (area Projects,
-`pV2-PROJ-UX-01`) will get their `F-` numbers from the backfill — report which.
+Note: v0.1.1's **frozen** fixes-table note was generated with the old `F-`
+prefix; the tracker now shows `BE-` for those same issues. Since released notes
+are immutable, v0.1.1 keeps `F-` historically (or regenerate it to `BE-` if Liam
+prefers consistency over the freeze rule — his call).
