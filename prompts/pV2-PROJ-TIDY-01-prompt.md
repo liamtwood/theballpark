@@ -1,4 +1,4 @@
-# pV2-PROJ-TIDY-01 — Projects table: remove 7 dead/redundant columns
+# pV2-PROJ-TIDY-01 — Projects table: remove 6 dead/redundant columns
 
 **Type:** schema tidy (destructive DROP COLUMN) · dev-only this pass
 **Owner:** CC implements + commits. Chat (design) authored this spec.
@@ -10,13 +10,13 @@ additive path), so treat it deliberately: strip code refs first, then drop.
 
 ## Scope
 
-Remove 7 columns from `projects`. Evidence (public/dev, 57 active projects):
+Remove 6 columns from `projects`. Evidence (public/dev, 57 active projects):
 
 | Column | Why remove |
 |---|---|
 | `ai_hints` | 0/57 populated. No live consumer. Superseded by `parsed_brief_json`. |
 | `missing_fields` | 0/57 populated. Superseded by `parsed_brief_json.topQuestions`. |
-| `status_id` | Redundant with `status` (text) + `is_active`. Dedup — keep those two. |
+| ~~`status_id`~~ | **DO NOT DROP** — CC's pre-check (2026-09) found it's the LIVE v2 status FK: `projects.service.js` dual-writes it (`resolveStatus`), `inbox.service.js` uses it in the message-suppliers flip, and v1 joins `statuses`. Chat's original "redundant" assumption was wrong. It needs a separate v1-status-FK decommission (logged as a follow-up), NOT a drop here. |
 | `stand_size` | v1 exhibition legacy. 7/57, v1-only, unused in v2. |
 | `stand_width_m` | v1 exhibition legacy. |
 | `stand_depth_m` | v1 exhibition legacy. |
@@ -27,31 +27,27 @@ financial defaults, client_* are all parked/kept deliberately).
 
 ---
 
-## Pre-check (do first)
+## Pre-check — RESOLVED
 
-1. **`status_id` join check.** Grep server + both clients for `status_id` /
-   `statusId`. Confirm nothing *joins* a status lookup table on it or reads it
-   for workflow/filtering. `status` (text, e.g. `"active"`) carries the label;
-   if any code depends on `status_id`, point it at `status` first (or stop and
-   flag). `ai_hints` / `missing_fields` / `stand_*` already confirmed safe
-   (0 data / v1-only).
-
-If the pre-check surfaces a real `status_id` consumer, **pause and report**
-before dropping that one — the other 6 can proceed regardless.
+`status_id` **is a live consumer** (CC pre-check, 2026-09) — v2
+`projects.service.js` dual-writes it, `inbox.service.js` uses it in the
+message-suppliers flip, v1 joins `statuses`. So it is **excluded from this drop**
+and handled as a separate v1-status-FK decommission (tracked follow-up). The
+other **6** (`ai_hints`, `missing_fields`, `stand_size/width_m/depth_m/type`) are
+confirmed safe (0-data / v1-only) — proceed with those.
 
 ---
 
 ## Changes
 
 ### 1. `server/src/db/migrate-schemas.js`
-- Remove the 7 columns from the `projects` `CREATE TABLE` definition.
+- Remove the 6 columns from the `projects` `CREATE TABLE` definition.
 - **Add idempotent drops** — the tables already exist in `public`, `preview`,
   and `master`, so a CREATE edit alone won't remove them. Add, scoped across
   all three schemas using the file's existing schema-loop/`format()` pattern:
   ```sql
   ALTER TABLE {schema}.projects DROP COLUMN IF EXISTS ai_hints;
   ALTER TABLE {schema}.projects DROP COLUMN IF EXISTS missing_fields;
-  ALTER TABLE {schema}.projects DROP COLUMN IF EXISTS status_id;
   ALTER TABLE {schema}.projects DROP COLUMN IF EXISTS stand_size;
   ALTER TABLE {schema}.projects DROP COLUMN IF EXISTS stand_width_m;
   ALTER TABLE {schema}.projects DROP COLUMN IF EXISTS stand_depth_m;
@@ -63,7 +59,7 @@ before dropping that one — the other 6 can proceed regardless.
 ### 2. `server/src/services/project.service.js`
 - Remove `ai_hints`, `missing_fields` from every SELECT / INSERT / UPDATE
   column list (7 call-sites) and renumber the `$n` params accordingly.
-- Remove `status_id`, `stand_*` from any column list / mapping if referenced.
+- Remove `stand_*` from any column list / mapping if referenced.
 - Confirm the create/update payload builders no longer reference them.
 
 ### 3. `server/src/db/seed.js`
@@ -80,11 +76,10 @@ before dropping that one — the other 6 can proceed regardless.
 
 ## Acceptance
 
-- [ ] Pre-check done; `status_id` has no live consumer (or the one found was
-      repointed to `status` / flagged).
-- [ ] `migrate-schemas.js` drops all 7 across public/preview/master
+- [ ] `status_id` NOT dropped (live v2 consumer — separate decommission).
+- [ ] `migrate-schemas.js` drops the 6 across public/preview/master
       idempotently; re-running the migration is a no-op.
-- [ ] `SELECT` on `projects` no longer returns the 7 columns after migrate.
+- [ ] `SELECT` on `projects` no longer returns the 6 columns after migrate.
 - [ ] Server boots; project create/read/update still works (spot-check one
       project round-trip).
 - [ ] `client-v2` builds clean (no broken references).
