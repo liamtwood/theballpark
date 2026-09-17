@@ -151,3 +151,31 @@ Foundation (1-2) is codelist seed + one form; import (3) is the only heavy build
 Standard section. Flag: profile storage (codelist meta vs light table — CC's
 call, but reuse codelist infra if it fits); the `items.attributes` default flip;
 and any migrate-schemas additions (import tables, `items.import_batch_id`).
+
+---
+
+## Appendix — `item_type` seed (paste-ready)
+`reference_codelists`: `list_name='item_type'`, `consumer_table='items'`,
+`consumer_column='item_type'`, `default_code='all'`, description "Commercial type
+— how an item is transacted."
+
+`reference_codelist_values` (list_name='item_type'):
+| code | label | sort | meta |
+|---|---|---|---|
+| all | All | 0 | `{ "shows": [], "quantity": "qty", "pricing": "qty * base_price" }` (default/base) |
+| purchase | Purchase | 1 | `{ "shows": [], "quantity": "qty", "pricing": "qty * base_price" }` |
+| rent | Rent | 2 | `{ "shows": ["time_unit"], "quantity": "qty * periods", "pricing": "qty * base_price * periods" }` |
+| service | Service | 3 | `{ "shows": ["time_unit"], "quantity": "hours * people", "pricing": "base_price * hours * people" }` |
+| catering | Catering | 4 | `{ "shows": ["serves"], "quantity": "ceil(guests / serves)", "pricing": "ceil(guests / serves) * base_price" }` |
+
+**Derivation** (import default + create hint): `serves present → catering` ·
+`time_unit ∈ (day,week) → rent` · `unit=hour → service` · else `→ purchase`
+(fallback `all`). Confirmable in the review grid.
+
+Quantity/pricing inputs come from context: `periods` = event duration,
+`guests` = project `guest_count`, `hours`/`people` = line inputs — so
+`line-total.util.js` branches on `item_type`.
+
+**Mandatory stance:** hard-required stays `name` + `category_id` only; `item_type`
+defaults to `all`; type-specific fields (`serves`/`time_unit`) and `subcategory_id`
+**warn, don't block**.
