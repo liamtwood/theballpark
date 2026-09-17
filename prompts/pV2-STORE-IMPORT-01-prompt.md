@@ -49,7 +49,7 @@ Build in the order below; each part is shippable on its own.
 
 ## Part B — `item_type` (the commercial archetype) — BUILD FIRST
 The "profile" collapses to a single **derivable `item_type`** on the item —
-**Purchase · Rent · Service · Food** — not per-category machinery. It's what the
+**Purchase · Rent · Service · Catering** — not per-category machinery. It's what the
 item is *commercially* (a fridge and a par-can are both **Rent**), and everything
 (pricing, quantity, which fields show) keys off it.
 
@@ -73,10 +73,10 @@ item is *commercially* (a fridge and a par-can are both **Rent**), and everythin
   separate** concern — they live in `items.attributes` (JSONB) when a category
   needs them, via an `item_attribute` codelist. NOT required for V1.
 - **Item-edit renders** — the universal fields always, plus the `item_type`-
-  driven ones (`serves` for Food, `time_unit` for Rent/Service), plus subcat
+  driven ones (`serves` for Catering, `time_unit` for Rent/Service), plus subcat
   (categories) + tags (tag table, by category) + tier (universal). Save to the
   item.
-- **Pilot: Catering (= the Food type)** — prove `item_type` end-to-end on
+- **Pilot: Catering (= the Catering type)** — prove `item_type` end-to-end on
   Catering first: pick/derive → `serves` shows → auto-quantity (⌈guests ÷
   serves⌉) → pricing. Catering is the unique/richest type; the generic
   Purchase/Rent/Service follow from the same mechanism.
@@ -118,11 +118,11 @@ Oracle-style ETL as staging TABLES (not a schema).
 
 ## Build order (ship in slices) — item_type first
 1. **Seed codelists**: `tier` (+ backfill) · `mood` · **`item_type`**
-   (Purchase/Rent/Service/Food + behaviour `meta`). (`item_attribute`/`dimension`
+   (Purchase/Rent/Service/Catering + behaviour `meta`). (`item_attribute`/`dimension`
    deferred — not V1.)
 2. **`items.item_type` + write-path**: item-edit sets `item_type` **per item**
    (independent of category); it drives `serves`/`time_unit` visibility +
-   pricing/quantity. Prove across a **mix** — a Food platter, a Rent tablecloth,
+   pricing/quantity. Prove across a **mix** — a Catering platter, a Rent tablecloth,
    a Purchase glass-pack, a Service bartender — *one supplier/category can hold
    all four*.
 3. **Import** (C): **derive `item_type` per row** (from unit/serves/time_unit,
@@ -134,9 +134,9 @@ Foundation (1-2) is codelist seed + one form; import (3) is the only heavy build
 - [ ] `tier`/`mood`/`item_type` seeded as codelists (item_type carries behaviour
       meta); `items.tier` backfilled.
 - [ ] item-edit sets `item_type` per item (category-independent); `serves` shows
-      for Food, `time_unit` for Rent/Service; pricing/quantity branch per type.
-- [ ] A **mixed** catalogue (Food + Rent + Purchase items in one supplier) each
-      gets the right type + behaviour (esp. Food's ⌈guests÷serves⌉ auto-qty).
+      for Catering, `time_unit` for Rent/Service; pricing/quantity branch per type.
+- [ ] A **mixed** catalogue (Catering + Rent + Purchase items in one supplier) each
+      gets the right type + behaviour (esp. Catering's ⌈guests÷serves⌉ auto-qty).
 - [ ] Import derives `item_type` per row (category-agnostic); a mixed-category
       xls loads → prepares by category → transfers as `pending` items tagged with
       `import_batch_id`.
