@@ -35,6 +35,14 @@ const PARENTS = [
   { list: 'item_time_unit',       type: 'ballpark', app: 'catalogue', def: 'day',     desc: 'Controls the time-unit options on time-billable items',     ct: 'items',              cc: 'time_unit' },
   { list: 'currency',             type: 'ballpark', app: 'core',      def: 'GBP',     desc: 'Controls the currency options platform-wide',               ct: 'projects',           cc: 'currency' },
   { list: 'budget_tier',          type: 'ballpark', app: 'project',   def: 'unknown', desc: 'Controls the budget-tier options on projects',              ct: 'projects',           cc: 'tier' },
+  // pV2-STORE-IMPORT-01 Phase 0 — item quality tier (DISTINCT from budget_tier,
+  // which is projects.tier). Consumes items.tier.
+  { list: 'item_tier',            type: 'ballpark', app: 'catalogue', def: 'standard', desc: 'Controls the quality-tier options on catalogue items',      ct: 'items',              cc: 'tier' },
+  // Item mood/vibe — classifier-fed later; seeded now, no UI surface yet.
+  { list: 'mood',                 type: 'ballpark', app: 'catalogue', def: null,      desc: 'Item mood/vibe classification (classifier-fed; hidden in UI for now)', ct: null,       cc: null },
+  // Registry of item attribute keys (value_type lives in each value's meta);
+  // fills items.attributes. Not a single-column LOV → no consumer pointer.
+  { list: 'item_attribute',       type: 'ballpark', app: 'catalogue', def: null,      desc: 'Registry of item attribute keys (value_type in meta); fills items.attributes', ct: null, cc: null },
   // pV2-PROJECTS-02: event_type LOV (ballpark — admins curate it). Seed
   // includes the 3 values already in projects data (activation/gala/pop-up)
   // so existing rows resolve to a codelist value.
@@ -92,6 +100,40 @@ const NEW_VALUES = {
     { code: 'pop-up',     label: 'Pop-up',         sort: 8, def: false },
     { code: 'dinner',     label: 'Dinner',         sort: 9, def: false },
     { code: 'other',      label: 'Other',          sort: 10, def: false },
+  ],
+  // pV2-STORE-IMPORT-01 Phase 0 — item quality tier (consumes items.tier).
+  item_tier: [
+    { code: 'budget',           label: 'Budget',           sort: 0, def: false },
+    { code: 'standard',         label: 'Standard',         sort: 1, def: true },
+    { code: 'premium',          label: 'Premium',          sort: 2, def: false },
+    { code: 'luxury',           label: 'Luxury',           sort: 3, def: false },
+    { code: 'aim_for_the_moon', label: 'Aim for the Moon', sort: 4, def: false },
+  ],
+  // Mood/vibe — seed only; hidden in UI for now (classifier-fed later).
+  mood: [
+    { code: 'relaxed',       label: 'Relaxed',       sort: 1, def: false },
+    { code: 'celebratory',   label: 'Celebratory',   sort: 2, def: false },
+    { code: 'impressive',    label: 'Impressive',    sort: 3, def: false },
+    { code: 'sophisticated', label: 'Sophisticated', sort: 4, def: false },
+    { code: 'intimate',      label: 'Intimate',      sort: 5, def: false },
+  ],
+  // Attribute registry — one key for now. value_type drives how PREPARE reads
+  // the raw value; 'char' = a free-text label (e.g. "8.25 inch"), NOT a qty.
+  item_attribute: [
+    { code: 'size', label: 'Size', sort: 1, def: false, meta: { value_type: 'char' } },
+  ],
+  // The 3 NEW item_unit codes. The prune block (in seedCodelists) reactivates
+  // platter, sets meta.needs on the 5 kept, and deactivates the surplus.
+  item_unit: [
+    { code: 'per_guest', label: 'Per Guest', sort: 10, def: false, meta: { needs: null } },
+    { code: 'time',      label: 'Time',      sort: 11, def: false, meta: { needs: 'time' } },
+    { code: 'size',      label: 'Size',      sort: 12, def: false, meta: { needs: 'size' } },
+  ],
+  // Time granularity now lives only here (item_unit keeps a single 'time'
+  // value). Add week/night — surfaced by the unit re-point migration.
+  item_time_unit: [
+    { code: 'week',  label: 'Weeks',  sort: 6, def: false },
+    { code: 'night', label: 'Nights', sort: 7, def: false },
   ],
   item_approval_status: [
     // pV2-STORE-01 — supplier's pre-submit state. draft → (submit) → pending.
@@ -183,6 +225,31 @@ async function seedCodelists(client) {
       [code, JSON.stringify(m)]
     );
   }
+
+  // pV2-STORE-IMPORT-01 Phase 0 — item_unit pruned to 5 (each, per_guest,
+  // platter, time, size). Reactivate the kept 5 (platter was inactive), set
+  // meta.needs on each, and deactivate every other value (rows kept; the data
+  // migration re-points items.unit). ON CONFLICT DO NOTHING never updates, so
+  // these are explicit idempotent UPDATEs. meta.needs: each/per_guest=null,
+  // platter='serves', time='time', size='size' (what extra field the unit needs).
+  const ITEM_UNIT_NEEDS = { each: null, per_guest: null, platter: 'serves', time: 'time', size: 'size' };
+  for (const [code, needs] of Object.entries(ITEM_UNIT_NEEDS)) {
+    await client.query(
+      `UPDATE shared.reference_codelist_values
+          SET is_active = true,
+              meta = COALESCE(meta, '{}'::jsonb) || $2::jsonb,
+              updated_at = NOW()
+        WHERE list_name = 'item_unit' AND code = $1`,
+      [code, JSON.stringify({ needs })]
+    );
+  }
+  await client.query(
+    `UPDATE shared.reference_codelist_values
+        SET is_active = false, updated_at = NOW()
+      WHERE list_name = 'item_unit'
+        AND code NOT IN ('each', 'per_guest', 'platter', 'time', 'size')
+        AND is_active = true`
+  );
 
   // country — codes constant, labels via Intl (never hand-typed).
   const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });

@@ -145,11 +145,11 @@ async function addValue(listName, data) {
   try {
     const r = await pool.query(
       `INSERT INTO shared.reference_codelist_values
-         (list_name, code, label, symbol, description, sort_order, is_active, is_system, is_default)
-       VALUES ($1, $2, $3, $4, $5, $6, true, false, false)
+         (list_name, code, label, symbol, description, sort_order, is_active, is_system, is_default, meta)
+       VALUES ($1, $2, $3, $4, $5, $6, true, false, false, $7::jsonb)
        RETURNING *`,
       [listName, data.code, data.label, data.symbol ?? null, data.description ?? null,
-       data.sortOrder ?? next.rows[0].next]
+       data.sortOrder ?? next.rows[0].next, JSON.stringify(data.meta ?? {})]
     );
     return { value: toValue(r.rows[0]) };
   } catch (err) {
@@ -180,6 +180,12 @@ async function patchValue(listName, code, patch) {
       vals.push(val);
       sets.push(`${col} = $${vals.length}`);
     }
+  }
+  // meta is jsonb — handled separately so it gets the ::jsonb cast (a plain
+  // object bound as a param would be sent as text and rejected).
+  if (patch.meta !== undefined) {
+    vals.push(JSON.stringify(patch.meta));
+    sets.push(`meta = $${vals.length}::jsonb`);
   }
   if (!sets.length) return { error: 'empty' };
   vals.push(listName, code);

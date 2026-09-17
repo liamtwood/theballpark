@@ -793,6 +793,14 @@ const migrate = async () => {
       ALTER TABLE preview.projects DROP COLUMN IF EXISTS stand_type;
       ALTER TABLE master.projects  DROP COLUMN IF EXISTS stand_type;
 
+      -- pV2-STORE-IMPORT-01 Phase 0: items.tier is now governed by the item_tier
+      -- codelist (budget/standard/premium/luxury/aim_for_the_moon), so drop the
+      -- old free-text CHECK (basic/mid/premium). Codelist-validation is the
+      -- future guard; no replacement CHECK (the codelist is extensible).
+      ALTER TABLE public.items  DROP CONSTRAINT IF EXISTS items_tier_check;
+      ALTER TABLE preview.items DROP CONSTRAINT IF EXISTS items_tier_check;
+      ALTER TABLE master.items  DROP CONSTRAINT IF EXISTS items_tier_check;
+
       -- pV2-MEDIA-01b: project media. cover_image_url / client_logo_url /
       -- card_color already exist; add the Lucide icon fallback (cover-less
       -- projects), the cover focal point (object-position %, SMALLINT DEFAULT
