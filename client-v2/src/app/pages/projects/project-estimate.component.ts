@@ -274,7 +274,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
              CTA lives in the Project Costs section header.) -->
         @if (!isFinal()) {
           <div class="mt-5 flex gap-2.5">
-            <button type="button" class="bp-btn-grad flex-1" (click)="goToFinal.emit()">
+            <button type="button" class="bp-btn-accent flex-1" (click)="goToFinal.emit()">
               Go with this Ballpark
               <lucide-icon name="arrow-right" [size]="16" />
             </button>
