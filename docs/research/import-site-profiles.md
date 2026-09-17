@@ -107,8 +107,45 @@ catalogue-import is A/B only, gated by **type-detection on scan** (tell the admi
 ## #2 — 100 Roses  ·  https://www.100roses.co.uk  ·  (Type B)
 Shopify. Org + WebSite JSON-LD (no Product on homepage — Shopify puts it on
 product pages). No breadcrumb on home. **Priced retail catalogue** (cart + £).
-Org description from og: ("Luxury flowers in London…"). → catalogue-load via a
-**Shopify recipe** (predictable product JSON + /products/ + /collections/ paths).
+Org description from og: ("Luxury flowers in London…").
+- **Richest item source = `/products/<handle>.js`** (or `.json`) — full
+  structured product: title, description, **product_type** (often EMPTY here),
+  **tags** (often empty), vendor, price, **options/variants** ("Select size:
+  L/XL/Maxi", 3 variants @ prices), **images[]** (CDN, 4). Fetch this, don't
+  scrape HTML.
+- **Category = the COLLECTION** the product sits in (`/collections/<x>/products/…`)
+  — Shopify's `product_type` is unreliable, the collection is the real grouping.
+  Collections seen: only-red-roses · roses-orchids · hand-tied-bouquets · hat-box
+  · peonies · ranunculus · lilies · luxury-collection · **mothers-day** ·
+  **bouquet-of-the-day** … → note the **campaign collections** (Mother's Day,
+  Bouquet of the Day) are use-case/tags, NOT categories — same reclassify problem
+  as Yahire's collections.
+- **Attributes:** variant `options` are clean structured attributes (Size L/XL/
+  Maxi) → our `size` + the price-variants = extras arc.
+- → catalogue-load via a **Shopify recipe**: `/products/*.js` for items,
+  `/collections` for grouping, split true-category vs campaign collections.
+
+## Five-dimension comparison (one example per type)
+| dimension | A — Yahire (custom) | B — 100 Roses (Shopify) | C — Lou Lou (bespoke) |
+|---|---|---|---|
+| category | breadcrumb seg 1 | **the collection** (product_type unreliable) | none |
+| subcategory | breadcrumb seg 2 | usually flat | — |
+| tag | collections (Wedding/…) | product.tags (sparse) + campaign collections | — |
+| image | Product JSON-LD image[] (2–4) | product.images[] CDN (4) | portfolio/og only |
+| attributes | dims/material (inconsistent) + size-in-name | **variant options** (Size L/XL/Maxi) clean | — |
+| richest source | JSON-LD + breadcrumb + DOM | **/products/<handle>.js** | Org JSON-LD only |
+
+## "Shop similar to source" — dual grouping
+Vendors organize by their OWN merchandising (Yahire subcats, Shopify
+collections), which don't match our global taxonomy. So each item carries BOTH:
+1. **the vendor's own grouping** → stored as **org-scoped categories**
+   (`categories.org_id`, already supported) → drives the supplier's Ballpark
+   **shopfront** (familiar, mirrors their site);
+2. **our global cat/subcat** (`category_id`/`subcategory_id`) → drives
+   cross-vendor **marketplace** browse/search.
+Split each vendor grouping into **true category** (→ shop section + global map)
+vs **campaign/use-case** (→ tag). Per-type category signal: A=breadcrumb,
+B=collection, C=none.
 
 ## #3 — Lou Lou Event Design  ·  https://www.louloueventdesign.com  ·  (Type C)
 WordPress. Org + BreadcrumbList JSON-LD, clean org description ("Luxury wedding
