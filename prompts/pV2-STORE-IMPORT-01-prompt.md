@@ -40,29 +40,31 @@ Build in the order below; each part is shippable on its own.
      *project* tier (`projects.tier`: starter/professional/premium) — don't touch
      that.
    - **`item_unit` / `item_time_unit`** are already codelists — **reuse**, but
-     **prune `item_unit` hard to 6** (more choice = more work for suppliers,
-     importers and the review grid): **each · head · platter · sqm · linear_m ·
-     cbm**. Each generic unit absorbs its synonyms (`each` ← unit/item/pair/set/
-     package/pallet/panel/letter/load; `head` ← cover; `platter` ← table; `sqm` ←
-     sqft). Deactivate the rest (`is_active=false`, keep rows for history) and
-     **re-point existing items** onto the kept unit. Also **remove the time
-     values (`day/hour/event/half_day/month`) from `item_unit`** — time lives
-     only in `item_time_unit`; `unit` stays the noun. Add **`meta.needs`** to the
-     6 kept values (appendix).
+     **prune `item_unit` hard to 5** (more choice = more work for suppliers,
+     importers and the review grid): **each · per guest · platter · time · size**
+     (code `per_guest`, label "Per Guest" — the old `head`/`cover` relabelled).
+     Each generic unit absorbs its synonyms (`each` ← unit/item/pair/set/package/
+     pallet/panel/letter/load; `per_guest` ← head/cover; `platter` ← table;
+     **`time` ← day/hour/event/half_day/month** — the granularity moves to
+     `item_time_unit`; **`size` ← sqm/sqft/linear_m/cbm** — all measured units
+     collapse to one). Deactivate the rest (`is_active=false`, keep rows for
+     history) and **re-point existing items** onto the kept unit. Add
+     **`meta.needs`** to the 5 kept values (appendix).
    - **`mood`** — Relaxed · Celebratory · Impressive · Sophisticated · Intimate
      (hidden in UI for now; classifier-fed later).
    - **`item_attribute`** — holds the structured extras that land in
      `items.attributes`; each value carries `meta { value_type:
      number|char|description|list, unit?, filterable? }`. V1 needs exactly one:
-     **`size`** (`value_type: number`, the measure for area/volume/length units).
+     **`size`** (`value_type: char` — a free-text **label**: "Small",
+     "23x6x18", "50 sqm". Descriptive only; it does NOT drive quantity/pricing).
 2. **`items.attributes`** default → `'[]'` (ordered array `[{key, value}]`; the
    `key` = the `item_attribute` code, e.g. `size`, resolved to label/type at
    render).
 3. **Write-path** — extend **item-edit** to set the **universal core** + the
-   unit-driven conditional (`serves` or `size`) + `time_unit` + `subcategory_id`
-   + tags + tier (today: category-only). This is the keystone — import writes
-   through it too. app-select reads the codelists; `subcategory_id` respects the
-   existing `parent_id = category_id` trigger.
+   unit-driven conditional (`serves` / `time_unit`+periods / `size`) +
+   `subcategory_id` + tags + tier (today: category-only). This is the keystone —
+   import writes through it too. app-select reads the codelists; `subcategory_id`
+   respects the existing `parent_id = category_id` trigger.
 
 ## Part B — Unit-driven fields (no profiles, no item_type) — BUILD FIRST
 Every item has a **universal core** (always shown). The chosen **`unit`** is the
@@ -79,28 +81,34 @@ what to reveal.
 
 **Unit-driven conditional** — `item_unit.meta.needs` names the one extra field:
 
-Unit is pruned to **6** (see Part A). `guest_count` is collected on the
+Unit is pruned to **5** (see Part A). `guest_count` is collected on the
 **project**, never the item.
 
 | unit | `meta.needs` | field the form adds | quantity at quote |
 |---|---|---|---|
-| **each** | — | (none) | `qty` (line) |
-| **head** | — | (none) | `guest_count` (project) |
+| **each** | — | (none) | `qty` (line) × base_price |
+| **per guest** | — | (none) | `guest_count` (project) × base_price |
 | **platter** | `serves` | **`serves`** appears | ⌈guests ÷ serves⌉ × base_price |
-| **sqm · linear_m · cbm** | `size` | **`size`** appears (→ `attributes`) | size × base_price |
+| **time** | `time_unit` | **`time_unit` + periods** appear | `qty` × base_price × periods |
+| **size** | `size` | **`size`** label appears (→ `attributes`) | `qty` × base_price (size is just a label) |
 
-**Time is an orthogonal multiplier, not a unit.** `time_unit` (own column, own
-codelist) is an optional toggle on ANY item — "is this time-based?". When set,
-the **time attributes** (`time_unit` + periods) appear and pricing gains
-`× periods`. A chair (`unit=each`) rented by the `day` needs no special unit —
-just `time_unit=day`.
+**`time` and `size` are units** (pricing bases you pick, not hidden toggles):
+- **time** reveals the `time_unit` dropdown (`item_time_unit`: day/hour/half_day/
+  month/event) + a periods input; pricing gains `× periods`. A rented chair =
+  `unit=time`, `time_unit=day`, qty 3.
+- **size** reveals a free-text **label** field ("Small", "23x6x18", "50 sqm")
+  stored in `items.attributes`; it's descriptive metadata and does **not** drive
+  quantity — size items price by `qty`, exactly like `each`.
+
+Units are mutually exclusive (V1) — a sized *and* timed thing (e.g. a marquee)
+picks `time` and puts the size in the name/description.
 
 **Pricing / quantity (all in `line-total.util.js`):**
 `count × base_price × (periods?) + install_cost`, where **count** =
-- `qty` — each/size (size's count = the `size` value),
-- `guest_count` — head/cover,
-- `⌈guest_count ÷ serves⌉` — platter/table;
-then `× periods` when `time_unit` is set; then `+ install_cost` (billed per
+- `qty` — each / size,
+- `guest_count` — per guest,
+- `⌈guest_count ÷ serves⌉` — platter;
+then `× periods` when `unit=time`; then `+ install_cost` (billed per
 `install_unit`).
 
 **Mandatory stance:** hard-required stays `name` + `category_id` only.
@@ -108,14 +116,15 @@ then `× periods` when `time_unit` is set; then `+ install_cost` (billed per
 `subcategory_id` warns.
 
 **Item-edit renders:** the universal core always, plus the one `unit.meta.needs`
-field (`serves` or `size`), plus the optional `time_unit` toggle, plus subcat
-(categories) + tags (tag table, by category) + tier. Save to the item.
+field (`serves` / `time_unit`+periods / `size`), plus subcat (categories) + tags
+(tag table, by category) + tier. Save to the item.
 
 **Pilot: the canapé tray** (`docs` example — `unit` should be **`platter`**,
 `serves=50`): pick `platter` → `serves` appears → auto-quantity ⌈guests÷serves⌉ →
-pricing + install. Then prove the other bases on one supplier: a `sqm` floor
-(size appears), an `each` glass-pack (nothing extra), an `each` + `time_unit=day`
-chair (time appears). One supplier/category holds them all.
+pricing + install. Then prove the other bases on one supplier: a **per guest**
+canapé (guest_count drives qty), an **each** glass-pack (nothing extra), a
+**time** chair rental (`time_unit=day` + periods), a **size** marquee (label).
+One supplier/category holds them all.
 
 ## Part C — Import pipeline (load → prepare → review → transfer)
 Oracle-style ETL as staging TABLES (not a schema).
@@ -155,25 +164,27 @@ Oracle-style ETL as staging TABLES (not a schema).
 
 ## Build order (ship in slices) — unit-driven core first
 1. **Seed codelists**: `item_tier` (+ backfill) · `mood` · `item_attribute`
-   (`size`); **add `meta.needs` to `item_unit`** + strip time values out of it.
+   (`size`); **prune `item_unit` to 5 + add `meta.needs`**; move time granularity
+   to `item_time_unit`.
 2. **Universal core + write-path**: item-edit renders the 10 core fields, and
-   `unit.meta.needs` reveals `serves` (platter/table) or `size` (measures);
-   `time_unit` is the optional multiplier toggle. Prove across a **mix** on one
-   supplier — a platter (serves → ⌈guests÷serves⌉), a `sqm` floor (size), an
-   `each` glass-pack, an `each` + `time_unit=day` chair (periods).
+   `unit.meta.needs` reveals `serves` (platter), `time_unit`+periods (time), or
+   `size` label (size). Prove across a **mix** on one supplier — a platter
+   (serves → ⌈guests÷serves⌉), a per-guest canapé (guest_count), an `each`
+   glass-pack, a `time` chair rental (periods), a `size` marquee (label).
 3. **Import** (C): resolve `unit` per row → enforce `meta.needs`; group by
    category for tags/subcat/review; PREPARE/REVIEW → TRANSFER + `import_batch_id`.
 Foundation (1-2) is codelist seed + one form; import (3) is the only heavy build.
 
 ## Acceptance (high level — expand per slice in the shipped file)
 - [ ] `item_tier`/`mood`/`item_attribute(size)` seeded; `items.tier` backfilled;
-      `item_unit` values carry `meta.needs` and time values removed from it.
-- [ ] item-edit shows the universal core always; picking a **platter/table** unit
-      reveals `serves`; a **measure** unit reveals `size` (→ `attributes`);
-      `time_unit` toggles the periods multiplier. Nothing extra for plain counts.
-- [ ] Quantity/pricing branch correctly per basis (esp. platter's
-      ⌈guests÷serves⌉ and the `× periods` + `install_cost` terms).
-- [ ] A **mixed** catalogue (platter + measure + count + rented-count in one
+      `item_unit` pruned to 5 with `meta.needs`; time granularity in
+      `item_time_unit`.
+- [ ] item-edit shows the universal core always; **platter** reveals `serves`;
+      **time** reveals `time_unit`+periods; **size** reveals the label field
+      (→ `attributes`). Nothing extra for `each` / `per guest`.
+- [ ] Quantity/pricing branch correctly per unit (esp. platter's ⌈guests÷serves⌉,
+      time's `× periods`, and the `+ install_cost` term).
+- [ ] A **mixed** catalogue (platter + per-guest + each + time + size in one
       supplier) each gets the right field + math.
 - [ ] Import resolves unit → enforces `meta.needs` per row; a mixed-category xls
       loads → prepares by category → transfers as `pending` items tagged with
@@ -187,11 +198,11 @@ Foundation (1-2) is codelist seed + one form; import (3) is the only heavy build
 
 ## Concerns not in spec
 Standard section. Flag: the `items.attributes` default flip; pruning `item_unit`
-to 6 + stripping time values (data re-point for affected items); and any
-migrate-schemas additions (import tables, `items.import_batch_id`).
+to 5 + moving time granularity to `item_time_unit` (data re-point for affected
+items); and any migrate-schemas additions (import tables, `items.import_batch_id`).
 
 **Profiles — deferred, gated on new attributes.** V1 needs none: the universal
-core + `unit.meta.needs` (`serves`/`size`) + `time_unit` cover every current
+core + the 5 units (`serves`/`time`/`size` via `meta.needs`) cover every current
 item (real `items` table confirmed). Profiles (category- or kind-scoped
 attribute *sets*) re-enter **only when `items.attributes` grows past `size`** —
 i.e. when we add spec attributes like power/material/dimensions that apply to
@@ -200,32 +211,32 @@ this one. Don't build profile machinery until a real new attribute demands it.
 
 ---
 
-## Appendix — `item_unit.meta.needs` (paste-ready)
-No new codelist — a `meta` edit on the existing `item_unit` values. `needs` is
-`null` for plain counts, `"serves"` for portion units, `"size"` for measures.
+## Appendix — the 5 units + `meta.needs` (paste-ready)
+No new codelist — prune the existing `item_unit` to 5 and set `meta.needs` on
+each. `needs` = `null` (nothing extra), `"serves"`, `"time"` (→ time_unit +
+periods), or `"size"` (→ free-text label in `attributes`).
 
-Keep 6; deactivate the rest (`is_active=false`, keep rows for history) and
+Keep 5; deactivate the rest (`is_active=false`, keep rows for history) and
 re-point existing items.
 
 | code | label | `meta.needs` | absorbs (deactivate + re-point) |
 |---|---|---|---|
 | each | Each | — | unit · item · pair · set · package · pallet · panel · letter · load |
-| head | Head | — | cover |
+| per_guest | Per Guest | — | head · cover |
 | platter | Platter | `serves` | table |
-| sqm | Square Metres | `size` | sqft |
-| linear_m | Linear Metres | `size` | — |
-| cbm | Cubic Metres | `size` | — |
+| time | Time | `time` | day · hour · event · half_day · month |
+| size | Size | `size` | sqm · sqft · linear_m · cbm |
 
-**Removed from `item_unit`** (move to `item_time_unit` only): `day`, `hour`,
-`event`, `half_day`, `month`. `unit` = the noun; `time_unit` = the optional
-periods multiplier.
+`item_time_unit` stays as the **time granularity** shown when `unit=time`
+(day/hour/half_day/month/event).
 
 **`item_attribute` seed (V1 = one value):**
 | code | label | meta |
 |---|---|---|
-| size | Size | `{ "value_type": "number", "filterable": true }` |
+| size | Size | `{ "value_type": "char", "filterable": false }` |
 
-Quantity/pricing inputs come from context: `periods` = event duration /
-line input, `guest_count` = project, `serves`/`size` = the item — so
-`line-total.util.js` selects the count basis from the unit and layers
-`× periods` + `install_cost`.
+Quantity/pricing inputs come from context: `periods` = line/event input,
+`guest_count` = project, `serves` = the item; `size` is a descriptive label only.
+`line-total.util.js` picks the count basis from the unit (`qty` for each/size,
+`guest_count` for per_guest, ⌈guests÷serves⌉ for platter), layers `× periods`
+when `unit=time`, then `+ install_cost`.
