@@ -30,9 +30,13 @@ Build in the order below; each part is shippable on its own.
 ## Part A — Foundations (seed + write-path)
 1. **Seed codelists** via `codelists-seed.js` (`reference_codelists` +
    `_values`):
-   - **`tier`** — ordered: Budget · Standard · Premium · Luxury · Aim for the
-     Moon (by `sort_order`). Backfill `items.tier`: `basic→Budget`,
-     `mid→Standard`, `premium→Premium`; leave nulls.
+   - **`item_tier`** (NEW codelist, consumes `items.tier`) — ordered: Budget ·
+     Standard · Premium · Luxury · Aim for the Moon (by `sort_order`). Backfill
+     `items.tier`: `basic→Budget`, `mid→Standard`, `premium→Premium`; leave
+     nulls. NB distinct from the existing **`budget_tier`** codelist, which is the
+     *project* tier (`projects.tier`: starter/professional/premium) — don't touch
+     that. `unit`/`time_unit` are already codelists (`item_unit`, `item_time_unit`)
+     — reuse, don't recreate.
    - **`mood`** — Relaxed · Celebratory · Impressive · Sophisticated · Intimate
      (hidden in UI for now; classifier-fed later).
    - **`item_attribute`** — each value is an attribute (`dimension`, `material`,
