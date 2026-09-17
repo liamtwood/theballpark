@@ -47,30 +47,38 @@ Build in the order below; each part is shippable on its own.
    profiles and import both write through it. app-select reads the codelists;
    `subcategory_id` respects the existing `parent_id = category_id` trigger.
 
-## Part B — Item Profiles (the attributes available per category) — BUILD FIRST
-**A profile = the attributes available for a category.** Nothing else — because
-the rest is already handled: **tags** are category-scoped in the `tag` table,
-**tier** is universal, **subcategory** is the category's children. The only thing
-that needs a profile is *which attributes* apply, since an attribute like
-`dimension` spans several categories and isn't otherwise category-scoped.
+## Part B — `item_type` (the commercial archetype) — BUILD FIRST
+The "profile" collapses to a single **derivable `item_type`** on the item —
+**Purchase · Rent · Service · Food** — not per-category machinery. It's what the
+item is *commercially* (a fridge and a par-can are both **Rent**), and everything
+(pricing, quantity, which fields show) keys off it.
 
-- **`item_attribute` codelist** = the attribute *dictionary* — `dimension`,
-  `serves`, `material`… each defined ONCE (`meta` = `{ value_type, unit?,
-  required?, filterable? }`).
-- **`item_profile` codelist** = one value per category, `code` = the category
-  (e.g. `catering`), `meta` = `{ attributes: [item_attribute codes] }` — the
-  attributes available for that category. It *references* the dictionary; it
-  never redefines an attribute (so `dimension` stays single-source).
-- **item-edit composes the form** from: subcat (categories) + tags (tag table,
-  by category) + tier (universal) + **attributes (the profile)**.
-- Everything (tier · mood · attributes · profiles) is a codelist — one
-  mechanism, one admin, one "should we add?" gate.
-- **Item-edit renders the profile** — for the item's category, show its subcat
-  select + applicable tag dimensions + tier + the profile's spec attributes
-  (typed inputs; `list` → app-select). Save to `items.attributes` + the tag
-  junction + `tier`/`subcategory_id`.
-- **Pilot: Catering** — build ONE profile end-to-end and prove item-edit before
-  generalising. Required attributes **warn**, don't block publish.
+- **`item_type` codelist** (same `reference_codelists` engine): values
+  Purchase / Rent / Service / Food, each `meta` = behaviour flags
+  `{ shows: [serves|time_unit], quantity_rule, pricing_rule }`.
+- **`items.item_type`** — new field (a codelist value). NB `kind` is taken by the
+  shelved composition work — use a new column.
+- **Set it by pick-or-derive:** manual create → user picks; import → **derive**:
+  `time_unit∈(day,week)→Rent`, `unit=hour→Service`, `serves present→Food`, else
+  `Purchase` (confirmable in the review grid).
+- **Behaviour keys off it** (uses ONLY existing fields):
+  - Purchase → qty × base_price
+  - Rent → qty × base_price × periods (`time_unit`)
+  - Food → ⌈guests ÷ `serves`⌉ × base_price (auto-quantity)
+  - Service → base_price × hours × people (`time_unit`=hour)
+  - item-edit shows `serves` for Food, `time_unit` for Rent/Service; everything
+    else is universal.
+- **Spec attributes** (`dimension`, `material`, `power`…) are a **later,
+  separate** concern — they live in `items.attributes` (JSONB) when a category
+  needs them, via an `item_attribute` codelist. NOT required for V1.
+- **Item-edit renders** — the universal fields always, plus the `item_type`-
+  driven ones (`serves` for Food, `time_unit` for Rent/Service), plus subcat
+  (categories) + tags (tag table, by category) + tier (universal). Save to the
+  item.
+- **Pilot: Catering (= the Food type)** — prove `item_type` end-to-end on
+  Catering first: pick/derive → `serves` shows → auto-quantity (⌈guests ÷
+  serves⌉) → pricing. Catering is the unique/richest type; the generic
+  Purchase/Rent/Service follow from the same mechanism.
 
 ## Part C — Import pipeline (load → prepare → review → transfer)
 Oracle-style ETL as staging TABLES (not a schema).
@@ -80,9 +88,9 @@ Oracle-style ETL as staging TABLES (not a schema).
    `import_rows` (all-nullable strings). Only structural/delimiter errors fail.
    The file carries a **category column per row**.
 3. **PREPARE — by category.** Group rows by category (validate against the 15
-   macros → error/quarantine if bad); per group **apply that category's
-   profile**; determine attributes (cast by `value_type`), tags, tier,
-   subcategory. Outcomes per row: **clean · warning · error · quarantine** with
+   macros → error/quarantine if bad); **derive `item_type`** (from unit/serves/
+   time_unit) per row; determine tags, tier, subcategory (+ any spec attributes
+   later). Outcomes per row: **clean · warning · error · quarantine** with
    `validation_notes`.
 4. **REVIEW grid — by category, one at a time.** Fix inline; resolve quarantine.
    **"Should we add?" alerts** — when a row implies a **subcat / tag / tier /
@@ -107,23 +115,30 @@ Oracle-style ETL as staging TABLES (not a schema).
 
 ---
 
-## Build order (ship in slices) — profiles first
-1. **Seed all the codelists** (A1): `tier` (+ backfill) · `mood` · `item_attribute`
-   (incl. `dimension`) · **`item_profile`** (per-category composition in `meta`).
-2. **Write-path** (A3 + B): item-edit reads the item's category → its
-   `item_profile` → renders subcat + tags + tier + attributes → saves. Prove it
-   on **Catering** first.
-3. **Import** (C): staging + LOAD → PREPARE/REVIEW (Catering, applying its
-   profile) → TRANSFER + `import_batch_id` → generalise to other categories.
-The whole foundation (steps 1-2) is just codelist seed data + one form; the
-import (step 3) is the only heavy build.
+## Build order (ship in slices) — item_type first
+1. **Seed codelists**: `tier` (+ backfill) · `mood` · **`item_type`**
+   (Purchase/Rent/Service/Food + behaviour `meta`). (`item_attribute`/`dimension`
+   deferred — not V1.)
+2. **`items.item_type` + write-path**: item-edit sets `item_type` **per item**
+   (independent of category); it drives `serves`/`time_unit` visibility +
+   pricing/quantity. Prove across a **mix** — a Food platter, a Rent tablecloth,
+   a Purchase glass-pack, a Service bartender — *one supplier/category can hold
+   all four*.
+3. **Import** (C): **derive `item_type` per row** (from unit/serves/time_unit,
+   NOT category); group by category only for tags/subcat/review; PREPARE/REVIEW →
+   TRANSFER + `import_batch_id`.
+Foundation (1-2) is codelist seed + one form; import (3) is the only heavy build.
 
 ## Acceptance (high level — expand per slice in the shipped file)
-- [ ] `tier`/`mood`/`item_attribute` seeded as codelists; `items.tier` backfilled.
-- [ ] item-edit writes subcategory_id + tags + tier + attributes via codelists.
-- [ ] Catering profile renders + saves end-to-end.
-- [ ] A mixed-category xls loads → prepares by category → reviewable → transfers
-      as `pending` items tagged with `import_batch_id`.
+- [ ] `tier`/`mood`/`item_type` seeded as codelists (item_type carries behaviour
+      meta); `items.tier` backfilled.
+- [ ] item-edit sets `item_type` per item (category-independent); `serves` shows
+      for Food, `time_unit` for Rent/Service; pricing/quantity branch per type.
+- [ ] A **mixed** catalogue (Food + Rent + Purchase items in one supplier) each
+      gets the right type + behaviour (esp. Food's ⌈guests÷serves⌉ auto-qty).
+- [ ] Import derives `item_type` per row (category-agnostic); a mixed-category
+      xls loads → prepares by category → transfers as `pending` items tagged with
+      `import_batch_id`.
 - [ ] "Should we add?" adds a codelist/tag/subcat value (human-gated); nothing
       auto-mints.
 - [ ] SKU upsert + name-dedupe behave; images match + promote with
