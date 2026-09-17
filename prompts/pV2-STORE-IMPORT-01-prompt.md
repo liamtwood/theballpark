@@ -47,15 +47,23 @@ Build in the order below; each part is shippable on its own.
    profiles and import both write through it. app-select reads the codelists;
    `subcategory_id` respects the existing `parent_id = category_id` trigger.
 
-## Part B — Item Profiles (compose the primitives) — BUILD THIS FIRST
-A **profile = the item-type form for a category** — it *composes* existing
-codelist primitives, it does not define new ones. **A profile is itself a
-codelist** (same `reference_codelists` engine — no separate table/machinery).
-- **`item_profile`** codelist: one value per category, `code` = the category
-  (e.g. `catering`), `meta` = `{ attributes: [item_attribute codes], tags:
-  [tag dimensions], tier: true, subcategory: true }` — i.e. which primitives that
-  category's items use.
-- Everything (tier · mood · attributes · **profiles**) is a codelist — one
+## Part B — Item Profiles (the attributes available per category) — BUILD FIRST
+**A profile = the attributes available for a category.** Nothing else — because
+the rest is already handled: **tags** are category-scoped in the `tag` table,
+**tier** is universal, **subcategory** is the category's children. The only thing
+that needs a profile is *which attributes* apply, since an attribute like
+`dimension` spans several categories and isn't otherwise category-scoped.
+
+- **`item_attribute` codelist** = the attribute *dictionary* — `dimension`,
+  `serves`, `material`… each defined ONCE (`meta` = `{ value_type, unit?,
+  required?, filterable? }`).
+- **`item_profile` codelist** = one value per category, `code` = the category
+  (e.g. `catering`), `meta` = `{ attributes: [item_attribute codes] }` — the
+  attributes available for that category. It *references* the dictionary; it
+  never redefines an attribute (so `dimension` stays single-source).
+- **item-edit composes the form** from: subcat (categories) + tags (tag table,
+  by category) + tier (universal) + **attributes (the profile)**.
+- Everything (tier · mood · attributes · profiles) is a codelist — one
   mechanism, one admin, one "should we add?" gate.
 - **Item-edit renders the profile** — for the item's category, show its subcat
   select + applicable tag dimensions + tier + the profile's spec attributes
