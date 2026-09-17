@@ -54,20 +54,21 @@ item is *commercially* (a fridge and a par-can are both **Rent**), and everythin
 (pricing, quantity, which fields show) keys off it.
 
 - **`item_type` codelist** (same `reference_codelists` engine): values
-  Purchase / Rent / Service / Food, each `meta` = behaviour flags
-  `{ shows: [serves|time_unit], quantity_rule, pricing_rule }`.
-- **`items.item_type`** — new field (a codelist value). NB `kind` is taken by the
-  shelved composition work — use a new column.
-- **Set it by pick-or-derive:** manual create → user picks; import → **derive**:
-  `time_unit∈(day,week)→Rent`, `unit=hour→Service`, `serves present→Food`, else
-  `Purchase` (confirmable in the review grid).
+  **All · Catering · Purchase · Rent · Service**, each `meta` = behaviour flags
+  `{ shows: [serves|time_unit], quantity_rule, pricing_rule }`. `All` is the base
+  (universal fields, default); the others specialise on top.
+- **`items.item_type`** — new column (additive, nullable; a codelist value). NB
+  `kind` is taken by the shelved composition work — use `item_type`.
+- **Set it by pick-or-derive:** manual create → app-select; import → **derive**:
+  `serves present→Catering`, `time_unit∈(day,week)→Rent`, `unit=hour→Service`,
+  else `Purchase` (default `All`; all confirmable in the review grid).
 - **Behaviour keys off it** (uses ONLY existing fields):
-  - Purchase → qty × base_price
+  - All / Purchase → qty × base_price
   - Rent → qty × base_price × periods (`time_unit`)
-  - Food → ⌈guests ÷ `serves`⌉ × base_price (auto-quantity)
+  - Catering → ⌈guests ÷ `serves`⌉ × base_price (auto-quantity)
   - Service → base_price × hours × people (`time_unit`=hour)
-  - item-edit shows `serves` for Food, `time_unit` for Rent/Service; everything
-    else is universal.
+  - item-edit shows `serves` for Catering, `time_unit` for Rent/Service;
+    everything else is universal.
 - **Spec attributes** (`dimension`, `material`, `power`…) are a **later,
   separate** concern — they live in `items.attributes` (JSONB) when a category
   needs them, via an `item_attribute` codelist. NOT required for V1.
