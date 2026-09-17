@@ -47,12 +47,16 @@ Build in the order below; each part is shippable on its own.
    profiles and import both write through it. app-select reads the codelists;
    `subcategory_id` respects the existing `parent_id = category_id` trigger.
 
-## Part B — Item Profiles (compose the primitives)
+## Part B — Item Profiles (compose the primitives) — BUILD THIS FIRST
 A **profile = the item-type form for a category** — it *composes* existing
-codelist primitives, it does not define new ones.
-- **`item_profile`** codelist (or a light config): one entry per category, `meta`
-  = `{ attributes: [item_attribute codes], tags: [dimensions], tier: true }` —
-  i.e. which attributes/tags apply to that category.
+codelist primitives, it does not define new ones. **A profile is itself a
+codelist** (same `reference_codelists` engine — no separate table/machinery).
+- **`item_profile`** codelist: one value per category, `code` = the category
+  (e.g. `catering`), `meta` = `{ attributes: [item_attribute codes], tags:
+  [tag dimensions], tier: true, subcategory: true }` — i.e. which primitives that
+  category's items use.
+- Everything (tier · mood · attributes · **profiles**) is a codelist — one
+  mechanism, one admin, one "should we add?" gate.
 - **Item-edit renders the profile** — for the item's category, show its subcat
   select + applicable tag dimensions + tier + the profile's spec attributes
   (typed inputs; `list` → app-select). Save to `items.attributes` + the tag
@@ -95,10 +99,16 @@ Oracle-style ETL as staging TABLES (not a schema).
 
 ---
 
-## Build order (ship in slices)
-A1 seed codelists + backfill tier → A3 write-path → B pilot Catering profile →
-C staging + LOAD → C PREPARE/REVIEW (Catering) → C TRANSFER + provenance → then
-generalise profiles to the other categories.
+## Build order (ship in slices) — profiles first
+1. **Seed all the codelists** (A1): `tier` (+ backfill) · `mood` · `item_attribute`
+   (incl. `dimension`) · **`item_profile`** (per-category composition in `meta`).
+2. **Write-path** (A3 + B): item-edit reads the item's category → its
+   `item_profile` → renders subcat + tags + tier + attributes → saves. Prove it
+   on **Catering** first.
+3. **Import** (C): staging + LOAD → PREPARE/REVIEW (Catering, applying its
+   profile) → TRANSFER + `import_batch_id` → generalise to other categories.
+The whole foundation (steps 1-2) is just codelist seed data + one form; the
+import (step 3) is the only heavy build.
 
 ## Acceptance (high level — expand per slice in the shipped file)
 - [ ] `tier`/`mood`/`item_attribute` seeded as codelists; `items.tier` backfilled.
