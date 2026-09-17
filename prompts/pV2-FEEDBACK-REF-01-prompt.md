@@ -22,9 +22,9 @@ idea as project `ref` (BP-019) and message `ref_code` (WA-001).
   the `F-` stream (test cases keep their UUID / TC identity). Folders
   (`object_type='folder'`) don't get a ref — skip them.
 
-**Already seeded (do NOT overwrite):** the `ref` column exists, and **17 epics
-`EP-00001…EP-00017`** (the v0.1.0 base release) are already assigned. Chat added
-the column + these rows manually. The `EP-` sequence must continue **from 18**;
+**Already seeded (do NOT overwrite):** the `ref` column exists, and **19 epics
+`EP-00001…EP-00019`** (the v0.1.0 base release) are already assigned. Chat added
+the column + these rows manually. The `EP-` sequence must continue **from 20**;
 the `F-` sequence starts fresh. The backfill must skip any row that already has
 a `ref`.
 
@@ -39,10 +39,10 @@ a `ref`.
   ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS ref VARCHAR(16);
   ```
 - **Two** sequences (concurrency-safe, no locks). Set `feedback_epic_seq` to
-  start past the seeded epics (currently 17):
+  start past the seeded epics (currently 19):
   ```sql
   CREATE SEQUENCE IF NOT EXISTS shared.feedback_ref_seq;                 -- F-
-  CREATE SEQUENCE IF NOT EXISTS shared.feedback_epic_seq START WITH 18;  -- EP-
+  CREATE SEQUENCE IF NOT EXISTS shared.feedback_epic_seq START WITH 20;  -- EP-
   ```
   (If the sequence already exists, `setval` it to `max(EP number)` so it never
   re-issues an assigned EP-.)

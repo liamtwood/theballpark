@@ -16,10 +16,8 @@
   .wrap{max-width:1000px;margin:0 auto;padding:36px 20px 80px}
   .hero h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:0}
   .hero p{color:var(--ink-2);margin:6px 0 24px;font-size:15px}
-
   .layout{display:grid;grid-template-columns:250px 1fr;gap:24px;align-items:start}
 
-  /* LEFT — release hierarchy */
   .rail{position:sticky;top:20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:10px}
   .grp{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 12px 6px;display:flex;justify-content:space-between;align-items:center}
   .grp .cnt{background:#f1ece8;color:var(--ink-2);border-radius:999px;padding:1px 8px;font-size:11px}
@@ -31,7 +29,6 @@
   .relbtn .rn{font-size:12.5px;color:var(--ink-2);margin-top:1px}
   .relbtn .rd{font-size:11.5px;color:var(--muted);margin-top:3px}
 
-  /* RIGHT — detail */
   .detail{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 26px;min-height:400px}
   .rel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding-bottom:16px;border-bottom:1px solid var(--line)}
   .rel-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
@@ -44,16 +41,19 @@
   .env{display:inline-block;margin-top:7px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ok);background:var(--new-bg);padding:3px 9px;border-radius:999px}
   .summary{font-size:14.5px;color:var(--ink-2);margin:16px 0 2px}
 
-  .area{margin-top:20px}
-  .area-h{display:flex;align-items:center;gap:9px;margin-bottom:8px}
-  .area-ic{width:26px;height:26px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex-shrink:0}
-  .area-ic svg{width:15px;height:15px}
-  .area-name{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
-  .entry{display:flex;gap:11px;padding:7px 0;align-items:flex-start}
-  .tag{flex-shrink:0;font-size:10.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:3px 8px;border-radius:6px;margin-top:1px;min-width:64px;text-align:center}
+  /* GROUP → area/epic entries */
+  .group{margin-top:22px}
+  .group-h{display:flex;align-items:center;gap:10px;margin-bottom:4px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  .group-ic{width:28px;height:28px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex-shrink:0}
+  .group-ic svg{width:16px;height:16px}
+  .group-name{font-size:15px;font-weight:800;letter-spacing:-.01em;color:var(--ink)}
+  .entry{display:flex;gap:9px;padding:9px 0;align-items:flex-start;border-bottom:1px solid #f6f2ef}
+  .entry:last-child{border-bottom:none}
+  .tag{flex-shrink:0;font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:3px 7px;border-radius:6px;margin-top:2px}
   .t-new{background:var(--new-bg);color:var(--new-fg)}
   .t-imp{background:var(--imp-bg);color:var(--imp-fg)}
   .t-fix{background:var(--fix-bg);color:var(--fix-fg)}
+  .epref{flex-shrink:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:3px 7px;border-radius:6px;margin-top:2px}
   .entry p{margin:0;font-size:14.5px;color:var(--ink)}
   .entry b{font-weight:700}
 
@@ -64,65 +64,88 @@
   .ref{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:6px;white-space:nowrap}
   .who{font-size:12.5px;color:var(--ink-2);white-space:nowrap}
   .tick{color:var(--ok);font-weight:700;white-space:nowrap}
-
   @media(max-width:720px){.layout{grid-template-columns:1fr}.rail{position:static}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="hero"><h1>What's new</h1><p>Pick a release on the left to see what changed.</p></div>
-
   <div class="layout">
-    <!-- LEFT: hierarchy -->
     <nav class="rail">
       <div class="grp">On preview <span class="cnt">2</span></div>
-      <button class="relbtn on" data-rel="v011"><div class="rv">v0.1.1</div><div class="rn">Bug fixes</div><div class="rd">16 Sep 2026 · 14:16</div></button>
-      <button class="relbtn" data-rel="v010"><div class="rv">v0.1.0</div><div class="rn">Ballpark Base Release</div><div class="rd">15 Sep 2026 · 09:40</div></button>
+      <button class="relbtn on" data-rel="v011"><div class="rv">v0.1.1</div><div class="rn">Bug fixes</div><div class="rd">16-Sep-2026 · 14:16</div></button>
+      <button class="relbtn" data-rel="v010"><div class="rv">v0.1.0</div><div class="rn">Ballpark Base Release</div><div class="rd">15-Sep-2026 · 09:40</div></button>
       <div class="grp">On dev — not yet promoted <span class="cnt">0</span></div>
       <div style="padding:8px 12px;font-size:12.5px;color:var(--muted)">Dev &amp; preview are level.</div>
     </nav>
-
-    <!-- RIGHT: detail -->
     <section class="detail" id="detail"></section>
   </div>
 </div>
 
 <script>
+  const IC = {
+    users:'<path d=\"M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13A4 4 0 0116 11\"/>',
+    folder:'<path d=\"M4 5h16M4 12h16M4 19h10\"/>',
+    store:'<path d=\"M3 9l1-5h16l1 5M5 9v11h14V9M9 13h6\"/>',
+    shield:'<path d=\"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z\"/>'
+  };
+  function entry(ref, area, text, type){ type=type||'new'; const cls={new:'t-new',improved:'t-imp',fixed:'t-fix'}[type]; const lbl={new:'New',improved:'Improved',fixed:'Fixed'}[type];
+    return '<div class=\"entry\"><span class=\"tag '+cls+'\">'+lbl+'</span><span class=\"epref\">'+ref+'</span><p><b>'+area+'</b> — '+text+'</p></div>'; }
+  function group(name, icon, rows){ return '<div class=\"group\"><div class=\"group-h\"><span class=\"group-ic\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\">'+IC[icon]+'</svg></span><span class=\"group-name\">'+name+'</span></div>'+rows.join('')+'</div>'; }
+
   const RELEASES = {
     v011: `
       <div class="rel-head">
         <div><div class="rel-title"><span class="ver">v0.1.1</span><span class="rel-name">Bug fixes</span></div>
         <div class="rel-sub">built from v2.469 · from Beth's first review</div></div>
-        <div class="rel-meta"><div class="date">16 Sep 2026</div><div class="time">14:16 BST</div><div class="env">Preview</div></div>
+        <div class="rel-meta"><div class="date">16-Sep-2026</div><div class="time">14:16 BST</div><div class="env">Preview</div></div>
       </div>
       <p class="summary">Five fixes from the first client review — a cleaner cart, clearer cards, and a smoother message-suppliers flow.</p>
       <table class="fixes"><thead><tr><th>Ref</th><th>Fixed</th><th>Reported by</th><th></th></tr></thead><tbody>
-        <tr><td><span class="ref">F-00087</span></td><td>Cart shows a single <b>Go with this Ballpark</b> button — no duplicate actions.</td><td class="who">Beth Pizey</td><td class="tick">✓ Fixed</td></tr>
-        <tr><td><span class="ref">F-00088</span></td><td><b>Supplier name</b> now shows on estimate rows and marketplace cards.</td><td class="who">Beth Pizey</td><td class="tick">✓ Fixed</td></tr>
-        <tr><td><span class="ref">F-00089</span></td><td><b>Back</b> from a quote/SOW document returns you to Reports.</td><td class="who">Beth Pizey</td><td class="tick">✓ Fixed</td></tr>
+        <tr><td><span class="ref">F-00087</span></td><td>Cart shows a single <b>Go with this Ballpark</b> button.</td><td class="who">Beth Pizey</td><td class="tick">✓ Fixed</td></tr>
+        <tr><td><span class="ref">F-00088</span></td><td><b>Supplier name</b> on estimate rows and marketplace cards.</td><td class="who">Beth Pizey</td><td class="tick">✓ Fixed</td></tr>
+        <tr><td><span class="ref">F-00089</span></td><td><b>Back</b> from a quote/SOW document returns to Reports.</td><td class="who">Beth Pizey</td><td class="tick">✓ Fixed</td></tr>
         <tr><td><span class="ref">F-00090</span></td><td><b>Inbox</b> tab now sits next to Overview.</td><td class="who">Beth Pizey</td><td class="tick">✓ Fixed</td></tr>
-        <tr><td><span class="ref">F-00091</span></td><td>Messaging suppliers drops you on the <b>live Overview</b>, Inbox flagged.</td><td class="who">Beth Pizey</td><td class="tick">✓ Fixed</td></tr>
+        <tr><td><span class="ref">F-00091</span></td><td>Messaging suppliers lands on the <b>live Overview</b>.</td><td class="who">Beth Pizey</td><td class="tick">✓ Fixed</td></tr>
       </tbody></table>`,
-    v010: `
-      <div class="rel-head">
-        <div><div class="rel-title"><span class="ver">v0.1.0</span><span class="rel-name">Ballpark Base Release</span></div>
-        <div class="rel-sub">built from v2.464 · the foundations</div></div>
-        <div class="rel-meta"><div class="date">15 Sep 2026</div><div class="time">09:40 BST</div><div class="env">Preview</div></div>
-      </div>
-      <p class="summary">The first pre-release of the Ballpark event-costing marketplace — for agents, suppliers and admins.</p>
-      <div class="area"><div class="area-h"><span class="area-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16M4 12h16M4 19h10"/></svg></span><span class="area-name">Projects</span></div>
-        <div class="entry"><span class="tag t-new">New</span><p><b>Build a project from a brief</b> — paste a client brief and the AI drafts the project; workspace tabs for Overview, Inbox, Ballpark Cost, Marketplace &amp; Reports.</p></div>
-        <div class="entry"><span class="tag t-new">New</span><p><b>Ballpark the cost</b> — an estimate with quantities, margin, contingency, VAT &amp; insurance.</p></div></div>
-      <div class="area"><div class="area-h"><span class="area-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l1-5h16l1 5M5 9v11h14V9M9 13h6"/></svg></span><span class="area-name">Marketplace</span></div>
-        <div class="entry"><span class="tag t-new">New</span><p><b>Browse by category</b> with dense item cards (Supplier · City) and Quick View — globally and inside a project.</p></div></div>
-      <div class="area"><div class="area-h"><span class="area-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16v13H4zM9 7V4h6v3"/></svg></span><span class="area-name">For suppliers</span></div>
-        <div class="entry"><span class="tag t-new">New</span><p><b>My Shop &amp; Shopfront</b> — list products and run your brand page, with a home dashboard of what needs you.</p></div></div>
-      <div class="area"><div class="area-h"><span class="area-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6 6 .9-4.5 4.3 1 6.3L12 17l-5.5 2.5 1-6.3L3 8.9 9 8z"/></svg></span><span class="area-name">AI Agent</span></div>
-        <div class="entry"><span class="tag t-new">New</span><p><b>Brief → project</b> — parses a written brief into a structured project and matches marketplace items.</p></div></div>
-      <div class="area"><div class="area-h"><span class="area-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 100-6 3 3 0 000 6zM4 12a8 8 0 0116 0"/></svg></span><span class="area-name">Platform &amp; Admin</span></div>
-        <div class="entry"><span class="tag t-new">New</span><p><b>Approval</b> — admins approve item imagery before it goes live; text &amp; pricing edits don't force re-approval.</p></div>
-        <div class="entry"><span class="tag t-new">New</span><p><b>Security &amp; roles</b> — Google sign-in with org-based roles (agent / supplier / admin).</p></div></div>`
+    v010: null
   };
+
+  RELEASES.v010 = `
+    <div class="rel-head">
+      <div><div class="rel-title"><span class="ver">v0.1.0</span><span class="rel-name">Ballpark Base Release</span></div>
+      <div class="rel-sub">built from v2.464 · the foundations</div></div>
+      <div class="rel-meta"><div class="date">15-Sep-2026</div><div class="time">09:40 BST</div><div class="env">Preview</div></div>
+    </div>
+    <p class="summary">The first pre-release of the Ballpark event-costing marketplace — for agents, suppliers and admins.</p>`
+    + group('Organizations &amp; Roles','users',[
+        entry('EP-00001','Agent','build a project from a brief, ballpark the cost, message suppliers, quote the client.'),
+        entry('EP-00002','Supplier','list products, run a shop &amp; storefront, respond to quote requests.'),
+        entry('EP-00003','Admin','curate the taxonomy, approve items, manage roles &amp; codelists.'),
+        entry('EP-00004','Org','multi-tenant organisations — agencies &amp; suppliers as orgs; members via user_orgs with a derived role; org-scoped data.'),
+        entry('EP-00005','Profile','user profile &amp; account settings — your details, preferences and sign-in identity.'),
+      ])
+    + group('Project','folder',[
+        entry('EP-00006','Projects','AI-first creation from a brief; workspace tabs (Overview · Inbox · Ballpark Cost · Marketplace · Reports); cost estimate with margin, contingency, VAT &amp; insurance.'),
+        entry('EP-00007','Inbox','per-supplier message threads with an inbox landing and quote requests raised from a project.'),
+        entry('EP-00008','AI Agent','parses a written brief into a structured project and matches marketplace items.'),
+        entry('EP-00009','Clients','client records (company, address) attached to projects and reusable across them.'),
+        entry('EP-00018','SOW &amp; Invoice','client-facing quote document in an SOW layout (timeline, payment terms, special terms).'),
+      ])
+    + group('Marketplace','store',[
+        entry('EP-00010','Catalogue','browse by category → subcategory with dense item cards (Supplier · City) and Quick View; filters.'),
+        entry('EP-00011','Supplier Shopfront','My Shop (your products) and My Shopfront (your brand page), plus a supplier home dashboard.'),
+        entry('EP-00012','Items','catalogue items with per-unit or flat pricing, units, install cost, tier, and an image gallery.'),
+      ])
+    + group('Platform &amp; Admin','shield',[
+        entry('EP-00013','Taxonomy &amp; Categories','15 macro categories with curated subcategories; browse + admin curation.'),
+        entry('EP-00014','Approval','admins approve item imagery before it goes live; text &amp; pricing edits do not force re-approval.'),
+        entry('EP-00015','Codelists','centralised reference lists (statuses, units…) driving consistent dropdowns.'),
+        entry('EP-00016','Requirements Management','the tracking subsystem behind the roadmap — epics, requirements, enhancements, feedback &amp; QC test cases (EP-/F- refs, statuses, releases).'),
+        entry('EP-00017','Security &amp; Roles','Google sign-in; org-based roles with permissions re-derived per request.'),
+        entry('EP-00019','Coachmarks','in-app guided help — contextual tips that explain features as you go.'),
+      ]);
+
   const detail = document.getElementById('detail');
   function pick(key,btn){detail.innerHTML=RELEASES[key];document.querySelectorAll('.relbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
   document.querySelectorAll('.relbtn').forEach(b=>b.addEventListener('click',()=>pick(b.dataset.rel,b)));
