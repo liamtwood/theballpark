@@ -56,6 +56,12 @@ export const routes: Routes = [
           import('./pages/feedback/feedback-page.component').then((m) => m.FeedbackPageComponent),
       },
       {
+        // pV2-ABOUT-01 (FR-00207) — in-app About (app name / version / release).
+        path: 'about',
+        loadComponent: () =>
+          import('./pages/about/about.component').then((m) => m.AboutComponent),
+      },
+      {
         // Settings → Team (pV2-03). Admin-only on top of the shell's requiresOrgGuard.
         path: 'settings/team',
         canActivate: [adminGuard],

@@ -93,6 +93,15 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
             >
               What's new
             </a>
+            <!-- About — app name / version / release, links to What's new
+                 (pV2-ABOUT-01, FR-00207). -->
+            <a
+              routerLink="/about"
+              class="block w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md text-text no-underline hover:bg-fill"
+              (click)="menu.hide()"
+            >
+              About
+            </a>
             <!-- Feedback — report an issue + view your own (pV2-WHATSNEW-REDESIGN-01). -->
             <a
               routerLink="/feedback"
