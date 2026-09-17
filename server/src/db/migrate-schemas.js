@@ -1526,16 +1526,31 @@ const migrate = async () => {
       ALTER TABLE shared.feedback
         ADD COLUMN IF NOT EXISTS pages TEXT[] DEFAULT '{}';
 
-      -- pV2-FEEDBACK-REF-01: a short human ref (F-00001) so issues are
-      -- addressable in conversation/UI (like project ref / message ref_code).
-      -- Flat, global, type-INDEPENDENT sequence (reclassifying type never changes
-      -- the ref); issue rows only. Additive — nullable column + dedicated
-      -- sequence (concurrency-safe) + unique partial index.
+      -- pV2-FEEDBACK-REF-01: short human refs for the requirements tracker,
+      -- prefix-scoped by LEVEL — RV release · EP epic · FR requirement ·
+      -- BE bug/enhancement/question · TC test case. Five sequences; BE- is
+      -- type-INDEPENDENT (bug/enh/question share it, so reclassifying never
+      -- changes the ref). Non-Release folders get no ref. Additive — nullable
+      -- column + concurrency-safe sequences + unique partial index. The shared
+      -- schema is one cross-environment copy (public/preview/master share it).
       ALTER TABLE shared.feedback
-        ADD COLUMN IF NOT EXISTS ref VARCHAR(12);
-      CREATE SEQUENCE IF NOT EXISTS shared.feedback_ref_seq;
+        ADD COLUMN IF NOT EXISTS ref VARCHAR(16);
+      ALTER TABLE shared.feedback
+        ALTER COLUMN ref TYPE VARCHAR(16);
       CREATE UNIQUE INDEX IF NOT EXISTS uq_feedback_ref
         ON shared.feedback (ref) WHERE ref IS NOT NULL AND deleted_at IS NULL;
+      -- One sequence per prefix. START documents the seeded max+1; the setval
+      -- below re-aligns each to the live data so re-running migrate is a no-op.
+      CREATE SEQUENCE IF NOT EXISTS shared.feedback_rv_seq   START WITH 3;    -- RV-
+      CREATE SEQUENCE IF NOT EXISTS shared.feedback_epic_seq START WITH 20;   -- EP-
+      CREATE SEQUENCE IF NOT EXISTS shared.feedback_fr_seq   START WITH 207;  -- FR-
+      CREATE SEQUENCE IF NOT EXISTS shared.feedback_be_seq   START WITH 93;   -- BE-
+      CREATE SEQUENCE IF NOT EXISTS shared.feedback_tc_seq   START WITH 51;   -- TC-
+      SELECT setval('shared.feedback_rv_seq',   COALESCE((SELECT MAX(substring(ref from 4)::int) FROM shared.feedback WHERE ref ~ '^RV-[0-9]+$'), 2),   true);
+      SELECT setval('shared.feedback_epic_seq', COALESCE((SELECT MAX(substring(ref from 4)::int) FROM shared.feedback WHERE ref ~ '^EP-[0-9]+$'), 19),  true);
+      SELECT setval('shared.feedback_fr_seq',   COALESCE((SELECT MAX(substring(ref from 4)::int) FROM shared.feedback WHERE ref ~ '^FR-[0-9]+$'), 206), true);
+      SELECT setval('shared.feedback_be_seq',   COALESCE((SELECT MAX(substring(ref from 4)::int) FROM shared.feedback WHERE ref ~ '^BE-[0-9]+$'), 92),  true);
+      SELECT setval('shared.feedback_tc_seq',   COALESCE((SELECT MAX(substring(ref from 4)::int) FROM shared.feedback WHERE ref ~ '^TC-[0-9]+$'), 50),  true);
 
       -- shared.feedback_categories now holds 3 namespaces: folder, issue, area.
       -- Drop the single-column UNIQUE(name) constraint (auto-named

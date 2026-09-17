@@ -27,6 +27,39 @@
 ## Concerns not in spec
 - **Test-case exclusion** deviates from this prompt's prose ("Test Case … share the stream") in favour of the newer RELEASE-SEQUENCE runbook default (exclude) — confirmed by Liam. Numbering: 92 non-test issues, rainbow = F-00092.
 
+## Iteration — five prefix streams (2026-09-17, v0.1.2 bundle)
+**Triggered by:** rewritten prompt — supersede the single `F-` stream with the
+five level-scoped streams (RV→EP→FR→BE→TC). Data already migrated by chat.
+
+**What changed**
+- **`migrate-schemas.js`** — `ref` widened `VARCHAR(12) → VARCHAR(16)`; five
+  sequences created (`feedback_{rv,epic,fr,be,tc}_seq`) with documented `START`
+  values; each `setval`'d to `MAX(existing ref number for that prefix)` so the
+  migration is a safe no-op on re-run and always sits one past live data. Old
+  `feedback_ref_seq` left in place (now unused, harmless).
+- **`feedback.service.create()`** — ref stream chosen by **level**: `type='test_case'`
+  → `TC-`; category name `Release`→`RV-`, `Epic`→`EP-`, `Requirement`→`FR-`;
+  non-Release folder → no ref; everything else (issue bug/enh/question) → `BE-`.
+  Category name is looked up once (trusted mapping → sequence name inlined;
+  `nextval()` keeps assignment atomic). `BE-` is type-independent, so
+  reclassifying bug↔enh↔question never changes the ref (`patch()` never writes `ref`).
+- **`migrate-feedback-ref.js`** — rewritten to the five-stream rules; guarded
+  (only `ref IS NULL`), skips non-Release folders, idempotent.
+
+**Applied to DB** — `migrate-schemas` ran; sequences aligned to live data:
+BE→next 93, EP→20, FR→**209** (chat already added FR-00207/208), RV→3, TC→51.
+(The shared schema block succeeded; a later unrelated `message_item_id` step in
+migrate-schemas errored — pre-existing, not from this change — flagged below.)
+
+**Client** — no change: the report toast already renders `created.ref` and
+My-issues binds `f.ref`, so any prefix shows verbatim. What's New fix refs
+switch to `BE-` via the v0.1.1 note edit (see WHATSNEW iteration).
+
+**Concern:** `migrate-schemas.js` aborts later on `column "message_item_id" does
+not exist` (a different table's step) on this DB — pre-existing, unrelated to the
+feedback refs, but it means a full `db:migrate:schemas` run doesn't complete
+cleanly here. Worth a separate look before the next promote's schema step.
+
 ## QC notes
 (Liam)
 

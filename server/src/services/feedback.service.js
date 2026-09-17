@@ -125,6 +125,33 @@ async function create(data) {
   const pagesArr = Array.isArray(pages) && pages.length
     ? pages
     : (page_url ? [page_url] : []);
+  // pV2-FEEDBACK-REF-01: assign the ref stream by LEVEL, not by type. The
+  // level is the feedback_category name (Release / Epic / Requirement) or
+  // type='test_case'; everything else that is an issue (bug/enhancement/
+  // question) shares the type-INDEPENDENT BE- stream so reclassifying never
+  // changes the ref. Non-Release folders get no ref. The chosen sequence name
+  // is from a fixed trusted mapping (no user input), so it's safe to inline;
+  // nextval() keeps assignment atomic/concurrency-safe.
+  let catName = null;
+  if (feedback_category_id) {
+    const c = await pool.query('SELECT name FROM shared.feedback_categories WHERE id = $1', [feedback_category_id]);
+    catName = c.rows[0]?.name || null;
+  }
+  const objType = object_type || 'issue';
+  let refExpr = 'NULL';
+  if ((type || '') === 'test_case') {
+    refExpr = `'TC-' || lpad(nextval('shared.feedback_tc_seq')::text, 5, '0')`;
+  } else if (catName === 'Release') {
+    refExpr = `'RV-' || lpad(nextval('shared.feedback_rv_seq')::text, 5, '0')`;
+  } else if (catName === 'Epic') {
+    refExpr = `'EP-' || lpad(nextval('shared.feedback_epic_seq')::text, 5, '0')`;
+  } else if (catName === 'Requirement') {
+    refExpr = `'FR-' || lpad(nextval('shared.feedback_fr_seq')::text, 5, '0')`;
+  } else if (objType === 'folder') {
+    refExpr = 'NULL'; // non-Release folder — no ref
+  } else {
+    refExpr = `'BE-' || lpad(nextval('shared.feedback_be_seq')::text, 5, '0')`;
+  }
   const result = await pool.query(
     `INSERT INTO shared.feedback
        (category_id, subcategory_id, feedback_category_id, area_category_id,
@@ -133,13 +160,7 @@ async function create(data) {
         type, meeting_time, description, object_type, tags, area,
         priority, target_version, pages, status, ref)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, COALESCE($24, 'open'),
-       -- pV2-FEEDBACK-REF-01: issue rows get F-NNNNN from the dedicated sequence
-       -- (atomic, no locks). Folders get no ref; test cases are excluded from
-       -- the ref stream (QC artifacts, not referenceable issues — per the
-       -- RELEASE-SEQUENCE runbook default).
-       CASE WHEN COALESCE($18, 'issue') <> 'folder' AND COALESCE($15, '') <> 'test_case'
-            THEN 'F-' || lpad(nextval('shared.feedback_ref_seq')::text, 5, '0')
-            ELSE NULL END)
+       ${refExpr})
      RETURNING *`,
     [
       category_id || null, subcategory_id || null, feedback_category_id || null, area_category_id || null,
