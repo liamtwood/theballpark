@@ -1,8 +1,9 @@
-# Ballpark — Requirements Tracker (Feedback subsystem)
+# Ballpark — Requirements Management
+
+_Epic: **EP-00016** · Platform & Admin_
 
 The requirements-management + QC + feedback subsystem — the tool that tracks the
-product's own development *and* user feedback. It's epic **EP-00016 (Requirements
-Management)**, and it's tracking these very epics. Lives in the **`shared`
+product's own development *and* user feedback. It's tracking these very epics. Lives in the **`shared`
 schema** (cross-environment), so a `public`-only scan misses it.
 
 ## The hierarchy — RV → EP → FR → BE → TC
