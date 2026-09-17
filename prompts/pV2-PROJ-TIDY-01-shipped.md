@@ -70,7 +70,8 @@ legacy, unused in v2).
   cosmetic; the stand_* copy is gone.
 
 ## QC notes
-(Liam)
+QC pass (Liam, 2026-09-17). Basic **regression on project** (create/read/update)
+done — covers the destructive-drop risk on the hot path; no breakage.
 
 ## Chat audit
 (chat)

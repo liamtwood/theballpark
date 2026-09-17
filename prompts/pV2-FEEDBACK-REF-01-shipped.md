@@ -61,7 +61,7 @@ feedback refs, but it means a full `db:migrate:schemas` run doesn't complete
 cleanly here. Worth a separate look before the next promote's schema step.
 
 ## QC notes
-(Liam)
+Tested on localhost as part of the v0.1.2 bundle — QC pass (Liam, 2026-09-17).
 
 ## Chat audit
 (chat)

@@ -44,7 +44,7 @@
   it now reads as redundant (Liam's call).
 
 ## QC notes
-(Liam)
+Tested on localhost as part of the v0.1.2 bundle — QC pass (Liam, 2026-09-17).
 
 ## Chat audit
 (chat)

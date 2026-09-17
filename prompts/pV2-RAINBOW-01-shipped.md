@@ -46,7 +46,7 @@ deferred, needs the design decision on whether the gradient survives anywhere
 **Severity:** LOW (cosmetic; no functional impact).
 
 ## QC notes
-(Liam)
+Tested on localhost as part of the v0.1.2 bundle — QC pass (Liam, 2026-09-17).
 
 ## Chat audit
 (chat)

@@ -80,7 +80,7 @@ column, and the "New" chip dropped (a base release is all-New — redundant).
   acceptance criteria — skipped this pass; easy to add if wanted.
 
 ## QC notes
-(Liam)
+Tested on localhost as part of the v0.1.2 bundle — QC pass (Liam, 2026-09-17).
 
 ## Chat audit
 (chat)
