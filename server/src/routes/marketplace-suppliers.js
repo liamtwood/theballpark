@@ -15,6 +15,20 @@ const pool = require('../db/pool');
 const { PAGE_SIZE } = require('../schemas/marketplace-query.schema');
 const { SuppliersQuerySchema } = require('../schemas/marketplace-suppliers.schema');
 
+/** pV2-STORE-CAT-DISPLAY-01 — the item-visibility scope for a store's counts,
+ *  mirroring GET /api/marketplace/items: the OWNER of the store (and a ballpark
+ *  admin) sees their whole catalogue (draft/pending/inactive), so their counts
+ *  must too; everyone else sees live + approved only. Returns a SQL fragment
+ *  (no user input — orgId is the validated URL param, alias is a literal), or ''
+ *  for owner/admin. Keeps rail counts == the /items grid for the same scope. */
+function ownerVisibleFilter(req, orgId, alias = 'i') {
+  const isOwner = req.user?.org_id === orgId;
+  const isAdmin = req.user?.role === 'ballpark_admin';
+  return (isOwner || isAdmin)
+    ? ''
+    : `AND ${alias}.is_active AND ${alias}.approval_status = 'approved'`;
+}
+
 /** GET /api/marketplace/suppliers/options — lightweight supplier list for
  *  the filter dropdown (id, name, active-item count). */
 router.get('/suppliers/options', async (req, res, next) => {
@@ -98,12 +112,18 @@ router.get('/suppliers/:id', async (req, res, next) => {
       [id.data]
     );
     if (!r.rows.length) return res.status(404).json({ error: 'Supplier not found' });
+    // pV2-STORE-CAT-DISPLAY-01 — counts must match the /items list SCOPE, or the
+    // rail and the grid disagree. The owner of the store (and a ballpark admin)
+    // sees their whole catalogue in the list (draft/pending/inactive), so their
+    // counts must include those too; the public sees live+approved only. Also
+    // note: no c.is_active/deleted_at gate on the category — display follows the
+    // items (a category with ≥1 in-scope item shows, whatever its status).
+    const liveFilter = ownerVisibleFilter(req, id.data, 'i');
     const cats = await pool.query(
       `SELECT c.id, c.name, COUNT(i.id) AS item_count
          FROM items i
          JOIN categories c ON c.id = i.category_id
-        WHERE i.org_id = $1 AND i.deleted_at IS NULL
-          AND i.is_active AND i.approval_status = 'approved'
+        WHERE i.org_id = $1 AND i.deleted_at IS NULL ${liveFilter}
         GROUP BY c.id
         ORDER BY c.name ASC`,
       [id.data]
@@ -144,18 +164,23 @@ router.get('/suppliers/:id/subcategories', async (req, res, next) => {
     // Two row kinds, one shape: real subcats + a CATCH-ALL row per category
     // for the supplier's items that have a category but no subcat (the
     // screenshot's "Catering / 3 items" card). Catch-all drills cat-only.
+    // pV2-STORE-CAT-DISPLAY-01 — same owner/admin-aware scope as the /items list
+    // so the rail counts equal what the grid shows. Real subcats via JOIN on
+    // subcategory_id (status-agnostic on the category — a subcat shows iff it has
+    // ≥1 in-scope item), plus a catch-all row per category rolling up the
+    // uncategorised (subcategory_id IS NULL) items to their macro.
+    const liveOuter = ownerVisibleFilter(req, id.data, 'i');
+    const liveCover = ownerVisibleFilter(req, id.data, 'i2');
     const r = await pool.query(
       `SELECT sc.id, sc.name, sc.parent_id, false AS is_catch_all,
               COUNT(i.id) AS item_count,
               (SELECT i2.image_url FROM items i2
                 WHERE i2.org_id = $1 AND i2.subcategory_id = sc.id
-                  AND i2.deleted_at IS NULL AND i2.is_active
-                  AND i2.approval_status = 'approved' AND i2.image_url IS NOT NULL
+                  AND i2.deleted_at IS NULL ${liveCover} AND i2.image_url IS NOT NULL
                 ORDER BY i2.name ASC LIMIT 1) AS cover_url
          FROM items i
          JOIN categories sc ON sc.id = i.subcategory_id
-        WHERE i.org_id = $1 AND i.deleted_at IS NULL
-          AND i.is_active AND i.approval_status = 'approved'
+        WHERE i.org_id = $1 AND i.deleted_at IS NULL ${liveOuter}
         GROUP BY sc.id, sc.name, sc.parent_id
        UNION ALL
        SELECT c.id, c.name, c.id AS parent_id, true AS is_catch_all,
@@ -163,13 +188,12 @@ router.get('/suppliers/:id/subcategories', async (req, res, next) => {
               (SELECT i2.image_url FROM items i2
                 WHERE i2.org_id = $1 AND i2.category_id = c.id
                   AND i2.subcategory_id IS NULL
-                  AND i2.deleted_at IS NULL AND i2.is_active
-                  AND i2.approval_status = 'approved' AND i2.image_url IS NOT NULL
+                  AND i2.deleted_at IS NULL ${liveCover} AND i2.image_url IS NOT NULL
                 ORDER BY i2.name ASC LIMIT 1) AS cover_url
          FROM items i
          JOIN categories c ON c.id = i.category_id
         WHERE i.org_id = $1 AND i.subcategory_id IS NULL
-          AND i.deleted_at IS NULL AND i.is_active AND i.approval_status = 'approved'
+          AND i.deleted_at IS NULL ${liveOuter}
         GROUP BY c.id, c.name
         ORDER BY name ASC`,
       [id.data]
