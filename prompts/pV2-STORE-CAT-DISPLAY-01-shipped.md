@@ -43,5 +43,14 @@ QC pass (Liam, 2026-09-18): My Shop → Furniture & Fixtures shows **only Seatin
 "Banquet Chair Hire" (unassigned / not approved, so not in the marketplace)
 still shows under F&F (at the macro). "looks good to me for this fix."
 
+QC round 2 (Liam, 2026-09-18) — full lifecycle accepted: item create + subcat +
+tags good; not-approved → My Shop only (not marketplace); approved+inactive → not
+in marketplace; approved+active → in marketplace. And: an item classified to a
+**deleted** subcat still appears in the marketplace under its **parent** macro
+(the deleted subcat node itself, e.g. "Chairs", is not displayed) — **Liam OK with
+that** ("if the classification level is deleted it still shows up on the parent
+classification"). Matches the display rule + BE-00101 (new items won't bind to a
+deleted subcat).
+
 ## Chat audit
 (chat/d2)
