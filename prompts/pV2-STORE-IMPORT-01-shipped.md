@@ -121,6 +121,26 @@ BE-00099 core.
 - N/A Idempotency (classify re-runnable; apply is a deliberate rewrite) · ✓ Performance (single AI call; taxonomy payload noted)
 `POST /backfill` — ✓ admin-gated (`admin.cross_org_view`).
 
+## Iteration — auto-classify on create (step 2, 2026-09-18)
+**Greenlit by Liam** after BE-00099 landed. Lazy, implicit, no UI.
+
+- **`taxonomy.service.classifyAndApply(itemId)`** — new helper: `classifyItem` →
+  `applyClassification` with the suggestion (category_id + subcategory_id +
+  tag_ids). Derives **subcat + tags only** (classifier doesn't set tier — stays
+  the item's default `standard`).
+- **`routes/store-items.js` POST /** — after `ItemService.create`, calls
+  `TaxonomyService.classifyAndApply(item.id)` **fire-and-forget + error-swallowed**
+  (`.catch` logs `[auto-classify]`), so a classifier hiccup (missing
+  `ANTHROPIC_API_KEY` / AI error / unparseable) never breaks or delays item
+  create. Runs **once, on create only** (not on PUT/update). Called internally
+  from the already-authenticated, org-scoped handler — not via the (now-secured)
+  route. **Nothing surfaced in the UI** — the subcat/tags just populate silently.
+
+**Notes / future:** classify runs at create even for a draft with a sparse
+description (classifier tolerates missing description); if we want richer input
+we could move the trigger to first-submit later. One Haiku call per create (cost
+accepted). No chip bump (server-only).
+
 ## QC notes
 (Liam)
 

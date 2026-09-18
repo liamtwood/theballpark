@@ -453,6 +453,23 @@ async function applyClassification(itemId, edited) {
 }
 
 /**
+ * pV2-STORE-IMPORT — lazy auto-classify: run the classifier and APPLY its
+ * suggestion (subcategory + tags) in one call. Used fire-and-forget from item
+ * create so a new item derives its subcat/tags implicitly, no UI. The
+ * classifier does NOT set tier (stays the item's default). Best-effort — the
+ * caller swallows errors so a classifier hiccup never breaks item create.
+ */
+async function classifyAndApply(itemId) {
+  const suggestion = await classifyItem(itemId);
+  await applyClassification(itemId, {
+    category_id: suggestion.category_id,
+    subcategory_id: suggestion.subcategory_id,
+    tag_ids: (suggestion.tags || []).map((t) => t.tag_id),
+  });
+  return suggestion;
+}
+
+/**
  * Replace an item's structured (dimension-scoped) tags. Used by the item
  * drawer's Index tab, where the supplier edits tags manually. Validates
  * every tag belongs to the item's category, then rewrites the
@@ -1551,6 +1568,7 @@ async function backfillSubcategories(categoryId) {
 module.exports = {
   classifyItem,
   applyClassification,
+  classifyAndApply,
   dismissClassification,
   setItemTags,
   getDimensions,

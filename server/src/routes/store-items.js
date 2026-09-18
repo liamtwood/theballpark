@@ -15,6 +15,7 @@ const { z } = require('zod');
 const router = require('express').Router();
 const { requireActiveMembership } = require('../middleware/require-active-membership');
 const ItemService = require('../services/item.service');
+const TaxonomyService = require('../services/taxonomy.service');
 const { StoreItemCreateSchema, StoreItemUpdateSchema } = require('../schemas/store-item.schema');
 
 router.use(requireActiveMembership('item.create'));
@@ -94,6 +95,14 @@ router.post('/', async (req, res, next) => {
       approval_status: parsed.data.approval_status || 'draft',
       is_active: false,
     });
+    // pV2-STORE-IMPORT — lazy auto-classify: derive subcat + tags in the
+    // background, once, on create. Fire-and-forget + error-swallowed so a
+    // classifier hiccup (missing key / AI error) never breaks item create. Runs
+    // internally here (already authenticated + org-scoped), not via the route.
+    // Tier is NOT set by the classifier; nothing is surfaced in the UI yet.
+    TaxonomyService.classifyAndApply(item.id).catch((e) =>
+      console.warn('[auto-classify] item', item.id, 'failed:', e.message)
+    );
     res.status(201).json(item);
   } catch (err) { next(err); }
 });
