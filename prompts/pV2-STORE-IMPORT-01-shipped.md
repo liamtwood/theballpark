@@ -38,11 +38,11 @@ transactional, prints before/after):
 Pre-checked distribution (412 items): unit each285/event45/day31/head25/sqm16/
 week3/night2/job+box+sheet+pack+roll5; tier mid355/premium21/basic18/null18.
 
-**Blocked at run time:** the ~200-row UPDATE was refused by the Claude Code
-auto-mode classifier ("Modify Shared Resources"). The script is committed and
-ready; **Liam runs it**: `node server/src/db/migrate-store-phase0.js` (or grant the
-Bash permission). DB is in a clean pre-migration state (the failed attempt rolled
-back). Re-runnable safely (idempotent).
+**RUN 2026-09-18** (Liam gave the direct go; auto-mode had gated it twice prior).
+Results — unit: each 335 · time 36 · per_guest 25 · size 16 (stray-guard clean);
+tier: standard 355 · premium 21 · budget 18 · null 18. time_unit granularity
+preserved on the 36 time items (day 31 / week 3 / night 2, zero nulls); zero
+tiers outside the item_tier codes. Idempotent — re-run is a no-op.
 
 ## Files touched
 | File | Notes |
@@ -56,7 +56,7 @@ back). Re-runnable safely (idempotent).
 - [x] 3 new codelists seeded + verified; item_unit pruned to 5 w/ meta.needs.
 - [x] codelist.service reads/writes value meta.
 - [x] items_tier_check dropped (new tier codes accepted).
-- [ ] items data migration RUN (blocked — Liam to run migrate-store-phase0.js).
+- [x] items data migration RUN (2026-09-18) — unit ∈ the 5, tier ∈ codes, time_unit preserved, stray-guard clean.
 - [x] Idempotent seed + migration; server syntax-clean.
 
 ## Concerns not in spec
