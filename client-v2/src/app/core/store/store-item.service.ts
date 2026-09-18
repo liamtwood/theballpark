@@ -33,6 +33,11 @@ export interface StoreItem {
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
+  // pV2-STORE-ITEM-INDEX-VIEW-01 — read-only classification (getById returns
+  // these): resolved category/subcategory names + the structured dimension tags.
+  category_name?: string | null;
+  subcategory_name?: string | null;
+  item_tags?: { tag_id: string; dimension: string; label: string }[];
 }
 
 /** What the editor sends on save. The supplier sets `approval_status` to either

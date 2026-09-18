@@ -138,6 +138,40 @@ interface ItemForm {
           </div>
 
           <app-item-approval-panel [status]="currentStatus()" [statusAt]="statusAt()" />
+
+          <!-- pV2-STORE-ITEM-INDEX-VIEW-01 — the auto-classification, READ-ONLY
+               (subcategory + structured dimension tags). Editing is the later
+               Index-tab slice. Existing items only. -->
+          @if (isEdit) {
+            <div class="mt-4 rounded-xl border border-hairline bg-surface p-4">
+              <h3 class="bp-edit-section-title">Classification</h3>
+              <div class="mt-3">
+                <div class="bp-field-label">Subcategory</div>
+                @if (subcategoryLabel(); as sc) {
+                  <div class="bp-body-small text-text">{{ sc }}</div>
+                } @else {
+                  <div class="bp-body-small text-muted">Not yet classified</div>
+                }
+              </div>
+              <div class="mt-3">
+                <div class="bp-field-label">Tags</div>
+                @if (classificationTags().length) {
+                  <div class="mt-1 flex flex-col gap-2">
+                    @for (g of classificationTags(); track g.dimension) {
+                      <div class="flex flex-wrap items-baseline gap-1.5">
+                        <span class="bp-caption w-20 shrink-0 text-muted">{{ g.dimension }}</span>
+                        @for (label of g.labels; track label) {
+                          <span class="bp-tag-chip">{{ label }}</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <div class="bp-body-small text-muted">No tags</div>
+                }
+              </div>
+            </div>
+          }
         </div>
         </div>
 
@@ -298,6 +332,23 @@ export class ItemEditComponent {
   });
 
   protected readonly loading = computed(() => this.isEdit && this.itemRes.isLoading());
+
+  /** pV2-STORE-ITEM-INDEX-VIEW-01 — read-only classification. Breadcrumb
+   *  "{category} › {subcategory}" (or just the subcat), null when unclassified. */
+  protected readonly subcategoryLabel = computed(() => {
+    const item = this.itemRes.value();
+    if (!item?.subcategory_name) return null;
+    return item.category_name ? `${item.category_name} › ${item.subcategory_name}` : item.subcategory_name;
+  });
+  /** Structured dimension tags grouped by dimension (colour/material/…). */
+  protected readonly classificationTags = computed(() => {
+    const groups = new Map<string, string[]>();
+    for (const t of this.itemRes.value()?.item_tags ?? []) {
+      if (!groups.has(t.dimension)) groups.set(t.dimension, []);
+      groups.get(t.dimension)!.push(t.label);
+    }
+    return [...groups.entries()].map(([dimension, labels]) => ({ dimension, labels }));
+  });
 
   protected patch(p: Partial<ItemForm>): void {
     this.form.update((f) => ({ ...f, ...p }));
