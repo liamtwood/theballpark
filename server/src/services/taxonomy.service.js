@@ -177,9 +177,13 @@ async function loadChildren(categoryId) {
       tagsByCategoryId    — Map(categoryId → [{ id, dimension, label }])  */
 async function loadTaxonomy() {
   const cats = await pool.query(
+    // Active only — the classifier must never suggest a deprecated/inactive
+    // category (e.g. the retired "Chairs" mid-level that sits inactive beside
+    // the active "Seating"). Inactive rows in the vocabulary made the AI pick
+    // "Chairs" over "Seating".
     `SELECT id, name, parent_id
        FROM categories
-      WHERE namespace = 'catalogue'
+      WHERE namespace = 'catalogue' AND is_active = true
       ORDER BY sort_order ASC, name ASC`
   );
   const parents = cats.rows.filter(c => !c.parent_id);
@@ -403,7 +407,9 @@ async function applyClassification(itemId, edited) {
     let subId = edited.subcategory_id || null;
     if (subId) {
       const sc = await conn.query(
-        `SELECT id FROM categories WHERE id = $1 AND parent_id = $2`,
+        // Must be an ACTIVE direct child of the category — never apply a
+        // deprecated/inactive subcat (defense-in-depth alongside loadTaxonomy).
+        `SELECT id FROM categories WHERE id = $1 AND parent_id = $2 AND is_active = true`,
         [subId, edited.category_id]
       );
       if (!sc.rows.length) subId = null;
