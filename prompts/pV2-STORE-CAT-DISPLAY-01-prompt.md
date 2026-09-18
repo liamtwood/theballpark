@@ -29,43 +29,38 @@ from the category tree (showing subcats that have no live items in context),
 while the item list is org-scoped + current. So the count context ≠ the display
 context → phantom counts and "count says N, list shows 0".
 
-## THE CORE PROBLEM (Liam, 2026-09-18) — items in "limbo"
-An item should never point to a category that isn't displayable. Right now,
-deleting/deactivating a category **strands** the items classified to it — they
-point at a dead node and go orphaned ("just limbo"). A category's `is_active` /
-`deleted_at` correctly governs the **classifier VOCABULARY** (what *new* items can
-bind to — BE-00101), but the **items already on it are left in limbo.**
+## THE DECISION (Liam, 2026-09-18) — ignore status on DISPLAY, respect it on CLASSIFY
+The fix is a clean split, and it means **nothing ever orphans**:
+- **Display IGNORES `is_active` / `deleted_at`.** Render/count a category if it has
+  **≥1 live item in its subtree**, *whatever the category's status*. So a live
+  item's category always shows — a soft-deleted/inactive category that still holds
+  live items renders (item reachable); a category with 0 live items doesn't
+  (phantom gone).
+- **Classify RESPECTS status.** Only active/live categories are classification
+  targets (already done — BE-00101). Dead categories can't collect *new* items.
 
-**Two resolutions — Liam's lean is B:**
-- **A — tolerate on display:** render any category (even inactive/deleted) that
-  still has ≥1 live item; hide categories with 0 live items. A band-aid — it
-  surfaces removed categories in the UI.
-- **B — resolve on delete (PREFERRED):** deleting/deactivating a category
-  **unclassifies** its items (`subcategory_id → NULL`, the item rolls up to its
-  parent category) or **reclassifies** them to a live target — so **no item ever
-  points to a dead node.** Plus a **one-off cleanup** for existing limbo items
-  (unclassify them to their live parent). Display then only ever deals with live
-  categories.
+This resolves both symptoms with **no cascade and no cleanup**: dead "Chairs"
+renders because Banquet is live in it (no orphan); Lounge & Breakout hides because
+it has 0 live items (no phantom). The status flag governs *what new items can bind
+to*, never *what displays*.
 
-CC: evaluate A vs B (Liam prefers **B** — cleaner, no dead categories in the UI),
-confirm feasibility (a category-delete/deactivate hook that resolves its items;
-the uncategorised-rollup display; the existing-limbo cleanup), and propose.
+(A reclassify UI — the v1 Index-tab port: subcat picker + tags + ✦ Suggest — is a
+SEPARATE concern: it lets a user *correct* a bad classification. It is NOT needed
+to prevent orphans, since this display rule already does.)
 
 ## What the fix must achieve (per TAXONOMY-01)
 1. **One consistent query drives both** the rail counts AND the item list — a
    count must equal what actually displays when you click it.
 2. **Recursive subtree rollup** — selecting a node returns every item in its
    subtree (macro → subcat → deeper), not just direct matches.
-3. **No phantom nodes:** a rail node appears only if it has live items in context
-   (count = live items in its subtree); nodes with 0 live items don't appear.
-   Scope: org for My Shop, global for the marketplace. (Under **B**, dead
-   categories won't appear because they'll have no items after resolution; under
-   **A** they'd appear only while they still hold live items.)
-4. **Uncategorised items** (`subcategory_id = NULL`, incl. those freed by B) —
-   roll them up to their **parent category** for display (an "Other in F&F"
-   bucket or listed at the macro level). Today they vanish, which is why F&F shows
-   "No items" despite having 3 subcat-less items. This is what makes B safe —
-   unclassified items stay visible under their macro.
+3. **Node visibility driven by live items, status ignored** (the decision above):
+   a rail node appears iff it has ≥1 live item in its subtree, whatever its
+   `is_active`/`deleted_at`; count = live items in its subtree; 0-item nodes don't
+   appear. Scope: org for My Shop, global for the marketplace.
+4. **Uncategorised items** (`subcategory_id = NULL`) — roll them up to their
+   **parent category** for display (an "Other in F&F" bucket or listed at the
+   macro level). Today they vanish, which is why F&F shows "No items" despite
+   having 3 subcat-less items.
 5. **Roll-up by `parent_id`, never group by raw `category_id`** (TAXONOMY-01) — so
    an item at any depth counts/displays under every ancestor consistently.
 
