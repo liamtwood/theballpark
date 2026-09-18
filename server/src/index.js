@@ -201,7 +201,8 @@ app.use('/api/estimate-items', require('./routes/estimateItems'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/balls-transactions', require('./routes/ballsTransactions'));
 app.use('/api/ai', require('./routes/ai'));
-app.use('/api/taxonomy', require('./routes/taxonomy'));
+// pV2-STORE-IMPORT (BE-00099): taxonomy moved into the authenticated v2 group
+// below (was mounted here ungated — unauth AI-cost + cross-org IDOR item rewrite).
 app.use('/api/storage', require('./routes/storage'));
 app.use('/api/favourites', require('./routes/favourites'));
 app.use('/api/feedback', require('./routes/feedback'));
@@ -304,6 +305,9 @@ app.get('/api/unsplash/search', async (req, res) => {
   v2.use('/media', require('./routes/media')); // pV2-MEDIA-01 — gated image upload
   // pV2-STORE-01 — supplier item editor (create/update own items, draft→submit).
   v2.use('/store/items', require('./routes/store-items'));
+  // BE-00099 — taxonomy classifier/tags. Now inside the v2 gate (authenticate +
+  // requireActiveMembership); item-mutating routes add ownership scoping + item.create.
+  v2.use('/taxonomy', require('./routes/taxonomy'));
   // pV2-INBOX-01 — gated inbox façade over v1's message data (RP-INB1).
   v2.use('/inbox', require('./routes/inbox'));
   // future v2 endpoints: v2.use('/home', ...) — they inherit the gate

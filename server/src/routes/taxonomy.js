@@ -14,19 +14,38 @@
  *   POST /backfill              body: { categoryId? } — admin path
  */
 const router = require('express').Router();
+const pool = require('../db/pool');
+const { requireActiveMembership } = require('../middleware/require-active-membership');
 const TaxonomyService = require('../services/taxonomy.service');
 
+// BE-00099 — this router is now inside the authenticated v2 group (see
+// index.js). Item-mutating endpoints additionally require `item.create` AND
+// scope the target item to the caller's org: classify / apply / dismiss /
+// item-tags / suggest-subcategory rewrite an item by id, so without this an
+// authed supplier could rewrite another org's item (cross-org IDOR).
+async function assertItemInOrg(itemId, orgId) {
+  if (!itemId) { const e = new Error('itemId is required'); e.status = 400; throw e; }
+  const r = await pool.query('SELECT org_id FROM items WHERE id = $1', [itemId]);
+  // 404 (not 403) on a foreign item — don't leak that the id exists.
+  if (!r.rows.length || r.rows[0].org_id !== orgId) {
+    const e = new Error('Item not found'); e.status = 404; throw e;
+  }
+}
+const requireItemCreate = requireActiveMembership('item.create');
+
 // ── v1.43 — full-taxonomy AI classification ────────────────────────────
-router.post('/classify', async (req, res, next) => {
+router.post('/classify', requireItemCreate, async (req, res, next) => {
   try {
     const { itemId } = req.body || {};
+    await assertItemInOrg(itemId, req.user.org_id);
     res.json(await TaxonomyService.classifyItem(itemId));
   } catch (err) { next(err); }
 });
 
-router.post('/apply-classification', async (req, res, next) => {
+router.post('/apply-classification', requireItemCreate, async (req, res, next) => {
   try {
     const { itemId, category_id, subcategory_id, tag_ids } = req.body || {};
+    await assertItemInOrg(itemId, req.user.org_id);
     const out = await TaxonomyService.applyClassification(itemId, {
       category_id, subcategory_id, tag_ids
     });
@@ -34,17 +53,19 @@ router.post('/apply-classification', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/dismiss-classification', async (req, res, next) => {
+router.post('/dismiss-classification', requireItemCreate, async (req, res, next) => {
   try {
     const { itemId } = req.body || {};
+    await assertItemInOrg(itemId, req.user.org_id);
     res.json(await TaxonomyService.dismissClassification(itemId));
   } catch (err) { next(err); }
 });
 
 // Replace an item's structured tags (item drawer Index tab).
-router.post('/item-tags', async (req, res, next) => {
+router.post('/item-tags', requireItemCreate, async (req, res, next) => {
   try {
     const { itemId, tag_ids } = req.body || {};
+    await assertItemInOrg(itemId, req.user.org_id);
     res.json(await TaxonomyService.setItemTags(itemId, tag_ids));
   } catch (err) { next(err); }
 });
@@ -128,14 +149,16 @@ router.post('/materialize-proposed', async (req, res, next) => {
 });
 
 // ── v1.41 — subcategory-only helpers ───────────────────────────────────
-router.post('/suggest-subcategory', async (req, res, next) => {
+router.post('/suggest-subcategory', requireItemCreate, async (req, res, next) => {
   try {
     const { itemId } = req.body || {};
+    await assertItemInOrg(itemId, req.user.org_id);
     res.json(await TaxonomyService.suggestSubcategory(itemId));
   } catch (err) { next(err); }
 });
 
-router.post('/backfill', async (req, res, next) => {
+// Bulk admin reclassify — ballpark-admin only (was ungated).
+router.post('/backfill', requireActiveMembership('admin.cross_org_view'), async (req, res, next) => {
   try {
     const { categoryId } = req.body || {};
     res.json(await TaxonomyService.backfillSubcategories(categoryId));

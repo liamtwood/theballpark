@@ -87,6 +87,40 @@ The codelist seed + constraint drop were applied via `seedCodelists()` directly 
 the early migrate-schemas block; a full forward run still aborts on
 `message_item_id` (~line 2139). Unrelated; place new DDL early + verify.
 
+## Iteration — BE-00099: secure the taxonomy routes (2026-09-18)
+**Triggered by:** the classifier audit (before wiring auto-classify) — `/api/taxonomy/*`
+was mounted **outside** the authenticated v2 group (index.js:204), so all 16
+endpoints were unauthenticated + un-org-scoped: an open AI-cost endpoint
+(`/classify`) and cross-org IDOR item rewrites (`/apply-classification`,
+`/dismiss-classification`, `/item-tags`). Liam greenlit **option A** (secure now;
+v1's undeployed item-drawer classifier on :4200 breaks — v1 sends no JWT).
+
+**What changed**
+- **`index.js`** — moved `taxonomy` from the ungated `app.use('/api/taxonomy', …)`
+  into the v2 group (`v2.use('/taxonomy', …)`), so it inherits `authenticate` +
+  `requireActiveMembership()`. Path unchanged (`/api/taxonomy`).
+- **`routes/taxonomy.js`** — the 5 **item-by-id** endpoints (`classify`,
+  `apply-classification`, `dismiss-classification`, `item-tags`,
+  `suggest-subcategory`) now require `item.create` **and** call
+  `assertItemInOrg(itemId, req.user.org_id)` (404 on a foreign item — no
+  existence leak). `backfill` (bulk reclassify) is `admin.cross_org_view`-gated.
+- Engine (`taxonomy.service`) untouched — the audit found its logic sound.
+
+**Deferred (noted):** the project-match endpoints (`add-match`, `remove-match`,
+`request-quotes`, `materialize-proposed`, `match-items`, `search-hint`,
+`quote-requests`) now require auth (from the group) but not yet deeper
+**project-org** scoping — a follow-up; they don't rewrite items, so not the
+BE-00099 core.
+
+### API audit checklist (ENGINEERING Rule 10) — taxonomy item endpoints
+`POST /classify · /apply-classification · /dismiss-classification · /item-tags · /suggest-subcategory`
+- ✓ HTTP method (POST, mutating/AI) · ✓ Input validation (itemId required; service validates cat/subcat/tag scope)
+- ✓ **Authorization** — `authenticate` + `requireActiveMembership('item.create')` + `assertItemInOrg` (org from JWT, never body)
+- ✓ Status codes (400 no itemId · 401 unauth · 403 perm · 404 foreign/missing item · 502 AI parse)
+- ✓ Info disclosure (404 not 403 on a foreign item) · ✓ Observability (`[taxonomy.classify]` log)
+- N/A Idempotency (classify re-runnable; apply is a deliberate rewrite) · ✓ Performance (single AI call; taxonomy payload noted)
+`POST /backfill` — ✓ admin-gated (`admin.cross_org_view`).
+
 ## QC notes
 (Liam)
 
