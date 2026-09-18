@@ -228,19 +228,32 @@ async function seedCodelists(client) {
 
   // pV2-STORE-IMPORT-01 Phase 0 — item_unit pruned to 5 (each, per_guest,
   // platter, time, size). Reactivate the kept 5 (platter was inactive), set
-  // meta.needs on each, and deactivate every other value (rows kept; the data
-  // migration re-points items.unit). ON CONFLICT DO NOTHING never updates, so
-  // these are explicit idempotent UPDATEs. meta.needs: each/per_guest=null,
-  // platter='serves', time='time', size='size' (what extra field the unit needs).
-  const ITEM_UNIT_NEEDS = { each: null, per_guest: null, platter: 'serves', time: 'time', size: 'size' };
-  for (const [code, needs] of Object.entries(ITEM_UNIT_NEEDS)) {
+  // meta.needs + auto_fill_field on each, and deactivate every other value (rows
+  // kept; the data migration re-points items.unit). ON CONFLICT DO NOTHING never
+  // updates, so these are explicit idempotent UPDATEs.
+  //   meta.needs      = which item-edit field the unit shows (serves/time/size).
+  //   auto_fill_field = the QUANTITY-01 quote-time default quantity (a DIFFERENT
+  //     concern that COEXISTS with needs): per_guest→guest_count, time→
+  //     duration_days. The data migration re-points head→per_guest and day→time,
+  //     so these MUST carry the auto_fill the now-inactive head/day used to, or
+  //     defaultQuantity() falls back to 1. platter uses the serves branch;
+  //     each/size default to qty 1 → auto_fill null.
+  const ITEM_UNIT_CFG = {
+    each:      { needs: null,     autoFill: null },
+    per_guest: { needs: null,     autoFill: 'guest_count' },
+    platter:   { needs: 'serves', autoFill: null },
+    time:      { needs: 'time',   autoFill: 'duration_days' },
+    size:      { needs: 'size',   autoFill: null },
+  };
+  for (const [code, cfg] of Object.entries(ITEM_UNIT_CFG)) {
     await client.query(
       `UPDATE shared.reference_codelist_values
           SET is_active = true,
               meta = COALESCE(meta, '{}'::jsonb) || $2::jsonb,
+              auto_fill_field = $3,
               updated_at = NOW()
         WHERE list_name = 'item_unit' AND code = $1`,
-      [code, JSON.stringify({ needs })]
+      [code, JSON.stringify({ needs: cfg.needs }), cfg.autoFill]
     );
   }
   await client.query(
@@ -249,6 +262,13 @@ async function seedCodelists(client) {
       WHERE list_name = 'item_unit'
         AND code NOT IN ('each', 'per_guest', 'platter', 'time', 'size')
         AND is_active = true`
+  );
+  // item_time_unit is the live time-granularity list again (day/week/night for
+  // the 'time' unit). The retired QUANTITY-01 single-list model had deactivated
+  // its parent; reactivate it (ON CONFLICT DO NOTHING above never flips it).
+  await client.query(
+    `UPDATE shared.reference_codelists SET is_active = true, updated_at = NOW()
+      WHERE list_name = 'item_time_unit' AND is_active = false`
   );
 
   // country — codes constant, labels via Intl (never hand-typed).

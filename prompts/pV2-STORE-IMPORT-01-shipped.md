@@ -65,25 +65,22 @@ back). Re-runnable safely (idempotent).
 and now `items.tier` (CHECK dropped). **What:** nothing enforces that a written
 unit/tier is a live codelist code. **Suggested fix:** a validation guard (trigger
 or app-layer) in the write-path slice. Deferred — noted, not this slice.
-### Legacy QUANTITY-01 units block in migrate-schemas REVERTS Phase 0 (HIGH)
-**Where:** `server/src/db/migrate-schemas.js` lines ~695–737.
-**What:** The QUANTITY-01 "units consolidation" block deactivates `platter` +
-re-points `items.unit='platter'→'each'` (destructive to future platter items),
-(re)activates day/event/hour as item_unit values, and **retires the
-`item_time_unit` parent** (is_active=false) — all of which contradict Phase 0
-(which keeps platter, moves day/event/hour off item_unit, and needs item_time_unit
-for day/week/night). It only "wins" today because the BE-00095 fatal aborts
-migrate-schemas *before* `seedCodelists` (§4f) re-fixes it — so after any
-migrate-schemas run, `platter` is left inactive (had to re-run seedCodelists to
-restore it). Once BE-00095 is fixed, the outcome depends on block order.
-**Suggested fix:** remove the legacy units-consolidation block (codelists-seed.js
-+ migrate-store-phase0.js now own item_unit and the items re-point); keep the
-`serves` column ALTER + Rocket Food serves corrections. Open question for the
-data-model owner: is `auto_fill_field` (head→guest_count, day→duration_days)
-retired in favour of `meta.needs`, or do both coexist? — resolve in the write-path
-slice. **Do not run a full migrate-schemas until this is neutralised.** Flagged to
-f4; awaiting the auto_fill_field call before I edit.
-**Severity:** HIGH (silently reverts the shipped unit model).
+### Legacy QUANTITY-01 units block in migrate-schemas — RESOLVED (was HIGH)
+The QUANTITY-01 "units consolidation" block (migrate-schemas ~695–739) silently
+reverted Phase 0 on every run — deactivated `platter`, re-pointed
+`items.unit='platter'→'each'`, reactivated day/event/hour, and retired the
+`item_time_unit` parent. It only "won" because the BE-00095 fatal aborted
+migrate-schemas before `seedCodelists` (§4f) could re-fix it.
+**Fixed (2026-09-18):** the block is **removed** (replaced with a removal note);
+`item_unit` is now owned solely by codelists-seed.js and the items re-point by
+migrate-store-phase0.js. Kept the `serves` column ALTER + Rocket Food corrections.
+Data-model call from f4: `auto_fill_field` and `meta.needs` **coexist** (quote-time
+default qty vs edit-form field visibility), so the seed now ALSO sets
+`auto_fill_field` on the new active units (per_guest→guest_count, time→
+duration_days; each/size/platter null) — the re-point head→per_guest / day→time
+would otherwise break `defaultQuantity()`. And the seed reactivates the
+`item_time_unit` parent (Phase 0 needs it for day/week/night). f4 logged a BE for
+the block removal; it's now done.
 
 ### migrate-schemas full run still fatals (BE-00095)
 The codelist seed + constraint drop were applied via `seedCodelists()` directly and

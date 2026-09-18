@@ -692,51 +692,16 @@ const migrate = async () => {
       UPDATE preview.items SET serves = 10 WHERE org_id = (SELECT id FROM preview.orgs WHERE name = 'Rocket Food') AND name = 'Working Lunch Platters';
       UPDATE master.items  SET serves = 10 WHERE org_id = (SELECT id FROM master.orgs  WHERE name = 'Rocket Food') AND name = 'Working Lunch Platters';
 
-      -- Units consolidation (Liam 2026-06-14, single-list model). The dead
-      -- item_time_unit list/column (150/152 NULL) is retired; its live codes
-      -- already leaked into items.unit (event 41, day 25), so we adopt
-      -- items.unit as the single source of truth and fold day/event/hour in.
-      -- Codelist rule: deactivate + merge, never DROP.
-      INSERT INTO shared.reference_codelist_values
-        (list_name, code, label, sort_order, is_active, is_system, is_default, meta, auto_fill_field)
-      VALUES
-        ('item_unit', 'day',   'Day',   2, true, true, false, '{}'::jsonb, 'duration_days'),
-        ('item_unit', 'event', 'Event', 3, true, true, false, '{}'::jsonb, NULL),
-        ('item_unit', 'hour',  'Hour',  4, true, true, false, '{}'::jsonb, NULL)
-      ON CONFLICT (list_name, code) DO NOTHING;
-
-      -- Keeper set: head, day, event, hour, each, sqm — give them a clean
-      -- sort order + the auto_fill mapping. (Re-runnable: same values.)
-      UPDATE shared.reference_codelist_values SET sort_order = 1, auto_fill_field = 'guest_count'  WHERE list_name = 'item_unit' AND code = 'head';
-      UPDATE shared.reference_codelist_values SET sort_order = 2, auto_fill_field = 'duration_days' WHERE list_name = 'item_unit' AND code = 'day';
-      UPDATE shared.reference_codelist_values SET sort_order = 3, auto_fill_field = NULL            WHERE list_name = 'item_unit' AND code = 'event';
-      UPDATE shared.reference_codelist_values SET sort_order = 4, auto_fill_field = NULL            WHERE list_name = 'item_unit' AND code = 'hour';
-      UPDATE shared.reference_codelist_values SET sort_order = 5, auto_fill_field = NULL            WHERE list_name = 'item_unit' AND code = 'each';
-      UPDATE shared.reference_codelist_values SET sort_order = 6, auto_fill_field = NULL            WHERE list_name = 'item_unit' AND code = 'sqm';
-
-      -- Deactivate the merged-away long tail (countable → each, project →
-      -- event) and the deactivated dimensionals (sqft/linear_m/cbm). Values
-      -- stay in the table (reactivate if a real item resurfaces).
-      UPDATE shared.reference_codelist_values SET is_active = false
-       WHERE list_name = 'item_unit'
-         AND code IN ('unit','cover','sqft','linear_m','package','set','project','item','pair','panel','platter','letter','load','pallet','cbm','table');
-
-      -- Retire the item_time_unit parent (single-list model). Its values are
-      -- left intact; an inactive parent hides the list from the admin UI.
-      UPDATE shared.reference_codelists SET is_active = false WHERE list_name = 'item_time_unit';
-
-      -- Re-point affected items.unit rows to the canonical code (one pass per
-      -- merge target). After this every active item sits on head/day/event/
-      -- each/sqm — all active item_unit codes. Idempotent: merged codes no
-      -- longer exist on items after the first run.
-      UPDATE public.items  SET unit = 'each' WHERE unit IS NULL OR unit IN ('unit','cover','sqft','linear_m','package','set','item','pair','panel','platter','letter','load','pallet','cbm','table');
-      UPDATE preview.items SET unit = 'each' WHERE unit IS NULL OR unit IN ('unit','cover','sqft','linear_m','package','set','item','pair','panel','platter','letter','load','pallet','cbm','table');
-      UPDATE master.items  SET unit = 'each' WHERE unit IS NULL OR unit IN ('unit','cover','sqft','linear_m','package','set','item','pair','panel','platter','letter','load','pallet','cbm','table');
-
-      UPDATE public.items  SET unit = 'event' WHERE unit = 'project';
-      UPDATE preview.items SET unit = 'event' WHERE unit = 'project';
-      UPDATE master.items  SET unit = 'event' WHERE unit = 'project';
-      -- ── end pV2-QUANTITY-01 ──────────────────────────────────────────
+      -- ── pV2-QUANTITY-01 units-consolidation block REMOVED (pV2-STORE-IMPORT-01
+      -- Phase 0, 2026-09-18) ──────────────────────────────────────────────
+      -- The single-list QUANTITY-01 model here directly reverted the Phase 0
+      -- unit model on every migrate-schemas run (deactivated 'platter',
+      -- re-pointed items.unit='platter'→'each', reactivated day/event/hour, and
+      -- retired the item_time_unit parent that Phase 0 needs for day/week/night).
+      -- item_unit is now owned SOLELY by codelists-seed.js (the pruned 5 +
+      -- meta.needs + auto_fill_field), and the one-off items.unit/tier re-point
+      -- is owned by migrate-store-phase0.js. The serves column (above) and the
+      -- Rocket Food serves corrections (above) are kept — they're still valid.
 
       -- v1.13: orgs.auto_publish_items. Controls whether approved
       -- estimate items auto-publish back to the supplier catalogue.
