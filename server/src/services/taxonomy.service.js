@@ -183,7 +183,7 @@ async function loadTaxonomy() {
     // "Chairs" over "Seating".
     `SELECT id, name, parent_id
        FROM categories
-      WHERE namespace = 'catalogue' AND is_active = true
+      WHERE namespace = 'catalogue' AND is_active = true AND deleted_at IS NULL
       ORDER BY sort_order ASC, name ASC`
   );
   const parents = cats.rows.filter(c => !c.parent_id);
@@ -196,6 +196,7 @@ async function loadTaxonomy() {
   const tags = await pool.query(
     `SELECT id, category_id, dimension, label, sort_order
        FROM tag
+      WHERE deleted_at IS NULL
       ORDER BY sort_order ASC`
   );
   const tagsByCategoryId = new Map();
@@ -397,19 +398,20 @@ async function applyClassification(itemId, edited) {
 
     // Category must be a real parent category.
     const cat = await conn.query(
-      `SELECT id, parent_id FROM categories WHERE id = $1`, [edited.category_id]
+      `SELECT id, parent_id FROM categories WHERE id = $1 AND deleted_at IS NULL`, [edited.category_id]
     );
     if (!cat.rows.length || cat.rows[0].parent_id) {
-      throw httpErr('category_id must be a top-level category', 400);
+      throw httpErr('category_id must be a live top-level category', 400);
     }
 
     // Subcategory (if any) must belong to that category — drop otherwise.
     let subId = edited.subcategory_id || null;
     if (subId) {
       const sc = await conn.query(
-        // Must be an ACTIVE direct child of the category — never apply a
-        // deprecated/inactive subcat (defense-in-depth alongside loadTaxonomy).
-        `SELECT id FROM categories WHERE id = $1 AND parent_id = $2 AND is_active = true`,
+        // Must be a LIVE active direct child of the category — never apply a
+        // deprecated/inactive/soft-deleted subcat (BE-00101; defense-in-depth
+        // alongside loadTaxonomy).
+        `SELECT id FROM categories WHERE id = $1 AND parent_id = $2 AND is_active = true AND deleted_at IS NULL`,
         [subId, edited.category_id]
       );
       if (!sc.rows.length) subId = null;
