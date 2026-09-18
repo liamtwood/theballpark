@@ -38,7 +38,10 @@ The proposal said "one recursive-CTE endpoint." I achieved the **same outcome wi
 - **The `/categories/:id/subcategories` global endpoint** keeps its `is_active` gate + no rollup; it's now only used by the public marketplace, where that's acceptable. Unify later if the public browse needs the same rollup.
 
 ## QC notes
-(Liam)
+QC pass (Liam, 2026-09-18): My Shop → Furniture & Fixtures shows **only Seating**
+(no phantom subcats). "Limewash Chiavari Chair Hire" is assigned to Seating;
+"Banquet Chair Hire" (unassigned / not approved, so not in the marketplace)
+still shows under F&F (at the macro). "looks good to me for this fix."
 
 ## Chat audit
 (chat/d2)
