@@ -18,14 +18,31 @@
 // "current/revised" surfaces (inbox Revised, quote current, negotiation) so the
 // override applies; the "Original" surfaces (price_ref) keep the plain formula.
 function lineTotalSql(priceExpr, { flat = false } = {}) {
+  // pV2-STORE-ITEM-MEASURE-VOLUME-01 §D — VOLUME pricing. When the item carries
+  // attributes.price_tiers ([{min,max,price}], max null = open top), the per-unit
+  // price for this line is the tier whose [min,max] band contains pi.quantity
+  // (highest matching min wins). No tiers / no match → the passed price
+  // (base_price / price_ref / price_current). Read LIVE from the item row
+  // (aliased `i` by every caller — see header), so it tracks the supplier's
+  // current tiers, and applies uniformly across inbox / quote / Customize.
+  const tierPrice = `(
+    CASE WHEN jsonb_typeof(i.attributes -> 'price_tiers') = 'array' THEN (
+      SELECT (t ->> 'price')::numeric
+        FROM jsonb_array_elements(i.attributes -> 'price_tiers') t
+       WHERE pi.quantity >= COALESCE(NULLIF(t ->> 'min', '')::numeric, 0)
+         AND ((t ->> 'max') IS NULL OR pi.quantity <= (t ->> 'max')::numeric)
+       ORDER BY COALESCE(NULLIF(t ->> 'min', '')::numeric, 0) DESC
+       LIMIT 1
+    ) END)`;
+  const price = `COALESCE(${tierPrice}, ${priceExpr})`;
   const ic = 'COALESCE(pi.install_cost, i.install_cost)';
   const iu = 'COALESCE(pi.install_unit, i.install_unit)';
   const perUnit = `
-  COALESCE(${priceExpr}, 0) * pi.quantity
+  COALESCE(${price}, 0) * pi.quantity
   + CASE
       WHEN NOT COALESCE(pi.installed, true) OR ${ic} IS NULL THEN 0
       WHEN ${iu} = 'per_order'  THEN ${ic}
-      WHEN ${iu} = 'percentage' THEN COALESCE(${priceExpr}, 0) * pi.quantity * (${ic} / 100.0)
+      WHEN ${iu} = 'percentage' THEN COALESCE(${price}, 0) * pi.quantity * (${ic} / 100.0)
       ELSE ${ic} * pi.quantity
     END`;
   return flat ? `COALESCE(pi.flat_total, (${perUnit}))` : perUnit;

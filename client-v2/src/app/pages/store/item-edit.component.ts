@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy, Component, computed, inject, resource, signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { LucideAngularModule } from 'lucide-angular';
 import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ToastModule } from 'primeng/toast';
@@ -43,7 +44,7 @@ interface ItemForm {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   imports: [
-    FormsModule, ToastModule, PageHeroComponent, EditFieldComponent,
+    FormsModule, LucideAngularModule, ToastModule, PageHeroComponent, EditFieldComponent,
     ImageGalleryComponent, ImagePickerComponent, DrawerComponent, ItemApprovalPanelComponent,
     ItemEditActionsComponent,
   ],
@@ -125,6 +126,80 @@ interface ItemForm {
               <div>
                 <label class="bp-field-label">Included Services</label>
                 <textarea class="bp-store-textarea mt-1" rows="3" [ngModel]="form().install_description" (ngModelChange)="patch({ install_description: $event })" [readonly]="!editing()" placeholder="What the install covers…"></textarea>
+              </div>
+
+              <!-- pV2-STORE-ITEM-MEASURE-VOLUME-01 §B — Dimensions (attributes.dimensions).
+                   Freeform label/value rows; first Add seeds H/W/D/Weight. -->
+              <div>
+                <label class="bp-field-label">Dimensions</label>
+                @if (editing()) {
+                  <datalist id="measure-suggestions">
+                    @for (s of measureSuggestions; track s) { <option [value]="s"></option> }
+                  </datalist>
+                  @for (d of dimensions(); track $index) {
+                    <div class="mt-1.5 flex items-center gap-2">
+                      <input class="bp-input-field flex-1" list="measure-suggestions" placeholder="Label (e.g. Height)"
+                             [value]="d.label" (input)="patchMeasurement($index, 'label', $any($event.target).value)" />
+                      <input class="bp-input-field flex-1" placeholder="Value (e.g. 92 cm)"
+                             [value]="d.value" (input)="patchMeasurement($index, 'value', $any($event.target).value)" />
+                      <button type="button" class="shrink-0 text-muted hover:text-text" (click)="removeMeasurement($index)" aria-label="Remove dimension">
+                        <lucide-icon name="trash-2" [size]="16" />
+                      </button>
+                    </div>
+                  }
+                  <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="addMeasurement()">
+                    <lucide-icon name="plus" [size]="14" /> Add dimensions
+                  </button>
+                } @else if (filledDimensions().length) {
+                  <dl class="mt-1 grid grid-cols-[140px_minmax(0,1fr)] gap-x-3 gap-y-1">
+                    @for (d of filledDimensions(); track $index) {
+                      <dt class="bp-body-small text-secondary">{{ d.label }}</dt>
+                      <dd class="bp-body-small text-text">{{ d.value }}</dd>
+                    }
+                  </dl>
+                } @else {
+                  <div class="bp-body-small text-muted">No dimensions</div>
+                }
+              </div>
+
+              <!-- §C — Volume pricing (attributes.price_tiers). Min/Max/Price rows;
+                   max blank = open top. Card shows "From £{tier-1}". -->
+              <div>
+                <label class="bp-field-label">Volume pricing</label>
+                @if (editing()) {
+                  @if (priceTiers().length) {
+                    <div class="mt-1 grid grid-cols-[1fr_1fr_1fr_28px] gap-2">
+                      <span class="bp-caption text-muted">Min qty</span>
+                      <span class="bp-caption text-muted">Max qty</span>
+                      <span class="bp-caption text-muted">Unit price</span><span></span>
+                    </div>
+                  }
+                  @for (t of priceTiers(); track $index) {
+                    <div class="mt-1 grid grid-cols-[1fr_1fr_1fr_28px] items-center gap-2">
+                      <input type="number" class="bp-input-field" placeholder="1" [value]="t.min" (input)="patchTier($index, 'min', $any($event.target).value)" />
+                      <input type="number" class="bp-input-field" placeholder="∞" [value]="t.max" (input)="patchTier($index, 'max', $any($event.target).value)" />
+                      <input type="number" class="bp-input-field" placeholder="0.00" [value]="t.price" (input)="patchTier($index, 'price', $any($event.target).value)" />
+                      <button type="button" class="shrink-0 text-muted hover:text-text" (click)="removeTier($index)" aria-label="Remove tier">
+                        <lucide-icon name="trash-2" [size]="16" />
+                      </button>
+                    </div>
+                  }
+                  @if (fromPrice() !== null) {
+                    <p class="bp-caption mt-1 text-secondary">Marketplace will show “From {{ fromPrice() }}”.</p>
+                  }
+                  <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="addTier()">
+                    <lucide-icon name="plus" [size]="14" /> Add price tier
+                  </button>
+                } @else if (priceTiers().length) {
+                  <dl class="mt-1 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1">
+                    @for (t of priceTiers(); track $index) {
+                      <dt class="bp-body-small text-secondary">{{ t.min }}@if (t.max !== '') {–{{ t.max }}} @else {+}</dt>
+                      <dd class="bp-body-small text-text">{{ t.price }}</dd>
+                    }
+                  </dl>
+                } @else {
+                  <div class="bp-body-small text-muted">No volume pricing</div>
+                }
               </div>
             </div>
           </div>
@@ -238,6 +313,13 @@ export class ItemEditComponent {
   protected readonly imageDrawer = signal(false);
   protected readonly imageTabs: PickerTab[] = ['upload', 'find'];
 
+  // pV2-STORE-ITEM-MEASURE-VOLUME-01 — editable attributes. `rawAttributes`
+  // preserves keys we don't manage (classifier-written etc.) across save.
+  protected readonly dimensions = signal<{ label: string; value: string }[]>([]);
+  protected readonly priceTiers = signal<{ min: string; max: string; price: string }[]>([]);
+  private readonly rawAttributes = signal<Record<string, unknown>>({});
+  protected readonly measureSuggestions = ['Height', 'Width', 'Depth', 'Weight', 'Seat Height', 'Volume', 'Material'];
+
   /** Current persisted approval status — drives the status pill. A new product
    *  is a draft until first saved. */
   protected readonly currentStatus = computed(() => this.itemRes.value()?.approval_status ?? 'draft');
@@ -327,6 +409,17 @@ export class ItemEditComponent {
       });
       this.imageUrl.set(item.image_url ?? null);
       this.images.set(item.images ?? []);
+      // pV2-STORE-ITEM-MEASURE-VOLUME-01 — hydrate the attributes editors.
+      const attrs = (item.attributes ?? {}) as Record<string, unknown>;
+      this.rawAttributes.set(attrs);
+      const dims = Array.isArray(attrs['dimensions']) ? (attrs['dimensions'] as { label?: string; value?: string }[]) : [];
+      this.dimensions.set(dims.map((d) => ({ label: d.label ?? '', value: d.value ?? '' })));
+      const tiers = Array.isArray(attrs['price_tiers']) ? (attrs['price_tiers'] as { min?: number; max?: number | null; price?: number }[]) : [];
+      this.priceTiers.set(tiers.map((t) => ({
+        min: t.min == null ? '' : String(t.min),
+        max: t.max == null ? '' : String(t.max),
+        price: t.price == null ? '' : String(t.price),
+      })));
       return item;
     },
   });
@@ -353,6 +446,37 @@ export class ItemEditComponent {
   protected patch(p: Partial<ItemForm>): void {
     this.form.update((f) => ({ ...f, ...p }));
   }
+
+  // ── Dimensions (attributes.dimensions) ──────────────────────────────────
+  /** First add SEEDS the 4 common labels (blank values, fill-in-the-blanks);
+   *  after that, append a blank custom row (pV2-STORE-ITEM-MEASURE-VOLUME-01 §B). */
+  protected addMeasurement(): void {
+    this.dimensions.update((d) =>
+      d.length === 0
+        ? ['Height', 'Width', 'Depth', 'Weight'].map((label) => ({ label, value: '' }))
+        : [...d, { label: '', value: '' }],
+    );
+  }
+  protected removeMeasurement(i: number): void { this.dimensions.update((d) => d.filter((_, x) => x !== i)); }
+  protected patchMeasurement(i: number, key: 'label' | 'value', val: string): void {
+    this.dimensions.update((d) => d.map((row, x) => (x === i ? { ...row, [key]: val } : row)));
+  }
+  /** Only rows with BOTH a label and a value — what saves + what view mode shows. */
+  protected readonly filledDimensions = computed(() =>
+    this.dimensions().filter((d) => d.label.trim() !== '' && d.value.trim() !== ''),
+  );
+
+  // ── Volume pricing (attributes.price_tiers) ─────────────────────────────
+  protected addTier(): void { this.priceTiers.update((t) => [...t, { min: '', max: '', price: '' }]); }
+  protected removeTier(i: number): void { this.priceTiers.update((t) => t.filter((_, x) => x !== i)); }
+  protected patchTier(i: number, key: 'min' | 'max' | 'price', val: string): void {
+    this.priceTiers.update((t) => t.map((row, x) => (x === i ? { ...row, [key]: val } : row)));
+  }
+  /** The first tier's price — what the card renders as "From £…". */
+  protected readonly fromPrice = computed(() => {
+    const t0 = this.priceTiers()[0];
+    return t0 && t0.price !== '' ? Number(t0.price) : null;
+  });
 
   protected onPickImage(r: PickerResult): void {
     if (r.type === 'image') this.imageUrl.set(r.url);
@@ -410,6 +534,20 @@ export class ItemEditComponent {
       lead_time_days: f.lead_time_days === '' ? null : Number(f.lead_time_days),
       image_url: this.imageUrl(),
       images: this.images(),
+      // pV2-STORE-ITEM-MEASURE-VOLUME-01 — merge the managed attribute pieces
+      // onto whatever else the bag held (item.service replaces the column, so we
+      // must send the full object). Empty rows dropped; tier max '' → null.
+      attributes: {
+        ...this.rawAttributes(),
+        dimensions: this.filledDimensions(),
+        price_tiers: this.priceTiers()
+          .filter((t) => String(t.price).trim() !== '')
+          .map((t) => ({
+            min: t.min === '' ? 0 : Number(t.min),
+            max: t.max === '' ? null : Number(t.max),
+            price: Number(t.price),
+          })),
+      },
       // Approved edits don't set a status — the server keeps it approved and
       // the schema only accepts draft|pending anyway.
       ...(status === 'approved' ? {} : { approval_status: status }),

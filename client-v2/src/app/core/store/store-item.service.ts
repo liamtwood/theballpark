@@ -38,6 +38,9 @@ export interface StoreItem {
   category_name?: string | null;
   subcategory_name?: string | null;
   item_tags?: { tag_id: string; dimension: string; label: string }[];
+  /** JSON bag — measurements (dimensions[]) + volume pricing (price_tiers[]),
+   *  plus any classifier/other keys (pV2-STORE-ITEM-MEASURE-VOLUME-01). */
+  attributes?: Record<string, unknown> | null;
 }
 
 /** What the editor sends on save. The supplier sets `approval_status` to either
@@ -62,6 +65,9 @@ export interface StoreItemWrite {
   image_url?: string | null;
   images?: GalleryImage[];
   tags?: string[];
+  /** Measurements (dimensions[]) + volume pricing (price_tiers[]) + preserved
+   *  other keys (pV2-STORE-ITEM-MEASURE-VOLUME-01). */
+  attributes?: Record<string, unknown>;
   approval_status?: 'draft' | 'pending' | 'approved';
 }
 

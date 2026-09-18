@@ -40,6 +40,28 @@ const StoreItemCreateSchema = z
     image_url: z.string().trim().max(1000).nullable().optional(),
     images: z.array(GalleryImageSchema).max(20).optional(),
     tags: z.array(z.string().trim().max(60)).max(30).optional(),
+    // pV2-STORE-ITEM-MEASURE-VOLUME-01 — attributes JSON bag (item.service
+    // already persists it; it was being .strip()'d here). Shallow-validated:
+    // `dimensions` = freeform label/value measurement rows; `price_tiers` =
+    // volume Min/Max/Price rows (max null = open top). passthrough() keeps any
+    // other keys (e.g. classifier-written) the client round-trips.
+    attributes: z
+      .object({
+        dimensions: z
+          .array(z.object({ label: z.string().trim().max(60), value: z.string().trim().max(120) }))
+          .max(50)
+          .optional(),
+        price_tiers: z
+          .array(z.object({
+            min: z.coerce.number().int().min(0).max(1_000_000),
+            max: z.coerce.number().int().min(0).max(1_000_000).nullable(),
+            price: z.coerce.number().min(0).max(100_000_000),
+          }))
+          .max(50)
+          .optional(),
+      })
+      .passthrough()
+      .optional(),
     // A supplier may only set draft (save) or pending (submit). approved/
     // rejected are reserved for the ballpark admin route; is_active stays
     // server-controlled (false until approval).
