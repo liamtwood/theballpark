@@ -20,15 +20,22 @@ Editable **freeform label/value list** on item-edit, stored as:
 "attributes": { "dimensions": [ {"label":"Height","value":"92 cm"},
                                  {"label":"Weight","value":"3.4 kg"} ] }
 ```
-- **Empty by default.** An **"+ Add measurement"** appends a blank `label | value`
-  row. Order preserved (array). Remove per row.
-- **`label`** — a text input with **suggestions** (Height · Width · Depth · Weight
-  · Seat Height · Volume · Material) offered as a dropdown/autocomplete, but **any
-  free text is allowed** (so `Size | 92x39x41` and custom labels both work).
+- **"Dimensions" section header + a `+`.** First click **seeds the 4 common
+  labels as blank rows** — **Height · Width · Depth · Weight** — so the common
+  case is fill-in-the-blanks, no typing labels.
+- **Add custom rows below** — a further add appends a blank `label | value` row
+  for anything else: `Volume | 100ml`, `Hands | 32` (a horse), `Seat Height | 46
+  cm`, `Size | 92x39x41`. Order preserved (array); remove per row.
+- **`label`** — free text; for custom rows offer the same suggestions (Seat
+  Height · Volume · Material …) but accept anything.
 - **`value`** — free text; the **unit lives in the value** ("92 cm", "3.4 kg") —
   no separate unit field.
-- **Display** — render the rows as a clean spec block (`Label: value` lines). One
-  combined `Size` row or many broken-out rows both render naturally.
+- **Drop empty rows on save** — `attributes.dimensions` stores only filled
+  entries (so an item that only has Height + Weight saves just those two; the
+  unfilled seeded W/D don't persist).
+- **Display / view mode** — render only the filled rows as a clean spec block
+  (`Label: value` lines). One combined `Size` row or many broken-out rows both
+  render naturally; empty seeded rows never show in view.
 - Maps **1:1 to scraped DOM dims** (which are `Height: 92 cm` label/value pairs),
   so the import later writes into this exact structure. No AI slicing in V1.
 
