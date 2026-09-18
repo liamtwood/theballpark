@@ -9,9 +9,20 @@ No overlap with the codelists slice (different files).
 ## Goal
 Given a vendor **URL**, deterministically **pre-fill the supplier org profile**
 from the site's structured data. **No new screen** — a **"Fetch from website"**
-action on the existing profile, using the `website` field. This is the org half
-of the "give us your website, we build your catalogue" onboarding; the item
-catalogue load is a later slice.
+action on the **existing profile/shopfront**, driven by the existing
+**`orgs.website`** field. This is the org half of the "give us your website, we
+build your catalogue" onboarding; the item catalogue load is a later slice.
+
+**Entry point = the existing profile, persona-agnostic (Liam, 2026-09-18).** There
+is **no new intake/Add-supplier screen and no wizard.** The org is created via the
+paths that already exist (supplier self-serve onboarding, or admin org tools); the
+whole intake is the **URL + a load trigger on the existing profile**, and the same
+trigger serves BOTH actors:
+- **new supplier (self-serve)** — sets their own `website` → load;
+- **admin in org context** — acting in the vendor org's context → sets `website`
+  → load (concierge). This is exactly why the **target-org wiring** (Part C) is
+  required — the profile action must operate on the org-in-context, not only the
+  session org.
 
 ## Principles (hold)
 - **Deterministic, NO AI.** The org block is a field-by-field coalesce from
