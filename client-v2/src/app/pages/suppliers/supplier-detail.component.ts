@@ -10,7 +10,7 @@ import { MarketplaceWorkspaceComponent } from '../marketplace/marketplace-worksp
 import { QuickViewDialogComponent } from '../marketplace/quick-view-dialog.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
-import { CatalogueItem, SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
+import { CatalogueItem, CategoryInfo, SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
 import { StorefrontPanelComponent } from './storefront-panel.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
@@ -244,11 +244,20 @@ export class SupplierDetailComponent {
     this.quickItem.set(this.store.items().find((i) => i.id === itemId) ?? null);
   }
 
-  /** Drill-down rail: only subcategories with items (empties hidden), matching
-   *  the marketplace pages. */
-  protected readonly storeSubcategories = computed(() =>
-    this.store.subcategories().filter((s) => s.count > 0),
-  );
+  /** Drill-down rail: the subcategories of the SELECTED macro, sourced from the
+   *  ORG-SCOPED supplierSubcategories (not the global marketplace endpoint) so
+   *  the rail counts match this supplier's item list (pV2-STORE-CAT-DISPLAY-01).
+   *  Real subcats only, count-scoped (owner sees drafts too, server-side); the
+   *  catch-all/uncategorised items surface at the macro level (cat-only list). */
+  protected readonly storeSubcategories = computed<CategoryInfo[]>(() => {
+    const cat = this.store.categoryId();
+    return (this.subcats.value() ?? [])
+      .filter((s) => !s.isCatchAll && s.parentId === cat && s.count > 0)
+      .map((s) => ({
+        id: s.id, name: s.name, count: s.count,
+        tagline: null, iconName: null, isActive: true, sortOrder: null,
+      }));
+  });
 
   /** The strip wants CategoryInfo-ish rows — adapt the detail's counts, hiding
    *  empty categories (matches the marketplace drill-down rail). */
