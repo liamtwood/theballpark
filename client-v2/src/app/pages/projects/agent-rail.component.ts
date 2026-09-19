@@ -4,6 +4,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService, IntentAction, ComponentInput } from '../../core/projects/project.service';
 import { revisedFromParts } from './quote-line.util';
+import { lineTotal } from '@ballpark/line-pricing';
 import { currencySymbol } from '../../shared/details-format';
 import { MarkdownPipe } from '../../shared/markdown.pipe';
 
@@ -328,22 +329,21 @@ export class AgentRailComponent {
     if (c.installUnit === 'per_order') return `${this.sym()}${c.installCost} / order`;
     return `${this.sym()}${c.installCost} / ${c.unit || 'unit'}`;
   }
-  /** Add install to a goods subtotal (matching the line-total formula) when the
-   *  Install checkbox is on. */
-  private withInstall(goods: number): number {
-    const c = this.context();
-    if (!this.sugInstall() || c.installCost == null) return goods;
-    switch (c.installUnit) {
-      case 'per_order': return goods + c.installCost;
-      case 'percentage': return goods + goods * (c.installCost / 100);
-      default: return goods + c.installCost * Math.max(1, this.sugQty() || 1); // per_item
-    }
-  }
-  /** Recompute the LINE total (cost × qty + install) unless the user overrode it. */
+  /** Recompute the LINE total (cost × qty + install) unless the user overrode it.
+   *  pV2-PRICING-SSOT-01 — the typed cost is a NEGOTIATED rate (no list tiers),
+   *  so it goes through the ONE definition as `priceCurrent`. */
   protected reseedTotal(): void {
     if (this.totalTouched()) return;
-    const goods = (Number(this.sugCost()) || 0) * Math.max(1, Number(this.sugQty()) || 1);
-    this.sugTotal.set(Math.round(this.withInstall(goods)));
+    const c = this.context();
+    const total = lineTotal({
+      priceCurrent: Number(this.sugCost()) || 0,
+      quantity: Math.max(1, Number(this.sugQty()) || 1),
+      installed: this.sugInstall(),
+      installCost: c.installCost,
+      installUnit: c.installUnit,
+      honourFlat: false,
+    });
+    this.sugTotal.set(Math.round(total));
   }
   /** Total shown comma-grouped (a text input — number inputs can't group). */
   protected fmtTotal(): string {

@@ -13,6 +13,7 @@ import { TERMINAL_STATUSES, gbp } from './inbox-status';
 import { InboxRailComponent, RailOuter } from './inbox-rail.component';
 import { LinePreviewComponent } from '../projects/line-preview.component';
 import { lineCost } from '../projects/quote-line.util';
+import { lineTotal } from '@ballpark/line-pricing';
 import { LineEditorComponent, LineEdit } from '../projects/line-editor.component';
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
 import { ProjectService } from '../../core/projects/project.service';
@@ -901,7 +902,9 @@ export class InboxProjectComponent {
       if (Number.isFinite(newRate) && newRate >= 0 && Math.abs(newRate - oldRate) > 0.005) {
         const nm = edit.name?.trim() || line.name || 'Item';
         const fromTotal = lineCost(line);
-        const newTotal = lineCost({ ...line, basePrice: newRate });
+        // pV2-PRICING-SSOT-01 2a — the proposed rate is a negotiated figure, so
+        // mark it negotiated: list tiers must not override what's being typed.
+        const newTotal = lineCost({ ...line, basePrice: newRate, negotiated: true });
         await this.itemAction(line.id, 'adjust', newRate, `${nm} ${gbp(fromTotal)} New Cost Suggested ${gbp(newTotal)} by ${this.actorName()}`);
       }
       this.editingLine.set(null);
@@ -966,19 +969,20 @@ export class InboxProjectComponent {
     }
   }
 
-  /** Line total at a given per-unit rate + install cost — mirrors the server
-   *  formula (rate × qty + install: per_order flat, percentage of subtotal,
-   *  else per_item). `install` defaults to the line's current install cost. */
+  /** Line total at a given per-unit rate + install cost — via the ONE definition
+   *  (pV2-PRICING-SSOT-01). The propose-box rate is a NEGOTIATED figure, so it's
+   *  fed as `priceCurrent` (no list tiers). `install` defaults to the line's
+   *  current install cost. */
   protected lineTotalAt(it: InboxThreadItem, rate: number, install?: number | null): number {
-    const qty = it.quantity ?? 1;
-    const base = rate * qty;
     const ic = install === undefined ? it.installCost : install;
-    if (it.installed === false || !ic) return base;
-    switch (it.installUnit) {
-      case 'per_order': return base + ic;
-      case 'percentage': return base + base * (ic / 100);
-      default: return base + ic * qty;
-    }
+    return lineTotal({
+      priceCurrent: rate,
+      quantity: it.quantity ?? 1,
+      installed: it.installed,
+      installCost: ic,
+      installUnit: it.installUnit,
+      honourFlat: false,
+    });
   }
 
   /** Live line total for the rate + install being typed in the propose box. */

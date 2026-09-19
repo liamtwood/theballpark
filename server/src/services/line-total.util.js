@@ -1,31 +1,35 @@
-// pV2-UNIFY-01 — the ONE per-line cost formula, parametrised on the price
-// column so every surface shares it:
-//   • Estimate / Cart / Final Quote → base_price   (the agent's snapshot)
-//   • Inbox "Original"              → price_ref     (briefed per-unit price)
-//   • Inbox "Revised"              → price_current  (negotiated per-unit price)
+// pV2-PRICING-SSOT-01 — the set-based SQL translation of the ONE per-line
+// pricing definition. This is a MECHANICAL MIRROR of shared/pricing
+// (server/src/services/line-pricing.js effectiveUnitPrice/lineTotal). Do NOT
+// change the rule here without changing line-pricing.js AND the golden contract
+// test (line-pricing.golden.test.js), which runs both over a case matrix and
+// asserts equality — that test is what keeps the two from drifting (a comment
+// is not a guard, WORKING_STANDARDS #1). SQL is kept only for set-based queries
+// (aggregate/sort/filter across lines); single-line responses use the module.
 //
-// A line = price × qty, plus install when the line is installed: per_order is a
-// flat charge once, percentage scales with the (price × qty) base, else per_item
-// (× qty). The install cost is negotiable per line — a `project_items` override
-// wins over the catalogue `items` value (pV2-UNIFY-01 QC), mirroring how
-// base_price is already snapshotted on project_items. Aliases: pi
-// (project_items) + i (items). Callers embed the fragment inside a SELECT that
-// joins those two tables under those aliases.
-// pV2-INTENT-01 — a line may carry a negotiated FLAT total (project_items.
-// flat_total) that OVERRIDES the per-unit × qty + install calc: a supplier can
-// just round the whole line up/down without pricing per head. When present it
-// wins; when NULL the per-unit formula stands. Pass `{ flat: true }` for the
-// "current/revised" surfaces (inbox Revised, quote current, negotiation) so the
-// override applies; the "Original" surfaces (price_ref) keep the plain formula.
-function lineTotalSql(priceExpr, { flat = false } = {}) {
-  // pV2-STORE-ITEM-MEASURE-VOLUME-01 §D — VOLUME pricing. When the item carries
-  // attributes.price_tiers ([{min,max,price}], max null = open top), the per-unit
-  // price for this line is the tier whose [min,max] band contains pi.quantity
-  // (highest matching min wins). No tiers / no match → the passed price
-  // (base_price / price_ref / price_current). Read LIVE from the item row
-  // (aliased `i` by every caller — see header), so it tracks the supplier's
-  // current tiers, and applies uniformly across inbox / quote / Customize.
-  const tierPrice = `(
+// Effective per-unit precedence (Part A step 2): a human-entered price wins over
+// the guide; a volume tier only ever modifies the guide `base`:
+//   current (negotiated) ?? ref (briefed/Original) ?? tierUnit(guide) ?? base
+// Pass only the columns a surface has: `current`/`base` for the estimate guide,
+// `current`/`ref` for the inbox revised, `ref` alone for the frozen "Original".
+// Tiers are considered ONLY when `base` (the guide) is supplied — so the inbox
+// and Original surfaces (price_ref/price_current human numbers) never re-tier.
+//
+// A line = unit × qty plus install when installed: per_order flat once,
+// percentage of the (unit × qty) base, else per_item (× qty). The install
+// cost/unit is negotiable per line — a `project_items` override wins over the
+// catalogue `items` value (pV2-UNIFY-01 QC). Aliases: pi (project_items) + i
+// (items); callers embed the fragment in a SELECT joining those under those
+// aliases. `{ flat: true }` honours a negotiated FLAT total (pi.flat_total) that
+// overrides the whole per-unit calc (pV2-INTENT-01) — the "Original" surface
+// passes flat:false so the frozen brief keeps the plain formula.
+function lineTotalSql({ current = null, ref = null, base = null, flat = false } = {}) {
+  // VOLUME tiers (guide only): the tier whose [min,max] band contains
+  // pi.quantity (max null/'' = open top; highest matching min wins). Read LIVE
+  // from the item row (i.attributes). Included in the precedence ONLY when a
+  // guide `base` is supplied.
+  const tierUnit = base
+    ? `(
     CASE WHEN jsonb_typeof(i.attributes -> 'price_tiers') = 'array' THEN (
       SELECT (t ->> 'price')::numeric
         FROM jsonb_array_elements(i.attributes -> 'price_tiers') t
@@ -33,16 +37,18 @@ function lineTotalSql(priceExpr, { flat = false } = {}) {
          AND ((t ->> 'max') IS NULL OR pi.quantity <= (t ->> 'max')::numeric)
        ORDER BY COALESCE(NULLIF(t ->> 'min', '')::numeric, 0) DESC
        LIMIT 1
-    ) END)`;
-  const price = `COALESCE(${tierPrice}, ${priceExpr})`;
+    ) END)`
+    : null;
+  const parts = [current, ref, tierUnit, base].filter(Boolean);
+  const unit = parts.length > 1 ? `COALESCE(${parts.join(', ')})` : (parts[0] || '0');
   const ic = 'COALESCE(pi.install_cost, i.install_cost)';
   const iu = 'COALESCE(pi.install_unit, i.install_unit)';
   const perUnit = `
-  COALESCE(${price}, 0) * pi.quantity
+  COALESCE(${unit}, 0) * pi.quantity
   + CASE
       WHEN NOT COALESCE(pi.installed, true) OR ${ic} IS NULL THEN 0
       WHEN ${iu} = 'per_order'  THEN ${ic}
-      WHEN ${iu} = 'percentage' THEN COALESCE(${price}, 0) * pi.quantity * (${ic} / 100.0)
+      WHEN ${iu} = 'percentage' THEN COALESCE(${unit}, 0) * pi.quantity * (${ic} / 100.0)
       ELSE ${ic} * pi.quantity
     END`;
   return flat ? `COALESCE(pi.flat_total, (${perUnit}))` : perUnit;

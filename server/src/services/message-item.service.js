@@ -212,8 +212,8 @@ async function getByMessages(messageIds, { executor = null, sentOnly = false } =
               o.id              AS supplier_org_id,
               o.name            AS supplier_name,
               o.logo_url        AS supplier_logo_url,
-              (${lineTotalSql('pi.price_ref')})                                          AS original_total,
-              (${lineTotalSql('COALESCE(pi.price_current, pi.price_ref)', { flat: true })}) AS revised_total,
+              (${lineTotalSql({ ref: 'pi.price_ref' })})                                   AS original_total,
+              (${lineTotalSql({ current: 'pi.price_current', ref: 'pi.price_ref', flat: true })}) AS revised_total,
               pi.flat_total,
               pi.created_at,
               EXISTS (SELECT 1 FROM project_items q

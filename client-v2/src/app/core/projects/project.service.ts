@@ -161,8 +161,11 @@ export class ProjectService {
     return this.api.post<QuoteLine>(`/api/projects-v2/${projectId}/items/custom`, body);
   }
 
-  removeQuoteItem(projectId: string, itemId: string): Observable<{ removed: boolean }> {
-    return this.api.delete<{ removed: boolean }>(`/api/projects-v2/${projectId}/items/${itemId}`);
+  /** Remove a quote line. CONTRACT (pV2-PRICING-SSOT-01 Part E): `lineId` is the
+   *  project_items ROW id — the server keys DELETE by row id (removeItem), so a
+   *  catalogue item_id silently no-ops. Callers resolve item→row before calling. */
+  removeQuoteItem(projectId: string, lineId: string): Observable<{ removed: boolean }> {
+    return this.api.delete<{ removed: boolean }>(`/api/projects-v2/${projectId}/items/${lineId}`);
   }
 
   /** pV2-BUILDUP-02 — the supplier's reusable components (derived library) for
@@ -198,15 +201,18 @@ export class ProjectService {
     return this.api.post<{ id: string }>(`/api/projects-v2/${projectId}/items/${lineId}/question`, q);
   }
 
-  /** pV2-QUANTITY-01 — set a quote line's quantity (positive integer). */
-  setQuoteItemQuantity(projectId: string, itemId: string, quantity: number): Observable<QuoteLine> {
-    return this.api.patch<QuoteLine>(`/api/projects-v2/${projectId}/items/${itemId}`, { quantity });
+  /** pV2-QUANTITY-01 — set a quote line's quantity (positive integer).
+   *  CONTRACT (pV2-PRICING-SSOT-01 Part E): `lineId` is the project_items ROW
+   *  id — the ONE key every per-line mutation (PATCH + DELETE) uses. NOT the
+   *  catalogue item_id. */
+  setQuoteItemQuantity(projectId: string, lineId: string, quantity: number): Observable<QuoteLine> {
+    return this.api.patch<QuoteLine>(`/api/projects-v2/${projectId}/items/${lineId}`, { quantity });
   }
 
   /** pV2-CART-01 — persist a line's Install choice (true/false, or null to
-   *  reset to the default). */
-  setQuoteItemInstalled(projectId: string, itemId: string, installed: boolean | null): Observable<QuoteLine> {
-    return this.api.patch<QuoteLine>(`/api/projects-v2/${projectId}/items/${itemId}`, { installed });
+   *  reset to the default). `lineId` = project_items ROW id (see contract above). */
+  setQuoteItemInstalled(projectId: string, lineId: string, installed: boolean | null): Observable<QuoteLine> {
+    return this.api.patch<QuoteLine>(`/api/projects-v2/${projectId}/items/${lineId}`, { installed });
   }
 
   /** Edit a line's free-text details (name / description / Services) — the

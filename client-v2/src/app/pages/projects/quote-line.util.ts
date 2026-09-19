@@ -1,5 +1,6 @@
-import { PriceTier, QuoteLine, QuoteLineStatus } from '../../core/projects/project.types';
+import { QuoteLine, QuoteLineStatus } from '../../core/projects/project.types';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
+import { effectiveUnitPrice, lineTotal, LinePricingInput } from '@ballpark/line-pricing';
 
 /** Per-item send-state badge labels + soft-token pill classes (Final view). */
 export const STATUS_LABELS: Record<QuoteLineStatus, string> = {
@@ -52,44 +53,37 @@ export function isInstalled(l: QuoteLine): boolean {
   return hasInstall(l) && l.installed !== false;
 }
 
-/** The per-unit price for a line at its CURRENT quantity: the matching volume
- *  tier when the item carries price_tiers, else the (snapshot/negotiated) base
- *  price. BE-00105 — this is the client half of the server tier pick; KEEP IN
- *  SYNC with line-total.util.js:28-37 (jsonb price_tiers → COALESCE(tier, base)).
- *  A matching tier OVERRIDES the base, exactly as the server COALESCE does. */
+/** pV2-PRICING-SSOT-01 — adapt a QuoteLine to the canonical pricing module's
+ *  input. The client's `basePrice` is the server-resolved
+ *  COALESCE(price_current, base_price), so it can't tell a negotiated rate from
+ *  the guide base on its own; `negotiated` (price_current IS NOT NULL) carries
+ *  that, and we feed the resolved value in as `priceCurrent` when negotiated so
+ *  the module suppresses tiers (Part A 2a). The estimate/cart is always a
+ *  flat-honouring guide surface; `priceRef` (the inbox "Original") is server-only. */
+function pricingInput(l: QuoteLine): LinePricingInput {
+  return {
+    basePrice: l.basePrice,
+    priceCurrent: l.negotiated ? l.basePrice : null,
+    priceTiers: l.priceTiers ?? null,
+    quantity: l.quantity ?? 1,
+    installed: l.installed,
+    installCost: l.installCost,
+    installUnit: l.installUnit,
+    flatTotal: l.flatTotal ?? null,
+    honourFlat: true,
+  };
+}
+
+/** The per-unit price for a line at its current qty — the ONE definition
+ *  (server line-pricing.js). Thin wrapper over the canonical module. */
 export function unitPrice(l: QuoteLine): number {
-  return tierPriceFor(l.priceTiers, l.quantity ?? 1) ?? (l.basePrice ?? 0);
+  return effectiveUnitPrice(pricingInput(l));
 }
 
-/** The tier whose [min,max] band contains qty (max null = open top); the highest
- *  matching min wins — mirrors the server `ORDER BY min DESC LIMIT 1`. Returns
- *  null when there are no tiers or none match (→ caller falls back to base). */
-function tierPriceFor(tiers: PriceTier[] | null | undefined, qty: number): number | null {
-  if (!Array.isArray(tiers) || !tiers.length) return null;
-  let best: PriceTier | null = null;
-  for (const t of tiers) {
-    const min = t.min == null ? 0 : Number(t.min);
-    const max = t.max == null ? null : Number(t.max);
-    if (qty >= min && (max === null || qty <= max)) {
-      if (!best || min > (best.min == null ? 0 : Number(best.min))) best = t;
-    }
-  }
-  return best ? Number(best.price) : null;
-}
-
-/** Line total honouring the install basis — mirrors the server LINE_TOTAL_SQL
- *  exactly (unit × qty; per_order flat; percentage of base; else per_item),
- *  where `unit` is the volume-tier price when present (BE-00105). */
+/** The full line total — the ONE definition (server line-pricing.js). Thin
+ *  wrapper over the canonical module; every client total routes through here. */
 export function lineCost(l: QuoteLine): number {
-  const qty = l.quantity ?? 1;
-  const base = unitPrice(l) * qty;
-  if (!isInstalled(l) || l.installCost == null) return base;
-  const ic = l.installCost;
-  switch (l.installUnit) {
-    case 'per_order': return base + ic;
-    case 'percentage': return base + base * (ic / 100);
-    default: return base + ic * qty; // per_item (null)
-  }
+  return lineTotal(pricingInput(l));
 }
 
 /** The unit code ('head', 'linear_m') as a plain label ("head", "linear m")

@@ -80,7 +80,7 @@ async function listSupplierProjects(supplierOrgId) {
             ao.logo_url  AS agency_logo_url,
             MAX(pi.updated_at)  AS updated_at,
             COUNT(*)            AS item_count,
-            COALESCE(SUM(${lineTotalSql('COALESCE(pi.price_current, pi.price_ref)', { flat: true })}), 0) AS quote_total
+            COALESCE(SUM(${lineTotalSql({ current: 'pi.price_current', ref: 'pi.price_ref', flat: true })}), 0) AS quote_total
        FROM project_items pi
        LEFT JOIN items i ON i.id  = pi.item_id
        JOIN projects p   ON p.id  = pi.project_id

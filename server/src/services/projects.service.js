@@ -53,7 +53,7 @@ async function resolveStatus(code) {
 // price_ref = base_price at send — so a negotiated line reads identically on the
 // Final Quote and the inbox. Cart / Quote / Final / Inbox can't drift. Aliases:
 // pi (project_items) + i (items).
-const LINE_TOTAL_SQL = lineTotalSql('COALESCE(pi.price_current, pi.base_price)', { flat: true });
+const LINE_TOTAL_SQL = lineTotalSql({ current: 'pi.price_current', base: 'pi.base_price', flat: true });
 
 const LIST_SELECT = `
   SELECT p.id, p.name, p.event_name, p.ref, p.status,
@@ -435,9 +435,13 @@ function toQuoteLine(row) {
     name: row.name,
     description: row.description ?? null,
     basePrice: row.base_price === null ? null : Number(row.base_price),
-    // BE-00105 — live volume tiers ([{min,max,price}], max null = open top) so
-    // the client line-total picks the tier by qty (mirrors line-total.util.js).
+    // BE-00105 — live volume tiers ([{min,max,price}], max null = open top).
+    // pV2-PRICING-SSOT-01: the shared pricing module applies these ONLY on an
+    // un-negotiated line (see `negotiated`).
     priceTiers: row.price_tiers ?? null,
+    // pV2-PRICING-SSOT-01 — negotiated flag + flat override for the shared module.
+    negotiated: !!row.negotiated,
+    flatTotal: row.flat_total == null ? null : Number(row.flat_total),
     // Installed-price extras (from the catalogue item) — drive the Final
     // Quote's Install / Deliverable toggle (pV2-FINAL-01).
     installCost: row.install_cost == null ? null : Number(row.install_cost),
@@ -501,6 +505,13 @@ const QUOTE_LINE_JOIN = `
          -- reads price_current / its install override; else the original
          -- base_price / catalogue install. So the quote card matches the inbox.
          COALESCE(pi.price_current, pi.base_price)  AS base_price,
+         -- pV2-PRICING-SSOT-01 — base_price above is the RESOLVED guide/negotiated
+         -- per-unit; `negotiated` tells the client that resolution was a human
+         -- rate (price_current) so the shared pricing module suppresses list
+         -- tiers (Part A 2a). flat_total = the per-line flat override (honoured
+         -- on the estimate/cart surface).
+         (pi.price_current IS NOT NULL) AS negotiated,
+         pi.flat_total,
          pi.unit, pi.image_url, pi.quantity,
          pi.option_of_line_id, pi.details, pi.quote_description,
          pi.installed, pi.logical_line_id, pi.created_at, pi.is_custom,

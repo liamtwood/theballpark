@@ -109,8 +109,8 @@ import { isDeclined } from './quote-line.util';
         cart
         [lines]="quoteLines()"
         [breakdown]="est.value() ?? null"
-        (removed)="onQuoteToggle($event)"
-        (qtyChanged)="onQtyChange($event.itemId, $event.quantity)"
+        (removed)="onRemoveLine($event)"
+        (qtyChanged)="onQtyChange($event.lineId, $event.quantity)"
         (checkout)="onCheckout()"
         (close)="cartOpen.set(false)"
       />
@@ -241,16 +241,19 @@ export class ProjectMarketplaceComponent {
     loader: ({ params }) => firstValueFrom(this.projects.estimate(params, 'all')),
   });
 
-  /** + on a card, or the rail's remove — toggles the item in this project's
-   *  quote (optimistic, revert on failure). */
+  /** + on a marketplace CARD — toggles the catalogue item in this project's
+   *  quote (optimistic, revert on failure). The card works in catalogue-item
+   *  space (quoteIds is a Set of item_ids); ADD is by item_id, but REMOVE must
+   *  resolve to the project_items ROW id — the one key every per-line mutation
+   *  uses (pV2-PRICING-SSOT-01 Part E). */
   protected async onQuoteToggle(itemId: string): Promise<void> {
     const id = this.projectId();
     const before = this.quoteLines();
-    const inQuote = this.quoteIds().has(itemId);
+    const existing = this.quoteLines().find((l) => l.itemId === itemId);
     try {
-      if (inQuote) {
-        this.quoteLines.update((ls) => ls.filter((l) => l.itemId !== itemId));
-        await firstValueFrom(this.projects.removeQuoteItem(id, itemId));
+      if (existing) {
+        this.quoteLines.update((ls) => ls.filter((l) => l.id !== existing.id));
+        await firstValueFrom(this.projects.removeQuoteItem(id, existing.id)); // ROW id
       } else {
         const line = await firstValueFrom(this.projects.addQuoteItem(id, itemId));
         this.quoteLines.update((ls) => [...ls, line]);
@@ -262,14 +265,32 @@ export class ProjectMarketplaceComponent {
     }
   }
 
-  /** Inline quantity edit on a quote line — optimistic, revert + toast on
-   *  failure (pV2-QUANTITY-01). */
-  protected async onQtyChange(itemId: string, quantity: number): Promise<void> {
+  /** The cart rail's remove (X) — deletes a specific line by its project_items
+   *  ROW id (pV2-PRICING-SSOT-01 Part E; unambiguous even if the same item
+   *  appears twice). Optimistic, revert + toast on failure. */
+  protected async onRemoveLine(lineId: string): Promise<void> {
     const id = this.projectId();
     const before = this.quoteLines();
-    this.quoteLines.update((ls) => ls.map((l) => (l.itemId === itemId ? { ...l, quantity } : l)));
+    this.quoteLines.update((ls) => ls.filter((l) => l.id !== lineId));
     try {
-      await firstValueFrom(this.projects.setQuoteItemQuantity(id, itemId, quantity));
+      await firstValueFrom(this.projects.removeQuoteItem(id, lineId));
+      this.est.reload();
+    } catch (err) {
+      this.quoteLines.set(before);
+      this.toast.add({ severity: 'error', summary: "Couldn't remove the item — please try again.", detail: errorDetail(err), life: 4000 });
+    }
+  }
+
+  /** Inline quantity edit on a quote line — optimistic, revert + toast on
+   *  failure (pV2-QUANTITY-01). `lineId` is the project_items ROW id
+   *  (pV2-PRICING-SSOT-01 Part E / BE-00106 — the rail used to emit the
+   *  catalogue item_id here, which the endpoint rejected). */
+  protected async onQtyChange(lineId: string, quantity: number): Promise<void> {
+    const id = this.projectId();
+    const before = this.quoteLines();
+    this.quoteLines.update((ls) => ls.map((l) => (l.id === lineId ? { ...l, quantity } : l)));
+    try {
+      await firstValueFrom(this.projects.setQuoteItemQuantity(id, lineId, quantity));
       this.est.reload();
     } catch (err) {
       this.quoteLines.set(before);

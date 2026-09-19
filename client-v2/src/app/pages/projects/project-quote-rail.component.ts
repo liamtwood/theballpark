@@ -54,7 +54,7 @@ import { isDeclined, lineCost } from './quote-line.util';
                 <li class="flex flex-col gap-1.5 border-b border-hairline py-2.5 last:border-b-0">
                   <div class="flex items-start justify-between gap-2">
                     <span class="line-clamp-2 text-lg font-semibold leading-snug text-text">{{ l.name }}</span>
-                    <button type="button" class="-mr-1 shrink-0 rounded-md p-1 text-muted hover:bg-fill hover:text-text" [attr.aria-label]="'Remove ' + l.name" (click)="removed.emit(l.itemId)">
+                    <button type="button" class="-mr-1 shrink-0 rounded-md p-1 text-muted hover:bg-fill hover:text-text" [attr.aria-label]="'Remove ' + l.name" (click)="removed.emit(l.id)">
                       <lucide-icon name="x" [size]="15" />
                     </button>
                   </div>
@@ -64,7 +64,7 @@ import { isDeclined, lineCost } from './quote-line.util';
                       class="shrink-0"
                       [value]="l.quantity"
                       [label]="l.name"
-                      (qtyCommit)="qtyChanged.emit({ itemId: l.itemId, quantity: $event })"
+                      (qtyCommit)="qtyChanged.emit({ lineId: l.id, quantity: $event })"
                     />
                   </div>
                 </li>
@@ -82,8 +82,10 @@ export class ProjectQuoteRailComponent {
    *  Subtotal shows Project Costs (the cart's categorised items, marked up);
    *  else a base subtotal. Fees/provisions are excluded — they're not in the cart. */
   readonly breakdown = input<EstimateBreakdown | null>(null);
+  /** pV2-PRICING-SSOT-01 Part E — both carry the project_items ROW id
+   *  (`l.id`), the one key every per-line mutation uses. */
   readonly removed = output<string>();
-  readonly qtyChanged = output<{ itemId: string; quantity: number }>();
+  readonly qtyChanged = output<{ lineId: string; quantity: number }>();
   readonly checkout = output<void>();
   /** Close the cart panel (X in the header). */
   readonly close = output<void>();

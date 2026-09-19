@@ -30,7 +30,8 @@
                 "output": "/"
               }
             ],
-            "styles": ["src/styles.css"]
+            "styles": ["src/styles.css"],
+            "allowedCommonJsDependencies": ["@ballpark/line-pricing"]
           },
           "configurations": {
             "production": {

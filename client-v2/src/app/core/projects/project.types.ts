@@ -54,9 +54,17 @@ export interface QuoteLine {
   basePrice: number | null;
   /** pV2-STORE-ITEM-MEASURE-VOLUME-01 / BE-00105 — the live catalogue item's
    *  volume price tiers (min/max band → per-unit price, max null = open top).
-   *  Null for custom lines / items without tiers. lineCost()/unitPrice() pick
-   *  the tier by qty, mirroring the server line-total.util.js. */
+   *  Null for custom lines / items without tiers. Only apply on an un-negotiated
+   *  line — see `negotiated` (pV2-PRICING-SSOT-01 Part A 2a). */
   priceTiers?: PriceTier[] | null;
+  /** pV2-PRICING-SSOT-01 — the line has a NEGOTIATED per-unit rate
+   *  (project_items.price_current IS NOT NULL). `basePrice` already resolves to
+   *  it; this flag tells the pricing module to suppress list tiers (a negotiated
+   *  price is the real price; tiers are only a guide on the base). */
+  negotiated?: boolean;
+  /** pV2-INTENT-01 / pV2-PRICING-SSOT-01 — a negotiated FLAT line total that
+   *  overrides the per-unit × qty calc on flat-honouring surfaces. Null = none. */
+  flatTotal?: number | null;
   /** Installed-price extras (from the catalogue item) — the Final Quote's
    *  Install / Deliverable toggle. */
   installCost: number | null;
