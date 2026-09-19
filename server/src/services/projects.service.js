@@ -506,10 +506,10 @@ const QUOTE_LINE_JOIN = `
          -- base_price / catalogue install. So the quote card matches the inbox.
          COALESCE(pi.price_current, pi.base_price)  AS base_price,
          -- pV2-PRICING-SSOT-01 — base_price above is the RESOLVED guide/negotiated
-         -- per-unit; `negotiated` tells the client that resolution was a human
-         -- rate (price_current) so the shared pricing module suppresses list
-         -- tiers (Part A 2a). flat_total = the per-line flat override (honoured
-         -- on the estimate/cart surface).
+         -- per-unit; the negotiated flag tells the client that resolution was a
+         -- human rate (price_current) so the shared pricing module suppresses
+         -- list tiers (Part A 2a). flat_total = the per-line flat override
+         -- (honoured on the estimate/cart surface).
          (pi.price_current IS NOT NULL) AS negotiated,
          pi.flat_total,
          pi.unit, pi.image_url, pi.quantity,
