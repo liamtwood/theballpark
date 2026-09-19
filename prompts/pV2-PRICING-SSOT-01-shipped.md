@@ -100,6 +100,19 @@ The one key for every per-line mutation is **`project_items.id`**.
 
 ## QC notes
 (Liam)
+**QC pass 1 (Liam, 2026-09-19, v2.488).** Marketplace read-only confirmed (own
+item view-only, click = read-only, pencil = edit — BE-00104). Cart qty→101 saves
+(BE-00106). Tier math verified end to end: qty 101 @20% = £362; @0% = £302; qty
+100 = £299 (100+ band); qty 49 = £184 (1–49 band). All correct.
+Two issues raised → fixed in **v2.489**:
+1. Clicking the qty field on the Ballpark Cost row opened the item preview — the
+   qty control's click bubbled to the row's `select`. Added
+   `(click)="$event.stopPropagation()"` on `<app-qty-input>` (estimate-item-row;
+   defensively on the cart rail too).
+2. The Project Quote cart rail showed unit price + qty but no per-line total.
+   Added a marked-up, tier-aware per-item total (`railTotal` = lineCost × markup)
+   and made the unit tier-aware (`railUnit` = unitPrice × markup) so unit × qty
+   reconciles and the items sum to the marked-up headline Subtotal.
 
 ## Chat audit
 (chat / ballpark-11)

@@ -3,7 +3,7 @@ import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { EstimateBreakdown, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { QtyInputComponent } from './qty-input.component';
-import { isDeclined, lineCost } from './quote-line.util';
+import { isDeclined, lineCost, unitPrice } from './quote-line.util';
 
 /** pV2-PROJECTS-02 slice 2 — the Project Quote rail (Amazon-style cart): a
  *  simple Subtotal + "Go to Ballpark" CTA pinned at the top, then the list of
@@ -59,14 +59,20 @@ import { isDeclined, lineCost } from './quote-line.util';
                     </button>
                   </div>
                   <div class="flex items-center justify-between gap-2">
-                    <span class="bp-body-small text-secondary">{{ l.basePrice === null ? 'POA' : (l.basePrice | currency: 'GBP' : 'symbol' : '1.0-0') }}{{ l.unit ? ' / ' + l.unit : '' }}</span>
+                    <span class="bp-body-small text-secondary">{{ l.basePrice === null ? 'POA' : (railUnit(l) | currency: 'GBP' : 'symbol' : '1.0-0') }}{{ l.unit ? ' / ' + l.unit : '' }}</span>
                     <app-qty-input
                       class="shrink-0"
                       [value]="l.quantity"
                       [label]="l.name"
+                      (click)="$event.stopPropagation()"
                       (qtyCommit)="qtyChanged.emit({ lineId: l.id, quantity: $event })"
                     />
                   </div>
+                  @if (l.basePrice !== null) {
+                    <div class="flex justify-end">
+                      <span class="bp-body-small font-semibold tabular-nums text-text">{{ railTotal(l) | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+                    </div>
+                  }
                 </li>
               }
             </ul>
@@ -113,4 +119,15 @@ export class ProjectQuoteRailComponent {
    *  items, marked up, excluding fees/provisions), else the indicative base
    *  subtotal. */
   protected readonly headlineTotal = computed(() => this.breakdown()?.projectCosts ?? this.subtotal());
+
+  /** Client-facing markup (1 + margin%) — the cart shows the marked-up figures
+   *  the client sees, so the per-item totals sum to the marked-up headline
+   *  Subtotal (Project Costs). 1 until the cascade loads. */
+  protected readonly markup = computed(() => 1 + (this.breakdown()?.marginPct || 0) / 100);
+
+  /** Marked-up, tier-aware per-unit price for a cart line (reconciles with
+   *  railTotal: unit × qty ≈ total). */
+  protected railUnit(l: QuoteLine): number { return unitPrice(l) * this.markup(); }
+  /** Marked-up line total for a cart line (pV2-PRICING-SSOT-01 lineCost). */
+  protected railTotal(l: QuoteLine): number { return lineCost(l) * this.markup(); }
 }

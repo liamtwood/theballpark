@@ -65,7 +65,10 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
          complicated"). Code + picker kept; re-enable this button to restore it. -->
 
     @if (canEdit()) {
-      <app-qty-input class="shrink-0" [value]="line().quantity" [label]="line().name ?? 'item'" (qtyCommit)="qtyChange.emit($event)" />
+      <!-- Stop clicks in the qty control from bubbling to the row's select
+           (which opens the item preview) — you're editing qty, not opening. -->
+      <app-qty-input class="shrink-0" [value]="line().quantity" [label]="line().name ?? 'item'"
+                     (click)="$event.stopPropagation()" (qtyCommit)="qtyChange.emit($event)" />
     } @else {
       <span class="bp-body-small shrink-0 text-center text-secondary" title="Out for quote — change it in the inbox">× {{ line().quantity }}</span>
     }
