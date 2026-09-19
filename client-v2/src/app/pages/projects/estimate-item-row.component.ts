@@ -13,22 +13,28 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CurrencyPipe, LucideAngularModule, QtyInputComponent],
   host: {
-    class: 'flex cursor-pointer items-center gap-3 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 py-3',
+    class: 'flex items-center gap-3 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 py-3',
     '[class.bp-eir--selected]': 'selected()',
     // Declined/cancelled lines dim — they stay on the Final Quote for the
     // record but are excluded from every total (pV2-INBOX-05).
     '[class.opacity-55]': 'isDeclined()',
-    '(click)': 'select.emit()',
   },
+  // Only the image + name open the item preview (Liam QC) — the row carries
+  // interactive controls (qty, Installed?, remove), so a whole-row click kept
+  // opening the preview by accident.
   template: `
     @if (line().imageUrl) {
-      <img [src]="line().imageUrl" alt="" class="h-16 w-16 shrink-0 rounded-[var(--radius-field)] object-cover" />
+      <img [src]="line().imageUrl" alt="" role="button" tabindex="0" [attr.aria-label]="'View ' + line().name"
+           class="h-16 w-16 shrink-0 cursor-pointer rounded-[var(--radius-field)] object-cover"
+           (click)="select.emit()" (keydown.enter)="select.emit()" />
     } @else {
-      <span class="bp-icon-block h-16 w-16 shrink-0"><lucide-icon name="store" [size]="22" /></span>
+      <span class="bp-icon-block h-16 w-16 shrink-0 cursor-pointer" role="button" tabindex="0" [attr.aria-label]="'View ' + line().name"
+            (click)="select.emit()" (keydown.enter)="select.emit()"><lucide-icon name="store" [size]="22" /></span>
     }
     <div class="min-w-0 flex-1">
       <div class="flex items-center gap-2">
-        <span class="bp-list-title truncate">{{ line().name }}</span>
+        <span class="bp-list-title cursor-pointer truncate hover:underline" role="button" tabindex="0"
+              (click)="select.emit()" (keydown.enter)="select.emit()">{{ line().name }}</span>
         @if (line().isCustom) {
           <span class="bp-pill bp-pill--muted shrink-0" title="Custom line — no catalogue backing until a supplier quotes it">Custom</span>
         }

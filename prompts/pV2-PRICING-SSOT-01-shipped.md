@@ -114,5 +114,13 @@ Two issues raised → fixed in **v2.489**:
    and made the unit tier-aware (`railUnit` = unitPrice × markup) so unit × qty
    reconciles and the items sum to the marked-up headline Subtotal.
 
+**QC pass 2 (Liam, 2026-09-19, v2.490).** Clicking the "Installed?" checkbox on a
+Ballpark Cost row opened the item preview (whole-row click). Per Liam: only the
+**name + image** should open the item. Removed the host row `(click)` +
+`cursor-pointer`; the image and name are now the open affordance (click + Enter,
+role=button, aria-label). Controls (qty, Installed?, remove) no longer open the
+preview. (Also confirmed the £250/£350/£600 line was correct — goods + install;
+labelling left as-is.)
+
 ## Chat audit
 (chat / ballpark-11)
