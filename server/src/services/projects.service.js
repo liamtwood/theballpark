@@ -435,6 +435,9 @@ function toQuoteLine(row) {
     name: row.name,
     description: row.description ?? null,
     basePrice: row.base_price === null ? null : Number(row.base_price),
+    // BE-00105 — live volume tiers ([{min,max,price}], max null = open top) so
+    // the client line-total picks the tier by qty (mirrors line-total.util.js).
+    priceTiers: row.price_tiers ?? null,
     // Installed-price extras (from the catalogue item) — drive the Final
     // Quote's Install / Deliverable toggle (pV2-FINAL-01).
     installCost: row.install_cost == null ? null : Number(row.install_cost),
@@ -512,6 +515,11 @@ const QUOTE_LINE_JOIN = `
          i.name AS lib_name, i.description AS lib_description,
          i.base_price AS lib_base_price, i.install_description AS lib_install_description,
          i.image_url AS lib_image_url,
+         -- BE-00105 — the live catalogue item's volume price tiers, so the CLIENT
+         -- line-total (quote-line.util lineCost/unitPrice) can pick the tier by
+         -- qty exactly as the server line-total.util.js does. Live (i.attributes),
+         -- not snapshotted, matching the SQL tier read. Null for custom lines.
+         i.attributes -> 'price_tiers' AS price_tiers,
          -- pV2-BUILDUP-03 — does the catalogue item carry options (child items)?
          -- Drives the Final Quote "Options" button.
          EXISTS (SELECT 1 FROM items ci WHERE ci.parent_item_id = pi.item_id AND ci.deleted_at IS NULL) AS has_options,

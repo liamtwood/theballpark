@@ -3,7 +3,7 @@ import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { QuoteLine } from '../../core/projects/project.types';
 import { QtyInputComponent } from './qty-input.component';
-import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, statusPill, unitPlain } from './quote-line.util';
+import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, statusPill, unitPlain, unitPrice } from './quote-line.util';
 
 /** pV2-CART-01 — one quote line row (thumb + name/status + cost·unit +
  *  Installed? + qty + line total + trash/lock). Read-only once out for quote.
@@ -107,8 +107,10 @@ export class EstimateItemRowComponent {
   protected readonly canInstall = computed(() => hasInstall(this.line()));
   protected readonly installed = computed(() => isInstalled(this.line()));
   protected readonly cost = computed(() => lineCost(this.line()));
-  /** Marked-up unit price + line total for display (raw × markup). */
-  protected displayUnit(): number { return (this.line().basePrice ?? 0) * this.markup(); }
+  /** Marked-up unit price + line total for display (raw × markup). Unit uses the
+   *  volume-tier price at the current qty (BE-00105) so unit × qty reconciles
+   *  with the displayed line total. */
+  protected displayUnit(): number { return unitPrice(this.line()) * this.markup(); }
   protected displayCost(): number { return this.cost() * this.markup(); }
   protected readonly isDeclined = computed(() => isDeclined(this.line()));
   protected label(): string { return statusLabel(this.line()); }

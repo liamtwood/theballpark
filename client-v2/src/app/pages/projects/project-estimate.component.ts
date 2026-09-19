@@ -7,7 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { EstimateBreakdown, ProjectDetail, ProjectUpdate, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
-import { editable, hasInstall, isDeclined, isInstalled, lineCost, quoteLineToCatalogueItem } from './quote-line.util';
+import { editable, hasInstall, isDeclined, isInstalled, lineCost, quoteLineToCatalogueItem, unitPrice } from './quote-line.util';
 import { QuickViewDialogComponent } from '../marketplace/quick-view-dialog.component';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { EstimateItemRowComponent } from './estimate-item-row.component';
@@ -187,7 +187,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                         <div class="ml-6 flex items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-fill py-2 pl-4 pr-3">
                           <lucide-icon name="corner-down-right" [size]="14" class="shrink-0 text-muted" />
                           <span class="min-w-0 flex-1 truncate bp-meta text-text">{{ op.name }}</span>
-                          <span class="bp-meta shrink-0 tabular-nums text-secondary">{{ op.basePrice != null ? (op.basePrice * mk | currency: cur() : 'symbol' : '1.0-0') : '' }}@if (op.unit) { / {{ op.unit }} } × {{ op.quantity }}</span>
+                          <span class="bp-meta shrink-0 tabular-nums text-secondary">{{ op.basePrice != null ? (optUnit(op) * mk | currency: cur() : 'symbol' : '1.0-0') : '' }}@if (op.unit) { / {{ op.unit }} } × {{ op.quantity }}</span>
                           <span class="w-20 shrink-0 text-right bp-body-small tabular-nums text-secondary">{{ optCost(op) * mk | currency: cur() : 'symbol' : '1.0-0' }}</span>
                           <button type="button" class="shrink-0 rounded-md p-1 text-muted transition-colors hover:text-danger"
                                   (click)="removeLine(op)" [attr.aria-label]="'Remove ' + op.name" title="Remove option">
@@ -503,6 +503,11 @@ export class ProjectEstimateComponent {
   /** Line total for a single line (qty-weighted) — template helper. */
   protected optCost(l: QuoteLine): number {
     return lineCost(l);
+  }
+  /** Per-unit price for a line — the volume tier at the current qty, else base
+   *  (BE-00105); the option row shows optUnit × qty = optCost. */
+  protected optUnit(l: QuoteLine): number {
+    return unitPrice(l);
   }
   /** Top-level rows only (options are nested under their parent, not listed). */
   protected readonly topRows = computed(() => this.visibleRows().filter((l) => !l.optionOfLineId));

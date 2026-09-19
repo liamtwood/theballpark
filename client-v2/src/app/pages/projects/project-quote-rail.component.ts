@@ -3,7 +3,7 @@ import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { EstimateBreakdown, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { QtyInputComponent } from './qty-input.component';
-import { isDeclined } from './quote-line.util';
+import { isDeclined, lineCost } from './quote-line.util';
 
 /** pV2-PROJECTS-02 slice 2 — the Project Quote rail (Amazon-style cart): a
  *  simple Subtotal + "Go to Ballpark" CTA pinned at the top, then the list of
@@ -100,9 +100,10 @@ export class ProjectQuoteRailComponent {
    *  Estimate tab). Server returns lines category-ordered → display order. */
   protected readonly groups = computed(() => groupByCategory(this.visibleLines()));
 
-  /** Base-price subtotal — indicative, used until the cascade loads. */
+  /** Indicative subtotal, used until the cascade loads — via lineCost() so it
+   *  honours install + volume tiers, not a raw base × qty (BE-00105). */
   private readonly subtotal = computed(() =>
-    this.visibleLines().reduce((sum, l) => sum + (l.basePrice ?? 0) * (l.quantity ?? 1), 0)
+    this.visibleLines().reduce((sum, l) => sum + lineCost(l), 0)
   );
 
   /** The headline Subtotal (ex-VAT): Project Costs from the server cascade once

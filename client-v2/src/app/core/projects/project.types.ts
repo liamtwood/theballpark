@@ -36,6 +36,14 @@ export interface ProjectCard {
 export const COMPLETED_STATUSES = new Set(['completed', 'archived']);
 
 /** One line in a project's quote (server: project_items snapshot). */
+/** A volume price tier (BE-00105): a per-unit price for a [min,max] quantity
+ *  band. max null = open top. Mirrors items.attributes.price_tiers. */
+export interface PriceTier {
+  min: number | null;
+  max: number | null;
+  price: number;
+}
+
 export interface QuoteLine {
   id: string;
   itemId: string;
@@ -44,6 +52,11 @@ export interface QuoteLine {
   name: string | null;
   description: string | null;
   basePrice: number | null;
+  /** pV2-STORE-ITEM-MEASURE-VOLUME-01 / BE-00105 — the live catalogue item's
+   *  volume price tiers (min/max band → per-unit price, max null = open top).
+   *  Null for custom lines / items without tiers. lineCost()/unitPrice() pick
+   *  the tier by qty, mirroring the server line-total.util.js. */
+  priceTiers?: PriceTier[] | null;
   /** Installed-price extras (from the catalogue item) — the Final Quote's
    *  Install / Deliverable toggle. */
   installCost: number | null;

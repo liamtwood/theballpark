@@ -8,7 +8,7 @@ import { OrganisationService, OrgProfile } from '../../core/organisation.service
 import { EstimateBreakdown, ProjectDetail, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { ProjectSummaryTilesComponent } from './project-summary-tiles.component';
-import { isDeclined, lineCost, unitPlain } from './quote-line.util';
+import { isDeclined, lineCost, unitPlain, unitPrice } from './quote-line.util';
 
 /** pV2-BUILDUP-04 — the client-facing Quote DOCUMENT. A read-only, print-styled
  *  render of the Final Quote in the agency-SOW layout: Project Costs (banded per
@@ -151,7 +151,7 @@ import { isDeclined, lineCost, unitPlain } from './quote-line.util';
                   </div>
                   <div class="flex shrink-0 items-baseline gap-4 tabular-nums">
                     <span class="bp-meta w-10 text-right text-secondary">{{ l.quantity }}</span>
-                    <span class="bp-meta w-16 text-right text-secondary">{{ (l.basePrice ?? 0) * markup() | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                    <span class="bp-meta w-16 text-right text-secondary">{{ unitRate(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     <span class="bp-body-small w-20 text-right font-semibold text-text">{{ lineTotal(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
                   </div>
                 </div>
@@ -480,6 +480,9 @@ export class QuoteDocumentComponent implements OnInit {
   protected desc(l: QuoteLine): string | null { return l.quoteDescription || l.description; }
   protected lineTotal(l: QuoteLine): number { return lineCost(l) * this.markup(); }
   protected lineCostRaw(l: QuoteLine): number { return lineCost(l); }
+  /** Marked-up per-unit rate — tier price at the current qty (BE-00105) so the
+   *  rate × qty reconciles with the line total column. */
+  protected unitRate(l: QuoteLine): number { return unitPrice(l) * this.markup(); }
   protected unitText(l: QuoteLine): string { return unitPlain(l.unit); }
 
   protected print(): void { window.print(); }
