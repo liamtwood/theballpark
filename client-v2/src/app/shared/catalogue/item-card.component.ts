@@ -189,6 +189,8 @@ export class ItemCardComponent {
 
   /** Wishlist / Add-to-Quote are buyer actions — agency users only. */
   protected readonly isAgent = computed(() => this.auth.user()?.activeOrgType === 'agency');
+  /** Ballpark admins moderate — a card click opens the review page, not Quick View. */
+  protected readonly isAdmin = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
 
   /** Card meta: the supplier name, with the city appended when both exist
    *  ("Rocket Food · London") — falls back to whichever is present. */
@@ -238,6 +240,14 @@ export class ItemCardComponent {
    *  and view for agents. The Edit button below is the owner's explicit edit. */
   protected open(): void {
     const owned = this.item().ownedByActiveOrg;
+    // BE-00126 — a ballpark admin MODERATES: a card click opens the review page
+    // (item-edit moderator mode) so they can Approve/Reject straight from the
+    // approvals queue, never the read-only Quick View dead-end. Mirrors the
+    // item-preview "Review product" link (isModerator wins over ?view).
+    if (this.isAdmin()) {
+      void this.router.navigate(['/store/items', this.item().id]);
+      return;
+    }
     // BE-00104 — a marketplace/browse surface must NEVER route a card click to
     // the edit screen, even for the owner: the click opens the read-only Quick
     // View DIALOG (matching list/table view, which already emits entitySelected
