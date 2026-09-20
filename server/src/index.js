@@ -192,9 +192,20 @@ app.use('/api/statuses', require('./routes/statuses'));
 app.use('/api/orgs', require('./routes/orgs'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/clients', require('./routes/clients'));
-app.use('/api/categories', require('./routes/categories'));
-app.use('/api/items', require('./routes/items'));
-app.use('/api/projects', require('./routes/projects'));
+// pV2-SECURITY-RLS-01 §2c (BE-00109) — gate the legacy v1 mounts that trusted a
+// client-supplied org_id (the /api/items?org_id=<other-org> IDOR). authn + ram()
+// put them behind the same JWT gate as v2; forceOrgFromJwt overwrites any client
+// org_id with the verified JWT org so no handler can act cross-tenant;
+// requestContext pins the client + sets the audit/RLS GUCs. (v1 client-angular
+// is not deployed and v2 does not call these paths, so no live consumer breaks.)
+const { authenticate: authnV1 } = require('./middleware/authenticate');
+const { requireActiveMembership: ramV1 } = require('./middleware/require-active-membership');
+const requestContext = require('./middleware/request-context');
+const forceOrgFromJwt = require('./middleware/force-org-from-jwt');
+const v1Gate = [authnV1, requestContext, ramV1(), forceOrgFromJwt];
+app.use('/api/categories', ...v1Gate, require('./routes/categories'));
+app.use('/api/items', ...v1Gate, require('./routes/items'));
+app.use('/api/projects', ...v1Gate, require('./routes/projects'));
 app.use('/api/project-categories', require('./routes/projectCategories'));
 app.use('/api/estimates', require('./routes/estimates'));
 app.use('/api/estimate-items', require('./routes/estimateItems'));
@@ -207,7 +218,7 @@ app.use('/api/storage', require('./routes/storage'));
 app.use('/api/favourites', require('./routes/favourites'));
 app.use('/api/feedback', require('./routes/feedback'));
 app.use('/api/codelists', require('./routes/codelists'));
-app.use('/api/project-items', require('./routes/projectItems'));
+app.use('/api/project-items', ...v1Gate, require('./routes/projectItems'));
 app.use('/api/config', require('./routes/config')); // p0021 — org_type page-settings config
 
 // v1.65cu (p0008) — Public supplier brief surface. No auth on this
@@ -224,6 +235,7 @@ app.use('/api', require('./routes/marketing'));         // /welcome/content, /gu
 app.use(
   '/api/admin',
   require('./middleware/authenticate').authenticate,
+  requestContext, // BE-00110 — pin client + set audit/RLS GUCs from the JWT
   require('./middleware/require-active-membership').requireActiveMembership('admin.cross_org_view'),
   require('./routes/adminMarketing')
 );
@@ -232,6 +244,7 @@ app.use(
 app.use(
   '/api/admin',
   require('./middleware/authenticate').authenticate,
+  requestContext, // BE-00110 — pin client + set audit/RLS GUCs from the JWT
   require('./middleware/require-active-membership').requireActiveMembership('admin.cross_org_view'),
   require('./routes/admin-items')
 );
@@ -281,7 +294,9 @@ app.get('/api/unsplash/search', async (req, res) => {
   const { authenticate } = require('./middleware/authenticate');
   const { requireActiveMembership } = require('./middleware/require-active-membership');
   const v2 = express.Router();
-  v2.use(authenticate, requireActiveMembership());
+  // BE-00110 — requestContext pins the client + sets the audit/RLS GUCs from the
+  // verified JWT, between authenticate (sets req.user) and the membership check.
+  v2.use(authenticate, requestContext, requireActiveMembership());
   v2.use('/team', require('./routes/team'));
   // pV2 Profile — the org's own profile (GET any member / PUT org admins).
   v2.use('/organisation', require('./routes/organisation'));

@@ -16,6 +16,7 @@
 const router = require('express').Router();
 const pool = require('../db/pool');
 const { requireActiveMembership } = require('../middleware/require-active-membership');
+const { assertOwnedByActiveOrg } = require('../lib/authz');
 const TaxonomyService = require('../services/taxonomy.service');
 
 // BE-00099 — this router is now inside the authenticated v2 group (see
@@ -95,15 +96,21 @@ router.get('/event-types', async (req, res, next) => {
 });
 
 // ── v1.46 — Brief-tab item matching ────────────────────────────────────
+// BE-00108 — these endpoints act on a project; assert the caller owns it (or is
+// admin) up front so an authed user can't drive matching/RFQ against another
+// org's project (IDOR). match-items persists to the project only when projectId
+// is supplied (pure matching has none), so assert only when present.
 router.post('/match-items', async (req, res, next) => {
   try {
     const { brief, categoryId, budgetEstimate, projectId } = req.body || {};
+    if (projectId) await assertOwnedByActiveOrg('projects', projectId, req.user.org_id, { isAdmin: req.user.is_admin });
     res.json(await TaxonomyService.matchItems(brief, categoryId, budgetEstimate, projectId));
   } catch (err) { next(err); }
 });
 
 router.post('/add-match', async (req, res, next) => {
   try {
+    await assertOwnedByActiveOrg('projects', (req.body || {}).project_id, req.user.org_id, { isAdmin: req.user.is_admin });
     res.json(await TaxonomyService.addMatchToProject(req.body || {}));
   } catch (err) { next(err); }
 });
@@ -111,6 +118,7 @@ router.post('/add-match', async (req, res, next) => {
 // v1.54 — un-add a Brief-tab match. body: { project_id, category_id, item_id }
 router.post('/remove-match', async (req, res, next) => {
   try {
+    await assertOwnedByActiveOrg('projects', (req.body || {}).project_id, req.user.org_id, { isAdmin: req.user.is_admin });
     res.json(await TaxonomyService.removeMatchFromProject(req.body || {}));
   } catch (err) { next(err); }
 });
@@ -118,6 +126,7 @@ router.post('/remove-match', async (req, res, next) => {
 router.post('/search-hint', async (req, res, next) => {
   try {
     const { projectId, categoryId, searchTerms, userHint } = req.body || {};
+    if (projectId) await assertOwnedByActiveOrg('projects', projectId, req.user.org_id, { isAdmin: req.user.is_admin });
     res.json(await TaxonomyService.saveSearchHint(projectId, categoryId, searchTerms, userHint));
   } catch (err) { next(err); }
 });
@@ -128,6 +137,9 @@ router.post('/search-hint', async (req, res, next) => {
 //   GET  /quote-requests?projectId=...
 router.post('/request-quotes', async (req, res, next) => {
   try {
+    // BE-00108 — RFQ is authorized BY the owned project (it creates supplier-owned
+    // proposed items on the caller's behalf — see §1 decision A). Assert ownership.
+    await assertOwnedByActiveOrg('projects', (req.body || {}).project_id, req.user.org_id, { isAdmin: req.user.is_admin });
     res.json(await TaxonomyService.requestQuotes(req.body || {}));
   } catch (err) { next(err); }
 });
@@ -144,6 +156,12 @@ router.get('/quote-requests', async (req, res, next) => {
 //     name, description?, estimated_price? }
 router.post('/materialize-proposed', async (req, res, next) => {
   try {
+    // BE-00108 GAP (flagged): the body is { supplier_id, category_id, name, … } —
+    // there is NO projectId to assert against, and it creates a SUPPLIER-owned
+    // item (org_id = supplier_id) on an agency's behalf (cross-org write). The
+    // project-ownership guard cannot apply here; this is the §1 decision-A RFQ
+    // path — real enforcement is the RLS elevated-context write. Left authed but
+    // unscoped for now; do NOT bolt on a mismatched assertion.
     res.json(await TaxonomyService.materializeProposedItem(req.body || {}));
   } catch (err) { next(err); }
 });

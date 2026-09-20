@@ -24,11 +24,17 @@ async function withTransaction(fn) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const store = als.getStore();
-    const userId = store && store.userId;
-    if (userId) {
-      await client.query(`SELECT set_config('app.current_user_id', $1, true)`, [userId]);
-    }
+    // pV2-SECURITY-RLS-01 §3 (BE-00110) — this runs its OWN client (not the
+    // request-pinned one), so set all three GUCs on it from ALS (txn-local) so
+    // the audit trigger attributes AND, once RLS is live, the policies see the
+    // caller's org. Owner still bypasses RLS today → behaviour-neutral for now.
+    const store = als.getStore() || {};
+    await client.query(
+      `SELECT set_config('app.current_user_id', $1, true),
+              set_config('app.current_org_id',  $2, true),
+              set_config('app.is_admin',        $3, true)`,
+      [store.userId || null, store.orgId || null, store.isAdmin ? 't' : 'f'],
+    );
     const result = await fn(client);
     await client.query('COMMIT');
     return result;

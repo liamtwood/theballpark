@@ -63,13 +63,25 @@ console.log(`[DB] Connected — schema: ${schema}`);
 //
 // Not covered (attribute via app-supplied value / NULL — acceptable):
 //   • explicit pool.connect() transactions (balls/taxonomy manage their own client)
-//   • write CTEs (`WITH ... INSERT`) — rare here; add to the regex if introduced.
+//   • write CTEs (`WITH ... INSERT`) — the fallback regex below now matches these.
+//
+// pV2-SECURITY-RLS-01 §3 (BE-00110): when a request has PINNED a client
+// (middleware/request-context.js), every query — reads included — runs on that
+// client, which already carries app.current_org_id / app.current_user_id /
+// app.is_admin set once per request. That is the primary path for request-scoped
+// work; the per-write txn wrapper below is the FALLBACK for code paths with a
+// user in ALS but no pinned client (e.g. outside the middleware).
 const { als } = require('./request-context');
 const origQuery = pool.query.bind(pool);
-const WRITE_RE = /^\s*(insert|update|delete)\b/i;
+// Broadened (BE-00110): match insert/update/delete ANYWHERE so a CTE write
+// (`WITH x AS (UPDATE …)`) or multi-statement write still gets attribution.
+const WRITE_RE = /\b(insert|update|delete)\b/i;
 
 pool.query = function (text, values, cb) {
   const ctx = als.getStore();
+  // Prefer the request-pinned client — GUCs already set, single round-trip.
+  if (ctx && ctx.client) return ctx.client.query(text, values, cb);
+
   const sql = typeof text === 'string' ? text : (text && text.text);
   const isWrite =
     ctx && ctx.userId &&
