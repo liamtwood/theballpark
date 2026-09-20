@@ -148,8 +148,36 @@ writes nothing.
   web_app_user will surface any missing grant as a fail-closed broken feature
   (never a leak) → add its table + policy then.
 
+## BE-00115 — auth/bootstrap paths run on an OWNER pool (flip-smoke finding)
+First flip smoke failed fail-closed at login: `new row violates RLS policy for
+table users`. Identity writes happen BEFORE a JWT/tenancy exists (or create a NEW
+org), so under web_app_user the users/orgs/user_orgs policies deny them — the
+classic RLS auth-bootstrap. Fix: a dedicated **owner pool**
+(`server/src/db/owner-pool.js`, `MIGRATION_DATABASE_URL || DATABASE_URL`,
+RLS-bypassing) for exactly these pre-tenancy paths:
+- `auth.service` (`upsertUserFromGoogle` + `buildSession`) → owner pool.
+- `routes/onboarding` create-org (org + self-membership + default_org_id) →
+  owner pool, inline txn (the shared `withTransaction` runs on the RLS pool).
+- `routes/auth` `/dev/login` lookup + `routes/dev` picker → owner pool (dev,
+  pre-auth reads).
+Smoke test `rls-auth-bootstrap.test.js`: a users-INSERT is DENIED as web_app_user
+(no context) and SUCCEEDS on the owner pool — 2/2 green (suite 76/76). Server
+healthy. **The elevated write is scoped to identity bootstrap only**; ordinary
+request work still goes through the RLS pool.
+
+**OPS NOTE for the runbook (post-flip):** once `DATABASE_URL` = web_app_user,
+anything needing owner rights MUST use `MIGRATION_DATABASE_URL` — migrate-rls.js,
+the coverage/persona/auth-bootstrap tests, and any seed/backfill script or tracker
+harness. `MIGRATION_DATABASE_URL` is confirmed set in the env. Audit other
+ops scripts for a bare `DATABASE_URL` before preview/master.
+
+Re-flip is safe once Liam re-applies + re-smokes; watch for the next fail-closed
+class (team-invite creates a user STUB → users has no INSERT policy → will need
+the same owner treatment; flagged, not yet hit).
+
 ## NOT done
 - Rollout step 6 (delete `x-bp-user-id` / `user-context.js`) — after the flip.
+- team-invite user-stub creation under RLS (flagged above) — fix when smoke hits it.
 
 ## QC notes
 (Liam)

@@ -6,7 +6,10 @@
 // also have google_sub IS NULL but no membership, so they stay out.
 
 const router = require('express').Router();
-const pool = require('../db/pool');
+// BE-00115 — the dev login picker lists seeded users PRE-auth (no JWT/tenancy),
+// which web_app_user RLS would deny. This whole router is a dev pre-auth helper,
+// so it reads via the owner pool (bypasses RLS). Dev-only (NODE_ENV-gated).
+const pool = require('../db/owner-pool');
 const { effectiveRole, normalizeOrgType } = require('../services/permissions.service');
 const { authReadLimit } = require('../middleware/rate-limits');
 

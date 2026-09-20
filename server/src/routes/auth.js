@@ -14,7 +14,9 @@
 const router = require('express').Router();
 const passport = require('passport');
 const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
-const pool = require('../db/pool');
+// BE-00115 — the dev-login impersonation lookup is a PRE-auth identity read (no
+// JWT/tenancy yet), so under web_app_user RLS it would be denied. Owner pool.
+const ownerPool = require('../db/owner-pool');
 const { upsertUserFromGoogle, buildSession } = require('../services/auth.service');
 const { authenticate, COOKIE_NAME } = require('../middleware/authenticate');
 const { sessionCookieOptions, signSessionCookie } = require('../services/auth-cookie.service');
@@ -88,7 +90,7 @@ router.post('/dev/login', authWriteLimit, async (req, res, next) => {
   try {
     const { userId } = req.body || {};
     if (!userId) return res.status(400).json({ error: 'userId required' });
-    const r = await pool.query(
+    const r = await ownerPool.query(
       `SELECT u.id FROM users u
         WHERE u.id = $1 AND u.google_sub IS NULL AND u.deleted_at IS NULL
           AND EXISTS (SELECT 1 FROM user_orgs uo

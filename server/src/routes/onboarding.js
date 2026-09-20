@@ -11,10 +11,14 @@
 
 const router = require('express').Router();
 const { z } = require('zod');
-const pool = require('../db/pool');
+// BE-00115 — onboarding is a tenancy BOOTSTRAP: an authed-but-orgless user
+// creates their FIRST org + self-admin membership. Under web_app_user RLS the
+// orgs INSERT (id must equal app_current_org — none yet) and the self
+// user_orgs INSERT (write policy forbids acting on your own membership row) are
+// both denied. It runs on the OWNER pool (bypasses RLS) for exactly this reason.
+const ownerPool = require('../db/owner-pool');
 const { authenticate } = require('../middleware/authenticate');
 const { authWriteLimit } = require('../middleware/rate-limits');
-const { withTransaction } = require('../db/with-transaction');
 const { buildSession } = require('../services/auth.service');
 const { signSessionCookie } = require('../services/auth-cookie.service');
 const { CreateOrgSchema } = require('../schemas/onboarding.schema');
@@ -36,7 +40,7 @@ router.post('/create-org', authWriteLimit, authenticate, async (req, res, next) 
     // race: two concurrent submits could both pass this check — accepted for
     // a single-human form; SELECT … FOR UPDATE inside the txn is the fix if
     // it ever surfaces.)
-    const existing = await pool.query(
+    const existing = await ownerPool.query(
       `SELECT 1 FROM user_orgs
         WHERE user_id = $1 AND status = 'active' AND deleted_at IS NULL LIMIT 1`,
       [req.user.id]
@@ -46,8 +50,12 @@ router.post('/create-org', authWriteLimit, authenticate, async (req, res, next) 
     }
 
     // Org + membership + default_org_id are all-or-nothing per
-    // WORKING_STANDARDS §"Multi-statement DB writes are transactional".
-    await withTransaction(async (client) => {
+    // WORKING_STANDARDS §"Multi-statement DB writes are transactional". On the
+    // OWNER pool (BE-00115 bootstrap) with an inline txn — the shared
+    // withTransaction helper runs on the RLS pool, which would deny these.
+    const client = await ownerPool.connect();
+    try {
+      await client.query('BEGIN');
       const org = await client.query(
         `INSERT INTO orgs (name, type) VALUES ($1, $2) RETURNING id`,
         [name, orgType]
@@ -62,7 +70,13 @@ router.post('/create-org', authWriteLimit, authenticate, async (req, res, next) 
         `UPDATE users SET default_org_id = $2, updated_at = NOW() WHERE id = $1`,
         [req.user.id, orgId]
       );
-    });
+      await client.query('COMMIT');
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch { /* ignore */ }
+      throw e;
+    } finally {
+      client.release();
+    }
 
     // AFTER commit on purpose — buildSession reads via the shared pool (a
     // different connection), so inside the txn it can't see the new rows

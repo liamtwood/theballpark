@@ -4,8 +4,13 @@
 // default_org_id added; v1's name/org_id/role columns remain). New rows
 // populate BOTH name (v1 NOT NULL) and display_name so both apps read clean.
 
-const pool = require('../db/pool');
-const { withTransaction } = require('../db/with-transaction');
+// BE-00115 — the OAuth login upsert + session build run BEFORE a JWT exists, so
+// there is no request tenancy context; under the web_app_user RLS role the
+// users/user_orgs/orgs policies would deny these reads AND writes. Auth is a
+// legitimately cross-tenant bootstrap (look up the user by google_sub/email
+// across all orgs), so it runs on the OWNER pool, which bypasses RLS. (Pre-flip
+// the owner pool IS DATABASE_URL; post-flip it's MIGRATION_DATABASE_URL.)
+const pool = require('../db/owner-pool');
 const { effectiveRole, normalizeOrgType } = require('./permissions.service');
 
 /**
@@ -64,19 +69,16 @@ async function upsertUserFromGoogle(profile) {
   // 3. brand-new signup → user row ONLY (pV2-02b replaced the auto-created
   // "{name}'s Workspace" magic — AUDIT-01's behavioral MUST-FIX #2). The org
   // + membership land at onboarding. role and default_org_id stay NULL: v2
-  // reads authority from user_orgs.is_admin exclusively. Still wrapped in
-  // withTransaction although it's a single insert today, so future additions
-  // don't reintroduce hand-rolled writes.
-  return withTransaction(async (client) => {
-    // role is EXPLICITLY null — the column carries v1's DEFAULT 'member',
-    // which would silently re-grant the legacy authority this prompt removes.
-    const user = await client.query(
-      `INSERT INTO users (name, display_name, email, google_sub, avatar_url, role)
-       VALUES ($1, $2, $3, $4, $5, NULL) RETURNING id`,
-      [displayName, displayName, email, sub, avatarUrl]
-    );
-    return { userId: user.rows[0].id };
-  });
+  // reads authority from user_orgs.is_admin exclusively.
+  // role is EXPLICITLY null — the column carries v1's DEFAULT 'member', which
+  // would silently re-grant the legacy authority this prompt removes. On the
+  // owner pool (BE-00115) — a single INSERT, no cross-table txn needed.
+  const user = await pool.query(
+    `INSERT INTO users (name, display_name, email, google_sub, avatar_url, role)
+     VALUES ($1, $2, $3, $4, $5, NULL) RETURNING id`,
+    [displayName, displayName, email, sub, avatarUrl]
+  );
+  return { userId: user.rows[0].id };
 }
 
 /**
