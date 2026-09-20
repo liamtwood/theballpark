@@ -104,12 +104,24 @@ CREATE OR REPLACE FUNCTION ${s}.app_owns_estimate(eid uuid) RETURNS boolean
 CREATE OR REPLACE FUNCTION ${s}.app_owns_item(iid uuid) RETURNS boolean
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ${s}, pg_catalog AS $$
     SELECT EXISTS (SELECT 1 FROM items WHERE id = iid AND org_id = public.app_current_org()) $$;
+-- The caller shares a project LINE with org \`other\` (two-party counterparty):
+-- either the caller's agency owns a project with a line quoted to \`other\`, OR
+-- \`other\` owns a project with a line quoted to the caller's org. Lets each party
+-- READ the other's orgs row (name/logo) for the inbox / quote surfaces without
+-- exposing orgs cross-org generally.
+CREATE OR REPLACE FUNCTION ${s}.app_shares_project(other uuid) RETURNS boolean
+  LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ${s}, pg_catalog AS $$
+    SELECT EXISTS (
+      SELECT 1 FROM project_items pi JOIN projects p ON p.id = pi.project_id
+       WHERE pi.deleted_at IS NULL
+         AND ( (p.org_id = public.app_current_org() AND pi.supplier_org_id = other)
+            OR (pi.supplier_org_id = public.app_current_org() AND p.org_id = other) )) $$;
 REVOKE EXECUTE ON FUNCTION ${s}.app_owns_project(uuid), ${s}.app_is_project_supplier(uuid),
   ${s}.app_is_org_admin(uuid), ${s}.app_can_access_project_item(uuid), ${s}.app_owns_estimate(uuid),
-  ${s}.app_owns_item(uuid) FROM PUBLIC;
+  ${s}.app_owns_item(uuid), ${s}.app_shares_project(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ${s}.app_owns_project(uuid), ${s}.app_is_project_supplier(uuid),
   ${s}.app_is_org_admin(uuid), ${s}.app_can_access_project_item(uuid), ${s}.app_owns_estimate(uuid),
-  ${s}.app_owns_item(uuid) TO web_app_user;
+  ${s}.app_owns_item(uuid), ${s}.app_shares_project(uuid) TO web_app_user;
 `;
 }
 
@@ -166,8 +178,13 @@ function tenantPolicies(s) {
   add('user_orgs', 'user_orgs_read', 'SELECT', `(user_id = public.app_current_user_id() OR app_is_org_admin(org_id) OR public.app_is_admin())`, null);
   add('user_orgs', 'user_orgs_write', 'ALL', `(public.app_is_admin() OR app_is_org_admin(org_id))`, `(public.app_is_admin() OR (app_is_org_admin(org_id) AND user_id <> public.app_current_user_id()))`);
 
-  // RESOLVED — orgs (base private; shopfront via orgs_public view)
+  // RESOLVED — orgs (base private; shopfront via orgs_public view). WRITE = own
+  // org / admin only (orgs_self). READ additionally allows a two-party
+  // counterparty (an org you share a project line with) so the inbox / quote
+  // surfaces can show the other party's name + logo (permissive SELECT OR'd with
+  // orgs_self's read). BE-00115.
   add('orgs', 'orgs_self', 'ALL', `(id = public.app_current_org() OR public.app_is_admin())`, `(id = public.app_current_org() OR public.app_is_admin())`);
+  add('orgs', 'orgs_counterparty_read', 'SELECT', `app_shares_project(id)`, null);
   // balls_transactions — counterparty read; NO write policy (owner/service only)
   add('balls_transactions', 'balls_read', 'SELECT', `(org_id = public.app_current_org() OR supplier_org_id = public.app_current_org() OR public.app_is_admin())`, null);
 

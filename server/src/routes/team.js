@@ -11,6 +11,12 @@
 
 const router = require('express').Router();
 const pool = require('../db/pool');
+// BE-00115 — team invite touches identity ACROSS orgs: it looks up a user by
+// email (who may be in another org / none) and stubs a users row on first invite.
+// Under web_app_user RLS the users table is own-org-read-only + has no INSERT
+// policy, so those two ops run on the owner pool. The user_orgs invite write
+// stays on the RLS pool — its policy (org-admin, not self) is the protection.
+const ownerPool = require('../db/owner-pool');
 const { authenticate } = require('../middleware/authenticate');
 const { requireActiveMembership } = require('../middleware/require-active-membership');
 
@@ -77,14 +83,15 @@ router.post('/invite', async (req, res, next) => {
     if (!EMAIL_RE.test(cleanEmail)) return res.status(400).json({ error: 'Valid email required' });
     const orgId = req.user.org_id;
 
-    // User by email — stub if absent (google_sub NULL until first sign-in).
-    let u = await pool.query(`SELECT id FROM users WHERE lower(email) = $1 AND deleted_at IS NULL`, [cleanEmail]);
+    // User by email — stub if absent (google_sub NULL until first sign-in). Both
+    // the cross-org lookup and the stub INSERT go through the owner pool (BE-00115).
+    let u = await ownerPool.query(`SELECT id FROM users WHERE lower(email) = $1 AND deleted_at IS NULL`, [cleanEmail]);
     let userId;
     if (u.rows.length) {
       userId = u.rows[0].id;
     } else {
       const name = (displayName || '').trim() || cleanEmail;
-      u = await pool.query(
+      u = await ownerPool.query(
         `INSERT INTO users (name, display_name, email) VALUES ($1, $2, $3) RETURNING id`,
         [name, (displayName || '').trim() || null, cleanEmail]
       );

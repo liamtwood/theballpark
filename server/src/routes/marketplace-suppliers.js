@@ -34,11 +34,13 @@ function ownerVisibleFilter(req, orgId, alias = 'i') {
 router.get('/suppliers/options', async (req, res, next) => {
   try {
     const r = await pool.query(
+      // BE-00115 — cross-org supplier read: use the orgs_public VIEW (bypasses
+      // orgs_self RLS, which would hide every other supplier's row and empty the
+      // marketplace). The view already filters supplier + active + not-deleted.
       `SELECT o.id, o.name, COUNT(i.id) AS item_count
-         FROM orgs o
+         FROM orgs_public o
          JOIN items i ON i.org_id = o.id
-        WHERE o.deleted_at IS NULL
-          AND i.deleted_at IS NULL AND i.is_active AND i.approval_status = 'approved'
+        WHERE i.deleted_at IS NULL AND i.is_active AND i.approval_status = 'approved'
         GROUP BY o.id
         ORDER BY o.name ASC`
     );
@@ -61,22 +63,25 @@ router.get('/suppliers', async (req, res, next) => {
     }
     const { cat, q, offset } = parsed.data;
     const vals = [];
-    const where = [`o.deleted_at IS NULL`, `o.type = 'supplier'`];
+    // BE-00115 — cross-org: read suppliers from the orgs_public VIEW (it already
+    // enforces supplier + active + not-deleted; base orgs is RLS-hidden cross-org).
+    const where = [];
     if (q) {
       vals.push(`%${q.replace(/[%_\\]/g, '\\$&')}%`);
       where.push(`(o.name ILIKE $${vals.length} OR o.description ILIKE $${vals.length})`);
     }
     if (cat) { vals.push(cat); }
     const catClause = cat ? `AND i.category_id = $${vals.length}` : '';
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     vals.push(PAGE_SIZE, offset);
     const r = await pool.query(
       `SELECT o.id, o.name, o.city, o.description, o.logo_url, o.cover_image_url,
               COUNT(i.id) AS item_count,
               COUNT(*) OVER() AS total
-         FROM orgs o
+         FROM orgs_public o
          JOIN items i ON i.org_id = o.id AND i.deleted_at IS NULL
               AND i.is_active AND i.approval_status = 'approved' ${catClause}
-        WHERE ${where.join(' AND ')}
+        ${whereSql}
         GROUP BY o.id
         ORDER BY o.name ASC
         LIMIT $${vals.length - 1} OFFSET $${vals.length}`,
@@ -104,11 +109,15 @@ router.get('/suppliers/:id', async (req, res, next) => {
   try {
     const id = z.uuid().safeParse(req.params.id);
     if (!id.success) return res.status(400).json({ error: 'Invalid id' });
+    // BE-00115 — cross-org shopfront read via the orgs_public VIEW (RLS hides the
+    // base orgs row cross-org). The view exposes only safe columns — supplier
+    // contact PII (address/phone/email/website) is deliberately NOT public
+    // (contact runs through the platform inbox); those are nulled below so the
+    // response shape is unchanged for any client that reads the keys.
     const r = await pool.query(
-      `SELECT id, name, city, country, address, phone, email, website,
-              description, logo_url, cover_image_url, images
-         FROM orgs
-        WHERE id = $1 AND type = 'supplier' AND deleted_at IS NULL`,
+      `SELECT id, name, city, country, description, logo_url, cover_image_url, images
+         FROM orgs_public
+        WHERE id = $1`,
       [id.data]
     );
     if (!r.rows.length) return res.status(404).json({ error: 'Supplier not found' });
@@ -134,10 +143,11 @@ router.get('/suppliers/:id', async (req, res, next) => {
       name: row.name,
       city: row.city,
       country: row.country,
-      address: row.address,
-      phone: row.phone,
-      email: row.email,
-      website: row.website,
+      // Not public on the shopfront (BE-00115) — kept in the shape as null.
+      address: null,
+      phone: null,
+      email: null,
+      website: null,
       description: row.description,
       logoUrl: row.logo_url,
       coverUrl: row.cover_image_url,

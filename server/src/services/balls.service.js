@@ -1,4 +1,9 @@
 const pool = require('../db/pool');
+// BE-00115 — the Balls LEDGER is owner/service-only: balls_transactions has no
+// web_app_user write policy and balls_balance is a financial column, so ledger
+// writes bypass RLS via the owner pool. Reads stay on the RLS pool (balls_read
+// scopes to org/supplier counterparty).
+const ownerPool = require('../db/owner-pool');
 
 async function getBalance(orgId) {
   const result = await pool.query('SELECT balls_balance FROM orgs WHERE id = $1', [orgId]);
@@ -18,7 +23,7 @@ async function getTransactions(orgId) {
 }
 
 async function createTransaction(data) {
-  const client = await pool.connect();
+  const client = await ownerPool.connect(); // ledger write — owner (bypasses RLS)
   try {
     await client.query('BEGIN');
 

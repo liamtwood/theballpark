@@ -236,7 +236,11 @@ router.get('/items', async (req, res, next) => {
               (i.org_id = $1) AS owned_by_active_org,
               COUNT(*) OVER() AS total
          FROM items i
-         JOIN orgs o ON o.id = i.org_id AND o.deleted_at IS NULL
+         -- BE-00115 — cross-org: the supplier name/city come from the orgs_public
+         -- VIEW (base orgs is RLS-hidden cross-org, which emptied the marketplace).
+         -- The view is supplier + active + not-deleted; approved cross-org items
+         -- all belong to such orgs, and an owner's own org qualifies too.
+         JOIN orgs_public o ON o.id = i.org_id
          LEFT JOIN categories c ON c.id = i.category_id
          LEFT JOIN categories sc ON sc.id = i.subcategory_id
         WHERE ${where.join(' AND ')}

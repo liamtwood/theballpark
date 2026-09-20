@@ -108,6 +108,18 @@ describe('pV2-SECURITY-RLS-01 three-persona policy matrix', () => {
     assert.ok(!(await canUpdate(B, 'items', ids.itemCDraft)), "B cannot edit C's item");
   });
 
+  test('COUNTERPARTY orgs read: a shared-project party sees the other org; strangers do not', async (t) => {
+    if (!enabled) { t.skip('WEB_APP_DATABASE_URL not set'); return; }
+    const canReadOrg = async (persona, id) =>
+      (await asPersona(persona, (c) => c.query('SELECT 1 FROM orgs WHERE id = $1', [id]))).rows.length > 0;
+    const B = { org: ids.B }, A = { org: ids.A }, C = { org: ids.C };
+    assert.ok(await canReadOrg(B, ids.A), 'supplier B reads the agency org it shares a project line with');
+    assert.ok(await canReadOrg(A, ids.B), 'agency A reads the supplier org on its project line');
+    assert.ok(await canReadOrg(B, ids.B), 'B reads its own org');
+    assert.ok(!(await canReadOrg(B, ids.C)), "B cannot read supplier C's org (no shared project)");
+    assert.ok(!(await canReadOrg(A, ids.C)), "A cannot read supplier C's org (no line with C)");
+  });
+
   test('AGENCY A: browses approved only; owns its project; cannot write items', async (t) => {
     if (!enabled) { t.skip('WEB_APP_DATABASE_URL not set'); return; }
     const A = { org: ids.A };

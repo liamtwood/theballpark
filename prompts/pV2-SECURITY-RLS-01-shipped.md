@@ -175,9 +175,47 @@ Re-flip is safe once Liam re-applies + re-smokes; watch for the next fail-closed
 class (team-invite creates a user STUB → users has no INSERT policy → will need
 the same owner treatment; flagged, not yet hit).
 
+## Pre-flip comprehensive audit (Liam directive: sort security fully, one clean smoke)
+Systematic sweep for the two fail-closed patterns across every persona flow.
+
+**Pattern 1 — cross-org reads on base `orgs` (RLS-hidden):**
+- FIXED via `orgs_public` (public browse): marketplace items (`marketplace.js`
+  supplier name/city), suppliers list + options + `/suppliers/:id` shopfront
+  (`marketplace-suppliers.js`) — the shopfront no longer projects supplier
+  PII (address/phone/email/website nulled; contact is via the platform inbox).
+- FIXED via a NEW **`orgs` counterparty-read policy** (`app_shares_project()`
+  SECURITY DEFINER helper + `orgs_counterparty_read` SELECT policy): a party can
+  read the OTHER party's org row when they share a project line. Covers the
+  two-party surfaces WITHOUT touching their queries — inbox (`inbox.service`,
+  `messages.js`), `message.service`, `message-item.service`, quote-line join +
+  supplier lookups (`projects.service`), `project-item.service`. Proven by a new
+  persona test (B↔A read across a shared line; stranger C stays hidden).
+- Own-org reads (`organisation.js`, `config.js`, project ref, `balls` getBalance)
+  — `orgs_self` allows own org, no change.
+
+**Pattern 2 — pre-tenancy / context-less writes → owner pool:**
+- FIXED: auth callback + buildSession, onboarding create-org, `/dev/login` +
+  `/api/dev` picker (BE-00115); team-invite user lookup + stub; **Balls ledger
+  write** (`balls.service.createTransaction` — `balls_transactions` has no write
+  policy + `balls_balance` is financial → owner/service only).
+
+**STILL TO FIX (flagged — not in this batch; validate individually):**
+- **`taxonomy.requestQuotes` (RFQ / Message Suppliers):** reads supplier contact
+  emails cross-org (pre-relationship, PII) + writes the Balls ledger + creates
+  supplier items — a privileged agency-initiated cross-org op. Needs its
+  cross-org reads + ledger write on the owner pool (the item INSERT already has
+  the §1-A elevation). Deep enough to warrant its own validated change.
+- **`favourite.service`** supplier-favourite name/logo (LEFT JOIN orgs, not a
+  shared project) → repoint to `orgs_public`. Minor (name null otherwise).
+- **`taxonomy.matchItems` / classifier** cross-org supplier name reads → check;
+  `orgs_public` where it's a browse/match read.
+- **v1 legacy** (`item.service`, `org.service` getCurrentAgency, v1 convenience
+  routes) — v1 retiring + gated; lower priority.
+
 ## NOT done
 - Rollout step 6 (delete `x-bp-user-id` / `user-context.js`) — after the flip.
-- team-invite user-stub creation under RLS (flagged above) — fix when smoke hits it.
+- DD hygiene (post-flip): BE-00111 (cookie secure + DB TLS), FR-00211 (PII
+  retention/erasure + stop logging emails), FR-00212 (rate limiting).
 
 ## QC notes
 (Liam)
