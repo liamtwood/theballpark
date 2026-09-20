@@ -215,7 +215,7 @@ function grantedTenantTables() {
 
 const ORGS_PUBLIC_VIEW = (s) => `
 CREATE OR REPLACE VIEW ${s}.orgs_public AS
-  SELECT id, name, logo_url, cover_image_url, images, city, country, description
+  SELECT id, name, logo_url, cover_image_url, images, city, country, description, image_display
     FROM ${s}.orgs
    WHERE type = 'supplier' AND is_active AND deleted_at IS NULL;
 GRANT SELECT ON ${s}.orgs_public TO web_app_user;

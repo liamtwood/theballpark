@@ -199,18 +199,21 @@ Systematic sweep for the two fail-closed patterns across every persona flow.
   write** (`balls.service.createTransaction` — `balls_transactions` has no write
   policy + `balls_balance` is financial → owner/service only).
 
-**STILL TO FIX (flagged — not in this batch; validate individually):**
-- **`taxonomy.requestQuotes` (RFQ / Message Suppliers):** reads supplier contact
-  emails cross-org (pre-relationship, PII) + writes the Balls ledger + creates
-  supplier items — a privileged agency-initiated cross-org op. Needs its
-  cross-org reads + ledger write on the owner pool (the item INSERT already has
-  the §1-A elevation). Deep enough to warrant its own validated change.
-- **`favourite.service`** supplier-favourite name/logo (LEFT JOIN orgs, not a
-  shared project) → repoint to `orgs_public`. Minor (name null otherwise).
-- **`taxonomy.matchItems` / classifier** cross-org supplier name reads → check;
-  `orgs_public` where it's a browse/match read.
-- **v1 legacy** (`item.service`, `org.service` getCurrentAgency, v1 convenience
-  routes) — v1 retiring + gated; lower priority.
+**FIXED (batch 2):**
+- **`taxonomy.requestQuotes` (RFQ / Message Suppliers):** runs on the OWNER pool
+  (shadow `const pool = ownerPool`) — its own pool.connect() carried no GUCs, the
+  ledger has no web_app_user write policy, and it reads supplier emails cross-org.
+  The route already asserts project ownership (BE-00108), so the privileged op is
+  authorized. `materializeProposedItem` keeps its §1-A elevated INSERT.
+- **`taxonomy.categorySuppliers` / `matchItems`** supplier-name reads →
+  `orgs_public` (added `image_display` to the view for the matcher's supplier
+  rollup).
+- **`favourite.service`** supplier / item-supplier name+logo → `orgs_public`.
+
+**STILL TO FIX (flagged — low priority / v1):**
+- **v1 legacy** (`item.service` LEFT JOIN orgs, `org.service` getCurrentAgency,
+  v1 convenience routes) — v1 retiring + gated; verify or leave.
+- Anything the clean full smoke surfaces (fail-closed → add grant/policy or owner).
 
 ## NOT done
 - Rollout step 6 (delete `x-bp-user-id` / `user-context.js`) — after the flip.

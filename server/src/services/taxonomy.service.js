@@ -34,6 +34,7 @@
  * reject any mismatch anyway.
  */
 const pool = require('../db/pool');
+const ownerPool = require('../db/owner-pool'); // BE-00115 — privileged RFQ path (see requestQuotes)
 const { withTransaction } = require('../db/with-transaction');
 const { sendEmail } = require('./email.service');
 const { outreachEmail } = require('./notification.service');
@@ -570,7 +571,7 @@ async function categorySuppliers(categoryId) {
     `SELECT o.id AS supplier_id, o.name AS supplier_name,
             o.description, o.city, COUNT(i.id)::int AS item_count
        FROM items i
-       JOIN orgs o ON o.id = i.org_id
+       JOIN orgs_public o ON o.id = i.org_id
       WHERE ${filter}
       GROUP BY o.id, o.name, o.description, o.city
       ORDER BY item_count DESC, o.name ASC`,
@@ -650,7 +651,7 @@ async function matchItems(brief, categoryId, budgetEstimate, projectId) {
             sc.name AS subcategory_name, o.name AS supplier_name
        FROM items i
        LEFT JOIN categories sc ON sc.id = i.subcategory_id
-       LEFT JOIN orgs o ON o.id = i.org_id
+       LEFT JOIN orgs_public o ON o.id = i.org_id
       WHERE i.is_active = true AND ${inCategory}
       ORDER BY i.name`,
     [categoryId]
@@ -661,7 +662,7 @@ async function matchItems(brief, categoryId, budgetEstimate, projectId) {
   const supRes = await pool.query(
     `SELECT o.id, o.name, o.description, o.cover_image_url, o.logo_url, o.image_display,
             COUNT(i.id)::int AS item_count
-       FROM items i JOIN orgs o ON o.id = i.org_id
+       FROM items i JOIN orgs_public o ON o.id = i.org_id
       WHERE i.is_active = true AND ${inCategory}
       GROUP BY o.id, o.name, o.description, o.cover_image_url, o.logo_url, o.image_display
       ORDER BY item_count DESC`,
@@ -1030,6 +1031,15 @@ Log in to Ballpark to view the full request and respond with your quote.
  * }
  */
 async function requestQuotes(body) {
+  // BE-00115 — RFQ is a privileged, agency-initiated, CROSS-ORG operation: it
+  // reads the invited suppliers' contact emails (other orgs), creates the brief
+  // items/messages/quote_requests, and debits the Balls ledger. Its own
+  // pool.connect() carries no request GUCs, and the ledger has no web_app_user
+  // write policy, so under RLS the whole flow would be denied. The caller's
+  // ownership of the project is already asserted at the route
+  // (assertOwnedByActiveOrg('projects', ...) — BE-00108), so this runs on the
+  // OWNER pool (bypasses RLS) for the whole function. Shadow the module `pool`.
+  const pool = ownerPool;
   const {
     project_id, project_category_id, category_id,
     requirements, supplier_ids, user_id,
