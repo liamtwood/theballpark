@@ -14,6 +14,9 @@ import { InboxRailComponent, RailOuter } from './inbox-rail.component';
 import { LinePreviewComponent } from '../projects/line-preview.component';
 import { lineCost } from '../projects/quote-line.util';
 import { lineTotal } from '@ballpark/line-pricing';
+import { MessageService } from 'primeng/api';
+import { ToastModule } from 'primeng/toast';
+import { errorDetail } from '../../core/http-error';
 import { LineEditorComponent, LineEdit } from '../projects/line-editor.component';
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
 import { ProjectService } from '../../core/projects/project.service';
@@ -30,9 +33,15 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, NgClass, LucideAngularModule, PageHeroComponent, InboxRailComponent, LinePreviewComponent, CustomizeDialogComponent, LineEditorComponent, AgentRailComponent],
+  imports: [CurrencyPipe, DatePipe, NgClass, LucideAngularModule, PageHeroComponent, InboxRailComponent, LinePreviewComponent, CustomizeDialogComponent, LineEditorComponent, AgentRailComponent, ToastModule],
+  // BE-00114 — own the MessageService/p-toast so error surfacing works on the
+  // STANDALONE supplier route too (inbox/:projectId — not embedded in
+  // project-detail, so no parent provider). Injecting a parent-only service here
+  // would NullInjector-crash that route.
+  providers: [MessageService],
   host: { '[class]': 'hostClass()' },
   template: `
+    <p-toast position="bottom-right" styleClass="bp-toast" />
     @if (!embedded()) {
       <app-page-hero align="block" eyebrow="Messages" [back]="{ label: 'Back', href: '/inbox', history: true }" title="Inbox" [subtitle]="heroSubtitle()" />
     }
@@ -327,6 +336,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
 })
 export class InboxProjectComponent {
   private readonly inbox = inject(InboxService);
+  private readonly toast = inject(MessageService);
   private readonly route = inject(ActivatedRoute);
   private readonly pageConfig = inject(PageConfigService);
   private readonly auth = inject(AuthService);
@@ -613,8 +623,9 @@ export class InboxProjectComponent {
       await firstValueFrom(this.inbox.reply(t.id, { text, taggedItemId: it.itemId ?? undefined }));
       this.threadsRes.reload();
       this.blinkNextMessage();
-    } catch {
-      // Retry on the next action; shared toast lands later.
+    } catch (err) {
+      console.error('[inbox] add question failed', err);
+      this.toast.add({ severity: 'error', summary: "Couldn't add the question — please try again.", detail: errorDetail(err), life: 5000 });
     } finally {
       this.sending.set(false);
     }
@@ -769,7 +780,8 @@ export class InboxProjectComponent {
    *  is marked declined in the same reply. */
   protected async send(threadId: string): Promise<void> {
     const text = this.draft().trim();
-    if (!text || this.sending()) return;
+    if (!text) { console.warn('[inbox] send skipped: empty message'); return; }
+    if (this.sending()) { console.warn('[inbox] send skipped: a send is already in flight'); return; }
     this.sending.set(true);
     try {
       const decId = this.decliningId();
@@ -785,9 +797,11 @@ export class InboxProjectComponent {
       this.draft.set('');
       this.decliningId.set(null);
       this.threadsRes.reload();
-    } catch {
-      // Keep the draft so the user can retry; a toast lands with the
-      // shared error surface when the inbox gets one.
+    } catch (err) {
+      // BE-00114 — keep the draft so the user can retry, but SURFACE the failure
+      // (was silently swallowed).
+      console.error('[inbox] send failed', err);
+      this.toast.add({ severity: 'error', summary: "Couldn't send your message — please try again.", detail: errorDetail(err), life: 5000 });
     } finally {
       this.sending.set(false);
     }
@@ -909,8 +923,10 @@ export class InboxProjectComponent {
       }
       this.editingLine.set(null);
       this.threadsRes.reload();
-    } catch {
-      // Keep the editor open on failure; nothing cleared locally.
+    } catch (err) {
+      // BE-00114 — keep the editor open on failure, but surface the error.
+      console.error('[inbox] save line details failed', err);
+      this.toast.add({ severity: 'error', summary: "Couldn't save your changes — please try again.", detail: errorDetail(err), life: 5000 });
     } finally {
       this.savingDetails.set(false);
     }
@@ -1040,13 +1056,18 @@ export class InboxProjectComponent {
    *  refreshes so the bubble + the item's pill update together. */
   private async itemAction(itemId: string, action: 'accept' | 'adjust', price?: number, text?: string, installCost?: number, flatTotal?: number): Promise<void> {
     const thread = this.selectedThread();
-    if (!thread || this.sending()) return;
+    // BE-00114 — a silent early-return here reads to the user as "the button does
+    // nothing". Surface WHY (no thread / already sending) instead of no-op'ing.
+    if (!thread) { console.warn('[inbox] itemAction skipped: no selected thread'); return; }
+    if (this.sending()) { console.warn('[inbox] itemAction skipped: a send is already in flight'); return; }
     this.sending.set(true);
     try {
       await firstValueFrom(this.inbox.reply(thread.id, { text, itemActions: [{ itemId, action, price, installCost, flatTotal }] }));
       this.threadsRes.reload();
-    } catch {
-      // Retry on the next click; shared toast surface lands later.
+    } catch (err) {
+      // BE-00114 — was swallowed silently (no toast, invisible failure). Surface it.
+      console.error('[inbox] itemAction failed', err);
+      this.toast.add({ severity: 'error', summary: "Couldn't update the item — please try again.", detail: errorDetail(err), life: 5000 });
     } finally {
       this.sending.set(false);
     }
