@@ -104,7 +104,10 @@ const SUPPLIER_NAV: readonly NavItem[] = [
  *  no New/Past projects or Messages. Orgs is a net-new page, deferred. */
 const BALLPARK_NAV: readonly NavItem[] = [
   { label: 'Overview', path: '/home', icon: 'layout-grid', exact: true },
-  { label: 'Approvals', path: '/marketplace', icon: 'store', exact: false, query: { status: 'pending' } },
+  { label: 'Approvals', path: '/marketplace', icon: 'circle-check', exact: false, query: { status: 'pending' } },
+  // Full cross-org browse (admin sees all items via app_is_admin) — distinct from
+  // the pending-only Approvals queue (BE-00126, Liam 2026-09-20).
+  { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
   { label: 'Page Settings', path: '/settings/pages', icon: 'settings', exact: false },
   { label: 'Categories', path: '/settings/categories', icon: 'tags', exact: false },
   { label: 'Codelists', path: '/settings/codelists', icon: 'list-checks', exact: false },
