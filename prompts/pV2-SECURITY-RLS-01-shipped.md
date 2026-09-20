@@ -74,10 +74,63 @@ The ungated direct `app.<verb>` v1 convenience routes now sit behind the same
   today (grep clean) — nothing to wire through; if a future caller is added it
   must pass `projectId`.
 
-## NOT done (staged follow-on — do not start without the gate)
-- **FR-00209** (§1 RLS policies + `web_app_user` role + `orgs_public` view),
-  **FR-00210** (coverage test). Requires the resolved per-table decisions + the
-  3-persona tests green BEFORE the `DATABASE_URL` flip. Rollout order in the spec.
+## FR-00209 / FR-00210 (§1 RLS core) — WRITTEN + DRY-RUN VALIDATED, pending apply
+Inert until applied; apply + `DATABASE_URL` flip are Liam's to run (shared-DB
+writes), only after his BE-00110 sanity-check and green persona tests.
+
+**Deliverables**
+- `server/src/db/migrate-rls.js` — idempotent, standalone. Creates the
+  `web_app_user` role, the `public` GUC readers, per-schema `SECURITY DEFINER`
+  membership helpers (`app_owns_project` / `app_is_project_supplier` /
+  `app_is_org_admin` / `app_can_access_project_item` / `app_owns_estimate` /
+  `app_owns_item`), scoped grants (explicit per-table — grant scope is a control),
+  the full tenant policy set (all §1f archetypes over the real introspected
+  columns), and the `orgs_public` view. **Standalone, not folded into
+  migrate-schemas.js** (that file fatals ~2139/BE-00095, so it can't apply
+  end-to-end) — fold in once BE-00095 is fixed.
+- `server/src/db/rls-coverage.test.js` (FR-00210) — asserts every base table
+  granted to `web_app_user` has ≥1 policy (deny-all guard). Skips pre-apply.
+- `server/src/db/rls-personas.test.js` (FR-00210) — seeds A(agency)/B,C(supplier)
+  + project + items as owner, then asserts the supplier / agency / admin / no-context
+  matrix as `web_app_user`. Skips until `WEB_APP_DATABASE_URL` is set.
+
+**Validation done here**
+- `node --test` suite: 74 tests, 69 pass, **5 skipped** (coverage + 4 personas
+  skip cleanly pre-apply), 0 fail.
+- **Dry-run** (`WEB_APP_PW=… node src/db/migrate-rls.js --dry-run`, BEGIN/ROLLBACK,
+  nothing persisted): the full migration compiles against the **live public
+  schema** — role, helpers, every policy, `orgs_public`, shared/marketing reads.
+- **Finding:** the **preview** schema lags public (missing `supplier_org_id` on a
+  table) → applying RLS there fails until the additive delta lands. So the
+  migration defaults to **public only**; `--schemas=public,preview,master` opts
+  in per env once each is caught up (matches the rollout: dev first).
+
+**Runbook for Liam (in order — do NOT skip the gate):**
+1. Confirm the BE-00110 app sanity-check passed on localhost.
+2. Set `WEB_APP_PW` (new secret) in the env.
+3. Apply to dev: `WEB_APP_PW=<pw> node server/src/db/migrate-rls.js` (public).
+4. Set `WEB_APP_DATABASE_URL` (same DB URL, user/pass = web_app_user) and run
+   `node --test server/src/db/rls-personas.test.js` + `rls-coverage.test.js` —
+   all must be green.
+5. Only then flip `DATABASE_URL` → web_app_user (keep the owner URL as
+   `MIGRATION_DATABASE_URL`). Smoke-test the whole app as each persona (spec step 4).
+6. Roll to preview/master (after catching up their schemas):
+   `--schemas=preview` / `--schemas=master`, then flip those envs.
+
+**Open decisions flagged (need a call before/at apply):**
+- `categories` has an `org_id` column — spec says admin-write only; if per-org
+  categories are real, write should also allow `org_id = app_current_org()`. Left
+  admin-write per spec; confirm.
+- `shared.feedback` / `marketing.guestlist_signup` writes: NOT granted to
+  web_app_user (PII / tracker). The tenant feedback + guestlist-signup write paths
+  will break at the flip unless routed through an elevated (owner) path — needs a
+  small refactor before the flip, or explicit grants if we accept them as tenant
+  writes. Flagged.
+- Grant list is the enumerated v2 tenant set; step-4 whole-app testing under
+  web_app_user will surface any missing grant as a fail-closed broken feature
+  (never a leak) → add its table + policy then.
+
+## NOT done
 - Rollout step 6 (delete `x-bp-user-id` / `user-context.js`) — after the flip.
 
 ## QC notes
