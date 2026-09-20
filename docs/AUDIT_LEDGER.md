@@ -22,6 +22,43 @@ by Claude Code; `both` = audited and re-verified.
 
 ---
 
+## 2026-09-20 audit pass — architecture, the major change since v2.375 (`cc` + 2 agents)
+
+Full report: `docs/AUDIT-2026-09-20-architecture.md`. Scope = pV2-PRICING-SSOT-01
+(line-pricing SSOT) + EP-00020 (RLS/tenant-isolation infra) + store-item
+measure/volume arc. Two-brain: CC synthesis + independent server + client survey
+agents, against the WORKING_STANDARDS 8-class checklist. Verdict: **new primitives
+are clean + test-backed; the debt is in how they're wired in.**
+
+Headline findings (14 total, ranked in the report):
+- **AUD-01 (HIGH, flip-critical)** — `requestContext` (org-GUC middleware) is an
+  opt-in allow-list that omits v2-used routes (`/api/config`, `/api/ai` verified
+  called by v2) → fail-closed post-flip. Fix: default-on after `authenticate`
+  (anti-pattern #5 invert). **→ EP-00020 next ship.**
+- **AUD-02 (HIGH, flip-critical)** — hand-rolled `pool.connect()` (item.service
+  `duplicate`, project-item, taxonomy 397/507, brief, messages) sets no org GUC →
+  writes denied post-flip; `withTransaction` mandated but bypassed. **→ EP-00020
+  next ship** (parameterize `withTransaction(fn,{pool})`; ban raw `pool.connect`).
+- Both HIGHs are invisible to the direct-SQL persona smoke (Express-path) → add a
+  route-level RLS integration test to the flip gate.
+- AUD-03 requestQuotes over-broad owner bypass; AUD-04 marketplace-visibility SQL
+  duplicated 8+× (already drifting: rail counts vs grid); AUD-05 withTransaction
+  coupled to RLS pool; AUD-06 audit attribution lost on owner-pool writes; AUD-07
+  client margin-markup hand-applied 3 defs/8 sites; AUD-08 `@ballpark/line-pricing`
+  hand-synced `.d.ts` + undeclared build coupling; AUD-09 zero client pricing tests;
+  AUD-10 golden test binds only 3 surfaces; AUD-11 install-inverse + component-sum
+  duplication; AUD-12 inbox declined-predicate 2 ways + 2 ALS identity sources;
+  AUD-13 RLS tests skip pre-flip + subset; AUD-14 tier-band validation.
+
+Behemoths (>400): server `taxonomy.service` 1614 (BE-00112), `projects.service`
+1348, `inbox.service` 847; client `inbox-project.component` **1077 (2.7×)**,
+`customize-dialog` 872, `project-estimate` 865, `agent-rail` 723, `item-edit` 591.
+
+Cross-refs: BE-00112 (god-service), BE-00117 (route standardization) — folded in,
+not re-discovered. Baseline still holds: `AUDIT-2026-09-10-standards-architecture.md`.
+
+---
+
 ## INBOX + CART-01 arc audit (2026-07-08, `cc` + `chat`)
 
 Full report: `docs/audits/2026-07-08-inbox-cart-arc-architect-audit.md`.
