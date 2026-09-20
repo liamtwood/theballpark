@@ -1,29 +1,49 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
+import { LucideAngularModule } from 'lucide-angular';
+import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 import { SelectComponent, SelectOption } from '../../../shared/select/select.component';
+import { CatalogueSearchComponent } from '../../../shared/catalogue/catalogue-search.component';
+import { StorefrontPanelComponent } from '../../suppliers/storefront-panel.component';
+import { ConfirmService } from '../../../shared/confirm/confirm.service';
+import { SupplierDetail } from '../../../shared/catalogue/catalogue.types';
 import { AdminOrgService, AdminOrg, CreateOrgInput } from '../../../core/admin-org.service';
+import { OrgTypeStripComponent, OrgTypeBucket } from './org-type-strip.component';
 
 const TYPE_OPTIONS: SelectOption[] = [
   { label: 'Agency', value: 'agency' },
   { label: 'Supplier', value: 'supplier' },
   { label: 'Ballpark', value: 'ballpark' },
 ];
+const STATUS_OPTIONS: SelectOption[] = [
+  { label: 'All statuses', value: 'all' },
+  { label: 'Active', value: 'active' },
+  { label: 'Suspended', value: 'suspended' },
+];
+/** Stale 'admin' org type is canonically 'ballpark' (normalizeOrgType mirrors this). */
+const normType = (t: string): string => (t === 'admin' ? 'ballpark' : t);
 
 const emptyForm = (): CreateOrgInput => ({
   name: '', type: 'supplier', website: '', city: '', country: '', phone: '', email: '',
 });
 
-/** BE-00127 slice 2 — admin Orgs management: list every org (type filter +
- *  search), create a new one (lean form; website import lands in slice 3), and
- *  approve/suspend (is_active toggle). Lives under the Admin hub (/admin/orgs). */
+/** pV2-ADMIN-ORGS-UX-01 — admin Orgs page, marketplace-consistent: a flat type
+ *  rail (owns type), catalogue-search, a filter-toggle → Status filter, a Status
+ *  pill + single contextual Activate/Suspend action, and a read-only storefront
+ *  preview pane. Independent of MarketplaceStore (assembled from drop-in pieces +
+ *  a thin org-type-strip fork). Backend unchanged (BE-00127). */
 @Component({
   selector: 'app-orgs-admin',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ToastModule, PageHeroComponent, SelectComponent],
+  imports: [
+    FormsModule, LucideAngularModule, TooltipModule, ToastModule,
+    PageHeroComponent, SelectComponent, CatalogueSearchComponent,
+    StorefrontPanelComponent, OrgTypeStripComponent,
+  ],
   providers: [MessageService],
   host: { class: 'block' },
   template: `
@@ -35,24 +55,36 @@ const emptyForm = (): CreateOrgInput => ({
     />
 
     <div class="bp-page-body bp-page-body--workspace">
-      <!-- Controls: type filter + search + Add. -->
-      <div class="mb-4 flex flex-wrap items-center gap-3">
-        <app-select ariaLabel="Type" class="w-40" [compact]="true" [options]="typeFilterOptions"
-          [value]="typeFilter()" (changed)="typeFilter.set($event)" />
-        <input class="ed-input min-w-[220px] flex-1" type="search" placeholder="Search name, city or email…"
-          aria-label="Search organisations" [ngModel]="search()" (input)="search.set($any($event.target).value)" />
-        <button type="button" class="bp-btn-grad" (click)="toggleCreate()">
+      <!-- Control bar — mirrors marketplace order: search · filter toggle · Add. -->
+      <div class="mb-4 flex items-center gap-3">
+        <div class="min-w-0 flex-1">
+          <app-catalogue-search [value]="search()" [count]="filtered().length" (valueChange)="search.set($event)" />
+        </div>
+        <div class="inline-flex items-center rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
+          <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="showFilters()"
+            pTooltip="Filter" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
+            aria-label="Filter" (click)="showFilters.set(!showFilters())">
+            <lucide-icon name="sliders-horizontal" [size]="15" />
+          </button>
+        </div>
+        <button type="button" class="bp-btn-grad shrink-0" (click)="toggleCreate()">
           {{ showCreate() ? 'Close' : '+ Add organisation' }}
         </button>
       </div>
 
-      <!-- Create form (lean). The website Fetch button lands in slice 3. -->
+      <!-- Filter row (status only — type is the rail, name is the search). -->
+      @if (showFilters()) {
+        <div class="mb-4 flex items-center gap-2">
+          <span class="bp-field-label">Status</span>
+          <app-select ariaLabel="Status" class="w-44" [compact]="true" [options]="statusOptions"
+            [value]="statusFilter()" (changed)="statusFilter.set($event)" />
+        </div>
+      }
+
+      <!-- Create form (lean; website Fetch pre-fills by confidence). -->
       @if (showCreate()) {
         <div class="mb-6 rounded-xl border border-hairline bg-surface p-4">
           <h3 class="bp-edit-section-title mb-3">New organisation</h3>
-          <!-- Website + Fetch (pV2-IMPORT-ORG-01): reads the vendor site and
-               pre-fills what it can — high silently, medium flagged, low/none
-               left blank. -->
           <label class="block">
             <span class="bp-field-label">Website</span>
             <div class="mt-1 flex gap-2">
@@ -62,7 +94,6 @@ const emptyForm = (): CreateOrgInput => ({
                 (click)="fetchFromWebsite()">{{ fetching() ? 'Fetching…' : 'Fetch' }}</button>
             </div>
           </label>
-
           <div class="mt-3 grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
             <label class="block">
               <span class="bp-field-label">Name *</span>
@@ -71,8 +102,7 @@ const emptyForm = (): CreateOrgInput => ({
             </label>
             <label class="block">
               <span class="bp-field-label">Type</span>
-              <app-select class="mt-1 block" ariaLabel="Type" [options]="typeOptions" [value]="form.type"
-                (changed)="form.type = $event" />
+              <app-select class="mt-1 block" ariaLabel="Type" [options]="typeOptions" [value]="form.type" (changed)="form.type = $event" />
             </label>
             <label class="block">
               <span class="bp-field-label">City</span>
@@ -104,83 +134,162 @@ const emptyForm = (): CreateOrgInput => ({
         </div>
       }
 
-      <!-- List -->
-      @if (loading()) {
-        <p class="bp-body-small text-secondary">Loading…</p>
-      } @else if (error()) {
-        <p class="bp-body-small text-warn">Couldn't load organisations.</p>
-      } @else {
-        <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
-          <div class="grid grid-cols-[1fr_110px_130px_150px] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-2">
-            <span class="bp-table-column-header">Name</span>
-            <span class="bp-table-column-header">Type</span>
-            <span class="bp-table-column-header">City</span>
-            <span class="bp-table-column-header text-right">Status</span>
+      <!-- Rail · table · preview -->
+      <div class="flex min-h-0 gap-6">
+        <aside class="hidden w-[200px] shrink-0 md:block">
+          <div class="rounded-[var(--radius-card)] border border-hairline bg-fill p-2">
+            <app-org-type-strip [buckets]="buckets()" [activeId]="typeId()" [totalCount]="orgs().length"
+              (selected)="typeId.set($event)" />
           </div>
-          @for (o of filtered(); track o.id) {
-            <div class="grid grid-cols-[1fr_110px_130px_150px] items-center gap-x-4 border-b border-hairline px-4 py-2">
-              <div class="min-w-0">
-                <div class="bp-body-small truncate font-medium">{{ o.name }}</div>
-                @if (o.website) { <div class="bp-caption truncate text-secondary">{{ o.website }}</div> }
+        </aside>
+
+        <div class="min-w-0 flex-1">
+          @if (loading()) {
+            <p class="bp-body-small text-secondary">Loading…</p>
+          } @else if (error()) {
+            <p class="bp-body-small text-warn">Couldn't load organisations.</p>
+          } @else {
+            <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
+              <div class="grid grid-cols-[1fr_100px_120px_100px_120px] items-center gap-x-3 border-b border-hairline bg-fill px-4 py-2">
+                <span class="bp-table-column-header">Name</span>
+                <span class="bp-table-column-header">Type</span>
+                <span class="bp-table-column-header">City</span>
+                <span class="bp-table-column-header">Status</span>
+                <span class="bp-table-column-header text-right">Action</span>
               </div>
-              <span class="bp-body-small capitalize">{{ o.type }}</span>
-              <span class="bp-body-small truncate">{{ o.city || '—' }}</span>
-              <div class="flex items-center justify-end gap-2">
-                <span class="bp-caption" [class.text-secondary]="!o.is_active">{{ o.is_active ? 'Active' : 'Suspended' }}</span>
-                <button type="button" class="bp-btn-outline bp-btn-xs" [disabled]="busyId() === o.id"
-                  (click)="toggleActive(o)">
-                  {{ o.is_active ? 'Suspend' : 'Approve' }}
-                </button>
-              </div>
+              @for (o of filtered(); track o.id) {
+                <div class="grid cursor-pointer grid-cols-[1fr_100px_120px_100px_120px] items-center gap-x-3 border-b border-hairline px-4 py-2 hover:bg-fill"
+                  [class.bp-row--selected]="selectedId() === o.id" (click)="selectedId.set(o.id)">
+                  <div class="min-w-0">
+                    <div class="bp-body-small truncate font-medium">{{ o.name }}</div>
+                    @if (o.website) { <div class="bp-caption truncate text-secondary">{{ o.website }}</div> }
+                  </div>
+                  <span class="bp-body-small capitalize">{{ typeLabel(o.type) }}</span>
+                  <span class="bp-body-small truncate">{{ o.city || '—' }}</span>
+                  <span>
+                    <span class="bp-orgpill" [class.bp-orgpill--active]="o.is_active" [class.bp-orgpill--suspended]="!o.is_active">
+                      {{ o.is_active ? 'Active' : 'Suspended' }}
+                    </span>
+                  </span>
+                  <div class="flex justify-end">
+                    @if (o.is_active) {
+                      <button type="button" class="bp-orgact bp-orgact--suspend" [disabled]="busyId() === o.id"
+                        (click)="suspend(o); $event.stopPropagation()">Suspend</button>
+                    } @else {
+                      <button type="button" class="bp-orgact bp-orgact--activate" [disabled]="busyId() === o.id"
+                        (click)="activate(o); $event.stopPropagation()">Activate</button>
+                    }
+                  </div>
+                </div>
+              } @empty {
+                <div class="px-4 py-6 bp-body-small text-secondary">No organisations match.</div>
+              }
             </div>
-          } @empty {
-            <div class="px-4 py-6 bp-body-small text-secondary">No organisations match.</div>
+            <p class="bp-caption mt-2 text-secondary">{{ filtered().length }} of {{ orgs().length }} organisations</p>
           }
         </div>
-        <p class="bp-caption mt-2 text-secondary">{{ filtered().length }} of {{ orgs().length }} organisations</p>
-      }
+
+        <!-- Read-only preview of the selected org (reuses the storefront panel). -->
+        <aside class="hidden w-[340px] shrink-0 lg:block">
+          @if (selectedSupplier(); as sup) {
+            <app-storefront-panel [supplier]="sup" [subcategories]="[]" />
+          } @else {
+            <div class="rounded-xl border border-hairline bg-surface p-6 text-center">
+              <p class="bp-body-small text-secondary">Select an organisation to preview.</p>
+            </div>
+          }
+        </aside>
+      </div>
     </div>
 
     <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
   styles: [`
-    .bp-btn-xs { height: 28px; padding: 0 10px; font-size: var(--text-sm); }
+    .bp-orgpill { display: inline-flex; align-items: center; border-radius: var(--radius-pill, 999px);
+      padding: 2px 10px; font-size: var(--text-sm); font-weight: 500; }
+    .bp-orgpill--active { background: var(--color-success-soft); color: var(--color-success); }
+    .bp-orgpill--suspended { background: var(--color-fill); color: var(--color-text-secondary); }
+    .bp-orgact { height: 28px; padding: 0 12px; border-radius: var(--radius-input, 8px);
+      border: 1px solid transparent; font-size: var(--text-sm); font-weight: 500; cursor: pointer; }
+    .bp-orgact:disabled { opacity: 0.5; cursor: default; }
+    .bp-orgact--suspend { background: var(--color-danger-soft); color: var(--color-danger); }
+    .bp-orgact--activate { background: var(--color-success-soft); color: var(--color-success); }
+    .bp-row--selected { background: var(--color-fill); }
   `],
 })
 export class OrgsAdminComponent {
   private readonly svc = inject(AdminOrgService);
   private readonly toast = inject(MessageService);
+  private readonly confirm = inject(ConfirmService);
 
   protected readonly typeOptions = TYPE_OPTIONS;
-  protected readonly typeFilterOptions: SelectOption[] = [{ label: 'All types', value: 'all' }, ...TYPE_OPTIONS];
+  protected readonly statusOptions = STATUS_OPTIONS;
 
   protected readonly orgs = signal<AdminOrg[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
-  protected readonly typeFilter = signal('all');
+  protected readonly typeId = signal('all');           // rail owns type
   protected readonly search = signal('');
+  protected readonly statusFilter = signal('all');
+  protected readonly showFilters = signal(false);
   protected readonly showCreate = signal(false);
   protected readonly saving = signal(false);
   protected readonly busyId = signal<string | null>(null);
   protected readonly fetching = signal(false);
-  /** Field keys pre-filled at medium confidence — "please check" until edited. */
   protected readonly flagged = signal<Set<string>>(new Set());
+  protected readonly selectedId = signal<string | null>(null);
 
-  /** Plain mutable model for the create form (ngModel two-way). */
   protected form: CreateOrgInput = emptyForm();
 
+  /** Type buckets for the rail (normalised so stale 'admin' counts as Ballpark). */
+  protected readonly buckets = computed<OrgTypeBucket[]>(() => {
+    const count = (t: string) => this.orgs().filter((o) => normType(o.type) === t).length;
+    return [
+      { id: 'agency', name: 'Agents', count: count('agency') },
+      { id: 'supplier', name: 'Suppliers', count: count('supplier') },
+      { id: 'ballpark', name: 'Admin', count: count('ballpark') },
+    ];
+  });
+
   protected readonly filtered = computed(() => {
-    const t = this.typeFilter();
+    const t = this.typeId();
     const q = this.search().trim().toLowerCase();
+    const s = this.statusFilter();
     return this.orgs().filter((o) => {
-      if (t !== 'all' && o.type !== t) return false;
+      if (t !== 'all' && normType(o.type) !== t) return false;
+      if (s === 'active' && !o.is_active) return false;
+      if (s === 'suspended' && o.is_active) return false;
       if (!q) return true;
       return [o.name, o.city, o.email].some((v) => (v || '').toLowerCase().includes(q));
     });
   });
 
+  protected readonly selectedSupplier = computed<SupplierDetail | null>(() => {
+    const o = this.orgs().find((x) => x.id === this.selectedId());
+    if (!o) return null;
+    return {
+      id: o.id,
+      name: o.name,
+      city: o.city ?? null,
+      country: o.country ?? null,
+      address: o.address ?? null,
+      phone: o.phone ?? null,
+      email: o.email ?? null,
+      website: o.website ?? null,
+      description: o.description ?? null,
+      logoUrl: o.logo_url ?? null,
+      coverUrl: o.cover_image_url ?? null,
+      images: [],
+      categories: [],
+    };
+  });
+
   constructor() {
     void this.load();
+  }
+
+  protected typeLabel(t: string): string {
+    return normType(t) === 'ballpark' ? 'Ballpark' : t;
   }
 
   private async load(): Promise<void> {
@@ -205,8 +314,6 @@ export class OrgsAdminComponent {
     if (s.has(k)) { const n = new Set(s); n.delete(k); this.flagged.set(n); }
   }
 
-  /** pV2-IMPORT-ORG-01 — read the vendor site and pre-fill the lean form fields:
-   *  high fills silently, medium fills + flags "please check", low/none skipped. */
   protected async fetchFromWebsite(): Promise<void> {
     const url = (this.form.website || '').trim();
     if (!url || this.fetching()) return;
@@ -220,12 +327,8 @@ export class OrgsAdminComponent {
         this.form[formKey] = f.value;
         if (f.confidence === 'medium') flags.add(formKey as string);
       };
-      apply('name', 'name');
-      apply('website', 'website');
-      apply('city', 'city');
-      apply('country', 'country');
-      apply('phone', 'phone');
-      apply('email', 'email');
+      apply('name', 'name'); apply('website', 'website'); apply('city', 'city');
+      apply('country', 'country'); apply('phone', 'phone'); apply('email', 'email');
       this.flagged.set(flags);
       const found = Object.keys(org).length > 0;
       this.toast.add({
@@ -256,14 +359,33 @@ export class OrgsAdminComponent {
     }
   }
 
-  protected async toggleActive(o: AdminOrg): Promise<void> {
+  /** Active → Suspend: confirm first (guards an accidental suspend). */
+  protected async suspend(o: AdminOrg): Promise<void> {
     if (this.busyId()) return;
+    const ok = await this.confirm.ask({
+      title: `Suspend “${o.name}”?`,
+      message: 'They will be hidden from the marketplace until reactivated.',
+      confirmLabel: 'Suspend',
+      cancelLabel: 'Cancel',
+      danger: true,
+      icon: 'circle-off',
+    });
+    if (!ok) return;
+    await this.setActive(o, false);
+  }
+
+  /** Suspended → Activate: direct (no confirm). */
+  protected async activate(o: AdminOrg): Promise<void> {
+    if (this.busyId()) return;
+    await this.setActive(o, true);
+  }
+
+  private async setActive(o: AdminOrg, active: boolean): Promise<void> {
     this.busyId.set(o.id);
-    const next = !o.is_active;
     try {
-      const updated = await firstValueFrom(this.svc.setActive(o.id, next));
+      const updated = await firstValueFrom(this.svc.setActive(o.id, active));
       this.orgs.update((list) => list.map((x) => (x.id === o.id ? updated : x)));
-      this.toast.add({ severity: 'success', summary: `${o.name} ${next ? 'approved' : 'suspended'}` });
+      this.toast.add({ severity: 'success', summary: `${o.name} ${active ? 'activated' : 'suspended'}` });
     } catch {
       this.toast.add({ severity: 'error', summary: 'Failed to update status' });
     } finally {
@@ -271,7 +393,6 @@ export class OrgsAdminComponent {
     }
   }
 
-  /** Drop empty strings so the server only writes provided fields. */
   private cleaned(): CreateOrgInput {
     const out: Record<string, unknown> = { name: this.form.name.trim(), type: this.form.type };
     for (const k of ['website', 'city', 'country', 'phone', 'email'] as const) {
