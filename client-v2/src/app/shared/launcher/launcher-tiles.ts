@@ -64,30 +64,49 @@ export const SUPPLIER_TILES: readonly LauncherTile[] = [
   },
 ];
 
-/** The ballpark-admin launcher tile set (Liam, 2026-06-12): platform admins
- *  get just the two real admin surfaces — no agent project chrome. */
+/** The ballpark-admin launcher tile set (BE-00128, Liam 2026-09-20): the five
+ *  config surfaces moved OFF the top level into the Admin hub, so admins now get
+ *  Approvals, Marketplace, Admin (hub) and Profile — no config clutter. */
 export const BALLPARK_TILES: readonly LauncherTile[] = [
+  {
+    // pV2-STORE-01 — item moderation. Lands on the marketplace with Status
+    // defaulted to Pending so admins see the approval queue first.
+    icon: 'circle-check',
+    label: 'Approvals',
+    subtitle: 'Review and approve items suppliers have submitted.',
+    href: '/marketplace',
+    query: { status: 'pending' },
+  },
+  {
+    icon: 'store',
+    label: 'Marketplace',
+    subtitle: 'Browse every supplier item across the platform.',
+    href: '/marketplace',
+  },
+  {
+    // BE-00128 — the Admin hub groups the platform config surfaces.
+    icon: 'settings',
+    label: 'Admin',
+    subtitle: 'Page settings, categories, codelists, coachmarks and early access.',
+    href: '/admin',
+  },
   {
     icon: 'circle-user',
     label: 'Profile',
     subtitle: 'Manage company information, team members and business details.',
     href: '/settings/profile',
   },
+];
+
+/** The Admin HUB tile set (BE-00128) — the five platform-config surfaces,
+ *  grouped under /admin. Routes already exist (ballparkAdminGuard each). */
+export const ADMIN_HUB_TILES: readonly LauncherTile[] = [
   {
     // pV2-EA-02 — waitlist signups + welcome content + admin notifications.
     icon: 'rocket',
     label: 'Early Access',
     subtitle: 'Manage waitlist signups, welcome-page content and notifications.',
     href: '/settings/early-access',
-  },
-  {
-    // pV2-STORE-01 — item moderation. Lands on the standard marketplace, but
-    // defaults Status to Pending so admins see the approval queue first.
-    icon: 'store',
-    label: 'Marketplace',
-    subtitle: 'Review and approve items suppliers have submitted.',
-    href: '/marketplace',
-    query: { status: 'pending' },
   },
   {
     icon: 'settings',
@@ -110,8 +129,7 @@ export const BALLPARK_TILES: readonly LauncherTile[] = [
     href: '/settings/codelists',
   },
   {
-    // Coachmarks — the app's help-bubble content (BE-00126, Liam 2026-09-20).
-    // Route already exists (settings/coachmarks, ballparkAdminGuard).
+    // Coachmarks — the app's help-bubble content.
     icon: 'circle-help',
     label: 'Coachmarks',
     subtitle: 'Edit the help bubbles shown across the app.',
@@ -195,6 +213,7 @@ export function tileForPath(
     ...AGENT_TILES,
     ...SUPPLIER_TILES,
     ...BALLPARK_TILES,
+    ...ADMIN_HUB_TILES,
     ...PROJECTS_HUB_TILES,
     ...STOREFRONT_TILES,
   ];

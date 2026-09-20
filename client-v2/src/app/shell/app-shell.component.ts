@@ -99,19 +99,13 @@ const SUPPLIER_NAV: readonly NavItem[] = [
   { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
 ];
 
-/** Ballpark platform admin (BE-00126) — mirrors BALLPARK_TILES. Marketplace is
- *  the moderation queue (Approvals → status=pending), NOT the consumer browse;
- *  no New/Past projects or Messages. Orgs is a net-new page, deferred. */
+/** Ballpark platform admin (BE-00128) — five top-level items; the config
+ *  surfaces live under the Admin hub. Approvals is the moderation queue
+ *  (status=pending); Marketplace is the full cross-org browse. */
 const BALLPARK_NAV: readonly NavItem[] = [
   { label: 'Overview', path: '/home', icon: 'layout-grid', exact: true },
   { label: 'Approvals', path: '/marketplace', icon: 'circle-check', exact: false, query: { status: 'pending' } },
-  // Full cross-org browse (admin sees all items via app_is_admin) — distinct from
-  // the pending-only Approvals queue (BE-00126, Liam 2026-09-20).
   { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
-  { label: 'Page Settings', path: '/settings/pages', icon: 'settings', exact: false },
-  { label: 'Categories', path: '/settings/categories', icon: 'tags', exact: false },
-  { label: 'Codelists', path: '/settings/codelists', icon: 'list-checks', exact: false },
-  { label: 'Coachmarks', path: '/settings/coachmarks', icon: 'circle-help', exact: false },
-  { label: 'Early Access', path: '/settings/early-access', icon: 'rocket', exact: false },
+  { label: 'Admin', path: '/admin', icon: 'settings', exact: false },
   { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
 ];

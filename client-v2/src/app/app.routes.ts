@@ -43,6 +43,15 @@ export const routes: Routes = [
           import('./pages/home/home-agent.component').then((m) => m.HomeAgentComponent),
       },
       {
+        // BE-00128 — the platform Admin hub. Groups the five config surfaces
+        // (Early Access, Page Settings, Categories, Codelists, Coachmarks) off
+        // the top-level nav. Ballpark admins only.
+        path: 'admin',
+        canActivate: [ballparkAdminGuard],
+        loadComponent: () =>
+          import('./pages/admin/admin-hub.component').then((m) => m.AdminHubComponent),
+      },
+      {
         // Version history (user menu → above Sign out). Renders
         // public/changelog.json — what's on dev vs already on preview.
         path: 'whats-new',

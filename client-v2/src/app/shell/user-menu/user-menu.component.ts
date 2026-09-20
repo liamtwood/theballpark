@@ -1,10 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { PopoverModule, Popover } from 'primeng/popover';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth/auth.service';
-import { can } from '../../core/auth/permissions';
 import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.component';
 
 /** Header avatar + dropdown: current identity, admin links, sign out.
@@ -46,32 +45,8 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
             </div>
           </div>
 
-          <!-- Platform-admin links — same gate as the pages they open. -->
-          @if (canEditPageSettings()) {
-            <div class="border-t border-hairline pt-2">
-              <a
-                routerLink="/settings/pages"
-                class="block w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md text-text no-underline hover:bg-fill"
-                (click)="menu.hide()"
-              >
-                Page settings
-              </a>
-              <a
-                routerLink="/settings/early-access"
-                class="block w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md text-text no-underline hover:bg-fill"
-                (click)="menu.hide()"
-              >
-                Early access
-              </a>
-              <a
-                routerLink="/settings/coachmarks"
-                class="block w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md text-text no-underline hover:bg-fill"
-                (click)="menu.hide()"
-              >
-                Coachmarks
-              </a>
-            </div>
-          }
+          <!-- BE-00128 — platform-admin config links removed from the user menu;
+               they now live on the Admin hub (/admin). -->
 
           <!-- Build chip + sign out (the chip moved here off the floating
                footer — Liam, 2026-06-12). -->
@@ -130,9 +105,6 @@ export class UserMenuComponent {
   protected readonly versionChip = environment.versionChip;
   protected readonly release = environment.release;
   protected readonly build = environment.build;
-
-  /** Page-settings link mirrors the route's ballparkAdminGuard gate. */
-  protected readonly canEditPageSettings = computed(() => can(this.auth.role(), 'admin.cross_org_view'));
 
   protected signOut(menu: Popover): void {
     menu.hide();
