@@ -1,4 +1,5 @@
 const pool = require('../db/pool');
+const { als } = require('../db/request-context');
 const { effectiveRole, normalizeOrgType, can } = require('../services/permissions.service');
 
 /**
@@ -50,6 +51,26 @@ function requireActiveMembership(perm) {
       req.user.is_admin = row.is_admin;
       req.user.org_type = orgType;
       req.user.role = effectiveRole(orgType, row.is_admin);
+
+      // pV2-SECURITY-RLS-01 / BE-00126 — align the app.is_admin GUC with LIVE
+      // platform-admin status. requestContext seeded it from the JWT, which since
+      // pV2-02b carries IDENTITY ONLY (no is_admin/org_type), so it defaults to
+      // false → app_is_admin() never engaged and post-flip a ballpark admin lost
+      // cross-org RLS visibility (empty moderation marketplace, etc.). Platform
+      // admin = BALLPARK membership only — NEVER row.is_admin (a per-org admin
+      // must not gain cross-tenant bypass); orgType is already normalized, so the
+      // stale orgs.type='admin' data resolves here too. Only ballpark members need
+      // the flip (the requestContext default is already 'f'), so skip the extra
+      // round-trip otherwise. set_config is session-level → only touch the PINNED
+      // client, else the flag leaks to the next request on that pooled connection.
+      if (orgType === 'ballpark') {
+        const store = als.getStore();
+        if (store && store.client) {
+          store.isAdmin = true; // keep ALS in sync so in-request withTransaction writes agree
+          await store.client.query("SELECT set_config('app.is_admin', 't', false)");
+        }
+      }
+
       if (perm && !can(orgType, row.is_admin, perm)) {
         return res.status(403).json({ error: 'Permission denied' });
       }

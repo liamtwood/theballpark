@@ -200,6 +200,20 @@ function tenantPolicies(s) {
   const SIT_W = `(public.app_is_admin() OR app_owns_item(item_id))`;
   add('supplier_item_tag', 'supplier_item_tag_write', 'ALL', SIT_W, SIT_W);
 
+  // SHARED-CONFIG (BE-00126) — platform reference/config, NOT tenant data. These
+  // tables had RLS enabled but ZERO policies (deny-by-default), so post-flip the
+  // public brand route + page-settings config 500'd ("permission denied"). Public
+  // read; writes admin-only, except coachmarks which any member registers on first
+  // render (coachmark.service.resolve insert-if-missing). bp_brand_config is
+  // read-only from the app (seeded by migration/owner) → no write policy.
+  add('bp_brand_config', 'bp_brand_config_read', 'SELECT', 'true', null);
+  add('org_type_config', 'org_type_config_read', 'SELECT', 'true', null);
+  add('org_type_config', 'org_type_config_write', 'ALL', ADMIN, ADMIN);
+  add('coachmarks', 'coachmarks_read', 'SELECT', 'true', null);
+  add('coachmarks', 'coachmarks_register', 'INSERT', null, 'true'); // any member resolves-if-missing
+  add('coachmarks', 'coachmarks_update', 'UPDATE', ADMIN, ADMIN);
+  add('coachmarks', 'coachmarks_delete', 'DELETE', ADMIN, null);
+
   return P;
 }
 
@@ -210,6 +224,8 @@ function grantedTenantTables() {
     'clients', 'favourites', 'messages', 'quote_requests', 'message_items', 'message_item_events',
     'message_item_decisions', 'project_item_suppliers', 'users', 'user_orgs', 'orgs',
     'balls_transactions', 'categories', 'statuses', 'tag', 'supplier_item_tag', 'ai_search_hints',
+    // SHARED-CONFIG (BE-00126) — platform reference/config; policies in tenantPolicies().
+    'bp_brand_config', 'org_type_config', 'coachmarks',
   ];
 }
 
