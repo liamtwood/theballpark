@@ -1,0 +1,227 @@
+<title>Ballpark Security Posture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --ground:#FBFCFD; --surface:#FFFFFF; --surface-2:#F2F5F9;
+    --ink:#171B24; --muted:#586173; --faint:#8A93A3; --hairline:#E3E8EF;
+    --accent:#3D53D6; --accent-soft:#ECEFFC;
+    --ok:#1C7A48; --ok-soft:#E4F3EA;
+    --wip:#9C5A0C; --wip-soft:#FaEEDC;
+    --planned:#616B7A; --planned-soft:#EEF1F5;
+    --deny:#B42318; --deny-soft:#FBEBE9;
+    --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+    --ground:#0E1218; --surface:#151A22; --surface-2:#1C222C;
+    --ink:#E7EBF1; --muted:#9BA6B5; --faint:#6E7889; --hairline:#28303B;
+    --accent:#8397FF; --accent-soft:#1A2340;
+    --ok:#5FD69A; --ok-soft:#153021;
+    --wip:#E2A75C; --wip-soft:#332611;
+    --planned:#8A94A3; --planned-soft:#212832;
+    --deny:#F0867B; --deny-soft:#331816;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E1218; --surface:#151A22; --surface-2:#1C222C;
+    --ink:#E7EBF1; --muted:#9BA6B5; --faint:#6E7889; --hairline:#28303B;
+    --accent:#8397FF; --accent-soft:#1A2340;
+    --ok:#5FD69A; --ok-soft:#153021;
+    --wip:#E2A75C; --wip-soft:#332611;
+    --planned:#8A94A3; --planned-soft:#212832;
+    --deny:#F0867B; --deny-soft:#331816;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+    line-height:1.55;-webkit-font-smoothing:antialiased;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:16px;padding-block:56px}
+  @media(max-width:520px){.wrap{padding-block:32px}}
+
+  .eyebrow{font-family:var(--mono);font-size:11.5px;font-weight:500;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+  h1{font-size:clamp(30px,6vw,42px);font-weight:700;letter-spacing:-.02em;line-height:1.05;
+    text-wrap:balance;margin:0 0 12px}
+  .lede{font-size:17px;color:var(--muted);max-width:60ch;margin:0}
+  .metaline{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:22px;
+    font-family:var(--mono);font-size:12px;color:var(--faint)}
+  .metaline b{color:var(--muted);font-weight:500}
+
+  header .rule{height:3px;width:56px;background:var(--accent);border-radius:2px;margin-bottom:26px}
+
+  section{margin-top:44px}
+  h2{font-size:13px;font-family:var(--mono);font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink);margin:0 0 4px;display:flex;align-items:baseline;gap:10px}
+  h2 .n{color:var(--accent);font-size:12px}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 18px;max-width:64ch}
+
+  .thesis{background:var(--surface);border:1px solid var(--hairline);border-left:3px solid var(--accent);
+    border-radius:10px;padding:22px 24px}
+  .thesis p{margin:0;font-size:16.5px;line-height:1.6}
+  .thesis b{color:var(--ink)}
+  .thesis .k{color:var(--accent);font-weight:600}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:560px){.grid2{grid-template-columns:1fr}}
+  .card{background:var(--surface);border:1px solid var(--hairline);border-radius:10px;padding:16px 18px}
+  .card h3{margin:0 0 6px;font-size:14px;font-weight:600}
+  .card p{margin:0;color:var(--muted);font-size:13.5px}
+  .card code{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--surface-2);
+    padding:1px 5px;border-radius:4px}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--hairline);border-radius:10px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--hairline);vertical-align:top}
+  thead th{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--faint);background:var(--surface-2)}
+  tbody tr:last-child td{border-bottom:none}
+  td.res{font-weight:500;white-space:nowrap}
+  .cell{font-family:var(--mono);font-size:12px;font-weight:500}
+  .yes{color:var(--ok)} .no{color:var(--deny)} .part{color:var(--wip)}
+  .ref{font-family:var(--mono);font-size:12px;color:var(--faint);white-space:nowrap}
+
+  .chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;font-weight:500;
+    padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .chip::before{content:"";width:6px;height:6px;border-radius:999px;background:currentColor;opacity:.9}
+  .c-ok{color:var(--ok);background:var(--ok-soft)}
+  .c-wip{color:var(--wip);background:var(--wip-soft)}
+  .c-plan{color:var(--planned);background:var(--planned-soft)}
+
+  .legend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:14px;font-size:12px;color:var(--muted)}
+  .legend .chip{cursor:default}
+
+  ul.clean{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+  ul.clean li{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;
+    background:var(--surface);border:1px solid var(--hairline);border-radius:9px;padding:13px 16px}
+  ul.clean .t{font-weight:600;font-size:14px}
+  ul.clean .d{color:var(--muted);font-size:13px;margin-top:2px}
+  ul.clean code{font-family:var(--mono);font-size:12px;color:var(--ink)}
+
+  .foot{margin-top:48px;padding-top:18px;border-top:1px solid var(--hairline);
+    font-family:var(--mono);font-size:11.5px;color:var(--faint);display:flex;flex-wrap:wrap;gap:6px 16px}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="rule"></div>
+    <p class="eyebrow">Security Posture &middot; Multi-tenant isolation</p>
+    <h1>Ballpark Security Posture</h1>
+    <p class="lede">Tenant isolation is enforced by the database, not by application discipline. This is the audit of that guarantee — the model, the findings it closed, and the tests that prove it.</p>
+    <div class="metaline">
+      <span><b>Spec</b> pV2-SECURITY-RLS-01</span>
+      <span><b>Epic</b> EP-00020</span>
+      <span><b>Enforcement</b> live on dev</span>
+      <span><b>As of</b> 2026-09-20</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="thesis">
+      <p><b>The guarantee:</b> a developer forgetting a <code style="font-family:var(--mono)">WHERE org_id&nbsp;=&nbsp;…</code> clause <span class="k">cannot</span> leak another tenant's data. Org identity comes from a server-signed JWT and is re-proven on every request; the application connects to Postgres as a <span class="k">non-owner role</span> subject to row-level security, so isolation holds at the database even when a query is wrong. Per-query discipline is the convenience layer; the database is the backstop.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">01</span> How isolation is enforced</h2>
+    <p class="sub">Six mechanisms, each doing one job. Together they move tenant isolation from "every query remembers" to "the database refuses."</p>
+    <div class="grid2">
+      <div class="card"><h3>Non-owner app role</h3><p>The app connects as <code>web_app_user</code> (not the schema owner), so RLS applies to it. Migrations use a separate owner connection.</p></div>
+      <div class="card"><h3>Request-scoped identity</h3><p>A request-pinned client sets <code>app.current_org_id</code> from the verified JWT once per request, reset on release — no cross-request leak.</p></div>
+      <div class="card"><h3>Split read / write policies</h3><p>Catalogue reads cross-org (approved only); writes are hard-isolated to the owning org. Projects &amp; messages are two-party (agency + supplier).</p></div>
+      <div class="card"><h3>Safe cross-org display</h3><p>An <code>orgs_public</code> view exposes supplier name/logo without PII; a counterparty policy lets the two parties on a project line see each other's org.</p></div>
+      <div class="card"><h3>Auth bootstrap</h3><p>Login and onboarding write <em>before</em> a tenant context exists, so they run through a dedicated owner pool — the only elevated path, and a narrow one.</p></div>
+      <div class="card"><h3>Coverage is proven, not assumed</h3><p>A test asserts every table the app role can touch carries a policy — a missed table fails the build, so nothing ships open.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">02</span> Who can reach what</h2>
+    <p class="sub">The enforced access matrix, verified by the persona test suite. "Approved" items are the public catalogue; drafts and projects are private to their owner and the counterparty on a line.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>Resource</th><th>Supplier</th><th>Agency&nbsp;/&nbsp;Agent</th><th>Ballpark&nbsp;Admin</th>
+        </tr></thead>
+        <tbody>
+          <tr><td class="res">Own catalogue items</td><td class="cell yes">read + write</td><td class="cell no">— none —</td><td class="cell yes">read + write</td></tr>
+          <tr><td class="res">Others' approved items</td><td class="cell yes">read (browse)</td><td class="cell yes">read (browse)</td><td class="cell yes">read</td></tr>
+          <tr><td class="res">Others' draft items</td><td class="cell no">denied</td><td class="cell no">denied</td><td class="cell yes">read</td></tr>
+          <tr><td class="res">Own projects &amp; lines</td><td class="cell part">own lines only</td><td class="cell yes">read + write</td><td class="cell yes">read + write</td></tr>
+          <tr><td class="res">Counterparty org (shared line)</td><td class="cell yes">name + logo</td><td class="cell yes">name + logo</td><td class="cell yes">full</td></tr>
+          <tr><td class="res">A stranger org's private data</td><td class="cell no">denied</td><td class="cell no">denied</td><td class="cell yes">read</td></tr>
+          <tr><td class="res">Cross-org write</td><td class="cell no">denied</td><td class="cell no">denied</td><td class="cell yes">allowed</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">03</span> Findings closed</h2>
+    <p class="sub">What the audit surfaced and resolved. Each was fail-closed by design — a denied action, never an exposed one.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Finding</th><th>Ref</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>IDOR — taxonomy endpoints accepted arbitrary project/supplier IDs</td><td class="ref">BE-00108</td><td><span class="chip c-ok">Fixed</span></td></tr>
+          <tr><td>Legacy v1 routes trusted <code style="font-family:var(--mono);font-size:12px">org_id</code> from the query string</td><td class="ref">BE-00109 / 113</td><td><span class="chip c-ok">Fixed</span></td></tr>
+          <tr><td>Audit actor came from a spoofable client header</td><td class="ref">BE-00110</td><td><span class="chip c-ok">Fixed</span></td></tr>
+          <tr><td>DB-enforced RLS + non-owner role + coverage test</td><td class="ref">FR-00209 / 210</td><td><span class="chip c-ok">Live (dev)</span></td></tr>
+          <tr><td>Auth bootstrap wrote before tenant context existed</td><td class="ref">BE-00115</td><td><span class="chip c-ok">Fixed</span></td></tr>
+          <tr><td>Cross-org marketplace read via restricted <code style="font-family:var(--mono);font-size:12px">orgs</code> join</td><td class="ref">BE-00116</td><td><span class="chip c-ok">Fixed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">04</span> Verification</h2>
+    <p class="sub">Isolation is machine-checked, not eyeballed — the tests run as the restricted role and assert the matrix above.</p>
+    <div class="grid2">
+      <div class="card"><h3>Persona suite &mdash; 77 / 77</h3><p>Supplier, agency, admin, and no-context, each asserted against the access matrix as <code>web_app_user</code>.</p></div>
+      <div class="card"><h3>Coverage guard</h3><p>Every base table granted to the app role must carry ≥1 policy, or the build fails. Caught a missing table on day one.</p></div>
+      <div class="card"><h3>Auth-bootstrap test</h3><p>Proves a users insert is <em>denied</em> under the restricted role and <em>succeeds</em> only through the owner pool.</p></div>
+      <div class="card"><h3>No-context deny</h3><p>A request with no tenant context sees only approved public rows and can write nothing.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">05</span> Baseline hygiene</h2>
+    <p class="sub">The rest of the due-diligence checklist. Clean where it matters most; the open items are configuration and process, not architecture.</p>
+    <ul class="clean">
+      <li><span class="chip c-ok">Clean</span><div><div class="t">Secrets</div><div class="d">All from environment; none committed. No hardcoded <code>JWT_SECRET</code>.</div></div></li>
+      <li><span class="chip c-ok">Clean</span><div><div class="t">Credentials</div><div class="d">Google OAuth only — no passwords stored anywhere.</div></div></li>
+      <li><span class="chip c-ok">Clean</span><div><div class="t">Injection &amp; errors</div><div class="d">Parameterized queries throughout; prod-safe error handler (no stack traces to clients); Helmet + non-wildcard CORS.</div></div></li>
+      <li><span class="chip c-wip">In progress</span><div><div class="t">Transport config</div><div class="d">Enforce cookie <code>secure</code> in prod + verify DB TLS cert. <span class="ref">BE-00111</span></div></div></li>
+      <li><span class="chip c-wip">In progress</span><div><div class="t">PII lifecycle</div><div class="d">Retention/erasure path for lead-capture PII; stop logging emails. <span class="ref">FR-00211</span></div></div></li>
+      <li><span class="chip c-wip">In progress</span><div><div class="t">Rate limiting</div><div class="d">Extend beyond auth to the general API and AI-cost endpoints. <span class="ref">FR-00212</span></div></div></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="n">06</span> Rollout</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Stage</th><th>State</th></tr></thead>
+        <tbody>
+          <tr><td class="res">Dev — enforcement live, 3-persona smoke</td><td><span class="chip c-ok">Live · admin check pending</span></td></tr>
+          <tr><td class="res">Preview / Master rollout</td><td><span class="chip c-plan">After schema catch-up</span></td></tr>
+          <tr><td class="res">Owner DB password rotation</td><td><span class="chip c-plan">Pending</span></td></tr>
+          <tr><td class="res">Retire legacy audit-header path</td><td><span class="chip c-plan">Final cleanup</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="legend">
+      <span class="chip c-ok">Enforced / clean</span>
+      <span class="chip c-wip">In progress</span>
+      <span class="chip c-plan">Planned</span>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span>Ballpark &middot; Tenant-isolation audit</span>
+    <span>Detail: pV2-SECURITY-RLS-01 &middot; epic EP-00020</span>
+    <span>Status as of 2026-09-20 &middot; living document</span>
+  </div>
+</div>
