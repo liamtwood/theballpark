@@ -70,6 +70,17 @@ app.use(require('cookie-parser')());
 // pool.js can SET LOCAL app.current_user_id on writes. Must run before routes.
 app.use(require('./middleware/user-context'));
 
+// pV2-SECURITY-RLS-01 §2c (BE-00109/BE-00113) — the JWT gate for the legacy v1
+// surface: authenticate + requestContext (pins client, sets audit/RLS GUCs) +
+// requireActiveMembership + forceOrgFromJwt (client-supplied org_id can never
+// win). Applied to the v1 route mounts AND the ungated v1 convenience routes
+// below. (v2 does not call any of these; v1 client-angular is not deployed.)
+const { authenticate: authnV1 } = require('./middleware/authenticate');
+const { requireActiveMembership: ramV1 } = require('./middleware/require-active-membership');
+const requestContext = require('./middleware/request-context');
+const forceOrgFromJwt = require('./middleware/force-org-from-jwt');
+const v1Gate = [authnV1, requestContext, ramV1(), forceOrgFromJwt];
+
 // Services
 const OrgService = require('./services/org.service');
 const UserService = require('./services/user.service');
@@ -102,7 +113,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Convenience: get the first agency org (acts as "current org")
-app.get('/api/org', async (req, res, next) => {
+app.get('/api/org', ...v1Gate, async (req, res, next) => {
   try {
     const org = await OrgService.getCurrentAgency();
     if (!org) return res.status(404).json({ error: 'No agency found' });
@@ -110,7 +121,7 @@ app.get('/api/org', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-app.put('/api/org', async (req, res, next) => {
+app.put('/api/org', ...v1Gate, async (req, res, next) => {
   try {
     const org = await OrgService.getCurrentAgency();
     if (!org) return res.status(404).json({ error: 'No agency found' });
@@ -120,7 +131,7 @@ app.put('/api/org', async (req, res, next) => {
 });
 
 // Convenience: get org balls balance
-app.get('/api/org/balls-balance', async (req, res, next) => {
+app.get('/api/org/balls-balance', ...v1Gate, async (req, res, next) => {
   try {
     const org = await OrgService.getCurrentAgency();
     res.json({ balance: org?.balls_balance || 0 });
@@ -128,7 +139,7 @@ app.get('/api/org/balls-balance', async (req, res, next) => {
 });
 
 // Convenience: get users for current org
-app.get('/api/org/users', async (req, res, next) => {
+app.get('/api/org/users', ...v1Gate, async (req, res, next) => {
   try {
     const org = await OrgService.getCurrentAgency();
     if (!org) return res.json([]);
@@ -151,7 +162,7 @@ app.get('/api/suppliers/:id/catalogue', async (req, res, next) => {
 });
 
 // PATCH item images
-app.patch('/api/items/:id/images', async (req, res, next) => {
+app.patch('/api/items/:id/images', ...v1Gate, async (req, res, next) => {
   try {
     const { cover_image_url, image_display } = req.body;
     const result = await ItemService.update(req.params.id, { image_url: cover_image_url, image_display });
@@ -161,7 +172,7 @@ app.patch('/api/items/:id/images', async (req, res, next) => {
 });
 
 // PATCH supplier images
-app.patch('/api/suppliers/:id/images', async (req, res, next) => {
+app.patch('/api/suppliers/:id/images', ...v1Gate, async (req, res, next) => {
   try {
     const { cover_image_url, logo_url, image_display } = req.body;
     const result = await OrgService.update(req.params.id, { cover_image_url, logo_url, image_display });
@@ -171,7 +182,7 @@ app.patch('/api/suppliers/:id/images', async (req, res, next) => {
 });
 
 // Convenience: get projects for a client
-app.get('/api/clients/:id/projects', async (req, res, next) => {
+app.get('/api/clients/:id/projects', ...v1Gate, async (req, res, next) => {
   try { res.json(await ProjectService.getByClient(req.params.id)); } catch (err) { next(err); }
 });
 
@@ -192,17 +203,8 @@ app.use('/api/statuses', require('./routes/statuses'));
 app.use('/api/orgs', require('./routes/orgs'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/clients', require('./routes/clients'));
-// pV2-SECURITY-RLS-01 §2c (BE-00109) — gate the legacy v1 mounts that trusted a
-// client-supplied org_id (the /api/items?org_id=<other-org> IDOR). authn + ram()
-// put them behind the same JWT gate as v2; forceOrgFromJwt overwrites any client
-// org_id with the verified JWT org so no handler can act cross-tenant;
-// requestContext pins the client + sets the audit/RLS GUCs. (v1 client-angular
-// is not deployed and v2 does not call these paths, so no live consumer breaks.)
-const { authenticate: authnV1 } = require('./middleware/authenticate');
-const { requireActiveMembership: ramV1 } = require('./middleware/require-active-membership');
-const requestContext = require('./middleware/request-context');
-const forceOrgFromJwt = require('./middleware/force-org-from-jwt');
-const v1Gate = [authnV1, requestContext, ramV1(), forceOrgFromJwt];
+// BE-00109 — gate the legacy v1 data mounts (org_id-from-client IDOR). v1Gate
+// defined at the top of the middleware section.
 app.use('/api/categories', ...v1Gate, require('./routes/categories'));
 app.use('/api/items', ...v1Gate, require('./routes/items'));
 app.use('/api/projects', ...v1Gate, require('./routes/projects'));
