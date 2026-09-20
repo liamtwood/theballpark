@@ -13,7 +13,10 @@ function sessionCookieOptions() {
   return {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.JWT_COOKIE_SECURE === 'true',
+    // BE-00111 — always Secure in production (safety net on top of the explicit
+    // JWT_COOKIE_SECURE env flag), so a missing/mis-set env can't ship an
+    // over-the-wire-readable session cookie in prod.
+    secure: process.env.JWT_COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production',
     domain: process.env.JWT_COOKIE_DOMAIN || undefined,
     path: '/',
   };

@@ -193,6 +193,12 @@ app.get('/api/clients/:id/projects', ...v1Gate, async (req, res, next) => {
   try { res.json(await ProjectService.getByClient(req.params.id)); } catch (err) { next(err); }
 });
 
+// FR-00212 — broad per-IP backstop across the whole /api surface (generous;
+// catches abuse, not real page loads). Specific tighter limiters (auth/ai/brief)
+// stack on top at their own mounts. trust proxy=1 (above) makes req.ip the client.
+const { aiLimit, briefLimit, apiLimit } = require('./middleware/rate-limits');
+app.use('/api', apiLimit);
+
 // Mount routes
 // pV2-02 — auth surface (/auth/*, distinct from /api/*) + dev-only endpoints.
 // The JWT middleware is NOT applied to the v1 /api routes — v1 (port 4200)
@@ -220,7 +226,10 @@ app.use('/api/estimates', require('./routes/estimates'));
 app.use('/api/estimate-items', require('./routes/estimateItems'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/balls-transactions', require('./routes/ballsTransactions'));
-app.use('/api/ai', require('./routes/ai'));
+// FR-00212 / "AI firewall" — parse-brief + extract-text are expensive LLM/OCR
+// calls; gate behind authenticate (the only caller is the authed New Project
+// flow) + a tight per-IP limit. Was ungated (unauth AI-cost exposure, AUD).
+app.use('/api/ai', require('./middleware/authenticate').authenticate, aiLimit, require('./routes/ai'));
 // pV2-STORE-IMPORT (BE-00099): taxonomy moved into the authenticated v2 group
 // below (was mounted here ungated — unauth AI-cost + cross-org IDOR item rewrite).
 app.use('/api/storage', require('./routes/storage'));
@@ -233,7 +242,7 @@ app.use('/api/config', require('./routes/config')); // p0021 — org_type page-s
 // v1.65cu (p0008) — Public supplier brief surface. No auth on this
 // prefix — access is gated by the unguessable per-message token in
 // the URL. Mounted ahead of any auth-checking middleware blocks.
-app.use('/api/brief', require('./routes/brief'));
+app.use('/api/brief', briefLimit, require('./routes/brief'));
 
 // Marketing — public welcome page + guestlist signups
 app.use('/api', require('./routes/marketing'));         // /welcome/content, /guestlist/signup

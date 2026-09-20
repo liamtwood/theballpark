@@ -33,4 +33,35 @@ const oauthLimit = rateLimit({
   message: { error: 'Too many OAuth attempts; try again in a minute.' },
 });
 
-module.exports = { authWriteLimit, authReadLimit, oauthLimit };
+// FR-00212 — coverage beyond the auth surface.
+
+/** AI endpoints (parse-brief / extract-text) are expensive LLM/OCR calls — tight
+ *  per-IP budget on top of the authenticate gate ("AI firewall"). */
+const aiLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many AI requests; try again in a minute.' },
+});
+
+/** Public brief-token surface (no JWT) — abuse/brute-force backstop per IP. */
+const briefLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests; try again in a minute.' },
+});
+
+/** Broad per-IP backstop across the whole /api surface — generous enough not to
+ *  throttle real page loads (which fan out many calls); catches only abuse. */
+const apiLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests; slow down and try again shortly.' },
+});
+
+module.exports = { authWriteLimit, authReadLimit, oauthLimit, aiLimit, briefLimit, apiLimit };

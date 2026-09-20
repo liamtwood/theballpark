@@ -9,6 +9,7 @@
  */
 
 const { Resend } = require('resend');
+const { maskEmail } = require('../lib/mask-email'); // FR-00211 — no plaintext emails in logs
 
 const apiKey  = process.env.RESEND_API_KEY;
 const from    = process.env.EMAIL_FROM || 'Ballpark <onboarding@resend.dev>';
@@ -19,7 +20,7 @@ const resend  = apiKey ? new Resend(apiKey) : null;
 // render HTML use it, the rest fall back to `text`.
 async function sendEmail({ to, subject, text, html }) {
   if (!apiKey) {
-    console.warn('[email] RESEND_API_KEY not set — email NOT sent. To:', to, 'Subject:', subject);
+    console.warn('[email] RESEND_API_KEY not set — email NOT sent. To:', maskEmail(to), 'Subject:', subject);
     return { skipped: true };
   }
   const recipients = Array.isArray(to) ? to : [to];

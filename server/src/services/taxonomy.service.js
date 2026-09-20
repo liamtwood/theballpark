@@ -35,6 +35,7 @@
  */
 const pool = require('../db/pool');
 const ownerPool = require('../db/owner-pool'); // BE-00115 — privileged RFQ path (see requestQuotes)
+const { maskEmail } = require('../lib/mask-email'); // FR-00211 — no plaintext emails in logs
 const { withTransaction } = require('../db/with-transaction');
 const { sendEmail } = require('./email.service');
 const { outreachEmail } = require('./notification.service');
@@ -996,7 +997,7 @@ Log in to Ballpark to view the full request and respond with your quote.
 
 — Ballpark`;
     if (!QUOTE_REQUEST_EMAILS_ENABLED) {
-      console.log(`[quote-email] disabled — would notify ${s.name || s.id} <${s.email || 'no email'}>`);
+      console.log(`[quote-email] disabled — would notify ${s.name || s.id} <${maskEmail(s.email) || 'no email'}>`);
       continue;
     }
     if (!s.email) {
@@ -1005,9 +1006,9 @@ Log in to Ballpark to view the full request and respond with your quote.
     }
     try {
       await sendEmail({ to: s.email, subject, text });
-      console.log(`[quote-email] sent to ${s.email}`);
+      console.log(`[quote-email] sent to ${maskEmail(s.email)}`);
     } catch (e) {
-      console.error(`[quote-email] send failed for ${s.email}:`, e.message);
+      console.error(`[quote-email] send failed for ${maskEmail(s.email)}:`, e.message);
     }
   }
 }
@@ -1378,7 +1379,7 @@ async function requestQuotes(body) {
           items: m.items,
           currency: projectCurrency,
           token: m.token,
-        }).catch(e => console.error(`[outreach] send failed for ${email}:`, e.message));
+        }).catch(e => console.error(`[outreach] send failed for ${maskEmail(email)}:`, e.message));
       }
     } else {
       console.log(`[outreach] QUOTE_REQUEST_EMAILS_ENABLED=false — ${createdMessages.length} email(s) suppressed`);
