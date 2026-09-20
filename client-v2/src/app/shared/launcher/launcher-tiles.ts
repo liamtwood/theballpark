@@ -109,6 +109,14 @@ export const BALLPARK_TILES: readonly LauncherTile[] = [
     subtitle: 'Curate reference data — statuses, units, currencies and more.',
     href: '/settings/codelists',
   },
+  {
+    // Coachmarks — the app's help-bubble content (BE-00126, Liam 2026-09-20).
+    // Route already exists (settings/coachmarks, ballparkAdminGuard).
+    icon: 'circle-help',
+    label: 'Coachmarks',
+    subtitle: 'Edit the help bubbles shown across the app.',
+    href: '/settings/coachmarks',
+  },
 ];
 
 /** The supplier Projects hub (v2.13a — v1.68t port): three stage buckets
