@@ -50,35 +50,49 @@ const emptyForm = (): CreateOrgInput => ({
       @if (showCreate()) {
         <div class="mb-6 rounded-xl border border-hairline bg-surface p-4">
           <h3 class="bp-edit-section-title mb-3">New organisation</h3>
-          <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+          <!-- Website + Fetch (pV2-IMPORT-ORG-01): reads the vendor site and
+               pre-fills what it can — high silently, medium flagged, low/none
+               left blank. -->
+          <label class="block">
+            <span class="bp-field-label">Website</span>
+            <div class="mt-1 flex gap-2">
+              <input class="ed-input min-w-0 flex-1" [(ngModel)]="form.website" (ngModelChange)="clearFlag('website')"
+                placeholder="https://example.com" (keydown.enter)="fetchFromWebsite()" />
+              <button type="button" class="bp-btn-outline shrink-0" [disabled]="fetching() || !form.website?.trim()"
+                (click)="fetchFromWebsite()">{{ fetching() ? 'Fetching…' : 'Fetch' }}</button>
+            </div>
+          </label>
+
+          <div class="mt-3 grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
             <label class="block">
               <span class="bp-field-label">Name *</span>
-              <input class="ed-input mt-1 w-full" [(ngModel)]="form.name" placeholder="Organisation name" />
+              <input class="ed-input mt-1 w-full" [(ngModel)]="form.name" (ngModelChange)="clearFlag('name')" placeholder="Organisation name" />
+              @if (flagged().has('name')) { <span class="bp-caption text-warn">Auto-filled — please check</span> }
             </label>
             <label class="block">
               <span class="bp-field-label">Type</span>
               <app-select class="mt-1 block" ariaLabel="Type" [options]="typeOptions" [value]="form.type"
                 (changed)="form.type = $event" />
             </label>
-            <label class="block sm:col-span-2">
-              <span class="bp-field-label">Website</span>
-              <input class="ed-input mt-1 w-full" [(ngModel)]="form.website" placeholder="https://example.com" />
-            </label>
             <label class="block">
               <span class="bp-field-label">City</span>
-              <input class="ed-input mt-1 w-full" [(ngModel)]="form.city" />
+              <input class="ed-input mt-1 w-full" [(ngModel)]="form.city" (ngModelChange)="clearFlag('city')" />
+              @if (flagged().has('city')) { <span class="bp-caption text-warn">Auto-filled — please check</span> }
             </label>
             <label class="block">
               <span class="bp-field-label">Country</span>
-              <input class="ed-input mt-1 w-full" [(ngModel)]="form.country" placeholder="e.g. GB" />
+              <input class="ed-input mt-1 w-full" [(ngModel)]="form.country" (ngModelChange)="clearFlag('country')" placeholder="e.g. GB" />
+              @if (flagged().has('country')) { <span class="bp-caption text-warn">Auto-filled — please check</span> }
             </label>
             <label class="block">
               <span class="bp-field-label">Phone</span>
-              <input class="ed-input mt-1 w-full" [(ngModel)]="form.phone" />
+              <input class="ed-input mt-1 w-full" [(ngModel)]="form.phone" (ngModelChange)="clearFlag('phone')" />
+              @if (flagged().has('phone')) { <span class="bp-caption text-warn">Auto-filled — please check</span> }
             </label>
             <label class="block">
               <span class="bp-field-label">Email</span>
-              <input class="ed-input mt-1 w-full" type="email" [(ngModel)]="form.email" placeholder="contact@company.com" />
+              <input class="ed-input mt-1 w-full" type="email" [(ngModel)]="form.email" (ngModelChange)="clearFlag('email')" placeholder="contact@company.com" />
+              @if (flagged().has('email')) { <span class="bp-caption text-warn">Auto-filled — please check</span> }
             </label>
           </div>
           <div class="mt-4 flex justify-end gap-2">
@@ -148,6 +162,9 @@ export class OrgsAdminComponent {
   protected readonly showCreate = signal(false);
   protected readonly saving = signal(false);
   protected readonly busyId = signal<string | null>(null);
+  protected readonly fetching = signal(false);
+  /** Field keys pre-filled at medium confidence — "please check" until edited. */
+  protected readonly flagged = signal<Set<string>>(new Set());
 
   /** Plain mutable model for the create form (ngModel two-way). */
   protected form: CreateOrgInput = emptyForm();
@@ -180,7 +197,46 @@ export class OrgsAdminComponent {
 
   protected toggleCreate(): void {
     this.showCreate.update((v) => !v);
-    if (!this.showCreate()) this.form = emptyForm();
+    if (!this.showCreate()) { this.form = emptyForm(); this.flagged.set(new Set()); }
+  }
+
+  protected clearFlag(k: string): void {
+    const s = this.flagged();
+    if (s.has(k)) { const n = new Set(s); n.delete(k); this.flagged.set(n); }
+  }
+
+  /** pV2-IMPORT-ORG-01 — read the vendor site and pre-fill the lean form fields:
+   *  high fills silently, medium fills + flags "please check", low/none skipped. */
+  protected async fetchFromWebsite(): Promise<void> {
+    const url = (this.form.website || '').trim();
+    if (!url || this.fetching()) return;
+    this.fetching.set(true);
+    try {
+      const { org } = await firstValueFrom(this.svc.importPreview(url));
+      const flags = new Set<string>();
+      const apply = (formKey: keyof CreateOrgInput, importKey: string) => {
+        const f = org[importKey];
+        if (!f || f.confidence === 'low') return;
+        this.form[formKey] = f.value;
+        if (f.confidence === 'medium') flags.add(formKey as string);
+      };
+      apply('name', 'name');
+      apply('website', 'website');
+      apply('city', 'city');
+      apply('country', 'country');
+      apply('phone', 'phone');
+      apply('email', 'email');
+      this.flagged.set(flags);
+      const found = Object.keys(org).length > 0;
+      this.toast.add({
+        severity: found ? 'success' : 'info',
+        summary: found ? 'Pre-filled from website — check any flagged fields' : 'Nothing found — fill manually',
+      });
+    } catch {
+      this.toast.add({ severity: 'warn', summary: "Couldn't read that site — fill manually" });
+    } finally {
+      this.fetching.set(false);
+    }
   }
 
   protected async submit(): Promise<void> {
@@ -191,6 +247,7 @@ export class OrgsAdminComponent {
       this.orgs.update((list) => [created, ...list]);
       this.toast.add({ severity: 'success', summary: `${created.name} created` });
       this.form = emptyForm();
+      this.flagged.set(new Set());
       this.showCreate.set(false);
     } catch {
       this.toast.add({ severity: 'error', summary: 'Failed to create organisation' });
