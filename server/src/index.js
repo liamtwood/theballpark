@@ -70,16 +70,23 @@ app.use(require('cookie-parser')());
 // pool.js can SET LOCAL app.current_user_id on writes. Must run before routes.
 app.use(require('./middleware/user-context'));
 
-// pV2-SECURITY-RLS-01 §2c (BE-00109/BE-00113) — the JWT gate for the legacy v1
-// surface: authenticate + requestContext (pins client, sets audit/RLS GUCs) +
-// requireActiveMembership + forceOrgFromJwt (client-supplied org_id can never
-// win). Applied to the v1 route mounts AND the ungated v1 convenience routes
-// below. (v2 does not call any of these; v1 client-angular is not deployed.)
-const { authenticate: authnV1 } = require('./middleware/authenticate');
+// AUD-01 — GUC context is DEFAULT-ON, not an opt-in per-mount allow-list.
+// attachUser soft-resolves the JWT user for EVERY request (no 401 when absent);
+// requestContext then pins a client + sets app.current_org_id/user_id/is_admin
+// once per request (no-op when unauthenticated). Mounted globally here so an
+// ungated-but-authenticated route (/api/config, /api/ai, …) still carries its
+// org GUC under RLS — the failure class the per-mount list let through.
+const { authenticate: authnV1, attachUser } = require('./middleware/authenticate');
 const { requireActiveMembership: ramV1 } = require('./middleware/require-active-membership');
 const requestContext = require('./middleware/request-context');
 const forceOrgFromJwt = require('./middleware/force-org-from-jwt');
-const v1Gate = [authnV1, requestContext, ramV1(), forceOrgFromJwt];
+app.use(attachUser);
+app.use(requestContext);
+
+// pV2-SECURITY-RLS-01 §2c (BE-00109/BE-00113) — the v1 legacy surface still
+// HARD-gates: authenticate + requireActiveMembership + forceOrgFromJwt
+// (client-supplied org_id can never win). requestContext is global (above).
+const v1Gate = [authnV1, ramV1(), forceOrgFromJwt];
 
 // Services
 const OrgService = require('./services/org.service');
@@ -237,7 +244,6 @@ app.use('/api', require('./routes/marketing'));         // /welcome/content, /gu
 app.use(
   '/api/admin',
   require('./middleware/authenticate').authenticate,
-  requestContext, // BE-00110 — pin client + set audit/RLS GUCs from the JWT
   require('./middleware/require-active-membership').requireActiveMembership('admin.cross_org_view'),
   require('./routes/adminMarketing')
 );
@@ -246,7 +252,6 @@ app.use(
 app.use(
   '/api/admin',
   require('./middleware/authenticate').authenticate,
-  requestContext, // BE-00110 — pin client + set audit/RLS GUCs from the JWT
   require('./middleware/require-active-membership').requireActiveMembership('admin.cross_org_view'),
   require('./routes/admin-items')
 );
@@ -296,9 +301,8 @@ app.get('/api/unsplash/search', async (req, res) => {
   const { authenticate } = require('./middleware/authenticate');
   const { requireActiveMembership } = require('./middleware/require-active-membership');
   const v2 = express.Router();
-  // BE-00110 — requestContext pins the client + sets the audit/RLS GUCs from the
-  // verified JWT, between authenticate (sets req.user) and the membership check.
-  v2.use(authenticate, requestContext, requireActiveMembership());
+  // requestContext is global (AUD-01) — set before this router runs.
+  v2.use(authenticate, requireActiveMembership());
   v2.use('/team', require('./routes/team'));
   // pV2 Profile — the org's own profile (GET any member / PUT org admins).
   v2.use('/organisation', require('./routes/organisation'));

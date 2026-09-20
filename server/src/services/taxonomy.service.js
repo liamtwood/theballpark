@@ -394,7 +394,11 @@ async function applyClassification(itemId, edited) {
   edited = edited || {};
   if (!edited.category_id) throw httpErr('category_id is required', 400);
 
-  const conn = await pool.connect();
+  // AUD-02 — the classifier writes an item's category/tags; it runs both from a
+  // request (route asserts assertItemInOrg) AND fire-and-forget from
+  // classifyAndApply (no request context → no GUCs). Owner pool (bypasses RLS),
+  // like other background/system writes; ownership is enforced at the caller.
+  const conn = await ownerPool.connect();
   try {
     await conn.query('BEGIN');
 
@@ -504,7 +508,11 @@ async function setItemTags(itemId, tagIds) {
     ids = [];
   }
 
-  const conn = await pool.connect();
+  // AUD-02 — the classifier writes an item's category/tags; it runs both from a
+  // request (route asserts assertItemInOrg) AND fire-and-forget from
+  // classifyAndApply (no request context → no GUCs). Owner pool (bypasses RLS),
+  // like other background/system writes; ownership is enforced at the caller.
+  const conn = await ownerPool.connect();
   try {
     await conn.query('BEGIN');
     await conn.query('DELETE FROM supplier_item_tag WHERE item_id = $1', [itemId]);

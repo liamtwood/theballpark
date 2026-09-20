@@ -1,3 +1,11 @@
+// AUD-02 / EP-00020 FLAG — legacy v1 message surface. Mounted UNGATED in
+// index.js and has ZERO v2 client callers (v1 is never deployed). Its
+// /:id/reply + /:id/holding routes hand-roll BEGIN/COMMIT on a raw
+// pool.connect() client, so post-flip those writes run on web_app_user
+// with no request GUCs → RLS denies them (correct for an unauthed legacy
+// route, but it means the route is dead post-flip). Follow-up: either gate
+// it + route through withTransaction, or retire it. Not converted here —
+// the F2 batch targets the live v2 surface only.
 const router = require('express').Router();
 const pool = require('../db/pool');
 const MessageService = require('../services/message.service');

@@ -1,7 +1,8 @@
 // pV2-SECURITY-RLS-01 §3 (BE-00110) — per-request DB context from the verified JWT.
 //
 // Seeds AsyncLocalStorage {userId, orgId, isAdmin} from req.user (set by
-// `authenticate`) and PINS one pooled client for the request, SET_CONFIG-ing the
+// `attachUser`, or the hard `authenticate` gate) and PINS one pooled client for
+// the request, SET_CONFIG-ing the
 // three audit/RLS GUCs on it once. `db/pool.js` prefers this pinned client, so
 // EVERY query — reads included — carries app.current_org_id / app.current_user_id
 // / app.is_admin (no per-read BEGIN/COMMIT). `RESET ALL` + release on response
@@ -9,8 +10,9 @@
 //
 // NB: with DATABASE_URL still the schema OWNER, these GUCs change NO behaviour
 // yet — the owner bypasses RLS. This is the plumbing the §1 policies enforce on
-// once the role flips to web_app_user. Mount AFTER `authenticate` (needs req.user)
-// and BEFORE the routes: authenticate → requestContext → requireActiveMembership.
+// once the role flips to web_app_user. AUD-01: mounted GLOBALLY (index.js) right
+// after `attachUser`, so ANY authenticated route — gated or not — carries its org
+// GUC. Unauthenticated requests (no req.user) fall straight through.
 const { als } = require('../db/request-context');
 const pool = require('../db/pool');
 

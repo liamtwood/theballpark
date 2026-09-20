@@ -1,4 +1,5 @@
 const pool = require('../db/pool');
+const { withTransaction } = require('../db/with-transaction'); // AUD-02 — GUC-aware txn
 
 // Project-scoped "cart" — selected (tick) and liked (heart) catalogue items
 // recorded on a project before any pricing exists. See v1.13 schema.
@@ -155,9 +156,9 @@ async function addAdhoc(data) {
   if (!name || !String(name).trim()) {
     const err = new Error('name is required'); err.status = 400; throw err;
   }
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
+  // AUD-02 — via withTransaction so the txn client carries the org/user GUCs
+  // from ALS (was a raw pool.connect → no org GUC → denied post-flip).
+  const created = await withTransaction(async (client) => {
     // 1. Look up the project's owning org (agency) — the items row
     //    is owned by them by convention; the supplier slot stays
     //    empty until the brief fans out at Send time.
@@ -226,15 +227,10 @@ async function addAdhoc(data) {
       [project_id, newItemId, pcId,
        String(name).trim(), base_price || null, unit || null, description || null]
     );
-    await client.query('COMMIT');
-    await recomputeProjectBallparks(project_id);
     return pi.rows[0];
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
+  await recomputeProjectBallparks(project_id);
+  return created;
 }
 
 /** v1.65fH — list suppliers ticked on a single cart row. */

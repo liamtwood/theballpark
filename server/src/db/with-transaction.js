@@ -1,4 +1,4 @@
-const pool = require('./pool');
+const rlsPool = require('./pool');
 const { als } = require('./request-context');
 
 /**
@@ -20,7 +20,7 @@ const { als } = require('./request-context');
  * @param {(client: import('pg').PoolClient) => Promise<T>} fn
  * @returns {Promise<T>}
  */
-async function withTransaction(fn) {
+async function withTransaction(fn, { pool = rlsPool } = {}) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');

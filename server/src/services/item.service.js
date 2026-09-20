@@ -246,17 +246,13 @@ async function softDelete(id) {
 // v1.68b — duplicate an item: clones the items row (the images[] gallery is a
 // JSONB column, so it copies inline) + the supplier_item_tag taxonomy rows, in
 // one transaction. The copy lands is_active=false (hidden) so the owner reviews
-// before publishing. pool.query's auto-GUC only wraps single statements, so we
-// run our own transaction and SET LOCAL app.current_user_id (mirrors pool.js)
-// for correct created_by attribution.
+// before publishing. AUD-02: via the shared withTransaction (RLS pool) so it sets
+// all three GUCs from ALS — the owner INSERTs their own copy (org_id from the
+// source row = the caller's org) and its tags, which items_insert / supplier_item_tag
+// policies allow under RLS. (Was a raw pool.connect that set only current_user_id,
+// so post-flip the INSERT would have been denied for a missing org GUC.)
 async function duplicate(id) {
-  const ctx = als.getStore && als.getStore();
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    if (ctx && ctx.userId) {
-      await client.query("SELECT set_config('app.current_user_id', $1, true)", [ctx.userId]);
-    }
+  return withTransaction(async (client) => {
     const ins = await client.query(
       `INSERT INTO items
          (org_id, category_id, subcategory_id, name, description,
@@ -280,20 +276,14 @@ async function duplicate(id) {
       [id]
     );
     const copy = ins.rows[0];
-    if (!copy) { await client.query('ROLLBACK'); return null; }
+    if (!copy) return null;
     await client.query(
       `INSERT INTO supplier_item_tag (item_id, tag_id)
        SELECT $1, tag_id FROM supplier_item_tag WHERE item_id = $2`,
       [copy.id, id]
     );
-    await client.query('COMMIT');
     return copy;
-  } catch (err) {
-    try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // ── pV2-BUILDUP-03 — item composition (options / components) ──────────────────

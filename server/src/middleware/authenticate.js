@@ -13,12 +13,14 @@ const { als } = require('../db/request-context');
 
 const COOKIE_NAME = 'bp_session';
 
-function authenticate(req, res, next) {
+/** Verify the bp_session cookie → the req.user identity object, or null when
+ *  absent/invalid. Shared by the hard gate and the soft global attach. */
+function userFromRequest(req) {
   const token = req.cookies && req.cookies[COOKIE_NAME];
-  if (!token) return res.status(401).json({ error: 'Not authenticated' });
+  if (!token) return null;
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = {
+    return {
       id: payload.sub,
       email: payload.email,
       org_id: payload.org_id,
@@ -26,15 +28,31 @@ function authenticate(req, res, next) {
       is_admin: payload.is_admin,
       role: payload.role,
     };
-    // Audit attribution: make the verified user the actor for this request's
-    // writes (pool.js SET LOCAL app.current_user_id reads this ALS store,
-    // populated per request by middleware/user-context.js).
-    const store = als.getStore();
-    if (store) store.userId = payload.sub;
-    return next();
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid or expired session' });
+  } catch {
+    return null;
   }
 }
 
-module.exports = { authenticate, COOKIE_NAME };
+/** HARD gate — 401s when there is no valid session. Mounted on the gated groups. */
+function authenticate(req, res, next) {
+  if (!(req.cookies && req.cookies[COOKIE_NAME])) return res.status(401).json({ error: 'Not authenticated' });
+  const user = userFromRequest(req);
+  if (!user) return res.status(401).json({ error: 'Invalid or expired session' });
+  req.user = user;
+  const store = als.getStore();
+  if (store) store.userId = user.id; // legacy audit store (superseded by requestContext)
+  return next();
+}
+
+/** SOFT global attach (BE-00115 / AUD-01) — sets req.user when a valid session
+ *  is present, else passes through (no 401). Mounted GLOBALLY so `requestContext`
+ *  can set the org GUCs on EVERY authenticated request regardless of which mount
+ *  handles it — the default-on inversion of the old per-mount allow-list. Public
+ *  / pre-auth routes simply carry no req.user and requestContext no-ops. */
+function attachUser(req, _res, next) {
+  const user = userFromRequest(req);
+  if (user) req.user = user;
+  return next();
+}
+
+module.exports = { authenticate, attachUser, userFromRequest, COOKIE_NAME };

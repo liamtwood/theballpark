@@ -15,6 +15,12 @@
 
 const router = require('express').Router();
 const pool = require('../db/pool');
+// AUD-02 / BE-00115 FLAG — the public brief surface is token-authorized (no JWT),
+// so its ENTIRE flow (reads via loadThreadMessages + message-item.service, and
+// the reply writes) runs pre-tenancy and will be RLS-denied post-flip. Fixing it
+// safely means routing the whole token-flow (brief.js + the message-item.service
+// calls it makes) through the owner pool — a dedicated pass, not a half-fix here.
+// Tracked as a follow-up; still on the RLS pool for now.
 const {
   transitionItem, aggregateStatus, getByMessage, getThreadByToken,
 } = require('../services/message-item.service');
@@ -133,7 +139,7 @@ router.post('/:token/reply', async (req, res, next) => {
       return res.status(400).json({ error: 'reply needs text or item_actions' });
     }
 
-    const db = await pool.connect();
+    const db = await ownerPool.connect();
     try {
       await db.query('BEGIN');
 
@@ -261,7 +267,7 @@ router.post('/:token/holding', async (req, res, next) => {
       return res.status(400).json({ error: 'next_action_by required' });
     }
 
-    const db = await pool.connect();
+    const db = await ownerPool.connect();
     try {
       await db.query('BEGIN');
 
