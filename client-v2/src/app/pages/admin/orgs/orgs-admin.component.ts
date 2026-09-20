@@ -43,7 +43,9 @@ const emptyForm = (): CreateOrgInput => ({
     OrgTypeStripComponent,
   ],
   providers: [MessageService],
-  host: { class: 'block' },
+  // bp-vpfit (md+): the page fills the viewport — hero + control bar + rail stay
+  // anchored and only the table body scrolls internally (marketplace parity).
+  host: { class: 'block bp-vpfit' },
   template: `
     <app-page-hero
       align="block"
@@ -58,7 +60,7 @@ const emptyForm = (): CreateOrgInput => ({
 
     <div class="bp-page-body bp-page-body--workspace">
       <!-- Control bar — search + filter toggle (Add lives in the hero, top-right). -->
-      <div class="mb-4 flex items-center gap-3">
+      <div class="mb-4 flex shrink-0 items-center gap-3">
         <div class="min-w-0 flex-1">
           <app-catalogue-search [value]="search()" [count]="filtered().length" (valueChange)="search.set($event)" />
         </div>
@@ -73,7 +75,7 @@ const emptyForm = (): CreateOrgInput => ({
 
       <!-- Filter row (status only — type is the rail, name is the search). -->
       @if (showFilters()) {
-        <div class="mb-4 flex items-center gap-2">
+        <div class="mb-4 flex shrink-0 items-center gap-2">
           <span class="bp-field-label">Status</span>
           <app-select ariaLabel="Status" class="w-44" [compact]="true" [options]="statusOptions"
             [value]="statusFilter()" (changed)="statusFilter.set($event)" />
@@ -82,7 +84,7 @@ const emptyForm = (): CreateOrgInput => ({
 
       <!-- Create form (lean; website Fetch pre-fills by confidence). -->
       @if (showCreate()) {
-        <div class="mb-6 rounded-xl border border-hairline bg-surface p-4">
+        <div class="mb-6 shrink-0 rounded-xl border border-hairline bg-surface p-4">
           <h3 class="bp-edit-section-title mb-3">New organisation</h3>
           <label class="block">
             <span class="bp-field-label">Website</span>
@@ -133,60 +135,64 @@ const emptyForm = (): CreateOrgInput => ({
         </div>
       }
 
-      <!-- Rail + table in ONE white rounded workspace card (marketplace parity). -->
-      <div class="rounded-[var(--radius-lg)] border border-hairline bg-surface p-4 shadow-[var(--shadow-md)]">
-        <div class="flex min-h-0 gap-6">
-        <aside class="hidden w-[200px] shrink-0 md:block">
-          <div class="rounded-[var(--radius-card)] border border-hairline bg-fill p-2">
-            <app-org-type-strip [buckets]="buckets()" [activeId]="typeId()" [totalCount]="orgs().length"
-              (selected)="typeId.set($event)" />
-          </div>
-        </aside>
-
-        <div class="min-w-0 flex-1">
-          @if (loading()) {
-            <p class="bp-body-small text-secondary">Loading…</p>
-          } @else if (error()) {
-            <p class="bp-body-small text-warn">Couldn't load organisations.</p>
-          } @else {
-            <div class="overflow-hidden rounded-lg border border-hairline">
-              <div class="grid grid-cols-[1fr_100px_120px_100px_120px] items-center gap-x-3 border-b border-hairline bg-fill px-4 py-2">
-                <span class="bp-table-column-header">Name</span>
-                <span class="bp-table-column-header">Type</span>
-                <span class="bp-table-column-header">City</span>
-                <span class="bp-table-column-header">Status</span>
-                <span class="bp-table-column-header text-right">Action</span>
-              </div>
-              @for (o of filtered(); track o.id) {
-                <div class="grid grid-cols-[1fr_100px_120px_100px_120px] items-center gap-x-3 border-b border-hairline px-4 py-2">
-                  <div class="min-w-0">
-                    <div class="bp-body-small truncate font-medium">{{ o.name }}</div>
-                    @if (o.website) { <div class="bp-caption truncate text-secondary">{{ o.website }}</div> }
-                  </div>
-                  <span class="bp-body-small capitalize">{{ typeLabel(o.type) }}</span>
-                  <span class="bp-body-small truncate">{{ o.city || '—' }}</span>
-                  <span>
-                    <span class="bp-orgpill" [class.bp-orgpill--active]="o.is_active" [class.bp-orgpill--suspended]="!o.is_active">
-                      {{ o.is_active ? 'Active' : 'Suspended' }}
-                    </span>
-                  </span>
-                  <div class="flex justify-end">
-                    @if (o.is_active) {
-                      <button type="button" class="bp-orgact bp-orgact--suspend" [disabled]="busyId() === o.id"
-                        (click)="suspend(o)">Suspend</button>
-                    } @else {
-                      <button type="button" class="bp-orgact bp-orgact--activate" [disabled]="busyId() === o.id"
-                        (click)="activate(o)">Activate</button>
-                    }
-                  </div>
-                </div>
-              } @empty {
-                <div class="px-4 py-6 bp-body-small text-secondary">No organisations match.</div>
-              }
+      <!-- Rail + table in ONE white rounded workspace card; only the table BODY
+           scrolls (marketplace parity — page/rail/controls/header stay fixed). -->
+      <div class="flex min-h-0 flex-1 flex-col rounded-[var(--radius-lg)] border border-hairline bg-surface p-4 shadow-[var(--shadow-md)]">
+        <div class="flex min-h-0 flex-1 gap-6">
+          <aside class="hidden w-[200px] shrink-0 md:block">
+            <div class="rounded-[var(--radius-card)] border border-hairline bg-fill p-2">
+              <app-org-type-strip [buckets]="buckets()" [activeId]="typeId()" [totalCount]="orgs().length"
+                (selected)="typeId.set($event)" />
             </div>
-            <p class="bp-caption mt-2 text-secondary">{{ filtered().length }} of {{ orgs().length }} organisations</p>
-          }
-        </div>
+          </aside>
+
+          <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+            @if (loading()) {
+              <p class="bp-body-small text-secondary">Loading…</p>
+            } @else if (error()) {
+              <p class="bp-body-small text-warn">Couldn't load organisations.</p>
+            } @else {
+              <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-hairline">
+                <div class="grid shrink-0 grid-cols-[1fr_100px_120px_100px_120px] items-center gap-x-3 border-b border-hairline bg-fill px-4 py-2">
+                  <span class="bp-table-column-header">Name</span>
+                  <span class="bp-table-column-header">Type</span>
+                  <span class="bp-table-column-header">City</span>
+                  <span class="bp-table-column-header">Status</span>
+                  <span class="bp-table-column-header text-right">Action</span>
+                </div>
+                <!-- The scroll area — only this scrolls. -->
+                <div class="min-h-0 flex-1 overflow-y-auto">
+                  @for (o of filtered(); track o.id) {
+                    <div class="grid grid-cols-[1fr_100px_120px_100px_120px] items-center gap-x-3 border-b border-hairline px-4 py-2">
+                      <div class="min-w-0">
+                        <div class="bp-body-small truncate font-medium">{{ o.name }}</div>
+                        @if (o.website) { <div class="bp-caption truncate text-secondary">{{ o.website }}</div> }
+                      </div>
+                      <span class="bp-body-small capitalize">{{ typeLabel(o.type) }}</span>
+                      <span class="bp-body-small truncate">{{ o.city || '—' }}</span>
+                      <span>
+                        <span class="bp-orgpill" [class.bp-orgpill--active]="o.is_active" [class.bp-orgpill--suspended]="!o.is_active">
+                          {{ o.is_active ? 'Active' : 'Suspended' }}
+                        </span>
+                      </span>
+                      <div class="flex justify-end">
+                        @if (o.is_active) {
+                          <button type="button" class="bp-orgact bp-orgact--suspend" [disabled]="busyId() === o.id"
+                            (click)="suspend(o)">Suspend</button>
+                        } @else {
+                          <button type="button" class="bp-orgact bp-orgact--activate" [disabled]="busyId() === o.id"
+                            (click)="activate(o)">Activate</button>
+                        }
+                      </div>
+                    </div>
+                  } @empty {
+                    <div class="px-4 py-6 bp-body-small text-secondary">No organisations match.</div>
+                  }
+                </div>
+              </div>
+              <p class="bp-caption mt-2 shrink-0 text-secondary">{{ filtered().length }} of {{ orgs().length }} organisations</p>
+            }
+          </div>
         </div>
       </div>
     </div>
