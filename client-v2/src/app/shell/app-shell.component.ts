@@ -81,7 +81,7 @@ interface NavItem {
 
 /** Agency (default) — create + track projects, message suppliers, browse. */
 const AGENCY_NAV: readonly NavItem[] = [
-  { label: 'Overview', path: '/home', icon: 'layout-grid', exact: true },
+  { label: 'Home', path: '/home', icon: 'layout-grid', exact: true },
   { label: 'New project', path: '/projects/new', icon: 'folder-plus', exact: true },
   { label: 'Past projects', path: '/projects', icon: 'folder-open', exact: true },
   { label: 'Messages', path: '/inbox', icon: 'message-square', exact: false },
@@ -91,7 +91,7 @@ const AGENCY_NAV: readonly NavItem[] = [
 
 /** Supplier — incoming work + conversations + their storefront (no create). */
 const SUPPLIER_NAV: readonly NavItem[] = [
-  { label: 'Overview', path: '/home', icon: 'layout-grid', exact: true },
+  { label: 'Home', path: '/home', icon: 'layout-grid', exact: true },
   { label: 'Projects', path: '/projects-hub', icon: 'folder-open', exact: false },
   { label: 'Messages', path: '/inbox', icon: 'message-square', exact: false },
   { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
@@ -99,13 +99,12 @@ const SUPPLIER_NAV: readonly NavItem[] = [
   { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
 ];
 
-/** Ballpark platform admin (BE-00128) — five top-level items; the config
- *  surfaces live under the Admin hub. Approvals is the moderation queue
- *  (status=pending); Marketplace is the full cross-org browse. */
+/** Ballpark platform admin (BE-00128/BE-00130) — four top-level items; the
+ *  config surfaces live under the Admin hub, and full Marketplace browse stays a
+ *  home tile (not the header). Approvals is the moderation queue (status=pending). */
 const BALLPARK_NAV: readonly NavItem[] = [
-  { label: 'Overview', path: '/home', icon: 'layout-grid', exact: true },
+  { label: 'Home', path: '/home', icon: 'layout-grid', exact: true },
   { label: 'Approvals', path: '/marketplace', icon: 'circle-check', exact: false, query: { status: 'pending' } },
-  { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
   { label: 'Admin', path: '/admin', icon: 'settings', exact: false },
   { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
 ];
