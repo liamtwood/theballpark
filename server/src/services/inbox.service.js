@@ -688,17 +688,34 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions, tagge
     for (const a of actions) {
       const { itemId, action, price, installCost, flatTotal, note } = a || {};
       if (!itemId || !action) continue;
-      // itemId is a project_items.id; it must belong to THIS thread — i.e. be
-      // tagged by the lead brief message (pV2-UNIFY-01).
+      // BE-00114 — itemId (a project_items.id) must belong to THIS thread. A
+      // thread is (project, supplier, category); its items ride ANY brief in that
+      // category, not just the lead (INBOX late-add — getSupplierThreads reads
+      // getByMessages across every message in the group). The old check matched
+      // only the LEAD message id, so an item added on a LATER brief (an RFQ /
+      // quote-request line — "Scenic Totem", "Tunnel") was tagged to that later
+      // message, failed this lookup, and was SILENTLY skipped (continue) → the
+      // supplier's accept/propose/decline did nothing. Match the item to any
+      // message in the same thread instead (same ownership scope: the thread was
+      // already verified to be the caller's above).
       const before = await db.query(
         `SELECT pi.name, pi.price_current, pi.status
            FROM project_items pi
-           JOIN message_items mtag ON mtag.project_item_id = pi.id
-          WHERE pi.id = $1 AND mtag.message_id = $2 AND pi.deleted_at IS NULL
+           JOIN message_items mtag ON mtag.project_item_id = pi.id AND mtag.deleted_at IS NULL
+           JOIN messages m2 ON m2.id = mtag.message_id AND m2.deleted_at IS NULL
+          WHERE pi.id = $1 AND pi.deleted_at IS NULL
+            AND m2.project_id = $2
+            AND m2.supplier_org_id IS NOT DISTINCT FROM $3
+            AND m2.category_id IS NOT DISTINCT FROM $4
           LIMIT 1`,
-        [itemId, lm.id]
+        [itemId, lm.project_id, lm.supplier_org_id, lm.category_id]
       );
-      if (!before.rows.length) continue;
+      if (!before.rows.length) {
+        // Genuinely not in this thread — keep the scope guard, but no longer
+        // silent: surface it so a future mismatch is visible (BE-00114).
+        console.warn(`[inbox] reply action skipped: item ${itemId} not in thread ${lm.id} (project ${lm.project_id}, cat ${lm.category_id})`);
+        continue;
+      }
       const b = before.rows[0];
       tagPiIds.add(itemId);
 
