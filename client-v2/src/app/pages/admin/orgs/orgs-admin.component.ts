@@ -8,9 +8,7 @@ import { ToastModule } from 'primeng/toast';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 import { SelectComponent, SelectOption } from '../../../shared/select/select.component';
 import { CatalogueSearchComponent } from '../../../shared/catalogue/catalogue-search.component';
-import { StorefrontPanelComponent } from '../../suppliers/storefront-panel.component';
 import { ConfirmService } from '../../../shared/confirm/confirm.service';
-import { SupplierDetail } from '../../../shared/catalogue/catalogue.types';
 import { AdminOrgService, AdminOrg, CreateOrgInput } from '../../../core/admin-org.service';
 import { OrgTypeStripComponent, OrgTypeBucket } from './org-type-strip.component';
 
@@ -42,7 +40,7 @@ const emptyForm = (): CreateOrgInput => ({
   imports: [
     FormsModule, LucideAngularModule, TooltipModule, ToastModule,
     PageHeroComponent, SelectComponent, CatalogueSearchComponent,
-    StorefrontPanelComponent, OrgTypeStripComponent,
+    OrgTypeStripComponent,
   ],
   providers: [MessageService],
   host: { class: 'block' },
@@ -52,10 +50,14 @@ const emptyForm = (): CreateOrgInput => ({
       [back]="{ label: 'Back', href: '/admin' }"
       title="Organisations"
       subtitle="Every agency, supplier and platform org. Create one, or import a supplier from its website."
-    />
+    >
+      <button hero-actions type="button" class="bp-btn-grad" (click)="toggleCreate()">
+        {{ showCreate() ? 'Close' : '+ Add organisation' }}
+      </button>
+    </app-page-hero>
 
     <div class="bp-page-body bp-page-body--workspace">
-      <!-- Control bar — mirrors marketplace order: search · filter toggle · Add. -->
+      <!-- Control bar — search + filter toggle (Add lives in the hero, top-right). -->
       <div class="mb-4 flex items-center gap-3">
         <div class="min-w-0 flex-1">
           <app-catalogue-search [value]="search()" [count]="filtered().length" (valueChange)="search.set($event)" />
@@ -67,9 +69,6 @@ const emptyForm = (): CreateOrgInput => ({
             <lucide-icon name="sliders-horizontal" [size]="15" />
           </button>
         </div>
-        <button type="button" class="bp-btn-grad shrink-0" (click)="toggleCreate()">
-          {{ showCreate() ? 'Close' : '+ Add organisation' }}
-        </button>
       </div>
 
       <!-- Filter row (status only — type is the rail, name is the search). -->
@@ -134,8 +133,9 @@ const emptyForm = (): CreateOrgInput => ({
         </div>
       }
 
-      <!-- Rail · table · preview -->
-      <div class="flex min-h-0 gap-6">
+      <!-- Rail + table in ONE white rounded workspace card (marketplace parity). -->
+      <div class="rounded-[var(--radius-lg)] border border-hairline bg-surface p-4 shadow-[var(--shadow-md)]">
+        <div class="flex min-h-0 gap-6">
         <aside class="hidden w-[200px] shrink-0 md:block">
           <div class="rounded-[var(--radius-card)] border border-hairline bg-fill p-2">
             <app-org-type-strip [buckets]="buckets()" [activeId]="typeId()" [totalCount]="orgs().length"
@@ -149,7 +149,7 @@ const emptyForm = (): CreateOrgInput => ({
           } @else if (error()) {
             <p class="bp-body-small text-warn">Couldn't load organisations.</p>
           } @else {
-            <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
+            <div class="overflow-hidden rounded-lg border border-hairline">
               <div class="grid grid-cols-[1fr_100px_120px_100px_120px] items-center gap-x-3 border-b border-hairline bg-fill px-4 py-2">
                 <span class="bp-table-column-header">Name</span>
                 <span class="bp-table-column-header">Type</span>
@@ -158,8 +158,7 @@ const emptyForm = (): CreateOrgInput => ({
                 <span class="bp-table-column-header text-right">Action</span>
               </div>
               @for (o of filtered(); track o.id) {
-                <div class="grid cursor-pointer grid-cols-[1fr_100px_120px_100px_120px] items-center gap-x-3 border-b border-hairline px-4 py-2 hover:bg-fill"
-                  [class.bp-row--selected]="selectedId() === o.id" (click)="selectedId.set(o.id)">
+                <div class="grid grid-cols-[1fr_100px_120px_100px_120px] items-center gap-x-3 border-b border-hairline px-4 py-2">
                   <div class="min-w-0">
                     <div class="bp-body-small truncate font-medium">{{ o.name }}</div>
                     @if (o.website) { <div class="bp-caption truncate text-secondary">{{ o.website }}</div> }
@@ -174,10 +173,10 @@ const emptyForm = (): CreateOrgInput => ({
                   <div class="flex justify-end">
                     @if (o.is_active) {
                       <button type="button" class="bp-orgact bp-orgact--suspend" [disabled]="busyId() === o.id"
-                        (click)="suspend(o); $event.stopPropagation()">Suspend</button>
+                        (click)="suspend(o)">Suspend</button>
                     } @else {
                       <button type="button" class="bp-orgact bp-orgact--activate" [disabled]="busyId() === o.id"
-                        (click)="activate(o); $event.stopPropagation()">Activate</button>
+                        (click)="activate(o)">Activate</button>
                     }
                   </div>
                 </div>
@@ -188,17 +187,7 @@ const emptyForm = (): CreateOrgInput => ({
             <p class="bp-caption mt-2 text-secondary">{{ filtered().length }} of {{ orgs().length }} organisations</p>
           }
         </div>
-
-        <!-- Read-only preview of the selected org (reuses the storefront panel). -->
-        <aside class="hidden w-[340px] shrink-0 lg:block">
-          @if (selectedSupplier(); as sup) {
-            <app-storefront-panel [supplier]="sup" [subcategories]="[]" />
-          } @else {
-            <div class="rounded-xl border border-hairline bg-surface p-6 text-center">
-              <p class="bp-body-small text-secondary">Select an organisation to preview.</p>
-            </div>
-          }
-        </aside>
+        </div>
       </div>
     </div>
 
@@ -237,7 +226,6 @@ export class OrgsAdminComponent {
   protected readonly busyId = signal<string | null>(null);
   protected readonly fetching = signal(false);
   protected readonly flagged = signal<Set<string>>(new Set());
-  protected readonly selectedId = signal<string | null>(null);
 
   protected form: CreateOrgInput = emptyForm();
 
@@ -262,26 +250,6 @@ export class OrgsAdminComponent {
       if (!q) return true;
       return [o.name, o.city, o.email].some((v) => (v || '').toLowerCase().includes(q));
     });
-  });
-
-  protected readonly selectedSupplier = computed<SupplierDetail | null>(() => {
-    const o = this.orgs().find((x) => x.id === this.selectedId());
-    if (!o) return null;
-    return {
-      id: o.id,
-      name: o.name,
-      city: o.city ?? null,
-      country: o.country ?? null,
-      address: o.address ?? null,
-      phone: o.phone ?? null,
-      email: o.email ?? null,
-      website: o.website ?? null,
-      description: o.description ?? null,
-      logoUrl: o.logo_url ?? null,
-      coverUrl: o.cover_image_url ?? null,
-      images: [],
-      categories: [],
-    };
   });
 
   constructor() {

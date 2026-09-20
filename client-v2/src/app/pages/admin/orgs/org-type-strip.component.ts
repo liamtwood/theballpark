@@ -21,13 +21,13 @@ export interface OrgTypeBucket {
       <button type="button" class="bp-catstrip-row" [class.bp-catstrip-row--active]="activeId() === 'all'"
         (click)="selected.emit('all')">
         <span class="truncate">{{ allLabel() }}</span>
-        <span class="bp-meta">{{ totalCount() }}</span>
+        <span class="bp-count-badge">{{ totalCount() }}</span>
       </button>
       @for (b of buckets(); track b.id) {
         <button type="button" class="bp-catstrip-row" [class.bp-catstrip-row--active]="activeId() === b.id"
           (click)="selected.emit(b.id)">
           <span class="truncate">{{ b.name }}</span>
-          <span class="bp-meta">{{ b.count }}</span>
+          <span class="bp-count-badge">{{ b.count }}</span>
         </button>
       }
     </nav>
