@@ -52,11 +52,15 @@ async function requirePlatformAdmin(req, res, next) {
   }
   try {
     const { rows } = await pool.query(
+      // BE-00126 — canonical org type is 'ballpark'; accept the legacy 'admin'
+      // value too so this (v1-only) guard survives the orgs.type canonicalization.
+      // The v2 path never reaches here — it runs requireActiveMembership(
+      // 'admin.cross_org_view') above.
       `SELECT 1
          FROM users u
          JOIN orgs  o ON o.id = u.org_id
         WHERE u.id = $1
-          AND o.type = 'admin'
+          AND o.type IN ('admin', 'ballpark')
         LIMIT 1`,
       [userId]
     );
