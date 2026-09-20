@@ -135,15 +135,15 @@ writes nothing.
 6. Roll to preview/master (after catching up their schemas):
    `--schemas=preview` / `--schemas=master`, then flip those envs.
 
-**Open decisions flagged (need a call before/at apply):**
-- `categories` has an `org_id` column — spec says admin-write only; if per-org
-  categories are real, write should also allow `org_id = app_current_org()`. Left
-  admin-write per spec; confirm.
-- `shared.feedback` / `marketing.guestlist_signup` writes: NOT granted to
-  web_app_user (PII / tracker). The tenant feedback + guestlist-signup write paths
-  will break at the flip unless routed through an elevated (owner) path — needs a
-  small refactor before the flip, or explicit grants if we accept them as tenant
-  writes. Flagged.
+**Decisions — RESOLVED (Liam 2026-09-20):**
+- `categories.org_id`: **admin-write only** (global/Ballpark-owned) — no change.
+- **Decision B — `shared.feedback` + `marketing.guestlist_signup`: INSERT-only.**
+  Wired into migrate-rls.js (`applySharedInsertOnly`): `GRANT INSERT` only (no
+  SELECT/UPDATE/DELETE) + `CREATE POLICY ..._insert FOR INSERT WITH CHECK (true)`,
+  NO select policy → the app role can append but can't read the PII/tracker back.
+  Applied to dev + validated: coverage green (both tables now granted → both have
+  a policy), full suite 74/74 (twice). Future "my submissions" read would need a
+  scoped SELECT policy — not needed now.
 - Grant list is the enumerated v2 tenant set; step-4 whole-app testing under
   web_app_user will surface any missing grant as a fail-closed broken feature
   (never a leak) → add its table + policy then.

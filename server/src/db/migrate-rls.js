@@ -41,6 +41,15 @@ const READ_ONLY_SHARED = {
   marketing: ['welcome_content'],
 };
 
+// Decision B (Liam 2026-09-20) — INSERT-ONLY so the tenant feedback + public
+// guestlist-signup write paths survive the role flip, WITHOUT the app role being
+// able to READ the rows back (PII / tracker stays unreadable by web_app_user):
+// GRANT INSERT only + an INSERT policy WITH CHECK (true) + NO select policy.
+const INSERT_ONLY_SHARED = {
+  shared: ['feedback'],
+  marketing: ['guestlist_signup'],
+};
+
 function quoteLiteral(s) { return "'" + String(s).replace(/'/g, "''") + "'"; }
 
 // ── SQL builders ────────────────────────────────────────────────────────────
@@ -229,6 +238,21 @@ async function applySharedReadOnly(client) {
   }
 }
 
+// Decision B — INSERT-only append paths (no read). GRANT INSERT (not SELECT) +
+// an INSERT policy; deliberately NO select policy so web_app_user cannot read the
+// rows back (the audit triggers are already executable via the audit grant).
+async function applySharedInsertOnly(client) {
+  for (const [schema, tables] of Object.entries(INSERT_ONLY_SHARED)) {
+    await client.query(`GRANT USAGE ON SCHEMA ${schema} TO web_app_user;`);
+    for (const t of tables) {
+      await client.query(`GRANT INSERT ON ${schema}.${t} TO web_app_user;`);
+      await client.query(`ALTER TABLE ${schema}.${t} ENABLE ROW LEVEL SECURITY;`);
+      await client.query(`DROP POLICY IF EXISTS ${t}_insert ON ${schema}.${t};`);
+      await client.query(`CREATE POLICY ${t}_insert ON ${schema}.${t} FOR INSERT WITH CHECK (true);`);
+    }
+  }
+}
+
 /** Apply the whole migration on an already-open OWNER client. Used by main()
  *  (committed) and by the dry-run validator (inside BEGIN/ROLLBACK). `schemas`
  *  selects which env schemas to target (rollout: public first, then preview /
@@ -269,6 +293,8 @@ async function apply(client, pw, schemas = ['public']) {
   }
   await applySharedReadOnly(client);
   console.log('[RLS] shared/marketing read-only grants + policies applied');
+  await applySharedInsertOnly(client);
+  console.log('[RLS] shared.feedback + marketing.guestlist_signup INSERT-only grants + policies applied');
 }
 
 async function main() {
@@ -305,4 +331,4 @@ async function main() {
 
 if (require.main === module) main().catch((e) => { console.error('[RLS] FAILED:', e.message); process.exit(1); });
 
-module.exports = { apply, grantedTenantTables, tenantPolicies, ENV_SCHEMAS, READ_ONLY_SHARED };
+module.exports = { apply, grantedTenantTables, tenantPolicies, ENV_SCHEMAS, READ_ONLY_SHARED, INSERT_ONLY_SHARED };
