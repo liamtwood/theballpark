@@ -63,14 +63,19 @@ describe('pV2-SECURITY-RLS-01 withTransaction carries org GUC → RLS (route mec
     return copy;
   })();
 
+  // Sweep the STATIC family prefix (not this run's random tag) so a killed run's
+  // leftovers self-heal on the next run — same pattern as rls-personas.test.js.
+  // The fixture ANCHORS to an existing category (never creates one), so nothing
+  // here touches the real category tree; only rlstxn_ items/orgs/tags exist to
+  // clean. Items/orgs are soft-deleted (trg_forbid_hard_delete); the tag +
+  // supplier_item_tag are hard-deleted (leaf reference rows, safe).
+  const FAM = "rlstxn\\_%";
   async function cleanupFixtures() {
     const q = (sql) => ownerPool.query(sql).catch(() => {});
-    // Hard-delete the FK children + reference rows; soft-delete the guarded ones.
-    await q(`DELETE FROM supplier_item_tag WHERE item_id IN (SELECT id FROM items WHERE name LIKE '${tag}\\_%' OR name LIKE '${tag}\\_% (copy)')`);
-    await q(`DELETE FROM tag WHERE label LIKE '${tag}\\_%'`);
-    await q(`UPDATE items SET deleted_at = now() WHERE (name LIKE '${tag}\\_%' OR name LIKE '${tag}\\_% (copy)') AND deleted_at IS NULL`);
-    await q(`DELETE FROM categories WHERE name LIKE '${tag}\\_%'`);
-    await q(`UPDATE orgs SET deleted_at = now() WHERE name LIKE '${tag}\\_%' AND deleted_at IS NULL`);
+    await q(`DELETE FROM supplier_item_tag WHERE item_id IN (SELECT id FROM items WHERE name LIKE '${FAM}')`);
+    await q(`DELETE FROM tag WHERE label LIKE '${FAM}'`);
+    await q(`UPDATE items SET deleted_at = now() WHERE name LIKE '${FAM}' AND deleted_at IS NULL`);
+    await q(`UPDATE orgs  SET deleted_at = now() WHERE name LIKE '${FAM}' AND deleted_at IS NULL`);
   }
 
   before(async () => {
@@ -80,9 +85,13 @@ describe('pV2-SECURITY-RLS-01 withTransaction carries org GUC → RLS (route mec
     // search_path at the pool level so the raw client withTransaction connects
     // resolves unqualified table names to public (no per-client SET here).
     webPool = new Pool({ connectionString: WEB_URL, options: '-c search_path=public' });
-    await cleanupFixtures(); // mop up any earlier partial run
+    await cleanupFixtures(); // mop up any earlier partial/killed run
     const q = (sql, v) => ownerPool.query(sql, v);
-    ids.cat = (await q("INSERT INTO categories (name) VALUES ($1) RETURNING id", [`${tag}_cat`])).rows[0].id;
+    // Anchor to a REAL category (read-only) — the fixture must not add rows to the
+    // live category tree (they'd surface as 0-item cards and can't be hard-deleted
+    // while soft-deleted items hold the FK). Skip if the DB has no category.
+    ids.cat = (await q("SELECT id FROM categories WHERE is_active = true ORDER BY sort_order, created_at LIMIT 1")).rows[0]?.id;
+    if (!ids.cat) return; // tests guard on ids.cat and skip
     ids.B = (await q("INSERT INTO orgs (name, type, is_active) VALUES ($1,'supplier',true) RETURNING id", [`${tag}_supB`])).rows[0].id;
     ids.C = (await q("INSERT INTO orgs (name, type, is_active) VALUES ($1,'supplier',true) RETURNING id", [`${tag}_supC`])).rows[0].id;
     ids.src = (await q(
@@ -105,6 +114,7 @@ describe('pV2-SECURITY-RLS-01 withTransaction carries org GUC → RLS (route mec
 
   test('WITH org context: the duplicate INSERT + tag copy succeed as web_app_user', async (t) => {
     if (!enabled) { t.skip('WEB_APP_DATABASE_URL not set — apply migrate-rls.js + provide web creds first'); return; }
+    if (!ids.cat) { t.skip('no category in DB to anchor the fixture'); return; }
     const copy = await als.run({ userId, orgId: ids.B, isAdmin: false },
       () => withTransaction(duplicate(ids.src), { pool: webPool }));
     assert.ok(copy && copy.id, 'duplicate committed under RLS with org context');
@@ -116,6 +126,7 @@ describe('pV2-SECURITY-RLS-01 withTransaction carries org GUC → RLS (route mec
 
   test('WITHOUT context (no ALS store → null GUCs): RLS denies the write', async (t) => {
     if (!enabled) { t.skip('WEB_APP_DATABASE_URL not set'); return; }
+    if (!ids.cat) { t.skip('no category in DB to anchor the fixture'); return; }
     // No als.run: withTransaction sets the GUCs to null, so items_insert WITH CHECK
     // (org_id = app_current_org()) fails. This is the load-bearing guard — if a
     // future edit dropped GUC-setting from withTransaction, this write would break
@@ -128,6 +139,7 @@ describe('pV2-SECURITY-RLS-01 withTransaction carries org GUC → RLS (route mec
 
   test('WRONG org (C duplicating B\'s approved item): RLS denies (copy would carry org_id=B)', async (t) => {
     if (!enabled) { t.skip('WEB_APP_DATABASE_URL not set'); return; }
+    if (!ids.cat) { t.skip('no category in DB to anchor the fixture'); return; }
     // C can READ B's approved item (public catalogue), so the SELECT returns it, but
     // the copy preserves org_id=B and items_insert WITH CHECK requires it to equal
     // C's org → denied. Proves the GUC scopes writes, not merely "some context set".
