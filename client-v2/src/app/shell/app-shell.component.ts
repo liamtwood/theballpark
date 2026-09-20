@@ -34,7 +34,8 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
       @if (auth.isLoggedIn()) {
         <nav class="bp-header-inset flex items-center gap-1 overflow-x-auto pb-2">
           @for (item of navItems(); track item.path) {
-            <a [routerLink]="item.path" routerLinkActive="bp-nav-link--active"
+            <a [routerLink]="item.path" [queryParams]="item.query ?? null"
+               routerLinkActive="bp-nav-link--active"
                [routerLinkActiveOptions]="{ exact: item.exact }" class="bp-nav-link">
               <lucide-icon [name]="item.icon" [size]="16" [strokeWidth]="1.75" />{{ item.label }}
             </a>
@@ -57,16 +58,26 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
 export class AppShellComponent {
   protected readonly auth = inject(AuthService);
 
-  /** Primary nav, persona-aware. Suppliers manage incoming work + their shop —
-   *  New project / Past projects are agency-only (a supplier can't create a
-   *  brief), so their nav mirrors the supplier launcher tiles instead. Every
-   *  destination is an existing authed route. */
-  protected readonly navItems = computed(() =>
-    this.auth.user()?.activeOrgType === 'supplier' ? SUPPLIER_NAV : AGENCY_NAV,
-  );
+  /** Primary nav, persona-aware — mirrors the launcher tile sets so the header
+   *  and home agree. Suppliers manage incoming work + their shop (no create);
+   *  ballpark admins get the platform-admin surfaces (approvals + settings), NOT
+   *  agency New/Past projects (BE-00126). Every destination is an existing authed
+   *  route. */
+  protected readonly navItems = computed(() => {
+    const t = this.auth.user()?.activeOrgType;
+    if (t === 'ballpark') return BALLPARK_NAV;
+    if (t === 'supplier') return SUPPLIER_NAV;
+    return AGENCY_NAV;
+  });
 }
 
-interface NavItem { label: string; path: string; icon: string; exact: boolean; }
+interface NavItem {
+  label: string;
+  path: string;
+  icon: string;
+  exact: boolean;
+  query?: Record<string, string>;
+}
 
 /** Agency (default) — create + track projects, message suppliers, browse. */
 const AGENCY_NAV: readonly NavItem[] = [
@@ -85,5 +96,19 @@ const SUPPLIER_NAV: readonly NavItem[] = [
   { label: 'Messages', path: '/inbox', icon: 'message-square', exact: false },
   { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
   { label: 'My Shop', path: '/store', icon: 'package', exact: false },
+  { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
+];
+
+/** Ballpark platform admin (BE-00126) — mirrors BALLPARK_TILES. Marketplace is
+ *  the moderation queue (Approvals → status=pending), NOT the consumer browse;
+ *  no New/Past projects or Messages. Orgs is a net-new page, deferred. */
+const BALLPARK_NAV: readonly NavItem[] = [
+  { label: 'Overview', path: '/home', icon: 'layout-grid', exact: true },
+  { label: 'Approvals', path: '/marketplace', icon: 'store', exact: false, query: { status: 'pending' } },
+  { label: 'Page Settings', path: '/settings/pages', icon: 'settings', exact: false },
+  { label: 'Categories', path: '/settings/categories', icon: 'tags', exact: false },
+  { label: 'Codelists', path: '/settings/codelists', icon: 'list-checks', exact: false },
+  { label: 'Coachmarks', path: '/settings/coachmarks', icon: 'circle-help', exact: false },
+  { label: 'Early Access', path: '/settings/early-access', icon: 'rocket', exact: false },
   { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
 ];
