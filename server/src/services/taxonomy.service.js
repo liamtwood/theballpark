@@ -34,6 +34,7 @@
  * reject any mismatch anyway.
  */
 const pool = require('../db/pool');
+const { withTransaction } = require('../db/with-transaction');
 const { sendEmail } = require('./email.service');
 const { outreachEmail } = require('./notification.service');
 
@@ -1412,19 +1413,28 @@ async function materializeProposedItem(body) {
     throw httpErr('supplier_id, category_id and name are required', 400);
   }
   const price = Math.max(0, Number(estimated_price) || 0);
-  const r = await pool.query(
-    `INSERT INTO items (org_id, category_id, name, description, base_price,
-                        is_active, approval_status)
-     VALUES ($1, $2, $3, $4, $5, false, 'pending')
-     ON CONFLICT (org_id, name) DO UPDATE SET
-       category_id = EXCLUDED.category_id,
-       description = EXCLUDED.description,
-       base_price  = EXCLUDED.base_price,
-       updated_at  = NOW()
-     RETURNING *`,
-    [supplier_id, category_id, name, description || '', price]
-  );
-  return r.rows[0];
+  // pV2-SECURITY-RLS-01 §1-A (Liam decision 2026-09-20) — this creates a
+  // SUPPLIER-owned item (org_id = supplier_id, ≠ the acting agency). The caller
+  // is authorized by owning the RFQ's project (asserted in the route). Elevate
+  // JUST this INSERT (txn-local app.is_admin='t') so items_insert passes once
+  // RLS is on; it drops at COMMIT and touches nothing else. No effect pre-RLS
+  // (the owner role bypasses RLS today) — this is forward-compatible plumbing.
+  return withTransaction(async (client) => {
+    await client.query("SELECT set_config('app.is_admin', 't', true)");
+    const r = await client.query(
+      `INSERT INTO items (org_id, category_id, name, description, base_price,
+                          is_active, approval_status)
+       VALUES ($1, $2, $3, $4, $5, false, 'pending')
+       ON CONFLICT (org_id, name) DO UPDATE SET
+         category_id = EXCLUDED.category_id,
+         description = EXCLUDED.description,
+         base_price  = EXCLUDED.base_price,
+         updated_at  = NOW()
+       RETURNING *`,
+      [supplier_id, category_id, name, description || '', price]
+    );
+    return r.rows[0];
+  });
 }
 
 /* ─────────────────────────────────────────────────────────────────────

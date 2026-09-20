@@ -156,12 +156,13 @@ router.get('/quote-requests', async (req, res, next) => {
 //     name, description?, estimated_price? }
 router.post('/materialize-proposed', async (req, res, next) => {
   try {
-    // BE-00108 GAP (flagged): the body is { supplier_id, category_id, name, … } —
-    // there is NO projectId to assert against, and it creates a SUPPLIER-owned
-    // item (org_id = supplier_id) on an agency's behalf (cross-org write). The
-    // project-ownership guard cannot apply here; this is the §1 decision-A RFQ
-    // path — real enforcement is the RLS elevated-context write. Left authed but
-    // unscoped for now; do NOT bolt on a mismatched assertion.
+    // BE-00108 (Liam decision 2026-09-20) — projectId is REQUIRED so we can
+    // authorize this cross-org write (it creates a SUPPLIER-owned item,
+    // org_id = supplier_id ≠ caller) BY the caller owning the RFQ's project. The
+    // supplier-item INSERT itself runs under the §1-A elevation inside the service.
+    const { projectId } = req.body || {};
+    if (!projectId) { const e = new Error('projectId is required'); e.status = 400; throw e; }
+    await assertOwnedByActiveOrg('projects', projectId, req.user.org_id, { isAdmin: req.user.is_admin });
     res.json(await TaxonomyService.materializeProposedItem(req.body || {}));
   } catch (err) { next(err); }
 });

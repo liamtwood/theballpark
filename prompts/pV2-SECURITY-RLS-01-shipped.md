@@ -55,17 +55,24 @@ batch: §2 app-layer guards + §3 GUC plumbing. **No role flip, no RLS policies*
   sees empty; a second org sees only its own — **PASS** (no cross-request leak).
 - Full server test suite still green (69/69) — unchanged by these edits.
 
-## Spec-vs-code flags (raised to ballpark-bd)
-- **`materialize-proposed`** has **no `projectId`** — body is
-  `{ supplier_id, category_id, name, … }` and it creates a **supplier-owned**
-  item (`org_id = supplier_id`) on an agency's behalf. The project-ownership
-  assertion can't apply; left authed-but-unscoped with a code flag. Real
-  enforcement is the §1 decision-A elevated RFQ write. Needs a decision (require a
-  projectId to assert, or rely on §1-A).
-- The v1 **convenience routes** in index.js (`/api/items/:id/images`,
-  `/api/suppliers/:id/images`, `/api/org*`, `/api/clients/:id/projects`) are
-  direct `app.<verb>` handlers using `getCurrentAgency()` — ungated, out of
-  BE-00109 scope. Flagged for a follow-up (not in this batch).
+## BE-00113 — v1 convenience routes gated (follow-up to BE-00109)
+The ungated direct `app.<verb>` v1 convenience routes now sit behind the same
+`v1Gate` (hoisted to the top of the middleware section): `/api/org` (GET+PUT),
+`/api/org/balls-balance`, `/api/org/users`, `/api/items/:id/images`,
+`/api/suppliers/:id/images`, `/api/clients/:id/projects`. Verified `/api/org` →
+**401** unauthenticated; health still 200. v2 calls none (grep clean).
+
+## materialize-proposed — RESOLVED (Liam 2026-09-20: require projectId)
+- Route: `projectId` now **required** (400 if missing) →
+  `assertOwnedByActiveOrg('projects', projectId, org)` up front — closes the last
+  taxonomy IDOR. The write is authorized BY the caller owning the RFQ's project.
+- Service: the supplier-owned item INSERT (`org_id = supplier_id ≠ caller`) now
+  runs inside `withTransaction` with a **txn-local `app.is_admin='t'`** around
+  just that INSERT (§1-A elevation) so `items_insert` passes once RLS is on;
+  drops at COMMIT, no effect pre-RLS.
+- Callers: **none** in client-v2 or client-angular call `materialize-proposed`
+  today (grep clean) — nothing to wire through; if a future caller is added it
+  must pass `projectId`.
 
 ## NOT done (staged follow-on — do not start without the gate)
 - **FR-00209** (§1 RLS policies + `web_app_user` role + `orgs_public` view),
