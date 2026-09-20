@@ -94,12 +94,30 @@ writes), only after his BE-00110 sanity-check and green persona tests.
   + project + items as owner, then asserts the supplier / agency / admin / no-context
   matrix as `web_app_user`. Skips until `WEB_APP_DATABASE_URL` is set.
 
-**Validation done here**
-- `node --test` suite: 74 tests, 69 pass, **5 skipped** (coverage + 4 personas
-  skip cleanly pre-apply), 0 fail.
-- **Dry-run** (`WEB_APP_PW=… node src/db/migrate-rls.js --dry-run`, BEGIN/ROLLBACK,
-  nothing persisted): the full migration compiles against the **live public
-  schema** — role, helpers, every policy, `orgs_public`, shared/marketing reads.
+**APPLIED to public + GREEN (2026-09-20).** Liam applied migrate-rls.js to public;
+coverage + all personas now pass — **suite 74/74** (was 5-skipped pre-apply). Two
+fixes found during the live persona run:
+- **Missing audit grant (would break ALL writes post-flip).** Every write fires
+  `audit.stamp_audit_cols()` / `forbid_hard_delete()` (SECURITY INVOKER) in schema
+  `audit`; `web_app_user` had no access → `permission denied for schema audit`.
+  Added `GRANT USAGE ON SCHEMA audit` + `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA
+  audit` to migrate-rls.js (global). Applied to dev + validated. **Liam: re-run
+  `node migrate-rls.js` so it's recorded (idempotent), and it's needed for
+  preview/master.**
+- **Persona test teardown:** `trg_forbid_hard_delete` blocks hard DELETE on
+  orgs/items/projects, and `orgs_name_unique` ignores soft-delete — so the test
+  now uses a RANDOM tag + DISTINCT per-org keys (B/C were both `_supplier` → an
+  intra-run collision) and soft-deletes fixtures by prefix in `after()` (mops up
+  leftovers too). Green + idempotent across runs.
+
+Persona matrix proven as web_app_user: supplier reads own drafts+approved + the
+agency project (line context) + own line, NOT another supplier's draft, edits only
+own item, can't mutate the agency project; agency browses approved only, owns its
+project, item write denied; admin cross-org R/W; no-context sees only approved,
+writes nothing.
+
+- **Dry-run** (earlier): the full migration compiled against the live public
+  schema (BEGIN/ROLLBACK, nothing persisted).
 - **Finding:** the **preview** schema lags public (missing `supplier_org_id` on a
   table) → applying RLS there fails until the additive delta lands. So the
   migration defaults to **public only**; `--schemas=public,preview,master` opts

@@ -30,23 +30,38 @@ describe('pV2-SECURITY-RLS-01 three-persona policy matrix', () => {
   let ownerPool, webPool, ids = {};
   const enabled = !!(OWNER_URL && WEB_URL);
 
+  // Tidy every rlstest_* fixture row (owner bypasses RLS). trg_forbid_hard_delete
+  // blocks hard DELETE on orgs/items/projects, so soft-delete those (deleted_at);
+  // project_items allows hard delete (child, FK). Each run uses a RANDOM tag +
+  // distinct per-org keys, so names never collide across runs regardless — this
+  // is purely to keep dev tidy (and it also mops up any earlier run's leftovers).
+  async function cleanupFixtures() {
+    const q = (sql) => ownerPool.query(sql).catch(() => {});
+    await q("DELETE FROM project_items WHERE name LIKE 'rlstest\\_%'");
+    await q("UPDATE projects SET deleted_at = now() WHERE name LIKE 'rlstest\\_%' AND deleted_at IS NULL");
+    await q("UPDATE items    SET deleted_at = now() WHERE name LIKE 'rlstest\\_%' AND deleted_at IS NULL");
+    await q("UPDATE orgs     SET deleted_at = now() WHERE name LIKE 'rlstest\\_%' AND deleted_at IS NULL");
+  }
+
   before(async () => {
     if (!enabled) return;
     const { Pool } = require('pg');
     ownerPool = new Pool({ connectionString: OWNER_URL });
     webPool = new Pool({ connectionString: WEB_URL });
     const q = (sql, v) => ownerPool.query(sql, v);
-    const org = async (type) => (await q(
-      "INSERT INTO orgs (name, type, is_active) VALUES ($1,$2,true) RETURNING id", [`${tag}_${type}`, type])).rows[0].id;
-    ids.A = await org('agency');
-    ids.B = await org('supplier');
-    ids.C = await org('supplier');
-    const item = async (org, status) => (await q(
+    // NOTE: orgs.name is unique — each seed org needs a DISTINCT name (B and C are
+    // both suppliers, so keying on type alone collided within one run).
+    const org = async (key, type) => (await q(
+      "INSERT INTO orgs (name, type, is_active) VALUES ($1,$2,true) RETURNING id", [`${tag}_${key}`, type])).rows[0].id;
+    ids.A = await org('agency', 'agency');
+    ids.B = await org('supB', 'supplier');
+    ids.C = await org('supC', 'supplier');
+    const item = async (org, key, status) => (await q(
       "INSERT INTO items (org_id, name, approval_status, is_active) VALUES ($1,$2,$3,true) RETURNING id",
-      [org, `${tag}_item_${status}`, status])).rows[0].id;
-    ids.itemBApproved = await item(ids.B, 'approved');
-    ids.itemBDraft = await item(ids.B, 'draft');
-    ids.itemCDraft = await item(ids.C, 'draft');
+      [org, `${tag}_${key}`, status])).rows[0].id;
+    ids.itemBApproved = await item(ids.B, 'itemB_approved', 'approved');
+    ids.itemBDraft = await item(ids.B, 'itemB_draft', 'draft');
+    ids.itemCDraft = await item(ids.C, 'itemC_draft', 'draft');
     ids.projA = (await q("INSERT INTO projects (org_id, name, is_active) VALUES ($1,$2,true) RETURNING id",
       [ids.A, `${tag}_proj`])).rows[0].id;
     ids.piB = (await q(
@@ -56,12 +71,8 @@ describe('pV2-SECURITY-RLS-01 three-persona policy matrix', () => {
 
   after(async () => {
     if (!enabled) return;
-    const q = (sql, v) => ownerPool.query(sql, v);
-    // Hard-delete the fixture (owner bypasses RLS).
-    await q('DELETE FROM project_items WHERE id = $1', [ids.piB]).catch(() => {});
-    await q('DELETE FROM projects WHERE id = $1', [ids.projA]).catch(() => {});
-    await q('DELETE FROM items WHERE id = ANY($1)', [[ids.itemBApproved, ids.itemBDraft, ids.itemCDraft]]).catch(() => {});
-    await q('DELETE FROM orgs WHERE id = ANY($1)', [[ids.A, ids.B, ids.C]]).catch(() => {});
+    // Teardown by prefix (robust even if the seed only partially completed).
+    await cleanupFixtures();
     await ownerPool.end(); await webPool.end();
   });
 

@@ -248,6 +248,15 @@ async function apply(client, pw, schemas = ['public']) {
   await client.query(PUBLIC_FUNCS);
   console.log('[RLS] public GUC helpers ensured');
 
+  // Audit triggers (audit.stamp_audit_cols / forbid_hard_delete) fire on EVERY
+  // insert/update/delete and are SECURITY INVOKER — they run as the caller, so
+  // web_app_user needs USAGE on the audit schema + EXECUTE on its functions or
+  // every write dies with "permission denied for schema audit" (caught by the
+  // persona test). Global (audit is shared across env schemas).
+  await client.query('GRANT USAGE ON SCHEMA audit TO web_app_user;');
+  await client.query('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA audit TO web_app_user;');
+  console.log('[RLS] audit schema execute grants ensured');
+
   const present = (await client.query(
     `SELECT schema_name FROM information_schema.schemata WHERE schema_name = ANY($1)`, [ENV_SCHEMAS]
   )).rows.map((r) => r.schema_name);
