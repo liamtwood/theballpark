@@ -255,6 +255,14 @@ app.use(
   require('./middleware/require-active-membership').requireActiveMembership('admin.cross_org_view'),
   require('./routes/admin-items')
 );
+// BE-00127 — admin Orgs management (list/view/create). Same admin.cross_org_view
+// gate; the membership check sets app.is_admin so RLS permits cross-org access.
+app.use(
+  '/api/admin/orgs',
+  require('./middleware/authenticate').authenticate,
+  require('./middleware/require-active-membership').requireActiveMembership('admin.cross_org_view'),
+  require('./routes/admin-orgs')
+);
 
 // Unsplash image search proxy
 app.get('/api/unsplash/search', async (req, res) => {

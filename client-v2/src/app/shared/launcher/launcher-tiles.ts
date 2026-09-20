@@ -102,6 +102,13 @@ export const BALLPARK_TILES: readonly LauncherTile[] = [
  *  grouped under /admin. Routes already exist (ballparkAdminGuard each). */
 export const ADMIN_HUB_TILES: readonly LauncherTile[] = [
   {
+    // BE-00127 — org management: list, create, approve/suspend, import-from-website.
+    icon: 'building-2',
+    label: 'Organisations',
+    subtitle: 'Manage agencies and suppliers — create, approve, or import from a website.',
+    href: '/admin/orgs',
+  },
+  {
     // pV2-EA-02 — waitlist signups + welcome content + admin notifications.
     icon: 'rocket',
     label: 'Early Access',

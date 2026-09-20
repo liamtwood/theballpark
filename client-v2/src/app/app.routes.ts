@@ -52,6 +52,13 @@ export const routes: Routes = [
           import('./pages/admin/admin-hub.component').then((m) => m.AdminHubComponent),
       },
       {
+        // BE-00127 — admin Orgs management (list/create/approve). Under the hub.
+        path: 'admin/orgs',
+        canActivate: [ballparkAdminGuard],
+        loadComponent: () =>
+          import('./pages/admin/orgs/orgs-admin.component').then((m) => m.OrgsAdminComponent),
+      },
+      {
         // Version history (user menu → above Sign out). Renders
         // public/changelog.json — what's on dev vs already on preview.
         path: 'whats-new',

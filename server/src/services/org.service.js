@@ -5,6 +5,13 @@ async function getAll() {
   return result.rows;
 }
 
+/** BE-00127 — admin org list: ALL orgs (incl. suspended/is_active=false so the
+ *  admin can re-activate), excluding only hard-removed (deleted_at). */
+async function getAllForAdmin() {
+  const result = await pool.query('SELECT * FROM orgs WHERE deleted_at IS NULL ORDER BY created_at DESC');
+  return result.rows;
+}
+
 async function getById(id) {
   const result = await pool.query('SELECT * FROM orgs WHERE id = $1', [id]);
   return result.rows[0] || null;
@@ -20,19 +27,21 @@ async function create(data) {
     name, description, type, address, city, country, phone, email, website,
     logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
     default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
-    auto_publish_items
+    auto_publish_items,
+    // BE-00127 — fields the website-import pre-fills (were previously dropped).
+    company_number, cover_image_url, default_currency,
   } = data;
   const result = await pool.query(
     `INSERT INTO orgs (
       name, description, type, address, city, country, phone, email, website,
       logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
       default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
-      auto_publish_items
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
+      auto_publish_items, company_number, cover_image_url, default_currency
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING *`,
     [name, description, type, address, city, country, phone, email, website,
      logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
      default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
-     auto_publish_items ?? true]
+     auto_publish_items ?? true, company_number ?? null, cover_image_url ?? null, default_currency ?? null]
   );
   return result.rows[0];
 }
@@ -74,6 +83,14 @@ async function update(id, data) {
      cover_image_url, image_display, auto_publish_items,
      ref_prefix ? String(ref_prefix).toUpperCase() : null,
      id]
+  );
+  return result.rows[0] || null;
+}
+
+/** BE-00127 — approve/suspend an org (is_active toggle; approve=activate). */
+async function setActive(id, active) {
+  const result = await pool.query(
+    'UPDATE orgs SET is_active = $2, updated_at = NOW() WHERE id = $1 RETURNING *', [id, !!active]
   );
   return result.rows[0] || null;
 }
@@ -123,4 +140,4 @@ async function getCatalogue(supplierId, includeHidden = false) {
   return result.rows;
 }
 
-module.exports = { getAll, getById, getCurrentAgency, create, update, softDelete, getSuppliers, getCatalogue };
+module.exports = { getAll, getAllForAdmin, getById, getCurrentAgency, create, update, setActive, softDelete, getSuppliers, getCatalogue };
