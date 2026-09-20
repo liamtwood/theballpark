@@ -41,7 +41,10 @@ router.get('/suppliers/options', async (req, res, next) => {
          FROM orgs_public o
          JOIN items i ON i.org_id = o.id
         WHERE i.deleted_at IS NULL AND i.is_active AND i.approval_status = 'approved'
-        GROUP BY o.id
+        -- BE-00129 — orgs_public is a VIEW (no PK), so Postgres can't infer the
+        -- o.id → o.name functional dependency; every selected non-aggregate must
+        -- be grouped (a base-table GROUP BY o.id would have sufficed).
+        GROUP BY o.id, o.name
         ORDER BY o.name ASC`
     );
     res.json(r.rows.map((row) => ({ id: row.id, name: row.name, count: Number(row.item_count) })));
@@ -82,7 +85,9 @@ router.get('/suppliers', async (req, res, next) => {
          JOIN items i ON i.org_id = o.id AND i.deleted_at IS NULL
               AND i.is_active AND i.approval_status = 'approved' ${catClause}
         ${whereSql}
-        GROUP BY o.id
+        -- BE-00129 — group every selected orgs_public column (it's a VIEW, no PK
+        -- functional dependency; see /suppliers/options above).
+        GROUP BY o.id, o.name, o.city, o.description, o.logo_url, o.cover_image_url
         ORDER BY o.name ASC
         LIMIT $${vals.length - 1} OFFSET $${vals.length}`,
       vals
