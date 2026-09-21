@@ -120,4 +120,10 @@ export class AdminOrgService {
   extractPull(orgId: string, urls: string[]): Observable<PullResult> {
     return this.api.post<PullResult>(`/api/admin/orgs/${orgId}/extract/pull`, { urls });
   }
+
+  /** Admin soft-delete of an item on another org (cascades to its option children
+   *  server-side). DELETE /api/admin/orgs/:orgId/items/:itemId (exists). */
+  deleteForOrg(orgId: string, itemId: string): Observable<void> {
+    return this.api.delete<void>(`/api/admin/orgs/${orgId}/items/${itemId}`);
+  }
 }

@@ -11,6 +11,8 @@ import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { errorDetail } from '../../core/http-error';
 import { StoreItemService, StoreItemWrite } from '../../core/store/store-item.service';
+import { AdminOrgService } from '../../core/admin-org.service';
+import { ConfirmService } from '../../shared/confirm/confirm.service';
 import { CategoryInfo } from '../../shared/catalogue/catalogue.types';
 import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.types';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
@@ -207,9 +209,10 @@ interface ItemForm {
           <app-item-edit-actions
             [isModerator]="isModerator()" [isViewer]="isViewer()" [isApproved]="isApproved()"
             [currentStatus]="currentStatus()" [deciding]="deciding()" [saving]="saving()"
+            [canDelete]="canDelete()" [deleting]="deleting()"
             (approve)="decide('approve')" (reject)="decide('reject')" (cancel)="cancel()"
             (saveApproved)="saveApproved()" (saveDraft)="save('draft')" (submit)="save('pending')"
-            (cancelRequest)="cancelRequest()" />
+            (cancelRequest)="cancelRequest()" (deleteRequested)="onDelete()" />
           </div>
 
           <app-item-approval-panel [status]="currentStatus()" [statusAt]="statusAt()" />
@@ -279,6 +282,8 @@ export class ItemEditComponent {
   private readonly api = inject(ApiService);
   private readonly auth = inject(AuthService);
   private readonly store = inject(StoreItemService);
+  private readonly admin = inject(AdminOrgService);
+  private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(MessageService);
 
   protected readonly itemId = this.route.snapshot.paramMap.get('id');
@@ -310,6 +315,10 @@ export class ItemEditComponent {
    *  (live) item — new images need moderation. Editable only on non-approved. */
   protected readonly canEditPhotos = computed(() => this.editing() && !this.isApproved());
   protected readonly deciding = signal(false);
+  /** Delete shows for the OWNER (own item) and the PLATFORM ADMIN via the admin-
+   *  edit route (targetOrgId) — never the review route (moderator) or a viewer. */
+  protected readonly canDelete = computed(() => this.isEdit && !this.isViewer() && !this.isModerator());
+  protected readonly deleting = signal(false);
 
   protected readonly form = signal<ItemForm>({
     name: '', category_id: '', unit: '', base_price: '', install_cost: '', install_unit: '',
@@ -604,6 +613,33 @@ export class ItemEditComponent {
       this.toast.add({ severity: 'error', summary: "Couldn't update — please try again.", detail: errorDetail(e), life: 5000 });
     } finally {
       this.deciding.set(false);
+    }
+  }
+
+  /** Delete this item (owner → own; platform admin → the targeted org). Confirms
+   *  first; server soft-deletes + cascades to option children. Then back to the
+   *  supplier Shop grid. */
+  protected async onDelete(): Promise<void> {
+    if (!this.itemId || this.deleting()) return;
+    const ok = await this.confirm.ask({
+      title: 'Delete this item?',
+      message: "It'll be removed from the shop. This can't be undone here.",
+      confirmLabel: 'Delete',
+      danger: true,
+      icon: 'trash-2',
+    });
+    if (!ok) return;
+    this.deleting.set(true);
+    try {
+      if (this.targetOrgId) await firstValueFrom(this.admin.deleteForOrg(this.targetOrgId, this.itemId));
+      else await firstValueFrom(this.store.remove(this.itemId));
+      this.toast.add({ severity: 'success', summary: 'Item deleted.', life: 3000 });
+      const orgId = this.targetOrgId || this.auth.user()?.activeOrgId;
+      void this.router.navigate(orgId ? ['/suppliers', orgId] : ['/store'], { queryParams: { tab: 'store' } });
+    } catch (e) {
+      this.toast.add({ severity: 'error', summary: "Couldn't delete — please try again.", detail: errorDetail(e), life: 5000 });
+    } finally {
+      this.deleting.set(false);
     }
   }
 }

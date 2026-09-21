@@ -26,6 +26,9 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
       <div class="mt-4 flex flex-wrap gap-3">
         <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="saveApproved.emit()">{{ saving() ? 'Saving…' : 'Save Changes' }}</button>
         <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="cancel.emit()">Back to store</button>
+        @if (canDelete()) {
+          <button type="button" class="bp-btn-danger ml-auto" [disabled]="deleting()" (click)="deleteRequested.emit()">{{ deleting() ? 'Deleting…' : 'Delete' }}</button>
+        }
       </div>
     } @else {
       <div class="mt-4 flex flex-wrap gap-3">
@@ -35,6 +38,9 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
           <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="cancelRequest.emit()">{{ saving() ? 'Saving…' : 'Cancel approval request' }}</button>
         } @else {
           <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="submit.emit()">{{ saving() ? 'Saving…' : 'Submit for Approval' }}</button>
+        }
+        @if (canDelete()) {
+          <button type="button" class="bp-btn-danger ml-auto" [disabled]="deleting()" (click)="deleteRequested.emit()">{{ deleting() ? 'Deleting…' : 'Delete' }}</button>
         }
       </div>
     }
@@ -47,6 +53,9 @@ export class ItemEditActionsComponent {
   readonly currentStatus = input<string>('draft');
   readonly deciding = input<boolean>(false);
   readonly saving = input<boolean>(false);
+  /** Owner (own item) or platform admin (admin-edit route) — shows Delete. */
+  readonly canDelete = input<boolean>(false);
+  readonly deleting = input<boolean>(false);
 
   readonly approve = output<void>();
   readonly reject = output<void>();
@@ -55,4 +64,5 @@ export class ItemEditActionsComponent {
   readonly saveDraft = output<void>();
   readonly submit = output<void>();
   readonly cancelRequest = output<void>();
+  readonly deleteRequested = output<void>();
 }

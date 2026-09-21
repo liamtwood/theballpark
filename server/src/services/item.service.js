@@ -243,6 +243,14 @@ async function softDelete(id) {
   const result = await pool.query(
     'UPDATE items SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING *', [id]
   );
+  // Cascade to the item's child rows (kind='option'/'component', parent_item_id
+  // = this item — e.g. extract-created options) so they don't orphan when the
+  // parent is deleted. Library copies (parent_item_id IS NULL) are untouched.
+  if (result.rows[0]) {
+    await pool.query(
+      'UPDATE items SET deleted_at = NOW() WHERE parent_item_id = $1 AND deleted_at IS NULL', [id]
+    );
+  }
   return result.rows[0] || null;
 }
 
