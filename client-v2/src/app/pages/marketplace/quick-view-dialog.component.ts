@@ -63,7 +63,7 @@ import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribu
               <span class="bp-meta truncate">{{ it.supplierName }}{{ it.supplierCity ? ' · ' + it.supplierCity : '' }}</span>
             </div>
             @if (it.basePrice !== null) {
-              <span class="bp-price-large shrink-0">From {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+              <span class="bp-price-large shrink-0">From {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-2' }}</span>
             }
           </div>
 
@@ -104,7 +104,7 @@ import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribu
           <button type="button" class="bp-btn-outline" (click)="close.emit()">Close</button>
           @if (showAdd()) {
             <button type="button" class="bp-btn-grad" (click)="add.emit(it.id)">
-              Add to ballpark@if (it.basePrice !== null) { &nbsp;·&nbsp;{{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }} }
+              Add to ballpark@if (it.basePrice !== null) { &nbsp;·&nbsp;{{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-2' }} }
             </button>
           }
         }

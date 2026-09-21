@@ -33,23 +33,9 @@ function htmlToText(html, baseUrl) {
     const abs = absolutize(m[1], baseUrl);
     if (abs && sameHost(abs, baseUrl) && new URL(abs).pathname.length > 1 && !hrefs.includes(abs)) hrefs.push(abs);
   }
-  // Collect <img> URLs before stripping tags — tag-strip drops src=, so the AI
-  // never saw image URLs otherwise. Covers lazy-load attrs + srcset (first URL).
-  const imgs = [];
-  const imgRe = /<img\b[^>]*>/gi;
-  let im;
-  while ((im = imgRe.exec(s)) && imgs.length < 40) {
-    const tag = im[0];
-    const cand =
-      (tag.match(/\bsrc=["']([^"']+)["']/i) || [])[1]
-      || (tag.match(/\bdata-src=["']([^"']+)["']/i) || [])[1]
-      || (tag.match(/\bdata-lazy(?:-src)?=["']([^"']+)["']/i) || [])[1]
-      || (tag.match(/\bdata-original=["']([^"']+)["']/i) || [])[1]
-      || firstSrcsetUrl(tag);
-    if (!cand) continue;
-    const abs = absolutize(cand, baseUrl);
-    if (abs && /^https?:/i.test(abs) && !imgs.includes(abs)) imgs.push(abs);
-  }
+  // Collect <img> URLs — tag-strip drops src=, so the AI never saw image URLs
+  // otherwise. Shared with the image FALLBACK in pull() (collectImageUrls).
+  const imgs = collectImageUrls(html, baseUrl);
   const text = s
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&pound;/gi, '£')
@@ -69,6 +55,33 @@ function firstSrcsetUrl(tag) {
   if (!m) return null;
   return (m[1].split(',')[0] || '').trim().split(/\s+/)[0] || null;
 }
+
+/** All <img> URLs on a page (src + lazy attrs + srcset first URL), absolutised.
+ *  Powers the AI's "IMAGES ON PAGE" list AND the pull image FALLBACK. */
+function collectImageUrls(html, baseUrl, cap = 40) {
+  const s = String(html || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ');
+  const imgs = [];
+  const imgRe = /<img\b[^>]*>/gi;
+  let im;
+  while ((im = imgRe.exec(s)) && imgs.length < cap) {
+    const tag = im[0];
+    const cand =
+      (tag.match(/\bsrc=["']([^"']+)["']/i) || [])[1]
+      || (tag.match(/\bdata-src=["']([^"']+)["']/i) || [])[1]
+      || (tag.match(/\bdata-lazy(?:-src)?=["']([^"']+)["']/i) || [])[1]
+      || (tag.match(/\bdata-original=["']([^"']+)["']/i) || [])[1]
+      || firstSrcsetUrl(tag);
+    if (!cand) continue;
+    const abs = absolutize(cand, baseUrl);
+    if (abs && /^https?:/i.test(abs) && !imgs.includes(abs)) imgs.push(abs);
+  }
+  return imgs;
+}
+
+/** Skip logos/icons/sprites/placeholders when picking a fallback product photo. */
+const isProductImage = (u) => !/(logo|icon|sprite|favicon|placeholder|\.svg(\?|$))/i.test(u);
 
 function absolutize(u, base) {
   try { return new URL(u, base).toString(); } catch { return null; }
@@ -257,9 +270,16 @@ async function pull(orgId, urls) {
         extracted_at: new Date().toISOString(), batch,
       });
 
-      const images = (Array.isArray(p.images) ? p.images : [])
+      let images = (Array.isArray(p.images) ? p.images : [])
         .map((u) => absolutize(u, finalUrl)).filter(Boolean)
         .map((u, i) => ({ url: u, is_hero: i === 0 }));
+      // Image extraction is non-deterministic — when the AI returned none, fall
+      // back to the first product-looking image on the page so the item lands
+      // with a photo instead of the placeholder (Liam, v2.531).
+      if (!images.length) {
+        const cand = collectImageUrls(html, finalUrl).filter(isProductImage);
+        if (cand.length) images = [{ url: cand[0], is_hero: true }];
+      }
 
       const item = await ItemService.createForOrg({
         data: {
