@@ -174,13 +174,13 @@ Ballpark holds SUPPLIERS with ITEMS. An item has: name, price (ex-VAT), descript
 Analyse this page, GUIDED BY that schema but HONEST about everything else:
 1. Classify the page shape: "detail" (one product), "listing" (a category/collection linking to product pages), or "marketing" (no structured catalogue — homepage/solutions/portfolio).
 2. Verdict: if pull-able, say roughly how many items and which categories; if not, "no catalogue — onboard manually" and why.
-3. mapped: what MAPS to Ballpark — categories seen, item count, whether per-item price (ex-VAT) is present, whether volume tiers are present, whether options are present, which known attributes are present, whether a supplier item id / SKU is present.
+3. mapped: what MAPS to Ballpark — categories seen, item count, whether per-item price (ex-VAT) is present, whether volume tiers are present, whether options are present, which known attributes are present, whether a supplier item id / SKU is present, whether product images are present.
 4. alsoFound: EVERYTHING else on the page that does NOT fit the schema above — every attribute, spec, feature or concept you notice (e.g. venue capacity, packages/bundles, multi-dimension variant matrices, delivery terms, certifications, minimum order). Nothing dropped — this is how we learn what to build next.
-5. sample: ONE item fully parsed (name, price, short description, attributes{}, sku) so the reviewer can judge extraction quality. Null if marketing.
+5. sample: ONE item fully parsed (name, price, short description, attributes{}, sku, images[] — the product photo URLs) so the reviewer can judge extraction quality AND see the photos that'll be pulled. Null if marketing.
 6. productLinks: on a LISTING page, the product-detail URLs visible (absolute or relative), so they can be pulled. Empty otherwise.
 
 Return exactly:
-{ "pageShape":"detail|listing|marketing", "verdict":"one honest sentence", "pullable": true, "estimatedItems": 0, "mapped": { "categories":[], "itemCount": 0, "hasPrice": false, "hasVolumeTiers": false, "hasOptions": false, "hasSku": false, "knownAttributes":[] }, "alsoFound":[], "sample": null, "productLinks":[] }`;
+{ "pageShape":"detail|listing|marketing", "verdict":"one honest sentence", "pullable": true, "estimatedItems": 0, "mapped": { "categories":[], "itemCount": 0, "hasPrice": false, "hasVolumeTiers": false, "hasOptions": false, "hasSku": false, "hasImages": false, "knownAttributes":[] }, "alsoFound":[], "sample": null, "productLinks":[] }`;
 
 const PULL_SYSTEM = `You are a catalogue extractor for Ballpark. Given the visible text (and link hrefs) of ONE product page, extract the product as JSON. Return ONLY valid JSON — no markdown, no backticks.
 

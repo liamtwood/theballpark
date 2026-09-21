@@ -65,6 +65,7 @@ export interface ExtractReport {
     hasVolumeTiers?: boolean;
     hasOptions?: boolean;
     hasSku?: boolean;
+    hasImages?: boolean;
     knownAttributes?: string[];
   };
   alsoFound?: string[];

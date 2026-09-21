@@ -48,6 +48,7 @@ import { AdminOrgService, ExtractReport, PullResult } from '../../core/admin-org
             @if (r.mapped?.hasVolumeTiers) { <span class="bp-pill">tiers</span> }
             @if (r.mapped?.hasOptions) { <span class="bp-pill">options</span> }
             @if (r.mapped?.hasSku) { <span class="bp-pill">SKU</span> }
+            @if (r.mapped?.hasImages) { <span class="bp-pill">images</span> }
           </div>
           <p class="mb-2"><strong>Verdict:</strong> {{ r.verdict }}</p>
 

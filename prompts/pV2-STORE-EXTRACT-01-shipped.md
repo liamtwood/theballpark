@@ -57,4 +57,9 @@ Promote-attribute-to-codelist, description-vs-attribute routing UI, multi-group 
 matrices, venues, packages, scheduled/auto refresh, a hard-dedup indexed `source_ref` column.
 
 ## QC iterations
-_(append below)_
+
+**v2.522 (2026-09-21)** — Liam QC: the Analyse report didn't mention images (Pull already
+captured them fine). Reporting-only fix in `ANALYSE_SYSTEM` (+ its JSON shape): added
+`mapped.hasImages` (boolean) and `images[]` to the `sample` object, so the report shows
+images-present + the sample's photo URLs. Client: `ExtractReport.mapped.hasImages` + an
+"images" chip in the panel (the sample already renders as JSON). Pull unchanged.
