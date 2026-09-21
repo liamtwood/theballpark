@@ -612,15 +612,18 @@ body {
   box-shadow: none;
 }
 
+/* Primary CTA — solid DARK PINK (--theme-accent, the same token as the rail
+   count badges), app-wide (Liam 2026-09-21: off the rainbow gradient). Hover =
+   a shade darker; the soft glow keeps the pink brand shadow. */
 .bp-btn-grad {
-  background: var(--bp-gradient);
-  color: var(--bp-text-on-gradient);
-  /* Brand-glow shadow uses --bp-gradient-shadow-rgb (pink stop) */
+  background: var(--theme-accent);
+  color: var(--theme-accent-contrast, #fff);
   box-shadow:
     0 2px 6px rgba(var(--bp-gradient-shadow-rgb), 0.2),
     0 1px 2px rgba(0, 0, 0, 0.06);
 }
 .bp-btn-grad:hover {
+  background: color-mix(in srgb, var(--theme-accent) 88%, #000);
   box-shadow:
     0 8px 20px rgba(var(--bp-gradient-shadow-rgb), 0.28),
     0 2px 6px rgba(0, 0, 0, 0.08);
