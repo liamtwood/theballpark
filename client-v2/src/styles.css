@@ -276,6 +276,38 @@
   padding-inline: max(24px, calc((100% - var(--workspace-max)) / 2));
 }
 
+/* pV2-STORE-ATTRIBUTE-GROUPS-01 — the quick-view rounded spec box, promoted to
+   global so the shared attribute-cards component + the item view reuse the SAME
+   look as the quick-view dialog (one definition; was scoped in quick-view). */
+.bp-qv-spec {
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  background: var(--color-surface);
+}
+.bp-qv-spec__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+}
+.bp-qv-spec__val {
+  margin-top: 6px;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  white-space: pre-line;
+}
+.bp-qv-spec__val--soon {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
 /* Reserve a stable scrollbar gutter so a scrolling body and the non-scrolling
    hero/tabs above it share the SAME content box — their centred workspace
    columns then line up (the scrollbar no longer shifts the body's centre).

@@ -242,6 +242,7 @@ router.get('/items', async (req, res, next) => {
     vals.push(PAGE_SIZE, offset);
     const r = await pool.query(
       `SELECT i.id, i.name, i.description, i.install_description, i.base_price, i.unit, i.image_url,
+              i.attributes,
               i.category_id, i.subcategory_id, i.approval_status, i.is_active,
               i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
               c.name AS category_name, sc.name AS subcategory_name,
@@ -269,6 +270,9 @@ router.get('/items', async (req, res, next) => {
       basePrice: row.base_price === null ? null : Number(row.base_price),
       unit: row.unit,
       coverUrl: row.image_url,
+      // pV2-STORE-ATTRIBUTE-GROUPS-01 — the grouped attributes power the quick-view
+      // spec cards + options picklist (rendered from the already-loaded list row).
+      attributes: row.attributes ?? null,
       categoryId: row.category_id,
       subcategoryId: row.subcategory_id,
       supplierId: row.supplier_id,

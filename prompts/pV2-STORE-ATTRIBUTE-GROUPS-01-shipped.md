@@ -41,6 +41,25 @@ groups (groups are hardcoded — the fixed 5 + options).
   editor); a pure read-only item view (e.g. quick-view, which needs attributes added to the list
   projection) would apply conditional-install end-to-end — flagged to d4.
 
+## QC iteration — v2.530 (grouped cards → quick-view)
+- Extracted a shared `ItemAttributeCardsComponent` (used by item-edit view AND the marketplace
+  quick-view — one definition). Renders the Options "Choose your option" picklist (KEY, always
+  visible when present) + a "Show more details" drill revealing one rounded card per POPULATED
+  group (Measurements/Materials/Style/Features/Specifications), each with a lucide icon, using the
+  quick-view `.bp-qv-spec` box style — promoted to GLOBAL styles.css so both surfaces share it.
+- Marketplace **list projection now carries `attributes`** (`i.attributes` + `CatalogueItem.attributes`)
+  so the quick-view (rendered from the loaded list row) has the grouped data.
+- Quick-view: replaced ALL "Coming soon" placeholders with real data — KEY Volume-pricing card
+  (guide tiers) + Included-services (only if present) + the shared Options picklist + Show-more
+  spec cards. Empty/absent → nothing renders.
+- Flags to d4 (awaiting decisions, NOT changed): (a) price format — quick-view shows "From £4"
+  (currency '1.0-0' rounds £3.75→£4); confirm £3.75 vs £4. (b) qty stepper on the quick-view —
+  touches the `add` contract (currently emits id only); follow-up. (c) image — the re-pulled chair
+  has `image_url = null` (this pull's AI returned no images — extraction reliability, NOT a
+  projection bug; coverUrl=image_url is correct).
+- NEXT (scoped, not built — design still converging): EDIT PAGE mirrors the view's card layout;
+  options + tiered pricing add/edit via Ballpark DIALOGS (replacing inline editable boxes).
+
 ## QC iteration — v2.529 (Liam QC on v2.528)
 1. **Editor — all 5 groups editable**: Specifications / Features / Style / Measurements / Materials
    each render as editable label/value rows (same formatting: label box + value box + trash + "Add

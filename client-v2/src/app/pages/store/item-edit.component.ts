@@ -14,6 +14,7 @@ import { StoreItemService, StoreItemWrite } from '../../core/store/store-item.se
 import { AdminOrgService } from '../../core/admin-org.service';
 import { ConfirmService } from '../../shared/confirm/confirm.service';
 import { CategoryInfo } from '../../shared/catalogue/catalogue.types';
+import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribute-cards.component';
 import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.types';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
@@ -48,7 +49,7 @@ interface ItemForm {
   imports: [
     FormsModule, LucideAngularModule, ToastModule, PageHeroComponent, EditFieldComponent,
     ImageGalleryComponent, ImagePickerComponent, DrawerComponent, ItemApprovalPanelComponent,
-    ItemEditActionsComponent,
+    ItemEditActionsComponent, ItemAttributeCardsComponent,
   ],
   providers: [MessageService],
   template: `
@@ -203,35 +204,10 @@ interface ItemForm {
             </div>
           </div>
 
-          <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — read-only VIEW: each populated group
-               as a ROUNDED CARD (heading + label:value rows) in fixed order; empty
-               groups hidden (Amazon-style, conditional-on-data). -->
+          <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — read-only VIEW: the shared grouped
+               rounded cards + options picklist (same component the quick-view uses). -->
           @if (!editing()) {
-            @for (g of attributeGroups(); track g.key) {
-              <div class="mt-4 rounded-[var(--radius-lg)] border border-hairline bg-surface p-4 shadow-[var(--shadow-md)]">
-                <div class="bp-field-label">{{ g.title }}</div>
-                <dl class="mt-2 grid grid-cols-[140px_minmax(0,1fr)] gap-x-3 gap-y-1.5">
-                  @for (r of g.rows; track $index) {
-                    <dt class="bp-body-small text-secondary">{{ r.label }}</dt>
-                    <dd class="bp-body-small text-text">{{ r.value }}</dd>
-                  }
-                </dl>
-              </div>
-            }
-          }
-          <!-- Options as a "Select one" picklist (shown when populated). Applying the
-               chosen delta to the line price via the SSOT is a noted follow-up. -->
-          @if (itemOptions().length) {
-            <div class="mt-4">
-              <label class="bp-field-label">Options · Select one</label>
-              <select class="bp-input-field mt-1 w-full" [ngModel]="selectedOption()" (ngModelChange)="selectedOption.set($event)">
-                <option value="">Select one…</option>
-                @for (o of itemOptions(); track $index) {
-                  <option [value]="o.name">{{ o.name }}{{ o.price ? ' (+£' + o.price + ')' : ' (Included)' }}</option>
-                }
-              </select>
-              <p class="bp-caption text-secondary mt-1">Selecting an option will adjust the line price (coming soon).</p>
-            </div>
+            <app-item-attribute-cards [attributes]="rawAttributes()" />
           }
 
           <app-item-edit-actions
@@ -372,23 +348,13 @@ export class ItemEditComponent {
     specifications: [], features: [], style: [], measurements: [], materials: [],
   });
   protected readonly priceTiers = signal<{ min: string; max: string; price: string }[]>([]);
-  private readonly rawAttributes = signal<Record<string, unknown>>({});
+  protected readonly rawAttributes = signal<Record<string, unknown>>({});
   protected readonly measureSuggestions = ['Height', 'Width', 'Depth', 'Weight', 'Seat Height', 'Volume', 'Material'];
-  /** Display-only option selection (view picklist) — SSOT price wiring is a follow-up. */
-  protected readonly selectedOption = signal<string>('');
 
-  /** Rows with BOTH a label and a value, for one group — what saves + view shows. */
+  /** Rows with BOTH a label and a value, for one group — what saves on submit. */
   protected filledFor(key: string): { label: string; value: string }[] {
     return (this.groupRows()[key] ?? []).filter((r) => r.label.trim() !== '' && r.value.trim() !== '');
   }
-  /** Populated groups in fixed order — the read-only rounded cards. */
-  protected readonly attributeGroups = computed(() =>
-    this.GROUP_DEF.map((g) => ({ ...g, rows: this.filledFor(g.key) })).filter((g) => g.rows.length),
-  );
-  protected readonly itemOptions = computed(() => {
-    const a = this.rawAttributes();
-    return (Array.isArray(a['options']) ? a['options'] : []) as { name: string; price: number }[];
-  });
 
   // ── Group row editing (generic across the 5 groups) ──────────────────────
   protected addRow(key: string): void {

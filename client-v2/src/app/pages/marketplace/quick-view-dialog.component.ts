@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { DialogModule } from 'primeng/dialog';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
+import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribute-cards.component';
 
 /** pV2 marketplace-redesign — the item Quick View dialog (replaces the right
  *  rail preview). Renders from the already-loaded CatalogueItem: name,
@@ -15,7 +16,7 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 @Component({
   selector: 'app-quick-view-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, RouterLink, LucideAngularModule, DialogModule],
+  imports: [CurrencyPipe, RouterLink, LucideAngularModule, DialogModule, ItemAttributeCardsComponent],
   template: `
     <p-dialog
       [visible]="!!item()"
@@ -66,38 +67,28 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
             }
           </div>
 
-          <!-- Spec cards: MATERIALS maps to Included Services; the rest are
-               not on the list projection yet → Coming soon. -->
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — KEY: Volume pricing (guide tiers);
+               then the shared Options picklist + Show-more spec-group cards. Only
+               renders what's present — no "Coming soon" placeholders. -->
+          @if (tiers().length) {
             <div class="bp-qv-spec">
-              <span class="bp-qv-spec__label"><lucide-icon name="package" [size]="13" /> Materials</span>
-              <p class="bp-qv-spec__val">{{ it.installDescription || 'Coming soon' }}</p>
+              <span class="bp-qv-spec__label"><lucide-icon name="tags" [size]="13" /> Volume pricing</span>
+              <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1.5">
+                @for (t of tiers(); track $index) {
+                  <dt class="bp-body-small text-secondary">{{ t.min }}@if (t.max != null) {–{{ t.max }}} @else {+}</dt>
+                  <dd class="bp-body-small text-text">£{{ t.price }}</dd>
+                }
+              </dl>
             </div>
+          }
+          @if (it.installDescription) {
             <div class="bp-qv-spec">
-              <span class="bp-qv-spec__label"><lucide-icon name="clock" [size]="13" /> Turnaround</span>
-              <p class="bp-qv-spec__val bp-qv-spec__val--soon">Coming soon</p>
+              <span class="bp-qv-spec__label"><lucide-icon name="wrench" [size]="13" /> Included services</span>
+              <p class="bp-qv-spec__val">{{ it.installDescription }}</p>
             </div>
-            <div class="bp-qv-spec">
-              <span class="bp-qv-spec__label"><lucide-icon name="wrench" [size]="13" /> Install and derig</span>
-              <p class="bp-qv-spec__val bp-qv-spec__val--soon">Coming soon</p>
-            </div>
-            <div class="bp-qv-spec">
-              <span class="bp-qv-spec__label"><lucide-icon name="maximize-2" [size]="13" /> Sizing</span>
-              <p class="bp-qv-spec__val bp-qv-spec__val--soon">Coming soon</p>
-            </div>
-          </div>
+          }
 
-          <div class="bp-qv-spec">
-            <span class="bp-qv-spec__label"><lucide-icon name="sparkles" [size]="13" /> Finish</span>
-            <p class="bp-qv-spec__val bp-qv-spec__val--soon">Coming soon</p>
-          </div>
-
-          <div>
-            <span class="bp-field-label">Included</span>
-            <p class="bp-caption mt-1 italic text-secondary">Coming soon</p>
-          </div>
-
-          <p class="bp-caption text-secondary">Availability: Coming soon</p>
+          <app-item-attribute-cards [attributes]="it.attributes ?? null" />
 
           <p class="bp-caption text-secondary">
             Specs are indicative and confirmed by the supplier when you message them. Ballpark estimates
@@ -149,34 +140,7 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
         background: var(--color-fill);
         color: var(--color-text-secondary);
       }
-      .bp-qv-spec {
-        border: 1px solid var(--color-border-hairline);
-        border-radius: var(--radius-lg);
-        padding: 12px 14px;
-        background: var(--color-surface);
-      }
-      .bp-qv-spec__label {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-family: var(--font-body);
-        font-size: var(--text-2xs);
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--color-text-secondary);
-      }
-      .bp-qv-spec__val {
-        margin-top: 6px;
-        font-family: var(--font-body);
-        font-size: var(--text-sm);
-        color: var(--color-text);
-        white-space: pre-line;
-      }
-      .bp-qv-spec__val--soon {
-        color: var(--color-text-secondary);
-        font-style: italic;
-      }
+      /* .bp-qv-spec* now live in global styles.css (shared with the item view). */
     `,
   ],
 })
@@ -187,6 +151,12 @@ export class QuickViewDialogComponent {
   readonly showAdd = input<boolean>(true);
   readonly close = output<void>();
   readonly add = output<string>();
+
+  /** Volume price tiers (guide pricing) — KEY data shown up top. */
+  protected readonly tiers = computed(() => {
+    const a = this.item()?.attributes as Record<string, unknown> | null | undefined;
+    return (a && Array.isArray(a['price_tiers']) ? a['price_tiers'] : []) as { min: number; max: number | null; price: number }[];
+  });
 
   protected onVisible(visible: boolean): void {
     if (!visible) this.close.emit();
