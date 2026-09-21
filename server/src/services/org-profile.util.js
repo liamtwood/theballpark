@@ -2,7 +2,7 @@
 // so the self-serve PUT /api/organisation and the admin PUT /api/admin/orgs/:id
 // use ONE definition (no duplicated field-set logic). camelCase out.
 
-const ORG_PROFILE_SELECT = `SELECT id, name, description, address, city, country, email, phone, ref_prefix, ref_counter,
+const ORG_PROFILE_SELECT = `SELECT id, name, description, website, address, city, country, email, phone, ref_prefix, ref_counter,
        default_vat_pct, default_margin_pct, default_contingency_pct, default_currency,
        logo_url, cover_image_url, images, terms_pdf_url, company_number
   FROM orgs WHERE id = $1 AND deleted_at IS NULL`;
@@ -12,6 +12,7 @@ function toProfile(row) {
     id: row.id,
     name: row.name,
     description: row.description ?? null,
+    website: row.website ?? null,
     address: row.address,
     city: row.city,
     email: row.email,
@@ -42,6 +43,7 @@ function buildOrgUpdate(p) {
   const map = {
     name: p.name,
     description: p.description === '' ? null : p.description,
+    website: p.website === '' ? null : p.website,
     address: p.address,
     city: p.city,
     email: p.email,

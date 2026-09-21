@@ -13,6 +13,7 @@ const { OrganisationUpdateSchema } = require('../schemas/organisation.schema');
 // pV2-ADMIN-ORG-PROFILE-EDIT-01 — projection/mapper/update-builder shared with
 // the admin cross-org PUT (/api/admin/orgs/:id) so the field-set lives once.
 const { ORG_PROFILE_SELECT: SELECT, toProfile, buildOrgUpdate } = require('../services/org-profile.util');
+const { extractOrg } = require('../services/org-import.service');
 
 // GET /api/organisation — the caller's own org profile.
 router.get('/', async (req, res, next) => {
@@ -47,6 +48,19 @@ router.put('/', requireActiveMembership('org.manage_billing'), async (req, res, 
     const fresh = await pool.query(SELECT, [req.user.org_id]);
     res.json(toProfile(fresh.rows[0]));
   } catch (err) { next(err); }
+});
+
+// POST /api/organisation/import-preview — SELF-serve website extraction so an
+// org admin can refresh THEIR OWN profile from its website (Fetch on the Profile
+// editor). Preview only — persists NOTHING; the client applies the returned
+// fields and saves through the normal PUT above. Same org.manage_billing gate as
+// the PUT (Fetch leads to a profile write). NOT the admin cross-org route
+// (/api/v2/org-import/preview stays admin.cross_org_view) — this is own-org only.
+const ImportPreviewBody = z.object({ url: z.string().trim().url() });
+router.post('/import-preview', requireActiveMembership('org.manage_billing'), async (req, res, next) => {
+  const parsed = ImportPreviewBody.safeParse(req.body || {});
+  if (!parsed.success) return res.status(400).json({ error: 'A valid url is required' });
+  try { res.json(await extractOrg(parsed.data.url)); } catch (err) { next(err); }
 });
 
 module.exports = router;

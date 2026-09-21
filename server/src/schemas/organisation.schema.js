@@ -6,6 +6,7 @@ const { z } = require('zod');
 const OrganisationUpdateSchema = z
   .object({
     name: z.string().trim().min(2).max(100).optional(),
+    website: z.string().trim().url().max(1000).optional().or(z.literal('')),
     // pV2-STORE-01 — the "About Us" blurb (also rendered on the shopfront).
     // Nullable to clear; trimmed empty string also clears (handled in route).
     description: z.string().trim().max(5000).nullable().optional(),

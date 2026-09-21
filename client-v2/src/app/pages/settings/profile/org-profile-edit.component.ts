@@ -78,6 +78,16 @@ import { ProfileEditService } from './profile-edit.service';
             <app-save-state-pill [state]="store.saveState()" [idleShowsSaved]="true" />
           </div>
           <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
+            <label class="block sm:col-span-2"><span class="ed-label mb-1.5 block">Website</span>
+              <div class="flex gap-2">
+                <input class="ed-input min-w-0 flex-1" type="url" placeholder="https://example.com"
+                  [disabled]="!store.canEdit()" [ngModel]="store.form().website"
+                  (ngModelChange)="store.patch({ website: $event })" (blur)="store.saveSection('org')" />
+                <button type="button" class="bp-btn-outline shrink-0"
+                  [disabled]="!store.canEdit() || store.fetching() || !store.form().website.trim()"
+                  (click)="store.fetchFromWebsite()">{{ store.fetching() ? 'Fetching…' : 'Fetch' }}</button>
+              </div>
+              <span class="bp-caption text-secondary">Fetch pulls branding + About from the site.</span></label>
             <label class="block"><span class="ed-label mb-1.5 block">Organisation name</span>
               <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().name" (ngModelChange)="store.patch({ name: $event })" (blur)="store.saveSection('org')" /></label>
             <label class="block"><span class="ed-label mb-1.5 block">Company number</span>

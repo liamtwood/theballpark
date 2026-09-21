@@ -6,6 +6,7 @@ import { can } from '../../../core/auth/permissions';
 import { errorDetail } from '../../../core/http-error';
 import { CodelistService } from '../../../core/codelists/codelist.service';
 import { OrgProfile, OrgProfileUpdate, OrganisationService } from '../../../core/organisation.service';
+import { AdminOrgService } from '../../../core/admin-org.service';
 import { GalleryImage, PickerResult, PickerTab } from '../../../core/media/media.types';
 import { MediaService } from '../../../core/media/media.service';
 import { EditFieldOption } from '../../../shared/edit-field/edit-field.component';
@@ -16,6 +17,7 @@ import { SaveState } from '../../../shared/save-state-pill/save-state-pill.compo
 export interface ProfileForm {
   name: string;
   description: string;
+  website: string;
   city: string;
   country: string;
   address: string;
@@ -42,6 +44,7 @@ export class ProfileEditService {
   private readonly toast = inject(MessageService);
   private readonly codelists = inject(CodelistService);
   private readonly auth = inject(AuthService);
+  private readonly adminOrgs = inject(AdminOrgService);
 
   /** pV2-ADMIN-ORG-PROFILE-EDIT-01 — when set, this service targets ANOTHER org
    *  via the admin endpoints (platform admin editing a supplier). Unset = the
@@ -66,6 +69,11 @@ export class ProfileEditService {
   /** Save-on-blur pill state, shared across the editable sections (the standard
    *  app-save-state-pill). */
   readonly saveState = signal<SaveState>('idle');
+
+  /** Fetch-from-website state: in-flight flag + medium-confidence field flags
+   *  ("please check") from the last refresh. */
+  readonly fetching = signal(false);
+  readonly flagged = signal<Set<string>>(new Set());
 
   /** Editable by org admins (mirrors the server PUT gate, org.manage_billing);
    *  AND by a platform admin when targeting another org (admin cross-org edit —
@@ -121,6 +129,7 @@ export class ProfileEditService {
         : section === 'org'
         ? {
             name: f.name,
+            website: f.website.trim(),
             address: f.address,
             city: f.city,
             country: f.country,
@@ -145,6 +154,63 @@ export class ProfileEditService {
     } catch (e) {
       console.warn('[ProfileEdit] save failed', e);
       this.saveState.set('error');
+    }
+  }
+
+  /** Refresh the profile from the org's website (Fetch button). Re-runs the
+   *  org-import preview (self route for own-org; admin route when targeting
+   *  another org — the owner can't call the admin-gated route), then applies the
+   *  non-low extracted fields (branding + About + contact) in ONE save. Medium
+   *  confidence → flag "please check". Country is only applied when it's already
+   *  an ISO alpha-2 (the schema requires it), else left for manual edit. */
+  async fetchFromWebsite(): Promise<void> {
+    if (!this.canEdit() || this.fetching()) return;
+    const url = this.form().website.trim();
+    if (!url) return;
+    this.fetching.set(true);
+    try {
+      const orgId = this.targetOrgId();
+      const { org } = await firstValueFrom(
+        orgId ? this.adminOrgs.importPreview(url) : this.orgs.importPreview(url),
+      );
+      const flags = new Set<string>();
+      const patch: OrgProfileUpdate = {};
+      const take = (key: string, apply: (v: string) => void, flagKey?: string, valid?: (v: string) => boolean) => {
+        const f = org[key];
+        if (!f || f.confidence === 'low' || (valid && !valid(f.value))) return;
+        apply(f.value);
+        if (f.confidence === 'medium' && flagKey) flags.add(flagKey);
+      };
+      take('description', (v) => (patch.description = v), 'description');
+      take('city', (v) => (patch.city = v), 'city');
+      take('country', (v) => (patch.country = v), 'country', (v) => /^[A-Z]{2}$/.test(v));
+      take('address', (v) => (patch.address = v), 'address');
+      take('email', (v) => (patch.email = v), 'email', (v) => v.includes('@'));
+      take('phone', (v) => (patch.phone = v), 'phone');
+      take('logo_url', (v) => (patch.logoUrl = v));
+      take('cover_image_url', (v) => (patch.coverImageUrl = v));
+
+      if (Object.keys(patch).length === 0) {
+        this.toast.add({ severity: 'info', summary: 'Nothing new found on the site.', life: 3000 });
+        return;
+      }
+      this.saveState.set('saving');
+      const fresh = await this.save(patch);
+      this.profile.set(fresh);
+      this.form.set(toForm(fresh));
+      this.refCounter.set(fresh.refCounter);
+      this.flagged.set(flags);
+      this.saveState.set('saved');
+      this.toast.add({
+        severity: 'success',
+        summary: 'Profile refreshed from website' + (flags.size ? ' — please check flagged fields' : ''),
+        life: 3500,
+      });
+    } catch (e) {
+      this.saveState.set('error');
+      this.toast.add({ severity: 'warn', summary: "Couldn't read that site — please try again.", detail: errorDetail(e), life: 5000 });
+    } finally {
+      this.fetching.set(false);
     }
   }
 
@@ -216,6 +282,7 @@ export function toForm(org: OrgProfile | null): ProfileForm {
   return {
     name: org?.name ?? '',
     description: org?.description ?? '',
+    website: org?.website ?? '',
     city: org?.city ?? '',
     country: org?.country ?? '',
     address: org?.address ?? '',

@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
 import { GalleryImage } from './media/media.types';
+import { OrgImportPreview } from './admin-org.service';
 
 /** pV2 Profile — /api/organisation shapes (server: routes/organisation.js). */
 export interface OrgProfile {
@@ -9,6 +10,8 @@ export interface OrgProfile {
   name: string;
   /** "About Us" blurb (pV2-STORE-01) — also rendered on the shopfront. */
   description: string | null;
+  /** The org's own website — the Fetch anchor on the Profile editor. */
+  website: string | null;
   address: string | null;
   city: string | null;
   /** ISO 3166-1 alpha-2 — fed by the `country` codelist (pV2-CODELISTS-02). */
@@ -58,5 +61,11 @@ export class OrganisationService {
 
   updateById(orgId: string, patch: OrgProfileUpdate): Observable<OrgProfile> {
     return this.api.put<OrgProfile>(`/api/admin/orgs/${orgId}`, patch);
+  }
+
+  /** SELF-serve website extraction — refresh the caller's OWN org profile from
+   *  its site (Fetch on the Profile editor). Preview only; persists nothing. */
+  importPreview(url: string): Observable<OrgImportPreview> {
+    return this.api.post<OrgImportPreview>('/api/organisation/import-preview', { url });
   }
 }
