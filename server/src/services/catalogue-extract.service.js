@@ -83,6 +83,43 @@ function toNumber(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+// Canonical dimension labels (aligned to item-edit's measureSuggestions) + the
+// unit suffixes we fold into the value. The extract must write the STRUCTURED
+// shape the editor reads (attributes.dimensions = [{label,value}]), not flat keys.
+const DIM_LABELS = {
+  height: 'Height', width: 'Width', depth: 'Depth', weight: 'Weight',
+  seat_height: 'Seat Height', volume: 'Volume', material: 'Material',
+  length: 'Length', diameter: 'Diameter', back_height: 'Back Height',
+};
+const UNIT_KEY = { cm: 'cm', mm: 'mm', m: 'm', kg: 'kg', g: 'g', l: 'L', ml: 'ml' };
+const humanizeLabel = (s) =>
+  String(s).replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, (c) => c.toUpperCase());
+
+/** Convert the AI's FLAT spec bag → the editor's attributes.dimensions shape:
+ *  [{label, value}], canonical labels where they fit (else humanized raw key),
+ *  with a unit suffix from the key folded into a bare-number value
+ *  (width_cm:39 → {label:'Width', value:'39 cm'}; material:'Wood' → {label:'Material', value:'Wood'}).
+ *  Only a trailing _unit (underscore-separated) is treated as a unit, so 'material'
+ *  isn't mis-split into 'materia'+'l'. */
+function toDimensions(attrs) {
+  if (!attrs || typeof attrs !== 'object') return [];
+  const out = [];
+  for (const [rawKey, rawVal] of Object.entries(attrs)) {
+    if (rawKey.startsWith('_')) continue; // internal (_source)
+    if (rawVal == null || typeof rawVal === 'object') continue; // scalars only
+    const value0 = String(rawVal).trim();
+    if (!value0) continue;
+    let base = rawKey.toLowerCase();
+    let unit = null;
+    const m = base.match(/^(.+)[_-](cm|mm|kg|g|ml|l|m)$/);
+    if (m) { base = m[1]; unit = UNIT_KEY[m[2]] || m[2]; }
+    const label = DIM_LABELS[base] || DIM_LABELS[base.replace(/[_-]/g, '')] || humanizeLabel(base);
+    const value = unit && /^[\d.]+$/.test(value0) ? `${value0} ${unit}` : value0;
+    out.push({ label, value });
+  }
+  return out;
+}
+
 /** The Ballpark top-level catalogue category names (the controlled vocabulary
  *  the extractor maps into). Excludes RLS test fixtures. */
 async function topLevelCategoryNames() {
@@ -153,7 +190,12 @@ async function pull(orgId, urls) {
       if (dupe) { results.push({ url: finalUrl, status: 'skipped', reason: 'already imported', itemId: dupe }); continue; }
 
       // attributes = flat specs + price_tiers + the INTERNAL _source block.
-      const attributes = { ...(p.attributes && typeof p.attributes === 'object' ? p.attributes : {}) };
+      // Write ONLY the structured shapes the item model/UI define — dimensions[]
+      // + price_tiers[] + the internal _source — NOT free-form flat keys (which
+      // the editor ignored, so extracted specs showed as "No dimensions").
+      const attributes = {};
+      const dims = toDimensions(p.attributes);
+      if (dims.length) attributes.dimensions = dims;
       if (Array.isArray(p.priceTiers) && p.priceTiers.length) {
         // Canonical tier shape is { min, max, price } (item-edit + line-pricing).
         // Sort by lower threshold and DERIVE each upper bound from the next tier's
@@ -244,4 +286,4 @@ function pruneNull(obj) {
   return out;
 }
 
-module.exports = { analyse, pull, _internals: { htmlToText, matchCategoryId, toNumber } };
+module.exports = { analyse, pull, _internals: { htmlToText, matchCategoryId, toNumber, toDimensions } };

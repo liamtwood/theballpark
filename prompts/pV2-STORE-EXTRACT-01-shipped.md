@@ -58,6 +58,16 @@ matrices, venues, packages, scheduled/auto refresh, a hard-dedup indexed `source
 
 ## QC iterations
 
+**v2.527 (2026-09-21)** — dimensions shape-conformance: the extract wrote dimensions as FLAT
+attribute keys (attributes.depth_cm / width_cm / material …) but item-edit reads the DEFINED shape
+`attributes.dimensions = [{label,value}]` → captured but ignored ("No dimensions"). Fix: new
+`toDimensions()` converts the AI's flat spec bag → `[{label,value}]` with canonical labels aligned
+to the editor's measureSuggestions (Height/Width/Depth/Weight/Seat Height/Volume/Material; else
+humanized raw key) and the unit folded into the value (width_cm:39 → {Width,"39 cm"}; weight_kg:3.4
+→ {Weight,"3.4 kg"}; material:"Wood" → {Material,"Wood"}). Flat keys dropped; price_tiers[] +
+_source unchanged. The extract now writes the structured shapes the item model already defines.
+Verified toDimensions output on a chair-like bag.
+
 **v2.526 (2026-09-21)** — subcat RESOLVED not flagged; fully automatic at volume (Liam: 100s of
 items, no per-item manual work):
 - Root cause: `classifyItem` did FREE-TEXT name matching (AI says "Chairs", taxonomy child is
