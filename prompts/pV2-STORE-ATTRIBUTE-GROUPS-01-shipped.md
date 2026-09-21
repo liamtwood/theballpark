@@ -41,7 +41,25 @@ groups (groups are hardcoded — the fixed 5 + options).
   editor); a pure read-only item view (e.g. quick-view, which needs attributes added to the list
   projection) would apply conditional-install end-to-end — flagged to d4.
 
-## QC
+## QC iteration — v2.529 (Liam QC on v2.528)
+1. **Editor — all 5 groups editable**: Specifications / Features / Style / Measurements / Materials
+   each render as editable label/value rows (same formatting: label box + value box + trash + "Add
+   <group>"), generic `groupRows` signal + `addRow/removeRow/patchRow`; each saves to
+   `attributes.<key> = [{label,value}]` (legacy `dimensions` dropped; options/_source/price_tiers
+   preserved). Measurements' first Add still seeds H/W/D/Weight.
+2. **View — rounded cards**: each populated group renders as a rounded bordered card (heading +
+   label:value rows) in fixed order; empty groups hidden. Replaces the plain-text sections + the
+   "Coming soon" placeholders with real grouped data.
+3. **View — options picklist**: options render as a "Select one" `<select>` (name + `(+£delta)` /
+   `(Included)`); display-only (SSOT price wiring still the follow-up).
+4. **Layout fix**: the hero + "Edit Product" header + form now share the `--workspace-max` column
+   (hero `align="block"` + `bp-page-body--workspace`, dropped the mismatched `max-w-4xl`) so their
+   left edges line up (project_workspace_layout_reference).
+Note: rounded-card VIEW lives on the item editor's view surface (full attributes load there). The
+marketplace quick-view still uses the list projection — extending it needs attributes on that
+projection+SQL (flagged to d4, awaiting which-surface confirmation).
+
+## QC (v2.528)
 Delete + re-pull the chair → stored `attributes.{measurements,materials,style,features,specifications}`
 + `attributes.options` (7 seat-pad colours, no child rows); editor shows grouped sections + the
 options control; empty groups hidden; Measurements populated (not "No dimensions").

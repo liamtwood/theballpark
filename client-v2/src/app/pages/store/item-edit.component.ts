@@ -52,16 +52,19 @@ interface ItemForm {
   ],
   providers: [MessageService],
   template: `
-    <app-page-hero [back]="heroBack()" [title]="heroTitle()" [subtitle]="heroSubtitle()" />
+    <!-- align="block" + bp-page-body--workspace put the hero, the section header,
+         and the form on the SAME --workspace-max column / left edge (project_workspace
+         _layout_reference); the old max-w-4xl body used a different width → misaligned. -->
+    <app-page-hero align="block" [back]="heroBack()" [title]="heroTitle()" [subtitle]="heroSubtitle()" />
 
-    <div class="bp-page-body">
+    <div class="bp-page-body bp-page-body--workspace">
       @if (loading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
       } @else if (itemRes.error()) {
         <!-- Cross-org / missing id (the API 404/403s) — don't show a blank form. -->
         <p class="bp-body-small text-warn">This item couldn’t be loaded — it may not exist or isn’t yours to view.</p>
       } @else {
-        <div class="mx-auto w-full max-w-4xl">
+        <div class="w-full">
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1.7fr_1fr]">
           <!-- LEFT — item attributes (one per row) + save actions. -->
           <div>
@@ -130,39 +133,33 @@ interface ItemForm {
                 <textarea class="bp-store-textarea mt-1" rows="3" [ngModel]="form().install_description" (ngModelChange)="patch({ install_description: $event })" [readonly]="!editing()" placeholder="What the install covers…"></textarea>
               </div>
 
-              <!-- pV2-STORE-ITEM-MEASURE-VOLUME-01 §B — Dimensions (attributes.dimensions).
-                   Freeform label/value rows; first Add seeds H/W/D/Weight. -->
-              <div>
-                <label class="bp-field-label">Dimensions</label>
-                @if (editing()) {
-                  <datalist id="measure-suggestions">
-                    @for (s of measureSuggestions; track s) { <option [value]="s"></option> }
-                  </datalist>
-                  @for (d of dimensions(); track $index) {
-                    <div class="mt-1.5 flex items-center gap-2">
-                      <input class="bp-input-field flex-1" list="measure-suggestions" placeholder="Label (e.g. Height)"
-                             [value]="d.label" (input)="patchMeasurement($index, 'label', $any($event.target).value)" />
-                      <input class="bp-input-field flex-1" placeholder="Value (e.g. 92 cm)"
-                             [value]="d.value" (input)="patchMeasurement($index, 'value', $any($event.target).value)" />
-                      <button type="button" class="shrink-0 text-muted hover:text-text" (click)="removeMeasurement($index)" aria-label="Remove dimension">
-                        <lucide-icon name="trash-2" [size]="16" />
-                      </button>
-                    </div>
-                  }
-                  <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="addMeasurement()">
-                    <lucide-icon name="plus" [size]="14" /> Add dimensions
-                  </button>
-                } @else if (filledDimensions().length) {
-                  <dl class="mt-1 grid grid-cols-[140px_minmax(0,1fr)] gap-x-3 gap-y-1">
-                    @for (d of filledDimensions(); track $index) {
-                      <dt class="bp-body-small text-secondary">{{ d.label }}</dt>
-                      <dd class="bp-body-small text-text">{{ d.value }}</dd>
+              <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — the 5 descriptive groups, each
+                   editable as label/value rows (same formatting). Edit mode only;
+                   the read-only view renders rounded cards below. -->
+              @if (editing()) {
+                <datalist id="measure-suggestions">
+                  @for (s of measureSuggestions; track s) { <option [value]="s"></option> }
+                </datalist>
+                @for (grp of GROUP_DEF; track grp.key) {
+                  <div>
+                    <label class="bp-field-label">{{ grp.title }}</label>
+                    @for (r of groupRows()[grp.key]; track $index) {
+                      <div class="mt-1.5 flex items-center gap-2">
+                        <input class="bp-input-field flex-1" [attr.list]="grp.key === 'measurements' ? 'measure-suggestions' : null" placeholder="Label"
+                               [value]="r.label" (input)="patchRow(grp.key, $index, 'label', $any($event.target).value)" />
+                        <input class="bp-input-field flex-1" placeholder="Value"
+                               [value]="r.value" (input)="patchRow(grp.key, $index, 'value', $any($event.target).value)" />
+                        <button type="button" class="shrink-0 text-muted hover:text-text" (click)="removeRow(grp.key, $index)" aria-label="Remove row">
+                          <lucide-icon name="trash-2" [size]="16" />
+                        </button>
+                      </div>
                     }
-                  </dl>
-                } @else {
-                  <div class="bp-body-small text-muted">No dimensions</div>
+                    <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="addRow(grp.key)">
+                      <lucide-icon name="plus" [size]="14" /> Add {{ grp.title.toLowerCase() }}
+                    </button>
+                  </div>
                 }
-              </div>
+              }
 
               <!-- §C — Volume pricing (attributes.price_tiers). Min/Max/Price rows;
                    max blank = open top. Card shows "From £{tier-1}". -->
@@ -206,32 +203,33 @@ interface ItemForm {
             </div>
           </div>
 
-          <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — read-only grouped attribute sections
-               (Specifications / Features / Style / Materials — Measurements is the
-               editable section above) + the Options control. Each renders ONLY when
-               populated; empty groups show nothing (Amazon-style, conditional-on-data). -->
-          @for (g of attributeGroups(); track g.key) {
-            <div class="mt-4">
-              <label class="bp-field-label">{{ g.title }}</label>
-              <dl class="mt-1 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-                @for (r of g.rows; track $index) {
-                  <dt class="bp-body-small text-secondary">{{ r.label }}</dt>
-                  <dd class="bp-body-small text-text">{{ r.value }}</dd>
-                }
-              </dl>
-            </div>
+          <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — read-only VIEW: each populated group
+               as a ROUNDED CARD (heading + label:value rows) in fixed order; empty
+               groups hidden (Amazon-style, conditional-on-data). -->
+          @if (!editing()) {
+            @for (g of attributeGroups(); track g.key) {
+              <div class="mt-4 rounded-[var(--radius-lg)] border border-hairline bg-surface p-4 shadow-[var(--shadow-md)]">
+                <div class="bp-field-label">{{ g.title }}</div>
+                <dl class="mt-2 grid grid-cols-[140px_minmax(0,1fr)] gap-x-3 gap-y-1.5">
+                  @for (r of g.rows; track $index) {
+                    <dt class="bp-body-small text-secondary">{{ r.label }}</dt>
+                    <dd class="bp-body-small text-text">{{ r.value }}</dd>
+                  }
+                </dl>
+              </div>
+            }
           }
+          <!-- Options as a "Select one" picklist (shown when populated). Applying the
+               chosen delta to the line price via the SSOT is a noted follow-up. -->
           @if (itemOptions().length) {
             <div class="mt-4">
               <label class="bp-field-label">Options · Select one</label>
-              <ul class="mt-1 flex flex-col">
+              <select class="bp-input-field mt-1 w-full" [ngModel]="selectedOption()" (ngModelChange)="selectedOption.set($event)">
+                <option value="">Select one…</option>
                 @for (o of itemOptions(); track $index) {
-                  <li class="bp-body-small flex items-center justify-between border-b border-hairline py-1">
-                    <span>{{ o.name }}</span>
-                    <span class="text-secondary">{{ o.price ? ('+£' + o.price) : 'Included' }}</span>
-                  </li>
+                  <option [value]="o.name">{{ o.name }}{{ o.price ? ' (+£' + o.price + ')' : ' (Included)' }}</option>
                 }
-              </ul>
+              </select>
               <p class="bp-caption text-secondary mt-1">Selecting an option will adjust the line price (coming soon).</p>
             </div>
           }
@@ -360,38 +358,69 @@ export class ItemEditComponent {
   protected readonly imageDrawer = signal(false);
   protected readonly imageTabs: PickerTab[] = ['upload', 'find'];
 
-  // pV2-STORE-ITEM-MEASURE-VOLUME-01 — editable attributes. `rawAttributes`
-  // preserves keys we don't manage (classifier-written etc.) across save.
-  protected readonly dimensions = signal<{ label: string; value: string }[]>([]);
-  protected readonly priceTiers = signal<{ min: string; max: string; price: string }[]>([]);
-  private readonly rawAttributes = signal<Record<string, unknown>>({});
-  protected readonly measureSuggestions = ['Height', 'Width', 'Depth', 'Weight', 'Seat Height', 'Volume', 'Material'];
-
-  // pV2-STORE-ATTRIBUTE-GROUPS-01 — read-only display of the descriptive groups
-  // the extract/classifier populate (Measurements is the editable section above).
-  // Fixed order; empty groups render nothing (see the template @if).
-  private readonly GROUP_DEF: { key: string; title: string }[] = [
+  // pV2-STORE-ATTRIBUTE-GROUPS-01 — the 5 canonical descriptive groups (fixed
+  // order + keys), each editable as [{label,value}] rows. `rawAttributes` keeps
+  // the keys we don't manage (options, _source, price_tiers) across save.
+  readonly GROUP_DEF: { key: string; title: string }[] = [
     { key: 'specifications', title: 'Specifications' },
     { key: 'features', title: 'Features' },
     { key: 'style', title: 'Style' },
+    { key: 'measurements', title: 'Measurements' },
     { key: 'materials', title: 'Materials' },
   ];
-  protected readonly attributeGroups = computed(() => {
-    const a = this.rawAttributes();
-    return this.GROUP_DEF.map((g) => ({
-      ...g,
-      rows: (Array.isArray(a[g.key]) ? a[g.key] : []) as { label: string; value: string }[],
-    })).filter((g) => g.rows.length);
+  protected readonly groupRows = signal<Record<string, { label: string; value: string }[]>>({
+    specifications: [], features: [], style: [], measurements: [], materials: [],
   });
+  protected readonly priceTiers = signal<{ min: string; max: string; price: string }[]>([]);
+  private readonly rawAttributes = signal<Record<string, unknown>>({});
+  protected readonly measureSuggestions = ['Height', 'Width', 'Depth', 'Weight', 'Seat Height', 'Volume', 'Material'];
+  /** Display-only option selection (view picklist) — SSOT price wiring is a follow-up. */
+  protected readonly selectedOption = signal<string>('');
+
+  /** Rows with BOTH a label and a value, for one group — what saves + view shows. */
+  protected filledFor(key: string): { label: string; value: string }[] {
+    return (this.groupRows()[key] ?? []).filter((r) => r.label.trim() !== '' && r.value.trim() !== '');
+  }
+  /** Populated groups in fixed order — the read-only rounded cards. */
+  protected readonly attributeGroups = computed(() =>
+    this.GROUP_DEF.map((g) => ({ ...g, rows: this.filledFor(g.key) })).filter((g) => g.rows.length),
+  );
   protected readonly itemOptions = computed(() => {
     const a = this.rawAttributes();
     return (Array.isArray(a['options']) ? a['options'] : []) as { name: string; price: number }[];
   });
 
-  /** rawAttributes minus the legacy `dimensions` key (migrated to `measurements`). */
+  // ── Group row editing (generic across the 5 groups) ──────────────────────
+  protected addRow(key: string): void {
+    this.groupRows.update((g) => {
+      const rows = g[key] ?? [];
+      // Measurements' first Add seeds the 4 common labels (fill-in-the-blanks).
+      const next = key === 'measurements' && rows.length === 0
+        ? ['Height', 'Width', 'Depth', 'Weight'].map((label) => ({ label, value: '' }))
+        : [...rows, { label: '', value: '' }];
+      return { ...g, [key]: next };
+    });
+  }
+  protected removeRow(key: string, i: number): void {
+    this.groupRows.update((g) => ({ ...g, [key]: (g[key] ?? []).filter((_, x) => x !== i) }));
+  }
+  protected patchRow(key: string, i: number, field: 'label' | 'value', val: string): void {
+    this.groupRows.update((g) => ({ ...g, [key]: (g[key] ?? []).map((r, x) => (x === i ? { ...r, [field]: val } : r)) }));
+  }
+
+  /** The 5 groups as filled [{label,value}] arrays — written to attributes on save. */
+  private filledGroups(): Record<string, { label: string; value: string }[]> {
+    const out: Record<string, { label: string; value: string }[]> = {};
+    for (const { key } of this.GROUP_DEF) out[key] = this.filledFor(key);
+    return out;
+  }
+
+  /** rawAttributes minus the legacy `dimensions` key (migrated to `measurements`)
+   *  and the 5 group keys (rewritten from the editors) — keeps options/_source/etc. */
   private strippedRawAttributes(): Record<string, unknown> {
-    const { dimensions: _legacy, ...rest } = this.rawAttributes();
-    void _legacy;
+    const { dimensions: _legacy, specifications: _s, features: _f, style: _st,
+      measurements: _m, materials: _mt, ...rest } = this.rawAttributes();
+    void _legacy; void _s; void _f; void _st; void _m; void _mt;
     return rest;
   }
 
@@ -488,12 +517,18 @@ export class ItemEditComponent {
       // pV2-STORE-ITEM-MEASURE-VOLUME-01 — hydrate the attributes editors.
       const attrs = (item.attributes ?? {}) as Record<string, unknown>;
       this.rawAttributes.set(attrs);
-      // pV2-STORE-ATTRIBUTE-GROUPS-01 — Measurements REPLACES the legacy
-      // `dimensions` key; read measurements first, alias old dimensions so
-      // pre-migration items still show (never "No dimensions" for extracted data).
-      const measure = Array.isArray(attrs['measurements']) ? attrs['measurements']
-        : (Array.isArray(attrs['dimensions']) ? attrs['dimensions'] : []);
-      this.dimensions.set((measure as { label?: string; value?: string }[]).map((d) => ({ label: d.label ?? '', value: d.value ?? '' })));
+      // pV2-STORE-ATTRIBUTE-GROUPS-01 — hydrate all 5 group editors. Measurements
+      // REPLACES the legacy `dimensions` key — alias it so pre-migration items
+      // still show (never "No dimensions" for extracted data).
+      const nextGroups: Record<string, { label: string; value: string }[]> = {
+        specifications: [], features: [], style: [], measurements: [], materials: [],
+      };
+      for (const { key } of this.GROUP_DEF) {
+        let src = Array.isArray(attrs[key]) ? attrs[key] : [];
+        if (key === 'measurements' && !src.length && Array.isArray(attrs['dimensions'])) src = attrs['dimensions'];
+        nextGroups[key] = (src as { label?: string; value?: string }[]).map((d) => ({ label: d?.label ?? '', value: d?.value ?? '' }));
+      }
+      this.groupRows.set(nextGroups);
       const tiers = Array.isArray(attrs['price_tiers']) ? (attrs['price_tiers'] as { min?: number; max?: number | null; price?: number }[]) : [];
       this.priceTiers.set(tiers.map((t) => ({
         min: t.min == null ? '' : String(t.min),
@@ -526,25 +561,6 @@ export class ItemEditComponent {
   protected patch(p: Partial<ItemForm>): void {
     this.form.update((f) => ({ ...f, ...p }));
   }
-
-  // ── Dimensions (attributes.dimensions) ──────────────────────────────────
-  /** First add SEEDS the 4 common labels (blank values, fill-in-the-blanks);
-   *  after that, append a blank custom row (pV2-STORE-ITEM-MEASURE-VOLUME-01 §B). */
-  protected addMeasurement(): void {
-    this.dimensions.update((d) =>
-      d.length === 0
-        ? ['Height', 'Width', 'Depth', 'Weight'].map((label) => ({ label, value: '' }))
-        : [...d, { label: '', value: '' }],
-    );
-  }
-  protected removeMeasurement(i: number): void { this.dimensions.update((d) => d.filter((_, x) => x !== i)); }
-  protected patchMeasurement(i: number, key: 'label' | 'value', val: string): void {
-    this.dimensions.update((d) => d.map((row, x) => (x === i ? { ...row, [key]: val } : row)));
-  }
-  /** Only rows with BOTH a label and a value — what saves + what view mode shows. */
-  protected readonly filledDimensions = computed(() =>
-    this.dimensions().filter((d) => d.label.trim() !== '' && d.value.trim() !== ''),
-  );
 
   // ── Volume pricing (attributes.price_tiers) ─────────────────────────────
   protected addTier(): void { this.priceTiers.update((t) => [...t, { min: '', max: '', price: '' }]); }
@@ -618,11 +634,10 @@ export class ItemEditComponent {
       // onto whatever else the bag held (item.service replaces the column, so we
       // must send the full object). Empty rows dropped; tier max '' → null.
       attributes: {
-        // Measurements replaces the legacy `dimensions` key (dropped from the
-        // spread); the other groups (specifications/features/style/materials/
-        // options) + _source ride through untouched (never lose grouped data).
+        // options + _source (+ anything else) ride through; the 5 descriptive
+        // groups are rewritten from the editors; legacy `dimensions` is dropped.
         ...this.strippedRawAttributes(),
-        measurements: this.filledDimensions(),
+        ...this.filledGroups(),
         price_tiers: this.priceTiers()
           .filter((t) => String(t.price).trim() !== '')
           .map((t) => ({
