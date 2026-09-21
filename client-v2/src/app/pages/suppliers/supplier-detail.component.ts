@@ -54,6 +54,11 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
             <a routerLink="/store/items/new" class="bp-btn-grad">
               <lucide-icon name="plus" [size]="15" /> Add product
             </a>
+          } @else if (isPlatformAdmin() && tab() === 'store') {
+            <!-- pV2-ADMIN-ORG-ITEM-CREATE-01 — admin adds a product FOR this org. -->
+            <a [routerLink]="['/admin/orgs', store.pinnedSupplierId(), 'items', 'new']" class="bp-btn-grad">
+              <lucide-icon name="plus" [size]="15" /> Add product
+            </a>
           } @else if (isAgent()) {
             <button
               type="button"
@@ -116,6 +121,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
                 [quoteDraftIds]="favs.quoteDraft()"
                 [showQuickView]="true"
                 [dense]="true"
+                [adminEditOrgId]="isPlatformAdmin() ? store.pinnedSupplierId() : null"
                 (entitySelected)="openQuickView($event)"
                 (quickView)="openQuickView($event)"
                 (favouriteToggled)="favs.toggle('item', $event)"

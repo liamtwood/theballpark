@@ -95,6 +95,19 @@ export class StoreItemService {
     return this.api.put<StoreItem>(`/api/store/items/${id}`, body).pipe(this.bust());
   }
 
+  // pV2-ADMIN-ORG-ITEM-CREATE-01 — platform-admin cross-org item create/edit via
+  // the admin-gated org-scoped endpoints (org from the URL, never the session).
+  // The owner methods above (session-scoped /api/store/items) stay untouched.
+  getForOrg(orgId: string, id: string): Observable<StoreItem> {
+    return this.api.get<StoreItem>(`/api/admin/orgs/${orgId}/items/${id}`);
+  }
+  createForOrg(orgId: string, body: StoreItemWrite): Observable<StoreItem> {
+    return this.api.post<StoreItem>(`/api/admin/orgs/${orgId}/items`, body).pipe(this.bust());
+  }
+  updateForOrg(orgId: string, id: string, body: StoreItemWrite): Observable<StoreItem> {
+    return this.api.put<StoreItem>(`/api/admin/orgs/${orgId}/items/${id}`, body).pipe(this.bust());
+  }
+
   /** pV2-BUILDUP-03 — the item's composition (options/components), same shape the
    *  Customize UI consumes. */
   getComponents(itemId: string): Observable<ComponentsResponse> {

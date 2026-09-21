@@ -7,7 +7,10 @@ const router = require('express').Router();
 const { z } = require('zod');
 const pool = require('../db/pool');
 const OrgService = require('../services/org.service');
+const ItemService = require('../services/item.service');
+const TaxonomyService = require('../services/taxonomy.service');
 const { OrganisationUpdateSchema } = require('../schemas/organisation.schema');
+const { StoreItemCreateSchema, StoreItemUpdateSchema } = require('../schemas/store-item.schema');
 const { ORG_PROFILE_SELECT, toProfile, buildOrgUpdate } = require('../services/org-profile.util');
 
 const CreateBody = z
@@ -88,6 +91,104 @@ router.patch('/:id/active', async (req, res, next) => {
     const org = await OrgService.setActive(req.params.id, parsed.data.active);
     if (!org) return res.status(404).json({ error: 'Not found' });
     res.json(org);
+  } catch (err) { next(err); }
+});
+
+// ── pV2-ADMIN-ORG-ITEM-CREATE-01 — admin cross-org item create/edit ──────────
+// Mirrors store-items.js, but the item's org is :orgId FROM THE URL (never the
+// body/session — that invariant stays sacred on /api/store/items). The admin
+// gate set app.is_admin so RLS permits the cross-org write. ItemService is reused
+// as-is (create takes org_id in its data; the rest key by item id + we assert the
+// item belongs to :orgId). Admin-created items default to PENDING (a) so they run
+// the normal Approvals flow — flip to 'approved' + is_active:true for (b).
+const ADMIN_ITEM_STATUS = 'pending'; // (a) pending — one-line flip to 'approved' for (b)
+
+/** Resolve an item that belongs to :orgId, else 404 (no cross-org existence oracle). */
+async function orgItemOr(res, itemId, orgId) {
+  const item = await ItemService.getById(itemId);
+  if (!item || item.deleted_at || item.org_id !== orgId) {
+    res.status(404).json({ error: 'Not found' });
+    return null;
+  }
+  return item;
+}
+
+// GET /api/admin/orgs/:orgId/items/:itemId — that org's item (for the editor).
+router.get('/:orgId/items/:itemId', async (req, res, next) => {
+  try {
+    const item = await orgItemOr(res, req.params.itemId, req.params.orgId);
+    if (item) res.json(item);
+  } catch (err) { next(err); }
+});
+
+// POST /api/admin/orgs/:orgId/items — create an item FOR :orgId.
+router.post('/:orgId/items', async (req, res, next) => {
+  try {
+    const parsed = StoreItemCreateSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid item' });
+    const item = await ItemService.create({
+      ...parsed.data,
+      org_id: req.params.orgId,                 // from the URL, never the body
+      approval_status: parsed.data.approval_status || ADMIN_ITEM_STATUS,
+      is_active: false,
+    });
+    TaxonomyService.classifyAndApply(item.id).catch((e) =>
+      console.warn('[auto-classify] item', item.id, 'failed:', e.message));
+    res.status(201).json(item);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/admin/orgs/:orgId/items/:itemId — edit that org's item.
+router.put('/:orgId/items/:itemId', async (req, res, next) => {
+  try {
+    const existing = await orgItemOr(res, req.params.itemId, req.params.orgId);
+    if (!existing) return;
+    const parsed = StoreItemUpdateSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid item' });
+    // Approved items: fields editable, photos + status locked (mirrors store-items).
+    if (existing.approval_status === 'approved') {
+      const fields = { ...parsed.data };
+      delete fields.image_url; delete fields.images; delete fields.approval_status; delete fields.is_active;
+      return res.json(await ItemService.update(req.params.itemId, fields));
+    }
+    const item = await ItemService.update(req.params.itemId, {
+      ...parsed.data,
+      approval_status: parsed.data.approval_status || ADMIN_ITEM_STATUS,
+      is_active: false,
+    });
+    res.json(item);
+  } catch (err) { next(err); }
+});
+
+// POST /api/admin/orgs/:orgId/items/:itemId/duplicate — clone within the org.
+router.post('/:orgId/items/:itemId/duplicate', async (req, res, next) => {
+  try {
+    if (!(await orgItemOr(res, req.params.itemId, req.params.orgId))) return;
+    const copy = await ItemService.duplicate(req.params.itemId);
+    if (!copy) return res.status(404).json({ error: 'Not found' });
+    res.status(201).json(copy);
+  } catch (err) { next(err); }
+});
+
+// PATCH /api/admin/orgs/:orgId/items/:itemId/active — publish/hide toggle.
+router.patch('/:orgId/items/:itemId/active', async (req, res, next) => {
+  try {
+    if (typeof req.body?.is_active !== 'boolean') return res.status(400).json({ error: 'is_active (boolean) is required' });
+    const existing = await orgItemOr(res, req.params.itemId, req.params.orgId);
+    if (!existing) return;
+    if (req.body.is_active === true && existing.approval_status !== 'approved') {
+      return res.status(409).json({ error: 'Only approved items can be activated' });
+    }
+    res.json(await ItemService.update(req.params.itemId, { is_active: req.body.is_active }));
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/admin/orgs/:orgId/items/:itemId — soft delete.
+router.delete('/:orgId/items/:itemId', async (req, res, next) => {
+  try {
+    if (!(await orgItemOr(res, req.params.itemId, req.params.orgId))) return;
+    await ItemService.softDelete(req.params.itemId);
+    res.status(204).end();
   } catch (err) { next(err); }
 });
 

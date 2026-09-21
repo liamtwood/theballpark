@@ -27,6 +27,7 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
               [favourited]="favouriteIds().has(item.id)"
               [quoted]="quoteDraftIds().has(item.id)"
               [showQuickView]="showQuickView()"
+              [adminEditOrgId]="adminEditOrgId()"
               (clicked)="entitySelected.emit($event)"
               (favouriteToggled)="favouriteToggled.emit($event)"
               (quoteToggled)="quoteToggled.emit($event)"
@@ -103,6 +104,9 @@ export class CatalogueGridComponent {
   /** Draft-quote item ids (session-local until 06f) — the "+" marks. */
   readonly quoteDraftIds = input<ReadonlySet<string>>(new Set<string>());
   readonly showQuickView = input<boolean>(false);
+  /** pV2-ADMIN-ORG-ITEM-CREATE-01 — passthrough: platform admin editing a
+   *  supplier's items → card click opens the admin editor for that org. */
+  readonly adminEditOrgId = input<string | null>(null);
   readonly entitySelected = output<string>();
   readonly favouriteToggled = output<string>();
   readonly quoteToggled = output<string>();

@@ -232,6 +232,21 @@ export const routes: Routes = [
           import('./pages/store/item-edit.component').then((m) => m.ItemEditComponent),
       },
       {
+        // pV2-ADMIN-ORG-ITEM-CREATE-01 — admin adds a product FOR :orgId
+        // (must precede :id). ItemEditComponent reads :orgId → admin endpoints.
+        path: 'admin/orgs/:orgId/items/new',
+        canActivate: [ballparkAdminGuard],
+        loadComponent: () =>
+          import('./pages/store/item-edit.component').then((m) => m.ItemEditComponent),
+      },
+      {
+        // pV2-ADMIN-ORG-ITEM-CREATE-01 — admin edits :orgId's product.
+        path: 'admin/orgs/:orgId/items/:id',
+        canActivate: [ballparkAdminGuard],
+        loadComponent: () =>
+          import('./pages/store/item-edit.component').then((m) => m.ItemEditComponent),
+      },
+      {
         // Profile — the org's own profile + financial defaults (the v2 port
         // of v1's /settings/organisation; reference consumer of
         // edit-section + page-density edit-field).

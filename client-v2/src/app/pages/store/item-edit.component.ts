@@ -284,9 +284,17 @@ export class ItemEditComponent {
   protected readonly itemId = this.route.snapshot.paramMap.get('id');
   protected readonly isEdit = !!this.itemId;
 
-  /** Moderation mode — a ballpark admin reviewing someone's item. The page is
-   *  read-only (Approve/Reject instead of Save). Suppliers never see this. */
-  protected readonly isModerator = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
+  /** pV2-ADMIN-ORG-ITEM-CREATE-01 — admin editing ANOTHER org's item, scoped by
+   *  the /admin/orgs/:orgId/items route param. When set, load/save go through the
+   *  admin org-scoped endpoints and the page is a normal editor (not moderation). */
+  protected readonly targetOrgId = this.route.snapshot.paramMap.get('orgId');
+
+  /** Moderation mode — a ballpark admin REVIEWING someone's item (Approve/Reject,
+   *  read-only). NOT the admin-create/edit route (targetOrgId) — that's a normal
+   *  editor. Suppliers never see either. */
+  protected readonly isModerator = computed(
+    () => !this.targetOrgId && this.auth.user()?.activeOrgType === 'ballpark'
+  );
   /** Pure view (read-only, Cancel only) — opened with ?view=1 (e.g. an agent
    *  from the marketplace). Ownership-agnostic: the entry point signals intent,
    *  so a supplier viewing someone else's item lands here too. Moderator wins. */
@@ -389,7 +397,8 @@ export class ItemEditComponent {
       // page's lifetime (role/org switch reloads; ?view re-navigates), so it's
       // intentionally not a reactive dep.
       const item = await firstValueFrom(
-        this.isModerator() ? this.store.getForReview(params)
+        this.targetOrgId ? this.store.getForOrg(this.targetOrgId, params)
+        : this.isModerator() ? this.store.getForReview(params)
         : this.isViewer() ? this.store.getPublic(params)
         : this.store.get(params)
       );
@@ -554,14 +563,23 @@ export class ItemEditComponent {
     };
     this.saving.set(true);
     try {
-      if (this.itemId) {
+      if (this.targetOrgId) {
+        // Admin editing another org's catalogue — org-scoped endpoints.
+        if (this.itemId) await firstValueFrom(this.store.updateForOrg(this.targetOrgId, this.itemId, body));
+        else await firstValueFrom(this.store.createForOrg(this.targetOrgId, body));
+      } else if (this.itemId) {
         await firstValueFrom(this.store.update(this.itemId, body));
       } else {
         await firstValueFrom(this.store.create(body));
       }
       this.toast.add({ severity: 'success', summary: successMsg, life: 3000 });
-      const orgId = this.auth.user()?.activeOrgId;
-      void this.router.navigate(orgId ? ['/suppliers', orgId] : ['/store']);
+      // Admin → back to the supplier's Shop tab; owner → their own supplier page.
+      if (this.targetOrgId) {
+        void this.router.navigate(['/suppliers', this.targetOrgId], { queryParams: { tab: 'store' } });
+      } else {
+        const orgId = this.auth.user()?.activeOrgId;
+        void this.router.navigate(orgId ? ['/suppliers', orgId] : ['/store']);
+      }
     } catch (e) {
       this.toast.add({ severity: 'error', summary: "Couldn't save — please try again.", detail: errorDetail(e), life: 5000 });
     } finally {

@@ -209,6 +209,9 @@ export class ItemCardComponent {
   readonly quoted = input<boolean>(false);
   /** Show the "Quick view" link (marketplace browse only). */
   readonly showQuickView = input<boolean>(false);
+  /** pV2-ADMIN-ORG-ITEM-CREATE-01 — when set (platform admin on a supplier's Shop
+   *  tab), a card click opens the admin item EDITOR for that org, not review/QV. */
+  readonly adminEditOrgId = input<string | null>(null);
   readonly clicked = output<string>();
   readonly favouriteToggled = output<string>();
   readonly quoteToggled = output<string>();
@@ -240,6 +243,13 @@ export class ItemCardComponent {
    *  and view for agents. The Edit button below is the owner's explicit edit. */
   protected open(): void {
     const owned = this.item().ownedByActiveOrg;
+    // pV2-ADMIN-ORG-ITEM-CREATE-01 — admin editing a supplier's catalogue: a card
+    // click opens the org-scoped item editor (takes precedence over review/QV).
+    const adminOrg = this.adminEditOrgId();
+    if (adminOrg) {
+      void this.router.navigate(['/admin/orgs', adminOrg, 'items', this.item().id]);
+      return;
+    }
     // BE-00126 — a ballpark admin MODERATES: a card click opens the review page
     // (item-edit moderator mode) so they can Approve/Reject straight from the
     // approvals queue, never the read-only Quick View dead-end. Mirrors the
