@@ -8,6 +8,7 @@ const { z } = require('zod');
 const pool = require('../db/pool');
 const OrgService = require('../services/org.service');
 const ItemService = require('../services/item.service');
+const CatalogueExtract = require('../services/catalogue-extract.service');
 const { OrganisationUpdateSchema } = require('../schemas/organisation.schema');
 const { StoreItemCreateSchema, StoreItemUpdateSchema } = require('../schemas/store-item.schema');
 const { ORG_PROFILE_SELECT, toProfile, buildOrgUpdate } = require('../services/org-profile.util');
@@ -176,6 +177,28 @@ router.delete('/:orgId/items/:itemId', async (req, res, next) => {
     await ItemService.softDelete(req.params.itemId);
     res.status(204).end();
   } catch (err) { next(err); }
+});
+
+// ── pV2-STORE-EXTRACT-01 — website catalogue extract (admin, org-scoped) ──────
+// Analyse is read-only (writes nothing); Pull creates PENDING items on :orgId via
+// ItemService.createForOrg. Inherits the admin gate (authenticate +
+// admin.cross_org_view) from the mount, so it's platform-admin only. org is :orgId
+// from the URL (never the body) — same invariant as the item routes above.
+const ExtractUrlBody = z.object({ url: z.string().trim().url('A valid URL is required') });
+const ExtractPullBody = z.object({ urls: z.array(z.string().trim().url()).min(1).max(40) });
+
+// POST /api/admin/orgs/:orgId/extract/analyse { url } → the read-only report.
+router.post('/:orgId/extract/analyse', async (req, res, next) => {
+  const parsed = ExtractUrlBody.safeParse(req.body || {});
+  if (!parsed.success) return res.status(400).json({ error: 'A valid url is required' });
+  try { res.json(await CatalogueExtract.analyse(parsed.data.url)); } catch (err) { next(err); }
+});
+
+// POST /api/admin/orgs/:orgId/extract/pull { urls[] } → create pending items.
+router.post('/:orgId/extract/pull', async (req, res, next) => {
+  const parsed = ExtractPullBody.safeParse(req.body || {});
+  if (!parsed.success) return res.status(400).json({ error: 'urls (1-40 valid URLs) are required' });
+  try { res.json(await CatalogueExtract.pull(req.params.orgId, parsed.data.urls)); } catch (err) { next(err); }
 });
 
 module.exports = router;

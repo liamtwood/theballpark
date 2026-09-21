@@ -13,6 +13,7 @@ import { CategoryStripComponent } from '../../shared/catalogue/category-strip.co
 import { CatalogueItem, CategoryInfo, SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
 import { StorefrontPanelComponent } from './storefront-panel.component';
 import { OrgProfileEditComponent } from '../settings/profile/org-profile-edit.component';
+import { WebsiteImportPanelComponent } from './website-import-panel.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 
@@ -37,6 +38,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
     QuickViewDialogComponent,
     StorefrontPanelComponent,
     OrgProfileEditComponent,
+    WebsiteImportPanelComponent,
   ],
   providers: [MarketplaceStore],
   /* Both tabs are viewport-fit: the hero + Storefront/Store toggle stay
@@ -94,6 +96,12 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
             (subcategorySelected)="openStoreSubcat($event)"
           />
         } @else {
+          <!-- pV2-STORE-EXTRACT-01 — admin-only "Import from website" (Analyse →
+               Pull). Items land pending → Approvals. -->
+          @if (isPlatformAdmin() && store.pinnedSupplierId(); as orgId) {
+            <app-website-import-panel [orgId]="orgId" (pulled)="store.reloadItems()" />
+          }
+
           <!-- STORE — the SHARED marketplace workspace, pinned to this supplier.
                Same chrome as the global + in-project marketplace; the controls
                self-hide the Items|Suppliers type + supplier filter when pinned. -->

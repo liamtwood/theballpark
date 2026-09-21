@@ -269,12 +269,13 @@ function pinnedGet(u, ip) {
   });
 }
 
-// ── guarded fetch + extract ──────────────────────────────────────────────────
-/** Fetch the ROOT of the host (JSON-LD Organization is site-level + stable),
- *  SSRF-guarded + IP-pinned, with a timeout, redirect cap, and body-size cap. */
-async function extractOrg(inputUrl) {
-  const first = await assertSafeUrl(inputUrl);
-  let current = first.url.origin + '/';
+// ── guarded fetch ─────────────────────────────────────────────────────────────
+/** GET the EXACT `inputUrl` (path preserved), SSRF-guarded + IP-pinned, with a
+ *  timeout, redirect cap, and body-size cap — every hop is re-vetted + re-pinned.
+ *  Returns { finalUrl, html }. The one guarded-fetch primitive: extractOrg fetches
+ *  the host root through it; the catalogue extract fetches product/listing pages. */
+async function guardedFetch(inputUrl) {
+  let current = (await assertSafeUrl(inputUrl)).url.toString();
   let res;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     const { url, ip } = await assertSafeUrl(current); // (re-)vet + pin every hop
@@ -289,12 +290,23 @@ async function extractOrg(inputUrl) {
   if (!res || res.status < 200 || res.status >= 300) {
     throw httpErr(`Site returned ${res ? res.status : 'no response'}`, 502);
   }
-  return parseOrgFromHtml(res.html, { isHomepage: true, url: first.url.origin });
+  return { finalUrl: current, html: res.html };
+}
+
+// ── extract ───────────────────────────────────────────────────────────────────
+/** Fetch the ROOT of the host (JSON-LD Organization is site-level + stable) via
+ *  the shared guarded fetch, then parse the org fields. */
+async function extractOrg(inputUrl) {
+  const origin = safeOrigin(inputUrl);
+  if (!origin) throw httpErr('Invalid URL', 400);
+  const { html } = await guardedFetch(origin + '/');
+  return parseOrgFromHtml(html, { isHomepage: true, url: origin });
 }
 
 module.exports = {
   extractOrg,
   parseOrgFromHtml,
+  guardedFetch,
   // exported for unit tests
   _internals: { extractJsonLdBlocks, flattenGraph, findOrgNode, extractMeta, assertSafeUrl, isPrivateIp },
 };

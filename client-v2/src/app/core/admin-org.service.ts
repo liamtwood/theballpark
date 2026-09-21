@@ -51,8 +51,39 @@ export interface OrgImportPreview {
   source: { jsonLd: boolean; og: boolean };
 }
 
+/** pV2-STORE-EXTRACT-01 — the ANALYSE report (read-only). */
+export interface ExtractReport {
+  url: string;
+  pageShape: 'detail' | 'listing' | 'marketing' | string;
+  verdict: string;
+  pullable?: boolean;
+  estimatedItems?: number | null;
+  mapped?: {
+    categories?: string[];
+    itemCount?: number | null;
+    hasPrice?: boolean;
+    hasVolumeTiers?: boolean;
+    hasOptions?: boolean;
+    hasSku?: boolean;
+    knownAttributes?: string[];
+  };
+  alsoFound?: string[];
+  sample?: Record<string, unknown> | null;
+  productLinks?: string[];
+  raw_response?: string;
+}
+
+/** pV2-STORE-EXTRACT-01 — the PULL summary. */
+export interface PullResult {
+  created: number;
+  skipped: number;
+  failed: number;
+  results: Array<{ url: string; status: 'created' | 'skipped' | 'error'; reason?: string; itemId?: string; name?: string; optionCount?: number }>;
+}
+
 /** Admin-only org management (server: /api/admin/orgs, gated admin.cross_org_view)
- *  + the website-import preview (/api/v2/org-import/preview). */
+ *  + the website-import preview (/api/v2/org-import/preview) + the catalogue
+ *  extract (Analyse → Pull, /api/admin/orgs/:id/extract/*). */
 @Injectable({ providedIn: 'root' })
 export class AdminOrgService {
   private readonly api = inject(ApiService);
@@ -77,5 +108,15 @@ export class AdminOrgService {
   /** Preview-only extraction from a vendor website (BE-00127 slice 3). */
   importPreview(url: string): Observable<OrgImportPreview> {
     return this.api.post<OrgImportPreview>('/api/v2/org-import/preview', { url });
+  }
+
+  /** ANALYSE (read-only) — a report on what's pull-able from a supplier page. */
+  extractAnalyse(orgId: string, url: string): Observable<ExtractReport> {
+    return this.api.post<ExtractReport>(`/api/admin/orgs/${orgId}/extract/analyse`, { url });
+  }
+
+  /** PULL — create pending items on the org from these product URLs. */
+  extractPull(orgId: string, urls: string[]): Observable<PullResult> {
+    return this.api.post<PullResult>(`/api/admin/orgs/${orgId}/extract/pull`, { urls });
   }
 }

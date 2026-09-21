@@ -60,31 +60,28 @@ Return exactly:
   ]
 }`;
 
-async function parseBrief(rawBriefText) {
+// ── shared guided-Haiku call ─────────────────────────────────────────────────
+// One place for the Anthropic Haiku + JSON-out plumbing: guided SYSTEM prompt,
+// maxRetries:8 (rides out transient 429/5xx/529 overloads), JSON.parse with a
+// markdown-fence fallback, and the 503 mapping for overloads. Reused by the
+// inbox brief parser AND the catalogue extract (analyse + pull). Returns
+// { parsed, raw } — parsed is null when the model didn't return usable JSON.
+async function callHaikuJson({ system, user, maxTokens = 2000 }) {
   if (!process.env.ANTHROPIC_API_KEY) {
     const err = new Error('ANTHROPIC_API_KEY is not configured');
     err.status = 500;
     throw err;
   }
-
   const Anthropic = require('@anthropic-ai/sdk');
-  // v1.49f — maxRetries 8 (was 4): rides out transient 429 / 5xx / 529
-  // overloads with exponential backoff. 4 wasn't always enough to
-  // outlast an Anthropic overload window before the call failed.
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 8 });
 
   let message;
   try {
     message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2000,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `Scope this event brief into production categories:\n\n${rawBriefText}`,
-        },
-      ],
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: 'user', content: user }],
     });
   } catch (e) {
     const status = e && e.status;
@@ -98,13 +95,29 @@ async function parseBrief(rawBriefText) {
     throw e;
   }
 
-  const responseText = message.content[0].text;
+  const raw = message.content[0].text;
+  try {
+    return { parsed: JSON.parse(raw), raw };
+  } catch {
+    const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      try { return { parsed: JSON.parse(jsonMatch[1].trim()), raw }; } catch { /* fall through */ }
+    }
+    return { parsed: null, raw };
+  }
+}
+
+async function parseBrief(rawBriefText) {
+  const { parsed, raw: responseText } = await callHaikuJson({
+    system: SYSTEM_PROMPT,
+    user: `Scope this event brief into production categories:\n\n${rawBriefText}`,
+    maxTokens: 2000,
+  });
 
   // v1.39d — log what Haiku returns so we can verify mapping
   // gaps against what hits the create payload. Truncated to keep
   // server logs readable; full body is in the API response.
-  try {
-    const parsed = JSON.parse(responseText);
+  if (parsed) {
 
     // v1.51b — formatting cleanup: strip any bullet residue / stray line
     // breaks the model leaves in oneLiners + summary, so the brief reads
@@ -144,13 +157,65 @@ async function parseBrief(rawBriefText) {
       }, null, 2)
     );
     return parsed;
-  } catch {
-    const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[1].trim());
-    }
-    return { raw_response: responseText };
   }
+  // callHaikuJson already tried the markdown-fence fallback; nothing usable.
+  return { raw_response: responseText };
 }
 
-module.exports = { parseBrief };
+// ── pV2-STORE-EXTRACT-01 — website catalogue extract (Analyse → Pull) ─────────
+// Two guided-Haiku steps over the visible text of ONE supplier page, reusing the
+// callHaikuJson plumbing above. "Guided by our schema, honest about everything
+// else": look for what Ballpark expects, MENTION whatever else is on the page.
+
+const ANALYSE_SYSTEM = `You are a catalogue analyst for Ballpark, an event-production marketplace. You are given the visible text (and some link hrefs) of ONE web page from a supplier's website. Return ONLY valid JSON — no markdown, no backticks.
+
+Ballpark holds SUPPLIERS with ITEMS. An item has: name, price (ex-VAT), description, category + subcategory, unit, optional volume price tiers, optional single-group options (e.g. colour/size choices), known attributes (e.g. dimensions), and a supplier item id / SKU. Categories are event-production areas (furniture, AV, catering, print, lighting, staffing, floral, venues, logistics, decor, ...).
+
+Analyse this page, GUIDED BY that schema but HONEST about everything else:
+1. Classify the page shape: "detail" (one product), "listing" (a category/collection linking to product pages), or "marketing" (no structured catalogue — homepage/solutions/portfolio).
+2. Verdict: if pull-able, say roughly how many items and which categories; if not, "no catalogue — onboard manually" and why.
+3. mapped: what MAPS to Ballpark — categories seen, item count, whether per-item price (ex-VAT) is present, whether volume tiers are present, whether options are present, which known attributes are present, whether a supplier item id / SKU is present.
+4. alsoFound: EVERYTHING else on the page that does NOT fit the schema above — every attribute, spec, feature or concept you notice (e.g. venue capacity, packages/bundles, multi-dimension variant matrices, delivery terms, certifications, minimum order). Nothing dropped — this is how we learn what to build next.
+5. sample: ONE item fully parsed (name, price, short description, attributes{}, sku) so the reviewer can judge extraction quality. Null if marketing.
+6. productLinks: on a LISTING page, the product-detail URLs visible (absolute or relative), so they can be pulled. Empty otherwise.
+
+Return exactly:
+{ "pageShape":"detail|listing|marketing", "verdict":"one honest sentence", "pullable": true, "estimatedItems": 0, "mapped": { "categories":[], "itemCount": 0, "hasPrice": false, "hasVolumeTiers": false, "hasOptions": false, "hasSku": false, "knownAttributes":[] }, "alsoFound":[], "sample": null, "productLinks":[] }`;
+
+const PULL_SYSTEM = `You are a catalogue extractor for Ballpark. Given the visible text (and link hrefs) of ONE product page, extract the product as JSON. Return ONLY valid JSON — no markdown, no backticks.
+
+Rules:
+- base_price is EX-VAT, a plain number (strip currency symbols/VAT). If a range or "from £X", use the lowest as base_price and note the rest in attributes.
+- description: clean prose, 1-4 sentences, no bullets/markdown/line-breaks.
+- attributes: a FLAT key:value bag of every spec (dimensions, material, colour, capacity, weight, power, seats, etc.). Keys short snake_case, values strings. Do NOT invent.
+- priceTiers: volume/quantity price breaks if present: [{ "minQty": 10, "price": 8.5 }]. Empty if none.
+- options: a SINGLE group of choices if present (e.g. colours, finishes): [{ "name": "Red", "upcharge": 0 }] (0 when included). Empty if none. If MULTIPLE independent option groups exist, put only the FIRST here and list the other group names in attributes.other_option_groups.
+- unit: how it's sold — 'each' | 'day' | 'hour' | 'head' (per guest) | 'm2' etc. Default 'each'.
+- Map to these REAL fields when present (else null): install_description (setup/delivery/installation services offered, prose), install_cost (number, ex-VAT), lead_time_days (number).
+- images: image URLs for THIS product (absolute or relative) — the main product photos, not logos/icons.
+- Supplier identity (capture ALL that appear, else null): sku (product code/SKU), product_id (numeric/internal id, incl. in the URL), supplier_ref (any other stable reference).
+
+Return exactly:
+{ "name":"", "base_price": null, "description":"", "unit":"each", "category": null, "install_description": null, "install_cost": null, "lead_time_days": null, "attributes": {}, "priceTiers":[], "options":[], "images":[], "sku": null, "product_id": null, "supplier_ref": null }`;
+
+/** ANALYSE (read-only): a structured report on ONE page's catalogue-worthiness. */
+async function analyseCatalogue(pageText, url) {
+  const { parsed, raw } = await callHaikuJson({
+    system: ANALYSE_SYSTEM,
+    user: `Source URL: ${url}\n\nPage content:\n${pageText}`,
+    maxTokens: 2000,
+  });
+  return parsed || { pageShape: 'marketing', verdict: 'Could not analyse this page automatically.', pullable: false, mapped: {}, alsoFound: [], sample: null, productLinks: [], raw_response: raw };
+}
+
+/** PULL: extract ONE product from a detail page into the item shape. */
+async function extractProduct(pageText, url) {
+  const { parsed, raw } = await callHaikuJson({
+    system: PULL_SYSTEM,
+    user: `Source URL: ${url}\n\nProduct page content:\n${pageText}`,
+    maxTokens: 2000,
+  });
+  return parsed || { raw_response: raw };
+}
+
+module.exports = { parseBrief, callHaikuJson, analyseCatalogue, extractProduct };

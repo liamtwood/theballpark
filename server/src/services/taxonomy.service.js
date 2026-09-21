@@ -727,7 +727,7 @@ Score items and propose if needed.`
       supplier_id:      it.org_id,
       supplier_name:    it.supplier_name,
       subcategory_name: it.subcategory_name || null,
-      image_url:        it.image_url || it.external_url || null,
+      image_url:        it.image_url || null, // NOT external_url — that's the product-page URL (pV2-STORE-EXTRACT-01), never an image
       image_display:    it.image_display || null,
       score:            Math.max(1, Math.min(10, Number(m.score) || 0)),
       reason:           m.reason || ''
