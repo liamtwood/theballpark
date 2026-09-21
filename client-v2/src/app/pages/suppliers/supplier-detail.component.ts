@@ -73,24 +73,21 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
            lives on /settings/profile, so the toggle hides and Store shows. -->
       @if (!isOwner()) {
         <div class="flex justify-center px-6 pt-4">
-          <app-tab-band [tabs]="tabs" [active]="tab()" (activeChange)="setTab($event)" />
+          <app-tab-band [tabs]="tabs()" [active]="tab()" (activeChange)="setTab($event)" />
         </div>
       }
 
-      <div class="bp-page-body" [class.overflow-y-auto]="tab() === 'storefront'">
-        @if (tab() === 'storefront') {
-          @if (isPlatformAdmin()) {
-            <!-- pV2-ADMIN-ORG-PROFILE-EDIT-01 — a platform admin edits this org's
-                 profile in place (save-on-blur); everyone else sees the read-only
-                 storefront panel. -->
-            <app-org-profile-edit [orgId]="store.pinnedSupplierId()" />
-          } @else {
-            <app-storefront-panel
-              [supplier]="sup"
-              [subcategories]="subcats.value() ?? []"
-              (subcategorySelected)="openStoreSubcat($event)"
-            />
-          }
+      <div class="bp-page-body" [class.overflow-y-auto]="tab() !== 'store'">
+        @if (tab() === 'profile') {
+          <!-- Profile — editable org editor (save-on-blur). Owner/admin only. -->
+          <app-org-profile-edit [orgId]="store.pinnedSupplierId()" />
+        } @else if (tab() === 'storefront') {
+          <!-- Shopfront — the read-only public brand page, for everyone. -->
+          <app-storefront-panel
+            [supplier]="sup"
+            [subcategories]="subcats.value() ?? []"
+            (subcategorySelected)="openStoreSubcat($event)"
+          />
         } @else {
           <!-- STORE — the SHARED marketplace workspace, pinned to this supplier.
                Same chrome as the global + in-project marketplace; the controls
@@ -156,21 +153,32 @@ export class SupplierDetailComponent {
   /** The SAME store class the marketplace provides — pinned via :id. */
   protected readonly store = inject(MarketplaceStore);
 
-  // pV2-ADMIN-ORGS — label-only rename (keys/URL ?tab= values unchanged to keep
-  // deep links working): Storefront→Profile, Store→Shopfront.
-  protected readonly tabs: TabBandTab[] = [
-    { key: 'storefront', label: 'Profile' },
-    { key: 'store', label: 'Shopfront' },
-  ];
+  // pV2-SUPPLIER-TABS-3-01 — three surfaces: Profile (editable, owner/admin only),
+  // Shopfront (read-only public brand page, everyone), My Shop/Shop (items grid).
+  // Items label is "My Shop" for the owner, "Shop" for admin/agents.
+  protected readonly tabs = computed<TabBandTab[]>(() => {
+    const items: TabBandTab = { key: 'store', label: this.isOwner() ? 'My Shop' : 'Shop' };
+    const shopfront: TabBandTab = { key: 'storefront', label: 'Shopfront' };
+    return this.isOwner() || this.isPlatformAdmin()
+      ? [{ key: 'profile', label: 'Profile' }, shopfront, items]
+      : [shopfront, items];
+  });
 
   private readonly query = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
   });
 
-  /** The owner has no Storefront tab — their shop is items-only, so force Store. */
-  protected readonly tab = computed(() =>
-    this.isOwner() || this.query().get('tab') === 'store' ? 'store' : 'storefront'
-  );
+  /** Active tab. Owner's own page is items-only (no band) → 'store', unchanged.
+   *  Non-owner: explicit ?tab= wins (profile falls back to storefront for
+   *  non-admins who have no editable surface); default landing = profile for a
+   *  platform admin, else the public storefront (pV2-SUPPLIER-TABS-3-01). */
+  protected readonly tab = computed(() => {
+    if (this.isOwner()) return 'store';
+    const q = this.query().get('tab');
+    if (q === 'store' || q === 'storefront') return q;
+    if (q === 'profile') return this.isPlatformAdmin() ? 'profile' : 'storefront';
+    return this.isPlatformAdmin() ? 'profile' : 'storefront';
+  });
 
   /** Back walks the drill in reverse (QC): Store → Storefront (same route,
    *  params cleared by the hero's plain routerLink) → wherever you came from.
@@ -203,9 +211,10 @@ export class SupplierDetailComponent {
   /** Platform admin (ballpark) — edits this org's Profile tab in place. */
   protected readonly isPlatformAdmin = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
 
-  /** Hero eyebrow (uppercased by the hero) — "My Shop" for the owner, else the
-   *  public "Storefront". Mirrors the "Supplier workspace" eyebrow on overview. */
-  protected readonly heroEyebrow = computed(() => (this.isOwner() ? 'My Shop' : 'Storefront'));
+  /** Hero eyebrow (uppercased by the hero) — "My Shop" for the owner, else a
+   *  stable "Supplier" (the three tabs now name the surface; a fixed "Storefront"
+   *  eyebrow read oddly above a Profile/Shopfront/Shop band). */
+  protected readonly heroEyebrow = computed(() => (this.isOwner() ? 'My Shop' : 'Supplier'));
 
   /** The storefront's subcat-card grid rows (pV2-CARDS-01 QC #5). */
   protected readonly subcats = resource({
@@ -214,10 +223,12 @@ export class SupplierDetailComponent {
   });
 
   protected setTab(tab: string): void {
+    // Explicit key for all three surfaces (profile / storefront / store) so deep
+    // links are unambiguous; clear the store's cat/item drill on tab switch.
     this.router
       .navigate([], {
         relativeTo: this.route,
-        queryParams: { tab: tab === 'store' ? 'store' : null, cat: null, item: null },
+        queryParams: { tab, cat: null, item: null },
         queryParamsHandling: 'merge',
       })
       .catch((err) => console.warn('[SupplierDetail] navigation failed', err));
