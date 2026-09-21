@@ -15,7 +15,6 @@ const { z } = require('zod');
 const router = require('express').Router();
 const { requireActiveMembership } = require('../middleware/require-active-membership');
 const ItemService = require('../services/item.service');
-const TaxonomyService = require('../services/taxonomy.service');
 const { StoreItemCreateSchema, StoreItemUpdateSchema } = require('../schemas/store-item.schema');
 
 router.use(requireActiveMembership('item.create'));
@@ -87,22 +86,13 @@ router.post('/', async (req, res, next) => {
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid item' });
     }
-    const item = await ItemService.create({
-      ...parsed.data,
-      org_id: req.user.org_id,      // sacred — session only, never the body
-      // Supplier-set status only (draft|pending; default draft). An item is not
-      // live until a ballpark admin approves it.
-      approval_status: parsed.data.approval_status || 'draft',
-      is_active: false,
+    // org_id is SESSION-ONLY here (never the body); the shared write-policy +
+    // auto-classify live in item.service.createForOrg (one definition).
+    const item = await ItemService.createForOrg({
+      data: parsed.data,
+      orgId: req.user.org_id,
+      defaultStatus: 'draft',
     });
-    // pV2-STORE-IMPORT — lazy auto-classify: derive subcat + tags in the
-    // background, once, on create. Fire-and-forget + error-swallowed so a
-    // classifier hiccup (missing key / AI error) never breaks item create. Runs
-    // internally here (already authenticated + org-scoped), not via the route.
-    // Tier is NOT set by the classifier; nothing is surfaced in the UI yet.
-    TaxonomyService.classifyAndApply(item.id).catch((e) =>
-      console.warn('[auto-classify] item', item.id, 'failed:', e.message)
-    );
     res.status(201).json(item);
   } catch (err) { next(err); }
 });
@@ -118,26 +108,8 @@ router.put('/:id', async (req, res, next) => {
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid item' });
     }
-    // Approved items ARE editable (Liam 2026-07-08) but photos are locked —
-    // only the field values change; the item stays approved + live (no
-    // re-review) and its photos/status are untouched. New images need
-    // moderation, so they can't be added to a live item.
-    if (existing.approval_status === 'approved') {
-      const fields = { ...parsed.data };
-      delete fields.image_url;
-      delete fields.images;
-      delete fields.approval_status;
-      delete fields.is_active;
-      const item = await ItemService.update(req.params.id, fields);
-      return res.json(item);
-    }
-    // Non-approved: editing re-enters the draft/pending flow; an item goes
-    // offline until a ballpark admin re-approves it.
-    const item = await ItemService.update(req.params.id, {
-      ...parsed.data,
-      approval_status: parsed.data.approval_status || 'draft',
-      is_active: false,
-    });
+    // Shared edit policy (approved-lock vs re-enter draft/pending) in one place.
+    const item = await ItemService.applyEdit(existing, parsed.data, { defaultStatus: 'draft' });
     res.json(item);
   } catch (err) { next(err); }
 });

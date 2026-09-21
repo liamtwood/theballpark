@@ -8,7 +8,6 @@ const { z } = require('zod');
 const pool = require('../db/pool');
 const OrgService = require('../services/org.service');
 const ItemService = require('../services/item.service');
-const TaxonomyService = require('../services/taxonomy.service');
 const { OrganisationUpdateSchema } = require('../schemas/organisation.schema');
 const { StoreItemCreateSchema, StoreItemUpdateSchema } = require('../schemas/store-item.schema');
 const { ORG_PROFILE_SELECT, toProfile, buildOrgUpdate } = require('../services/org-profile.util');
@@ -121,42 +120,29 @@ router.get('/:orgId/items/:itemId', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// POST /api/admin/orgs/:orgId/items — create an item FOR :orgId.
+// POST /api/admin/orgs/:orgId/items — create an item FOR :orgId. org from the
+// URL (never the body); shared write-policy + auto-classify in item.service.
 router.post('/:orgId/items', async (req, res, next) => {
   try {
     const parsed = StoreItemCreateSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid item' });
-    const item = await ItemService.create({
-      ...parsed.data,
-      org_id: req.params.orgId,                 // from the URL, never the body
-      approval_status: parsed.data.approval_status || ADMIN_ITEM_STATUS,
-      is_active: false,
+    const item = await ItemService.createForOrg({
+      data: parsed.data,
+      orgId: req.params.orgId,
+      defaultStatus: ADMIN_ITEM_STATUS,
     });
-    TaxonomyService.classifyAndApply(item.id).catch((e) =>
-      console.warn('[auto-classify] item', item.id, 'failed:', e.message));
     res.status(201).json(item);
   } catch (err) { next(err); }
 });
 
-// PUT /api/admin/orgs/:orgId/items/:itemId — edit that org's item.
+// PUT /api/admin/orgs/:orgId/items/:itemId — edit that org's item (shared policy).
 router.put('/:orgId/items/:itemId', async (req, res, next) => {
   try {
     const existing = await orgItemOr(res, req.params.itemId, req.params.orgId);
     if (!existing) return;
     const parsed = StoreItemUpdateSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid item' });
-    // Approved items: fields editable, photos + status locked (mirrors store-items).
-    if (existing.approval_status === 'approved') {
-      const fields = { ...parsed.data };
-      delete fields.image_url; delete fields.images; delete fields.approval_status; delete fields.is_active;
-      return res.json(await ItemService.update(req.params.itemId, fields));
-    }
-    const item = await ItemService.update(req.params.itemId, {
-      ...parsed.data,
-      approval_status: parsed.data.approval_status || ADMIN_ITEM_STATUS,
-      is_active: false,
-    });
-    res.json(item);
+    res.json(await ItemService.applyEdit(existing, parsed.data, { defaultStatus: ADMIN_ITEM_STATUS }));
   } catch (err) { next(err); }
 });
 

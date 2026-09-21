@@ -420,4 +420,50 @@ async function statusCountsForOrg(orgId) {
   };
 }
 
-module.exports = { getAll, getById, getTagsByCategory, countsByCategory, create, update, softDelete, duplicate, listComponents, saveComponents, listOptions, statusCountsForOrg };
+// ── Shared item WRITE-POLICY (one definition) ────────────────────────────────
+// The status/is_active rules for creating + editing an item live HERE so the
+// session-scoped store route and the admin org-scoped route can't drift. The
+// routes keep their own trust boundary (org source, schema parse, ownership 404);
+// only the policy + the auto-classify side-effect move in. Callers pass their two
+// knobs: the org id and the default approval_status.
+
+/** Create an item for `orgId`. approval_status defaults to `defaultStatus`
+ *  (store: 'draft'; admin: 'pending'); is_active is forced false (an item only
+ *  goes live when a ballpark admin approves it). Fires the lazy auto-classify. */
+async function createForOrg({ data, orgId, defaultStatus }) {
+  const item = await create({
+    ...data,
+    org_id: orgId, // sacred — from the caller (session or :orgId), never the body
+    approval_status: data.approval_status || defaultStatus,
+    is_active: false,
+  });
+  // pV2-STORE-IMPORT — lazy auto-classify: derive subcat + tags once on create.
+  // Lazy require avoids any require cycle; fire-and-forget + error-swallowed so a
+  // classifier hiccup (missing key / AI error) never breaks item create.
+  require('./taxonomy.service').classifyAndApply(item.id).catch((e) =>
+    console.warn('[auto-classify] item', item.id, 'failed:', e.message)
+  );
+  return item;
+}
+
+/** Edit an already-resolved, caller-owned item (`existing`; the route did the
+ *  404/ownership check). Approved items: fields editable but photos + status
+ *  LOCKED (no re-review, stays live). Non-approved: editing re-enters the
+ *  draft/pending flow and the item goes offline until re-approved. */
+async function applyEdit(existing, data, { defaultStatus }) {
+  if (existing.approval_status === 'approved') {
+    const fields = { ...data };
+    delete fields.image_url;
+    delete fields.images;
+    delete fields.approval_status;
+    delete fields.is_active;
+    return update(existing.id, fields);
+  }
+  return update(existing.id, {
+    ...data,
+    approval_status: data.approval_status || defaultStatus,
+    is_active: false,
+  });
+}
+
+module.exports = { getAll, getById, getTagsByCategory, countsByCategory, create, update, softDelete, duplicate, listComponents, saveComponents, listOptions, statusCountsForOrg, createForOrg, applyEdit };
