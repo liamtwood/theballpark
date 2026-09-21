@@ -49,4 +49,14 @@ export class OrganisationService {
   update(patch: OrgProfileUpdate): Observable<OrgProfile> {
     return this.api.put<OrgProfile>('/api/organisation', patch);
   }
+
+  // pV2-ADMIN-ORG-PROFILE-EDIT-01 — platform-admin cross-org profile
+  // read/write via the admin-gated endpoints (same OrgProfile shape).
+  getById(orgId: string): Observable<OrgProfile> {
+    return this.api.get<OrgProfile>(`/api/admin/orgs/${orgId}`);
+  }
+
+  updateById(orgId: string, patch: OrgProfileUpdate): Observable<OrgProfile> {
+    return this.api.put<OrgProfile>(`/api/admin/orgs/${orgId}`, patch);
+  }
 }

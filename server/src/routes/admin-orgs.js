@@ -5,7 +5,10 @@
 // Liam's mechanism call.
 const router = require('express').Router();
 const { z } = require('zod');
+const pool = require('../db/pool');
 const OrgService = require('../services/org.service');
+const { OrganisationUpdateSchema } = require('../schemas/organisation.schema');
+const { ORG_PROFILE_SELECT, toProfile, buildOrgUpdate } = require('../services/org-profile.util');
 
 const CreateBody = z
   .object({
@@ -32,12 +35,37 @@ router.get('/', async (_req, res, next) => {
   try { res.json(await OrgService.getAllForAdmin()); } catch (err) { next(err); }
 });
 
-// GET /api/admin/orgs/:id
+// GET /api/admin/orgs/:id — the org's editable profile (camelCase OrgProfile
+// shape, same as GET /api/organisation), for the admin profile editor.
 router.get('/:id', async (req, res, next) => {
   try {
-    const org = await OrgService.getById(req.params.id);
-    if (!org) return res.status(404).json({ error: 'Not found' });
-    res.json(org);
+    const r = await pool.query(ORG_PROFILE_SELECT, [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json(toProfile(r.rows[0]));
+  } catch (err) { next(err); }
+});
+
+// PUT /api/admin/orgs/:id — admin edits ANOTHER org's profile (pV2-ADMIN-ORG-
+// PROFILE-EDIT-01). Same OrganisationUpdateSchema + field-set as the self-serve
+// PUT /api/organisation, keyed by :id. The admin.cross_org_view gate set the
+// app.is_admin GUC, so RLS orgs_self permits the cross-org write.
+router.put('/:id', async (req, res, next) => {
+  const parsed = OrganisationUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+  }
+  try {
+    const { sets, vals } = buildOrgUpdate(parsed.data);
+    if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
+    vals.push(req.params.id);
+    const upd = await pool.query(
+      `UPDATE orgs SET ${sets.join(', ')}, updated_at = NOW()
+        WHERE id = $${vals.length} AND deleted_at IS NULL RETURNING id`,
+      vals,
+    );
+    if (!upd.rows.length) return res.status(404).json({ error: 'Not found' });
+    const fresh = await pool.query(ORG_PROFILE_SELECT, [req.params.id]);
+    res.json(toProfile(fresh.rows[0]));
   } catch (err) { next(err); }
 });
 

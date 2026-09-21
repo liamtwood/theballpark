@@ -10,39 +10,9 @@ const { z } = require('zod');
 const pool = require('../db/pool');
 const { requireActiveMembership } = require('../middleware/require-active-membership');
 const { OrganisationUpdateSchema } = require('../schemas/organisation.schema');
-
-/** Shared projection — explicit columns, camelCase out. */
-const SELECT = `SELECT id, name, description, address, city, country, email, phone, ref_prefix, ref_counter,
-       default_vat_pct, default_margin_pct, default_contingency_pct, default_currency,
-       logo_url, cover_image_url, images, terms_pdf_url, company_number
-  FROM orgs WHERE id = $1 AND deleted_at IS NULL`;
-
-function toProfile(row) {
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description ?? null,
-    address: row.address,
-    city: row.city,
-    email: row.email,
-    phone: row.phone,
-    country: row.country,
-    refPrefix: row.ref_prefix,
-    refCounter: Number(row.ref_counter ?? 0),
-    defaultCurrency: row.default_currency ?? 'GBP',
-    defaultVatPct: Number(row.default_vat_pct ?? 0),
-    defaultMarginPct: Number(row.default_margin_pct ?? 0),
-    defaultContingencyPct: Number(row.default_contingency_pct ?? 0),
-    // pV2-MEDIA-01d — branding.
-    logoUrl: row.logo_url ?? null,
-    coverImageUrl: row.cover_image_url ?? null,
-    images: Array.isArray(row.images) ? row.images : [],
-    // pV2-BUILDUP-04 — standard T&C PDF (SOW Annex A).
-    termsPdfUrl: row.terms_pdf_url ?? null,
-    // pV2-BUILDUP-04 — agency company number (SOW Supplier line).
-    companyNumber: row.company_number ?? null,
-  };
-}
+// pV2-ADMIN-ORG-PROFILE-EDIT-01 — projection/mapper/update-builder shared with
+// the admin cross-org PUT (/api/admin/orgs/:id) so the field-set lives once.
+const { ORG_PROFILE_SELECT: SELECT, toProfile, buildOrgUpdate } = require('../services/org-profile.util');
 
 // GET /api/organisation — the caller's own org profile.
 router.get('/', async (req, res, next) => {
@@ -64,41 +34,7 @@ router.put('/', requireActiveMembership('org.manage_billing'), async (req, res, 
         details: z.flattenError(parsed.error).fieldErrors,
       });
     }
-    const p = parsed.data;
-    const map = {
-      name: p.name,
-      description: p.description === '' ? null : p.description,
-      address: p.address,
-      city: p.city,
-      email: p.email,
-      phone: p.phone,
-      ref_prefix: p.refPrefix === '' ? null : p.refPrefix,
-      country: p.country === '' ? null : p.country,
-      default_currency: p.defaultCurrency,
-      default_vat_pct: p.defaultVatPct,
-      default_margin_pct: p.defaultMarginPct,
-      default_contingency_pct: p.defaultContingencyPct,
-      // pV2-MEDIA-01d — branding URLs (nullable to clear).
-      logo_url: p.logoUrl,
-      cover_image_url: p.coverImageUrl,
-      // pV2-BUILDUP-04 — standard T&C PDF (nullable to clear).
-      terms_pdf_url: p.termsPdfUrl,
-      // pV2-BUILDUP-04 — agency company number.
-      company_number: p.companyNumber === '' ? null : p.companyNumber,
-    };
-    const sets = [];
-    const vals = [];
-    for (const [col, val] of Object.entries(map)) {
-      if (val !== undefined) {
-        vals.push(val);
-        sets.push(`${col} = $${vals.length}`);
-      }
-    }
-    // images is jsonb — serialize + cast (pg would bind a JS array as a PG array).
-    if (p.images !== undefined) {
-      vals.push(JSON.stringify(p.images));
-      sets.push(`images = $${vals.length}::jsonb`);
-    }
+    const { sets, vals } = buildOrgUpdate(parsed.data);
     if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
     vals.push(req.user.org_id);
     const r = await pool.query(

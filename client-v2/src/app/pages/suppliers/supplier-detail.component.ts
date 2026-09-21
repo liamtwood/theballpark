@@ -12,6 +12,7 @@ import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.co
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
 import { CatalogueItem, CategoryInfo, SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
 import { StorefrontPanelComponent } from './storefront-panel.component';
+import { OrgProfileEditComponent } from '../settings/profile/org-profile-edit.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 
@@ -35,6 +36,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
     MarketplaceWorkspaceComponent,
     QuickViewDialogComponent,
     StorefrontPanelComponent,
+    OrgProfileEditComponent,
   ],
   providers: [MarketplaceStore],
   /* Both tabs are viewport-fit: the hero + Storefront/Store toggle stay
@@ -77,11 +79,18 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
 
       <div class="bp-page-body" [class.overflow-y-auto]="tab() === 'storefront'">
         @if (tab() === 'storefront') {
-          <app-storefront-panel
-            [supplier]="sup"
-            [subcategories]="subcats.value() ?? []"
-            (subcategorySelected)="openStoreSubcat($event)"
-          />
+          @if (isPlatformAdmin()) {
+            <!-- pV2-ADMIN-ORG-PROFILE-EDIT-01 — a platform admin edits this org's
+                 profile in place (save-on-blur); everyone else sees the read-only
+                 storefront panel. -->
+            <app-org-profile-edit [orgId]="store.pinnedSupplierId()" />
+          } @else {
+            <app-storefront-panel
+              [supplier]="sup"
+              [subcategories]="subcats.value() ?? []"
+              (subcategorySelected)="openStoreSubcat($event)"
+            />
+          }
         } @else {
           <!-- STORE — the SHARED marketplace workspace, pinned to this supplier.
                Same chrome as the global + in-project marketplace; the controls
@@ -191,6 +200,8 @@ export class SupplierDetailComponent {
 
   /** Wishlist (favourite) is a buyer action — agency viewers only. */
   protected readonly isAgent = computed(() => this.auth.user()?.activeOrgType === 'agency');
+  /** Platform admin (ballpark) — edits this org's Profile tab in place. */
+  protected readonly isPlatformAdmin = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
 
   /** Hero eyebrow (uppercased by the hero) — "My Shop" for the owner, else the
    *  public "Storefront". Mirrors the "Supplier workspace" eyebrow on overview. */

@@ -43,10 +43,17 @@ export class ProfileEditService {
   private readonly codelists = inject(CodelistService);
   private readonly auth = inject(AuthService);
 
-  /** The org profile — resource per the v2 fetch-into-state standard. */
-  readonly profile = resource<OrgProfile, void>({
-    loader: async () => {
-      const org = await firstValueFrom(this.orgs.get());
+  /** pV2-ADMIN-ORG-PROFILE-EDIT-01 — when set, this service targets ANOTHER org
+   *  via the admin endpoints (platform admin editing a supplier). Unset = the
+   *  caller's own org (the /settings/profile owner path, unchanged). */
+  readonly targetOrgId = signal<string | null>(null);
+
+  /** The org profile — resource per the v2 fetch-into-state standard. Reloads
+   *  when targetOrgId changes (admin opening a supplier's Profile tab). */
+  readonly profile = resource<OrgProfile, string | null>({
+    params: () => this.targetOrgId(),
+    loader: async ({ params: orgId }) => {
+      const org = await firstValueFrom(orgId ? this.orgs.getById(orgId) : this.orgs.get());
       this.form.set(toForm(org));
       this.refCounter.set(org.refCounter);
       return org;
@@ -60,9 +67,20 @@ export class ProfileEditService {
    *  app-save-state-pill). */
   readonly saveState = signal<SaveState>('idle');
 
-  /** Editable only by org admins (mirrors the server's PUT gate,
-   *  org.manage_billing); non-admins see the fields read-only. */
-  readonly canEdit = computed(() => can(this.auth.role(), 'org.manage_billing'));
+  /** Editable by org admins (mirrors the server PUT gate, org.manage_billing);
+   *  AND by a platform admin when targeting another org (admin cross-org edit —
+   *  the server admin.cross_org_view gate authorises the write). Non-admins see
+   *  the fields read-only. */
+  readonly canEdit = computed(
+    () => can(this.auth.role(), 'org.manage_billing')
+      || (!!this.targetOrgId() && this.auth.user()?.activeOrgType === 'ballpark'),
+  );
+
+  /** Route saves to the admin endpoint when targeting another org, else self. */
+  private save(patch: OrgProfileUpdate) {
+    const orgId = this.targetOrgId();
+    return firstValueFrom(orgId ? this.orgs.updateById(orgId, patch) : this.orgs.update(patch));
+  }
 
   // ── Codelist-fed selects (RP-04: no inline arrays) ────────────────────────
   private readonly countryRes = resource({ loader: () => this.codelists.list('country') });
@@ -119,7 +137,7 @@ export class ProfileEditService {
             defaultContingencyPct: Number(f.contingency) || 0,
           };
     try {
-      const fresh = await firstValueFrom(this.orgs.update(patch));
+      const fresh = await this.save(patch);
       this.profile.set(fresh);
       this.form.set(toForm(fresh));
       this.refCounter.set(fresh.refCounter);
@@ -182,7 +200,7 @@ export class ProfileEditService {
 
   private async saveMedia(patch: OrgProfileUpdate, summary: string): Promise<void> {
     try {
-      const fresh = await firstValueFrom(this.orgs.update(patch));
+      const fresh = await this.save(patch);
       this.profile.set(fresh);
       this.form.set(toForm(fresh));
       this.refCounter.set(fresh.refCounter);
