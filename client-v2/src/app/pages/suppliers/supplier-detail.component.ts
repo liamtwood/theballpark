@@ -147,9 +147,11 @@ export class SupplierDetailComponent {
   /** The SAME store class the marketplace provides — pinned via :id. */
   protected readonly store = inject(MarketplaceStore);
 
+  // pV2-ADMIN-ORGS — label-only rename (keys/URL ?tab= values unchanged to keep
+  // deep links working): Storefront→Profile, Store→Shopfront.
   protected readonly tabs: TabBandTab[] = [
-    { key: 'storefront', label: 'Storefront' },
-    { key: 'store', label: 'Store' },
+    { key: 'storefront', label: 'Profile' },
+    { key: 'store', label: 'Shopfront' },
   ];
 
   private readonly query = toSignal(this.route.queryParamMap, {

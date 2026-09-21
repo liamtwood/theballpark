@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
@@ -163,7 +164,10 @@ const emptyForm = (): CreateOrgInput => ({
                 <!-- The scroll area — only this scrolls. -->
                 <div class="min-h-0 flex-1 overflow-y-auto">
                   @for (o of filtered(); track o.id) {
-                    <div class="grid grid-cols-[1fr_100px_120px_100px_120px] items-center gap-x-3 border-b border-hairline px-4 py-2">
+                    <div class="grid grid-cols-[1fr_100px_120px_100px_120px] items-center gap-x-3 border-b border-hairline px-4 py-2"
+                      [class.bp-orgrow--clickable]="isSupplier(o)"
+                      [attr.role]="isSupplier(o) ? 'button' : null" [attr.tabindex]="isSupplier(o) ? 0 : null"
+                      (click)="openOrg(o)" (keydown.enter)="openOrg(o)">
                       <div class="min-w-0">
                         <div class="bp-body-small truncate font-medium">{{ o.name }}</div>
                         @if (o.website) { <div class="bp-caption truncate text-secondary">{{ o.website }}</div> }
@@ -178,10 +182,10 @@ const emptyForm = (): CreateOrgInput => ({
                       <div class="flex justify-end">
                         @if (o.is_active) {
                           <button type="button" class="bp-orgact bp-orgact--suspend" [disabled]="busyId() === o.id"
-                            (click)="suspend(o)">Suspend</button>
+                            (click)="suspend(o); $event.stopPropagation()">Suspend</button>
                         } @else {
                           <button type="button" class="bp-orgact bp-orgact--activate" [disabled]="busyId() === o.id"
-                            (click)="activate(o)">Activate</button>
+                            (click)="activate(o); $event.stopPropagation()">Activate</button>
                         }
                       </div>
                     </div>
@@ -210,12 +214,15 @@ const emptyForm = (): CreateOrgInput => ({
     .bp-orgact--suspend { background: var(--color-danger-soft); color: var(--color-danger); }
     .bp-orgact--activate { background: var(--color-success-soft); color: var(--color-success); }
     .bp-row--selected { background: var(--color-fill); }
+    .bp-orgrow--clickable { cursor: pointer; }
+    .bp-orgrow--clickable:hover { background: var(--color-fill); }
   `],
 })
 export class OrgsAdminComponent {
   private readonly svc = inject(AdminOrgService);
   private readonly toast = inject(MessageService);
   private readonly confirm = inject(ConfirmService);
+  private readonly router = inject(Router);
 
   protected readonly typeOptions = TYPE_OPTIONS;
   protected readonly statusOptions = STATUS_OPTIONS;
@@ -264,6 +271,16 @@ export class OrgsAdminComponent {
 
   protected typeLabel(t: string): string {
     return normType(t) === 'ballpark' ? 'Ballpark' : t;
+  }
+
+  /** Only supplier rows navigate — /suppliers/:id (supplier-detail) assumes a
+   *  supplier/storefront; agency/ballpark rows would hit "Supplier not found". */
+  protected isSupplier(o: AdminOrg): boolean {
+    return normType(o.type) === 'supplier';
+  }
+
+  protected openOrg(o: AdminOrg): void {
+    if (this.isSupplier(o)) void this.router.navigate(['/suppliers', o.id]);
   }
 
   private async load(): Promise<void> {
