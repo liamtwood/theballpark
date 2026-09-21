@@ -58,6 +58,18 @@ matrices, venues, packages, scheduled/auto refresh, a hard-dedup indexed `source
 
 ## QC iterations
 
+**v2.525 (2026-09-21)** — post re-pull (item 981f9411 verified: image, category, tiers, options,
+dimensions all correct). Two follow-ups:
+1. **Subcategory** — the classifier resolved the category (Furniture & Fixtures) but the AI didn't
+   pick a subcategory, and `applyClassification` then cleared `pending_classification` → a silent
+   category-only item. Fix in `classifyAndApply`: when a category is applied but NO subcategory was
+   picked AND that category HAS live subcategories, re-flag `pending_classification` (with
+   `needs_subcategory`) so an admin completes it — an item lands cat+subcat or is flagged, never
+   silently category-only. (F&F does have subcats — the POC chair carried one — so this is the path.)
+2. **Gallery images** — nudged the pull prompt to capture ALL of a product's photos (angles/variants,
+   1-4), hero first, still excluding logos/other-product thumbnails (was often returning just the hero).
+Verified: the categorised pending chair matches the admin Shop browse (shows in the yahire Shop tab).
+
 **v2.523 (2026-09-21)** — extraction-quality + visibility batch (Yahire chiavari chair QC):
 1. **Images** — `htmlToText` stripped `<img>`, so the AI never saw image URLs (items had no
    photo). Now collects `<img src>` + lazy attrs (`data-src`/`data-lazy`/`data-original`) +

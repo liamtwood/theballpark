@@ -193,7 +193,7 @@ Rules:
 - unit: how it's sold — 'each' | 'day' | 'hour' | 'head' (per guest) | 'm2' etc. Default 'each'.
 - category: pick the SINGLE best-fit Ballpark category — use EXACTLY one of the category strings listed in the user message (verbatim); null only if none genuinely fit. (E.g. a chiavari chair → "Furniture & Fixtures".)
 - Map to these REAL fields when present (else null): install_description (setup/delivery/installation services offered, prose), install_cost (number, ex-VAT), lead_time_days (number).
-- images: pick the main product photos for THIS product from the IMAGES ON PAGE list — not logos, icons, sprites, or thumbnails of other products. Hero photo first.
+- images: from the IMAGES ON PAGE list, pick ALL photos of THIS product (every angle/variant/close-up shown — usually 1-4), hero photo FIRST. Exclude logos, icons, sprites, and thumbnails of OTHER products.
 - Supplier identity (capture ALL that appear, else null): sku (product code/SKU), product_id (numeric/internal id, incl. in the URL), supplier_ref (any other stable reference).
 
 Return exactly:

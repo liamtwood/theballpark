@@ -481,6 +481,23 @@ async function classifyAndApply(itemId) {
     subcategory_id: suggestion.subcategory_id,
     tag_ids: (suggestion.tags || []).map((t) => t.tag_id),
   });
+  // pV2-STORE-EXTRACT-01 — an item should land cat+subcat, or be FLAGGED for
+  // review — never a silent category-only. When a category was applied but the
+  // classifier couldn't pick a subcategory AND that category HAS live
+  // subcategories, re-flag pending_classification (applyClassification cleared
+  // it) so an admin completes the subcat. ownerPool: fire-and-forget, no GUCs.
+  if (suggestion.category_id && !suggestion.subcategory_id) {
+    const kids = await ownerPool.query(
+      `SELECT 1 FROM categories WHERE parent_id = $1 AND is_active = true AND deleted_at IS NULL LIMIT 1`,
+      [suggestion.category_id]
+    );
+    if (kids.rows.length) {
+      await ownerPool.query(
+        'UPDATE items SET pending_classification = $1, updated_at = NOW() WHERE id = $2',
+        [JSON.stringify({ ...suggestion, needs_subcategory: true }), itemId]
+      );
+    }
+  }
   return suggestion;
 }
 
