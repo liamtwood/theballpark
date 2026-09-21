@@ -187,9 +187,15 @@ const PULL_SYSTEM = `You are a catalogue extractor for Ballpark. Given the visib
 Rules:
 - base_price is EX-VAT, a plain number (strip currency symbols/VAT). If a range or "from £X", use the lowest as base_price and note the rest in attributes.
 - description: clean prose, 1-4 sentences, no bullets/markdown/line-breaks.
-- attributes: a FLAT key:value bag of every spec (dimensions, material, colour, capacity, weight, power, seats, etc.). Keys short snake_case, values strings. Do NOT invent.
+- attributes: route EVERY spec you find into ONE of these 5 groups BY MEANING (never invent). Each group is an array of {"label","value"}:
+    • measurements — physical measures; INCLUDE the unit in the value (e.g. {"label":"Width","value":"39 cm"}, {"label":"Weight","value":"3.4 kg"}).
+    • materials — what it's made of (Material, Composition, Band Material, Crystal…).
+    • style — how it looks (Colour as info, Shape, Finish, Pattern…).
+    • features — capabilities (Stackable, Water Resistant, Foldable, Movement Type…).
+    • specifications — general specs AND the CATCH-ALL for anything that fits no other group (so nothing is lost).
+  Omit a group or use [] when it has nothing.
 - priceTiers: volume/quantity price breaks if present, ONE object per tier: [{ "min": 1, "max": 49, "price": 3.75 }, { "min": 50, "max": 99, "price": 3.40 }, { "min": 100, "max": null, "price": 2.99 }]. min = that tier's LOWER quantity threshold — DISTINCT per tier (1, then 50, then 100 — never 1 for all); max = its upper bound (null for the final open-ended tier); price = the ex-VAT unit price at that quantity. Empty if none.
-- options: a SINGLE group of choices if present (e.g. colours, finishes): [{ "name": "Red", "upcharge": 0 }] (0 when included). Empty if none. If MULTIPLE independent option groups exist, put only the FIRST here and list the other group names in attributes.other_option_groups.
+- options: selectable priced CHOICES if the page has a variant/colour/size selector: [{ "name": "Medium Orange", "price": 0 }] — price is the ADDITIVE delta ex-VAT (0 when included). Empty if none. Flatten multiple groups into descriptive names (e.g. "Medium Orange", "Large Black").
 - unit: how it's sold — 'each' | 'day' | 'hour' | 'head' (per guest) | 'm2' etc. Default 'each'.
 - category: pick the SINGLE best-fit Ballpark category — use EXACTLY one of the category strings listed in the user message (verbatim); null only if none genuinely fit. (E.g. a chiavari chair → "Furniture & Fixtures".)
 - Map to these REAL fields when present (else null): install_description (setup/delivery/installation services offered, prose), install_cost (number, ex-VAT), lead_time_days (number).
@@ -197,7 +203,7 @@ Rules:
 - Supplier identity (capture ALL that appear, else null): sku (product code/SKU), product_id (numeric/internal id, incl. in the URL), supplier_ref (any other stable reference).
 
 Return exactly:
-{ "name":"", "base_price": null, "description":"", "unit":"each", "category": null, "install_description": null, "install_cost": null, "lead_time_days": null, "attributes": {}, "priceTiers":[], "options":[], "images":[], "sku": null, "product_id": null, "supplier_ref": null }`;
+{ "name":"", "base_price": null, "description":"", "unit":"each", "category": null, "install_description": null, "install_cost": null, "lead_time_days": null, "attributes": { "specifications":[], "features":[], "style":[], "measurements":[], "materials":[] }, "priceTiers":[], "options":[], "images":[], "sku": null, "product_id": null, "supplier_ref": null }`;
 
 /** ANALYSE (read-only): a structured report on ONE page's catalogue-worthiness. */
 async function analyseCatalogue(pageText, url) {

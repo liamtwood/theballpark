@@ -95,29 +95,64 @@ const UNIT_KEY = { cm: 'cm', mm: 'mm', m: 'm', kg: 'kg', g: 'g', l: 'L', ml: 'ml
 const humanizeLabel = (s) =>
   String(s).replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, (c) => c.toUpperCase());
 
-/** Convert the AI's FLAT spec bag → the editor's attributes.dimensions shape:
- *  [{label, value}], canonical labels where they fit (else humanized raw key),
- *  with a unit suffix from the key folded into a bare-number value
- *  (width_cm:39 → {label:'Width', value:'39 cm'}; material:'Wood' → {label:'Material', value:'Wood'}).
- *  Only a trailing _unit (underscore-separated) is treated as a unit, so 'material'
- *  isn't mis-split into 'materia'+'l'. */
-function toDimensions(attrs) {
-  if (!attrs || typeof attrs !== 'object') return [];
-  const out = [];
-  for (const [rawKey, rawVal] of Object.entries(attrs)) {
-    if (rawKey.startsWith('_')) continue; // internal (_source)
-    if (rawVal == null || typeof rawVal === 'object') continue; // scalars only
-    const value0 = String(rawVal).trim();
-    if (!value0) continue;
-    let base = rawKey.toLowerCase();
-    let unit = null;
-    const m = base.match(/^(.+)[_-](cm|mm|kg|g|ml|l|m)$/);
-    if (m) { base = m[1]; unit = UNIT_KEY[m[2]] || m[2]; }
-    const label = DIM_LABELS[base] || DIM_LABELS[base.replace(/[_-]/g, '')] || humanizeLabel(base);
-    const value = unit && /^[\d.]+$/.test(value0) ? `${value0} ${unit}` : value0;
-    out.push({ label, value });
+// The 5 canonical descriptive groups (fixed order + keys) — pV2-STORE-ATTRIBUTE-GROUPS-01.
+const GROUP_KEYS = ['specifications', 'features', 'style', 'measurements', 'materials'];
+const emptyGroups = () => ({ specifications: [], features: [], style: [], measurements: [], materials: [] });
+
+const cleanRow = (r) => {
+  if (!r || typeof r !== 'object') return null;
+  const label = String(r.label ?? '').trim();
+  const value = String(r.value ?? '').trim();
+  return label && value ? { label, value } : null;
+};
+
+/** {rawKey,rawVal} → {label,value,unit}: canonical label where it fits (else
+ *  humanized key), with a trailing _unit folded into a bare-number value
+ *  (width_cm:39 → 'Width','39 cm'). Only underscore-separated units count, so
+ *  'material' isn't mis-split into 'materia'+'l'. */
+function toRow(rawKey, rawVal) {
+  const value0 = String(rawVal).trim();
+  let base = String(rawKey).toLowerCase();
+  let unit = null;
+  const m = base.match(/^(.+)[_-](cm|mm|kg|g|ml|l|m)$/);
+  if (m) { base = m[1]; unit = UNIT_KEY[m[2]] || m[2]; }
+  const label = DIM_LABELS[base] || DIM_LABELS[base.replace(/[_-]/g, '')] || humanizeLabel(base);
+  const value = unit && /^[\d.]+$/.test(value0) ? `${value0} ${unit}` : value0;
+  return { label, value, unit };
+}
+
+/** Heuristic group for a flat key/label (fallback only — when the AI returned a
+ *  flat bag rather than the grouped shape). Mirrors the prompt's routing table. */
+function classifyGroup(rawKey, label, unit) {
+  const s = `${rawKey} ${label}`.toLowerCase();
+  if (unit || /\b(height|width|depth|length|weight|diameter|volume|capacity|size|seat\s*height|dimension)\b/.test(s)) return 'measurements';
+  if (/material|composition|fabric|wood|metal|crystal|leather|upholster/.test(s)) return 'materials';
+  if (/colou?r|finish|shape|style|pattern|dial/.test(s)) return 'style';
+  if (/stackable|water|movement|foldable|feature|resistant|waterproof|rechargeable|dimmable|adjustable/.test(s)) return 'features';
+  return 'specifications';
+}
+
+/** Route the AI's attributes into the 5 canonical groups. Primary path: the AI
+ *  returns grouped {measurements:[{label,value}], …} — normalise each. Fallback:
+ *  a flat key:value bag → heuristically route each into a group (unit-folded). */
+function routeAttributes(aiAttrs) {
+  const groups = emptyGroups();
+  if (!aiAttrs || typeof aiAttrs !== 'object') return groups;
+  const grouped = GROUP_KEYS.some((k) => Array.isArray(aiAttrs[k]));
+  if (grouped) {
+    for (const k of GROUP_KEYS) {
+      if (Array.isArray(aiAttrs[k])) groups[k] = aiAttrs[k].map(cleanRow).filter(Boolean);
+    }
+    return groups;
   }
-  return out;
+  for (const [rawKey, rawVal] of Object.entries(aiAttrs)) {
+    if (rawKey.startsWith('_')) continue;
+    if (rawVal == null || typeof rawVal === 'object') continue;
+    if (String(rawVal).trim() === '') continue;
+    const row = toRow(rawKey, rawVal);
+    groups[classifyGroup(rawKey, row.label, row.unit)].push({ label: row.label, value: row.value });
+  }
+  return groups;
 }
 
 /** The Ballpark top-level catalogue category names (the controlled vocabulary
@@ -189,13 +224,18 @@ async function pull(orgId, urls) {
       const dupe = await findExisting(orgId, finalUrl, sku);
       if (dupe) { results.push({ url: finalUrl, status: 'skipped', reason: 'already imported', itemId: dupe }); continue; }
 
-      // attributes = flat specs + price_tiers + the INTERNAL _source block.
-      // Write ONLY the structured shapes the item model/UI define — dimensions[]
-      // + price_tiers[] + the internal _source — NOT free-form flat keys (which
-      // the editor ignored, so extracted specs showed as "No dimensions").
+      // attributes = the canonical groups (pV2-STORE-ATTRIBUTE-GROUPS-01) +
+      // options {name,price} + price_tiers[] + the INTERNAL _source block. Each
+      // descriptive group is [{label,value}]; empty groups are omitted.
       const attributes = {};
-      const dims = toDimensions(p.attributes);
-      if (dims.length) attributes.dimensions = dims;
+      const groups = routeAttributes(p.attributes);
+      for (const k of GROUP_KEYS) { if (groups[k].length) attributes[k] = groups[k]; }
+      // Selectable priced choices → options [{name, price}] (additive delta). No
+      // longer child items — the option list lives on the parent item.
+      const options = (Array.isArray(p.options) ? p.options : [])
+        .map((o) => ({ name: String(o?.name ?? '').trim(), price: toNumber(o?.price ?? o?.upcharge) || 0 }))
+        .filter((o) => o.name);
+      if (options.length) attributes.options = options;
       if (Array.isArray(p.priceTiers) && p.priceTiers.length) {
         // Canonical tier shape is { min, max, price } (item-edit + line-pricing).
         // Sort by lower threshold and DERIVE each upper bound from the next tier's
@@ -243,20 +283,7 @@ async function pull(orgId, urls) {
         defaultStatus: 'pending',
       });
 
-      // Single-group options → hidden kind='option' child items (0 or upcharge).
-      let optionCount = 0;
-      for (const opt of Array.isArray(p.options) ? p.options : []) {
-        const optName = opt && typeof opt.name === 'string' ? opt.name.trim() : '';
-        if (!optName) continue;
-        await ItemService.create({
-          org_id: orgId, parent_item_id: item.id, kind: 'option',
-          name: optName, base_price: toNumber(opt.upcharge) || 0, unit: 'each',
-          approval_status: 'approved', is_active: true,
-        });
-        optionCount++;
-      }
-
-      results.push({ url: finalUrl, status: 'created', itemId: item.id, name: item.name, optionCount });
+      results.push({ url: finalUrl, status: 'created', itemId: item.id, name: item.name, optionCount: options.length });
     } catch (err) {
       results.push({ url, status: 'error', reason: err.message });
     }
@@ -286,4 +313,4 @@ function pruneNull(obj) {
   return out;
 }
 
-module.exports = { analyse, pull, _internals: { htmlToText, matchCategoryId, toNumber, toDimensions } };
+module.exports = { analyse, pull, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes } };

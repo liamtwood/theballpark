@@ -206,6 +206,36 @@ interface ItemForm {
             </div>
           </div>
 
+          <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — read-only grouped attribute sections
+               (Specifications / Features / Style / Materials — Measurements is the
+               editable section above) + the Options control. Each renders ONLY when
+               populated; empty groups show nothing (Amazon-style, conditional-on-data). -->
+          @for (g of attributeGroups(); track g.key) {
+            <div class="mt-4">
+              <label class="bp-field-label">{{ g.title }}</label>
+              <dl class="mt-1 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                @for (r of g.rows; track $index) {
+                  <dt class="bp-body-small text-secondary">{{ r.label }}</dt>
+                  <dd class="bp-body-small text-text">{{ r.value }}</dd>
+                }
+              </dl>
+            </div>
+          }
+          @if (itemOptions().length) {
+            <div class="mt-4">
+              <label class="bp-field-label">Options · Select one</label>
+              <ul class="mt-1 flex flex-col">
+                @for (o of itemOptions(); track $index) {
+                  <li class="bp-body-small flex items-center justify-between border-b border-hairline py-1">
+                    <span>{{ o.name }}</span>
+                    <span class="text-secondary">{{ o.price ? ('+£' + o.price) : 'Included' }}</span>
+                  </li>
+                }
+              </ul>
+              <p class="bp-caption text-secondary mt-1">Selecting an option will adjust the line price (coming soon).</p>
+            </div>
+          }
+
           <app-item-edit-actions
             [isModerator]="isModerator()" [isViewer]="isViewer()" [isApproved]="isApproved()"
             [currentStatus]="currentStatus()" [deciding]="deciding()" [saving]="saving()"
@@ -337,6 +367,34 @@ export class ItemEditComponent {
   private readonly rawAttributes = signal<Record<string, unknown>>({});
   protected readonly measureSuggestions = ['Height', 'Width', 'Depth', 'Weight', 'Seat Height', 'Volume', 'Material'];
 
+  // pV2-STORE-ATTRIBUTE-GROUPS-01 — read-only display of the descriptive groups
+  // the extract/classifier populate (Measurements is the editable section above).
+  // Fixed order; empty groups render nothing (see the template @if).
+  private readonly GROUP_DEF: { key: string; title: string }[] = [
+    { key: 'specifications', title: 'Specifications' },
+    { key: 'features', title: 'Features' },
+    { key: 'style', title: 'Style' },
+    { key: 'materials', title: 'Materials' },
+  ];
+  protected readonly attributeGroups = computed(() => {
+    const a = this.rawAttributes();
+    return this.GROUP_DEF.map((g) => ({
+      ...g,
+      rows: (Array.isArray(a[g.key]) ? a[g.key] : []) as { label: string; value: string }[],
+    })).filter((g) => g.rows.length);
+  });
+  protected readonly itemOptions = computed(() => {
+    const a = this.rawAttributes();
+    return (Array.isArray(a['options']) ? a['options'] : []) as { name: string; price: number }[];
+  });
+
+  /** rawAttributes minus the legacy `dimensions` key (migrated to `measurements`). */
+  private strippedRawAttributes(): Record<string, unknown> {
+    const { dimensions: _legacy, ...rest } = this.rawAttributes();
+    void _legacy;
+    return rest;
+  }
+
   /** Current persisted approval status — drives the status pill. A new product
    *  is a draft until first saved. */
   protected readonly currentStatus = computed(() => this.itemRes.value()?.approval_status ?? 'draft');
@@ -430,8 +488,12 @@ export class ItemEditComponent {
       // pV2-STORE-ITEM-MEASURE-VOLUME-01 — hydrate the attributes editors.
       const attrs = (item.attributes ?? {}) as Record<string, unknown>;
       this.rawAttributes.set(attrs);
-      const dims = Array.isArray(attrs['dimensions']) ? (attrs['dimensions'] as { label?: string; value?: string }[]) : [];
-      this.dimensions.set(dims.map((d) => ({ label: d.label ?? '', value: d.value ?? '' })));
+      // pV2-STORE-ATTRIBUTE-GROUPS-01 — Measurements REPLACES the legacy
+      // `dimensions` key; read measurements first, alias old dimensions so
+      // pre-migration items still show (never "No dimensions" for extracted data).
+      const measure = Array.isArray(attrs['measurements']) ? attrs['measurements']
+        : (Array.isArray(attrs['dimensions']) ? attrs['dimensions'] : []);
+      this.dimensions.set((measure as { label?: string; value?: string }[]).map((d) => ({ label: d.label ?? '', value: d.value ?? '' })));
       const tiers = Array.isArray(attrs['price_tiers']) ? (attrs['price_tiers'] as { min?: number; max?: number | null; price?: number }[]) : [];
       this.priceTiers.set(tiers.map((t) => ({
         min: t.min == null ? '' : String(t.min),
@@ -556,8 +618,11 @@ export class ItemEditComponent {
       // onto whatever else the bag held (item.service replaces the column, so we
       // must send the full object). Empty rows dropped; tier max '' → null.
       attributes: {
-        ...this.rawAttributes(),
-        dimensions: this.filledDimensions(),
+        // Measurements replaces the legacy `dimensions` key (dropped from the
+        // spread); the other groups (specifications/features/style/materials/
+        // options) + _source ride through untouched (never lose grouped data).
+        ...this.strippedRawAttributes(),
+        measurements: this.filledDimensions(),
         price_tiers: this.priceTiers()
           .filter((t) => String(t.price).trim() !== '')
           .map((t) => ({
