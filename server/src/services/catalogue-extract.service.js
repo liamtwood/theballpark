@@ -33,6 +33,23 @@ function htmlToText(html, baseUrl) {
     const abs = absolutize(m[1], baseUrl);
     if (abs && sameHost(abs, baseUrl) && new URL(abs).pathname.length > 1 && !hrefs.includes(abs)) hrefs.push(abs);
   }
+  // Collect <img> URLs before stripping tags — tag-strip drops src=, so the AI
+  // never saw image URLs otherwise. Covers lazy-load attrs + srcset (first URL).
+  const imgs = [];
+  const imgRe = /<img\b[^>]*>/gi;
+  let im;
+  while ((im = imgRe.exec(s)) && imgs.length < 40) {
+    const tag = im[0];
+    const cand =
+      (tag.match(/\bsrc=["']([^"']+)["']/i) || [])[1]
+      || (tag.match(/\bdata-src=["']([^"']+)["']/i) || [])[1]
+      || (tag.match(/\bdata-lazy(?:-src)?=["']([^"']+)["']/i) || [])[1]
+      || (tag.match(/\bdata-original=["']([^"']+)["']/i) || [])[1]
+      || firstSrcsetUrl(tag);
+    if (!cand) continue;
+    const abs = absolutize(cand, baseUrl);
+    if (abs && /^https?:/i.test(abs) && !imgs.includes(abs)) imgs.push(abs);
+  }
   const text = s
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&pound;/gi, '£')
@@ -42,7 +59,15 @@ function htmlToText(html, baseUrl) {
     .trim()
     .slice(0, MAX_TEXT_CHARS);
   const linkBlock = hrefs.length ? `\n\nLINKS ON PAGE:\n${hrefs.join('\n')}` : '';
-  return text + linkBlock;
+  const imgBlock = imgs.length ? `\n\nIMAGES ON PAGE:\n${imgs.join('\n')}` : '';
+  return text + linkBlock + imgBlock;
+}
+
+/** First URL of a srcset attribute (highest-priority candidate). */
+function firstSrcsetUrl(tag) {
+  const m = tag.match(/\bsrcset=["']([^"']+)["']/i);
+  if (!m) return null;
+  return (m[1].split(',')[0] || '').trim().split(/\s+/)[0] || null;
 }
 
 function absolutize(u, base) {
@@ -58,16 +83,35 @@ function toNumber(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Map an AI category guess to a Ballpark top-level catalogue category by name. */
+/** The Ballpark top-level catalogue category names (the controlled vocabulary
+ *  the extractor maps into). Excludes RLS test fixtures. */
+async function topLevelCategoryNames() {
+  const r = await pool.query(
+    `SELECT name FROM categories
+      WHERE namespace = 'catalogue' AND parent_id IS NULL AND deleted_at IS NULL
+        AND name NOT LIKE 'rlstxn%' ORDER BY name`
+  );
+  return r.rows.map((x) => x.name);
+}
+
+/** Map an AI category guess to a Ballpark top-level category id. The AI is now
+ *  given our vocabulary (extractProduct), so this is usually an exact match; the
+ *  child→parent fallback catches a guess that named a subcategory instead. */
 async function matchCategoryId(name) {
   if (!name || !String(name).trim()) return null;
-  const r = await pool.query(
-    `SELECT id FROM categories
-      WHERE namespace = 'catalogue' AND parent_id IS NULL AND deleted_at IS NULL
-        AND lower(name) = lower($1) LIMIT 1`,
-    [String(name).trim()]
+  const q = String(name).trim();
+  const top = await pool.query(
+    `SELECT id FROM categories WHERE namespace = 'catalogue' AND parent_id IS NULL
+       AND deleted_at IS NULL AND lower(name) = lower($1) LIMIT 1`,
+    [q]
   );
-  return r.rows[0]?.id || null;
+  if (top.rows[0]) return top.rows[0].id;
+  const child = await pool.query(
+    `SELECT parent_id FROM categories WHERE namespace = 'catalogue' AND parent_id IS NOT NULL
+       AND deleted_at IS NULL AND lower(name) = lower($1) AND parent_id IS NOT NULL LIMIT 1`,
+    [q]
+  );
+  return child.rows[0]?.parent_id || null;
 }
 
 // ── ANALYSE (read-only) ───────────────────────────────────────────────────────
@@ -84,11 +128,12 @@ async function analyse(url) {
 async function pull(orgId, urls) {
   const list = (Array.isArray(urls) ? urls : [urls]).filter(Boolean).slice(0, MAX_PULL_URLS);
   const batch = `extract-${new Date().toISOString().slice(0, 10)}`;
+  const categoryNames = await topLevelCategoryNames(); // pass OUR vocabulary to the AI
   const results = [];
   for (const url of list) {
     try {
       const { finalUrl, html } = await guardedFetch(url);
-      const p = await extractProduct(htmlToText(html, finalUrl), finalUrl);
+      const p = await extractProduct(htmlToText(html, finalUrl), finalUrl, categoryNames);
       const name = (p && typeof p.name === 'string') ? p.name.trim() : '';
       if (!name) { results.push({ url: finalUrl, status: 'skipped', reason: 'no product found (not a detail page?)' }); continue; }
 
@@ -99,9 +144,16 @@ async function pull(orgId, urls) {
       // attributes = flat specs + price_tiers + the INTERNAL _source block.
       const attributes = { ...(p.attributes && typeof p.attributes === 'object' ? p.attributes : {}) };
       if (Array.isArray(p.priceTiers) && p.priceTiers.length) {
-        attributes.price_tiers = p.priceTiers
-          .map((t) => ({ minQty: toNumber(t.minQty), price: toNumber(t.price) }))
-          .filter((t) => t.minQty != null && t.price != null);
+        // Canonical tier shape is { min, max, price } (item-edit + line-pricing).
+        // Sort by lower threshold and DERIVE each upper bound from the next tier's
+        // min − 1 (last tier open-ended) so ranges never overlap, even if the model
+        // returned min=1 for every tier or omitted max.
+        const tiers = p.priceTiers
+          .map((t) => ({ min: toNumber(t.min ?? t.minQty), price: toNumber(t.price) }))
+          .filter((t) => t.min != null && t.price != null)
+          .sort((a, b) => a.min - b.min);
+        tiers.forEach((t, i) => { t.max = i < tiers.length - 1 ? tiers[i + 1].min - 1 : null; });
+        if (tiers.length) attributes.price_tiers = tiers;
       }
       // Internal source-identity block (_ prefix → item view/editor skip it).
       // The PRIMARY source URL lives in the dedicated items.external_url column

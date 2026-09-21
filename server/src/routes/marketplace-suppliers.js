@@ -133,13 +133,20 @@ router.get('/suppliers/:id', async (req, res, next) => {
     // note: no c.is_active/deleted_at gate on the category — display follows the
     // items (a category with ≥1 in-scope item shows, whatever its status).
     const liveFilter = ownerVisibleFilter(req, id.data, 'i');
+    // LEFT JOIN + COALESCE so null-category items (e.g. freshly-pulled, awaiting
+    // classification) are NEVER dropped — they surface under an 'uncategorised'
+    // bucket the admin can browse + classify (pV2-STORE-EXTRACT-01). Excludes
+    // child options/components (parity with the /items grid).
     const cats = await pool.query(
-      `SELECT c.id, c.name, COUNT(i.id) AS item_count
+      `SELECT COALESCE(c.id::text, 'uncategorised') AS id,
+              COALESCE(c.name, 'Uncategorised')     AS name,
+              COUNT(i.id) AS item_count
          FROM items i
-         JOIN categories c ON c.id = i.category_id
-        WHERE i.org_id = $1 AND i.deleted_at IS NULL ${liveFilter}
-        GROUP BY c.id
-        ORDER BY c.name ASC`,
+         LEFT JOIN categories c ON c.id = i.category_id
+        WHERE i.org_id = $1 AND i.deleted_at IS NULL
+          AND i.kind IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL ${liveFilter}
+        GROUP BY c.id, c.name
+        ORDER BY (c.id IS NULL), c.name ASC`,
       [id.data]
     );
     const row = r.rows[0];

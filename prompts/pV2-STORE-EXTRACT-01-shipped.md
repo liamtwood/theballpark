@@ -58,6 +58,31 @@ matrices, venues, packages, scheduled/auto refresh, a hard-dedup indexed `source
 
 ## QC iterations
 
+**v2.523 (2026-09-21)** — extraction-quality + visibility batch (Yahire chiavari chair QC):
+1. **Images** — `htmlToText` stripped `<img>`, so the AI never saw image URLs (items had no
+   photo). Now collects `<img src>` + lazy attrs (`data-src`/`data-lazy`/`data-original`) +
+   `srcset` first URL into an "IMAGES ON PAGE" block; prompts point at it. Verified: 0→populated.
+2. **Dimensions** — DIAGNOSED, not forced: the chair's raw fetched HTML contains NO dimension
+   data (no `cm`/depth/weight/material, no `<table>`; `height`/`width` are only `og:image` meta;
+   an `accordion` is present but its content isn't in the static markup). So dimensions are
+   JS-rendered or unpublished → a rendered-fetch question, flagged (no prompt hack).
+3. **Volume-tier boundaries** — root cause: extract wrote `{minQty,price}` but the canonical
+   shape (item-edit + line-pricing) is `{min,max,price}` → ranges undefined → all 1-∞/overlapping.
+   Fixed: prompt returns per-tier `min`/`max`/`price` with distinct lower thresholds; the service
+   sorts by `min` and DERIVES each `max` from the next tier's `min−1` (last open-ended) so ranges
+   never overlap even if the model returns min=1 for all.
+4. **Category + subcategory** — the AI now gets Ballpark's category vocabulary and maps to it
+   (verified "Chair Hire" → "Furniture & Fixtures"); `matchCategoryId` does exact + child→parent.
+   Setting `category_id` at pull time also lets the auto-classifier assign a **subcategory** under
+   it (classifyItem uses item.category_id as the parent), and leaves `pending_classification` set
+   when it can't — the review flag.
+5. **Options kind** — `ItemService.create()` silently dropped `kind`, so option children landed
+   `kind=NULL`. Added `kind` to create() → option children are now `kind='option'`.
+6. **My-Shop visibility (safety net)** — null-category items were dropped from the supplier's
+   category counts (INNER JOIN) → "All Categories 0" and hidden in category browse. Now a LEFT
+   JOIN + an **"Uncategorised" bucket** (id `uncategorised`); `/api/marketplace/items?cat=uncategorised`
+   → `category_id IS NULL`. An item is never invisible for lacking a category.
+
 **v2.522 (2026-09-21)** — Liam QC: the Analyse report didn't mention images (Pull already
 captured them fine). Reporting-only fix in `ANALYSE_SYSTEM` (+ its JSON shape): added
 `mapped.hasImages` (boolean) and `images[]` to the `sample` object, so the report shows

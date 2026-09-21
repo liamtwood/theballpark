@@ -226,7 +226,10 @@ router.get('/items', async (req, res, next) => {
     } else {
       where.push(`i.is_active`, `i.approval_status = 'approved'`);
     }
-    if (cat) { vals.push(cat); where.push(`i.category_id = $${vals.length}`); }
+    // 'uncategorised' → the null-category bucket (pulled items awaiting review);
+    // must stay browsable so an unclassified item is never invisible.
+    if (cat === 'uncategorised') { where.push(`i.category_id IS NULL`); }
+    else if (cat) { vals.push(cat); where.push(`i.category_id = $${vals.length}`); }
     if (sub) { vals.push(sub); where.push(`i.subcategory_id = $${vals.length}`); }
     if (priceMin !== undefined) { vals.push(priceMin); where.push(`i.base_price >= $${vals.length}`); }
     if (priceMax !== undefined) { vals.push(priceMax); where.push(`i.base_price <= $${vals.length}`); }

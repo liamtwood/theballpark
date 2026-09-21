@@ -176,7 +176,7 @@ Analyse this page, GUIDED BY that schema but HONEST about everything else:
 2. Verdict: if pull-able, say roughly how many items and which categories; if not, "no catalogue — onboard manually" and why.
 3. mapped: what MAPS to Ballpark — categories seen, item count, whether per-item price (ex-VAT) is present, whether volume tiers are present, whether options are present, which known attributes are present, whether a supplier item id / SKU is present, whether product images are present.
 4. alsoFound: EVERYTHING else on the page that does NOT fit the schema above — every attribute, spec, feature or concept you notice (e.g. venue capacity, packages/bundles, multi-dimension variant matrices, delivery terms, certifications, minimum order). Nothing dropped — this is how we learn what to build next.
-5. sample: ONE item fully parsed (name, price, short description, attributes{}, sku, images[] — the product photo URLs) so the reviewer can judge extraction quality AND see the photos that'll be pulled. Null if marketing.
+5. sample: ONE item fully parsed (name, price, short description, attributes{}, sku, images[] — the product photo URLs from the IMAGES ON PAGE list) so the reviewer can judge extraction quality AND see the photos that'll be pulled. Null if marketing.
 6. productLinks: on a LISTING page, the product-detail URLs visible (absolute or relative), so they can be pulled. Empty otherwise.
 
 Return exactly:
@@ -188,11 +188,12 @@ Rules:
 - base_price is EX-VAT, a plain number (strip currency symbols/VAT). If a range or "from £X", use the lowest as base_price and note the rest in attributes.
 - description: clean prose, 1-4 sentences, no bullets/markdown/line-breaks.
 - attributes: a FLAT key:value bag of every spec (dimensions, material, colour, capacity, weight, power, seats, etc.). Keys short snake_case, values strings. Do NOT invent.
-- priceTiers: volume/quantity price breaks if present: [{ "minQty": 10, "price": 8.5 }]. Empty if none.
+- priceTiers: volume/quantity price breaks if present, ONE object per tier: [{ "min": 1, "max": 49, "price": 3.75 }, { "min": 50, "max": 99, "price": 3.40 }, { "min": 100, "max": null, "price": 2.99 }]. min = that tier's LOWER quantity threshold — DISTINCT per tier (1, then 50, then 100 — never 1 for all); max = its upper bound (null for the final open-ended tier); price = the ex-VAT unit price at that quantity. Empty if none.
 - options: a SINGLE group of choices if present (e.g. colours, finishes): [{ "name": "Red", "upcharge": 0 }] (0 when included). Empty if none. If MULTIPLE independent option groups exist, put only the FIRST here and list the other group names in attributes.other_option_groups.
 - unit: how it's sold — 'each' | 'day' | 'hour' | 'head' (per guest) | 'm2' etc. Default 'each'.
+- category: pick the SINGLE best-fit Ballpark category — use EXACTLY one of the category strings listed in the user message (verbatim); null only if none genuinely fit. (E.g. a chiavari chair → "Furniture & Fixtures".)
 - Map to these REAL fields when present (else null): install_description (setup/delivery/installation services offered, prose), install_cost (number, ex-VAT), lead_time_days (number).
-- images: image URLs for THIS product (absolute or relative) — the main product photos, not logos/icons.
+- images: pick the main product photos for THIS product from the IMAGES ON PAGE list — not logos, icons, sprites, or thumbnails of other products. Hero photo first.
 - Supplier identity (capture ALL that appear, else null): sku (product code/SKU), product_id (numeric/internal id, incl. in the URL), supplier_ref (any other stable reference).
 
 Return exactly:
@@ -208,11 +209,17 @@ async function analyseCatalogue(pageText, url) {
   return parsed || { pageShape: 'marketing', verdict: 'Could not analyse this page automatically.', pullable: false, mapped: {}, alsoFound: [], sample: null, productLinks: [], raw_response: raw };
 }
 
-/** PULL: extract ONE product from a detail page into the item shape. */
-async function extractProduct(pageText, url) {
+/** PULL: extract ONE product from a detail page into the item shape.
+ *  `categoryNames` is Ballpark's controlled category vocabulary — passed so the
+ *  model maps to OUR categories (e.g. "Chair Hire" → "Furniture & Fixtures")
+ *  instead of echoing the supplier's own wording. */
+async function extractProduct(pageText, url, categoryNames = []) {
+  const catLine = categoryNames.length
+    ? `\n\nBallpark categories — choose ONE exact string for "category" (or null if none fit):\n${categoryNames.join(', ')}`
+    : '';
   const { parsed, raw } = await callHaikuJson({
     system: PULL_SYSTEM,
-    user: `Source URL: ${url}\n\nProduct page content:\n${pageText}`,
+    user: `Source URL: ${url}${catLine}\n\nProduct page content:\n${pageText}`,
     maxTokens: 2000,
   });
   return parsed || { raw_response: raw };

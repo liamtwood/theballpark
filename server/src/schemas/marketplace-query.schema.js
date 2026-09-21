@@ -8,7 +8,9 @@ const PAGE_SIZE = 48;
 
 const ItemsQuerySchema = z
   .object({
-    cat: z.uuid().optional(),
+    // 'uncategorised' is the sentinel bucket for items with no category_id
+    // (pV2-STORE-EXTRACT-01 — pulled items awaiting classification stay visible).
+    cat: z.union([z.uuid(), z.literal('uncategorised')]).optional(),
     sub: z.uuid().optional(),
     q: z.string().trim().max(80).optional(),
     // pV2-06c filters — the three dimensions with real data behind them
