@@ -41,6 +41,19 @@ groups (groups are hardcoded — the fixed 5 + options).
   editor); a pure read-only item view (e.g. quick-view, which needs attributes added to the list
   projection) would apply conditional-install end-to-end — flagged to d4.
 
+## QC iteration — v2.532 (edit page mirrors view; options/tiers via dialogs)
+Decisions confirmed by Liam:
+- **EDIT = page mirroring the VIEW's card look**: the 5 groups render as inline-editable
+  `.bp-qv-spec` cards (icon heading + label:value rows + add row) in a 2-up grid — same visual
+  language as the read-only view/quick-view.
+- **Volume pricing + Options via Ballpark DIALOGS** (bp-modal, quick-view-dialog styling): each is
+  now a PREVIEW card (first 3 rows + "+N more") with an "Edit …" button that opens a modal listing
+  ALL rows + the add/edit form (draft → Done commits, Cancel discards). Replaced the inline
+  editable boxes. Options are now editable (name + additive £ delta) and saved to `attributes.options`.
+- **Simple groups stay inline-editable in-card** (few rows, shown all).
+- Flags actioned (v2.531): price shows real £3.75 (pipe 1.0-2); image fallback picks the first
+  product-looking page image when the AI returns none; qty/add contract left as-is.
+
 ## QC iteration — v2.530 (grouped cards → quick-view)
 - Extracted a shared `ItemAttributeCardsComponent` (used by item-edit view AND the marketplace
   quick-view — one definition). Renders the Options "Choose your option" picklist (KEY, always

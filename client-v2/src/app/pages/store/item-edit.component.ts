@@ -6,6 +6,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ToastModule } from 'primeng/toast';
+import { DialogModule } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -47,7 +48,7 @@ interface ItemForm {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   imports: [
-    FormsModule, LucideAngularModule, ToastModule, PageHeroComponent, EditFieldComponent,
+    FormsModule, LucideAngularModule, ToastModule, DialogModule, PageHeroComponent, EditFieldComponent,
     ImageGalleryComponent, ImagePickerComponent, DrawerComponent, ItemApprovalPanelComponent,
     ItemEditActionsComponent, ItemAttributeCardsComponent,
   ],
@@ -134,73 +135,73 @@ interface ItemForm {
                 <textarea class="bp-store-textarea mt-1" rows="3" [ngModel]="form().install_description" (ngModelChange)="patch({ install_description: $event })" [readonly]="!editing()" placeholder="What the install covers…"></textarea>
               </div>
 
-              <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — the 5 descriptive groups, each
-                   editable as label/value rows (same formatting). Edit mode only;
-                   the read-only view renders rounded cards below. -->
+              <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — EDIT mirrors the VIEW: the 5
+                   groups are inline-editable cards; Volume pricing + Options are
+                   preview cards that open a dialog for the full list + add/edit. -->
               @if (editing()) {
                 <datalist id="measure-suggestions">
                   @for (s of measureSuggestions; track s) { <option [value]="s"></option> }
                 </datalist>
-                @for (grp of GROUP_DEF; track grp.key) {
-                  <div>
-                    <label class="bp-field-label">{{ grp.title }}</label>
-                    @for (r of groupRows()[grp.key]; track $index) {
-                      <div class="mt-1.5 flex items-center gap-2">
-                        <input class="bp-input-field flex-1" [attr.list]="grp.key === 'measurements' ? 'measure-suggestions' : null" placeholder="Label"
-                               [value]="r.label" (input)="patchRow(grp.key, $index, 'label', $any($event.target).value)" />
-                        <input class="bp-input-field flex-1" placeholder="Value"
-                               [value]="r.value" (input)="patchRow(grp.key, $index, 'value', $any($event.target).value)" />
-                        <button type="button" class="shrink-0 text-muted hover:text-text" (click)="removeRow(grp.key, $index)" aria-label="Remove row">
-                          <lucide-icon name="trash-2" [size]="16" />
-                        </button>
-                      </div>
-                    }
-                    <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="addRow(grp.key)">
-                      <lucide-icon name="plus" [size]="14" /> Add {{ grp.title.toLowerCase() }}
-                    </button>
-                  </div>
-                }
-              }
-
-              <!-- §C — Volume pricing (attributes.price_tiers). Min/Max/Price rows;
-                   max blank = open top. Card shows "From £{tier-1}". -->
-              <div>
-                <label class="bp-field-label">Volume pricing</label>
-                @if (editing()) {
-                  @if (priceTiers().length) {
-                    <div class="mt-1 grid grid-cols-[1fr_1fr_1fr_28px] gap-2">
-                      <span class="bp-caption text-muted">Min qty</span>
-                      <span class="bp-caption text-muted">Max qty</span>
-                      <span class="bp-caption text-muted">Unit price</span><span></span>
-                    </div>
-                  }
-                  @for (t of priceTiers(); track $index) {
-                    <div class="mt-1 grid grid-cols-[1fr_1fr_1fr_28px] items-center gap-2">
-                      <input type="number" class="bp-input-field" placeholder="1" [value]="t.min" (input)="patchTier($index, 'min', $any($event.target).value)" />
-                      <input type="number" class="bp-input-field" placeholder="∞" [value]="t.max" (input)="patchTier($index, 'max', $any($event.target).value)" />
-                      <input type="number" class="bp-input-field" placeholder="0.00" [value]="t.price" (input)="patchTier($index, 'price', $any($event.target).value)" />
-                      <button type="button" class="shrink-0 text-muted hover:text-text" (click)="removeTier($index)" aria-label="Remove tier">
-                        <lucide-icon name="trash-2" [size]="16" />
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  @for (grp of GROUP_DEF; track grp.key) {
+                    <div class="bp-qv-spec">
+                      <span class="bp-qv-spec__label"><lucide-icon [name]="grp.icon" [size]="13" /> {{ grp.title }}</span>
+                      @for (r of groupRows()[grp.key]; track $index) {
+                        <div class="mt-1.5 flex items-center gap-2">
+                          <input class="bp-input-field flex-1" [attr.list]="grp.key === 'measurements' ? 'measure-suggestions' : null" placeholder="Label"
+                                 [value]="r.label" (input)="patchRow(grp.key, $index, 'label', $any($event.target).value)" />
+                          <input class="bp-input-field flex-1" placeholder="Value"
+                                 [value]="r.value" (input)="patchRow(grp.key, $index, 'value', $any($event.target).value)" />
+                          <button type="button" class="shrink-0 text-muted hover:text-text" (click)="removeRow(grp.key, $index)" aria-label="Remove row">
+                            <lucide-icon name="trash-2" [size]="15" />
+                          </button>
+                        </div>
+                      }
+                      <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="addRow(grp.key)">
+                        <lucide-icon name="plus" [size]="14" /> Add row
                       </button>
                     </div>
                   }
-                  @if (fromPrice() !== null) {
-                    <p class="bp-caption mt-1 text-secondary">Marketplace will show “From {{ fromPrice() }}”.</p>
-                  }
-                  <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="addTier()">
-                    <lucide-icon name="plus" [size]="14" /> Add price tier
-                  </button>
-                } @else if (priceTiers().length) {
-                  <dl class="mt-1 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1">
-                    @for (t of priceTiers(); track $index) {
-                      <dt class="bp-body-small text-secondary">{{ t.min }}@if (t.max !== '') {–{{ t.max }}} @else {+}</dt>
-                      <dd class="bp-body-small text-text">{{ t.price }}</dd>
+
+                  <!-- Volume pricing — preview + edit-in-dialog -->
+                  <div class="bp-qv-spec">
+                    <span class="bp-qv-spec__label"><lucide-icon name="tags" [size]="13" /> Volume pricing</span>
+                    @if (filledTiers().length) {
+                      <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+                        @for (t of filledTiers().slice(0, 3); track $index) {
+                          <dt class="bp-body-small text-secondary">{{ t.min || '1' }}@if (t.max !== '' && t.max != null) {–{{ t.max }}} @else {+}</dt>
+                          <dd class="bp-body-small text-text">£{{ t.price }}</dd>
+                        }
+                      </dl>
+                      @if (filledTiers().length > 3) { <p class="bp-caption text-secondary mt-1">+{{ filledTiers().length - 3 }} more</p> }
+                    } @else {
+                      <p class="bp-qv-spec__val bp-qv-spec__val--soon">No volume pricing</p>
                     }
-                  </dl>
-                } @else {
-                  <div class="bp-body-small text-muted">No volume pricing</div>
-                }
-              </div>
+                    <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openVolumeDialog()">
+                      <lucide-icon name="pencil" [size]="14" /> Edit volume pricing
+                    </button>
+                  </div>
+
+                  <!-- Options — preview + edit-in-dialog -->
+                  <div class="bp-qv-spec">
+                    <span class="bp-qv-spec__label"><lucide-icon name="list" [size]="13" /> Options</span>
+                    @if (filledOptions().length) {
+                      <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+                        @for (o of filledOptions().slice(0, 3); track $index) {
+                          <dt class="bp-body-small text-secondary">{{ o.name }}</dt>
+                          <dd class="bp-body-small text-text">{{ o.price ? ('+£' + o.price) : 'included' }}</dd>
+                        }
+                      </dl>
+                      @if (filledOptions().length > 3) { <p class="bp-caption text-secondary mt-1">+{{ filledOptions().length - 3 }} more</p> }
+                    } @else {
+                      <p class="bp-qv-spec__val bp-qv-spec__val--soon">No options</p>
+                    }
+                    <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openOptionsDialog()">
+                      <lucide-icon name="pencil" [size]="14" /> Edit options
+                    </button>
+                  </div>
+                </div>
+              }
             </div>
           </div>
 
@@ -277,6 +278,60 @@ interface ItemForm {
       />
     </app-drawer>
 
+    <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — Volume pricing add/edit (Ballpark dialog,
+         bp-modal — same styling as the quick-view dialog). Edits a draft; Done
+         commits, Cancel discards. -->
+    <p-dialog [visible]="volumeDialogOpen()" (visibleChange)="onVolumeVisible($event)"
+      styleClass="bp-modal" [modal]="true" [closable]="true" [dismissableMask]="true"
+      [style]="{ width: '540px', maxWidth: '94vw' }">
+      <ng-template pTemplate="header"><h2 class="bp-card-title">Volume pricing</h2></ng-template>
+      <div class="flex flex-col gap-2">
+        <div class="grid grid-cols-[1fr_1fr_1fr_28px] gap-2">
+          <span class="bp-caption text-muted">Min qty</span>
+          <span class="bp-caption text-muted">Max qty</span>
+          <span class="bp-caption text-muted">Unit price £</span><span></span>
+        </div>
+        @for (t of volumeDraft(); track $index) {
+          <div class="grid grid-cols-[1fr_1fr_1fr_28px] items-center gap-2">
+            <input type="number" class="bp-input-field" placeholder="1" [value]="t.min" (input)="patchDraftTier($index, 'min', $any($event.target).value)" />
+            <input type="number" class="bp-input-field" placeholder="∞" [value]="t.max" (input)="patchDraftTier($index, 'max', $any($event.target).value)" />
+            <input type="number" class="bp-input-field" placeholder="0.00" [value]="t.price" (input)="patchDraftTier($index, 'price', $any($event.target).value)" />
+            <button type="button" class="text-muted hover:text-text" (click)="removeDraftTier($index)" aria-label="Remove tier"><lucide-icon name="trash-2" [size]="16" /></button>
+          </div>
+        }
+        <button type="button" class="bp-btn-outline bp-body-small self-start" (click)="addDraftTier()"><lucide-icon name="plus" [size]="14" /> Add tier</button>
+      </div>
+      <ng-template pTemplate="footer">
+        <button type="button" class="bp-btn-outline" (click)="cancelVolumeDialog()">Cancel</button>
+        <button type="button" class="bp-btn-grad" (click)="saveVolumeDialog()">Done</button>
+      </ng-template>
+    </p-dialog>
+
+    <!-- Options add/edit (name + additive £ delta). -->
+    <p-dialog [visible]="optionsDialogOpen()" (visibleChange)="onOptionsVisible($event)"
+      styleClass="bp-modal" [modal]="true" [closable]="true" [dismissableMask]="true"
+      [style]="{ width: '540px', maxWidth: '94vw' }">
+      <ng-template pTemplate="header"><h2 class="bp-card-title">Options</h2></ng-template>
+      <div class="flex flex-col gap-2">
+        <div class="grid grid-cols-[2fr_1fr_28px] gap-2">
+          <span class="bp-caption text-muted">Option name</span>
+          <span class="bp-caption text-muted">+ £ delta</span><span></span>
+        </div>
+        @for (o of optionsDraft(); track $index) {
+          <div class="grid grid-cols-[2fr_1fr_28px] items-center gap-2">
+            <input class="bp-input-field" placeholder="e.g. Medium Orange" [value]="o.name" (input)="patchDraftOption($index, 'name', $any($event.target).value)" />
+            <input type="number" class="bp-input-field" placeholder="0.00" [value]="o.price" (input)="patchDraftOption($index, 'price', $any($event.target).value)" />
+            <button type="button" class="text-muted hover:text-text" (click)="removeDraftOption($index)" aria-label="Remove option"><lucide-icon name="trash-2" [size]="16" /></button>
+          </div>
+        }
+        <button type="button" class="bp-btn-outline bp-body-small self-start" (click)="addDraftOption()"><lucide-icon name="plus" [size]="14" /> Add option</button>
+      </div>
+      <ng-template pTemplate="footer">
+        <button type="button" class="bp-btn-outline" (click)="cancelOptionsDialog()">Cancel</button>
+        <button type="button" class="bp-btn-grad" (click)="saveOptionsDialog()">Done</button>
+      </ng-template>
+    </p-dialog>
+
     <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
 })
@@ -337,17 +392,18 @@ export class ItemEditComponent {
   // pV2-STORE-ATTRIBUTE-GROUPS-01 — the 5 canonical descriptive groups (fixed
   // order + keys), each editable as [{label,value}] rows. `rawAttributes` keeps
   // the keys we don't manage (options, _source, price_tiers) across save.
-  readonly GROUP_DEF: { key: string; title: string }[] = [
-    { key: 'specifications', title: 'Specifications' },
-    { key: 'features', title: 'Features' },
-    { key: 'style', title: 'Style' },
-    { key: 'measurements', title: 'Measurements' },
-    { key: 'materials', title: 'Materials' },
+  readonly GROUP_DEF: { key: string; title: string; icon: string }[] = [
+    { key: 'measurements', title: 'Measurements', icon: 'ruler' },
+    { key: 'materials', title: 'Materials', icon: 'package' },
+    { key: 'style', title: 'Style', icon: 'palette' },
+    { key: 'features', title: 'Features', icon: 'sparkles' },
+    { key: 'specifications', title: 'Specifications', icon: 'info' },
   ];
   protected readonly groupRows = signal<Record<string, { label: string; value: string }[]>>({
     specifications: [], features: [], style: [], measurements: [], materials: [],
   });
   protected readonly priceTiers = signal<{ min: string; max: string; price: string }[]>([]);
+  protected readonly optionsRows = signal<{ name: string; price: string }[]>([]);
   protected readonly rawAttributes = signal<Record<string, unknown>>({});
   protected readonly measureSuggestions = ['Height', 'Width', 'Depth', 'Weight', 'Seat Height', 'Volume', 'Material'];
 
@@ -381,12 +437,12 @@ export class ItemEditComponent {
     return out;
   }
 
-  /** rawAttributes minus the legacy `dimensions` key (migrated to `measurements`)
-   *  and the 5 group keys (rewritten from the editors) — keeps options/_source/etc. */
+  /** rawAttributes minus the keys the editors rewrite (legacy `dimensions`, the 5
+   *  groups, `options`, `price_tiers`) — keeps _source + anything else untouched. */
   private strippedRawAttributes(): Record<string, unknown> {
     const { dimensions: _legacy, specifications: _s, features: _f, style: _st,
-      measurements: _m, materials: _mt, ...rest } = this.rawAttributes();
-    void _legacy; void _s; void _f; void _st; void _m; void _mt;
+      measurements: _m, materials: _mt, options: _o, price_tiers: _pt, ...rest } = this.rawAttributes();
+    void _legacy; void _s; void _f; void _st; void _m; void _mt; void _o; void _pt;
     return rest;
   }
 
@@ -501,6 +557,8 @@ export class ItemEditComponent {
         max: t.max == null ? '' : String(t.max),
         price: t.price == null ? '' : String(t.price),
       })));
+      const opts = Array.isArray(attrs['options']) ? (attrs['options'] as { name?: string; price?: number }[]) : [];
+      this.optionsRows.set(opts.map((o) => ({ name: o.name ?? '', price: o.price == null ? '' : String(o.price) })));
       return item;
     },
   });
@@ -528,17 +586,36 @@ export class ItemEditComponent {
     this.form.update((f) => ({ ...f, ...p }));
   }
 
-  // ── Volume pricing (attributes.price_tiers) ─────────────────────────────
-  protected addTier(): void { this.priceTiers.update((t) => [...t, { min: '', max: '', price: '' }]); }
-  protected removeTier(i: number): void { this.priceTiers.update((t) => t.filter((_, x) => x !== i)); }
-  protected patchTier(i: number, key: 'min' | 'max' | 'price', val: string): void {
-    this.priceTiers.update((t) => t.map((row, x) => (x === i ? { ...row, [key]: val } : row)));
+  // ── Volume pricing + Options — preview cards + Ballpark-dialog add/edit ───
+  protected readonly filledTiers = computed(() => this.priceTiers().filter((t) => String(t.price).trim() !== ''));
+  protected readonly filledOptions = computed(() => this.optionsRows().filter((o) => o.name.trim() !== ''));
+
+  protected readonly volumeDialogOpen = signal(false);
+  protected readonly optionsDialogOpen = signal(false);
+  protected readonly volumeDraft = signal<{ min: string; max: string; price: string }[]>([]);
+  protected readonly optionsDraft = signal<{ name: string; price: string }[]>([]);
+
+  // Volume dialog — edits a draft; Done commits to priceTiers, Cancel discards.
+  protected openVolumeDialog(): void { this.volumeDraft.set(this.priceTiers().map((t) => ({ ...t }))); this.volumeDialogOpen.set(true); }
+  protected cancelVolumeDialog(): void { this.volumeDialogOpen.set(false); }
+  protected saveVolumeDialog(): void { this.priceTiers.set(this.volumeDraft().map((t) => ({ ...t }))); this.volumeDialogOpen.set(false); }
+  protected onVolumeVisible(v: boolean): void { if (!v) this.cancelVolumeDialog(); }
+  protected addDraftTier(): void { this.volumeDraft.update((d) => [...d, { min: '', max: '', price: '' }]); }
+  protected removeDraftTier(i: number): void { this.volumeDraft.update((d) => d.filter((_, x) => x !== i)); }
+  protected patchDraftTier(i: number, key: 'min' | 'max' | 'price', val: string): void {
+    this.volumeDraft.update((d) => d.map((r, x) => (x === i ? { ...r, [key]: val } : r)));
   }
-  /** The first tier's price — what the card renders as "From £…". */
-  protected readonly fromPrice = computed(() => {
-    const t0 = this.priceTiers()[0];
-    return t0 && t0.price !== '' ? Number(t0.price) : null;
-  });
+
+  // Options dialog — edits a draft; Done commits to optionsRows, Cancel discards.
+  protected openOptionsDialog(): void { this.optionsDraft.set(this.optionsRows().map((o) => ({ ...o }))); this.optionsDialogOpen.set(true); }
+  protected cancelOptionsDialog(): void { this.optionsDialogOpen.set(false); }
+  protected saveOptionsDialog(): void { this.optionsRows.set(this.optionsDraft().map((o) => ({ ...o }))); this.optionsDialogOpen.set(false); }
+  protected onOptionsVisible(v: boolean): void { if (!v) this.cancelOptionsDialog(); }
+  protected addDraftOption(): void { this.optionsDraft.update((d) => [...d, { name: '', price: '' }]); }
+  protected removeDraftOption(i: number): void { this.optionsDraft.update((d) => d.filter((_, x) => x !== i)); }
+  protected patchDraftOption(i: number, key: 'name' | 'price', val: string): void {
+    this.optionsDraft.update((d) => d.map((r, x) => (x === i ? { ...r, [key]: val } : r)));
+  }
 
   protected onPickImage(r: PickerResult): void {
     if (r.type === 'image') this.imageUrl.set(r.url);
@@ -600,8 +677,8 @@ export class ItemEditComponent {
       // onto whatever else the bag held (item.service replaces the column, so we
       // must send the full object). Empty rows dropped; tier max '' → null.
       attributes: {
-        // options + _source (+ anything else) ride through; the 5 descriptive
-        // groups are rewritten from the editors; legacy `dimensions` is dropped.
+        // _source (+ anything else) rides through; the 5 groups, price_tiers and
+        // options are rewritten from the editors; legacy `dimensions` is dropped.
         ...this.strippedRawAttributes(),
         ...this.filledGroups(),
         price_tiers: this.priceTiers()
@@ -611,6 +688,9 @@ export class ItemEditComponent {
             max: t.max === '' ? null : Number(t.max),
             price: Number(t.price),
           })),
+        options: this.optionsRows()
+          .filter((o) => o.name.trim() !== '')
+          .map((o) => ({ name: o.name.trim(), price: Number(o.price) || 0 })),
       },
       // Approved edits don't set a status — the server keeps it approved and
       // the schema only accepts draft|pending anyway.
