@@ -210,7 +210,16 @@ router.get('/items', async (req, res, next) => {
     const ownerScope = !!supplier && supplier === req.user.org_id;
     const adminScope = req.user.role === 'ballpark_admin';
     if (ownerScope || adminScope) {
-      if (status && status !== 'all') { vals.push(status); where.push(`i.approval_status = $${vals.length}`); }
+      if (status && status !== 'all') {
+        vals.push(status); where.push(`i.approval_status = $${vals.length}`);
+      } else if (adminScope && !status && !active) {
+        // FR-00215 visibility rule — admin default (no explicit status/publish
+        // filter): live OR awaiting review. Excludes rejected + inactive-not-
+        // submitted. Explicit ?status=all skips this (the whole catalogue);
+        // ?status=pending narrows to the approval queue. Owner default (no
+        // adminScope) still falls through to the whole catalogue.
+        where.push(`(i.is_active OR i.approval_status = 'pending')`);
+      }
       if (active === 'active') where.push(`i.is_active`);
       else if (active === 'inactive') where.push(`NOT i.is_active`);
       // active 'all' / unset → both (the supplier sees their whole catalogue)

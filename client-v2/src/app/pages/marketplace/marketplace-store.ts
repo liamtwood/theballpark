@@ -81,17 +81,17 @@ export class MarketplaceStore {
   /** The status/active filters show for the owner of a pinned store AND for
    *  ballpark admins (moderation); elsewhere they stay null (public grid). */
   readonly showStatusFilters = computed(() => this.isOwnerStore() || this.isBallparkAdmin());
-  /** Approval-status filter: all|draft|pending|approved|rejected. Admins (when
-   *  not on their own store) default to Pending — the approval queue. */
-  readonly statusFilter = computed(() => {
-    if (!this.showStatusFilters()) return null;
-    const fromUrl = this.query().get('status');
-    if (fromUrl) return fromUrl;
-    return this.isBallparkAdmin() && !this.isOwnerStore() ? 'pending' : 'all';
-  });
-  /** Publish-state filter. Defaults to `all` — the whole catalogue, then narrow. */
+  /** Approval-status filter: all|draft|pending|approved|rejected — the explicit
+   *  URL value, else null. When null (no explicit choice), the server applies the
+   *  scope default: owner → whole catalogue; ADMIN → live OR awaiting review
+   *  (is_active OR approval_status='pending', FR-00215 rule); public → approved+active.
+   *  An explicit ?status=pending (the Approvals nav) still narrows to pending. */
+  readonly statusFilter = computed(() =>
+    this.showStatusFilters() ? this.query().get('status') : null
+  );
+  /** Publish-state filter — the explicit URL value, else null (no filter). */
   readonly activeFilter = computed(() =>
-    this.showStatusFilters() ? this.query().get('active') || 'all' : null
+    this.showStatusFilters() ? this.query().get('active') : null
   );
 
   /** The filter signature — offset + accumulation reset on ANY change. */
@@ -155,9 +155,10 @@ export class MarketplaceStore {
         priceMax: bracket?.max ?? null,
         tier: this.tier(),
         supplier: this.pinnedSupplierId() ?? this.supplierId(),
-        // Owner-only — null elsewhere, so the public grid is unaffected.
-        status: this.statusFilter() === 'all' ? null : this.statusFilter(),
-        active: this.activeFilter() === 'all' ? null : this.activeFilter(),
+        // Sent raw (null omitted by the query builder): 'all' reaches the server
+        // so it can tell "explicit everything" from the admin default (absent).
+        status: this.statusFilter(),
+        active: this.activeFilter(),
         offset: this.offset(),
       };
     },
