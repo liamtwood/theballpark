@@ -58,6 +58,19 @@ matrices, venues, packages, scheduled/auto refresh, a hard-dedup indexed `source
 
 ## QC iterations
 
+**v2.526 (2026-09-21)** — subcat RESOLVED not flagged; fully automatic at volume (Liam: 100s of
+items, no per-item manual work):
+- Root cause: `classifyItem` did FREE-TEXT name matching (AI says "Chairs", taxonomy child is
+  "Seating" → no match → null). Fix: a GUIDED PICK — new `pickBestSubcategory` gives the AI the
+  REAL child list under the resolved parent and maps by MEANING; verified "Chiavari Chair" →
+  "Seating". ALWAYS returns a child (defaults to a general/first child if the model finds none) —
+  `subcategory_id` is never null when the parent has children.
+- Category never null: pull-time `matchCategoryId` falls back to the 'Other' catalogue category.
+- `pending_classification` is now a SOFT marker only: the item is fully assigned (cat+subcat) +
+  visible regardless; only UNCERTAIN picks (default-child fallback or AI confidence < 0.5) are
+  re-flagged (`soft_review`) for an OPTIONAL bulk pass. Never blocks, never needs per-item work.
+- Images: pull prompt asks for all product photos (hero first).
+
 **v2.525 (2026-09-21)** — post re-pull (item 981f9411 verified: image, category, tiers, options,
 dimensions all correct). Two follow-ups:
 1. **Subcategory** — the classifier resolved the category (Furniture & Fixtures) but the AI didn't

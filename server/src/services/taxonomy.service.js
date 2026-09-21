@@ -258,6 +258,35 @@ Return ONLY valid JSON, no markdown, no commentary:
  * @returns { category_id, category_name, subcategory_id, subcategory_name,
  *            tags: [{ tag_id, dimension, label }], confidence, classified_at }
  */
+/**
+ * Map an item to the single best-fit subcategory FROM the real child list (a
+ * guided pick BY MEANING, not free-text name matching). ALWAYS returns a child:
+ * when the model finds no confident fit it falls back to a general/first child
+ * (with fallback:true) so a classified item is never left without a subcategory
+ * at volume. `children` is a non-empty [{id,name}]. Returns { subcategory, fallback }.
+ */
+async function pickBestSubcategory(item, parentName, children) {
+  const names = children.map(c => c.name);
+  let pickedName = null;
+  try {
+    const { callHaikuJson } = require('./ai.service');
+    const { parsed } = await callHaikuJson({
+      system: `You place a product into exactly ONE subcategory chosen from a fixed list, mapping BY MEANING (wording won't always match — e.g. "chairs" → "Seating"). Return ONLY JSON: {"subcategory":"<one name copied verbatim from the list>"}. Always choose the closest option; use null only if truly none relate.`,
+      user: `Parent category: ${parentName}\nAllowed subcategories (copy ONE verbatim):\n${names.join('\n')}\n\nItem:\nName: ${item.name || ''}\nDescription: ${(item.description || '').slice(0, 500)}`,
+      maxTokens: 80,
+    });
+    pickedName = parsed && typeof parsed.subcategory === 'string' ? parsed.subcategory.trim() : null;
+  } catch { /* fall through to the default child */ }
+
+  const match = pickedName && pickedName.toLowerCase() !== 'null'
+    ? children.find(c => norm(c.name) === norm(pickedName))
+    : null;
+  if (match) return { subcategory: match, fallback: false };
+  // Never null: default to a general/other/misc child, else the first.
+  const general = children.find(c => /\b(other|general|misc|miscellaneous|standard)\b/i.test(c.name));
+  return { subcategory: general || children[0], fallback: true };
+}
+
 async function classifyItem(itemId) {
   if (!itemId) throw httpErr('itemId is required', 400);
 
@@ -307,11 +336,25 @@ Classify this item.`
   }
   if (!parent) throw httpErr('AI classifier could not resolve a category', 502);
 
-  // ── Resolve subcategory within that parent. ─────────────────────────
+  // ── Resolve subcategory within that parent — a GUIDED PICK from the REAL
+  //    children, not free-text name matching. The primary classify free-texts a
+  //    subcategory name ("Chairs") that may not match a taxonomy child ("Seating");
+  //    when it doesn't, a focused AI call maps the item to the single best-fit
+  //    child BY MEANING from the actual list. Only null when the parent has no
+  //    child, or the model genuinely finds none reasonable. ─────────────────
   const children = tax.childrenByParentId.get(parent.id) || [];
   let subcategory = null;
+  let subFallback = false;
   if (parsed.subcategory) {
     subcategory = children.find(c => norm(c.name) === norm(parsed.subcategory)) || null;
+  }
+  if (!subcategory && children.length) {
+    // Guided pick from the real list — ALWAYS returns a child (a default when the
+    // model finds no confident fit), so a classified item is NEVER left without a
+    // subcategory at volume (pV2-STORE-EXTRACT-01, Liam: 100s of items, no manual).
+    const picked = await pickBestSubcategory(item, parent.name, children);
+    subcategory = picked.subcategory;
+    subFallback = picked.fallback;
   }
 
   // ── Resolve tags. Each {dimension,label} must match a tag row scoped
@@ -338,6 +381,7 @@ Classify this item.`
     category_name:    parent.name,
     subcategory_id:   subcategory ? subcategory.id : null,
     subcategory_name: subcategory ? subcategory.name : null,
+    subcategory_fallback: subFallback, // true = default child used (uncertain)
     tags:             resolvedTags,
     confidence,
     classified_at:    new Date().toISOString()
@@ -481,22 +525,17 @@ async function classifyAndApply(itemId) {
     subcategory_id: suggestion.subcategory_id,
     tag_ids: (suggestion.tags || []).map((t) => t.tag_id),
   });
-  // pV2-STORE-EXTRACT-01 — an item should land cat+subcat, or be FLAGGED for
-  // review — never a silent category-only. When a category was applied but the
-  // classifier couldn't pick a subcategory AND that category HAS live
-  // subcategories, re-flag pending_classification (applyClassification cleared
-  // it) so an admin completes the subcat. ownerPool: fire-and-forget, no GUCs.
-  if (suggestion.category_id && !suggestion.subcategory_id) {
-    const kids = await ownerPool.query(
-      `SELECT 1 FROM categories WHERE parent_id = $1 AND is_active = true AND deleted_at IS NULL LIMIT 1`,
-      [suggestion.category_id]
+  // pV2-STORE-EXTRACT-01 (Liam: 100s of items, NO per-item manual work) — the
+  // item is now FULLY assigned (cat + best-fit subcat, always) and stays visible.
+  // pending_classification is a SOFT marker only: re-flag the UNCERTAIN ones (a
+  // fallback/default subcat, or low AI confidence) so they can be BULK-reviewed
+  // later — it never blocks. applyClassification cleared it, so re-set for those.
+  const uncertain = suggestion.subcategory_fallback || (suggestion.confidence || 0) < 0.5;
+  if (uncertain) {
+    await ownerPool.query(
+      'UPDATE items SET pending_classification = $1, updated_at = NOW() WHERE id = $2',
+      [JSON.stringify({ ...suggestion, soft_review: true }), itemId]
     );
-    if (kids.rows.length) {
-      await ownerPool.query(
-        'UPDATE items SET pending_classification = $1, updated_at = NOW() WHERE id = $2',
-        [JSON.stringify({ ...suggestion, needs_subcategory: true }), itemId]
-      );
-    }
   }
   return suggestion;
 }

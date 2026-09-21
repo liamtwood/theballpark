@@ -94,6 +94,17 @@ async function topLevelCategoryNames() {
   return r.rows.map((x) => x.name);
 }
 
+/** The default top-level category for items we can't confidently map — so a
+ *  pulled item is NEVER left without a category at volume (Liam: 100s of items).
+ *  Prefers an 'Other' catalogue category; null only if the taxonomy lacks one. */
+async function defaultCategoryId() {
+  const r = await pool.query(
+    `SELECT id FROM categories WHERE namespace = 'catalogue' AND parent_id IS NULL
+       AND deleted_at IS NULL AND lower(name) = 'other' LIMIT 1`
+  );
+  return r.rows[0]?.id || null;
+}
+
 /** Map an AI category guess to a Ballpark top-level category id. The AI is now
  *  given our vocabulary (extractProduct), so this is usually an exact match; the
  *  child→parent fallback catches a guess that named a subcategory instead. */
@@ -180,7 +191,9 @@ async function pull(orgId, urls) {
           install_cost: toNumber(p.install_cost),
           lead_time_days: toNumber(p.lead_time_days),
           external_url: finalUrl, // PRIMARY source URL — dedup/delta key
-          category_id: await matchCategoryId(p.category),
+          // Never null: map to our vocabulary, else the 'Other' default. The
+          // auto-classifier refines this + picks a subcategory on create.
+          category_id: (await matchCategoryId(p.category)) || (await defaultCategoryId()),
           attributes,
           images,
         },
