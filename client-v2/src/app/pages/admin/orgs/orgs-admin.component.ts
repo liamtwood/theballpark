@@ -26,6 +26,13 @@ const STATUS_OPTIONS: SelectOption[] = [
 /** Stale 'admin' org type is canonically 'ballpark' (normalizeOrgType mirrors this). */
 const normType = (t: string): string => (t === 'admin' ? 'ballpark' : t);
 
+// Fetch-from-website extraction: the 6 fields the lean form renders as inputs,
+// vs the ones it doesn't (branding + About + reg details). BE-00127 QC: the form
+// stays lean, but a create-from-Fetch must PERSIST the non-visible extracted
+// fields too, so a supplier lands with its branding/About already populated.
+const VISIBLE_KEYS = ['name', 'website', 'city', 'country', 'phone', 'email'] as const;
+const EXTRA_KEYS = ['description', 'logo_url', 'cover_image_url', 'address', 'company_number', 'vat_number', 'default_currency'] as const;
+
 const emptyForm = (): CreateOrgInput => ({
   name: '', type: 'supplier', website: '', city: '', country: '', phone: '', email: '',
 });
@@ -239,6 +246,9 @@ export class OrgsAdminComponent {
   protected readonly busyId = signal<string | null>(null);
   protected readonly fetching = signal(false);
   protected readonly flagged = signal<Set<string>>(new Set());
+  /** High-confidence extracted fields the lean form doesn't render (branding +
+   *  About + reg details) — carried through to create so they persist. */
+  private readonly extracted = signal<Partial<CreateOrgInput>>({});
 
   protected form: CreateOrgInput = emptyForm();
 
@@ -297,7 +307,7 @@ export class OrgsAdminComponent {
 
   protected toggleCreate(): void {
     this.showCreate.update((v) => !v);
-    if (!this.showCreate()) { this.form = emptyForm(); this.flagged.set(new Set()); }
+    if (!this.showCreate()) { this.form = emptyForm(); this.flagged.set(new Set()); this.extracted.set({}); }
   }
 
   protected clearFlag(k: string): void {
@@ -312,14 +322,20 @@ export class OrgsAdminComponent {
     try {
       const { org } = await firstValueFrom(this.svc.importPreview(url));
       const flags = new Set<string>();
-      const apply = (formKey: keyof CreateOrgInput, importKey: string) => {
-        const f = org[importKey];
-        if (!f || f.confidence === 'low') return;
-        this.form[formKey] = f.value;
-        if (f.confidence === 'medium') flags.add(formKey as string);
-      };
-      apply('name', 'name'); apply('website', 'website'); apply('city', 'city');
-      apply('country', 'country'); apply('phone', 'phone'); apply('email', 'email');
+      const extra: Partial<CreateOrgInput> = {};
+      // Route every non-low extracted field: VISIBLE ones pre-fill the form (medium
+      // → flag for a check); the rest (branding/About/reg) are stashed to persist
+      // on create even though the lean form doesn't render them.
+      for (const [key, f] of Object.entries(org)) {
+        if (!f || f.confidence === 'low') continue;
+        if ((VISIBLE_KEYS as readonly string[]).includes(key)) {
+          this.form[key as keyof CreateOrgInput] = f.value as never;
+          if (f.confidence === 'medium') flags.add(key);
+        } else if ((EXTRA_KEYS as readonly string[]).includes(key)) {
+          extra[key as keyof CreateOrgInput] = f.value as never;
+        }
+      }
+      this.extracted.set(extra);
       this.flagged.set(flags);
       const found = Object.keys(org).length > 0;
       this.toast.add({
@@ -342,6 +358,7 @@ export class OrgsAdminComponent {
       this.toast.add({ severity: 'success', summary: `${created.name} created` });
       this.form = emptyForm();
       this.flagged.set(new Set());
+      this.extracted.set({});
       this.showCreate.set(false);
     } catch {
       this.toast.add({ severity: 'error', summary: 'Failed to create organisation' });
@@ -385,11 +402,15 @@ export class OrgsAdminComponent {
   }
 
   private cleaned(): CreateOrgInput {
-    const out: Record<string, unknown> = { name: this.form.name.trim(), type: this.form.type };
-    for (const k of ['website', 'city', 'country', 'phone', 'email'] as const) {
+    // Start from the non-visible extracted fields (branding/About/reg) so a
+    // create-from-Fetch persists them; the visible form fields overlay on top.
+    const out: Record<string, unknown> = { ...this.extracted(), name: this.form.name.trim(), type: this.form.type };
+    for (const k of VISIBLE_KEYS) {
+      if (k === 'name') continue;
       const v = (this.form[k] || '').trim();
       if (v) out[k] = v;
     }
+    for (const k of Object.keys(out)) { if (out[k] === '' || out[k] == null) delete out[k]; }
     return out as unknown as CreateOrgInput;
   }
 }
