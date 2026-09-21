@@ -66,6 +66,14 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '1mb' })); // explicit cap (ENGINEERING Rule 10); gallery payloads sit well under
 app.use(require('cookie-parser')());
+
+// FR-00212 — broad per-IP backstop across the WHOLE /api surface. Mounted BEFORE
+// any /api route (including the convenience routes + mounted routers below) so
+// Express registration order can't let some escape it. Tighter limiters
+// (auth/ai/brief) stack at their own mounts. Needs trust proxy=1 (above) for the
+// real per-client req.ip. aiLimit/briefLimit are applied at their mounts later.
+const { aiLimit, briefLimit, apiLimit } = require('./middleware/rate-limits');
+app.use('/api', apiLimit);
 // Audit attribution (Item 1): resolve the acting user into AsyncLocalStorage so
 // pool.js can SET LOCAL app.current_user_id on writes. Must run before routes.
 app.use(require('./middleware/user-context'));
@@ -192,12 +200,6 @@ app.patch('/api/suppliers/:id/images', ...v1Gate, async (req, res, next) => {
 app.get('/api/clients/:id/projects', ...v1Gate, async (req, res, next) => {
   try { res.json(await ProjectService.getByClient(req.params.id)); } catch (err) { next(err); }
 });
-
-// FR-00212 — broad per-IP backstop across the whole /api surface (generous;
-// catches abuse, not real page loads). Specific tighter limiters (auth/ai/brief)
-// stack on top at their own mounts. trust proxy=1 (above) makes req.ip the client.
-const { aiLimit, briefLimit, apiLimit } = require('./middleware/rate-limits');
-app.use('/api', apiLimit);
 
 // Mount routes
 // pV2-02 — auth surface (/auth/*, distinct from /api/*) + dev-only endpoints.

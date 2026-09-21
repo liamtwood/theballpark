@@ -33,11 +33,12 @@ function userFromRequest(req) {
   }
 }
 
-/** HARD gate — 401s when there is no valid session. Mounted on the gated groups. */
+/** HARD gate — 401s when there is no valid session. Mounted on the gated groups.
+ *  Reuses req.user when the global `attachUser` already verified this request, so
+ *  a valid session is only jwt.verify'd once (pre-preview audit #5). */
 function authenticate(req, res, next) {
-  if (!(req.cookies && req.cookies[COOKIE_NAME])) return res.status(401).json({ error: 'Not authenticated' });
-  const user = userFromRequest(req);
-  if (!user) return res.status(401).json({ error: 'Invalid or expired session' });
+  const user = req.user || userFromRequest(req);
+  if (!user) return res.status(401).json({ error: 'Not authenticated' });
   req.user = user;
   const store = als.getStore();
   if (store) store.userId = user.id; // legacy audit store (superseded by requestContext)

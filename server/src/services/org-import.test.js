@@ -117,8 +117,9 @@ describe('pV2-IMPORT-ORG-01 SSRF guard', () => {
     await assert.rejects(() => assertSafeUrl('http://192.168.1.5'), /private/i);
   });
 
-  test('assertSafeUrl accepts a public IP literal', async () => {
-    const u = await assertSafeUrl('https://8.8.8.8/');
-    assert.equal(u.hostname, '8.8.8.8');
+  test('assertSafeUrl accepts a public IP literal + returns the pinned ip', async () => {
+    const r = await assertSafeUrl('https://8.8.8.8/');
+    assert.equal(r.url.hostname, '8.8.8.8');
+    assert.equal(r.ip, '8.8.8.8');
   });
 });

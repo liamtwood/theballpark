@@ -1,5 +1,4 @@
 const pool = require('../db/pool');
-const { als } = require('../db/request-context');
 const { withTransaction } = require('../db/with-transaction');
 
 async function getAll(orgId, categoryId, tag, subcategoryId) {

@@ -139,7 +139,7 @@ router.post('/:token/reply', async (req, res, next) => {
       return res.status(400).json({ error: 'reply needs text or item_actions' });
     }
 
-    const db = await ownerPool.connect();
+    const db = await pool.connect();
     try {
       await db.query('BEGIN');
 
@@ -267,7 +267,7 @@ router.post('/:token/holding', async (req, res, next) => {
       return res.status(400).json({ error: 'next_action_by required' });
     }
 
-    const db = await ownerPool.connect();
+    const db = await pool.connect();
     try {
       await db.query('BEGIN');
 

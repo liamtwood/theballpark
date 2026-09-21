@@ -191,8 +191,11 @@ function isPrivateIp(ip) {
   return true; // unknown format → treat as unsafe
 }
 
-/** Reject non-http(s), loopback names, and hosts that resolve to a private IP
- *  (defends DNS→private rebinding). Throws on unsafe. */
+/** Reject non-http(s), loopback names, and hosts that resolve to a private IP,
+ *  and RETURN the vetted resolved IP so the connection can be PINNED to it — the
+ *  socket connects to this exact address (no re-resolution), so DNS can't rebind
+ *  to a private host between the check and the connect (closes the TOCTOU).
+ *  Throws on unsafe. */
 async function assertSafeUrl(url) {
   let u;
   try { u = new URL(url); } catch { throw httpErr('Invalid URL', 400); }
@@ -203,75 +206,90 @@ async function assertSafeUrl(url) {
   }
   if (net.isIP(host)) {
     if (isPrivateIp(host)) throw httpErr('Refusing to fetch a private IP', 400);
-    return u;
+    return { url: u, ip: host };
   }
-  // Resolve the name and reject if ANY address is private.
+  // Resolve the name and reject if ANY address is private; pin to the first.
   let addrs = [];
   try { addrs = await dns.lookup(host, { all: true }); } catch { throw httpErr('Could not resolve host', 400); }
   if (!addrs.length || addrs.some((a) => isPrivateIp(a.address))) {
     throw httpErr('Host resolves to a private address', 400);
   }
-  return u;
+  return { url: u, ip: addrs[0].address };
 }
 
 function httpErr(message, status) {
   const e = new Error(message); e.status = status; return e;
 }
 
+const IMPORT_UA = 'BallparkOrgImport/1.0 (+https://theballpark.app)';
+
+/** GET `u`, PINNED to `ip` via the socket `lookup` (the vetted address — no
+ *  re-resolution). TLS SNI + cert validation still use the real hostname. Caps
+ *  the body; decompresses gzip/deflate/br. Returns { status, location, html }. */
+function pinnedGet(u, ip) {
+  const mod = u.protocol === 'https:' ? require('https') : require('http');
+  return new Promise((resolve, reject) => {
+    const family = net.isIP(ip) === 6 ? 6 : 4;
+    const req = mod.request(u, {
+      method: 'GET',
+      // Pin to the vetted ip. Node 20+ Happy Eyeballs calls lookup with
+      // options.all=true and expects an ARRAY; support both shapes.
+      lookup: (_host, opts, cb) =>
+        opts && opts.all ? cb(null, [{ address: ip, family }]) : cb(null, ip, family),
+      headers: { 'user-agent': IMPORT_UA, accept: 'text/html', 'accept-encoding': 'gzip, deflate, br' },
+      timeout: FETCH_TIMEOUT_MS,
+    }, (res) => {
+      const status = res.statusCode || 0;
+      if (status >= 300 && status < 400 && res.headers.location) {
+        res.resume(); // drain
+        resolve({ status, location: res.headers.location, html: '' });
+        return;
+      }
+      const chunks = []; let total = 0;
+      res.on('data', (c) => {
+        total += c.length;
+        if (total <= MAX_BODY_BYTES) chunks.push(c); else res.destroy();
+      });
+      res.on('end', () => {
+        let buf = Buffer.concat(chunks);
+        const enc = String(res.headers['content-encoding'] || '').toLowerCase();
+        try {
+          const zlib = require('zlib');
+          if (enc === 'gzip') buf = zlib.gunzipSync(buf);
+          else if (enc === 'deflate') buf = zlib.inflateSync(buf);
+          else if (enc === 'br') buf = zlib.brotliDecompressSync(buf);
+        } catch { /* leave raw — parse degrades to blank fields, not a crash */ }
+        resolve({ status, location: null, html: buf.toString('utf8') });
+      });
+      res.on('error', reject);
+    });
+    req.on('timeout', () => req.destroy(httpErr('Site took too long to respond', 504)));
+    req.on('error', reject);
+    req.end();
+  });
+}
+
 // ── guarded fetch + extract ──────────────────────────────────────────────────
 /** Fetch the ROOT of the host (JSON-LD Organization is site-level + stable),
- *  with SSRF guard, timeout, redirect cap, and a body-size cap. */
+ *  SSRF-guarded + IP-pinned, with a timeout, redirect cap, and body-size cap. */
 async function extractOrg(inputUrl) {
-  const start = await assertSafeUrl(inputUrl);
-  const rootUrl = start.origin + '/';
-  let current = rootUrl;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    let res;
-    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-      res = await fetch(current, {
-        redirect: 'manual',
-        signal: controller.signal,
-        headers: { 'user-agent': 'BallparkOrgImport/1.0 (+https://theballpark.app)', accept: 'text/html' },
-      });
-      if (res.status >= 300 && res.status < 400 && res.headers.get('location')) {
-        if (hop === MAX_REDIRECTS) throw httpErr('Too many redirects', 502);
-        const next = new URL(res.headers.get('location'), current).toString();
-        await assertSafeUrl(next); // re-guard each hop
-        current = next;
-        continue;
-      }
-      break;
+  const first = await assertSafeUrl(inputUrl);
+  let current = first.url.origin + '/';
+  let res;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const { url, ip } = await assertSafeUrl(current); // (re-)vet + pin every hop
+    res = await pinnedGet(url, ip);
+    if (res.status >= 300 && res.status < 400 && res.location) {
+      if (hop === MAX_REDIRECTS) throw httpErr('Too many redirects', 502);
+      current = new URL(res.location, url).toString();
+      continue;
     }
-    if (!res.ok) throw httpErr(`Site returned ${res.status}`, 502);
-
-    // Read with a hard byte cap.
-    const reader = res.body?.getReader?.();
-    let html = '';
-    if (reader) {
-      const decoder = new TextDecoder();
-      let total = 0;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        total += value.length;
-        html += decoder.decode(value, { stream: true });
-        if (total >= MAX_BODY_BYTES) { try { await reader.cancel(); } catch { /* ignore */ } break; }
-      }
-      html += decoder.decode();
-    } else {
-      html = (await res.text()).slice(0, MAX_BODY_BYTES);
-    }
-
-    return parseOrgFromHtml(html, { isHomepage: true, url: start.origin });
-  } catch (err) {
-    if (err.name === 'AbortError') throw httpErr('Site took too long to respond', 504);
-    throw err;
-  } finally {
-    clearTimeout(timer);
+    break;
   }
+  if (!res || res.status < 200 || res.status >= 300) {
+    throw httpErr(`Site returned ${res ? res.status : 'no response'}`, 502);
+  }
+  return parseOrgFromHtml(res.html, { isHomepage: true, url: first.url.origin });
 }
 
 module.exports = {
