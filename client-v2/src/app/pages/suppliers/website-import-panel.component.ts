@@ -46,6 +46,7 @@ interface EditRow { key: string; label: string; categoryId: string | null; subCh
       @if (report(); as r) {
        @if (!result()) {
         <div class="mt-3 bp-body-small" style="border-top:1px solid var(--border); padding-top:0.75rem;">
+          <p class="bp-extract-heading">Analysis Summary</p>
           <div class="flex flex-wrap items-center gap-2 mb-2">
             <span class="bp-pill">{{ r.pageShape }}</span>
             @if (r.mapped?.itemCount != null) { <span class="bp-pill">{{ r.mapped?.itemCount }} items</span> }
@@ -83,6 +84,7 @@ interface EditRow { key: string; label: string; categoryId: string | null; subCh
           <!-- The task list: pick which item pages to pull (crawl or listing).
                A single detail URL pulls the page itself (no list). -->
           @if (r.productLinks?.length) {
+            <p class="bp-extract-heading">Items Found</p>
             <div class="flex items-center justify-between mb-1">
               <p class="text-secondary">{{ selected().size }} of {{ r.productLinks?.length }} items selected</p>
               <button type="button" class="bp-caption" style="text-decoration:underline;" (click)="toggleAll()">
@@ -128,7 +130,7 @@ interface EditRow { key: string; label: string; categoryId: string | null; subCh
                    group (the supplier grouped these; we mirror that). A NEW subcat is
                    created on Load. -->
               <div class="mb-3">
-                <p class="font-medium mb-1">Category &amp; subcategory</p>
+                <p class="bp-extract-heading">Classification</p>
                 @for (row of rows(); track row.key) {
                   <div class="flex items-center gap-2 mb-1.5 flex-wrap">
                     <span class="font-medium truncate" style="min-width:7rem; max-width:9rem;">{{ row.label }}</span>
