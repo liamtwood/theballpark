@@ -251,14 +251,15 @@ async function matchCategoryId(name) {
  *  test fixtures. Ordered by sort_order then name. */
 async function marketplaceCategoryTree() {
   const r = await pool.query(
-    `SELECT id, name, parent_id FROM categories
+    `SELECT id, name, parent_id, NULLIF(TRIM(COALESCE(description,'')),'') AS description
+       FROM categories
       WHERE namespace = 'catalogue' AND deleted_at IS NULL AND name NOT LIKE 'rlstxn%'
       ORDER BY sort_order ASC, name ASC`
   );
   const tops = r.rows.filter((c) => !c.parent_id);
   return tops.map((t) => ({
-    id: t.id, name: t.name,
-    subcats: r.rows.filter((c) => c.parent_id === t.id).map((c) => ({ id: c.id, name: c.name })),
+    id: t.id, name: t.name, description: t.description || null,
+    subcats: r.rows.filter((c) => c.parent_id === t.id).map((c) => ({ id: c.id, name: c.name, description: c.description || null })),
   }));
 }
 
@@ -277,7 +278,7 @@ const groupLabel = (key) => humanizeLabel(key);
  *  sample }] where sample is a representative product name/slug. */
 async function prepare(groups) {
   const tree = await marketplaceCategoryTree();
-  const treeForAi = tree.map((c) => ({ name: c.name, subcats: c.subcats.map((s) => s.name) }));
+  const treeForAi = tree.map((c) => ({ name: c.name, description: c.description, subcats: c.subcats.map((s) => ({ name: s.name, description: s.description })) }));
   const list = Array.isArray(groups) ? groups : [];
   const out = [];
   for (const g of list) {

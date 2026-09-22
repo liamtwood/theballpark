@@ -241,6 +241,8 @@ const CLASSIFY_GROUP_SYSTEM = `You map a SUPPLIER's own product category onto Ba
 
 You are given: the supplier's category label (how THEY group these items), a sample product name, and Ballpark's categories each with their existing subcategories. The supplier grouped these deliberately — respect that grouping.
 
+Use each category's DESCRIPTION to pick by MEANING, not by keyword. A category's scope is what its description says — e.g. "Stand Structure" is EXHIBITION stands / custom build (NOT garden gazebos or marquees); "Furniture & Fixtures" is hired furniture incl. outdoor furniture. Pick where a real event planner would look for this item.
+
 Decide, for the WHOLE group:
 1. category: the single best-fit Ballpark category — EXACTLY one "category" string from the list (never invent a category).
 2. subcategory: the best existing subcategory UNDER that category (exact string from its list) IF one clearly fits or is close (e.g. supplier "Gazebo Hire" ≈ existing "Outdoor & Tensile Structure"? only if genuinely close).
@@ -254,8 +256,10 @@ Return exactly: { "category":"", "subcategory":"", "isNew": false, "confidence":
  *  call per SELECTED group — we only AI what we're about to load. Returns
  *  { category, subcategory, isNew, confidence }. */
 async function classifyGroup(supplierLabel, sampleName, tree = []) {
+  const subName = (s) => (typeof s === 'string' ? s : s?.name);
+  const subLine = (s) => { const n = subName(s); const d = typeof s === 'object' ? s?.description : null; return d ? `${n} (${d})` : n; };
   const catBlock = tree
-    .map((c) => `- ${c.name}: ${(c.subcats || []).join(', ') || '(no subcategories yet)'}`)
+    .map((c) => `- ${c.name}${c.description ? ` — ${c.description}` : ''}\n    subcategories: ${(c.subcats || []).map(subLine).join(', ') || '(none yet)'}`)
     .join('\n');
   const { parsed } = await callHaikuJson({
     system: CLASSIFY_GROUP_SYSTEM,

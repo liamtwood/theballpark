@@ -214,3 +214,15 @@ and `analyse` now branches on path depth: homepage (0) → whole site; **section
 just that section** (`/gazebo-hire` → only `/gazebo-hire/*`); product URL (depth ≥2) → single-page
 analyse. Server-only. Verified: `/gazebo-hire` → "Crawled the Gazebo Hire section (3 pages), found 2
 item pages" → both gazebo products, AI-free.
+
+## QC iteration — v2.545 (Prepare classifier reasons from category DESCRIPTIONS)
+Liam QC: gazebo was suggested Stand Structure ▸ Outdoor & Tensile Structure — defensible but not his
+instinct (he'd pick Furniture ▸ Outdoor Furniture); chairs was perfect (Furniture ▸ Seating). The
+classifier only saw category NAMES. Now it's fed each category's `description` (all 15 top-levels have
+one; "Stand Structure" = "exhibition stands, custom builds…") AND subcat descriptions WHERE PRESENT —
+so it maps by MEANING, not keyword, with a rule to pick "where a real planner would look". Verified:
+chairs stayed Furniture ▸ Seating; gazebo still leaned Outdoor & Tensile (a genuine tie — that subcat
+IS a valid gazebo home — so the editable override remains the tool for ties). Key enabler: subcat
+descriptions are EMPTY today; populating them (Liam: "there's a field for it") now steers picks with
+zero further code — e.g. describe "Outdoor Furniture" to include gazebos/parasols. `marketplaceCategoryTree`
+carries descriptions (cat + subcat); `classifyGroup` renders them; CLASSIFY_GROUP_SYSTEM reasons from them.
