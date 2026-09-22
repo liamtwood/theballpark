@@ -84,12 +84,23 @@ import { AdminOrgService, ExtractReport, PullResult } from '../../core/admin-org
                 {{ allSelected() ? 'Select none' : 'Select all' }}
               </button>
             </div>
-            <div style="max-height:12rem; overflow:auto; border:1px solid var(--border); border-radius:0.5rem; padding:0.5rem;" class="mb-2">
-              @for (link of r.productLinks; track link) {
-                <label class="flex items-center gap-2 mb-1">
-                  <input type="checkbox" [checked]="selected().has(link)" (change)="toggle(link)" />
-                  <span class="truncate">{{ link }}</span>
-                </label>
+            <div style="max-height:16rem; overflow:auto; border:1px solid var(--border); border-radius:0.5rem; padding:0.5rem;" class="mb-2">
+              @for (g of grouped(); track g.category) {
+                <div class="mb-2">
+                  <label class="flex items-center gap-2 font-medium">
+                    <input type="checkbox" [checked]="groupAll(g.items)" [indeterminate]="groupSome(g.items)" (change)="toggleGroup(g.items)" />
+                    <span>{{ g.category }}</span>
+                    <span class="text-secondary">({{ g.items.length }})</span>
+                  </label>
+                  <div class="ml-6">
+                    @for (link of g.items; track link) {
+                      <label class="flex items-center gap-2 mb-0.5">
+                        <input type="checkbox" [checked]="selected().has(link)" (change)="toggle(link)" />
+                        <span class="truncate">{{ leaf(link) }}</span>
+                      </label>
+                    }
+                  </div>
+                </div>
               }
             </div>
           }
@@ -152,6 +163,30 @@ export class WebsiteImportPanelComponent {
   protected toggleAll(): void {
     const links = this.report()?.productLinks ?? [];
     this.selected.set(this.allSelected() ? new Set() : new Set(links));
+  }
+
+  /** Task list grouped by category (first path segment), alphabetical. */
+  protected readonly grouped = computed(() => {
+    const map = new Map<string, string[]>();
+    for (const u of this.report()?.productLinks ?? []) {
+      let cat = 'other';
+      try { cat = new URL(u).pathname.split('/').filter(Boolean)[0] || 'other'; } catch { /* keep default */ }
+      (map.get(cat) ?? map.set(cat, []).get(cat)!).push(u);
+    }
+    return [...map.entries()].map(([category, items]) => ({ category, items }))
+      .sort((a, b) => a.category.localeCompare(b.category));
+  });
+  /** The product slug (last path segment) — the readable per-item label. */
+  protected leaf(u: string): string {
+    try { const p = new URL(u).pathname.split('/').filter(Boolean); return p[p.length - 1] || u; } catch { return u; }
+  }
+  protected groupAll(items: string[]): boolean { return items.length > 0 && items.every((u) => this.selected().has(u)); }
+  protected groupSome(items: string[]): boolean { return !this.groupAll(items) && items.some((u) => this.selected().has(u)); }
+  protected toggleGroup(items: string[]): void {
+    const next = new Set(this.selected());
+    if (this.groupAll(items)) items.forEach((u) => next.delete(u));
+    else items.forEach((u) => next.add(u));
+    this.selected.set(next);
   }
 
   protected analyse(): void {
