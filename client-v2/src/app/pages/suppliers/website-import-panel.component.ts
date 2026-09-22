@@ -91,10 +91,10 @@ import { AdminOrgService, ExtractReport, PullResult } from '../../core/admin-org
                        row toggles the items open/closed. Collapsed by default. -->
                   <div class="flex items-center gap-2">
                     <input type="checkbox" class="bp-check" [checked]="groupAll(g.items)" [indeterminate]="groupSome(g.items)" (change)="toggleGroup(g.items)" />
-                    <button type="button" class="flex items-center gap-1 font-medium" (click)="toggleExpand(g.category)">
+                    <button type="button" class="flex items-center gap-1 font-medium bp-accordion-toggle" (click)="toggleExpand(g.category)">
                       <lucide-icon [name]="isExpanded(g.category) ? 'chevron-down' : 'chevron-right'" [size]="14" />
                       <span>{{ g.category }}</span>
-                      <span class="text-secondary">({{ groupSelectedCount(g.items) }}/{{ g.items.length }})</span>
+                      <span class="text-secondary">({{ g.items.length }})</span>
                     </button>
                   </div>
                   @if (isExpanded(g.category)) {
