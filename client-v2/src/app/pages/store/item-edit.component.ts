@@ -77,62 +77,73 @@ interface ItemForm {
 
               <app-edit-field label="Category" type="select" density="page" [filter]="true" [options]="categoryOptions()" [editing]="editing()" [value]="form().category_id" (valueChange)="patch({ category_id: $event })" />
 
-              <div>
-                <label class="bp-field-label">Main Image</label>
-                <div
-                  class="bp-item-banner mt-2"
-                  [class.bp-item-banner--readonly]="!canEditPhotos()"
-                  [attr.role]="canEditPhotos() ? 'button' : null"
-                  [attr.tabindex]="canEditPhotos() ? 0 : null"
-                  (click)="canEditPhotos() && imageDrawer.set(true)"
-                  (keydown.enter)="canEditPhotos() && imageDrawer.set(true)"
-                >
-                  @if (imageUrl()) {
-                    <img [src]="imageUrl()" alt="" />
-                  } @else {
-                    <span class="bp-caption">{{ canEditPhotos() ? 'Click to upload main image' : 'No image' }}</span>
+              <!-- pV2-STORE-ITEM-EDIT-LAYOUT-01 — Gallery: main image LEFT, gallery
+                   images as a vertical column to the RIGHT (not stacked below). -->
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] sm:items-start">
+                <div>
+                  <label class="bp-field-label">Main Image</label>
+                  <div
+                    class="bp-item-banner mt-2"
+                    [class.bp-item-banner--readonly]="!canEditPhotos()"
+                    [attr.role]="canEditPhotos() ? 'button' : null"
+                    [attr.tabindex]="canEditPhotos() ? 0 : null"
+                    (click)="canEditPhotos() && imageDrawer.set(true)"
+                    (keydown.enter)="canEditPhotos() && imageDrawer.set(true)"
+                  >
+                    @if (imageUrl()) {
+                      <img [src]="imageUrl()" alt="" />
+                    } @else {
+                      <span class="bp-caption">{{ canEditPhotos() ? 'Click to upload main image' : 'No image' }}</span>
+                    }
+                  </div>
+                  @if (editing() && isApproved()) {
+                    <p class="bp-caption mt-1 text-secondary">Photos are locked on approved items — duplicate to change them.</p>
                   }
                 </div>
-                @if (editing() && isApproved()) {
-                  <p class="bp-caption mt-1 text-secondary">Photos are locked on approved items — duplicate to change them.</p>
-                }
-              </div>
-
-              <div>
-                <label class="bp-field-label">Gallery Images</label>
-                <div class="mt-2">
-                  <app-image-gallery
-                    entityType="item"
-                    [images]="images()"
-                    [primaryUrl]="imageUrl()"
-                    [searchSeed]="form().name"
-                    [editable]="canEditPhotos()"
-                    (imagesChange)="images.set($event)"
-                    (primarySet)="onSetPrimary($event)"
-                  />
+                <div>
+                  <label class="bp-field-label">Gallery Images</label>
+                  <div class="mt-2">
+                    <app-image-gallery
+                      entityType="item"
+                      [images]="images()"
+                      [primaryUrl]="imageUrl()"
+                      [searchSeed]="form().name"
+                      [editable]="canEditPhotos()"
+                      (imagesChange)="images.set($event)"
+                      (primarySet)="onSetPrimary($event)"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="editing()" [value]="form().unit" (valueChange)="patch({ unit: $event })" />
-
-              <app-edit-field [label]="'Ballpark Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
-
-              <app-edit-field [label]="'Install Cost (Optional)' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().install_cost" (valueChange)="patch({ install_cost: $event })" />
-
-              <app-edit-field label="Install Cost Applies" type="select" density="page" [options]="installUnitOptions" [editing]="editing()" [value]="form().install_unit" (valueChange)="patch({ install_unit: $event })" />
-
-              <app-edit-field label="Lead Time (days)" type="number" density="page" [editing]="editing()" [value]="form().lead_time_days" (valueChange)="patch({ lead_time_days: $event })" />
-
+              <!-- Description (below the image row) -->
               <div>
                 <label class="bp-field-label">Description</label>
                 <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="form().description" (ngModelChange)="patch({ description: $event })" [readonly]="!editing()" placeholder="Describe the product…"></textarea>
               </div>
 
-              <app-edit-field label="Location Coverage" density="page" [editing]="editing()" [value]="form().location_coverage" (valueChange)="patch({ location_coverage: $event })" placeholder="e.g. London &amp; South East" />
+              <!-- Cost container (2-col): Ballpark Cost | Unit ; Location | Lead Time -->
+              <div class="bp-qv-spec">
+                <span class="bp-qv-spec__label"><lucide-icon name="wallet" [size]="13" /> Cost</span>
+                <div class="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <app-edit-field [label]="'Ballpark Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
+                  <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="editing()" [value]="form().unit" (valueChange)="patch({ unit: $event })" />
+                  <app-edit-field label="Location" density="page" [editing]="editing()" [value]="form().location_coverage" (valueChange)="patch({ location_coverage: $event })" placeholder="e.g. London &amp; South East" />
+                  <app-edit-field label="Lead Time (days)" type="number" density="page" [editing]="editing()" [value]="form().lead_time_days" (valueChange)="patch({ lead_time_days: $event })" />
+                </div>
+              </div>
 
-              <div>
-                <label class="bp-field-label">Included Services</label>
-                <textarea class="bp-store-textarea mt-1" rows="3" [ngModel]="form().install_description" (ngModelChange)="patch({ install_description: $event })" [readonly]="!editing()" placeholder="What the install covers…"></textarea>
+              <!-- Installation container: Install Cost | Unit ; Included services (full width) -->
+              <div class="bp-qv-spec">
+                <span class="bp-qv-spec__label"><lucide-icon name="wrench" [size]="13" /> Installation</span>
+                <div class="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <app-edit-field [label]="'Install Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().install_cost" (valueChange)="patch({ install_cost: $event })" />
+                  <app-edit-field label="Unit" type="select" density="page" [options]="installUnitOptions" [editing]="editing()" [value]="form().install_unit" (valueChange)="patch({ install_unit: $event })" />
+                </div>
+                <div class="mt-4">
+                  <label class="bp-field-label">Included services</label>
+                  <textarea class="bp-store-textarea mt-1" rows="3" [ngModel]="form().install_description" (ngModelChange)="patch({ install_description: $event })" [readonly]="!editing()" placeholder="What the install covers…"></textarea>
+                </div>
               </div>
 
               <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — EDIT mirrors the VIEW: the 5
@@ -144,22 +155,23 @@ interface ItemForm {
                 </datalist>
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   @for (grp of GROUP_DEF; track grp.key) {
-                    <div class="bp-qv-spec">
+                    <div class="bp-qv-spec relative">
                       <span class="bp-qv-spec__label"><lucide-icon [name]="grp.icon" [size]="13" /> {{ grp.title }}</span>
+                      <!-- Add affordance: a plain top-right "+" (no background), not an Add-row button. -->
+                      <button type="button" class="absolute right-3 top-3 text-secondary hover:text-text" (click)="addRow(grp.key)" aria-label="Add row">
+                        <lucide-icon name="plus" [size]="17" />
+                      </button>
                       @for (r of groupRows()[grp.key]; track $index) {
                         <div class="mt-1.5 flex items-center gap-2">
                           <input class="bp-input-field flex-1" [attr.list]="grp.key === 'measurements' ? 'measure-suggestions' : null" placeholder="Label"
                                  [value]="r.label" (input)="patchRow(grp.key, $index, 'label', $any($event.target).value)" />
-                          <input class="bp-input-field flex-1" placeholder="Value"
+                          <input class="bp-input-field flex-1" placeholder="Value" style="background: var(--color-surface);"
                                  [value]="r.value" (input)="patchRow(grp.key, $index, 'value', $any($event.target).value)" />
                           <button type="button" class="shrink-0 text-muted hover:text-text" (click)="removeRow(grp.key, $index)" aria-label="Remove row">
                             <lucide-icon name="trash-2" [size]="15" />
                           </button>
                         </div>
                       }
-                      <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="addRow(grp.key)">
-                        <lucide-icon name="plus" [size]="14" /> Add row
-                      </button>
                     </div>
                   }
 
