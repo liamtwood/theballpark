@@ -263,6 +263,11 @@ export class WebsiteImportPanelComponent {
   private groupKey(u: string): string {
     try {
       const segs = new URL(u).pathname.split('/').filter(Boolean);
+      const pi = segs.indexOf('products'); // Shopify/Woo: group by the collection, not "products"
+      if (pi >= 0) {
+        const before = segs.slice(0, pi).filter((s) => !['collections', 'collection', 'shop', 'store'].includes(s));
+        return before.length ? before[before.length - 1] : 'products';
+      }
       return (segs.length > 1 ? segs.slice(0, -1) : segs).join('/') || 'other';
     } catch { return 'other'; }
   }

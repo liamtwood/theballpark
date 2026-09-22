@@ -20,12 +20,25 @@ const MAX_TEXT_CHARS = 14000; // keep the model prompt bounded; product pages si
 const MAX_PULL_URLS = 100;    // per pull request — small catalogues (<100 items) in one go
 const CRAWL_MAX_PAGES = 250;  // bounded BFS ceiling — covers a whole small/mid catalogue; a
                               // very large one needs pagination/concurrency (future).
-// A page is a PRODUCT (a leaf to pull) when it carries schema.org Product JSON-LD;
-// listing/category pages don't (they have ItemList/BreadcrumbList + many children).
-// Proven on Yahire at depth 2 AND 3 — deterministic, AI-free.
-const isProductHtml = (html) => /"@type"\s*:\s*"Product"/.test(String(html || ''));
+// Is a page a PRODUCT (a leaf to pull) vs a listing/collection? No single signal is
+// universal across platforms, so combine (deterministic, AI-free):
+//  • og:type = "product"        → yes (Shopify/Woo product page)
+//  • og:type = "product.group"  → NO  (Shopify collection — short-circuit)
+//  • schema.org Product + Offer → yes (Yahire etc., whose product og:type is "website")
+// Verified: Yahire products (JSON-LD path) + Shopify products (og:type) both pass;
+// Shopify collections + .atom/.oembed feeds no longer false-positive.
+function isProductHtml(html) {
+  const s = String(html || '');
+  const og = (
+    s.match(/property=["']og:type["'][^>]*content=["']([^"']+)["']/i) ||
+    s.match(/content=["']([^"']+)["'][^>]*property=["']og:type["']/i) || []
+  )[1] || '';
+  if (/^\s*product\s*$/i.test(og)) return true;
+  if (/product\.group/i.test(og)) return false;
+  return /"@type"\s*:\s*"Product"/.test(s) && /"@type"\s*:\s*"Offer"/.test(s);
+}
 // Skip assets + non-catalogue pages when crawling for item pages.
-const CRAWL_SKIP = /(cart|checkout|basket|account|login|register|sign-?in|contact|about|privacy|terms|cookie|blog|news|faqs?|wishlist|delivery|returns|policy|gallery|inspired|story|trade-with|my-quote|\.pdf|\.jpe?g|\.png|\.webp|\.svg|\.css|\.js|\.woff2?|\.ico|webmanifest)/i;
+const CRAWL_SKIP = /(cart|checkout|basket|account|login|register|sign-?in|contact|about|privacy|terms|cookie|blog|news|faqs?|wishlist|delivery|returns|policy|gallery|inspired|story|trade-with|my-quote|\.pdf|\.jpe?g|\.png|\.webp|\.svg|\.css|\.js|\.woff2?|\.ico|webmanifest|\.atom|\.oembed|\.rss|\.json|\/feed)/i;
 const normUrl = (u) => String(u).split('#')[0].replace(/\/$/, '');
 
 // ── HTML → text (+ a few on-page hrefs so the AI can spot product links) ──────
@@ -276,6 +289,14 @@ async function marketplaceCategoryTree() {
 function groupKeyOf(u) {
   try {
     const segs = new URL(u).pathname.split('/').filter(Boolean);
+    // Shopify/Woo flat product URL (/products/<handle> or /collections/<c>/products/<handle>):
+    // the supplier's grouping is the COLLECTION, not the literal "products" segment.
+    const pi = segs.indexOf('products');
+    if (pi >= 0) {
+      const before = segs.slice(0, pi).filter((s) => !['collections', 'collection', 'shop', 'store'].includes(s));
+      return before.length ? before[before.length - 1] : 'products';
+    }
+    // Path-hierarchy sites (Yahire): parent path = all segments except the product slug.
     return (segs.length > 1 ? segs.slice(0, -1) : segs).join('/') || 'other';
   } catch { return 'other'; }
 }

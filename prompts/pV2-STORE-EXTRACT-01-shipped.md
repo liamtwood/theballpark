@@ -248,3 +248,17 @@ group key, ~19s; no listing pages pulled. Since Liam does the load (automated, n
 still auto-maps each supplier sub-group → Ballpark cat ▸ subcat (existing or NEW), his override. A very
 large full-site crawl is bounded by the cap → process section-by-section (which was the goal anyway);
 concurrency/pagination is the future optimisation.
+
+## QC iteration — v2.549 (robust product detection across platforms + feed skip)
+Liam tested a Shopify site (edierose.co.uk) — the bare `"@type":"Product"` signal both MISSED Shopify
+products (their product pages have og:type=product, no JSON-LD) and false-positived on collection pages
++ `.atom`/`.oembed` feeds. `isProductHtml` now combines signals: og:type=product → yes; og:type=
+product.group (Shopify collection) → no; else JSON-LD Product+Offer (Yahire) → yes. CRAWL_SKIP now drops
+`.atom/.oembed/.rss/.json//feed`. `groupKeyOf` special-cases Shopify/Woo flat product URLs
+(`/products/<handle>`, `/collections/<c>/products/<handle>`) — grouping by the COLLECTION, not the literal
+"products" segment (client mirrors it). Verified: edierose /collections/all → 166 real products, no junk
+(60s/178 pages). KNOWN LIMIT (→ profiles): Shopify collections are tags + products are flat, so
+"/collections/all" flattens to one group and per-collection grouping + cross-collection dedup aren't
+solved by URL crawling. Next architecture: per-platform PROFILES (Liam) — detect Shopify/Woo/generic and
+use the best parser (Shopify exposes /products.json + /collections.json — structured, no crawl). The
+current JSON-LD crawler becomes the generic/fallback profile.
