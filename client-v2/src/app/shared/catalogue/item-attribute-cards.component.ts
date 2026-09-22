@@ -18,6 +18,7 @@ const GROUPS: { key: string; title: string; icon: string }[] = [
   { key: 'style', title: 'Style', icon: 'palette' },
   { key: 'features', title: 'Features', icon: 'sparkles' },
   { key: 'specifications', title: 'Specifications', icon: 'info' },
+  { key: 'ids', title: 'Identifiers', icon: 'hash' }, // SKU/MPN/GTIN/product id (vendor + agent key)
 ];
 
 @Component({

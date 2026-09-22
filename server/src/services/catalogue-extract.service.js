@@ -555,13 +555,18 @@ async function pull(orgId, urls, opts = {}) {
       // Internal source-identity block (_ prefix → item view/editor skip it).
       // The PRIMARY source URL lives in the dedicated items.external_url column
       // (below) — the dedup/delta key; the other stable ids live here.
+      const supplierRef = p.supplier_ref ? String(p.supplier_ref).trim() : null;
       attributes._source = pruneNull({
         sku, // deterministic vendor SKU (structured data), else the AI's guess
         product_id: productId || (p.product_id ? String(p.product_id).trim() : null),
         handle: identity.handle,
-        supplier_ref: p.supplier_ref ? String(p.supplier_ref).trim() : null,
+        supplier_ref: supplierRef,
         extracted_at: new Date().toISOString(), batch,
       });
+      // Visible "Identifiers" group — all ids we found (a product may carry several).
+      const idRows = [...(identity.ids || [])];
+      if (supplierRef && !idRows.some((r) => r.value === supplierRef)) idRows.push({ label: 'Supplier Ref', value: supplierRef });
+      if (idRows.length) attributes.ids = idRows;
 
       let images = (Array.isArray(p.images) ? p.images : [])
         .map((u) => absolutize(u, finalUrl)).filter(Boolean)
@@ -577,7 +582,11 @@ async function pull(orgId, urls, opts = {}) {
       // Review mode: keep the lean vetting set only. attributes narrows to the
       // internal _source block (so re-run dedup still works); images to the hero;
       // install/lead-time dropped. base_price + category stay — needed to review.
-      const reviewAttrs = attributes._source ? { _source: attributes._source } : {};
+      // Review keeps the lean set, but ALWAYS carries _source + the ids group (the
+      // vendor/agent key must survive even a triage load).
+      const reviewAttrs = {};
+      if (attributes._source) reviewAttrs._source = attributes._source;
+      if (attributes.ids) reviewAttrs.ids = attributes.ids;
       // Category + subcategory: if this group has a Prepare mapping, it's authoritative
       // (all items in the supplier's group get the SAME cat/subcat, creating a new
       // subcat if the mapping asked for one) and we skip the per-item AI classifier.
@@ -646,7 +655,7 @@ async function findExisting(orgId, sourceUrl, sku, productId) {
  *  Falls back to the product handle. SKU is the vendor's + agent's key and the dedup key. */
 function extractIdentity(html, url) {
   const s = String(html || '');
-  let sku = null, productId = null;
+  let sku = null, productId = null, mpn = null, gtin = null;
   for (const b of s.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
     try {
       const j = JSON.parse(b[1].trim());
@@ -654,15 +663,26 @@ function extractIdentity(html, url) {
       for (const n of nodes) {
         const t = n && n['@type'];
         if (!t || !(Array.isArray(t) ? t : [t]).some((x) => /product/i.test(String(x)))) continue;
-        sku = sku || n.sku || (Array.isArray(n.offers) ? n.offers[0]?.sku : n.offers?.sku) || null;
-        productId = productId || n.productID || n.mpn || null;
+        const offer = Array.isArray(n.offers) ? n.offers[0] : n.offers;
+        sku = sku || n.sku || offer?.sku || null;
+        productId = productId || n.productID || null;
+        mpn = mpn || n.mpn || offer?.mpn || null;
+        gtin = gtin || n.gtin13 || n.gtin12 || n.gtin || n.gtin14 || null;
       }
     } catch { /* skip malformed */ }
   }
-  // Shopify (no JSON-LD Product): the embedded product JSON carries id + variant sku.
+  // Shopify (no JSON-LD Product): the embedded product JSON carries id + variant sku + barcode.
   if (!productId) productId = (s.match(/"product"\s*:\s*\{[\s\S]{0,400}?"id"\s*:\s*(\d{6,})/) || s.match(/\bproductId["']?\s*[:=]\s*["']?(\d{6,})/i) || [])[1] || null;
   if (!sku) sku = (s.match(/"sku"\s*:\s*"([^"]+)"/i) || [])[1] || null;
-  return { sku: sku ? String(sku).trim() : null, productId: productId ? String(productId).trim() : null, handle: productHandle(url) };
+  if (!gtin) gtin = (s.match(/"barcode"\s*:\s*"([^"]+)"/i) || [])[1] || null;
+  const clean = (v) => (v == null || v === '' ? null : String(v).trim());
+  [sku, productId, mpn, gtin] = [clean(sku), clean(productId), clean(mpn), clean(gtin)];
+  // The visible "Identifiers" group — every distinct id we found, labelled (Liam: a
+  // product may carry several; collect them all, never lose one).
+  const ids = [];
+  const add = (label, value) => { if (value && !ids.some((r) => r.value === value)) ids.push({ label, value }); };
+  add('SKU', sku); add('MPN', mpn); add('GTIN', gtin); add('Product ID', productId);
+  return { sku, productId, mpn, gtin, handle: productHandle(url), ids };
 }
 
 function pruneNull(obj) {

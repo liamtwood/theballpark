@@ -289,3 +289,16 @@ skipping "duplicate in selection"), (2) dedup against the DB — `findExisting` 
 `attributes._source` reliably (overriding the AI's guess). Verified identity across Yahire + Shopify.
 This is the robust foundation the vendor/agent reference and re-run/cross-collection dedup both need;
 the Shopify profile will later add variant-level SKUs + price via /products/<handle>.json.
+
+## QC iteration — v2.552 ("Identifiers" group — collect ALL ids, not just one)
+Liam: a product may carry several ids (SKU, MPN, GTIN/barcode, product id, supplier ref) — collect them
+all in a new **"ids" attribute group** rather than one field. `extractIdentity` now gathers every id it
+finds (JSON-LD sku/mpn/gtin/productID; Shopify sku/barcode/product id) and returns an `ids` group
+`[{label,value}]` (deduped by value); pull() writes `attributes.ids` (+ Supplier Ref from the AI), and
+Review mode carries `ids` + `_source` through (the vendor/agent key must survive triage). Displayed as a
+new **Identifiers** card in the shared `item-attribute-cards` (icon `hash`, registered in app.config —
+unregistered lucide icons throw). Verified: gazebo → [SKU 222]; faux-mimosa → [SKU 10753, Product ID
+8108933480680]. NOTE: the 5-group describe-model stays "locked"; `ids` is an additive identifiers group,
+preserved across edits via the editor's `...rest` passthrough. Not yet added to the item-EDIT screen
+(display-only in shared views for now) — a read-only Identifiers card there is an easy follow-up if
+wanted. Variant-level SKUs (multi-variant) still await the Shopify profile.

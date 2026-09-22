@@ -78,6 +78,7 @@ import {
   Info,
   Ruler,
   Pencil,
+  Hash,
   CircleAlert,
   TriangleAlert,
   Upload,
@@ -189,7 +190,7 @@ export const appConfig: ApplicationConfig = {
         // storefront category-group headers
         Plus, Minus, ArrowRight, Folder,
         // pV2-DIALOGS-01 — inline alert severity icons
-        Info, Ruler, Pencil, CircleAlert, TriangleAlert,
+        Info, Ruler, Pencil, Hash, CircleAlert, TriangleAlert,
         // pV2-INBOX-01 — supplier per-item actions
         CircleCheckBig, CircleDollarSign,
         // pV2-PROJECTS-03 — add-project brief page (upload + AI build CTA)
