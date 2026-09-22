@@ -2086,6 +2086,8 @@ input.bp-input-field::-webkit-inner-spin-button { -webkit-appearance: none; marg
 /* Focus ring is accent, never the browser-default blue outline. */
 .bp-check:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 1px; }
 .bp-check:disabled { cursor: not-allowed; }
+/* Radio — accent dot, never the browser-default blue. */
+.bp-radio { accent-color: var(--theme-accent); width: 0.95rem; height: 0.95rem; margin: 0; cursor: pointer; }
 /* Bare accordion toggle: no browser-default blue focus box; accent when keyboarded. */
 .bp-accordion-toggle { outline: none; }
 .bp-accordion-toggle:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; border-radius: 4px; }

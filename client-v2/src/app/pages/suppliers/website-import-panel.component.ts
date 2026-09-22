@@ -112,7 +112,20 @@ import { AdminOrgService, ExtractReport, PullResult } from '../../core/admin-org
             </div>
           }
 
+          <!-- Pull mode: Review = lean vetting set (name/description/price/one
+               image); Full = everything mappable, after the supplier contracts. -->
           @if (canPull()) {
+            <div class="flex items-center gap-3 mb-2">
+              <span class="text-secondary">Import:</span>
+              <label class="flex items-center gap-1.5 cursor-pointer">
+                <input type="radio" name="pullmode" class="bp-radio" [checked]="mode() === 'review'" (change)="mode.set('review')" />
+                <span>Review <span class="text-secondary">— name, description, price, one image</span></span>
+              </label>
+              <label class="flex items-center gap-1.5 cursor-pointer">
+                <input type="radio" name="pullmode" class="bp-radio" [checked]="mode() === 'full'" (change)="mode.set('full')" />
+                <span>Full <span class="text-secondary">— everything we can store</span></span>
+              </label>
+            </div>
             <button type="button" class="bp-btn-grad" [disabled]="pulling()" (click)="pull()">
               {{ pulling() ? 'Pulling…' : pullLabel() }}
             </button>
@@ -124,7 +137,26 @@ import { AdminOrgService, ExtractReport, PullResult } from '../../core/admin-org
 
       @if (result(); as res) {
         <div class="mt-3 bp-body-small" style="border-top:1px solid var(--border); padding-top:0.75rem;">
-          <p class="mb-1"><strong>{{ res.created }}</strong> created · {{ res.skipped }} skipped · {{ res.failed }} failed — all pending, review in Approvals.</p>
+          <p class="mb-1"><strong>{{ res.created }}</strong> created · {{ res.skipped }} skipped · {{ res.failed }} failed — all pending, review in Approvals.@if (res.mode === 'review') { <span class="text-secondary"> (Review pull — lean set.)</span> }</p>
+
+          <!-- The gap report: data found on the pages that has no home in our model
+               yet. Tells us what to extend (attribute groups / value types) next. -->
+          @if (res.gaps?.length) {
+            <div class="mt-2 mb-2" style="border:1px solid var(--color-border-hairline); border-radius:0.5rem; padding:0.5rem 0.75rem;">
+              <p class="font-medium mb-1">Found but couldn't store yet</p>
+              <ul style="list-style:none; margin:0; padding:0;">
+                @for (g of res.gaps; track g.label) {
+                  <li class="flex items-center justify-between gap-2 py-0.5">
+                    <span class="truncate">
+                      <span class="bp-pill bp-pill--muted">{{ g.kind }}</span>
+                      {{ g.label }}@if (g.example) { <span class="text-secondary"> — e.g. {{ g.example }}</span> }
+                    </span>
+                    <span class="text-secondary whitespace-nowrap">{{ g.count }} {{ g.count === 1 ? 'item' : 'items' }}</span>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
           @for (row of res.results; track row.url) {
             <p class="text-secondary truncate">
               {{ row.status === 'created' ? '✓' : row.status === 'skipped' ? '·' : '✕' }}
@@ -151,6 +183,8 @@ export class WebsiteImportPanelComponent {
   protected readonly result = signal<PullResult | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly selected = signal<Set<string>>(new Set());
+  /** Pull mode — default Review (lean vetting set) per the contract lifecycle. */
+  protected readonly mode = signal<'review' | 'full'>('review');
 
   /** A task list is present (crawl 'site' or a 'listing') — pull the selected subset;
    *  a single 'detail' page pulls itself. */
@@ -239,7 +273,7 @@ export class WebsiteImportPanelComponent {
     if (!urls.length) return;
     this.error.set(null);
     this.pulling.set(true);
-    this.admin.extractPull(this.orgId(), urls).subscribe({
+    this.admin.extractPull(this.orgId(), urls, this.mode()).subscribe({
       next: (res) => { this.result.set(res); this.pulling.set(false); this.pulled.emit(res); },
       error: (e) => { this.error.set(this.msg(e)); this.pulling.set(false); },
     });

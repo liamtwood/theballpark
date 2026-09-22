@@ -79,6 +79,9 @@ export interface PullResult {
   created: number;
   skipped: number;
   failed: number;
+  mode?: 'review' | 'full';
+  /** The gap report: data found on the pages with no home in our model yet. */
+  gaps?: Array<{ label: string; kind: string; count: number; example?: string | null }>;
   results: Array<{ url: string; status: 'created' | 'skipped' | 'error'; reason?: string; itemId?: string; name?: string; optionCount?: number }>;
 }
 
@@ -116,9 +119,11 @@ export class AdminOrgService {
     return this.api.post<ExtractReport>(`/api/admin/orgs/${orgId}/extract/analyse`, { url });
   }
 
-  /** PULL — create pending items on the org from these product URLs. */
-  extractPull(orgId: string, urls: string[]): Observable<PullResult> {
-    return this.api.post<PullResult>(`/api/admin/orgs/${orgId}/extract/pull`, { urls });
+  /** PULL — create pending items on the org from these product URLs.
+   *  mode 'review' = lean vetting set (name/description/price/one image);
+   *  'full' = everything mappable (after the supplier contracts). */
+  extractPull(orgId: string, urls: string[], mode: 'review' | 'full' = 'full'): Observable<PullResult> {
+    return this.api.post<PullResult>(`/api/admin/orgs/${orgId}/extract/pull`, { urls, mode });
   }
 
   /** Admin soft-delete of an item on another org (cascades to its option children

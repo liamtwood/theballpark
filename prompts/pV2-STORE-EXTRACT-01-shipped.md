@@ -138,3 +138,28 @@ Select all/none toggle, default-selects all, and Pull sends the selected set. MA
 to 100 (small catalogues in one go); >100 selected pulls the first 100, rest via a second Pull
 (dedup skips the done ones). REFINE LATER: depth-2 heuristic is tuned to /category/product sites;
 other URL shapes + a cost/time guard on very large sites to follow.
+
+## QC iteration — v2.541 (gap report + Review/Full pull mode)
+Two things Liam asked for, both riding on infrastructure already there (no new AI calls beyond the
+per-item Pull that always existed; Analyse is still 100% AI-free):
+1. **"Found but couldn't store yet" gap report.** PULL_SYSTEM now also returns `noHome[]` — the honest
+   list of data ON the page with no home in our model: foreign named sections (e.g. "Manufacturer:
+   Sony", "Connectivity / In the box"), non-key:value assets (user-guide/spec-sheet LINKS or
+   DOCUMENTS), per-combination variant matrices, and commercial terms (delivery zones, MOQ, hire
+   periods). pull() aggregates these across the imported items into `gaps[] = {label, kind, count,
+   example}` (sorted by count) and the panel shows them after import ("per-colour variant pricing —
+   12 items"). This is the self-improving signal: it tells us which attribute GROUPS / value TYPES to
+   add next (Liam's call: manually extend from real examples, don't auto-mint groups per supplier).
+   Zero extra cost — rides on the extract call Pull already makes.
+2. **Review / Full pull mode.** `pull(orgId, urls, {mode})`. Review (default) keeps the lean vetting
+   set — name, description, base_price, unit, category, ONE hero image — and drops describe-groups,
+   options, price_tiers, install_*, lead_time (attributes narrows to the internal `_source` block so
+   re-run dedup still works). Full = everything mappable, run after the supplier contracts. Route +
+   client service + `PullResult.{mode,gaps}` plumbed; panel has a two-radio mode switch (pink
+   `.bp-radio`, no blue). Also: `ExtractPullBody.max` bumped 40→100 to match MAX_PULL_URLS (a >40
+   selection used to 400).
+
+Same commit also killed the browser-default **blue** on the task list (Liam: "I never want the blue"):
+`.bp-check` gains an accent focus-visible ring + an accent indeterminate DASH (was native blue), the
+bare accordion toggle gets `.bp-accordion-toggle` (no blue focus box, accent when keyboarded), and
+category headers read `(5)` not `(5/5)` (v2.540).

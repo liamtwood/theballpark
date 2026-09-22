@@ -185,7 +185,10 @@ router.delete('/:orgId/items/:itemId', async (req, res, next) => {
 // admin.cross_org_view) from the mount, so it's platform-admin only. org is :orgId
 // from the URL (never the body) — same invariant as the item routes above.
 const ExtractUrlBody = z.object({ url: z.string().trim().url('A valid URL is required') });
-const ExtractPullBody = z.object({ urls: z.array(z.string().trim().url()).min(1).max(40) });
+const ExtractPullBody = z.object({
+  urls: z.array(z.string().trim().url()).min(1).max(100),
+  mode: z.enum(['review', 'full']).optional(),
+});
 
 // POST /api/admin/orgs/:orgId/extract/analyse { url } → the read-only report.
 router.post('/:orgId/extract/analyse', async (req, res, next) => {
@@ -198,7 +201,7 @@ router.post('/:orgId/extract/analyse', async (req, res, next) => {
 router.post('/:orgId/extract/pull', async (req, res, next) => {
   const parsed = ExtractPullBody.safeParse(req.body || {});
   if (!parsed.success) return res.status(400).json({ error: 'urls (1-40 valid URLs) are required' });
-  try { res.json(await CatalogueExtract.pull(req.params.orgId, parsed.data.urls)); } catch (err) { next(err); }
+  try { res.json(await CatalogueExtract.pull(req.params.orgId, parsed.data.urls, { mode: parsed.data.mode })); } catch (err) { next(err); }
 });
 
 module.exports = router;

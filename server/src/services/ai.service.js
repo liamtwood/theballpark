@@ -201,9 +201,15 @@ Rules:
 - Map to these REAL fields when present (else null): install_description (setup/delivery/installation services offered, prose), install_cost (number, ex-VAT), lead_time_days (number).
 - images: from the IMAGES ON PAGE list, pick ALL photos of THIS product (every angle/variant/close-up shown — usually 1-4), hero photo FIRST. Exclude logos, icons, sprites, and thumbnails of OTHER products.
 - Supplier identity (capture ALL that appear, else null): sku (product code/SKU), product_id (numeric/internal id, incl. in the URL), supplier_ref (any other stable reference).
+- noHome: the HONEST GAP LIST — data clearly present on this page that does NOT fit anything above (so we would drop it). This is how we learn what to build. Include, one object each:
+    • a NAMED SECTION whose heading isn't one of our 5 attribute groups (e.g. "Manufacturer", "Connectivity / In the box", "Downloads") — label = the section/field name, value = a short example, kind = "section".
+    • a NON-key:value asset: a document/spec-sheet/user-guide/manual LINK (kind = "link" or "document"), value = the link text or URL.
+    • a per-combination VARIANT MATRIX (each size×colour its own price/SKU) — kind = "variant-matrix".
+    • commercial terms with no field: delivery zones, minimum order qty, hire/rental periods (kind = "terms").
+  Shape: [{ "label":"Manufacturer", "value":"Sony", "kind":"section" }]. Empty [] when everything genuinely fit. Do NOT list things you already placed above.
 
 Return exactly:
-{ "name":"", "base_price": null, "description":"", "unit":"each", "category": null, "install_description": null, "install_cost": null, "lead_time_days": null, "attributes": { "specifications":[], "features":[], "style":[], "measurements":[], "materials":[] }, "priceTiers":[], "options":[], "images":[], "sku": null, "product_id": null, "supplier_ref": null }`;
+{ "name":"", "base_price": null, "description":"", "unit":"each", "category": null, "install_description": null, "install_cost": null, "lead_time_days": null, "attributes": { "specifications":[], "features":[], "style":[], "measurements":[], "materials":[] }, "priceTiers":[], "options":[], "images":[], "sku": null, "product_id": null, "supplier_ref": null, "noHome":[] }`;
 
 /** ANALYSE (read-only): a structured report on ONE page's catalogue-worthiness. */
 async function analyseCatalogue(pageText, url) {

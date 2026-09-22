@@ -286,11 +286,16 @@ async function analyse(url) {
 /** Extract each URL → createForOrg pending. Dedup by the internal _source block
  *  (sku or source_url) so a re-run adds only new products. Returns a per-URL
  *  summary. `urls` is one detail URL or many (e.g. a listing's productLinks). */
-async function pull(orgId, urls) {
+async function pull(orgId, urls, opts = {}) {
   const list = (Array.isArray(urls) ? urls : [urls]).filter(Boolean).slice(0, MAX_PULL_URLS);
+  // Pull mode (Liam): 'review' = lean triage set (name/description/price/one image)
+  // for marketplace vetting; 'full' = everything mappable, run after the supplier
+  // contracts. Both still capture external_url + _source (dedup) and the gap list.
+  const review = opts.mode === 'review';
   const batch = `extract-${new Date().toISOString().slice(0, 10)}`;
   const categoryNames = await topLevelCategoryNames(); // pass OUR vocabulary to the AI
   const results = [];
+  const gapMap = new Map(); // "kind|label" → { label, kind, count, example }
   for (const url of list) {
     try {
       const { finalUrl, html } = await guardedFetch(url);
@@ -301,6 +306,19 @@ async function pull(orgId, urls) {
       const sku = p.sku ? String(p.sku).trim() : null;
       const dupe = await findExisting(orgId, finalUrl, sku);
       if (dupe) { results.push({ url: finalUrl, status: 'skipped', reason: 'already imported', itemId: dupe }); continue; }
+
+      // Gap report: data present on the page with no home in our model. Aggregated
+      // across the imported items → "couldn't store yet: X (12 items)". Free — it
+      // rides on the extract call we already made. (See noHome in PULL_SYSTEM.)
+      for (const g of (Array.isArray(p.noHome) ? p.noHome : [])) {
+        const label = String(g?.label ?? '').trim();
+        if (!label) continue;
+        const kind = String(g?.kind ?? 'other').trim().toLowerCase() || 'other';
+        const key = `${kind}|${label.toLowerCase()}`;
+        const hit = gapMap.get(key) || { label, kind, count: 0, example: String(g?.value ?? '').trim() || null };
+        hit.count += 1;
+        gapMap.set(key, hit);
+      }
 
       // attributes = the canonical groups (pV2-STORE-ATTRIBUTE-GROUPS-01) +
       // options {name,price} + price_tiers[] + the INTERNAL _source block. Each
@@ -346,6 +364,10 @@ async function pull(orgId, urls) {
         if (cand.length) images = [{ url: cand[0], is_hero: true }];
       }
 
+      // Review mode: keep the lean vetting set only. attributes narrows to the
+      // internal _source block (so re-run dedup still works); images to the hero;
+      // install/lead-time dropped. base_price + category stay — needed to review.
+      const reviewAttrs = attributes._source ? { _source: attributes._source } : {};
       const item = await ItemService.createForOrg({
         data: {
           name,
@@ -354,21 +376,21 @@ async function pull(orgId, urls) {
           unit: p.unit || 'each',
           // Map to REAL columns when the model found them (homes exist in the model);
           // only spec key:values with no column fall to the attributes bag.
-          install_description: typeof p.install_description === 'string' ? p.install_description.trim() : null,
-          install_cost: toNumber(p.install_cost),
-          lead_time_days: toNumber(p.lead_time_days),
+          install_description: review ? null : (typeof p.install_description === 'string' ? p.install_description.trim() : null),
+          install_cost: review ? null : toNumber(p.install_cost),
+          lead_time_days: review ? null : toNumber(p.lead_time_days),
           external_url: finalUrl, // PRIMARY source URL — dedup/delta key
           // Never null: map to our vocabulary, else the 'Other' default. The
           // auto-classifier refines this + picks a subcategory on create.
           category_id: (await matchCategoryId(p.category)) || (await defaultCategoryId()),
-          attributes,
-          images,
+          attributes: review ? reviewAttrs : attributes,
+          images: review ? images.slice(0, 1) : images,
         },
         orgId,
         defaultStatus: 'pending',
       });
 
-      results.push({ url: finalUrl, status: 'created', itemId: item.id, name: item.name, optionCount: options.length });
+      results.push({ url: finalUrl, status: 'created', itemId: item.id, name: item.name, optionCount: review ? 0 : options.length });
     } catch (err) {
       results.push({ url, status: 'error', reason: err.message });
     }
@@ -376,7 +398,8 @@ async function pull(orgId, urls) {
   const created = results.filter((r) => r.status === 'created').length;
   const skipped = results.filter((r) => r.status === 'skipped').length;
   const failed = results.filter((r) => r.status === 'error').length;
-  return { created, skipped, failed, results };
+  const gaps = [...gapMap.values()].sort((a, b) => b.count - a.count);
+  return { created, skipped, failed, mode: review ? 'review' : 'full', gaps, results };
 }
 
 /** Existing item for this org matching the source URL (external_url, the primary
