@@ -23,3 +23,10 @@ Card language unchanged (quick-view-dialog `.bp-qv-spec`). Client-only; build cl
 Edit an item → gallery renders right of the main image; description below; Cost + Installation
 containers (2-col); Measurements has the ruler icon; group cards show a top-right "+" (no bg), no
 Add-row button, trash per row; the value field has a white background.
+
+## QC iteration — v2.534 (blank edit page fix)
+Item-edit page rendered blank below Installation (empty group cards, missing Cost/Installation fields).
+Root cause: this arc introduced lucide icons `ruler` (Measurements) + `pencil` (Edit buttons) that
+were NOT in the registered LucideAngularModule.pick set. lucide-angular v0.577 THROWS on an
+unregistered icon (ngOnChanges: "The \"ruler\" icon has not been provided…"), and in zoneless
+Angular that abort blanked the rest of the render. Fix: registered Ruler + Pencil in app.config.ts.
