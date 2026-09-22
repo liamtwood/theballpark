@@ -262,3 +262,17 @@ product.group (Shopify collection) → no; else JSON-LD Product+Offer (Yahire) �
 solved by URL crawling. Next architecture: per-platform PROFILES (Liam) — detect Shopify/Woo/generic and
 use the best parser (Shopify exposes /products.json + /collections.json — structured, no crawl). The
 current JSON-LD crawler becomes the generic/fallback profile.
+
+## QC iteration — v2.550 (cross-collection dedup by product handle)
+Liam: Shopify "All"/"Front Page" collections overlap the real ones, so selecting both produced
+duplicates (same product, different collection URLs, so external_url dedup missed them). Fix: pull()
+now dedups the selection by PRODUCT HANDLE first (the `/products/<handle>` slug, identical across
+collections), keeping the most SPECIFIC collection (`groupSpecificity` deprioritises all/front-page/
+products/other) so the item also gets the real collection's cat/subcat — then caps. Verified: all+
+dried-flowers/faux-mimosa and front-page+fresh-flowers/bloom-bouquet each collapse to the specific
+collection; Yahire path URLs untouched. Result: you can leave "All" selected without dups.
+Noted (→ Shopify profile): SKUs are NOT captured on Shopify today — they sit in a `<script>` product
+JSON we strip before the AI reads the page (verified faux-mimosa sku 10753 present in HTML, absent from
+htmlToText), and multi-variant products carry one SKU PER variant (bloom-bouquet: 32). Real SKU + price
++ product_type capture is a `/products/<handle>.json` (profile) job, and ties into the deferred
+variant-matrix model.

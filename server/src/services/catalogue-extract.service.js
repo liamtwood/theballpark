@@ -454,8 +454,34 @@ async function analyse(url) {
 /** Extract each URL → createForOrg pending. Dedup by the internal _source block
  *  (sku or source_url) so a re-run adds only new products. Returns a per-URL
  *  summary. `urls` is one detail URL or many (e.g. a listing's productLinks). */
+/** The stable product handle from a URL — the slug after /products/, else the last
+ *  segment. Identical across collections, so it's the cross-collection dedup key. */
+function productHandle(u) {
+  try {
+    const segs = new URL(u).pathname.split('/').filter(Boolean);
+    const pi = segs.indexOf('products');
+    return pi >= 0 ? (segs[pi + 1] || segs[segs.length - 1]) : segs[segs.length - 1];
+  } catch { return u; }
+}
+/** 0 for generic/utility collections (all/front-page/products), 1 for a real one —
+ *  so dedup keeps the specific collection (better group + cat/subcat) over "all". */
+const groupSpecificity = (u) => (['all', 'front-page', 'frontpage', 'products', 'other'].includes(groupKeyOf(u)) ? 0 : 1);
+/** Dedup a URL list by product handle, keeping the most specific collection URL —
+ *  a Shopify product sits in "all" AND its real collection at different URLs. */
+function dedupeByHandle(urls) {
+  const best = new Map();
+  for (const u of urls) {
+    const h = productHandle(u);
+    const cur = best.get(h);
+    if (!cur || groupSpecificity(u) > groupSpecificity(cur)) best.set(h, u);
+  }
+  return [...best.values()];
+}
+
 async function pull(orgId, urls, opts = {}) {
-  const list = (Array.isArray(urls) ? urls : [urls]).filter(Boolean).slice(0, MAX_PULL_URLS);
+  // Dedup the selection by product handle FIRST (drops "all"/"front-page" copies of a
+  // product that's also in a real collection), then cap — so the cap isn't spent on dups.
+  const list = dedupeByHandle((Array.isArray(urls) ? urls : [urls]).filter(Boolean)).slice(0, MAX_PULL_URLS);
   // Pull mode (Liam): 'review' = lean triage set (name/description/price/one image)
   // for marketplace vetting; 'full' = everything mappable, run after the supplier
   // contracts. Both still capture external_url + _source (dedup) and the gap list.
@@ -608,4 +634,4 @@ function pruneNull(obj) {
   return out;
 }
 
-module.exports = { analyse, prepare, pull, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf } };
+module.exports = { analyse, prepare, pull, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle } };
