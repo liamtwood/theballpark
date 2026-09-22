@@ -495,6 +495,7 @@ async function pull(orgId, urls, opts = {}) {
   const categoryNames = await topLevelCategoryNames(); // pass OUR vocabulary to the AI
   const results = [];
   const gapMap = new Map(); // "kind|label" → { label, kind, count, example }
+  const seenIds = new Set(); // in-pull dedup by the stable vendor identity (sku/product id)
   for (const url of list) {
     try {
       const groupRow = mapping[groupKeyOf(url)] || null; // group keyed off the selected URL
@@ -503,8 +504,15 @@ async function pull(orgId, urls, opts = {}) {
       const name = (p && typeof p.name === 'string') ? p.name.trim() : '';
       if (!name) { results.push({ url: finalUrl, status: 'skipped', reason: 'no product found (not a detail page?)' }); continue; }
 
-      const sku = p.sku ? String(p.sku).trim() : null;
-      const dupe = await findExisting(orgId, finalUrl, sku);
+      // Stable vendor identity, parsed deterministically from structured data (not the
+      // AI): the SKU/id is the vendor's + agent's key AND the reliable dedup key.
+      const identity = extractIdentity(html, finalUrl);
+      const sku = identity.sku || (p.sku ? String(p.sku).trim() : null);
+      const productId = identity.productId;
+      const idKey = productId || sku || identity.handle;
+      if (idKey && seenIds.has(idKey)) { results.push({ url: finalUrl, status: 'skipped', reason: 'duplicate in selection' }); continue; }
+      if (idKey) seenIds.add(idKey);
+      const dupe = await findExisting(orgId, finalUrl, sku, productId);
       if (dupe) { results.push({ url: finalUrl, status: 'skipped', reason: 'already imported', itemId: dupe }); continue; }
 
       // Gap report: data present on the page with no home in our model. Aggregated
@@ -548,7 +556,9 @@ async function pull(orgId, urls, opts = {}) {
       // The PRIMARY source URL lives in the dedicated items.external_url column
       // (below) — the dedup/delta key; the other stable ids live here.
       attributes._source = pruneNull({
-        sku, product_id: p.product_id ? String(p.product_id).trim() : null,
+        sku, // deterministic vendor SKU (structured data), else the AI's guess
+        product_id: productId || (p.product_id ? String(p.product_id).trim() : null),
+        handle: identity.handle,
         supplier_ref: p.supplier_ref ? String(p.supplier_ref).trim() : null,
         extracted_at: new Date().toISOString(), batch,
       });
@@ -617,15 +627,42 @@ async function pull(orgId, urls, opts = {}) {
 
 /** Existing item for this org matching the source URL (external_url, the primary
  *  key) or the supplier SKU (_source.sku). The dedup/delta key. */
-async function findExisting(orgId, sourceUrl, sku) {
+async function findExisting(orgId, sourceUrl, sku, productId) {
   const clauses = [`external_url = $2`];
   const params = [orgId, sourceUrl];
   if (sku) { params.push(sku); clauses.push(`attributes->'_source'->>'sku' = $${params.length}`); }
+  if (productId) { params.push(String(productId)); clauses.push(`attributes->'_source'->>'product_id' = $${params.length}`); }
   const r = await pool.query(
     `SELECT id FROM items WHERE org_id = $1 AND deleted_at IS NULL AND (${clauses.join(' OR ')}) LIMIT 1`,
     params
   );
   return r.rows[0]?.id || null;
+}
+
+/** Deterministically pull a STABLE vendor identity from a product page's structured
+ *  data (the SKU/id lives in <script> JSON we strip before the AI, so parse it here):
+ *   • JSON-LD Product.sku / offers.sku (Yahire → 222/404)
+ *   • Shopify page JSON: product "id" + a variant "sku" (faux-mimosa → 8108933480680/10753)
+ *  Falls back to the product handle. SKU is the vendor's + agent's key and the dedup key. */
+function extractIdentity(html, url) {
+  const s = String(html || '');
+  let sku = null, productId = null;
+  for (const b of s.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const j = JSON.parse(b[1].trim());
+      const nodes = Array.isArray(j) ? j : (j['@graph'] || [j]);
+      for (const n of nodes) {
+        const t = n && n['@type'];
+        if (!t || !(Array.isArray(t) ? t : [t]).some((x) => /product/i.test(String(x)))) continue;
+        sku = sku || n.sku || (Array.isArray(n.offers) ? n.offers[0]?.sku : n.offers?.sku) || null;
+        productId = productId || n.productID || n.mpn || null;
+      }
+    } catch { /* skip malformed */ }
+  }
+  // Shopify (no JSON-LD Product): the embedded product JSON carries id + variant sku.
+  if (!productId) productId = (s.match(/"product"\s*:\s*\{[\s\S]{0,400}?"id"\s*:\s*(\d{6,})/) || s.match(/\bproductId["']?\s*[:=]\s*["']?(\d{6,})/i) || [])[1] || null;
+  if (!sku) sku = (s.match(/"sku"\s*:\s*"([^"]+)"/i) || [])[1] || null;
+  return { sku: sku ? String(sku).trim() : null, productId: productId ? String(productId).trim() : null, handle: productHandle(url) };
 }
 
 function pruneNull(obj) {
@@ -634,4 +671,4 @@ function pruneNull(obj) {
   return out;
 }
 
-module.exports = { analyse, prepare, pull, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle } };
+module.exports = { analyse, prepare, pull, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity } };

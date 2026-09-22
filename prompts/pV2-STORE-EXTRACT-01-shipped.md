@@ -276,3 +276,16 @@ JSON we strip before the AI reads the page (verified faux-mimosa sku 10753 prese
 htmlToText), and multi-variant products carry one SKU PER variant (bloom-bouquet: 32). Real SKU + price
 + product_type capture is a `/products/<handle>.json` (profile) job, and ties into the deferred
 variant-matrix model.
+
+## QC iteration — v2.551 (deterministic vendor SKU/ID — the real dedup + vendor/agent key)
+Liam: a stable vendor ID must be captured in ALL cases — it's the vendor's + agent's key and the only
+reliable dedup key. The IDs were being lost because they live in `<script>` structured data we strip
+before the AI. New `extractIdentity(html, url)` parses them DETERMINISTICALLY (no AI): JSON-LD
+Product.sku / offers.sku (Yahire → 222, 404) and, when there's no JSON-LD, the Shopify page JSON's
+product `id` + variant `sku` (faux-mimosa → 8108933480680 / 10753); falls back to the product handle.
+pull() now uses this identity to: (1) dedup within the pull via a seen-set (key = productId||sku||handle,
+skipping "duplicate in selection"), (2) dedup against the DB — `findExisting` extended to match
+`_source.product_id` as well as `_source.sku`/external_url, and (3) store sku + product_id + handle in
+`attributes._source` reliably (overriding the AI's guess). Verified identity across Yahire + Shopify.
+This is the robust foundation the vendor/agent reference and re-run/cross-collection dedup both need;
+the Shopify profile will later add variant-level SKUs + price via /products/<handle>.json.
