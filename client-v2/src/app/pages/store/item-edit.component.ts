@@ -109,6 +109,9 @@ interface ItemForm {
                       [primaryUrl]="imageUrl()"
                       [searchSeed]="form().name"
                       [editable]="canEditPhotos()"
+                      [columns]="2"
+                      [tileAspect]="'1 / 1'"
+                      [maxSlots]="4"
                       (imagesChange)="images.set($event)"
                       (primarySet)="onSetPrimary($event)"
                     />

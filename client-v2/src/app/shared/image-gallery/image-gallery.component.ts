@@ -39,12 +39,13 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
   template: `
     <div
       class="grid"
+      [style.grid-template-columns]="gridCols()"
       cdkDropList
       cdkDropListOrientation="mixed"
       (cdkDropListDropped)="onDrop($event)"
     >
       @for (img of slots(); track img.url; let i = $index) {
-        <div class="tile" cdkDrag [cdkDragDisabled]="!editable()">
+        <div class="tile" [style.aspect-ratio]="tileAspect()" cdkDrag [cdkDragDisabled]="!editable()">
           <img
             class="thumb"
             [src]="img.url"
@@ -78,7 +79,7 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
       }
       @if (editable()) {
         @for (slot of emptySlots(); track $index) {
-          <button type="button" class="tile tile--empty" (click)="pickerOpen.set(true)" aria-label="Add image">
+          <button type="button" class="tile tile--empty" [style.aspect-ratio]="tileAspect()" (click)="pickerOpen.set(true)" aria-label="Add image">
             <lucide-icon name="plus" [size]="22" />
           </button>
         }
@@ -196,6 +197,11 @@ export class ImageGalleryComponent {
   /** When false, the gallery is view-only — no add tiles, hover actions, or
    *  drag (e.g. a non-admin viewing an org profile). */
   readonly editable = input<boolean>(true);
+  /** Tile shape (CSS aspect-ratio). Default 4/3; item edit uses '1 / 1' squares. */
+  readonly tileAspect = input<string>('4 / 3');
+  /** Fixed column count. 0 = responsive auto-fill (default); >0 = exactly N cols
+   *  (item edit uses 2 for a 2-up square grid). */
+  readonly columns = input<number>(0);
 
   /** New ordered array after add / remove / reorder — consumer persists. */
   readonly imagesChange = output<GalleryImage[]>();
@@ -214,6 +220,11 @@ export class ImageGalleryComponent {
 
   protected readonly emptySlots = computed(() =>
     Array.from({ length: Math.max(0, this.maxSlots() - this.slots().length) })
+  );
+
+  /** Grid columns: fixed N when `columns` > 0, else responsive auto-fill. */
+  protected readonly gridCols = computed(() =>
+    this.columns() > 0 ? `repeat(${this.columns()}, minmax(0, 1fr))` : 'repeat(auto-fill, minmax(120px, 1fr))',
   );
 
   protected isPrimary(img: GalleryImage): boolean {

@@ -30,3 +30,9 @@ Root cause: this arc introduced lucide icons `ruler` (Measurements) + `pencil` (
 were NOT in the registered LucideAngularModule.pick set. lucide-angular v0.577 THROWS on an
 unregistered icon (ngOnChanges: "The \"ruler\" icon has not been provided…"), and in zoneless
 Angular that abort blanked the rest of the render. Fix: registered Ruler + Pencil in app.config.ts.
+
+## QC iteration — v2.535 (gallery = 2x2 squares)
+Gallery on the item-edit page now renders as a 2x2 grid of SQUARE tiles beside the main image
+(Liam sketch). Added per-consumer inputs to app-image-gallery: `columns` (0=auto-fill default;
+2 here) + `tileAspect` (default 4/3; "1 / 1" here); item-edit passes columns=2, tileAspect 1/1,
+maxSlots=4. Other gallery consumers unchanged (defaults preserved).
