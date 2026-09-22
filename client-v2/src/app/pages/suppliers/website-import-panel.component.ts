@@ -86,20 +86,27 @@ import { AdminOrgService, ExtractReport, PullResult } from '../../core/admin-org
             </div>
             <div style="max-height:16rem; overflow:auto; border:1px solid var(--border); border-radius:0.5rem; padding:0.5rem;" class="mb-2">
               @for (g of grouped(); track g.category) {
-                <div class="mb-2">
-                  <label class="flex items-center gap-2 font-medium">
-                    <input type="checkbox" [checked]="groupAll(g.items)" [indeterminate]="groupSome(g.items)" (change)="toggleGroup(g.items)" />
-                    <span>{{ g.category }}</span>
-                    <span class="text-secondary">({{ g.items.length }})</span>
-                  </label>
-                  <div class="ml-6">
-                    @for (link of g.items; track link) {
-                      <label class="flex items-center gap-2 mb-0.5">
-                        <input type="checkbox" [checked]="selected().has(link)" (change)="toggle(link)" />
-                        <span class="truncate">{{ leaf(link) }}</span>
-                      </label>
-                    }
+                <div class="mb-1">
+                  <!-- Category header (accordion): tick selects the whole group; the
+                       row toggles the items open/closed. Collapsed by default. -->
+                  <div class="flex items-center gap-2">
+                    <input type="checkbox" class="bp-check" [checked]="groupAll(g.items)" [indeterminate]="groupSome(g.items)" (change)="toggleGroup(g.items)" />
+                    <button type="button" class="flex items-center gap-1 font-medium" (click)="toggleExpand(g.category)">
+                      <lucide-icon [name]="isExpanded(g.category) ? 'chevron-down' : 'chevron-right'" [size]="14" />
+                      <span>{{ g.category }}</span>
+                      <span class="text-secondary">({{ groupSelectedCount(g.items) }}/{{ g.items.length }})</span>
+                    </button>
                   </div>
+                  @if (isExpanded(g.category)) {
+                    <div class="ml-8 mt-0.5">
+                      @for (link of g.items; track link) {
+                        <label class="flex items-center gap-2 mb-0.5">
+                          <input type="checkbox" class="bp-check" [checked]="selected().has(link)" (change)="toggle(link)" />
+                          <span class="truncate">{{ leaf(link) }}</span>
+                        </label>
+                      }
+                    </div>
+                  }
                 </div>
               }
             </div>
@@ -180,6 +187,16 @@ export class WebsiteImportPanelComponent {
   protected leaf(u: string): string {
     try { const p = new URL(u).pathname.split('/').filter(Boolean); return p[p.length - 1] || u; } catch { return u; }
   }
+  /** Accordion: which category groups are expanded (collapsed by default). */
+  protected readonly expandedCats = signal<Set<string>>(new Set());
+  protected isExpanded(cat: string): boolean { return this.expandedCats().has(cat); }
+  protected toggleExpand(cat: string): void {
+    const next = new Set(this.expandedCats());
+    next.has(cat) ? next.delete(cat) : next.add(cat);
+    this.expandedCats.set(next);
+  }
+  protected groupSelectedCount(items: string[]): number { return items.filter((u) => this.selected().has(u)).length; }
+
   protected groupAll(items: string[]): boolean { return items.length > 0 && items.every((u) => this.selected().has(u)); }
   protected groupSome(items: string[]): boolean { return !this.groupAll(items) && items.some((u) => this.selected().has(u)); }
   protected toggleGroup(items: string[]): void {
@@ -199,8 +216,10 @@ export class WebsiteImportPanelComponent {
     this.admin.extractAnalyse(this.orgId(), url).subscribe({
       next: (r) => {
         this.report.set(r);
-        // Default-select the whole task list (crawl or listing) so Pull is one click.
+        // Default-select the whole task list (crawl or listing) so Pull is one click;
+        // start with all category groups collapsed (accordion).
         this.selected.set(new Set(r.productLinks ?? []));
+        this.expandedCats.set(new Set());
         this.analyzing.set(false);
       },
       error: (e) => { this.error.set(this.msg(e)); this.analyzing.set(false); },
