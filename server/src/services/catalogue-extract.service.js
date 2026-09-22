@@ -60,13 +60,43 @@ function firstSrcsetUrl(tag) {
   return (m[1].split(',')[0] || '').trim().split(/\s+/)[0] || null;
 }
 
-/** All <img> URLs on a page (src + lazy attrs + srcset first URL), absolutised.
+/** Product images declared in JSON-LD (schema.org Product.image). On many
+ *  e-commerce pages this is the authoritative hero set — and often the ONLY place
+ *  the real product photo appears, because the <img> gallery is lazy-loaded and its
+ *  static src= is a placeholder (e.g. Yahire: product.webp ×3, real images in ld+json).
+ *  Walks every ld+json block, collecting image[] only from Product-typed nodes (so we
+ *  skip Organization/WebSite slideshow banners). */
+function collectJsonLdImages(html, baseUrl, cap = 20) {
+  const out = [];
+  const pushImg = (img) => {
+    for (const v of (Array.isArray(img) ? img : [img])) {
+      const u = typeof v === 'string' ? v : (v && typeof v === 'object' ? (v.url || v.contentUrl) : null);
+      const abs = u ? absolutize(String(u), baseUrl) : null;
+      if (abs && /^https?:/i.test(abs) && !out.includes(abs) && out.length < cap) out.push(abs);
+    }
+  };
+  const walk = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) { node.forEach(walk); return; }
+    const t = node['@type'];
+    const isProduct = Array.isArray(t) ? t.some((x) => /product/i.test(String(x))) : /product/i.test(String(t || ''));
+    if (isProduct && node.image) pushImg(node.image);
+    for (const k of Object.keys(node)) { if (k !== 'image') walk(node[k]); }
+  };
+  for (const b of String(html || '').matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try { walk(JSON.parse(b[1].trim())); } catch { /* skip malformed block */ }
+  }
+  return out;
+}
+
+/** All product image URLs on a page — JSON-LD Product images FIRST (authoritative
+ *  hero), then <img> URLs (src + lazy attrs + srcset first URL), absolutised.
  *  Powers the AI's "IMAGES ON PAGE" list AND the pull image FALLBACK. */
 function collectImageUrls(html, baseUrl, cap = 40) {
   const s = String(html || '')
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ');
-  const imgs = [];
+  const imgs = collectJsonLdImages(html, baseUrl); // authoritative product photos lead
   const imgRe = /<img\b[^>]*>/gi;
   let im;
   while ((im = imgRe.exec(s)) && imgs.length < cap) {
@@ -421,4 +451,4 @@ function pruneNull(obj) {
   return out;
 }
 
-module.exports = { analyse, pull, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes } };
+module.exports = { analyse, pull, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages } };

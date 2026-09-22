@@ -163,3 +163,19 @@ Same commit also killed the browser-default **blue** on the task list (Liam: "I 
 `.bp-check` gains an accent focus-visible ring + an accent indeterminate DASH (was native blue), the
 bare accordion toggle gets `.bp-accordion-toggle` (no blue focus box, accent when keyboarded), and
 category headers read `(5)` not `(5/5)` (v2.540).
+
+## QC iteration — v2.542 (wrong image = lazy-loaded gallery; + Done button)
+Liam QC (Yahire gazebo pull): both gazebos got the SAME generic image
+(`gazebo-hire-outdoor-event-london.webp`). Root cause: Yahire **lazy-loads** the product gallery —
+the static `<img src>` is a placeholder (`product.webp` ×3) and the only gazebo-ish real image in the
+static markup is the category-nav banner, so the AI/fallback picked that banner for every gazebo.
+The REAL product photos are in the page's **JSON-LD** (`schema.org` `Product.image[]`), which we
+weren't reading. Fix: new `collectJsonLdImages()` walks every `ld+json` block and pulls `image[]`
+from Product-typed nodes only (skips Organization/WebSite slideshow banners); `collectImageUrls()`
+now leads with those, then the `<img>` URLs. Verified per-product heroes: 3m → `gazebo-hire-london-3m.jpg`,
+large → `large-gazebo-hire-black.png` (distinct + correct). This is the general fix for the "JS-rendered
+gallery" class (same family as the v2.523 JS-rendered-dimensions note). Existing wrong-image items need a
+delete + re-pull (pull dedups on external_url, doesn't update).
+Also (Liam UX): after a Pull completes the panel now HIDES the analyse/picker/Pull controls and shows
+the confirmation + gap report + a **Done** button (`done()` clears the panel back to the URL input;
+the shop grid below has already reloaded via the `pulled` emit). ExtractPullBody note carried from v2.541.

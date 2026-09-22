@@ -40,6 +40,7 @@ import { AdminOrgService, ExtractReport, PullResult } from '../../core/admin-org
       @if (error(); as e) { <p class="bp-body-small text-warn mt-2">{{ e }}</p> }
 
       @if (report(); as r) {
+       @if (!result()) {
         <div class="mt-3 bp-body-small" style="border-top:1px solid var(--border); padding-top:0.75rem;">
           <div class="flex flex-wrap items-center gap-2 mb-2">
             <span class="bp-pill">{{ r.pageShape }}</span>
@@ -133,6 +134,7 @@ import { AdminOrgService, ExtractReport, PullResult } from '../../core/admin-org
             <p class="text-secondary">Nothing to pull from this page.</p>
           }
         </div>
+       }
       }
 
       @if (result(); as res) {
@@ -163,6 +165,9 @@ import { AdminOrgService, ExtractReport, PullResult } from '../../core/admin-org
               {{ row.name || row.url }}{{ row.reason ? ' — ' + row.reason : '' }}{{ row.optionCount ? ' (' + row.optionCount + ' options)' : '' }}
             </p>
           }
+          <!-- Done: clear the panel so it collapses back to the input and the
+               reviewer drops straight to the (now-reloaded) shop grid below. -->
+          <button type="button" class="bp-btn-outline mt-3" (click)="done()">Done</button>
         </div>
       }
     </div>
@@ -277,6 +282,16 @@ export class WebsiteImportPanelComponent {
       next: (res) => { this.result.set(res); this.pulling.set(false); this.pulled.emit(res); },
       error: (e) => { this.error.set(this.msg(e)); this.pulling.set(false); },
     });
+  }
+
+  /** Collapse the panel back to just the URL input after a pull — the shop grid
+   *  below has already reloaded (pulled emitted), so the reviewer sees the imports. */
+  protected done(): void {
+    this.report.set(null);
+    this.result.set(null);
+    this.selected.set(new Set());
+    this.expandedCats.set(new Set());
+    this.url.set('');
   }
 
   protected pretty(o: unknown): string { try { return JSON.stringify(o, null, 2); } catch { return String(o); } }
