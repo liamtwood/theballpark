@@ -18,7 +18,12 @@ const ItemService = require('./item.service');
 
 const MAX_TEXT_CHARS = 14000; // keep the model prompt bounded; product pages sit well under
 const MAX_PULL_URLS = 100;    // per pull request — small catalogues (<100 items) in one go
-const CRAWL_MAX_PAGES = 40;   // bounded homepage crawl (BFS); enough for a <100-item catalogue
+const CRAWL_MAX_PAGES = 250;  // bounded BFS ceiling — covers a whole small/mid catalogue; a
+                              // very large one needs pagination/concurrency (future).
+// A page is a PRODUCT (a leaf to pull) when it carries schema.org Product JSON-LD;
+// listing/category pages don't (they have ItemList/BreadcrumbList + many children).
+// Proven on Yahire at depth 2 AND 3 — deterministic, AI-free.
+const isProductHtml = (html) => /"@type"\s*:\s*"Product"/.test(String(html || ''));
 // Skip assets + non-catalogue pages when crawling for item pages.
 const CRAWL_SKIP = /(cart|checkout|basket|account|login|register|sign-?in|contact|about|privacy|terms|cookie|blog|news|faqs?|wishlist|delivery|returns|policy|gallery|inspired|story|trade-with|my-quote|\.pdf|\.jpe?g|\.png|\.webp|\.svg|\.css|\.js|\.woff2?|\.ico|webmanifest)/i;
 const normUrl = (u) => String(u).split('#')[0].replace(/\/$/, '');
@@ -263,13 +268,22 @@ async function marketplaceCategoryTree() {
   }));
 }
 
-/** Supplier group key from a product URL — the FIRST path segment (how the crawl
- *  groups the task list, e.g. /gazebo-hire/… → "gazebo-hire"). ONE key per group. */
+/** Supplier group key from a product URL — the PARENT path (all segments EXCEPT the
+ *  product slug), so the supplier's own hierarchy is retained at whatever depth:
+ *  /gazebo-hire/3m-gazebo → "gazebo-hire";
+ *  /catering-equipment-hire/cutlery-hire/fork → "catering-equipment-hire/cutlery-hire".
+ *  The full path lives in external_url, so nothing is lost. ONE key per supplier group. */
 function groupKeyOf(u) {
-  try { return new URL(u).pathname.split('/').filter(Boolean)[0] || 'other'; } catch { return 'other'; }
+  try {
+    const segs = new URL(u).pathname.split('/').filter(Boolean);
+    return (segs.length > 1 ? segs.slice(0, -1) : segs).join('/') || 'other';
+  } catch { return 'other'; }
 }
-/** Humanise a group key into the supplier's category label ("gazebo-hire" → "Gazebo Hire"). */
-const groupLabel = (key) => humanizeLabel(key);
+/** The supplier's category label for a group key — its LEAF segment humanised
+ *  ("catering-equipment-hire/cutlery-hire" → "Cutlery Hire"). */
+const groupLabel = (key) => humanizeLabel(String(key).split('/').filter(Boolean).pop() || key);
+/** The full supplier path humanised, for AI context ("Catering Equipment Hire > Cutlery Hire"). */
+const groupPathLabel = (key) => String(key).split('/').filter(Boolean).map(humanizeLabel).join(' > ') || humanizeLabel(key);
 
 /** PREPARE (Liam's step 2): for each SELECTED group, map the supplier's category
  *  → a Ballpark category + subcategory (existing or a proposed NEW one). One cheap
@@ -285,8 +299,9 @@ async function prepare(groups) {
     const key = String(g?.key ?? '').trim();
     if (!key) continue;
     const label = groupLabel(key);
+    const pathLabel = groupPathLabel(key); // full supplier path → richer AI context
     let sug = { category: null, subcategory: null, isNew: false, confidence: 0 };
-    try { sug = await classifyGroupToCategory(label, g?.sample || label, treeForAi); } catch { /* keep default */ }
+    try { sug = await classifyGroupToCategory(pathLabel, g?.sample || label, treeForAi); } catch { /* keep default */ }
     // Resolve the suggested category to a real id (else 'Other').
     const cat = tree.find((c) => norm(c.name) === norm(sug.category)) || tree.find((c) => norm(c.name) === 'other') || null;
     let subId = null, subName = sug.subcategory ? String(sug.subcategory).trim() : null, isNew = !!sug.isNew;
@@ -296,7 +311,7 @@ async function prepare(groups) {
       else { isNew = true; } // no close existing → propose new under this cat
     }
     out.push({
-      key, label,
+      key, label, path: pathLabel,
       categoryId: cat?.id || null, categoryName: cat?.name || null,
       subcategoryId: subId, subcategoryName: subName, isNew,
       confidence: sug.confidence ?? 0,
@@ -345,6 +360,7 @@ async function crawlSite(seedUrl, maxPages = CRAWL_MAX_PAGES, prefix = null) {
   const inScope = (path) => !prefix || path === prefix || path.startsWith(prefix + '/');
   const visited = new Set();
   const discovered = new Set();
+  const products = new Set(); // leaf product pages (schema.org Product) — the task list
   const queue = [home];
   let fetched = 0;
   while (queue.length && fetched < maxPages) {
@@ -353,6 +369,7 @@ async function crawlSite(seedUrl, maxPages = CRAWL_MAX_PAGES, prefix = null) {
     visited.add(url);
     let html;
     try { ({ html } = await guardedFetch(url)); fetched++; } catch { continue; }
+    if (isProductHtml(html)) products.add(url); // a real product, at whatever depth
     for (const m of html.matchAll(/href=["']([^"'#]+)["']/gi)) {
       let abs;
       try { abs = normUrl(new URL(m[1], url).toString()); } catch { continue; }
@@ -364,7 +381,7 @@ async function crawlSite(seedUrl, maxPages = CRAWL_MAX_PAGES, prefix = null) {
       if (!visited.has(abs) && queue.length + visited.size < maxPages * 4) queue.push(abs);
     }
   }
-  return { pagesFetched: fetched, urls: [...discovered] };
+  return { pagesFetched: fetched, urls: [...discovered], products: [...products] };
 }
 
 const isHomepage = (url) => { try { return new URL(url).pathname.replace(/\/$/, '') === ''; } catch { return false; } };
@@ -384,36 +401,32 @@ function pickItemUrls(urls) {
 }
 
 // ── ANALYSE (read-only) ───────────────────────────────────────────────────────
-// Homepage → crawl the WHOLE site. A section/category root ("/gazebo-hire") →
-// crawl just THAT section (Liam: process a subcat on its own). A deeper product
-// URL → single-page analyse. All crawl paths return the ITEM "task list" that
-// feeds Pull, grouped by supplier category in the panel.
+// Crawl scoped to the URL's own path — homepage → whole site; a section/category
+// ("/catering-equipment-hire") → just that section (any depth below it); a product
+// URL → just itself. Products are detected by the Product-JSON-LD signal (AI-free,
+// works at any depth), so listing pages are followed for links but never pulled.
+// The task list is grouped by the supplier's URL hierarchy in the panel.
 async function analyse(url) {
-  const depth = pathDepth(url);
-  if (isHomepage(url) || depth === 1) {
-    const seg = depth === 1 ? new URL(url).pathname.split('/').filter(Boolean)[0] : null;
-    const prefix = seg ? '/' + seg : null;
-    const { pagesFetched, urls } = await crawlSite(url, CRAWL_MAX_PAGES, prefix);
-    const productUrls = pickItemUrls(urls);
-    const where = seg ? `the ${groupLabel(seg)} section` : `${pagesFetched} pages`;
-    return {
-      url: normUrl(url),
-      pageShape: 'site',
-      pullable: productUrls.length > 0,
-      verdict: productUrls.length
-        ? `Crawled ${where} (${pagesFetched} pages) and found ${productUrls.length} item pages to pull.`
-        : `Crawled ${where} (${pagesFetched} pages) but found no clear item pages — try a product URL.`,
-      mapped: { itemCount: productUrls.length },
-      alsoFound: [],
-      sample: null,
-      productLinks: productUrls,
-      crawledPages: pagesFetched,
-      discovered: urls.length,
-    };
-  }
-  const { finalUrl, html } = await guardedFetch(url);
-  const report = await analyseCatalogue(htmlToText(html, finalUrl), finalUrl);
-  return { url: finalUrl, ...report };
+  const path = isHomepage(url) ? null : new URL(url).pathname.replace(/\/$/, '');
+  const { pagesFetched, urls, products } = await crawlSite(url, CRAWL_MAX_PAGES, path);
+  // Fallback for sites without Product JSON-LD: the old depth-2 heuristic.
+  const productUrls = products.length ? products : pickItemUrls(urls);
+  const where = path ? `the ${groupLabel(path.replace(/^\//, ''))} section` : `${pagesFetched} pages`;
+  const capped = pagesFetched >= CRAWL_MAX_PAGES ? ` (crawl cap ${CRAWL_MAX_PAGES} reached — narrow to a section for the rest)` : '';
+  return {
+    url: normUrl(url),
+    pageShape: 'site',
+    pullable: productUrls.length > 0,
+    verdict: productUrls.length
+      ? `Crawled ${where} (${pagesFetched} pages) and found ${productUrls.length} product pages to pull.${capped}`
+      : `Crawled ${where} (${pagesFetched} pages) but found no product pages — try a category or product URL.`,
+    mapped: { itemCount: productUrls.length },
+    alsoFound: [],
+    sample: null,
+    productLinks: productUrls,
+    crawledPages: pagesFetched,
+    discovered: urls.length,
+  };
 }
 
 // ── PULL (writes pending items) ───────────────────────────────────────────────

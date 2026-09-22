@@ -226,3 +226,25 @@ IS a valid gazebo home — so the editable override remains the tool for ties). 
 descriptions are EMPTY today; populating them (Liam: "there's a field for it") now steers picks with
 zero further code — e.g. describe "Outdoor Furniture" to include gazebos/parasols. `marketplaceCategoryTree`
 carries descriptions (cat + subcat); `classifyGroup` renders them; CLASSIFY_GROUP_SYSTEM reasons from them.
+
+## QC iteration — v2.548 (whole-catalogue crawl: real products by signal + supplier-hierarchy grouping)
+Liam QC exposed that the depth-2 heuristic grabbed the supplier's SUB-LISTING pages as items (catering
+→ crockery-hire/cutlery-hire/glassware-hire… are category pages, not products) and missed the real
+products a level deeper. Redesigned around two facts proven by probing Yahire:
+- **Product detection is deterministic + AI-free:** a real product page carries schema.org
+  `"@type":"Product"` JSON-LD (+ Offer/price) and is a leaf; listing pages don't (ItemList/Breadcrumb +
+  many children). `isProductHtml()` tests it during the crawl — correct at depth 2 AND 3.
+- **The URL path IS the supplier's hierarchy** (already stored in `external_url`). So we group by the
+  PARENT path, retaining their structure at any depth: `/gazebo-hire/3m` → "gazebo-hire";
+  `/catering-equipment-hire/crockery-hire/plate` → "catering-equipment-hire/crockery-hire".
+Changes: `crawlSite` now also returns `products[]` (pages passing the signal) and `analyse` is unified —
+it crawls SCOPED to the given URL's path (homepage → whole site; a section → just below it; a product →
+itself), no more depth heuristic or single-page AI analyse. `groupKeyOf` = parent path; `groupLabel` =
+leaf humanised; `groupPathLabel` = full path (fed to the classifier for richer context). CRAWL_MAX_PAGES
+40→250 (ceiling; verdict warns + says narrow to a section when hit). Client `grouped()` mirrors the
+server parent-path key (so the Pull mapping aligns) and shows the humanised leaf. `pickItemUrls` kept as
+a fallback for sites with no Product JSON-LD. Verified: crockery-hire → 54 pages, 53 real products, one
+group key, ~19s; no listing pages pulled. Since Liam does the load (automated, not the supplier), Prepare
+still auto-maps each supplier sub-group → Ballpark cat ▸ subcat (existing or NEW), his override. A very
+large full-site crawl is bounded by the cap → process section-by-section (which was the goal anyway);
+concurrency/pagination is the future optimisation.

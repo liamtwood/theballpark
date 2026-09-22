@@ -98,7 +98,7 @@ interface EditRow { key: string; label: string; categoryId: string | null; subCh
                     <input type="checkbox" class="bp-check" [checked]="groupAll(g.items)" [indeterminate]="groupSome(g.items)" (change)="toggleGroup(g.items)" />
                     <button type="button" class="flex items-center gap-1 font-medium bp-accordion-toggle" (click)="toggleExpand(g.category)">
                       <lucide-icon [name]="isExpanded(g.category) ? 'chevron-down' : 'chevron-right'" [size]="14" />
-                      <span>{{ g.category }}</span>
+                      <span>{{ groupLabel(g.category) }}</span>
                       <span class="text-secondary">({{ g.items.length }})</span>
                     </button>
                   </div>
@@ -257,13 +257,27 @@ export class WebsiteImportPanelComponent {
     this.selected.set(this.allSelected() ? new Set() : new Set(links));
   }
 
-  /** Task list grouped by category (first path segment), alphabetical. */
+  /** The supplier group KEY for a product URL — the PARENT path (all segments
+   *  except the product slug). MUST match the server's groupKeyOf so the Pull
+   *  mapping lines up. /catering-equipment-hire/cutlery-hire/fork → the sub-group. */
+  private groupKey(u: string): string {
+    try {
+      const segs = new URL(u).pathname.split('/').filter(Boolean);
+      return (segs.length > 1 ? segs.slice(0, -1) : segs).join('/') || 'other';
+    } catch { return 'other'; }
+  }
+  private humanize(s: string): string {
+    return s.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  /** Display label for a group key — its leaf segment humanised ("Cutlery Hire"). */
+  protected groupLabel(key: string): string { return this.humanize(key.split('/').filter(Boolean).pop() || key); }
+
+  /** Task list grouped by the supplier's hierarchy (parent path), alphabetical. */
   protected readonly grouped = computed(() => {
     const map = new Map<string, string[]>();
     for (const u of this.report()?.productLinks ?? []) {
-      let cat = 'other';
-      try { cat = new URL(u).pathname.split('/').filter(Boolean)[0] || 'other'; } catch { /* keep default */ }
-      (map.get(cat) ?? map.set(cat, []).get(cat)!).push(u);
+      const key = this.groupKey(u);
+      (map.get(key) ?? map.set(key, []).get(key)!).push(u);
     }
     return [...map.entries()].map(([category, items]) => ({ category, items }))
       .sort((a, b) => a.category.localeCompare(b.category));

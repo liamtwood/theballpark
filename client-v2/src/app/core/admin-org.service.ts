@@ -80,6 +80,8 @@ export interface CatNode { id: string; name: string; subcats: Array<{ id: string
 export interface PrepareGroup {
   key: string;
   label: string;
+  /** Full supplier path humanised, e.g. "Catering Equipment Hire > Cutlery Hire". */
+  path?: string;
   categoryId: string | null;
   categoryName: string | null;
   subcategoryId: string | null;
