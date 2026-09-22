@@ -302,3 +302,18 @@ unregistered lucide icons throw). Verified: gazebo → [SKU 222]; faux-mimosa �
 preserved across edits via the editor's `...rest` passthrough. Not yet added to the item-EDIT screen
 (display-only in shared views for now) — a read-only Identifiers card there is an easy follow-up if
 wanted. Variant-level SKUs (multi-variant) still await the Shopify profile.
+
+## QC iteration — v2.554/v2.555 (polite crawl + assistant styling + nested task-list tree)
+- **v2.554 — polite crawl + assistant styling.** Liam hit a 429 (edierose throttling us from heavy
+  testing) that showed as "not loading". `crawlSite` now paces fetches (80ms gap), retries 429s with
+  backoff (`politeFetch`), and ABORTS after 4 consecutive 429s, surfacing a clear "site is rate-limiting
+  us — wait and retry" verdict (or a "stopped early — re-run for the rest" note on partials) instead of a
+  misleading "no products". Panel header restyled (styling only, no reuse of the inbox agent-rail) to
+  "AI Assistant · Load Items" (sparkles + soft-accent bar) with a website placeholder.
+- **v2.555 — nested task-list accordion.** The deep crawl surfaces the supplier's full hierarchy, so a
+  whole-site analyse produced ~30 FLAT groups (parent cats + their sub-cats mixed). Liam: make the
+  accordion nest to reflect the site's levels. New recursive `ImportTreeNodeComponent` + a `tree` computed
+  that nests the leaf group keys by URL segment (Catering ▸ Crockery/Glassware…; Chair ▸ Armchair/Sofa…);
+  a node tick selects its whole subtree, counts are recursive. Selection + Prepare mapping still key off
+  the leaf groups (display-only change). Parent groups (products filed directly at a level) and child
+  groups (deeper) are distinct, no overlap. Guidance: analyse a section at a time for the whole-site case.

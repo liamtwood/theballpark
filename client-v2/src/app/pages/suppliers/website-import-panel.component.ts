@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output, si
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { AdminOrgService, CatNode, ExtractReport, MappingRow, PrepareResult, PullResult } from '../../core/admin-org.service';
+import { ImportTreeNodeComponent, TreeNode } from './import-tree-node.component';
 
 /** One editable cat/subcat mapping row in the Prepare step. `subChoice` is a
  *  subcategory id, '' (none), or the '__new__' sentinel (create `newName`). */
@@ -18,7 +19,7 @@ interface EditRow { key: string; label: string; categoryId: string | null; subCh
   selector: 'app-website-import-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
-  imports: [FormsModule, LucideAngularModule],
+  imports: [FormsModule, LucideAngularModule, ImportTreeNodeComponent],
   template: `
     <div class="bp-card" style="padding:1rem; margin-bottom:1rem;">
       <div class="flex items-center gap-2 mb-2 -mx-4 -mt-4 px-4 py-2.5 rounded-t-2xl" style="background:var(--color-accent-soft, rgba(214,51,132,0.08)); border-bottom:1px solid var(--color-border-hairline);">
@@ -91,30 +92,12 @@ interface EditRow { key: string; label: string; categoryId: string | null; subCh
                 {{ allSelected() ? 'Select none' : 'Select all' }}
               </button>
             </div>
+            <!-- Nested accordion mirroring the supplier's own site levels
+                 (Catering ▸ Crockery/Glassware…). Tick selects a whole subtree. -->
             <div style="max-height:16rem; overflow:auto; border:1px solid var(--border); border-radius:0.5rem; padding:0.5rem;" class="mb-2">
-              @for (g of grouped(); track g.category) {
-                <div class="mb-1">
-                  <!-- Category header (accordion): tick selects the whole group; the
-                       row toggles the items open/closed. Collapsed by default. -->
-                  <div class="flex items-center gap-2">
-                    <input type="checkbox" class="bp-check" [checked]="groupAll(g.items)" [indeterminate]="groupSome(g.items)" (change)="toggleGroup(g.items)" />
-                    <button type="button" class="flex items-center gap-1 font-medium bp-accordion-toggle" (click)="toggleExpand(g.category)">
-                      <lucide-icon [name]="isExpanded(g.category) ? 'chevron-down' : 'chevron-right'" [size]="14" />
-                      <span>{{ groupLabel(g.category) }}</span>
-                      <span class="text-secondary">({{ g.items.length }})</span>
-                    </button>
-                  </div>
-                  @if (isExpanded(g.category)) {
-                    <div class="ml-8 mt-0.5">
-                      @for (link of g.items; track link) {
-                        <label class="flex items-center gap-2 mb-0.5">
-                          <input type="checkbox" class="bp-check" [checked]="selected().has(link)" (change)="toggle(link)" />
-                          <span class="truncate">{{ leaf(link) }}</span>
-                        </label>
-                      }
-                    </div>
-                  }
-                </div>
+              @for (n of tree(); track n.key) {
+                <app-import-tree-node [node]="n" [selected]="selected()" [expanded]="expandedCats()"
+                  (toggleItem)="toggle($event)" (toggleGroup)="toggleGroup($event)" (toggleExpand)="toggleExpand($event)" />
               }
             </div>
           }
@@ -288,6 +271,28 @@ export class WebsiteImportPanelComponent {
     }
     return [...map.entries()].map(([category, items]) => ({ category, items }))
       .sort((a, b) => a.category.localeCompare(b.category));
+  });
+
+  /** The task list as a TREE mirroring the supplier's URL levels — each group key
+   *  (parent path) nests under its ancestors, so Catering ▸ Crockery/Glassware…
+   *  render as an expandable hierarchy. Selection still keys off the leaf groups. */
+  protected readonly tree = computed<TreeNode[]>(() => {
+    const nodes = new Map<string, TreeNode>();
+    const ensure = (key: string): TreeNode => {
+      let node = nodes.get(key);
+      if (node) return node;
+      const segs = key.split('/').filter(Boolean);
+      node = { key, label: this.humanize(segs[segs.length - 1] || key), items: [], children: [], allItems: [] };
+      nodes.set(key, node);
+      if (segs.length > 1) ensure(segs.slice(0, -1).join('/')).children.push(node);
+      return node;
+    };
+    for (const g of this.grouped()) ensure(g.category).items = g.items;
+    const roots = [...nodes.values()].filter((n) => n.key.split('/').filter(Boolean).length === 1);
+    const fill = (n: TreeNode): void => { n.children.forEach(fill); n.allItems = [...n.items, ...n.children.flatMap((c) => c.allItems)]; };
+    const sortRec = (arr: TreeNode[]): void => { arr.sort((a, b) => a.label.localeCompare(b.label)); arr.forEach((n) => sortRec(n.children)); };
+    roots.forEach(fill); sortRec(roots);
+    return roots;
   });
   /** The product slug (last path segment) — the readable per-item label. */
   protected leaf(u: string): string {
