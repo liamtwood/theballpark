@@ -137,13 +137,13 @@ interface EditRow { key: string; label: string; categoryId: string | null; subCh
                       @for (c of categories(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
                     </select>
                     <span class="text-secondary">▸</span>
-                    <select class="bp-input-field" style="width:auto;" [ngModel]="row.subChoice" (ngModelChange)="setSub(row.key, $event)">
+                    <select class="bp-input-field" style="width:auto;" [class.italic]="row.subChoice === '__new__'" [ngModel]="row.subChoice" (ngModelChange)="setSub(row.key, $event)">
                       <option value="">(no subcategory)</option>
                       @for (s of subcatsFor(row.categoryId); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
                       <option value="__new__">＋ Add new…</option>
                     </select>
                     @if (row.subChoice === '__new__') {
-                      <input class="bp-input-field" style="width:9rem;" [ngModel]="row.newName" (ngModelChange)="setNewName(row.key, $event)" placeholder="New subcategory" />
+                      <input class="bp-input-field italic" style="width:9rem;" [ngModel]="row.newName" (ngModelChange)="setNewName(row.key, $event)" placeholder="New subcategory" />
                       <span class="bp-pill bp-pill--success">NEW</span>
                     }
                   </div>
