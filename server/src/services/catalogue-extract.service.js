@@ -371,9 +371,23 @@ async function resolveMappingRow(row, cache) {
   return { categoryId: row.categoryId, subcategoryId };
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** guardedFetch with politeness: retry on a 429/rate-limit with backoff so an
+ *  aggressive crawl doesn't get itself throttled (and give up cleanly if it does). */
+async function politeFetch(url, retries = 2) {
+  for (let attempt = 0; ; attempt++) {
+    try { return await guardedFetch(url); }
+    catch (e) {
+      if (attempt < retries && /\b429\b|rate.?limit|too many/i.test(e.message || '')) { await sleep(1500 * (attempt + 1)); continue; }
+      throw e;
+    }
+  }
+}
+
 // ── Site crawl (bounded BFS) — discovers same-host content URLs. `prefix` (a
 //    pathname like "/gazebo-hire") scopes the crawl to ONE section so a category
-//    URL can be processed on its own (Liam) instead of the whole site. ────────────
+//    URL can be processed on its own (Liam) instead of the whole site. Polite: a
+//    small gap between fetches + 429 backoff; surfaces a seed error clearly. ───────
 async function crawlSite(seedUrl, maxPages = CRAWL_MAX_PAGES, prefix = null) {
   const home = normUrl(seedUrl);
   const host = new URL(home).host;
@@ -383,13 +397,21 @@ async function crawlSite(seedUrl, maxPages = CRAWL_MAX_PAGES, prefix = null) {
   const discovered = new Set();
   const products = new Set(); // leaf product pages (schema.org Product) — the task list
   const queue = [home];
-  let fetched = 0;
+  let fetched = 0, seedError = null, rl = 0, rateLimited = false;
   while (queue.length && fetched < maxPages) {
     const url = queue.shift();
     if (visited.has(url)) continue;
     visited.add(url);
+    if (visited.size > 1) await sleep(80); // politeness gap between pages
     let html;
-    try { ({ html } = await guardedFetch(url)); fetched++; } catch { continue; }
+    try { ({ html } = await politeFetch(url)); fetched++; rl = 0; }
+    catch (e) {
+      if (fetched === 0 && !seedError) seedError = e.message;
+      // Site is actively throttling — after a few 429s, stop rather than grind
+      // (each retry backs off) through the whole queue.
+      if (/\b429\b|rate.?limit|too many/i.test(e.message || '') && ++rl >= 4) { rateLimited = true; break; }
+      continue;
+    }
     if (isProductHtml(html)) products.add(url); // a real product, at whatever depth
     for (const m of html.matchAll(/href=["']([^"'#]+)["']/gi)) {
       let abs;
@@ -402,7 +424,7 @@ async function crawlSite(seedUrl, maxPages = CRAWL_MAX_PAGES, prefix = null) {
       if (!visited.has(abs) && queue.length + visited.size < maxPages * 4) queue.push(abs);
     }
   }
-  return { pagesFetched: fetched, urls: [...discovered], products: [...products] };
+  return { pagesFetched: fetched, urls: [...discovered], products: [...products], seedError, rateLimited };
 }
 
 const isHomepage = (url) => { try { return new URL(url).pathname.replace(/\/$/, '') === ''; } catch { return false; } };
@@ -429,9 +451,22 @@ function pickItemUrls(urls) {
 // The task list is grouped by the supplier's URL hierarchy in the panel.
 async function analyse(url) {
   const path = isHomepage(url) ? null : new URL(url).pathname.replace(/\/$/, '');
-  const { pagesFetched, urls, products } = await crawlSite(url, CRAWL_MAX_PAGES, path);
+  const { pagesFetched, urls, products, seedError, rateLimited } = await crawlSite(url, CRAWL_MAX_PAGES, path);
+  // Couldn't even fetch the starting page — say WHY (rate-limit vs unreachable),
+  // don't mislead with "no product pages".
+  if (pagesFetched === 0) {
+    const rl = rateLimited || /\b429\b|rate.?limit|too many/i.test(seedError || '');
+    return {
+      url: normUrl(url), pageShape: 'site', pullable: false,
+      verdict: rl
+        ? 'The site is rate-limiting us right now — wait a minute and try again.'
+        : `Couldn't fetch that page${seedError ? ` (${seedError})` : ''} — check the URL and try again.`,
+      mapped: { itemCount: 0 }, alsoFound: [], sample: null, productLinks: [], crawledPages: 0, discovered: 0,
+    };
+  }
   // Fallback for sites without Product JSON-LD: the old depth-2 heuristic.
   const productUrls = products.length ? products : pickItemUrls(urls);
+  const rlNote = rateLimited ? ' (stopped early — the site started rate-limiting us; re-run to get the rest)' : '';
   const where = path ? `the ${groupLabel(path.replace(/^\//, ''))} section` : `${pagesFetched} pages`;
   const capped = pagesFetched >= CRAWL_MAX_PAGES ? ` (crawl cap ${CRAWL_MAX_PAGES} reached — narrow to a section for the rest)` : '';
   return {
@@ -439,8 +474,8 @@ async function analyse(url) {
     pageShape: 'site',
     pullable: productUrls.length > 0,
     verdict: productUrls.length
-      ? `Crawled ${where} (${pagesFetched} pages) and found ${productUrls.length} product pages to pull.${capped}`
-      : `Crawled ${where} (${pagesFetched} pages) but found no product pages — try a category or product URL.`,
+      ? `Crawled ${where} (${pagesFetched} pages) and found ${productUrls.length} product pages to pull.${capped}${rlNote}`
+      : `Crawled ${where} (${pagesFetched} pages) but found no product pages — try a category or product URL.${rlNote}`,
     mapped: { itemCount: productUrls.length },
     alsoFound: [],
     sample: null,

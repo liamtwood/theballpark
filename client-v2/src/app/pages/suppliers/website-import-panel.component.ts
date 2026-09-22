@@ -21,17 +21,17 @@ interface EditRow { key: string; label: string; categoryId: string | null; subCh
   imports: [FormsModule, LucideAngularModule],
   template: `
     <div class="bp-card" style="padding:1rem; margin-bottom:1rem;">
-      <div class="flex items-center gap-2 mb-2">
-        <lucide-icon name="globe" [size]="16" class="text-secondary" />
-        <span class="bp-body font-medium">Import from website</span>
-        <span class="bp-caption text-secondary">Analyse a supplier page, then pull its catalogue as pending items.</span>
+      <div class="flex items-center gap-2 mb-2 -mx-4 -mt-4 px-4 py-2.5 rounded-t-2xl" style="background:var(--color-accent-soft, rgba(214,51,132,0.08)); border-bottom:1px solid var(--color-border-hairline);">
+        <lucide-icon name="sparkles" [size]="16" class="text-[var(--theme-accent)]" />
+        <span class="bp-body font-medium">AI Assistant · Load Items</span>
+        <span class="bp-caption text-secondary">Paste a supplier website and I'll find its catalogue to load.</span>
       </div>
 
       <div class="flex gap-2 items-center">
         <input
           type="url"
           class="bp-input-field flex-1"
-          placeholder="https://supplier.com/products/…"
+          placeholder="Paste a website URL to load items…"
           [(ngModel)]="url"
           (keydown.enter)="analyse()"
           [disabled]="analyzing() || pulling()"
