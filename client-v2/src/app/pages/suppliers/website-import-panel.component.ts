@@ -112,24 +112,32 @@ interface EditRow { key: string; label: string; categoryId: string | null; subCh
               <!-- Step 2: confirm the Ballpark category + subcategory per supplier
                    group (the supplier grouped these; we mirror that). A NEW subcat is
                    created on Load. -->
+              <!-- Grouped to mirror the task-list tree (UI only — each row still maps
+                   independently; branch inheritance is a later step). Pure-parent
+                   branches show as an indented header; groups with products show the
+                   editable cat/subcat row. -->
               <div class="mb-3">
                 <p class="bp-extract-heading">Classification</p>
-                @for (row of rows(); track row.key) {
-                  <div class="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <span class="font-medium truncate" style="min-width:7rem; max-width:9rem;">{{ row.label }}</span>
-                    <span class="text-secondary">→</span>
-                    <select class="bp-input-field" style="width:auto;" [ngModel]="row.categoryId" (ngModelChange)="setCat(row.key, $event)">
-                      @for (c of categories(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
-                    </select>
-                    <span class="text-secondary">▸</span>
-                    <select class="bp-input-field" style="width:auto;" [class.italic]="row.subChoice === '__new__'" [ngModel]="row.subChoice" (ngModelChange)="setSub(row.key, $event)">
-                      <option value="">(no subcategory)</option>
-                      @for (s of subcatsFor(row.categoryId); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
-                      <option value="__new__">＋ Add new…</option>
-                    </select>
-                    @if (row.subChoice === '__new__') {
-                      <input class="bp-input-field italic" style="width:9rem;" [ngModel]="row.newName" (ngModelChange)="setNewName(row.key, $event)" placeholder="New subcategory" />
-                      <span class="bp-pill bp-pill--success">NEW</span>
+                @for (entry of classifyRows(); track entry.key) {
+                  <div class="flex items-center gap-2 mb-1.5 flex-wrap" [style.padding-left.rem]="entry.depth * 1.25">
+                    @if (entry.row; as row) {
+                      <span class="font-medium truncate" style="min-width:7rem; max-width:11rem;">{{ entry.label }}</span>
+                      <span class="text-secondary">→</span>
+                      <select class="bp-input-field" style="width:auto;" [ngModel]="row.categoryId" (ngModelChange)="setCat(row.key, $event)">
+                        @for (c of categories(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
+                      </select>
+                      <span class="text-secondary">▸</span>
+                      <select class="bp-input-field" style="width:auto;" [class.italic]="row.subChoice === '__new__'" [ngModel]="row.subChoice" (ngModelChange)="setSub(row.key, $event)">
+                        <option value="">(no subcategory)</option>
+                        @for (s of subcatsFor(row.categoryId); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
+                        <option value="__new__">＋ Add new…</option>
+                      </select>
+                      @if (row.subChoice === '__new__') {
+                        <input class="bp-input-field italic" style="width:9rem;" [ngModel]="row.newName" (ngModelChange)="setNewName(row.key, $event)" placeholder="New subcategory" />
+                        <span class="bp-pill bp-pill--success">NEW</span>
+                      }
+                    } @else {
+                      <span class="font-medium text-secondary">{{ entry.label }}</span>
                     }
                   </div>
                 }
@@ -221,6 +229,24 @@ export class WebsiteImportPanelComponent {
   protected subcatsFor(categoryId: string | null): Array<{ id: string; name: string }> {
     return this.categories().find((c) => c.id === categoryId)?.subcats ?? [];
   }
+  /** Classification rows in the task-list tree's shape (UI grouping only): pre-order
+   *  with a `depth` for indentation, each carrying its EditRow when the node is a
+   *  group with products (else it's a branch header). Branches with no prepared row
+   *  anywhere underneath are pruned (they weren't selected). */
+  protected readonly classifyRows = computed<{ depth: number; key: string; label: string; row?: EditRow }[]>(() => {
+    const byKey = new Map(this.rows().map((r) => [r.key, r] as const));
+    const has = (n: TreeNode): boolean => byKey.has(n.key) || n.children.some(has);
+    const out: { depth: number; key: string; label: string; row?: EditRow }[] = [];
+    const walk = (nodes: TreeNode[], depth: number): void => {
+      for (const n of nodes) {
+        if (!has(n)) continue;
+        out.push({ depth, key: n.key, label: n.label, row: byKey.get(n.key) });
+        walk(n.children, depth + 1);
+      }
+    };
+    walk(this.tree(), 0);
+    return out;
+  });
 
   /** A task list is present (crawl 'site' or a 'listing') — pull the selected subset;
    *  a single 'detail' page pulls itself. */
