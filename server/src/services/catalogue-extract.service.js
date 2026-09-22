@@ -17,7 +17,11 @@ const { analyseCatalogue, extractProduct } = require('./ai.service');
 const ItemService = require('./item.service');
 
 const MAX_TEXT_CHARS = 14000; // keep the model prompt bounded; product pages sit well under
-const MAX_PULL_URLS = 40;     // per pull request (a listing can name many links)
+const MAX_PULL_URLS = 100;    // per pull request — small catalogues (<100 items) in one go
+const CRAWL_MAX_PAGES = 40;   // bounded homepage crawl (BFS); enough for a <100-item catalogue
+// Skip assets + non-catalogue pages when crawling for item pages.
+const CRAWL_SKIP = /(cart|checkout|basket|account|login|register|sign-?in|contact|about|privacy|terms|cookie|blog|news|faqs?|wishlist|delivery|returns|policy|gallery|inspired|story|trade-with|my-quote|\.pdf|\.jpe?g|\.png|\.webp|\.svg|\.css|\.js|\.woff2?|\.ico|webmanifest)/i;
+const normUrl = (u) => String(u).split('#')[0].replace(/\/$/, '');
 
 // ── HTML → text (+ a few on-page hrefs so the AI can spot product links) ──────
 function htmlToText(html, baseUrl) {
@@ -210,8 +214,69 @@ async function matchCategoryId(name) {
   return child.rows[0]?.parent_id || null;
 }
 
+// ── Site crawl (bounded BFS from a homepage) — discovers same-host content URLs ─
+async function crawlSite(homeUrl, maxPages = CRAWL_MAX_PAGES) {
+  const home = normUrl(homeUrl);
+  const host = new URL(home).host;
+  const sameHost = (u) => { try { return new URL(u).host === host; } catch { return false; } };
+  const visited = new Set();
+  const discovered = new Set();
+  const queue = [home];
+  let fetched = 0;
+  while (queue.length && fetched < maxPages) {
+    const url = queue.shift();
+    if (visited.has(url)) continue;
+    visited.add(url);
+    let html;
+    try { ({ html } = await guardedFetch(url)); fetched++; } catch { continue; }
+    for (const m of html.matchAll(/href=["']([^"'#]+)["']/gi)) {
+      let abs;
+      try { abs = normUrl(new URL(m[1], url).toString()); } catch { continue; }
+      if (!sameHost(abs) || new URL(abs).pathname.length <= 1) continue;
+      if (CRAWL_SKIP.test(abs) || abs.includes('%7B') || abs.includes('${')) continue;
+      discovered.add(abs);
+      if (!visited.has(abs) && queue.length + visited.size < maxPages * 4) queue.push(abs);
+    }
+  }
+  return { pagesFetched: fetched, urls: [...discovered] };
+}
+
+const isHomepage = (url) => { try { return new URL(url).pathname.replace(/\/$/, '') === ''; } catch { return false; } };
+
+/** From the crawl's URLs, pick the ITEM pages heuristically: the /category/product
+ *  pattern — depth-2 paths whose top segment is a category root (a segment that has
+ *  multiple children). Deterministic + free; a good first pass for small catalogues
+ *  (Liam: try a few, refine). Query-string URLs (filters/sorts) are dropped. */
+function pickItemUrls(urls) {
+  const clean = urls.filter((u) => !u.includes('?'));
+  const parts = (u) => { try { return new URL(u).pathname.split('/').filter(Boolean); } catch { return []; } };
+  const rootsWithChildren = new Set(clean.map(parts).filter((p) => p.length >= 2).map((p) => p[0]));
+  const items = clean.filter((u) => { const p = parts(u); return p.length === 2 && rootsWithChildren.has(p[0]); });
+  return [...new Set(items)];
+}
+
 // ── ANALYSE (read-only) ───────────────────────────────────────────────────────
+// A homepage URL → crawl the whole site + classify the ITEM pages (the "task
+// list" that feeds Pull). A specific listing/detail URL → single-page analyse.
 async function analyse(url) {
+  if (isHomepage(url)) {
+    const { pagesFetched, urls } = await crawlSite(url);
+    const productUrls = pickItemUrls(urls);
+    return {
+      url: normUrl(url),
+      pageShape: 'site',
+      pullable: productUrls.length > 0,
+      verdict: productUrls.length
+        ? `Crawled ${pagesFetched} pages and found ${productUrls.length} item pages to pull.`
+        : `Crawled ${pagesFetched} pages but found no clear item pages — try a category or product URL.`,
+      mapped: { itemCount: productUrls.length },
+      alsoFound: [],
+      sample: null,
+      productLinks: productUrls,
+      crawledPages: pagesFetched,
+      discovered: urls.length,
+    };
+  }
   const { finalUrl, html } = await guardedFetch(url);
   const report = await analyseCatalogue(htmlToText(html, finalUrl), finalUrl);
   return { url: finalUrl, ...report };

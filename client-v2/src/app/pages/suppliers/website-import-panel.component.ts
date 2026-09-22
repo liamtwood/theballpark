@@ -75,10 +75,16 @@ import { AdminOrgService, ExtractReport, PullResult } from '../../core/admin-org
             </details>
           }
 
-          <!-- Listing: pick which product links to pull. Detail: pull the page itself. -->
-          @if (isListing() && r.productLinks?.length) {
-            <p class="text-secondary mb-1">{{ selected().size }} of {{ r.productLinks?.length }} products selected</p>
-            <div style="max-height:9rem; overflow:auto; border:1px solid var(--border); border-radius:0.5rem; padding:0.5rem;" class="mb-2">
+          <!-- The task list: pick which item pages to pull (crawl or listing).
+               A single detail URL pulls the page itself (no list). -->
+          @if (r.productLinks?.length) {
+            <div class="flex items-center justify-between mb-1">
+              <p class="text-secondary">{{ selected().size }} of {{ r.productLinks?.length }} items selected</p>
+              <button type="button" class="bp-caption" style="text-decoration:underline;" (click)="toggleAll()">
+                {{ allSelected() ? 'Select none' : 'Select all' }}
+              </button>
+            </div>
+            <div style="max-height:12rem; overflow:auto; border:1px solid var(--border); border-radius:0.5rem; padding:0.5rem;" class="mb-2">
               @for (link of r.productLinks; track link) {
                 <label class="flex items-center gap-2 mb-1">
                   <input type="checkbox" [checked]="selected().has(link)" (change)="toggle(link)" />
@@ -128,14 +134,25 @@ export class WebsiteImportPanelComponent {
   protected readonly error = signal<string | null>(null);
   protected readonly selected = signal<Set<string>>(new Set());
 
-  protected readonly isListing = computed(() => this.report()?.pageShape === 'listing');
+  /** A task list is present (crawl 'site' or a 'listing') — pull the selected subset;
+   *  a single 'detail' page pulls itself. */
+  protected readonly hasLinks = computed(() => (this.report()?.productLinks?.length ?? 0) > 0);
+  protected readonly allSelected = computed(() => {
+    const links = this.report()?.productLinks ?? [];
+    return links.length > 0 && links.every((u) => this.selected().has(u));
+  });
   protected readonly canPull = computed(() => {
     const r = this.report();
     if (!r) return false;
-    return this.isListing() ? this.selected().size > 0 : r.pageShape === 'detail';
+    return this.hasLinks() ? this.selected().size > 0 : r.pageShape === 'detail';
   });
   protected readonly pullLabel = computed(() =>
-    this.isListing() ? `Pull ${this.selected().size} selected` : 'Pull this product');
+    this.hasLinks() ? `Pull ${this.selected().size} selected` : 'Pull this product');
+
+  protected toggleAll(): void {
+    const links = this.report()?.productLinks ?? [];
+    this.selected.set(this.allSelected() ? new Set() : new Set(links));
+  }
 
   protected analyse(): void {
     const url = this.url().trim();
@@ -147,8 +164,8 @@ export class WebsiteImportPanelComponent {
     this.admin.extractAnalyse(this.orgId(), url).subscribe({
       next: (r) => {
         this.report.set(r);
-        // Default-select every product link on a listing page.
-        this.selected.set(new Set(r.pageShape === 'listing' ? (r.productLinks ?? []) : []));
+        // Default-select the whole task list (crawl or listing) so Pull is one click.
+        this.selected.set(new Set(r.productLinks ?? []));
         this.analyzing.set(false);
       },
       error: (e) => { this.error.set(this.msg(e)); this.analyzing.set(false); },
@@ -164,7 +181,7 @@ export class WebsiteImportPanelComponent {
   protected pull(): void {
     const r = this.report();
     if (!r) return;
-    const urls = this.isListing() ? [...this.selected()] : [r.url];
+    const urls = this.hasLinks() ? [...this.selected()] : [r.url];
     if (!urls.length) return;
     this.error.set(null);
     this.pulling.set(true);

@@ -123,3 +123,18 @@ captured them fine). Reporting-only fix in `ANALYSE_SYSTEM` (+ its JSON shape): 
 `mapped.hasImages` (boolean) and `images[]` to the `sample` object, so the report shows
 images-present + the sample's photo URLs. Client: `ExtractReport.mapped.hasImages` + an
 "images" chip in the panel (the sample already renders as JSON). Pull unchanged.
+
+## QC iteration — v2.537 (Analyse = whole-site crawl → task list)
+Analyse now treats a HOMEPAGE URL as a whole-site request (Liam: "the analyse is our way of
+building a task list"). Server: crawlSite() does a bounded BFS (<=40 pages) from the homepage,
+same-host, skipping assets + non-catalogue pages; pickItemUrls() then selects the item pages
+heuristically (the /category/product pattern — depth-2 paths under a category root; query-string
+URLs dropped) — deterministic + free (no per-page AI). analyse(homepage) returns pageShape="site"
++ productLinks = the task list + crawledPages/discovered counts. A specific listing/detail URL
+still does the single-page analyse. Verified on yahire.com: 40 pages crawled, 555 URLs discovered,
+156 item pages in the task list (chiavari-chair-hire, round-table-hire, …) in ~11s.
+Client: the panel now shows the task-list picker for the crawl (not just listings) with a
+Select all/none toggle, default-selects all, and Pull sends the selected set. MAX_PULL_URLS raised
+to 100 (small catalogues in one go); >100 selected pulls the first 100, rest via a second Pull
+(dedup skips the done ones). REFINE LATER: depth-2 heuristic is tuned to /category/product sites;
+other URL shapes + a cost/time guard on very large sites to follow.
