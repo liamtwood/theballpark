@@ -334,11 +334,14 @@ async function resolveMappingRow(row, cache) {
   return { categoryId: row.categoryId, subcategoryId };
 }
 
-// ── Site crawl (bounded BFS from a homepage) — discovers same-host content URLs ─
-async function crawlSite(homeUrl, maxPages = CRAWL_MAX_PAGES) {
-  const home = normUrl(homeUrl);
+// ── Site crawl (bounded BFS) — discovers same-host content URLs. `prefix` (a
+//    pathname like "/gazebo-hire") scopes the crawl to ONE section so a category
+//    URL can be processed on its own (Liam) instead of the whole site. ────────────
+async function crawlSite(seedUrl, maxPages = CRAWL_MAX_PAGES, prefix = null) {
+  const home = normUrl(seedUrl);
   const host = new URL(home).host;
   const sameHost = (u) => { try { return new URL(u).host === host; } catch { return false; } };
+  const inScope = (path) => !prefix || path === prefix || path.startsWith(prefix + '/');
   const visited = new Set();
   const discovered = new Set();
   const queue = [home];
@@ -352,7 +355,9 @@ async function crawlSite(homeUrl, maxPages = CRAWL_MAX_PAGES) {
     for (const m of html.matchAll(/href=["']([^"'#]+)["']/gi)) {
       let abs;
       try { abs = normUrl(new URL(m[1], url).toString()); } catch { continue; }
-      if (!sameHost(abs) || new URL(abs).pathname.length <= 1) continue;
+      if (!sameHost(abs)) continue;
+      const path = new URL(abs).pathname;
+      if (path.length <= 1 || !inScope(path)) continue;
       if (CRAWL_SKIP.test(abs) || abs.includes('%7B') || abs.includes('${')) continue;
       discovered.add(abs);
       if (!visited.has(abs) && queue.length + visited.size < maxPages * 4) queue.push(abs);
@@ -362,6 +367,8 @@ async function crawlSite(homeUrl, maxPages = CRAWL_MAX_PAGES) {
 }
 
 const isHomepage = (url) => { try { return new URL(url).pathname.replace(/\/$/, '') === ''; } catch { return false; } };
+/** Path depth: homepage 0, section root ("/gazebo-hire") 1, product ("/gazebo-hire/3m") 2+. */
+const pathDepth = (url) => { try { return new URL(url).pathname.split('/').filter(Boolean).length; } catch { return 0; } };
 
 /** From the crawl's URLs, pick the ITEM pages heuristically: the /category/product
  *  pattern — depth-2 paths whose top segment is a category root (a segment that has
@@ -376,19 +383,25 @@ function pickItemUrls(urls) {
 }
 
 // ── ANALYSE (read-only) ───────────────────────────────────────────────────────
-// A homepage URL → crawl the whole site + classify the ITEM pages (the "task
-// list" that feeds Pull). A specific listing/detail URL → single-page analyse.
+// Homepage → crawl the WHOLE site. A section/category root ("/gazebo-hire") →
+// crawl just THAT section (Liam: process a subcat on its own). A deeper product
+// URL → single-page analyse. All crawl paths return the ITEM "task list" that
+// feeds Pull, grouped by supplier category in the panel.
 async function analyse(url) {
-  if (isHomepage(url)) {
-    const { pagesFetched, urls } = await crawlSite(url);
+  const depth = pathDepth(url);
+  if (isHomepage(url) || depth === 1) {
+    const seg = depth === 1 ? new URL(url).pathname.split('/').filter(Boolean)[0] : null;
+    const prefix = seg ? '/' + seg : null;
+    const { pagesFetched, urls } = await crawlSite(url, CRAWL_MAX_PAGES, prefix);
     const productUrls = pickItemUrls(urls);
+    const where = seg ? `the ${groupLabel(seg)} section` : `${pagesFetched} pages`;
     return {
       url: normUrl(url),
       pageShape: 'site',
       pullable: productUrls.length > 0,
       verdict: productUrls.length
-        ? `Crawled ${pagesFetched} pages and found ${productUrls.length} item pages to pull.`
-        : `Crawled ${pagesFetched} pages but found no clear item pages — try a category or product URL.`,
+        ? `Crawled ${where} (${pagesFetched} pages) and found ${productUrls.length} item pages to pull.`
+        : `Crawled ${where} (${pagesFetched} pages) but found no clear item pages — try a product URL.`,
       mapped: { itemCount: productUrls.length },
       alsoFound: [],
       sample: null,

@@ -206,3 +206,11 @@ subcats (mirrors a curated subcat row: catalogue ns, level 1, enabled), `pull(or
 Route: `POST …/extract/prepare`; pull body gains `mapping`. Client: `extractPrepare`, `PrepareResult`,
 the 3-phase panel (select → Prepare → editable mapping + Load). NOTE the taxonomy junk still wants a
 proper cull in the planned DB review — this just stops the extractor seeing it.
+
+## QC iteration — v2.544 (Analyse a single section/category URL)
+Liam: entering a category URL (`…/gazebo-hire`) should crawl BELOW it so a subcat can be processed on
+its own, instead of the old single-page analyse. `crawlSite` gained a `prefix` param (path-scoped BFS)
+and `analyse` now branches on path depth: homepage (0) → whole site; **section root (depth 1) → crawl
+just that section** (`/gazebo-hire` → only `/gazebo-hire/*`); product URL (depth ≥2) → single-page
+analyse. Server-only. Verified: `/gazebo-hire` → "Crawled the Gazebo Hire section (3 pages), found 2
+item pages" → both gazebo products, AI-free.
