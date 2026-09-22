@@ -161,10 +161,12 @@ interface EditRow { key: string; label: string; categoryId: string | null; subCh
                   <span>Full <span class="text-secondary">— everything we can store</span></span>
                 </label>
               </div>
-              <button type="button" class="bp-btn-grad" [disabled]="pulling()" (click)="pull()">
-                {{ pulling() ? 'Loading…' : 'Load ' + selected().size + ' selected' }}
-              </button>
-              <button type="button" class="bp-caption ml-3" style="text-decoration:underline;" (click)="backToSelection()">Back to selection</button>
+              <div class="mt-4">
+                <button type="button" class="bp-btn-grad" [disabled]="pulling()" (click)="pull()">
+                  {{ pulling() ? 'Loading…' : 'Load ' + selected().size + ' selected' }}
+                </button>
+                <button type="button" class="bp-caption ml-3" style="text-decoration:underline;" (click)="backToSelection()">Back to selection</button>
+              </div>
             }
           } @else {
             <p class="text-secondary">Nothing to pull from this page.</p>
