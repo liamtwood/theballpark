@@ -26,7 +26,7 @@ import { AdminOrgService, ExtractReport, PullResult } from '../../core/admin-org
       <div class="flex gap-2 items-center">
         <input
           type="url"
-          class="bp-input flex-1"
+          class="bp-input-field flex-1"
           placeholder="https://supplier.com/products/…"
           [(ngModel)]="url"
           (keydown.enter)="analyse()"

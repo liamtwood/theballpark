@@ -99,7 +99,12 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
           <!-- pV2-STORE-EXTRACT-01 — admin-only "Import from website" (Analyse →
                Pull). Items land pending → Approvals. -->
           @if (isPlatformAdmin() && store.pinnedSupplierId(); as orgId) {
-            <app-website-import-panel [orgId]="orgId" (pulled)="store.reloadItems()" />
+            <!-- Constrain to the same centred workspace column as the grid below. -->
+            <div class="bp-gutter px-6">
+              <div class="mx-auto w-full max-w-[var(--workspace-max)]">
+                <app-website-import-panel [orgId]="orgId" (pulled)="store.reloadItems()" />
+              </div>
+            </div>
           }
 
           <!-- STORE — the SHARED marketplace workspace, pinned to this supplier.
