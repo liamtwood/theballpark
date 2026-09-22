@@ -1,7 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
-import { AdminOrgService, ExtractReport, PullResult } from '../../core/admin-org.service';
+import { AdminOrgService, CatNode, ExtractReport, MappingRow, PrepareResult, PullResult } from '../../core/admin-org.service';
+
+/** One editable cat/subcat mapping row in the Prepare step. `subChoice` is a
+ *  subcategory id, '' (none), or the '__new__' sentinel (create `newName`). */
+interface EditRow { key: string; label: string; categoryId: string | null; subChoice: string; newName: string; }
 
 /**
  * pV2-STORE-EXTRACT-01 — admin "Import from website" panel (Analyse → Pull).
@@ -113,23 +117,55 @@ import { AdminOrgService, ExtractReport, PullResult } from '../../core/admin-org
             </div>
           }
 
-          <!-- Pull mode: Review = lean vetting set (name/description/price/one
-               image); Full = everything mappable, after the supplier contracts. -->
           @if (canPull()) {
-            <div class="flex items-center gap-3 mb-2">
-              <span class="text-secondary">Import:</span>
-              <label class="flex items-center gap-1.5 cursor-pointer">
-                <input type="radio" name="pullmode" class="bp-radio" [checked]="mode() === 'review'" (change)="mode.set('review')" />
-                <span>Review <span class="text-secondary">— name, description, price, one image</span></span>
-              </label>
-              <label class="flex items-center gap-1.5 cursor-pointer">
-                <input type="radio" name="pullmode" class="bp-radio" [checked]="mode() === 'full'" (change)="mode.set('full')" />
-                <span>Full <span class="text-secondary">— everything we can store</span></span>
-              </label>
-            </div>
-            <button type="button" class="bp-btn-grad" [disabled]="pulling()" (click)="pull()">
-              {{ pulling() ? 'Pulling…' : pullLabel() }}
-            </button>
+            @if (!prepared()) {
+              <!-- Step 2 trigger: only AI the groups we're about to load. -->
+              <button type="button" class="bp-btn-grad" [disabled]="preparing()" (click)="prepare()">
+                {{ preparing() ? 'Preparing…' : 'Prepare ' + selected().size + ' selected' }}
+              </button>
+            } @else {
+              <!-- Step 2: confirm the Ballpark category + subcategory per supplier
+                   group (the supplier grouped these; we mirror that). A NEW subcat is
+                   created on Load. -->
+              <div class="mb-3">
+                <p class="font-medium mb-1">Category &amp; subcategory</p>
+                @for (row of rows(); track row.key) {
+                  <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span class="font-medium truncate" style="min-width:7rem; max-width:9rem;">{{ row.label }}</span>
+                    <span class="text-secondary">→</span>
+                    <select class="bp-input-field" style="width:auto;" [ngModel]="row.categoryId" (ngModelChange)="setCat(row.key, $event)">
+                      @for (c of categories(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
+                    </select>
+                    <span class="text-secondary">▸</span>
+                    <select class="bp-input-field" style="width:auto;" [ngModel]="row.subChoice" (ngModelChange)="setSub(row.key, $event)">
+                      <option value="">(no subcategory)</option>
+                      @for (s of subcatsFor(row.categoryId); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
+                      <option value="__new__">＋ Add new…</option>
+                    </select>
+                    @if (row.subChoice === '__new__') {
+                      <input class="bp-input-field" style="width:9rem;" [ngModel]="row.newName" (ngModelChange)="setNewName(row.key, $event)" placeholder="New subcategory" />
+                      <span class="bp-pill bp-pill--success">NEW</span>
+                    }
+                  </div>
+                }
+              </div>
+              <!-- Step 3: load type. Review = lean vetting set; Full = everything mappable. -->
+              <div class="flex items-center gap-3 mb-2">
+                <span class="text-secondary">Load:</span>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="pullmode" class="bp-radio" [checked]="mode() === 'review'" (change)="mode.set('review')" />
+                  <span>Review <span class="text-secondary">— name, description, price, one image</span></span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="pullmode" class="bp-radio" [checked]="mode() === 'full'" (change)="mode.set('full')" />
+                  <span>Full <span class="text-secondary">— everything we can store</span></span>
+                </label>
+              </div>
+              <button type="button" class="bp-btn-grad" [disabled]="pulling()" (click)="pull()">
+                {{ pulling() ? 'Loading…' : 'Load ' + selected().size + ' selected' }}
+              </button>
+              <button type="button" class="bp-caption ml-3" style="text-decoration:underline;" (click)="backToSelection()">Back to selection</button>
+            }
           } @else {
             <p class="text-secondary">Nothing to pull from this page.</p>
           }
@@ -190,6 +226,14 @@ export class WebsiteImportPanelComponent {
   protected readonly selected = signal<Set<string>>(new Set());
   /** Pull mode — default Review (lean vetting set) per the contract lifecycle. */
   protected readonly mode = signal<'review' | 'full'>('review');
+  /** Prepare step (2): taxonomy + per-group cat/subcat, and the editable rows. */
+  protected readonly preparing = signal(false);
+  protected readonly prepared = signal<PrepareResult | null>(null);
+  protected readonly rows = signal<EditRow[]>([]);
+  protected readonly categories = computed<CatNode[]>(() => this.prepared()?.categories ?? []);
+  protected subcatsFor(categoryId: string | null): Array<{ id: string; name: string }> {
+    return this.categories().find((c) => c.id === categoryId)?.subcats ?? [];
+  }
 
   /** A task list is present (crawl 'site' or a 'listing') — pull the selected subset;
    *  a single 'detail' page pulls itself. */
@@ -259,6 +303,8 @@ export class WebsiteImportPanelComponent {
         // start with all category groups collapsed (accordion).
         this.selected.set(new Set(r.productLinks ?? []));
         this.expandedCats.set(new Set());
+        this.prepared.set(null);
+        this.rows.set([]);
         this.analyzing.set(false);
       },
       error: (e) => { this.error.set(this.msg(e)); this.analyzing.set(false); },
@@ -271,6 +317,60 @@ export class WebsiteImportPanelComponent {
     this.selected.set(next);
   }
 
+  /** Step 2: prepare cat/subcat for the SELECTED groups only. */
+  protected prepare(): void {
+    // One row per group that has a selected item; sample = a selected item's slug.
+    const sel = this.selected();
+    const groups = this.grouped()
+      .map((g) => ({ g, chosen: g.items.filter((u) => sel.has(u)) }))
+      .filter((x) => x.chosen.length)
+      .map((x) => ({ key: x.g.category, sample: this.leaf(x.chosen[0]) }));
+    if (!groups.length) return;
+    this.error.set(null);
+    this.preparing.set(true);
+    this.admin.extractPrepare(this.orgId(), groups).subscribe({
+      next: (res) => {
+        this.prepared.set(res);
+        this.rows.set(res.groups.map((gr) => ({
+          key: gr.key,
+          label: gr.label,
+          categoryId: gr.categoryId,
+          subChoice: gr.subcategoryId || (gr.isNew && gr.subcategoryName ? '__new__' : ''),
+          newName: gr.subcategoryName || gr.label,
+        })));
+        this.preparing.set(false);
+      },
+      error: (e) => { this.error.set(this.msg(e)); this.preparing.set(false); },
+    });
+  }
+
+  private patchRow(key: string, patch: Partial<EditRow>): void {
+    this.rows.update((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  }
+  protected setCat(key: string, categoryId: string): void {
+    // New category → reset the subcategory choice (its subcats differ).
+    this.patchRow(key, { categoryId, subChoice: '' });
+  }
+  protected setSub(key: string, subChoice: string): void { this.patchRow(key, { subChoice }); }
+  protected setNewName(key: string, newName: string): void { this.patchRow(key, { newName }); }
+  protected backToSelection(): void { this.prepared.set(null); this.rows.set([]); }
+
+  /** Build the group→mapping payload from the (edited) rows. */
+  private buildMapping(): Record<string, MappingRow> {
+    const map: Record<string, MappingRow> = {};
+    for (const r of this.rows()) {
+      if (!r.categoryId) continue;
+      if (r.subChoice === '__new__' && r.newName.trim()) {
+        map[r.key] = { categoryId: r.categoryId, subcategoryName: r.newName.trim(), isNew: true };
+      } else if (r.subChoice) {
+        map[r.key] = { categoryId: r.categoryId, subcategoryId: r.subChoice };
+      } else {
+        map[r.key] = { categoryId: r.categoryId };
+      }
+    }
+    return map;
+  }
+
   protected pull(): void {
     const r = this.report();
     if (!r) return;
@@ -278,7 +378,7 @@ export class WebsiteImportPanelComponent {
     if (!urls.length) return;
     this.error.set(null);
     this.pulling.set(true);
-    this.admin.extractPull(this.orgId(), urls, this.mode()).subscribe({
+    this.admin.extractPull(this.orgId(), urls, this.mode(), this.buildMapping()).subscribe({
       next: (res) => { this.result.set(res); this.pulling.set(false); this.pulled.emit(res); },
       error: (e) => { this.error.set(this.msg(e)); this.pulling.set(false); },
     });
@@ -291,6 +391,8 @@ export class WebsiteImportPanelComponent {
     this.result.set(null);
     this.selected.set(new Set());
     this.expandedCats.set(new Set());
+    this.prepared.set(null);
+    this.rows.set([]);
     this.url.set('');
   }
 

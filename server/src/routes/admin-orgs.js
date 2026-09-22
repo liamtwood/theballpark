@@ -185,9 +185,19 @@ router.delete('/:orgId/items/:itemId', async (req, res, next) => {
 // admin.cross_org_view) from the mount, so it's platform-admin only. org is :orgId
 // from the URL (never the body) — same invariant as the item routes above.
 const ExtractUrlBody = z.object({ url: z.string().trim().url('A valid URL is required') });
+const ExtractPrepareBody = z.object({
+  groups: z.array(z.object({ key: z.string().trim().min(1), sample: z.string().trim().optional() })).min(1).max(60),
+});
+const MappingRow = z.object({
+  categoryId: z.string().uuid().nullable().optional(),
+  subcategoryId: z.string().uuid().nullable().optional(),
+  subcategoryName: z.string().trim().optional(),
+  isNew: z.boolean().optional(),
+});
 const ExtractPullBody = z.object({
   urls: z.array(z.string().trim().url()).min(1).max(100),
   mode: z.enum(['review', 'full']).optional(),
+  mapping: z.record(z.string(), MappingRow).optional(),
 });
 
 // POST /api/admin/orgs/:orgId/extract/analyse { url } → the read-only report.
@@ -197,11 +207,21 @@ router.post('/:orgId/extract/analyse', async (req, res, next) => {
   try { res.json(await CatalogueExtract.analyse(parsed.data.url)); } catch (err) { next(err); }
 });
 
-// POST /api/admin/orgs/:orgId/extract/pull { urls[] } → create pending items.
+// POST /api/admin/orgs/:orgId/extract/prepare { groups[] } → per-group cat/subcat
+// suggestion + the marketplace taxonomy tree (Liam's Prepare step).
+router.post('/:orgId/extract/prepare', async (req, res, next) => {
+  const parsed = ExtractPrepareBody.safeParse(req.body || {});
+  if (!parsed.success) return res.status(400).json({ error: 'groups (1-60) are required' });
+  try { res.json(await CatalogueExtract.prepare(parsed.data.groups)); } catch (err) { next(err); }
+});
+
+// POST /api/admin/orgs/:orgId/extract/pull { urls[], mode?, mapping? } → create pending items.
 router.post('/:orgId/extract/pull', async (req, res, next) => {
   const parsed = ExtractPullBody.safeParse(req.body || {});
-  if (!parsed.success) return res.status(400).json({ error: 'urls (1-40 valid URLs) are required' });
-  try { res.json(await CatalogueExtract.pull(req.params.orgId, parsed.data.urls, { mode: parsed.data.mode })); } catch (err) { next(err); }
+  if (!parsed.success) return res.status(400).json({ error: 'urls (1-100 valid URLs) are required' });
+  try {
+    res.json(await CatalogueExtract.pull(req.params.orgId, parsed.data.urls, { mode: parsed.data.mode, mapping: parsed.data.mapping }));
+  } catch (err) { next(err); }
 });
 
 module.exports = router;

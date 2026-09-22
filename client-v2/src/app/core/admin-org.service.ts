@@ -75,6 +75,23 @@ export interface ExtractReport {
 }
 
 /** pV2-STORE-EXTRACT-01 — the PULL summary. */
+/** Prepare (step 2): the marketplace taxonomy + a per-group cat/subcat suggestion. */
+export interface CatNode { id: string; name: string; subcats: Array<{ id: string; name: string }>; }
+export interface PrepareGroup {
+  key: string;
+  label: string;
+  categoryId: string | null;
+  categoryName: string | null;
+  subcategoryId: string | null;
+  subcategoryName: string | null;
+  isNew: boolean;
+  confidence: number;
+}
+export interface PrepareResult { categories: CatNode[]; groups: PrepareGroup[]; }
+
+/** A confirmed cat/subcat mapping row sent to Pull, keyed by group. */
+export interface MappingRow { categoryId: string | null; subcategoryId?: string | null; subcategoryName?: string; isNew?: boolean; }
+
 export interface PullResult {
   created: number;
   skipped: number;
@@ -119,11 +136,21 @@ export class AdminOrgService {
     return this.api.post<ExtractReport>(`/api/admin/orgs/${orgId}/extract/analyse`, { url });
   }
 
+  /** PREPARE — for the selected groups, get a Ballpark cat/subcat suggestion each
+   *  + the taxonomy tree for the dropdowns (only AIs the groups you'll load). */
+  extractPrepare(orgId: string, groups: Array<{ key: string; sample?: string }>): Observable<PrepareResult> {
+    return this.api.post<PrepareResult>(`/api/admin/orgs/${orgId}/extract/prepare`, { groups });
+  }
+
   /** PULL — create pending items on the org from these product URLs.
    *  mode 'review' = lean vetting set (name/description/price/one image);
-   *  'full' = everything mappable (after the supplier contracts). */
-  extractPull(orgId: string, urls: string[], mode: 'review' | 'full' = 'full'): Observable<PullResult> {
-    return this.api.post<PullResult>(`/api/admin/orgs/${orgId}/extract/pull`, { urls, mode });
+   *  'full' = everything mappable (after the supplier contracts). mapping =
+   *  confirmed cat/subcat per group key (authoritative; skips the AI classifier). */
+  extractPull(
+    orgId: string, urls: string[], mode: 'review' | 'full' = 'full',
+    mapping?: Record<string, MappingRow>,
+  ): Observable<PullResult> {
+    return this.api.post<PullResult>(`/api/admin/orgs/${orgId}/extract/pull`, { urls, mode, mapping });
   }
 
   /** Admin soft-delete of an item on another org (cascades to its option children

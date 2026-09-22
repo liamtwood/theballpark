@@ -442,7 +442,7 @@ async function statusCountsForOrg(orgId) {
 /** Create an item for `orgId`. approval_status defaults to `defaultStatus`
  *  (store: 'draft'; admin: 'pending'); is_active is forced false (an item only
  *  goes live when a ballpark admin approves it). Fires the lazy auto-classify. */
-async function createForOrg({ data, orgId, defaultStatus }) {
+async function createForOrg({ data, orgId, defaultStatus, skipClassify = false }) {
   const item = await create({
     ...data,
     org_id: orgId, // sacred — from the caller (session or :orgId), never the body
@@ -452,9 +452,13 @@ async function createForOrg({ data, orgId, defaultStatus }) {
   // pV2-STORE-IMPORT — lazy auto-classify: derive subcat + tags once on create.
   // Lazy require avoids any require cycle; fire-and-forget + error-swallowed so a
   // classifier hiccup (missing key / AI error) never breaks item create.
-  require('./taxonomy.service').classifyAndApply(item.id).catch((e) =>
-    console.warn('[auto-classify] item', item.id, 'failed:', e.message)
-  );
+  // skipClassify: the caller already set an authoritative category + subcategory
+  // (e.g. the extract Prepare step's group mapping) — don't let the guesser override.
+  if (!skipClassify) {
+    require('./taxonomy.service').classifyAndApply(item.id).catch((e) =>
+      console.warn('[auto-classify] item', item.id, 'failed:', e.message)
+    );
+  }
   return item;
 }
 

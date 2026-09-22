@@ -237,4 +237,32 @@ async function extractProduct(pageText, url, categoryNames = []) {
   return parsed || { raw_response: raw };
 }
 
-module.exports = { parseBrief, callHaikuJson, analyseCatalogue, extractProduct };
+const CLASSIFY_GROUP_SYSTEM = `You map a SUPPLIER's own product category onto Ballpark's taxonomy. Return ONLY valid JSON — no markdown.
+
+You are given: the supplier's category label (how THEY group these items), a sample product name, and Ballpark's categories each with their existing subcategories. The supplier grouped these deliberately — respect that grouping.
+
+Decide, for the WHOLE group:
+1. category: the single best-fit Ballpark category — EXACTLY one "category" string from the list (never invent a category).
+2. subcategory: the best existing subcategory UNDER that category (exact string from its list) IF one clearly fits or is close (e.g. supplier "Gazebo Hire" ≈ existing "Outdoor & Tensile Structure"? only if genuinely close).
+   If NONE is close, propose a NEW subcategory: set subcategory to a clean, house-style name derived from the supplier label — Title Case, NO "Hire"/"Rental" suffix, prefer a short plural noun (e.g. "Gazebo Hire" → "Gazebos", "Chair Hire" → "Chairs"), and set isNew true.
+3. confidence: 0..1 for the category pick.
+
+Return exactly: { "category":"", "subcategory":"", "isNew": false, "confidence": 0 }`;
+
+/** PREPARE: map ONE supplier group (their category) → Ballpark category + subcategory.
+ *  `tree` = [{ name, subcats:[name…] }] (the real marketplace taxonomy). One cheap
+ *  call per SELECTED group — we only AI what we're about to load. Returns
+ *  { category, subcategory, isNew, confidence }. */
+async function classifyGroup(supplierLabel, sampleName, tree = []) {
+  const catBlock = tree
+    .map((c) => `- ${c.name}: ${(c.subcats || []).join(', ') || '(no subcategories yet)'}`)
+    .join('\n');
+  const { parsed } = await callHaikuJson({
+    system: CLASSIFY_GROUP_SYSTEM,
+    user: `Supplier category label: "${supplierLabel}"\nSample product: "${sampleName || ''}"\n\nBallpark categories and their subcategories:\n${catBlock}`,
+    maxTokens: 400,
+  });
+  return parsed || { category: null, subcategory: null, isNew: false, confidence: 0 };
+}
+
+module.exports = { parseBrief, callHaikuJson, analyseCatalogue, extractProduct, classifyGroup };

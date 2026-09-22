@@ -179,3 +179,30 @@ delete + re-pull (pull dedups on external_url, doesn't update).
 Also (Liam UX): after a Pull completes the panel now HIDES the analyse/picker/Pull controls and shows
 the confirmation + gap report + a **Done** button (`done()` clears the panel back to the URL input;
 the shop grid below has already reloaded via the `pulled` emit). ExtractPullBody note carried from v2.541.
+
+## QC iteration — v2.543 (Prepare step: consistent cat + subcat, supplier-driven)
+Liam QC: two identical gazebos landed in DIFFERENT top-levels (Event Accessories vs Stand Structure)
+with inconsistent/absent subcats — because classification was a per-ITEM AI guess. Redesigned into a
+3-step import (Liam: "analyse — counts+groups, pick what you want; **prepare** cat+subcat; **load** pick
+type"):
+- **Analyse** (unchanged): crawl → task list grouped by supplier category (URL 1st segment), AI-free.
+- **Prepare** (NEW): for the SELECTED groups only ("we only AI what we're about to load"), one Haiku
+  call per group maps the supplier's category → a Ballpark **category + subcategory**. It trusts the
+  supplier's own grouping (they grouped these as "gazebo" — we mirror it, one cat/subcat per group).
+  Picks an existing subcat when close, else proposes a NEW one in house style (Title Case, no "Hire":
+  "Gazebo Hire" → "Gazebos"). Verified: gazebo-hire → Stand Structure ▸ Outdoor & Tensile Structure
+  (conf 0.95, existing). Panel shows an editable row per group (cat + subcat dropdowns, NEW badge +
+  name field); the reviewer confirms/overrides before loading.
+- **Load** (was Pull): the confirmed mapping is AUTHORITATIVE — every item in a group gets that
+  cat/subcat, a NEW subcat is created once under the category, and the per-item AI classifier is
+  SKIPPED (`createForOrg({skipClassify})`). No mapping → old per-item behaviour.
+
+Junk taxonomy handled: the extractor now only offers the 15 real marketplace categories
+(`namespace='catalogue'` AND name NOT LIKE 'rlstxn%'); the `feedback`-namespace trackers (Bug,
+Question, Sprint, Test Run…) and RLS test fixtures are excluded from Prepare + the AI vocabulary.
+Server: `marketplaceCategoryTree()`, `prepare(groups)`, `classifyGroup()` in ai.service (aliased on
+import to dodge the existing attribute-router `classifyGroup`), `resolveMappingRow()` creates new
+subcats (mirrors a curated subcat row: catalogue ns, level 1, enabled), `pull(orgId,urls,{mode,mapping})`.
+Route: `POST …/extract/prepare`; pull body gains `mapping`. Client: `extractPrepare`, `PrepareResult`,
+the 3-phase panel (select → Prepare → editable mapping + Load). NOTE the taxonomy junk still wants a
+proper cull in the planned DB review — this just stops the extractor seeing it.

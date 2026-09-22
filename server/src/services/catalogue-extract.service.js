@@ -13,7 +13,7 @@
 
 const pool = require('../db/pool');
 const { guardedFetch } = require('./org-import.service');
-const { analyseCatalogue, extractProduct } = require('./ai.service');
+const { analyseCatalogue, extractProduct, classifyGroup: classifyGroupToCategory } = require('./ai.service');
 const ItemService = require('./item.service');
 
 const MAX_TEXT_CHARS = 14000; // keep the model prompt bounded; product pages sit well under
@@ -141,6 +141,8 @@ const DIM_LABELS = {
 const UNIT_KEY = { cm: 'cm', mm: 'mm', m: 'm', kg: 'kg', g: 'g', l: 'L', ml: 'ml' };
 const humanizeLabel = (s) =>
   String(s).replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, (c) => c.toUpperCase());
+/** Tolerant name compare (case + whitespace) for cat/subcat matching. */
+const norm = (s) => String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' ');
 
 // The 5 canonical descriptive groups (fixed order + keys) — pV2-STORE-ATTRIBUTE-GROUPS-01.
 const GROUP_KEYS = ['specifications', 'features', 'style', 'measurements', 'materials'];
@@ -244,6 +246,94 @@ async function matchCategoryId(name) {
   return child.rows[0]?.parent_id || null;
 }
 
+/** The real marketplace taxonomy for Prepare + the client's cat/subcat dropdowns:
+ *  [{ id, name, subcats:[{id,name}] }], excluding the feedback namespace + RLS
+ *  test fixtures. Ordered by sort_order then name. */
+async function marketplaceCategoryTree() {
+  const r = await pool.query(
+    `SELECT id, name, parent_id FROM categories
+      WHERE namespace = 'catalogue' AND deleted_at IS NULL AND name NOT LIKE 'rlstxn%'
+      ORDER BY sort_order ASC, name ASC`
+  );
+  const tops = r.rows.filter((c) => !c.parent_id);
+  return tops.map((t) => ({
+    id: t.id, name: t.name,
+    subcats: r.rows.filter((c) => c.parent_id === t.id).map((c) => ({ id: c.id, name: c.name })),
+  }));
+}
+
+/** Supplier group key from a product URL — the FIRST path segment (how the crawl
+ *  groups the task list, e.g. /gazebo-hire/… → "gazebo-hire"). ONE key per group. */
+function groupKeyOf(u) {
+  try { return new URL(u).pathname.split('/').filter(Boolean)[0] || 'other'; } catch { return 'other'; }
+}
+/** Humanise a group key into the supplier's category label ("gazebo-hire" → "Gazebo Hire"). */
+const groupLabel = (key) => humanizeLabel(key);
+
+/** PREPARE (Liam's step 2): for each SELECTED group, map the supplier's category
+ *  → a Ballpark category + subcategory (existing or a proposed NEW one). One cheap
+ *  AI call per group — we only classify what we're about to load. Returns the real
+ *  taxonomy tree (for the dropdowns) + a suggestion per group. `groups` = [{ key,
+ *  sample }] where sample is a representative product name/slug. */
+async function prepare(groups) {
+  const tree = await marketplaceCategoryTree();
+  const treeForAi = tree.map((c) => ({ name: c.name, subcats: c.subcats.map((s) => s.name) }));
+  const list = Array.isArray(groups) ? groups : [];
+  const out = [];
+  for (const g of list) {
+    const key = String(g?.key ?? '').trim();
+    if (!key) continue;
+    const label = groupLabel(key);
+    let sug = { category: null, subcategory: null, isNew: false, confidence: 0 };
+    try { sug = await classifyGroupToCategory(label, g?.sample || label, treeForAi); } catch { /* keep default */ }
+    // Resolve the suggested category to a real id (else 'Other').
+    const cat = tree.find((c) => norm(c.name) === norm(sug.category)) || tree.find((c) => norm(c.name) === 'other') || null;
+    let subId = null, subName = sug.subcategory ? String(sug.subcategory).trim() : null, isNew = !!sug.isNew;
+    if (cat && subName) {
+      const existing = cat.subcats.find((s) => norm(s.name) === norm(subName));
+      if (existing) { subId = existing.id; subName = existing.name; isNew = false; }
+      else { isNew = true; } // no close existing → propose new under this cat
+    }
+    out.push({
+      key, label,
+      categoryId: cat?.id || null, categoryName: cat?.name || null,
+      subcategoryId: subId, subcategoryName: subName, isNew,
+      confidence: sug.confidence ?? 0,
+    });
+  }
+  return { categories: tree, groups: out };
+}
+
+/** Resolve a group's mapping row to concrete { categoryId, subcategoryId },
+ *  CREATING a new subcategory under the category when the row asks for one. Cached
+ *  by category|name within a pull so we create each new subcat at most once. */
+async function resolveMappingRow(row, cache) {
+  if (!row || !row.categoryId) return { categoryId: null, subcategoryId: null };
+  let subcategoryId = row.subcategoryId || null;
+  const wantNew = !subcategoryId && row.subcategoryName && (row.isNew || row.createSubcategory);
+  if (wantNew) {
+    const ck = `${row.categoryId}|${norm(row.subcategoryName)}`;
+    if (cache.has(ck)) subcategoryId = cache.get(ck);
+    else {
+      // Re-check it wasn't created by an earlier run, then insert (mirrors a curated
+      // subcat: catalogue namespace, level 1, enabled). Only NOT-NULL col is name.
+      const found = await pool.query(
+        `SELECT id FROM categories WHERE parent_id = $1 AND deleted_at IS NULL
+           AND lower(name) = lower($2) LIMIT 1`, [row.categoryId, row.subcategoryName]);
+      if (found.rows[0]) subcategoryId = found.rows[0].id;
+      else {
+        const ins = await pool.query(
+          `INSERT INTO categories (name, parent_id, namespace, model, level, is_active, enabled, sort_order)
+             VALUES ($1, $2, 'catalogue', 'A', 1, false, true, 999) RETURNING id`,
+          [row.subcategoryName, row.categoryId]);
+        subcategoryId = ins.rows[0].id;
+      }
+      cache.set(ck, subcategoryId);
+    }
+  }
+  return { categoryId: row.categoryId, subcategoryId };
+}
+
 // ── Site crawl (bounded BFS from a homepage) — discovers same-host content URLs ─
 async function crawlSite(homeUrl, maxPages = CRAWL_MAX_PAGES) {
   const home = normUrl(homeUrl);
@@ -322,12 +412,18 @@ async function pull(orgId, urls, opts = {}) {
   // for marketplace vetting; 'full' = everything mappable, run after the supplier
   // contracts. Both still capture external_url + _source (dedup) and the gap list.
   const review = opts.mode === 'review';
+  // Prepare-step mapping (Liam's step 2): { groupKey → {categoryId, subcategoryId?,
+  // subcategoryName?, isNew?} }. When present for a group, it is AUTHORITATIVE — the
+  // item gets that cat/subcat and the per-item AI classifier is skipped.
+  const mapping = opts.mapping && typeof opts.mapping === 'object' ? opts.mapping : {};
+  const subcatCache = new Map();
   const batch = `extract-${new Date().toISOString().slice(0, 10)}`;
   const categoryNames = await topLevelCategoryNames(); // pass OUR vocabulary to the AI
   const results = [];
   const gapMap = new Map(); // "kind|label" → { label, kind, count, example }
   for (const url of list) {
     try {
+      const groupRow = mapping[groupKeyOf(url)] || null; // group keyed off the selected URL
       const { finalUrl, html } = await guardedFetch(url);
       const p = await extractProduct(htmlToText(html, finalUrl), finalUrl, categoryNames);
       const name = (p && typeof p.name === 'string') ? p.name.trim() : '';
@@ -398,6 +494,19 @@ async function pull(orgId, urls, opts = {}) {
       // internal _source block (so re-run dedup still works); images to the hero;
       // install/lead-time dropped. base_price + category stay — needed to review.
       const reviewAttrs = attributes._source ? { _source: attributes._source } : {};
+      // Category + subcategory: if this group has a Prepare mapping, it's authoritative
+      // (all items in the supplier's group get the SAME cat/subcat, creating a new
+      // subcat if the mapping asked for one) and we skip the per-item AI classifier.
+      // No mapping → fall back to the AI's per-item guess + the default 'Other'.
+      let categoryId, subcategoryId = null, skipClassify = false;
+      if (groupRow && groupRow.categoryId) {
+        const resolved = await resolveMappingRow(groupRow, subcatCache);
+        categoryId = resolved.categoryId || (await defaultCategoryId());
+        subcategoryId = resolved.subcategoryId;
+        skipClassify = true;
+      } else {
+        categoryId = (await matchCategoryId(p.category)) || (await defaultCategoryId());
+      }
       const item = await ItemService.createForOrg({
         data: {
           name,
@@ -410,14 +519,14 @@ async function pull(orgId, urls, opts = {}) {
           install_cost: review ? null : toNumber(p.install_cost),
           lead_time_days: review ? null : toNumber(p.lead_time_days),
           external_url: finalUrl, // PRIMARY source URL — dedup/delta key
-          // Never null: map to our vocabulary, else the 'Other' default. The
-          // auto-classifier refines this + picks a subcategory on create.
-          category_id: (await matchCategoryId(p.category)) || (await defaultCategoryId()),
+          category_id: categoryId,
+          subcategory_id: subcategoryId,
           attributes: review ? reviewAttrs : attributes,
           images: review ? images.slice(0, 1) : images,
         },
         orgId,
         defaultStatus: 'pending',
+        skipClassify,
       });
 
       results.push({ url: finalUrl, status: 'created', itemId: item.id, name: item.name, optionCount: review ? 0 : options.length });
@@ -451,4 +560,4 @@ function pruneNull(obj) {
   return out;
 }
 
-module.exports = { analyse, pull, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages } };
+module.exports = { analyse, prepare, pull, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf } };
