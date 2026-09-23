@@ -8,7 +8,7 @@ import { StatusPillComponent } from '../../shared/status-pill/status-pill.compon
 @Component({
   selector: 'app-item-approval-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'bp-card p-5 self-start block' },
+  host: { class: 'block' },
   imports: [StatusPillComponent],
   template: `
     <h3 class="bp-edit-section-title">Image Approval Process</h3>

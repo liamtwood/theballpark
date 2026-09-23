@@ -314,10 +314,12 @@ interface ItemForm {
                   (primarySet)="onSetPrimary($event)"
                 />
               </div>
+              <!-- Image Approval Process copy + status, under the gallery (Liam). -->
+              <div class="mt-5 border-t border-hairline pt-4">
+                <app-item-approval-panel [status]="currentStatus()" [statusAt]="statusAt()" />
+              </div>
             }
           </div>
-
-          <app-item-approval-panel [status]="currentStatus()" [statusAt]="statusAt()" />
         </div>
         </div>
 
