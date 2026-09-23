@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
@@ -7,13 +7,17 @@ import { CategoryInfo, CategoryUpdate } from '../../../shared/catalogue/catalogu
 import { SelectComponent, SelectOption } from '../../../shared/select/select.component';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 
-/** pV2-MARKET-00 — /settings/categories: the minimal ballpark-admin
- *  curation table (MARKETPLACE.md "browse + curate"). One row per
- *  top-level catalogue category: Name / Tagline / Active / Sort,
- *  edit-fields save-on-change to PATCH /api/marketplace/categories/:id
- *  (optimistic; reload on failure) — the /settings/pages table pattern.
- *  Item counts are read-only context. Hierarchy, icons + images are NOT
- *  curated here (deferred with the image-upload arc). */
+/** A node in the taxonomy tree — the category row + its lazily-loaded children
+ *  and expand state. Depth is derived at render time. */
+interface TaxNode { cat: CategoryInfo; parentId: string | null; expanded: boolean; loaded: boolean; children: TaxNode[]; }
+/** A flattened render row: either a category node (with depth) or an "add" input row. */
+type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; parentId: string | null; depth: number; node?: undefined };
+
+/** pV2-STORE-TAXONOMY-01 — /settings/categories: the taxonomy MANAGER. A lazy
+ *  tree of the catalogue hierarchy at any depth (Category ▸ Subcategory ▸
+ *  Sub-subcategory), inline-editable (name / tagline / visibility / sort,
+ *  save-on-blur), with Add (sibling) + Add child (one level deeper) creating nodes
+ *  via POST. Admin-gated. Replaces the earlier edit-only 2-level table. */
 @Component({
   selector: 'app-categories-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -24,7 +28,7 @@ import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component'
       align="block"
       [back]="{ label: 'Back', href: '/home' }"
       title="Categories"
-      subtitle="Curate the marketplace categories — names, taglines, visibility and order."
+      subtitle="Manage the marketplace taxonomy — categories, subcategories and levels below."
     />
 
     <div class="bp-page-body bp-page-body--workspace">
@@ -33,111 +37,64 @@ import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component'
       } @else if (loader.error()) {
         <p class="bp-body-small text-warn">Couldn't load categories.</p>
       } @else {
+        <div class="mb-3 flex items-center justify-between">
+          <span class="bp-body-small text-secondary">Click a row's chevron to reveal the level beneath it.</span>
+          <button type="button" class="bp-btn-outline" (click)="startAdd(null)">
+            <lucide-icon name="plus" [size]="15" /> Add category
+          </button>
+        </div>
+
         <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
-          <div class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-2">
+          <div class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px_36px] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-2">
             <span></span>
-          <span class="bp-table-column-header">Category</span>
+            <span class="bp-table-column-header">Category</span>
             <span class="bp-table-column-header">Tagline</span>
             <span class="bp-table-column-header">Visibility</span>
             <span class="bp-table-column-header">Sort</span>
             <span class="bp-table-column-header">Items</span>
+            <span></span>
           </div>
 
-          @for (cat of categories(); track cat.id) {
-            <div
-              class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px] items-center gap-x-4 border-b border-hairline px-4 py-1.5"
-              [class.opacity-60]="!cat.isActive"
-            >
-              <button
-                type="button"
-                class="bp-subcat-expander"
-                [attr.aria-label]="(expanded() === cat.id ? 'Collapse ' : 'Expand ') + cat.name"
-                (click)="toggleExpand(cat.id)"
-              >
-                <lucide-icon [name]="expanded() === cat.id ? 'chevron-down' : 'chevron-right'" [size]="14" />
-              </button>
-              <input
-                class="ed-input"
-                maxlength="60"
-                aria-label="Category name"
-                [ngModel]="cat.name"
-                (blur)="commitText($event, cat, 'name', false)"
-              />
-              <input
-                class="ed-input"
-                maxlength="120"
-                placeholder="Shown on the category card"
-                aria-label="Tagline"
-                [ngModel]="cat.tagline ?? ''"
-                (blur)="commitText($event, cat, 'tagline', false)"
-              />
-              <app-select
-                ariaLabel="Visibility"
-                [options]="visibility"
-                [value]="cat.isActive ? 'visible' : 'hidden'"
-                (changed)="save(cat, { isActive: $event === 'visible' })"
-              />
-              <input
-                class="ed-input"
-                type="number"
-                aria-label="Sort order"
-                [ngModel]="String(cat.sortOrder ?? 0)"
-                (blur)="commitSort($event, cat, false)"
-              />
-              <span class="bp-body-small text-secondary">{{ cat.count }}</span>
-            </div>
-
-            <!-- Subcategory curation rows (pV2-06-subcats) -->
-            @if (expanded() === cat.id) {
-              @if (subcats().length === 0) {
-                <p class="bp-caption border-b border-hairline px-4 py-2 pl-12">
-                  {{ subcatsLoading() ? 'Loading…' : 'No subcategories.' }}
-                </p>
-              }
-              @for (sub of subcats(); track sub.id) {
-                <div
-                  class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px] items-center gap-x-4 border-b border-hairline bg-fill/50 px-4 py-1.5 pl-8"
-                  [class.opacity-60]="!sub.isActive"
-                >
-                  <span></span>
-                  <input
-                    class="ed-input"
-                    maxlength="60"
-                    aria-label="Subcategory name"
-                    [ngModel]="sub.name"
-                    (blur)="commitText($event, sub, 'name', true)"
-                  />
-                  <input
-                    class="ed-input"
-                    maxlength="120"
-                    placeholder="Shown on the subcategory chip"
-                    aria-label="Tagline"
-                    [ngModel]="sub.tagline ?? ''"
-                    (blur)="commitText($event, sub, 'tagline', true)"
-                  />
-                  <app-select
-                    ariaLabel="Visibility"
-                    [options]="visibility"
-                    [value]="sub.isActive ? 'visible' : 'hidden'"
-                    (changed)="saveSub(sub, { isActive: $event === 'visible' })"
-                  />
-                  <input
-                    class="ed-input"
-                    type="number"
-                    aria-label="Sort order"
-                    [ngModel]="String(sub.sortOrder ?? 0)"
-                    (blur)="commitSort($event, sub, true)"
-                  />
-                  <span class="bp-body-small text-secondary">{{ sub.count }}</span>
-                </div>
-              }
+          @for (row of visible(); track row.add ? 'add:' + row.parentId : row.node.cat.id) {
+            @if (row.add) {
+              <div class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px_36px] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-1.5"
+                   [style.padding-left.rem]="0.75 + row.depth * 1.25">
+                <span></span>
+                <input class="ed-input" maxlength="60" placeholder="New name…" autofocus
+                       [ngModel]="addName()" (ngModelChange)="addName.set($event)"
+                       (keydown.enter)="submitAdd(row.parentId)" (keydown.escape)="cancelAdd()" (blur)="submitAdd(row.parentId)" />
+                <span class="bp-caption text-secondary">Enter to add · Esc to cancel</span>
+                <span></span><span></span><span></span><span></span>
+              </div>
+            } @else {
+              <div class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px_36px] items-center gap-x-4 border-b border-hairline px-4 py-1.5"
+                   [class.opacity-60]="!row.node.cat.isActive" [class.bg-fill]="row.depth > 0"
+                   [style.padding-left.rem]="0.75 + row.depth * 1.25">
+                <button type="button" class="bp-subcat-expander"
+                        [attr.aria-label]="(row.node.expanded ? 'Collapse ' : 'Expand ') + row.node.cat.name"
+                        (click)="toggle(row.node)">
+                  <lucide-icon [name]="row.node.expanded ? 'chevron-down' : 'chevron-right'" [size]="14" />
+                </button>
+                <input class="ed-input" maxlength="60" aria-label="Name"
+                       [ngModel]="row.node.cat.name" (blur)="commitText($event, row.node, 'name')" />
+                <input class="ed-input" maxlength="120" placeholder="Shown on the card / chip" aria-label="Tagline"
+                       [ngModel]="row.node.cat.tagline ?? ''" (blur)="commitText($event, row.node, 'tagline')" />
+                <app-select ariaLabel="Visibility" [options]="visibility"
+                            [value]="row.node.cat.isActive ? 'visible' : 'hidden'"
+                            (changed)="save(row.node, { isActive: $event === 'visible' })" />
+                <input class="ed-input" type="number" aria-label="Sort order"
+                       [ngModel]="String(row.node.cat.sortOrder ?? 0)" (blur)="commitSort($event, row.node)" />
+                <span class="bp-body-small text-secondary">{{ row.node.cat.count }}</span>
+                <button type="button" class="bp-subcat-expander" title="Add child level" aria-label="Add child level"
+                        (click)="startAdd(row.node)">
+                  <lucide-icon name="plus" [size]="14" />
+                </button>
+              </div>
             }
           }
         </div>
 
-        @if (error()) {
-          <p class="bp-caption mt-3 text-danger">{{ error() }}</p>
-        }
+        @if (error()) { <p class="bp-caption mt-3 text-danger">{{ error() }}</p> }
       }
     </div>
   `,
@@ -147,94 +104,118 @@ export class CategoriesSettingsComponent {
 
   protected readonly String = String;
   protected readonly error = signal('');
-
   protected readonly visibility: SelectOption[] = [
     { label: 'Visible', value: 'visible' },
     { label: 'Hidden', value: 'hidden' },
   ];
 
-  /** Save-on-blur for text cells: emit only when the trimmed value changed
-   *  (parity with the legacy edit-field commitText — no redundant PATCH).
-   *  `sub` routes to the subcategory optimistic path. */
-  protected commitText(ev: Event, cat: CategoryInfo, key: 'name' | 'tagline', sub: boolean): void {
-    const next = (ev.target as HTMLInputElement).value.trim();
-    const cur = key === 'name' ? cat.name : (cat.tagline ?? '');
-    if (next === cur) return;
-    const patch: CategoryUpdate = key === 'name' ? { name: next } : { tagline: next };
-    if (sub) void this.saveSub(cat, patch);
-    else void this.save(cat, patch);
+  /** The tree (roots); nodes mutate in place and we bump the root ref to re-render. */
+  protected readonly tree = signal<TaxNode[]>([]);
+  private bump(): void { this.tree.set([...this.tree()]); }
+  private toNode(cat: CategoryInfo, parentId: string | null): TaxNode {
+    return { cat, parentId, expanded: false, loaded: false, children: [] };
   }
-
-  protected commitSort(ev: Event, cat: CategoryInfo, sub: boolean): void {
-    const next = (ev.target as HTMLInputElement).value.trim();
-    if (next === String(cat.sortOrder ?? 0)) return;
-    const patch: CategoryUpdate = { sortOrder: Number(next) || 0 };
-    if (sub) void this.saveSub(cat, patch);
-    else void this.save(cat, patch);
-  }
-
-  /** Local optimistic copy of the curation list. */
-  protected readonly categories = signal<CategoryInfo[]>([]);
 
   protected readonly loader = resource<void, void>({
     loader: async () => {
-      this.categories.set(await firstValueFrom(this.catalogue.adminCategories()));
+      const roots = await firstValueFrom(this.catalogue.adminCategories());
+      this.tree.set(roots.map((c) => this.toNode(c, null)));
     },
   });
 
-  /** Expanded category id (one at a time) + its subcategory rows. */
-  protected readonly expanded = signal<string | null>(null);
-  protected readonly subcats = signal<CategoryInfo[]>([]);
-  protected readonly subcatsLoading = signal(false);
+  /** Flatten to visible rows (pre-order, expanded branches only) + the inline
+   *  add-input row wherever an add is in progress. */
+  protected readonly visible = computed<Row[]>(() => {
+    const out: Row[] = [];
+    const au = this.addingUnder();
+    if (au === 'root') out.push({ add: true, parentId: null, depth: 0 });
+    const walk = (nodes: TaxNode[], depth: number): void => {
+      for (const n of nodes) {
+        out.push({ node: n, depth });
+        if (n.expanded) {
+          if (au === n.cat.id) out.push({ add: true, parentId: n.cat.id, depth: depth + 1 });
+          walk(n.children, depth + 1);
+        }
+      }
+    };
+    walk(this.tree(), 0);
+    return out;
+  });
 
-  protected async toggleExpand(catId: string): Promise<void> {
-    if (this.expanded() === catId) {
-      this.expanded.set(null);
-      return;
+  protected async toggle(node: TaxNode): Promise<void> {
+    if (!node.loaded) {
+      try {
+        const kids = await firstValueFrom(this.catalogue.adminCategories(node.cat.id));
+        node.children = kids.map((c) => this.toNode(c, node.cat.id));
+        node.loaded = true;
+      } catch (err) {
+        console.warn('[Taxonomy] child load failed', err);
+        this.error.set('Could not load the level beneath this one.');
+        return;
+      }
     }
-    this.expanded.set(catId);
-    this.subcats.set([]);
-    this.subcatsLoading.set(true);
+    node.expanded = !node.expanded;
+    this.bump();
+  }
+
+  // ── Add (sibling at root) / Add child (one level deeper) ────────────────────
+  protected readonly addingUnder = signal<string | 'root' | null>(null);
+  protected readonly addName = signal('');
+  protected startAdd(parent: TaxNode | null): void {
+    this.addName.set('');
+    if (!parent) { this.addingUnder.set('root'); return; }
+    if (!parent.expanded) void this.toggle(parent); // reveal where the child will land
+    this.addingUnder.set(parent.cat.id);
+  }
+  protected cancelAdd(): void { this.addingUnder.set(null); this.addName.set(''); }
+  protected async submitAdd(parentId: string | null): Promise<void> {
+    const name = this.addName().trim();
+    if (name.length < 2) { this.cancelAdd(); return; }
+    this.addingUnder.set(null); // one create per submit; guard the blur+enter double-fire
     try {
-      this.subcats.set(await firstValueFrom(this.catalogue.adminCategories(catId)));
+      const created = await firstValueFrom(this.catalogue.createCategory(name, parentId));
+      if (!parentId) {
+        this.tree.update((roots) => [...roots, this.toNode(created, null)]);
+      } else {
+        const parent = this.find(this.tree(), parentId);
+        if (parent) { parent.children = [...parent.children, this.toNode(created, parentId)]; parent.loaded = true; parent.expanded = true; }
+        this.bump();
+      }
+      this.error.set('');
     } catch (err) {
-      console.warn('[CategoriesSettings] subcategory load failed', err);
-      this.error.set('Could not load subcategories.');
+      console.warn('[Taxonomy] create failed', err);
+      this.error.set(`Couldn't add "${name}".`);
     } finally {
-      this.subcatsLoading.set(false);
+      this.addName.set('');
     }
   }
-
-  /** Same optimistic PATCH path as top-level rows. */
-  protected async saveSub(sub: CategoryInfo, patch: CategoryUpdate): Promise<void> {
-    const before = this.subcats();
-    this.subcats.update((list) => list.map((c) => (c.id === sub.id ? { ...c, ...patch } : c)));
-    try {
-      const fresh = await firstValueFrom(this.catalogue.updateCategory(sub.id, patch));
-      this.subcats.update((list) => list.map((c) => (c.id === sub.id ? fresh : c)));
-      this.error.set('');
-    } catch (err) {
-      console.warn('[CategoriesSettings] subcategory save failed', err);
-      this.subcats.set(before);
-      this.error.set(`Couldn't save "${sub.name}" — change reverted.`);
-    }
+  private find(nodes: TaxNode[], id: string): TaxNode | null {
+    for (const n of nodes) { if (n.cat.id === id) return n; const d = this.find(n.children, id); if (d) return d; }
+    return null;
   }
 
-  protected async save(cat: CategoryInfo, patch: CategoryUpdate): Promise<void> {
-    // Optimistic row swap; the server returns the fresh row (live count).
-    const before = this.categories();
-    this.categories.update((list) =>
-      list.map((c) => (c.id === cat.id ? { ...c, ...patch } : c))
-    );
+  // ── Inline edit (save-on-blur), optimistic ─────────────────────────────────
+  protected commitText(ev: Event, node: TaxNode, key: 'name' | 'tagline'): void {
+    const next = (ev.target as HTMLInputElement).value.trim();
+    const cur = key === 'name' ? node.cat.name : (node.cat.tagline ?? '');
+    if (next === cur) return;
+    void this.save(node, key === 'name' ? { name: next } : { tagline: next });
+  }
+  protected commitSort(ev: Event, node: TaxNode): void {
+    const next = (ev.target as HTMLInputElement).value.trim();
+    if (next === String(node.cat.sortOrder ?? 0)) return;
+    void this.save(node, { sortOrder: Number(next) || 0 });
+  }
+  protected async save(node: TaxNode, patch: CategoryUpdate): Promise<void> {
+    const before = node.cat;
+    node.cat = { ...node.cat, ...patch } as CategoryInfo; this.bump();
     try {
-      const fresh = await firstValueFrom(this.catalogue.updateCategory(cat.id, patch));
-      this.categories.update((list) => list.map((c) => (c.id === cat.id ? fresh : c)));
-      this.error.set('');
+      node.cat = await firstValueFrom(this.catalogue.updateCategory(node.cat.id, patch));
+      this.bump(); this.error.set('');
     } catch (err) {
-      // Failed save must not lie (Rule 5): restore truth + surface it.
-      console.warn('[CategoriesSettings] save failed', err);
-      this.categories.set(before);
-      this.error.set(`Couldn't save "${cat.name}" — change reverted.`);
+      console.warn('[Taxonomy] save failed', err);
+      node.cat = before; this.bump();
+      this.error.set(`Couldn't save "${before.name}" — change reverted.`);
     }
   }
 }

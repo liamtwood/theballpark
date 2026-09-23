@@ -143,4 +143,12 @@ export class CatalogueService {
       .patch<CategoryInfo>(`/api/marketplace/categories/${id}`, patch)
       .pipe(tap(() => this.invalidate()));
   }
+
+  /** Create a taxonomy node — top-level (no parentId) or a child of another node
+   *  (subcategory / sub-subcategory). Resolves to the fresh row. Admin-gated. */
+  createCategory(name: string, parentId?: string | null): Observable<CategoryInfo> {
+    return this.api
+      .post<CategoryInfo>('/api/marketplace/categories', { name, parentId: parentId ?? null })
+      .pipe(tap(() => this.invalidate()));
+  }
 }
