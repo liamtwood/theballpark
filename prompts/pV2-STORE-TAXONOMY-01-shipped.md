@@ -32,9 +32,18 @@ correctly on create.
   row) revealing an inline name input (Enter to add / Esc to cancel) → POST. Indented rows,
   reuses the existing `ed-input` / `app-select` row style. `plus` icon already registered.
 
+## Iteration — v2.559 (manual Classify in the item editor)
+The item editor's Classification card is now **editable** (was read-only): when editing, it shows a
+cascade under the chosen Category — **Subcategory**, then **Sub-subcategory** (only when the picked
+subcategory has children) — and stores the **deepest** pick as `subcategory_id` (`category_id` = the
+top). Cascade options load from the public `/categories/:id/subcategories` (active children of any
+node). On load it pre-selects the subcategory when it's a direct child; a deeper saved value is
+preserved and shown in a "Currently: …" line (no expensive ancestor-chain lookup). Plumbing already
+existed end-to-end (`StoreItemWrite.subcategory_id`, `store-item.schema`, item.service update allowlist
+v1.41) — this exposed it. So: assign an item to *Folding Chair* by hand. NEXT still open:
+
 ## NOT yet (next steps, agreed)
-1. **Item editor** — restore v1's cascading Category ▸ Subcategory picker (v2 made subcat
-   read-only) and extend to the 3rd level, so items assign to a sub-subcategory.
+1. ~~Item editor cascading picker~~ — DONE v2.559.
 2. **Browse/matching tree-aware** — filtering the middle level (Seating) should surface
    grandchildren (Armchairs items); today the filter is 2-level.
 3. **Extract** — Prepare auto-creates/assigns the 3rd level (nested Classification, parked).

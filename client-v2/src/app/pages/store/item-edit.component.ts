@@ -28,6 +28,7 @@ import { ItemEditActionsComponent } from './item-edit-actions.component';
 interface ItemForm {
   name: string;
   category_id: string;
+  subcategory_id: string;      // the DEEPEST chosen node (subcat or sub-subcat)
   unit: string;                // item_unit code (per head / day / each…)
   base_price: string;          // "Ballpark cost"
   install_cost: string;        // installation cost (separate line)
@@ -75,7 +76,7 @@ interface ItemForm {
             <div class="flex flex-col gap-5">
               <app-edit-field label="Product Name" density="page" [editing]="editing()" [value]="form().name" (valueChange)="patch({ name: $event })" />
 
-              <app-edit-field label="Category" type="select" density="page" [filter]="true" [options]="categoryOptions()" [editing]="editing()" [value]="form().category_id" (valueChange)="patch({ category_id: $event })" />
+              <app-edit-field label="Category" type="select" density="page" [filter]="true" [options]="categoryOptions()" [editing]="editing()" [value]="form().category_id" (valueChange)="onCategory($event)" />
 
               <!-- pV2-STORE-ITEM-EDIT-LAYOUT-01 — Gallery: main image LEFT, gallery
                    images as a vertical column to the RIGHT (not stacked below). -->
@@ -244,11 +245,26 @@ interface ItemForm {
             <div class="mt-4 rounded-xl border border-hairline bg-surface p-4">
               <h3 class="bp-edit-section-title">Classification</h3>
               <div class="mt-3">
-                <div class="bp-field-label">Subcategory</div>
-                @if (subcategoryLabel(); as sc) {
-                  <div class="bp-body-small text-text">{{ sc }}</div>
+                @if (editing()) {
+                  <!-- Classify: cascade under the chosen Category — Subcategory, then
+                       Sub-subcategory when the picked subcategory has children. The
+                       DEEPEST pick is stored as subcategory_id. -->
+                  <app-edit-field label="Subcategory" type="select" density="page" [filter]="true"
+                    [options]="subL2Options()" [editing]="true" [value]="subL2()" (valueChange)="onSubL2($event)" />
+                  @if (subL3Options().length) {
+                    <div class="mt-3">
+                      <app-edit-field label="Sub-subcategory" type="select" density="page" [filter]="true"
+                        [options]="subL3Options()" [editing]="true" [value]="subL3()" (valueChange)="onSubL3($event)" />
+                    </div>
+                  }
+                  @if (subcategoryLabel(); as sc) { <div class="bp-caption text-muted mt-2">Currently: {{ sc }}</div> }
                 } @else {
-                  <div class="bp-body-small text-muted">Not yet classified</div>
+                  <div class="bp-field-label">Subcategory</div>
+                  @if (subcategoryLabel(); as sc) {
+                    <div class="bp-body-small text-text">{{ sc }}</div>
+                  } @else {
+                    <div class="bp-body-small text-muted">Not yet classified</div>
+                  }
                 }
               </div>
               <div class="mt-3">
@@ -395,7 +411,7 @@ export class ItemEditComponent {
   protected readonly deleting = signal(false);
 
   protected readonly form = signal<ItemForm>({
-    name: '', category_id: '', unit: '', base_price: '', install_cost: '', install_unit: '',
+    name: '', category_id: '', subcategory_id: '', unit: '', base_price: '', install_cost: '', install_unit: '',
     install_description: '', location_coverage: '', lead_time_days: '', description: '',
   });
   protected readonly imageUrl = signal<string | null>(null);
@@ -512,6 +528,49 @@ export class ItemEditComponent {
     () => (this.categoriesRes.value() ?? []).map((c) => ({ label: c.name, value: c.id }))
   );
 
+  // pV2-STORE-TAXONOMY-01 — manual Classify: cascade under the chosen Category.
+  // subL2 = the picked subcategory, subL3 = the picked sub-subcategory (shown only
+  // when subL2 has children). The DEEPEST pick becomes form.subcategory_id.
+  protected readonly subL2 = signal('');
+  protected readonly subL3 = signal('');
+  protected readonly subL2Options = signal<EditFieldOption[]>([]);
+  protected readonly subL3Options = signal<EditFieldOption[]>([]);
+  private async childOptions(parentId: string): Promise<EditFieldOption[]> {
+    if (!parentId) return [];
+    try {
+      const kids = await firstValueFrom(this.api.get<CategoryInfo[]>(`/api/marketplace/categories/${parentId}/subcategories`));
+      return kids.map((c) => ({ label: c.name, value: c.id }));
+    } catch { return []; }
+  }
+  /** Seed the cascade from a saved classification: fill L2 options for the category,
+   *  pre-select L2 (+ load its L3 options) only when subId is a DIRECT child — a
+   *  deeper saved value is preserved on the form and shown in the "Currently" line. */
+  private async initCascade(categoryId: string, subId: string): Promise<void> {
+    this.subL2.set(''); this.subL3.set(''); this.subL2Options.set([]); this.subL3Options.set([]);
+    if (!categoryId) return;
+    const l2 = await this.childOptions(categoryId);
+    this.subL2Options.set(l2);
+    if (subId && l2.some((o) => o.value === subId)) {
+      this.subL2.set(subId);
+      this.subL3Options.set(await this.childOptions(subId));
+    }
+  }
+  /** Category changed (top field): reset the cascade + reload its subcategories. */
+  protected async onCategory(categoryId: string): Promise<void> {
+    this.patch({ category_id: categoryId, subcategory_id: '' });
+    this.subL2.set(''); this.subL3.set(''); this.subL3Options.set([]);
+    this.subL2Options.set(await this.childOptions(categoryId));
+  }
+  protected async onSubL2(id: string): Promise<void> {
+    this.subL2.set(id); this.subL3.set(''); this.subL3Options.set([]);
+    this.patch({ subcategory_id: id || '' }); // deepest pick so far
+    if (id) this.subL3Options.set(await this.childOptions(id));
+  }
+  protected onSubL3(id: string): void {
+    this.subL3.set(id);
+    this.patch({ subcategory_id: id || this.subL2() || '' });
+  }
+
   private readonly unitsRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/item_unit/values');
   protected readonly unitOptions = computed<EditFieldOption[]>(() => (this.unitsRes.value() ?? []).map((u) => ({ label: u.label, value: u.code })));
 
@@ -540,6 +599,7 @@ export class ItemEditComponent {
       this.form.set({
         name: item.name ?? '',
         category_id: item.category_id ?? '',
+        subcategory_id: item.subcategory_id ?? '',
         unit: item.unit ?? '',
         base_price: base != null ? String(base) : '',
         install_cost: install != null ? String(install) : '',
@@ -549,6 +609,7 @@ export class ItemEditComponent {
         lead_time_days: item.lead_time_days != null ? String(item.lead_time_days) : '',
         description: item.description ?? '',
       });
+      await this.initCascade(item.category_id ?? '', item.subcategory_id ?? '');
       this.imageUrl.set(item.image_url ?? null);
       this.images.set(item.images ?? []);
       // pV2-STORE-ITEM-MEASURE-VOLUME-01 — hydrate the attributes editors.
@@ -678,6 +739,7 @@ export class ItemEditComponent {
     const body: StoreItemWrite = {
       name: f.name.trim(),
       category_id: f.category_id,
+      subcategory_id: f.subcategory_id || null,
       unit: f.unit || null,
       description: f.description.trim() || null,
       base_price: f.base_price === '' ? null : Number(f.base_price),
