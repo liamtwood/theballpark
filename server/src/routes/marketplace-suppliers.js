@@ -207,18 +207,20 @@ router.get('/suppliers/:id/subcategories', async (req, res, next) => {
                   AND i2.deleted_at IS NULL ${liveCover} AND i2.image_url IS NOT NULL
                 ORDER BY i2.name ASC LIMIT 1) AS cover_url
          FROM items i
-         -- Roll each item up to the subcategory that is a DIRECT child of its
-         -- category (its L2 ancestor), so a 3rd-level classification (e.g. an item
-         -- on "Chiavari Chair" under "Seating") still surfaces the "Seating" chip
-         -- under the macro. 2-level items map to themselves.
+         -- Emit EVERY subcategory in the item's chain from its leaf up to the direct
+         -- child of the category (its L2). A 3rd-level item (leaf "Chiavari Chair"
+         -- under "Seating") contributes to BOTH "Chiavari Chair" and "Seating", so
+         -- the rail can show the L2 chip under the macro AND drill to the L3 chip.
+         -- 2-level items contribute a single node (themselves).
          JOIN LATERAL (
            WITH RECURSIVE up AS (
              SELECT id, parent_id FROM categories WHERE id = i.subcategory_id
              UNION ALL
              SELECT c.id, c.parent_id FROM categories c JOIN up ON c.id = up.parent_id
-           ) SELECT id FROM up WHERE parent_id = i.category_id LIMIT 1
-         ) AS l2 ON true
-         JOIN categories sc ON sc.id = l2.id
+              WHERE up.parent_id <> i.category_id
+           ) SELECT id FROM up
+         ) AS node ON true
+         JOIN categories sc ON sc.id = node.id
         WHERE i.org_id = $1 AND i.deleted_at IS NULL ${liveOuter}
         GROUP BY sc.id, sc.name, sc.parent_id
        UNION ALL

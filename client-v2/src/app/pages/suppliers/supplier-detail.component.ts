@@ -119,8 +119,11 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
               [totalCount]="supplierTotal(sup)"
               [subcategories]="storeSubcategories()"
               [activeSubId]="store.subcategoryId()"
+              [subSubcategories]="storeSubSubcategories()"
+              [activeSubSubId]="store.subSubcategoryId()"
               (categorySelected)="store.setCategory($event)"
               (subcategorySelected)="store.setSubcategory($event)"
+              (subSubcategorySelected)="store.setSubSubcategory($event)"
             />
 
             @if (store.items().length === 0 && !store.itemsRes.isLoading()) {
@@ -296,6 +299,20 @@ export class SupplierDetailComponent {
     const cat = this.store.categoryId();
     return (this.subcats.value() ?? [])
       .filter((s) => !s.isCatchAll && s.parentId === cat && s.count > 0)
+      .map((s) => ({
+        id: s.id, name: s.name, count: s.count,
+        tagline: null, iconName: null, isActive: true, sortOrder: null,
+      }));
+  });
+
+  /** 3rd rail level — the selected subcategory's children the supplier has items
+   *  in (the query emits every node in the item's chain, so an L3 node like
+   *  "Chiavari Chair" appears with parentId = its L2). Drills only when non-empty. */
+  protected readonly storeSubSubcategories = computed<CategoryInfo[]>(() => {
+    const sub = this.store.subcategoryId();
+    if (!sub) return [];
+    return (this.subcats.value() ?? [])
+      .filter((s) => !s.isCatchAll && s.parentId === sub && s.count > 0)
       .map((s) => ({
         id: s.id, name: s.name, count: s.count,
         tagline: null, iconName: null, isActive: true, sortOrder: null,
