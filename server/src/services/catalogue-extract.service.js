@@ -21,6 +21,12 @@ const MAX_TEXT_CHARS = 14000; // keep the model prompt bounded; product pages si
 const MAX_PULL_URLS = 100;    // per pull request — small catalogues (<100 items) in one go
 const CRAWL_MAX_PAGES = 250;  // bounded BFS ceiling — covers a whole small/mid catalogue; a
                               // very large one needs pagination/concurrency (future).
+// Claude Haiku 4.5 rate (USD per token, verified 2026-09-23: $1/MTok in, $5/MTok out).
+// Single source of truth — update here if the model or its price changes.
+const HAIKU_USD_PER_INPUT_TOKEN = 1 / 1_000_000;
+const HAIKU_USD_PER_OUTPUT_TOKEN = 5 / 1_000_000;
+const aiCostUsd = (inTok, outTok) =>
+  (inTok || 0) * HAIKU_USD_PER_INPUT_TOKEN + (outTok || 0) * HAIKU_USD_PER_OUTPUT_TOKEN;
 // Is a page a PRODUCT (a leaf to pull) vs a listing/collection? No single signal is
 // universal across platforms, so combine (deterministic, AI-free):
 //  • og:type = "product"        → yes (Shopify/Woo product page)
@@ -580,6 +586,7 @@ async function makePullContext(orgId, opts) {
     subcatCache: new Map(),
     gapMap: new Map(),   // "kind|label" → { label, kind, count, example }
     seenIds: new Set(),  // in-pull dedup by the stable vendor identity (sku/product id)
+    usage: { input: 0, output: 0, calls: 0 }, // AI token tally (Haiku extractProduct calls)
     batch: `extract-${new Date().toISOString().slice(0, 10)}`,
     categoryNames: await topLevelCategoryNames(), // pass OUR vocabulary to the AI
   };
@@ -632,7 +639,15 @@ async function processUrl(ctx, url) {
     // and on JSON-LD sites (Yahire etc.) it's all in the markup. Full mode, or a
     // page with no usable JSON-LD, falls back to the Haiku extractor.
     let p = ctx.review ? extractReviewFromJsonLd(html, finalUrl) : null;
-    if (!p) p = await extractProduct(htmlToText(html, finalUrl), finalUrl, ctx.categoryNames);
+    if (!p) {
+      const r = await extractProduct(htmlToText(html, finalUrl), finalUrl, ctx.categoryNames);
+      p = r.data;
+      if (r.usage) { // tally the Haiku spend (zero-AI review path skips this)
+        ctx.usage.input += r.usage.input_tokens || 0;
+        ctx.usage.output += r.usage.output_tokens || 0;
+        ctx.usage.calls += 1;
+      }
+    }
     const name = (p && typeof p.name === 'string') ? p.name.trim() : '';
     if (!name) return { url: finalUrl, status: 'skipped', reason: 'no product found (not a detail page?)' };
 
@@ -768,6 +783,8 @@ function summarizePull(ctx, results, selected) {
     selected, mode: ctx.review ? 'review' : 'full',
     gaps: [...ctx.gapMap.values()].sort((a, b) => b.count - a.count),
     results,
+    inputTokens: ctx.usage.input, outputTokens: ctx.usage.output,
+    costUsd: aiCostUsd(ctx.usage.input, ctx.usage.output),
   };
 }
 
@@ -827,6 +844,9 @@ function jobToClient(row) {
     dropped: (row.plan?.dropped || []).length,
     gaps: row.gaps || [],
     results: row.results || [],
+    inputTokens: row.input_tokens || 0,
+    outputTokens: row.output_tokens || 0,
+    costUsd: aiCostUsd(row.input_tokens, row.output_tokens),
     error: row.error || null,
     updatedAt: row.updated_at,
   };
@@ -882,8 +902,8 @@ async function runJob(jobId, orgId, opts) {
     else if (row.status === 'error') progress.failed += 1;
     const gaps = [...ctx.gapMap.values()].sort((a, b) => b.count - a.count);
     await pool.query(
-      `UPDATE catalogue_extract_job SET progress=$2, results=$3, gaps=$4, updated_at=now() WHERE id=$1`,
-      [jobId, JSON.stringify(progress), JSON.stringify(results), JSON.stringify(gaps)],
+      `UPDATE catalogue_extract_job SET progress=$2, results=$3, gaps=$4, input_tokens=$5, output_tokens=$6, updated_at=now() WHERE id=$1`,
+      [jobId, JSON.stringify(progress), JSON.stringify(results), JSON.stringify(gaps), ctx.usage.input, ctx.usage.output],
     );
   }
   // A cancel that lands after the last item still resolves to 'cancelled'; else 'done'.

@@ -116,6 +116,9 @@ export interface PullJob {
   skipped: number;
   failed: number;
   dropped: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  costUsd?: number;
   gaps?: PullResult['gaps'];
   results: PullResult['results'];
   error?: string | null;
@@ -132,6 +135,10 @@ export interface PullResult {
   /** What the caller selected — the four outcome counts sum to this. */
   selected?: number;
   mode?: 'review' | 'full';
+  /** AI token usage + estimated cost (Haiku). Review-from-JSON-LD adds nothing. */
+  inputTokens?: number;
+  outputTokens?: number;
+  costUsd?: number;
   /** The gap report: data found on the pages with no home in our model yet. */
   gaps?: Array<{ label: string; kind: string; count: number; example?: string | null }>;
   results: Array<{ url: string; status: 'created' | 'skipped' | 'error' | 'dropped'; reason?: string; itemId?: string; name?: string; optionCount?: number }>;

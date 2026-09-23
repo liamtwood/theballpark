@@ -194,6 +194,7 @@ interface EditRow {
             <p class="mb-2">
               <strong>Loading {{ j.processed }} / {{ j.total }}</strong>
               <span class="text-secondary">· {{ j.created }} created · {{ j.skipped }} skipped · {{ j.failed }} failed@if (j.dropped) { · {{ j.dropped }} dropped }</span>
+              @if (j.costUsd != null) { <span class="text-secondary"> · AI {{ fmtCost(j.costUsd) }}</span> }
               @if (j.status === 'cancelling') { <span class="text-secondary"> — cancelling…</span> }
             </p>
             <div style="height:6px; background:var(--color-border-hairline); border-radius:999px; overflow:hidden;">
@@ -209,7 +210,7 @@ interface EditRow {
 
       @if (result(); as res) {
         <div class="mt-3 bp-body-small" style="border-top:1px solid var(--border); padding-top:0.75rem;">
-          <p class="mb-1"><strong>{{ res.created }}</strong> created · {{ res.skipped }} skipped · {{ res.failed }} failed@if (res.dropped) { · {{ res.dropped }} dropped }@if (res.selected != null) { <span class="text-secondary"> of {{ res.selected }} selected</span> } — all pending, review in Approvals.@if (res.mode === 'review') { <span class="text-secondary"> (Review pull — lean set.)</span> }</p>
+          <p class="mb-1"><strong>{{ res.created }}</strong> created · {{ res.skipped }} skipped · {{ res.failed }} failed@if (res.dropped) { · {{ res.dropped }} dropped }@if (res.selected != null) { <span class="text-secondary"> of {{ res.selected }} selected</span> }@if (res.costUsd != null) { <span class="text-secondary"> · AI {{ fmtCost(res.costUsd) }}</span> } — all pending, review in Approvals.@if (res.mode === 'review') { <span class="text-secondary"> (Review pull — lean set.)</span> }</p>
 
           <!-- The gap report: data found on the pages that has no home in our model
                yet. Tells us what to extend (attribute groups / value types) next. -->
@@ -291,6 +292,7 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
             const res: PullResult = {
               created: j.created, skipped: j.skipped, failed: j.failed, dropped: j.dropped,
               selected: j.selected, mode: j.mode, gaps: j.gaps, results: j.results,
+              inputTokens: j.inputTokens, outputTokens: j.outputTokens, costUsd: j.costUsd,
             };
             this.result.set(res);
             this.pulled.emit(res);
@@ -567,6 +569,14 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
     this.prepared.set(null);
     this.rows.set([]);
     this.url.set('');
+  }
+
+  /** Human AI cost: "free" at zero (e.g. a JSON-LD Review), "<$0.01" for pennies. */
+  protected fmtCost(usd?: number): string {
+    if (usd == null) return '';
+    if (usd === 0) return 'free';
+    if (usd < 0.01) return '<$0.01';
+    return '$' + usd.toFixed(2);
   }
 
   protected pretty(o: unknown): string { try { return JSON.stringify(o, null, 2); } catch { return String(o); } }

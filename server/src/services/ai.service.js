@@ -96,14 +96,15 @@ async function callHaikuJson({ system, user, maxTokens = 2000 }) {
   }
 
   const raw = message.content[0].text;
+  const usage = message.usage || null; // { input_tokens, output_tokens, … } — for cost tracking
   try {
-    return { parsed: JSON.parse(raw), raw };
+    return { parsed: JSON.parse(raw), raw, usage };
   } catch {
     const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {
-      try { return { parsed: JSON.parse(jsonMatch[1].trim()), raw }; } catch { /* fall through */ }
+      try { return { parsed: JSON.parse(jsonMatch[1].trim()), raw, usage }; } catch { /* fall through */ }
     }
-    return { parsed: null, raw };
+    return { parsed: null, raw, usage };
   }
 }
 
@@ -229,12 +230,13 @@ async function extractProduct(pageText, url, categoryNames = []) {
   const catLine = categoryNames.length
     ? `\n\nBallpark categories — choose ONE exact string for "category" (or null if none fit):\n${categoryNames.join(', ')}`
     : '';
-  const { parsed, raw } = await callHaikuJson({
+  const { parsed, raw, usage } = await callHaikuJson({
     system: PULL_SYSTEM,
     user: `Source URL: ${url}${catLine}\n\nProduct page content:\n${pageText}`,
     maxTokens: 2000,
   });
-  return parsed || { raw_response: raw };
+  // Return usage alongside so the pull job can tally AI cost (Haiku 4.5 $1/$5 MTok).
+  return { data: parsed || { raw_response: raw }, usage };
 }
 
 const CLASSIFY_GROUP_SYSTEM = `You map a SUPPLIER's own product category onto Ballpark's taxonomy. Return ONLY valid JSON — no markdown.

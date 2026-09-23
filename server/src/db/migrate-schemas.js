@@ -61,12 +61,17 @@ const migrate = async () => {
               progress jsonb NOT NULL DEFAULT '{}'::jsonb,
               results jsonb NOT NULL DEFAULT '[]'::jsonb,
               gaps jsonb NOT NULL DEFAULT '[]'::jsonb,
+              input_tokens integer NOT NULL DEFAULT 0,
+              output_tokens integer NOT NULL DEFAULT 0,
               error text,
               created_by uuid,
               created_at timestamptz NOT NULL DEFAULT now(),
               updated_at timestamptz NOT NULL DEFAULT now()
             )
           $f$, s);
+          -- Additive columns for tables created before the token tally shipped.
+          EXECUTE format('ALTER TABLE %I.catalogue_extract_job ADD COLUMN IF NOT EXISTS input_tokens integer NOT NULL DEFAULT 0', s);
+          EXECUTE format('ALTER TABLE %I.catalogue_extract_job ADD COLUMN IF NOT EXISTS output_tokens integer NOT NULL DEFAULT 0', s);
           EXECUTE format('CREATE INDEX IF NOT EXISTS ix_cat_extract_job_org ON %I.catalogue_extract_job (org_id, created_at DESC)', s);
           EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON %I.catalogue_extract_job TO web_app_user', s);
           EXECUTE format('GRANT ALL ON %I.catalogue_extract_job TO service_role', s);
