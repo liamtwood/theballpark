@@ -56,8 +56,11 @@ import { isDeclined } from './quote-line.util';
         [totalCount]="store.mode() === 'suppliers' ? scopedTotal() : allItemsCount()"
         [subcategories]="store.mode() === 'items' ? stripSubcategories() : []"
         [activeSubId]="store.subcategoryId()"
+        [subSubcategories]="store.mode() === 'items' ? stripSubSubcategories() : []"
+        [activeSubSubId]="store.subSubcategoryId()"
         (categorySelected)="store.setCategory($event)"
         (subcategorySelected)="store.setSubcategory($event)"
+        (subSubcategorySelected)="store.setSubSubcategory($event)"
       />
 
       @if (store.mode() === 'suppliers') {
@@ -176,6 +179,10 @@ export class ProjectMarketplaceComponent {
   /** Subcategories with at least one item — empties hidden from the rail. */
   protected readonly stripSubcategories = computed(() =>
     this.store.subcategories().filter((s) => s.count > 0),
+  );
+  /** The 3rd rail level — the selected subcategory's non-empty children. */
+  protected readonly stripSubSubcategories = computed(() =>
+    this.store.subSubcategories().filter((s) => s.count > 0),
   );
 
   /** The distinct categories present in this project's quote. */
