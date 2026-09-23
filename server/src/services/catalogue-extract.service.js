@@ -548,21 +548,32 @@ function productHandle(u) {
  *  so dedup keeps the specific collection (better group + cat/subcat) over "all". */
 const groupSpecificity = (u) => (['all', 'front-page', 'frontpage', 'products', 'other'].includes(groupKeyOf(u)) ? 0 : 1);
 /** Dedup a URL list by product handle, keeping the most specific collection URL —
- *  a Shopify product sits in "all" AND its real collection at different URLs. */
+ *  a Shopify product sits in "all" AND its real collection at different URLs.
+ *  Returns { list, dropped:[{url,reason}] } — the dropped set lets the caller
+ *  RECONCILE against what was selected, so a pre-loop drop can't silently vanish
+ *  an item from the summary (Liam: "20 of 24, no trace"). */
 function dedupeByHandle(urls) {
   const best = new Map();
+  const dropped = [];
   for (const u of urls) {
     const h = productHandle(u);
     const cur = best.get(h);
-    if (!cur || groupSpecificity(u) > groupSpecificity(cur)) best.set(h, u);
+    if (!cur) { best.set(h, u); continue; }
+    if (groupSpecificity(u) > groupSpecificity(cur)) { dropped.push({ url: cur, reason: `duplicate handle — kept ${u}` }); best.set(h, u); }
+    else { dropped.push({ url: u, reason: `duplicate handle — kept ${cur}` }); }
   }
-  return [...best.values()];
+  return { list: [...best.values()], dropped };
 }
 
 async function pull(orgId, urls, opts = {}) {
   // Dedup the selection by product handle FIRST (drops "all"/"front-page" copies of a
   // product that's also in a real collection), then cap — so the cap isn't spent on dups.
-  const list = dedupeByHandle((Array.isArray(urls) ? urls : [urls]).filter(Boolean)).slice(0, MAX_PULL_URLS);
+  // Both reductions are RECORDED as 'dropped' result rows so created+skipped+failed+
+  // dropped reconciles against `selected` — nothing leaves the selection untraced.
+  const raw = (Array.isArray(urls) ? urls : [urls]).filter(Boolean);
+  const { list: deduped, dropped: handleDropped } = dedupeByHandle(raw);
+  const list = deduped.slice(0, MAX_PULL_URLS);
+  const capDropped = deduped.slice(MAX_PULL_URLS).map((u) => ({ url: u, reason: `over the per-pull cap (${MAX_PULL_URLS}) — pull the rest separately` }));
   // Pull mode (Liam): 'review' = lean triage set (name/description/price/one image)
   // for marketplace vetting; 'full' = everything mappable, run after the supplier
   // contracts. Both still capture external_url + _source (dedup) and the gap list.
@@ -574,7 +585,8 @@ async function pull(orgId, urls, opts = {}) {
   const subcatCache = new Map();
   const batch = `extract-${new Date().toISOString().slice(0, 10)}`;
   const categoryNames = await topLevelCategoryNames(); // pass OUR vocabulary to the AI
-  const results = [];
+  // Seed with the pre-loop drops so every selected URL has a visible outcome row.
+  const results = [...handleDropped, ...capDropped].map((d) => ({ url: d.url, status: 'dropped', reason: d.reason }));
   const gapMap = new Map(); // "kind|label" → { label, kind, count, example }
   const seenIds = new Set(); // in-pull dedup by the stable vendor identity (sku/product id)
   for (const url of list) {
@@ -711,8 +723,10 @@ async function pull(orgId, urls, opts = {}) {
   const created = results.filter((r) => r.status === 'created').length;
   const skipped = results.filter((r) => r.status === 'skipped').length;
   const failed = results.filter((r) => r.status === 'error').length;
+  const dropped = results.filter((r) => r.status === 'dropped').length;
   const gaps = [...gapMap.values()].sort((a, b) => b.count - a.count);
-  return { created, skipped, failed, mode: review ? 'review' : 'full', gaps, results };
+  // selected = what the caller asked for; the four outcome counts sum to it.
+  return { created, skipped, failed, dropped, selected: raw.length, mode: review ? 'review' : 'full', gaps, results };
 }
 
 /** Existing item for this org matching the source URL (external_url, the primary

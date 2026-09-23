@@ -188,7 +188,7 @@ interface EditRow {
 
       @if (result(); as res) {
         <div class="mt-3 bp-body-small" style="border-top:1px solid var(--border); padding-top:0.75rem;">
-          <p class="mb-1"><strong>{{ res.created }}</strong> created · {{ res.skipped }} skipped · {{ res.failed }} failed — all pending, review in Approvals.@if (res.mode === 'review') { <span class="text-secondary"> (Review pull — lean set.)</span> }</p>
+          <p class="mb-1"><strong>{{ res.created }}</strong> created · {{ res.skipped }} skipped · {{ res.failed }} failed@if (res.dropped) { · {{ res.dropped }} dropped }@if (res.selected != null) { <span class="text-secondary"> of {{ res.selected }} selected</span> } — all pending, review in Approvals.@if (res.mode === 'review') { <span class="text-secondary"> (Review pull — lean set.)</span> }</p>
 
           <!-- The gap report: data found on the pages that has no home in our model
                yet. Tells us what to extend (attribute groups / value types) next. -->
@@ -210,7 +210,7 @@ interface EditRow {
           }
           @for (row of res.results; track row.url) {
             <p class="text-secondary truncate">
-              {{ row.status === 'created' ? '✓' : row.status === 'skipped' ? '·' : '✕' }}
+              {{ row.status === 'created' ? '✓' : row.status === 'skipped' ? '·' : row.status === 'dropped' ? '⊘' : '✕' }}
               {{ row.name || row.url }}{{ row.reason ? ' — ' + row.reason : '' }}{{ row.optionCount ? ' (' + row.optionCount + ' options)' : '' }}
             </p>
           }

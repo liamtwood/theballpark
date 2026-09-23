@@ -102,10 +102,15 @@ export interface PullResult {
   created: number;
   skipped: number;
   failed: number;
+  /** Dropped BEFORE the loop (duplicate handle / over the per-pull cap) — recorded
+   *  so created+skipped+failed+dropped reconciles against `selected`. */
+  dropped?: number;
+  /** What the caller selected — the four outcome counts sum to this. */
+  selected?: number;
   mode?: 'review' | 'full';
   /** The gap report: data found on the pages with no home in our model yet. */
   gaps?: Array<{ label: string; kind: string; count: number; example?: string | null }>;
-  results: Array<{ url: string; status: 'created' | 'skipped' | 'error'; reason?: string; itemId?: string; name?: string; optionCount?: number }>;
+  results: Array<{ url: string; status: 'created' | 'skipped' | 'error' | 'dropped'; reason?: string; itemId?: string; name?: string; optionCount?: number }>;
 }
 
 /** Admin-only org management (server: /api/admin/orgs, gated admin.cross_org_view)
