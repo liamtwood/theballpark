@@ -93,8 +93,6 @@ interface ItemForm {
                   <div class="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <app-edit-field [label]="'Ballpark Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
                     <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="editing()" [value]="form().unit" (valueChange)="patch({ unit: $event })" />
-                    <app-edit-field label="Location" density="page" [editing]="editing()" [value]="form().location_coverage" (valueChange)="patch({ location_coverage: $event })" placeholder="e.g. London &amp; South East" />
-                    <app-edit-field label="Lead Time (days)" type="number" density="page" [editing]="editing()" [value]="form().lead_time_days" (valueChange)="patch({ lead_time_days: $event })" />
                   </div>
                 </div>
               </div>
@@ -108,6 +106,11 @@ interface ItemForm {
               <lucide-icon [name]="sectionOpen('details') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
             </button>
             @if (sectionOpen('details')) {
+              <!-- Location + Lead Time (moved here from Cost, Liam). -->
+              <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <app-edit-field label="Location" density="page" [editing]="editing()" [value]="form().location_coverage" (valueChange)="patch({ location_coverage: $event })" placeholder="e.g. London &amp; South East" />
+                <app-edit-field label="Lead Time (days)" type="number" density="page" [editing]="editing()" [value]="form().lead_time_days" (valueChange)="patch({ lead_time_days: $event })" />
+              </div>
               @if (editing()) {
                 <datalist id="measure-suggestions">
                   @for (s of measureSuggestions; track s) { <option [value]="s"></option> }
