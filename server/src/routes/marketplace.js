@@ -198,17 +198,25 @@ router.get('/categories/:id/subcategories', async (req, res, next) => {
   try {
     const id = z.uuid().safeParse(req.params.id);
     if (!id.success) return res.status(400).json({ error: 'Invalid id' });
+    // Count is tree-aware: a subcategory's count includes items classified to any
+    // of its descendants (so the rail count matches the tree-aware browse grid).
     const r = await pool.query(
       `SELECT c.id, c.name, c.tagline, c.icon_name, c.is_active, c.sort_order,
-              COUNT(i.id) FILTER (WHERE i.deleted_at IS NULL AND i.is_active
-                                    AND i.approval_status = 'approved'
-                                    AND i.kind IS DISTINCT FROM 'component'
-                                    AND i.parent_item_id IS NULL) AS item_count
+              (SELECT COUNT(*) FROM items i
+                WHERE i.deleted_at IS NULL AND i.is_active
+                  AND i.approval_status = 'approved'
+                  AND i.kind IS DISTINCT FROM 'component'
+                  AND i.parent_item_id IS NULL
+                  AND i.subcategory_id IN (
+                    WITH RECURSIVE sub_tree AS (
+                      SELECT c.id AS id
+                      UNION ALL
+                      SELECT c2.id FROM categories c2 JOIN sub_tree ON c2.parent_id = sub_tree.id
+                    ) SELECT id FROM sub_tree)
+              ) AS item_count
          FROM categories c
-         LEFT JOIN items i ON i.subcategory_id = c.id
         WHERE c.deleted_at IS NULL AND c.namespace = 'catalogue'
           AND c.parent_id = $1 AND c.is_active
-        GROUP BY c.id
         ORDER BY c.sort_order ASC NULLS LAST, c.name ASC`,
       [id.data]
     );
@@ -270,7 +278,18 @@ router.get('/items', async (req, res, next) => {
     // must stay browsable so an unclassified item is never invisible.
     if (cat === 'uncategorised') { where.push(`i.category_id IS NULL`); }
     else if (cat) { vals.push(cat); where.push(`i.category_id = $${vals.length}`); }
-    if (sub) { vals.push(sub); where.push(`i.subcategory_id = $${vals.length}`); }
+    // Tree-aware: filtering a subcategory includes items classified to ANY of its
+    // descendants (sub-subcategories…), so a deeper classification never hides an
+    // item from its parent-level browse. Matches the node itself + all descendants.
+    if (sub) {
+      vals.push(sub);
+      where.push(`i.subcategory_id IN (
+        WITH RECURSIVE sub_tree AS (
+          SELECT id FROM categories WHERE id = $${vals.length}
+          UNION ALL
+          SELECT c2.id FROM categories c2 JOIN sub_tree ON c2.parent_id = sub_tree.id
+        ) SELECT id FROM sub_tree)`);
+    }
     if (priceMin !== undefined) { vals.push(priceMin); where.push(`i.base_price >= $${vals.length}`); }
     if (priceMax !== undefined) { vals.push(priceMax); where.push(`i.base_price <= $${vals.length}`); }
     if (tier) { vals.push(tier); where.push(`i.tier = $${vals.length}`); }

@@ -42,8 +42,19 @@ preserved and shown in a "Currently: …" line (no expensive ancestor-chain look
 existed end-to-end (`StoreItemWrite.subcategory_id`, `store-item.schema`, item.service update allowlist
 v1.41) — this exposed it. So: assign an item to *Folding Chair* by hand. NEXT still open:
 
+## Iteration — v2.560 (tree-aware marketplace browse)
+Filtering a subcategory now surfaces items classified to ANY of its descendants — a deeper
+classification never hides an item from its parent-level browse. `GET /api/marketplace/items`'s
+`sub` filter changed from `subcategory_id = $` to `subcategory_id IN (recursive subtree of $)`;
+the subcategory-strip count (`/categories/:id/subcategories`) is likewise subtree-aware so the
+rail count matches the grid; `item.service.getAll` (supplier shop / project marketplace) got the
+same treatment. Verified: Seating's subtree = {Seating, Folding Chair, Chiavari Chair}, so browsing
+Seating rolls up their items. (The drill-down rail still shows one level of subcats; deeper items
+roll up into their parent chip.)
+
 ## NOT yet (next steps, agreed)
 1. ~~Item editor cascading picker~~ — DONE v2.559.
+2. ~~Tree-aware browse~~ — DONE v2.560.
 2. **Browse/matching tree-aware** — filtering the middle level (Seating) should surface
    grandchildren (Armchairs items); today the filter is 2-level.
 3. **Extract** — Prepare auto-creates/assigns the 3rd level (nested Classification, parked).

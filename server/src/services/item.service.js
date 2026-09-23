@@ -31,8 +31,15 @@ async function getAll(orgId, categoryId, tag, subcategoryId) {
     query += ` AND (i.category_id = $${params.length} OR i.category_id IN (SELECT id FROM categories WHERE parent_id = $${params.length}))`;
   }
   if (subcategoryId) {
+    // Tree-aware: include items classified to any descendant of the chosen
+    // subcategory (parity with the marketplace /items browse).
     params.push(subcategoryId);
-    query += ` AND i.subcategory_id = $${params.length}`;
+    query += ` AND i.subcategory_id IN (
+      WITH RECURSIVE sub_tree AS (
+        SELECT id FROM categories WHERE id = $${params.length}
+        UNION ALL
+        SELECT c2.id FROM categories c2 JOIN sub_tree ON c2.parent_id = sub_tree.id
+      ) SELECT id FROM sub_tree)`;
   }
   if (tag) { params.push(tag); query += ` AND $${params.length} = ANY(i.tags)`; }
   query += ' ORDER BY i.created_at DESC';
