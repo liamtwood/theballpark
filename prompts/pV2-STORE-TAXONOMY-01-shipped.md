@@ -68,6 +68,16 @@ can't see). Fixed: default now `(is_active OR approval_status IN ('pending','app
 approved-not-yet-active items so they can be published; still hides rejected + drafts. (This was also
 why the "active" Yahire org showed no supplier — its one approved item was inactive → no visible items.)
 
+## Fix — subcategory trigger blocked 3rd-level classification
+QC (Liam): saving an item classified to a sub-subcategory failed with "Subcategory X does not belong
+to category Y". Cause: the `check_item_subcategory` DB trigger required the subcategory to be a DIRECT
+child of the category — a 3rd-level pick (grandchild, e.g. Chiavari Chair under Seating under Furniture)
+failed. Fixed: the trigger now allows the subcategory to be a direct child OR any DESCENDANT (walks up
+from the subcategory; category_id must be an ancestor). Applied to public + preview + master via the
+Supabase MCP (CREATE OR REPLACE FUNCTION; the trigger references it by name); `migrate-schemas.js`
+source updated to match. This also unblocked the "Seating won't drill" case — the L3 pick was saving
+correctly all along; the trigger was silently rejecting it.
+
 ## NOT yet (next steps, agreed)
 1. ~~Item editor cascading picker~~ — DONE v2.559.
 2. ~~Tree-aware browse~~ — DONE v2.560.

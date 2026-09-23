@@ -1171,10 +1171,17 @@ const migrate = async () => {
         RETURNS TRIGGER AS $body$
         BEGIN
           IF NEW.subcategory_id IS NOT NULL THEN
+            -- The subcategory must live UNDER the category — a direct child OR any
+            -- deeper descendant (pV2-STORE-TAXONOMY-01: 3-level taxonomy, where
+            -- subcategory_id holds the deepest node and category_id the top). Walk
+            -- up from the subcategory; category_id must be one of its ancestors.
             IF NOT EXISTS (
-              SELECT 1 FROM ${schema}.categories
-               WHERE id = NEW.subcategory_id
-                 AND parent_id = NEW.category_id
+              WITH RECURSIVE up AS (
+                SELECT id, parent_id FROM ${schema}.categories WHERE id = NEW.subcategory_id
+                UNION ALL
+                SELECT c.id, c.parent_id FROM ${schema}.categories c JOIN up ON c.id = up.parent_id
+              )
+              SELECT 1 FROM up WHERE parent_id = NEW.category_id
             ) THEN
               RAISE EXCEPTION 'Subcategory % does not belong to category %',
                 NEW.subcategory_id, NEW.category_id;
