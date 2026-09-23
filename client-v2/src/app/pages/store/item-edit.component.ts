@@ -71,56 +71,51 @@ interface ItemForm {
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1.7fr_1fr]">
           <!-- LEFT — item attributes (one per row) + save actions. -->
           <div>
+          <!-- PRIMARY INFORMATION (open by default) — name + category on one line,
+               description, cost. Renamed from "Product" (Liam). -->
           <div class="bp-card p-5">
-            <h3 class="bp-edit-section-title mb-4">{{ isModerator() ? 'Review Product' : (isViewer() || isApproved()) ? 'Product' : (isEdit ? 'Edit Product' : 'Add New Product') }}</h3>
-            <div class="flex flex-col gap-5">
-              <app-edit-field label="Product Name" density="page" [editing]="editing()" [value]="form().name" (valueChange)="patch({ name: $event })" />
-
-              <app-edit-field label="Category" type="select" density="page" [filter]="true" [options]="categoryOptions()" [editing]="editing()" [value]="form().category_id" (valueChange)="onCategory($event)" />
-
-              <!-- Description (image block moved to the right column beside the
-                   Image Approval Process to free up room here). -->
-              <div>
-                <label class="bp-field-label">Description</label>
-                <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="form().description" (ngModelChange)="patch({ description: $event })" [readonly]="!editing()" placeholder="Describe the product…"></textarea>
-              </div>
-
-              <!-- Cost container (2-col): Ballpark Cost | Unit ; Location | Lead Time -->
-              <div class="bp-qv-spec">
-                <span class="bp-qv-spec__label"><lucide-icon name="wallet" [size]="13" /> Cost</span>
-                <div class="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <app-edit-field [label]="'Ballpark Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
-                  <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="editing()" [value]="form().unit" (valueChange)="patch({ unit: $event })" />
-                  <app-edit-field label="Location" density="page" [editing]="editing()" [value]="form().location_coverage" (valueChange)="patch({ location_coverage: $event })" placeholder="e.g. London &amp; South East" />
-                  <app-edit-field label="Lead Time (days)" type="number" density="page" [editing]="editing()" [value]="form().lead_time_days" (valueChange)="patch({ lead_time_days: $event })" />
+            <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('primary')">
+              <h3 class="bp-edit-section-title">{{ isModerator() ? 'Review Product' : (isEdit ? 'Primary Information' : 'Add New Product') }}</h3>
+              <lucide-icon [name]="sectionOpen('primary') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
+            </button>
+            @if (sectionOpen('primary')) {
+              <div class="mt-4 flex flex-col gap-5">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <app-edit-field label="Product Name" density="page" [editing]="editing()" [value]="form().name" (valueChange)="patch({ name: $event })" />
+                  <app-edit-field label="Category" type="select" density="page" [filter]="true" [options]="categoryOptions()" [editing]="editing()" [value]="form().category_id" (valueChange)="onCategory($event)" />
+                </div>
+                <div>
+                  <label class="bp-field-label">Description</label>
+                  <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="form().description" (ngModelChange)="patch({ description: $event })" [readonly]="!editing()" placeholder="Describe the product…"></textarea>
+                </div>
+                <div class="bp-qv-spec">
+                  <span class="bp-qv-spec__label"><lucide-icon name="wallet" [size]="13" /> Cost</span>
+                  <div class="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <app-edit-field [label]="'Ballpark Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
+                    <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="editing()" [value]="form().unit" (valueChange)="patch({ unit: $event })" />
+                    <app-edit-field label="Location" density="page" [editing]="editing()" [value]="form().location_coverage" (valueChange)="patch({ location_coverage: $event })" placeholder="e.g. London &amp; South East" />
+                    <app-edit-field label="Lead Time (days)" type="number" density="page" [editing]="editing()" [value]="form().lead_time_days" (valueChange)="patch({ lead_time_days: $event })" />
+                  </div>
                 </div>
               </div>
+            }
+          </div>
 
-              <!-- Installation container: Install Cost | Unit ; Included services (full width) -->
-              <div class="bp-qv-spec">
-                <span class="bp-qv-spec__label"><lucide-icon name="wrench" [size]="13" /> Installation</span>
-                <div class="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <app-edit-field [label]="'Install Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().install_cost" (valueChange)="patch({ install_cost: $event })" />
-                  <app-edit-field label="Unit" type="select" density="page" [options]="installUnitOptions" [editing]="editing()" [value]="form().install_unit" (valueChange)="patch({ install_unit: $event })" />
-                </div>
-                <div class="mt-4">
-                  <label class="bp-field-label">Included services</label>
-                  <textarea class="bp-store-textarea mt-1" rows="3" [ngModel]="form().install_description" (ngModelChange)="patch({ install_description: $event })" [readonly]="!editing()" placeholder="What the install covers…"></textarea>
-                </div>
-              </div>
-
-              <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — EDIT mirrors the VIEW: the 5
-                   groups are inline-editable cards; Volume pricing + Options are
-                   preview cards that open a dialog for the full list + add/edit. -->
+          <!-- DETAILS (collapsed by default) — the 5 describe-attribute groups. -->
+          <div class="bp-card p-5 mt-4">
+            <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('details')">
+              <h3 class="bp-edit-section-title">Details</h3>
+              <lucide-icon [name]="sectionOpen('details') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
+            </button>
+            @if (sectionOpen('details')) {
               @if (editing()) {
                 <datalist id="measure-suggestions">
                   @for (s of measureSuggestions; track s) { <option [value]="s"></option> }
                 </datalist>
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   @for (grp of GROUP_DEF; track grp.key) {
                     <div class="bp-qv-spec relative">
                       <span class="bp-qv-spec__label"><lucide-icon [name]="grp.icon" [size]="13" /> {{ grp.title }}</span>
-                      <!-- Add affordance: a plain top-right "+" (no background), not an Add-row button. -->
                       <button type="button" class="absolute right-3 top-3 text-secondary hover:text-text" (click)="addRow(grp.key)" aria-label="Add row">
                         <lucide-icon name="plus" [size]="17" />
                       </button>
@@ -138,8 +133,28 @@ interface ItemForm {
                     </div>
                   }
                 </div>
+              } @else {
+                <div class="mt-4"><app-item-attribute-cards [attributes]="rawAttributes()" /></div>
               }
-            </div>
+            }
+          </div>
+
+          <!-- INSTALLATION (collapsed by default) — its own section (Liam). -->
+          <div class="bp-card p-5 mt-4">
+            <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('installation')">
+              <h3 class="bp-edit-section-title">Installation</h3>
+              <lucide-icon [name]="sectionOpen('installation') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
+            </button>
+            @if (sectionOpen('installation')) {
+              <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <app-edit-field [label]="'Install Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().install_cost" (valueChange)="patch({ install_cost: $event })" />
+                <app-edit-field label="Unit" type="select" density="page" [options]="installUnitOptions" [editing]="editing()" [value]="form().install_unit" (valueChange)="patch({ install_unit: $event })" />
+              </div>
+              <div class="mt-4">
+                <label class="bp-field-label">Included services</label>
+                <textarea class="bp-store-textarea mt-1" rows="3" [ngModel]="form().install_description" (ngModelChange)="patch({ install_description: $event })" [readonly]="!editing()" placeholder="What the install covers…"></textarea>
+              </div>
+            }
           </div>
 
           <!-- pV2-STORE-TAXONOMY-01 — Volume pricing + Options as their OWN section
@@ -147,8 +162,12 @@ interface ItemForm {
                read-only view renders them via app-item-attribute-cards below. -->
           @if (editing()) {
             <div class="bp-card p-5 mt-4">
-              <h3 class="bp-edit-section-title mb-4">Volume pricing &amp; Options</h3>
-              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('extras')">
+                <h3 class="bp-edit-section-title">Volume pricing &amp; Options</h3>
+                <lucide-icon [name]="sectionOpen('extras') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
+              </button>
+              @if (sectionOpen('extras')) {
+              <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <!-- Volume pricing — preview + edit-in-dialog -->
                 <div class="bp-qv-spec">
                   <span class="bp-qv-spec__label"><lucide-icon name="tags" [size]="13" /> Volume pricing</span>
@@ -187,20 +206,19 @@ interface ItemForm {
                   </button>
                 </div>
               </div>
+              }
             </div>
           }
 
-          <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — read-only VIEW: the shared grouped
-               rounded cards + options picklist (same component the quick-view uses). -->
-          @if (!editing()) {
-            <app-item-attribute-cards [attributes]="rawAttributes()" />
-          }
-
-          <!-- pV2-STORE-TAXONOMY-01 — Classification above the action buttons (Liam):
-               Category cascade → Subcategory → Sub-subcategory + tags. -->
+          <!-- pV2-STORE-TAXONOMY-01 — Classification (collapsed by default) above the
+               action buttons (Liam): Category cascade → Subcategory → Sub-subcategory. -->
           @if (isEdit) {
-            <div class="mt-4 rounded-xl border border-hairline bg-surface p-4">
-              <h3 class="bp-edit-section-title">Classification</h3>
+            <div class="bp-card p-5 mt-4">
+              <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('classification')">
+                <h3 class="bp-edit-section-title">Classification</h3>
+                <lucide-icon [name]="sectionOpen('classification') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
+              </button>
+              @if (sectionOpen('classification')) {
               <div class="mt-3">
                 @if (editing()) {
                   <!-- Classify: cascade under the chosen Category — Subcategory, then
@@ -241,6 +259,7 @@ interface ItemForm {
                   <div class="bp-body-small text-muted">No tags</div>
                 }
               </div>
+              }
             </div>
           }
 
@@ -257,39 +276,45 @@ interface ItemForm {
                the Image Approval Process (moved out of the left to gain room):
                main image large on top, gallery thumbnails below to review. -->
           <div class="bp-card p-5 self-start">
-            <label class="bp-field-label">Main Image</label>
-            <div
-              class="bp-item-banner mt-2"
-              [class.bp-item-banner--readonly]="!canEditPhotos()"
-              [attr.role]="canEditPhotos() ? 'button' : null"
-              [attr.tabindex]="canEditPhotos() ? 0 : null"
-              (click)="canEditPhotos() && imageDrawer.set(true)"
-              (keydown.enter)="canEditPhotos() && imageDrawer.set(true)"
-            >
-              @if (imageUrl()) {
-                <img [src]="imageUrl()" alt="" />
-              } @else {
-                <span class="bp-caption">{{ canEditPhotos() ? 'Click to upload main image' : 'No image' }}</span>
+            <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('images')">
+              <h3 class="bp-edit-section-title">Images</h3>
+              <lucide-icon [name]="sectionOpen('images') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
+            </button>
+            @if (sectionOpen('images')) {
+              <label class="bp-field-label mt-4 block">Main Image</label>
+              <div
+                class="bp-item-banner mt-2"
+                [class.bp-item-banner--readonly]="!canEditPhotos()"
+                [attr.role]="canEditPhotos() ? 'button' : null"
+                [attr.tabindex]="canEditPhotos() ? 0 : null"
+                (click)="canEditPhotos() && imageDrawer.set(true)"
+                (keydown.enter)="canEditPhotos() && imageDrawer.set(true)"
+              >
+                @if (imageUrl()) {
+                  <img [src]="imageUrl()" alt="" />
+                } @else {
+                  <span class="bp-caption">{{ canEditPhotos() ? 'Click to upload main image' : 'No image' }}</span>
+                }
+              </div>
+              @if (editing() && isApproved()) {
+                <p class="bp-caption mt-1 text-secondary">Photos are locked on approved items — duplicate to change them.</p>
               }
-            </div>
-            @if (editing() && isApproved()) {
-              <p class="bp-caption mt-1 text-secondary">Photos are locked on approved items — duplicate to change them.</p>
+              <label class="bp-field-label mt-4 block">Gallery Images</label>
+              <div class="mt-2">
+                <app-image-gallery
+                  entityType="item"
+                  [images]="images()"
+                  [primaryUrl]="imageUrl()"
+                  [searchSeed]="form().name"
+                  [editable]="canEditPhotos()"
+                  [columns]="4"
+                  [tileAspect]="'1 / 1'"
+                  [maxSlots]="4"
+                  (imagesChange)="images.set($event)"
+                  (primarySet)="onSetPrimary($event)"
+                />
+              </div>
             }
-            <label class="bp-field-label mt-4 block">Gallery Images</label>
-            <div class="mt-2">
-              <app-image-gallery
-                entityType="item"
-                [images]="images()"
-                [primaryUrl]="imageUrl()"
-                [searchSeed]="form().name"
-                [editable]="canEditPhotos()"
-                [columns]="4"
-                [tileAspect]="'1 / 1'"
-                [maxSlots]="4"
-                (imagesChange)="images.set($event)"
-                (primarySet)="onSetPrimary($event)"
-              />
-            </div>
           </div>
 
           <app-item-approval-panel [status]="currentStatus()" [statusAt]="statusAt()" />
@@ -542,6 +567,16 @@ export class ItemEditComponent {
   protected readonly subL3 = signal('');
   protected readonly subL2Options = signal<EditFieldOption[]>([]);
   protected readonly subL3Options = signal<EditFieldOption[]>([]);
+
+  /** Collapsible sections — all minimised by default except Primary Information +
+   *  Images (Liam). A key in the set is COLLAPSED. */
+  protected readonly collapsed = signal<Set<string>>(new Set(['details', 'installation', 'extras', 'classification']));
+  protected sectionOpen(key: string): boolean { return !this.collapsed().has(key); }
+  protected toggleSection(key: string): void {
+    const next = new Set(this.collapsed());
+    next.has(key) ? next.delete(key) : next.add(key);
+    this.collapsed.set(next);
+  }
   private async childOptions(parentId: string): Promise<EditFieldOption[]> {
     if (!parentId) return [];
     try {
