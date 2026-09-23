@@ -78,49 +78,8 @@ interface ItemForm {
 
               <app-edit-field label="Category" type="select" density="page" [filter]="true" [options]="categoryOptions()" [editing]="editing()" [value]="form().category_id" (valueChange)="onCategory($event)" />
 
-              <!-- pV2-STORE-ITEM-EDIT-LAYOUT-01 — Gallery: main image LEFT, gallery
-                   images as a vertical column to the RIGHT (not stacked below). -->
-              <div class="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] sm:items-start">
-                <div>
-                  <label class="bp-field-label">Main Image</label>
-                  <div
-                    class="bp-item-banner mt-2"
-                    [class.bp-item-banner--readonly]="!canEditPhotos()"
-                    [attr.role]="canEditPhotos() ? 'button' : null"
-                    [attr.tabindex]="canEditPhotos() ? 0 : null"
-                    (click)="canEditPhotos() && imageDrawer.set(true)"
-                    (keydown.enter)="canEditPhotos() && imageDrawer.set(true)"
-                  >
-                    @if (imageUrl()) {
-                      <img [src]="imageUrl()" alt="" />
-                    } @else {
-                      <span class="bp-caption">{{ canEditPhotos() ? 'Click to upload main image' : 'No image' }}</span>
-                    }
-                  </div>
-                  @if (editing() && isApproved()) {
-                    <p class="bp-caption mt-1 text-secondary">Photos are locked on approved items — duplicate to change them.</p>
-                  }
-                </div>
-                <div>
-                  <label class="bp-field-label">Gallery Images</label>
-                  <div class="mt-2">
-                    <app-image-gallery
-                      entityType="item"
-                      [images]="images()"
-                      [primaryUrl]="imageUrl()"
-                      [searchSeed]="form().name"
-                      [editable]="canEditPhotos()"
-                      [columns]="2"
-                      [tileAspect]="'1 / 1'"
-                      [maxSlots]="4"
-                      (imagesChange)="images.set($event)"
-                      (primarySet)="onSetPrimary($event)"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Description (below the image row) -->
+              <!-- Description (image block moved to the right column beside the
+                   Image Approval Process to free up room here). -->
               <div>
                 <label class="bp-field-label">Description</label>
                 <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="form().description" (ngModelChange)="patch({ description: $event })" [readonly]="!editing()" placeholder="Describe the product…"></textarea>
@@ -292,6 +251,45 @@ interface ItemForm {
             (approve)="decide('approve')" (reject)="decide('reject')" (cancel)="cancel()"
             (saveApproved)="saveApproved()" (saveDraft)="save('draft')" (submit)="save('pending')"
             (cancelRequest)="cancelRequest()" (deleteRequested)="onDelete()" />
+          </div>
+
+          <!-- pV2-STORE-ITEM-EDIT-LAYOUT-01 — images live in the right column beside
+               the Image Approval Process (moved out of the left to gain room):
+               main image large on top, gallery thumbnails below to review. -->
+          <div class="bp-card p-5 self-start">
+            <label class="bp-field-label">Main Image</label>
+            <div
+              class="bp-item-banner mt-2"
+              [class.bp-item-banner--readonly]="!canEditPhotos()"
+              [attr.role]="canEditPhotos() ? 'button' : null"
+              [attr.tabindex]="canEditPhotos() ? 0 : null"
+              (click)="canEditPhotos() && imageDrawer.set(true)"
+              (keydown.enter)="canEditPhotos() && imageDrawer.set(true)"
+            >
+              @if (imageUrl()) {
+                <img [src]="imageUrl()" alt="" />
+              } @else {
+                <span class="bp-caption">{{ canEditPhotos() ? 'Click to upload main image' : 'No image' }}</span>
+              }
+            </div>
+            @if (editing() && isApproved()) {
+              <p class="bp-caption mt-1 text-secondary">Photos are locked on approved items — duplicate to change them.</p>
+            }
+            <label class="bp-field-label mt-4 block">Gallery Images</label>
+            <div class="mt-2">
+              <app-image-gallery
+                entityType="item"
+                [images]="images()"
+                [primaryUrl]="imageUrl()"
+                [searchSeed]="form().name"
+                [editable]="canEditPhotos()"
+                [columns]="4"
+                [tileAspect]="'1 / 1'"
+                [maxSlots]="4"
+                (imagesChange)="images.set($event)"
+                (primarySet)="onSetPrimary($event)"
+              />
+            </div>
           </div>
 
           <app-item-approval-panel [status]="currentStatus()" [statusAt]="statusAt()" />
