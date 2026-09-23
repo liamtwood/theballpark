@@ -95,18 +95,18 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
             [subcategories]="subcats.value() ?? []"
             (subcategorySelected)="openStoreSubcat($event)"
           />
-        } @else {
-          <!-- pV2-STORE-EXTRACT-01 — admin-only "Import from website" (Analyse →
-               Pull). Items land pending → Approvals. -->
+        } @else if (tab() === 'ai') {
+          <!-- AI Assist — admin-only catalogue extractor (Analyse → Prepare → Load).
+               Items land pending → Approvals. Its own tab (was an inline block on the
+               Shop tab) so the wizard + background-job progress have room to breathe. -->
           @if (isPlatformAdmin() && store.pinnedSupplierId(); as orgId) {
-            <!-- Constrain to the same centred workspace column as the grid below. -->
             <div class="bp-gutter px-6">
               <div class="mx-auto w-full max-w-[var(--workspace-max)]">
                 <app-website-import-panel [orgId]="orgId" (pulled)="store.reloadItems()" />
               </div>
             </div>
           }
-
+        } @else {
           <!-- STORE — the SHARED marketplace workspace, pinned to this supplier.
                Same chrome as the global + in-project marketplace; the controls
                self-hide the Items|Suppliers type + supplier filter when pinned. -->
@@ -181,7 +181,12 @@ export class SupplierDetailComponent {
   protected readonly tabs = computed<TabBandTab[]>(() => {
     const items: TabBandTab = { key: 'store', label: this.isOwner() ? 'My Shop' : 'Shop' };
     const shopfront: TabBandTab = { key: 'storefront', label: 'Shopfront' };
-    return this.isOwner() || this.isPlatformAdmin()
+    // AI Assist — the catalogue extractor. Platform-admin ONLY (cross-org tooling);
+    // a supplier viewing their own page never sees it.
+    if (this.isPlatformAdmin()) {
+      return [{ key: 'profile', label: 'Profile' }, shopfront, items, { key: 'ai', label: 'AI Assist' }];
+    }
+    return this.isOwner()
       ? [{ key: 'profile', label: 'Profile' }, shopfront, items]
       : [shopfront, items];
   });
@@ -198,6 +203,7 @@ export class SupplierDetailComponent {
     if (this.isOwner()) return 'store';
     const q = this.query().get('tab');
     if (q === 'store' || q === 'storefront') return q;
+    if (q === 'ai') return this.isPlatformAdmin() ? 'ai' : 'storefront';
     if (q === 'profile') return this.isPlatformAdmin() ? 'profile' : 'storefront';
     return this.isPlatformAdmin() ? 'profile' : 'storefront';
   });
