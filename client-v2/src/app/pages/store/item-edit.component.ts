@@ -550,9 +550,23 @@ export class ItemEditComponent {
     if (!categoryId) return;
     const l2 = await this.childOptions(categoryId);
     this.subL2Options.set(l2);
-    if (subId && l2.some((o) => o.value === subId)) {
+    if (!subId) return;
+    // Direct child (L2 leaf): select it, load its children for the L3 dropdown.
+    if (l2.some((o) => o.value === subId)) {
       this.subL2.set(subId);
       this.subL3Options.set(await this.childOptions(subId));
+      return;
+    }
+    // A 3rd-level (L3) saved value: find its parent among the L2 children so both
+    // dropdowns reflect the saved classification on reopen (else it looks unsaved).
+    for (const node of l2) {
+      const kids = await this.childOptions(node.value);
+      if (kids.some((k) => k.value === subId)) {
+        this.subL2.set(node.value);
+        this.subL3Options.set(kids);
+        this.subL3.set(subId);
+        return;
+      }
     }
   }
   /** Category changed (top field): reset the cascade + reload its subcategories. */
