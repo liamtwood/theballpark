@@ -145,4 +145,16 @@ export class StoreItemService {
   remove(id: string): Observable<void> {
     return this.api.delete<void>(`/api/store/items/${id}`).pipe(this.bust());
   }
+
+  /** Admin cross-org management (platform admin on a supplier's Shop tab) — the
+   *  org-scoped mirrors of setActive/duplicate/remove (org from the URL). */
+  setActiveForOrg(orgId: string, id: string, isActive: boolean): Observable<StoreItem> {
+    return this.api.patch<StoreItem>(`/api/admin/orgs/${orgId}/items/${id}/active`, { is_active: isActive }).pipe(this.bust());
+  }
+  duplicateForOrg(orgId: string, id: string): Observable<StoreItem> {
+    return this.api.post<StoreItem>(`/api/admin/orgs/${orgId}/items/${id}/duplicate`, {}).pipe(this.bust());
+  }
+  removeForOrg(orgId: string, id: string): Observable<void> {
+    return this.api.delete<void>(`/api/admin/orgs/${orgId}/items/${id}`).pipe(this.bust());
+  }
 }

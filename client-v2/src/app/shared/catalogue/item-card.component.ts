@@ -108,18 +108,19 @@ import { AuthService } from '../../core/auth/auth.service';
       @if (showQuickView()) {
         <button type="button" class="bp-qv-link mt-2" (click)="onQuickView($event)">Quick view</button>
       }
-      @if (item().ownedByActiveOrg) {
-        <!-- pV2-STORE-01 — owner manages their own item from the card:
-             Edit, Duplicate, Show/Hide (is_active), Trash (soft delete). -->
+      @if (canManage()) {
+        <!-- pV2-STORE-01 — owner (or a platform admin on the org's Shop tab, via
+             adminEditOrgId) manages the item: Edit, Duplicate, Show/Hide, Trash. -->
         <div class="mt-3 flex items-center gap-2">
-          <!-- Build from components (itemize) — the supplier composes this item
-               from other items. Emits build; the host opens the buildup. -->
-          <button type="button" class="bp-item-card__act" title="Build from components" aria-label="Build item" (click)="onBuild($event)">
-            <lucide-icon name="list-tree" [size]="15" />
-          </button>
+          <!-- Build from components (itemize) — owner-only composition. -->
+          @if (item().ownedByActiveOrg) {
+            <button type="button" class="bp-item-card__act" title="Build from components" aria-label="Build item" (click)="onBuild($event)">
+              <lucide-icon name="list-tree" [size]="15" />
+            </button>
+          }
           <!-- Approved items are editable too now (photos locked in the editor). -->
           <a
-            [routerLink]="['/store/items', item().id]"
+            [routerLink]="editLink()"
             class="bp-item-card__act"
             title="Edit"
             aria-label="Edit"
@@ -191,6 +192,17 @@ export class ItemCardComponent {
   protected readonly isAgent = computed(() => this.auth.user()?.activeOrgType === 'agency');
   /** Ballpark admins moderate — a card click opens the review page, not Quick View. */
   protected readonly isAdmin = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
+  /** Show the manage buttons for the owner OR a platform admin on the org's Shop
+   *  tab (adminEditOrgId set) — cross-org actions route to the admin endpoints. */
+  protected readonly canManage = computed(() => this.item().ownedByActiveOrg || !!this.adminEditOrgId());
+  /** Edit destination: the admin org-scoped editor when managing another org, else
+   *  the owner's item editor. */
+  protected readonly editLink = computed(() => {
+    const org = this.adminEditOrgId();
+    return org && !this.item().ownedByActiveOrg
+      ? ['/admin/orgs', org, 'items', this.item().id]
+      : ['/store/items', this.item().id];
+  });
 
   /** Card meta: the supplier name, with the city appended when both exist
    *  ("Rocket Food · London") — falls back to whichever is present. */
@@ -297,10 +309,18 @@ export class ItemCardComponent {
     e.stopPropagation();
     if (this.busy()) return;
     this.busy.set(true);
-    firstValueFrom(this.store.duplicate(this.item().id))
+    const adminOrg = this.adminEditOrgId();
+    const dup = adminOrg && !this.item().ownedByActiveOrg
+      ? this.store.duplicateForOrg(adminOrg, this.item().id)
+      : this.store.duplicate(this.item().id);
+    firstValueFrom(dup)
       .then((copy) => {
-        // Open the new copy in the editor so the owner can tweak it + save.
-        void this.router.navigate(['/store/items', copy.id]);
+        // Open the new copy in the editor so it can be tweaked + saved.
+        void this.router.navigate(
+          adminOrg && !this.item().ownedByActiveOrg
+            ? ['/admin/orgs', adminOrg, 'items', copy.id]
+            : ['/store/items', copy.id]
+        );
       })
       .catch(() => { /* host keeps the row; a toast lands with the dialog work */ })
       .finally(() => this.busy.set(false));
@@ -332,7 +352,10 @@ export class ItemCardComponent {
           }
     );
     if (!ok) return;
-    this.run(this.store.setActive(item.id, activating));
+    const adminOrg = this.adminEditOrgId();
+    this.run(adminOrg && !item.ownedByActiveOrg
+      ? this.store.setActiveForOrg(adminOrg, item.id, activating)
+      : this.store.setActive(item.id, activating));
   }
   protected async onTrash(e: Event): Promise<void> {
     e.stopPropagation();
@@ -344,7 +367,10 @@ export class ItemCardComponent {
       cancelLabel: 'Cancel',
     });
     if (!ok) return;
-    this.run(this.store.remove(this.item().id));
+    const adminOrg = this.adminEditOrgId();
+    this.run(adminOrg && !this.item().ownedByActiveOrg
+      ? this.store.removeForOrg(adminOrg, this.item().id)
+      : this.store.remove(this.item().id));
   }
 
   private run(op: Observable<unknown>): void {
