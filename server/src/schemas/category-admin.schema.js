@@ -15,4 +15,17 @@ const CategoryUpdateSchema = z
   .strip()
   .refine((o) => Object.keys(o).length > 0, { message: 'No editable fields provided' });
 
-module.exports = { CategoryUpdateSchema };
+// POST /api/marketplace/categories — create a node (category / subcategory /
+// sub-subcategory). `parentId` null = a top-level category; otherwise a child of
+// that node (the server derives `level` from the parent chain). Admin-gated.
+const CategoryCreateSchema = z
+  .object({
+    name: z.string().trim().min(2).max(60),
+    parentId: z.uuid().nullish(),
+    tagline: z.string().trim().max(120).optional().or(z.literal('')),
+    isActive: z.boolean().optional(),
+    sortOrder: z.coerce.number().int().min(0).max(999).optional(),
+  })
+  .strip();
+
+module.exports = { CategoryUpdateSchema, CategoryCreateSchema };

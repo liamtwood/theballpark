@@ -19,7 +19,7 @@ const router = require('express').Router();
 const { z } = require('zod');
 const pool = require('../db/pool');
 const { requireActiveMembership } = require('../middleware/require-active-membership');
-const { CategoryUpdateSchema } = require('../schemas/category-admin.schema');
+const { CategoryUpdateSchema, CategoryCreateSchema } = require('../schemas/category-admin.schema');
 const { ItemsQuerySchema, PAGE_SIZE } = require('../schemas/marketplace-query.schema');
 
 /** Top-level catalogue categories + live item counts. Counts must match what
@@ -89,6 +89,46 @@ router.get(
       }
       const r = await pool.query(SELECT_CATEGORIES.replace('%ACTIVE%', ''));
       res.json(r.rows.map(toCategory));
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/marketplace/categories — create a taxonomy node (category / subcategory
+// / sub-subcategory). parentId null → top-level; else a child of that node. `level`
+// is derived from the parent chain (ancestor count) so the column stays meaningful.
+// Admin-gated (taxonomy management, not curation).
+router.post(
+  '/categories',
+  requireActiveMembership('admin.cross_org_view'),
+  async (req, res, next) => {
+    try {
+      const parsed = CategoryCreateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+      }
+      const { name, parentId, tagline, isActive, sortOrder } = parsed.data;
+      let level = 0;
+      if (parentId) {
+        // Depth of the parent chain = the new node's ancestor count = its level.
+        const anc = await pool.query(
+          `WITH RECURSIVE anc AS (
+             SELECT id, parent_id, 1 AS depth FROM categories
+              WHERE id = $1 AND namespace = 'catalogue' AND deleted_at IS NULL
+             UNION ALL
+             SELECT c.id, c.parent_id, anc.depth + 1 FROM categories c JOIN anc ON c.id = anc.parent_id
+           ) SELECT MAX(depth) AS d FROM anc`,
+          [parentId]
+        );
+        if (!anc.rows[0]?.d) return res.status(400).json({ error: 'Parent category not found' });
+        level = Number(anc.rows[0].d);
+      }
+      const ins = await pool.query(
+        `INSERT INTO categories (name, parent_id, namespace, model, level, is_active, enabled, sort_order)
+           VALUES ($1, $2, 'catalogue', 'A', $3, $4, true, $5)
+         RETURNING id, name, tagline, icon_name, is_active, sort_order, parent_id`,
+        [name, parentId || null, level, isActive ?? true, sortOrder ?? 999]
+      );
+      res.status(201).json(toCategory({ ...ins.rows[0], item_count: 0 }));
     } catch (err) { next(err); }
   }
 );
