@@ -311,6 +311,17 @@ function groupKeyOf(u) {
 const groupLabel = (key) => humanizeLabel(String(key).split('/').filter(Boolean).pop() || key);
 /** The full supplier path humanised, for AI context ("Catering Equipment Hire > Cutlery Hire"). */
 const groupPathLabel = (key) => String(key).split('/').filter(Boolean).map(humanizeLabel).join(' > ') || humanizeLabel(key);
+/** House-style taxonomy name from a supplier label: drop "Hire"/"Rental", pluralise
+ *  the last word ("Trestle Table Hire" → "Trestle Tables"). Matches how the AI names
+ *  new subcats; used as the deterministic 3rd-level fallback for nested sub-groups. */
+function houseStyleName(label) {
+  const s = String(label).replace(/\s*(hire|rental)\s*$/i, '').trim();
+  const words = s.split(/\s+/).filter(Boolean);
+  if (!words.length) return s;
+  const last = words[words.length - 1];
+  if (!/s$/i.test(last)) words[words.length - 1] = last + 's';
+  return words.join(' ');
+}
 
 /** PREPARE (Liam's step 2): for each SELECTED group, map the supplier's category
  *  → a Ballpark category + subcategory (existing or a proposed NEW one). One cheap
@@ -349,6 +360,15 @@ async function prepare(groups) {
       if (existingSS) { subSubId = existingSS.id; subSubName = existingSS.name; subSubIsNew = false; }
       else { subSubIsNew = true; }
     } else { subSubName = null; subSubIsNew = false; } // no 3rd level under a new subcat
+    // Fallback: a NESTED supplier sub-group (key has ≥2 path segments, e.g.
+    // "table-hire/trestle-table-hire") is a specific type — it should get a 3rd
+    // level even when the AI omits one (so Trestle behaves like Coffee/Poseur).
+    if (subMatch && !subSubName && key.split('/').filter(Boolean).length >= 2) {
+      const derived = houseStyleName(label); // "Trestle Table Hire" → "Trestle Tables"
+      const existingSS = (subMatch.subcats || []).find((gc) => norm(gc.name) === norm(derived));
+      if (existingSS) { subSubId = existingSS.id; subSubName = existingSS.name; subSubIsNew = false; }
+      else if (derived) { subSubName = derived; subSubIsNew = true; }
+    }
     out.push({
       key, label, path: pathLabel,
       categoryId: cat?.id || null, categoryName: cat?.name || null,
