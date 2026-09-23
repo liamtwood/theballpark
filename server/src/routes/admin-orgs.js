@@ -193,6 +193,7 @@ const MappingRow = z.object({
   subcategoryId: z.string().uuid().nullable().optional(),
   subcategoryName: z.string().trim().optional(),
   isNew: z.boolean().optional(),
+  newParentId: z.string().uuid().nullable().optional(), // parent for a new 3rd-level node (the L2)
 });
 const ExtractPullBody = z.object({
   urls: z.array(z.string().trim().url()).min(1).max(100),

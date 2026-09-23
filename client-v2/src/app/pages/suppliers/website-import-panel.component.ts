@@ -6,7 +6,12 @@ import { ImportTreeNodeComponent, TreeNode } from './import-tree-node.component'
 
 /** One editable cat/subcat mapping row in the Prepare step. `subChoice` is a
  *  subcategory id, '' (none), or the '__new__' sentinel (create `newName`). */
-interface EditRow { key: string; label: string; categoryId: string | null; subChoice: string; newName: string; }
+interface EditRow {
+  key: string; label: string; categoryId: string | null;
+  subChoice: string; newName: string;
+  /** 3rd level — a sub-subcategory id, '' (none), or '__new__' (create newSubName). */
+  subSubChoice: string; newSubName: string;
+}
 
 /**
  * pV2-STORE-EXTRACT-01 — admin "Import from website" panel (Analyse → Pull).
@@ -136,6 +141,19 @@ interface EditRow { key: string; label: string; categoryId: string | null; subCh
                         <input class="bp-input-field italic" style="width:9rem;" [ngModel]="row.newName" (ngModelChange)="setNewName(row.key, $event)" placeholder="New subcategory" />
                         <span class="bp-pill bp-pill--success">NEW</span>
                       }
+                      <!-- 3rd level — only under an EXISTING subcategory. -->
+                      @if (row.subChoice && row.subChoice !== '__new__') {
+                        <span class="text-secondary">▸</span>
+                        <select class="bp-input-field" style="width:auto;" [class.italic]="row.subSubChoice === '__new__'" [ngModel]="row.subSubChoice" (ngModelChange)="setSubSub(row.key, $event)">
+                          <option value="">(no sub-subcategory)</option>
+                          @for (ss of subSubcatsFor(row.categoryId, row.subChoice); track ss.id) { <option [value]="ss.id">{{ ss.name }}</option> }
+                          <option value="__new__">＋ Add new…</option>
+                        </select>
+                        @if (row.subSubChoice === '__new__') {
+                          <input class="bp-input-field italic" style="width:9rem;" [ngModel]="row.newSubName" (ngModelChange)="setNewSubName(row.key, $event)" placeholder="New sub-subcategory" />
+                          <span class="bp-pill bp-pill--success">NEW</span>
+                        }
+                      }
                     } @else {
                       <span class="font-medium text-secondary">{{ entry.label }}</span>
                     }
@@ -226,8 +244,12 @@ export class WebsiteImportPanelComponent {
   protected readonly prepared = signal<PrepareResult | null>(null);
   protected readonly rows = signal<EditRow[]>([]);
   protected readonly categories = computed<CatNode[]>(() => this.prepared()?.categories ?? []);
-  protected subcatsFor(categoryId: string | null): Array<{ id: string; name: string }> {
+  protected subcatsFor(categoryId: string | null): Array<{ id: string; name: string; subcats?: Array<{ id: string; name: string }> }> {
     return this.categories().find((c) => c.id === categoryId)?.subcats ?? [];
+  }
+  /** The chosen subcategory's children (3rd level) from the taxonomy tree. */
+  protected subSubcatsFor(categoryId: string | null, subId: string): Array<{ id: string; name: string }> {
+    return this.subcatsFor(categoryId).find((s) => s.id === subId)?.subcats ?? [];
   }
   /** Classification rows in the task-list tree's shape (UI grouping only): pre-order
    *  with a `depth` for indentation, each carrying its EditRow when the node is a
@@ -391,6 +413,7 @@ export class WebsiteImportPanelComponent {
           categoryId: gr.categoryId,
           subChoice: gr.subcategoryId || (gr.isNew && gr.subcategoryName ? '__new__' : ''),
           newName: gr.subcategoryName || gr.label,
+          subSubChoice: '', newSubName: gr.label,
         })));
         this.preparing.set(false);
       },
@@ -402,24 +425,33 @@ export class WebsiteImportPanelComponent {
     this.rows.update((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
   protected setCat(key: string, categoryId: string): void {
-    // New category → reset the subcategory choice (its subcats differ).
-    this.patchRow(key, { categoryId, subChoice: '' });
+    // New category → reset the sub + sub-sub choices (their children differ).
+    this.patchRow(key, { categoryId, subChoice: '', subSubChoice: '' });
   }
-  protected setSub(key: string, subChoice: string): void { this.patchRow(key, { subChoice }); }
+  protected setSub(key: string, subChoice: string): void { this.patchRow(key, { subChoice, subSubChoice: '' }); }
   protected setNewName(key: string, newName: string): void { this.patchRow(key, { newName }); }
+  protected setSubSub(key: string, subSubChoice: string): void { this.patchRow(key, { subSubChoice }); }
+  protected setNewSubName(key: string, newSubName: string): void { this.patchRow(key, { newSubName }); }
   protected backToSelection(): void { this.prepared.set(null); this.rows.set([]); }
 
-  /** Build the group→mapping payload from the (edited) rows. */
+  /** Build the group→mapping payload from the (edited) rows. The DEEPEST pick wins:
+   *  a 3rd-level pick (existing or new-under-the-subcategory) beats the subcategory. */
   private buildMapping(): Record<string, MappingRow> {
     const map: Record<string, MappingRow> = {};
     for (const r of this.rows()) {
       if (!r.categoryId) continue;
-      if (r.subChoice === '__new__' && r.newName.trim()) {
-        map[r.key] = { categoryId: r.categoryId, subcategoryName: r.newName.trim(), isNew: true };
+      const cat = r.categoryId;
+      // 3rd level only exists under an EXISTING subcategory (r.subChoice is an id).
+      if (r.subChoice && r.subChoice !== '__new__' && r.subSubChoice === '__new__' && r.newSubName.trim()) {
+        map[r.key] = { categoryId: cat, subcategoryName: r.newSubName.trim(), isNew: true, newParentId: r.subChoice };
+      } else if (r.subChoice && r.subChoice !== '__new__' && r.subSubChoice) {
+        map[r.key] = { categoryId: cat, subcategoryId: r.subSubChoice };
+      } else if (r.subChoice === '__new__' && r.newName.trim()) {
+        map[r.key] = { categoryId: cat, subcategoryName: r.newName.trim(), isNew: true };
       } else if (r.subChoice) {
-        map[r.key] = { categoryId: r.categoryId, subcategoryId: r.subChoice };
+        map[r.key] = { categoryId: cat, subcategoryId: r.subChoice };
       } else {
-        map[r.key] = { categoryId: r.categoryId };
+        map[r.key] = { categoryId: cat };
       }
     }
     return map;

@@ -76,7 +76,7 @@ export interface ExtractReport {
 
 /** pV2-STORE-EXTRACT-01 — the PULL summary. */
 /** Prepare (step 2): the marketplace taxonomy + a per-group cat/subcat suggestion. */
-export interface CatNode { id: string; name: string; subcats: Array<{ id: string; name: string }>; }
+export interface CatNode { id: string; name: string; subcats: Array<{ id: string; name: string; subcats?: Array<{ id: string; name: string }> }>; }
 export interface PrepareGroup {
   key: string;
   label: string;
@@ -92,7 +92,7 @@ export interface PrepareGroup {
 export interface PrepareResult { categories: CatNode[]; groups: PrepareGroup[]; }
 
 /** A confirmed cat/subcat mapping row sent to Pull, keyed by group. */
-export interface MappingRow { categoryId: string | null; subcategoryId?: string | null; subcategoryName?: string; isNew?: boolean; }
+export interface MappingRow { categoryId: string | null; subcategoryId?: string | null; subcategoryName?: string; isNew?: boolean; newParentId?: string | null; }
 
 export interface PullResult {
   created: number;

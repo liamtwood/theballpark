@@ -275,9 +275,15 @@ async function marketplaceCategoryTree() {
       ORDER BY sort_order ASC, name ASC`
   );
   const tops = r.rows.filter((c) => !c.parent_id);
+  const childrenOf = (pid) => r.rows.filter((c) => c.parent_id === pid);
   return tops.map((t) => ({
     id: t.id, name: t.name, description: t.description || null,
-    subcats: r.rows.filter((c) => c.parent_id === t.id).map((c) => ({ id: c.id, name: c.name, description: c.description || null })),
+    // 3 levels: each subcategory carries its own children (sub-subcategories) so the
+    // Prepare panel can offer a 3rd-level pick.
+    subcats: childrenOf(t.id).map((c) => ({
+      id: c.id, name: c.name, description: c.description || null,
+      subcats: childrenOf(c.id).map((gc) => ({ id: gc.id, name: gc.name })),
+    })),
   }));
 }
 
@@ -349,20 +355,27 @@ async function resolveMappingRow(row, cache) {
   let subcategoryId = row.subcategoryId || null;
   const wantNew = !subcategoryId && row.subcategoryName && (row.isNew || row.createSubcategory);
   if (wantNew) {
-    const ck = `${row.categoryId}|${norm(row.subcategoryName)}`;
+    // New node's parent: the L2 subcategory (newParentId) for a 3rd-level add, else
+    // the category for a new subcategory. `level` derives from the parent chain.
+    const parentId = row.newParentId || row.categoryId;
+    const ck = `${parentId}|${norm(row.subcategoryName)}`;
     if (cache.has(ck)) subcategoryId = cache.get(ck);
     else {
-      // Re-check it wasn't created by an earlier run, then insert (mirrors a curated
-      // subcat: catalogue namespace, level 1, enabled). Only NOT-NULL col is name.
       const found = await pool.query(
         `SELECT id FROM categories WHERE parent_id = $1 AND deleted_at IS NULL
-           AND lower(name) = lower($2) LIMIT 1`, [row.categoryId, row.subcategoryName]);
+           AND lower(name) = lower($2) LIMIT 1`, [parentId, row.subcategoryName]);
       if (found.rows[0]) subcategoryId = found.rows[0].id;
       else {
+        const anc = await pool.query(
+          `WITH RECURSIVE a AS (
+             SELECT id, parent_id, 1 AS d FROM categories WHERE id = $1
+             UNION ALL SELECT c.id, c.parent_id, a.d + 1 FROM categories c JOIN a ON c.id = a.parent_id
+           ) SELECT MAX(d) AS m FROM a`, [parentId]);
+        const level = Number(anc.rows[0]?.m || 1); // parent's depth = new node's level
         const ins = await pool.query(
           `INSERT INTO categories (name, parent_id, namespace, model, level, is_active, enabled, sort_order)
-             VALUES ($1, $2, 'catalogue', 'A', 1, false, true, 999) RETURNING id`,
-          [row.subcategoryName, row.categoryId]);
+             VALUES ($1, $2, 'catalogue', 'A', $3, false, true, 999) RETURNING id`,
+          [row.subcategoryName, parentId, level]);
         subcategoryId = ins.rows[0].id;
       }
       cache.set(ck, subcategoryId);
