@@ -319,7 +319,10 @@ const groupPathLabel = (key) => String(key).split('/').filter(Boolean).map(human
  *  sample }] where sample is a representative product name/slug. */
 async function prepare(groups) {
   const tree = await marketplaceCategoryTree();
-  const treeForAi = tree.map((c) => ({ name: c.name, description: c.description, subcats: c.subcats.map((s) => ({ name: s.name, description: s.description })) }));
+  const treeForAi = tree.map((c) => ({
+    name: c.name, description: c.description,
+    subcats: c.subcats.map((s) => ({ name: s.name, description: s.description, subcats: (s.subcats || []).map((gc) => ({ name: gc.name })) })),
+  }));
   const list = Array.isArray(groups) ? groups : [];
   const out = [];
   for (const g of list) {
@@ -327,20 +330,30 @@ async function prepare(groups) {
     if (!key) continue;
     const label = groupLabel(key);
     const pathLabel = groupPathLabel(key); // full supplier path → richer AI context
-    let sug = { category: null, subcategory: null, isNew: false, confidence: 0 };
+    let sug = { category: null, subcategory: null, isNew: false, subsubcategory: null, subsubIsNew: false, confidence: 0 };
     try { sug = await classifyGroupToCategory(pathLabel, g?.sample || label, treeForAi); } catch { /* keep default */ }
     // Resolve the suggested category to a real id (else 'Other').
     const cat = tree.find((c) => norm(c.name) === norm(sug.category)) || tree.find((c) => norm(c.name) === 'other') || null;
     let subId = null, subName = sug.subcategory ? String(sug.subcategory).trim() : null, isNew = !!sug.isNew;
+    let subMatch = null;
     if (cat && subName) {
-      const existing = cat.subcats.find((s) => norm(s.name) === norm(subName));
-      if (existing) { subId = existing.id; subName = existing.name; isNew = false; }
+      subMatch = cat.subcats.find((s) => norm(s.name) === norm(subName)) || null;
+      if (subMatch) { subId = subMatch.id; subName = subMatch.name; isNew = false; }
       else { isNew = true; } // no close existing → propose new under this cat
     }
+    // 3rd level: only when the subcategory is EXISTING (subMatch) — resolve the AI's
+    // sub-subcategory to an existing child id or a proposed new one.
+    let subSubId = null, subSubName = sug.subsubcategory ? String(sug.subsubcategory).trim() : null, subSubIsNew = !!sug.subsubIsNew;
+    if (subMatch && subSubName) {
+      const existingSS = (subMatch.subcats || []).find((gc) => norm(gc.name) === norm(subSubName));
+      if (existingSS) { subSubId = existingSS.id; subSubName = existingSS.name; subSubIsNew = false; }
+      else { subSubIsNew = true; }
+    } else { subSubName = null; subSubIsNew = false; } // no 3rd level under a new subcat
     out.push({
       key, label, path: pathLabel,
       categoryId: cat?.id || null, categoryName: cat?.name || null,
       subcategoryId: subId, subcategoryName: subName, isNew,
+      subsubcategoryId: subSubId, subsubcategoryName: subSubName, subsubIsNew: subSubIsNew,
       confidence: sug.confidence ?? 0,
     });
   }

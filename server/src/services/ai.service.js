@@ -247,9 +247,10 @@ Decide, for the WHOLE group:
 1. category: the single best-fit Ballpark category — EXACTLY one "category" string from the list (never invent a category).
 2. subcategory: the best existing subcategory UNDER that category (exact string from its list) IF one clearly fits or is close (e.g. supplier "Gazebo Hire" ≈ existing "Outdoor & Tensile Structure"? only if genuinely close).
    If NONE is close, propose a NEW subcategory: set subcategory to a clean, house-style name derived from the supplier label — Title Case, NO "Hire"/"Rental" suffix, prefer a short plural noun (e.g. "Gazebo Hire" → "Gazebos", "Chair Hire" → "Chairs"), and set isNew true.
-3. confidence: 0..1 for the category pick.
+3. subsubcategory: a 3rd level UNDER the chosen subcategory — ONLY when the supplier's grouping is specific enough to warrant it (e.g. supplier "Chiavari Chair Hire" → Furniture & Fixtures ▸ Seating ▸ "Chiavari Chairs"; but a broad "Chair Hire" stays at Seating with no 3rd level). Pick the best EXISTING sub-subcategory listed under the chosen subcategory (exact string) if one fits; else propose a NEW one in the same house style and set subsubIsNew true. Leave subsubcategory "" when the group is broad OR when the subcategory itself is NEW (isNew) — a 3rd level only nests under an EXISTING subcategory.
+4. confidence: 0..1 for the category pick.
 
-Return exactly: { "category":"", "subcategory":"", "isNew": false, "confidence": 0 }`;
+Return exactly: { "category":"", "subcategory":"", "isNew": false, "subsubcategory":"", "subsubIsNew": false, "confidence": 0 }`;
 
 /** PREPARE: map ONE supplier group (their category) → Ballpark category + subcategory.
  *  `tree` = [{ name, subcats:[name…] }] (the real marketplace taxonomy). One cheap
@@ -257,16 +258,21 @@ Return exactly: { "category":"", "subcategory":"", "isNew": false, "confidence":
  *  { category, subcategory, isNew, confidence }. */
 async function classifyGroup(supplierLabel, sampleName, tree = []) {
   const subName = (s) => (typeof s === 'string' ? s : s?.name);
-  const subLine = (s) => { const n = subName(s); const d = typeof s === 'object' ? s?.description : null; return d ? `${n} (${d})` : n; };
+  const subLine = (s) => {
+    const n = subName(s);
+    const d = typeof s === 'object' ? s?.description : null;
+    const kids = (typeof s === 'object' && Array.isArray(s?.subcats)) ? s.subcats.map(subName).filter(Boolean) : [];
+    return `${n}${d ? ` (${d})` : ''}${kids.length ? ` [sub-subcategories: ${kids.join(', ')}]` : ''}`;
+  };
   const catBlock = tree
-    .map((c) => `- ${c.name}${c.description ? ` — ${c.description}` : ''}\n    subcategories: ${(c.subcats || []).map(subLine).join(', ') || '(none yet)'}`)
+    .map((c) => `- ${c.name}${c.description ? ` — ${c.description}` : ''}\n    subcategories: ${(c.subcats || []).map(subLine).join(' | ') || '(none yet)'}`)
     .join('\n');
   const { parsed } = await callHaikuJson({
     system: CLASSIFY_GROUP_SYSTEM,
     user: `Supplier category label: "${supplierLabel}"\nSample product: "${sampleName || ''}"\n\nBallpark categories and their subcategories:\n${catBlock}`,
     maxTokens: 400,
   });
-  return parsed || { category: null, subcategory: null, isNew: false, confidence: 0 };
+  return parsed || { category: null, subcategory: null, isNew: false, subsubcategory: null, subsubIsNew: false, confidence: 0 };
 }
 
 module.exports = { parseBrief, callHaikuJson, analyseCatalogue, extractProduct, classifyGroup };

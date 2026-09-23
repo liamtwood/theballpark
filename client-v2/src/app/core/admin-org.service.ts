@@ -87,6 +87,10 @@ export interface PrepareGroup {
   subcategoryId: string | null;
   subcategoryName: string | null;
   isNew: boolean;
+  /** AI-suggested 3rd level (only under an existing subcategory). */
+  subsubcategoryId?: string | null;
+  subsubcategoryName?: string | null;
+  subsubIsNew?: boolean;
   confidence: number;
 }
 export interface PrepareResult { categories: CatNode[]; groups: PrepareGroup[]; }

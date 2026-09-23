@@ -413,7 +413,9 @@ export class WebsiteImportPanelComponent {
           categoryId: gr.categoryId,
           subChoice: gr.subcategoryId || (gr.isNew && gr.subcategoryName ? '__new__' : ''),
           newName: gr.subcategoryName || gr.label,
-          subSubChoice: '', newSubName: gr.label,
+          // Prefill the AI's 3rd-level suggestion (existing id, or __new__ with a name).
+          subSubChoice: gr.subsubcategoryId || (gr.subsubIsNew && gr.subsubcategoryName ? '__new__' : ''),
+          newSubName: gr.subsubcategoryName || gr.label,
         })));
         this.preparing.set(false);
       },
