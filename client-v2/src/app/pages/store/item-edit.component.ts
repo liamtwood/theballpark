@@ -18,6 +18,7 @@ import { CategoryInfo } from '../../shared/catalogue/catalogue.types';
 import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribute-cards.component';
 import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.types';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
+import { SaveStatePillComponent, SaveState } from '../../shared/save-state-pill/save-state-pill.component';
 import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
 import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.component';
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
@@ -51,7 +52,7 @@ interface ItemForm {
   imports: [
     FormsModule, LucideAngularModule, ToastModule, DialogModule, PageHeroComponent, EditFieldComponent,
     ImageGalleryComponent, ImagePickerComponent, DrawerComponent, ItemApprovalPanelComponent,
-    ItemEditActionsComponent, ItemAttributeCardsComponent,
+    ItemEditActionsComponent, ItemAttributeCardsComponent, SaveStatePillComponent,
   ],
   providers: [MessageService],
   template: `
@@ -68,6 +69,10 @@ interface ItemForm {
         <p class="bp-body-small text-warn">This item couldn’t be loaded — it may not exist or isn’t yours to view.</p>
       } @else {
         <div class="w-full">
+        <!-- Save-on-blur confirmation (existing items) — the shared pill, like profile. -->
+        @if (isEdit && editing() && !isModerator() && !isViewer()) {
+          <div class="mb-3 flex justify-end"><app-save-state-pill [state]="saveState()" [idleShowsSaved]="true" /></div>
+        }
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1.7fr_1fr]">
           <!-- LEFT — item attributes (one per row) + save actions. -->
           <div>
@@ -267,6 +272,7 @@ interface ItemForm {
           }
 
           <app-item-edit-actions
+            [autosave]="isEdit"
             [isModerator]="isModerator()" [isViewer]="isViewer()" [isApproved]="isApproved()"
             [currentStatus]="currentStatus()" [deciding]="deciding()" [saving]="saving()"
             [canDelete]="canDelete()" [deleting]="deleting()"
@@ -313,7 +319,7 @@ interface ItemForm {
                   [columns]="4"
                   [tileAspect]="'1 / 1'"
                   [maxSlots]="4"
-                  (imagesChange)="images.set($event)"
+                  (imagesChange)="onImagesChange($event)"
                   (primarySet)="onSetPrimary($event)"
                 />
               </div>
@@ -490,12 +496,15 @@ export class ItemEditComponent {
         : [...rows, { label: '', value: '' }];
       return { ...g, [key]: next };
     });
+    this.scheduleSave();
   }
   protected removeRow(key: string, i: number): void {
     this.groupRows.update((g) => ({ ...g, [key]: (g[key] ?? []).filter((_, x) => x !== i) }));
+    this.scheduleSave();
   }
   protected patchRow(key: string, i: number, field: 'label' | 'value', val: string): void {
     this.groupRows.update((g) => ({ ...g, [key]: (g[key] ?? []).map((r, x) => (x === i ? { ...r, [field]: val } : r)) }));
+    this.scheduleSave();
   }
 
   /** The 5 groups as filled [{label,value}] arrays — written to attributes on save. */
@@ -721,6 +730,7 @@ export class ItemEditComponent {
 
   protected patch(p: Partial<ItemForm>): void {
     this.form.update((f) => ({ ...f, ...p }));
+    this.scheduleSave();
   }
 
   // ── Volume pricing + Options — preview cards + Ballpark-dialog add/edit ───
@@ -735,7 +745,7 @@ export class ItemEditComponent {
   // Volume dialog — edits a draft; Done commits to priceTiers, Cancel discards.
   protected openVolumeDialog(): void { this.volumeDraft.set(this.priceTiers().map((t) => ({ ...t }))); this.volumeDialogOpen.set(true); }
   protected cancelVolumeDialog(): void { this.volumeDialogOpen.set(false); }
-  protected saveVolumeDialog(): void { this.priceTiers.set(this.volumeDraft().map((t) => ({ ...t }))); this.volumeDialogOpen.set(false); }
+  protected saveVolumeDialog(): void { this.priceTiers.set(this.volumeDraft().map((t) => ({ ...t }))); this.volumeDialogOpen.set(false); this.scheduleSave(); }
   protected onVolumeVisible(v: boolean): void { if (!v) this.cancelVolumeDialog(); }
   protected addDraftTier(): void { this.volumeDraft.update((d) => [...d, { min: '', max: '', price: '' }]); }
   protected removeDraftTier(i: number): void { this.volumeDraft.update((d) => d.filter((_, x) => x !== i)); }
@@ -746,7 +756,7 @@ export class ItemEditComponent {
   // Options dialog — edits a draft; Done commits to optionsRows, Cancel discards.
   protected openOptionsDialog(): void { this.optionsDraft.set(this.optionsRows().map((o) => ({ ...o }))); this.optionsDialogOpen.set(true); }
   protected cancelOptionsDialog(): void { this.optionsDialogOpen.set(false); }
-  protected saveOptionsDialog(): void { this.optionsRows.set(this.optionsDraft().map((o) => ({ ...o }))); this.optionsDialogOpen.set(false); }
+  protected saveOptionsDialog(): void { this.optionsRows.set(this.optionsDraft().map((o) => ({ ...o }))); this.optionsDialogOpen.set(false); this.scheduleSave(); }
   protected onOptionsVisible(v: boolean): void { if (!v) this.cancelOptionsDialog(); }
   protected addDraftOption(): void { this.optionsDraft.update((d) => [...d, { name: '', price: '' }]); }
   protected removeDraftOption(i: number): void { this.optionsDraft.update((d) => d.filter((_, x) => x !== i)); }
@@ -757,13 +767,21 @@ export class ItemEditComponent {
   protected onPickImage(r: PickerResult): void {
     if (r.type === 'image') this.imageUrl.set(r.url);
     this.imageDrawer.set(false);
+    this.scheduleSave();
   }
   protected onRemoveImage(): void {
     this.imageUrl.set(null);
     this.imageDrawer.set(false);
+    this.scheduleSave();
   }
   protected onSetPrimary(img: GalleryImage): void {
     this.imageUrl.set(img.url);
+    this.scheduleSave();
+  }
+  /** Gallery images changed — persist (save-on-blur). */
+  protected onImagesChange(imgs: GalleryImage[]): void {
+    this.images.set(imgs);
+    this.scheduleSave();
   }
 
   protected save(status: 'draft' | 'pending'): Promise<void> {
@@ -787,17 +805,11 @@ export class ItemEditComponent {
     void this.router.navigateByUrl(this.heroBack().href);
   }
 
-  private async persist(status: 'draft' | 'pending' | 'approved', successMsg: string): Promise<void> {
+  /** The full write body from the form + attribute editors. `status` drives
+   *  approval_status (omitted for 'approved' — the server keeps it live). */
+  private buildBody(status: 'draft' | 'pending' | 'approved'): StoreItemWrite {
     const f = this.form();
-    if (!f.name.trim()) {
-      this.toast.add({ severity: 'warn', summary: 'Product Name is required', life: 3000 });
-      return;
-    }
-    if (!f.category_id) {
-      this.toast.add({ severity: 'warn', summary: 'Pick a category', life: 3000 });
-      return;
-    }
-    const body: StoreItemWrite = {
+    return {
       name: f.name.trim(),
       category_id: f.category_id,
       subcategory_id: f.subcategory_id || null,
@@ -811,33 +823,34 @@ export class ItemEditComponent {
       lead_time_days: f.lead_time_days === '' ? null : Number(f.lead_time_days),
       image_url: this.imageUrl(),
       images: this.images(),
-      // pV2-STORE-ITEM-MEASURE-VOLUME-01 — merge the managed attribute pieces
-      // onto whatever else the bag held (item.service replaces the column, so we
-      // must send the full object). Empty rows dropped; tier max '' → null.
       attributes: {
-        // _source (+ anything else) rides through; the 5 groups, price_tiers and
-        // options are rewritten from the editors; legacy `dimensions` is dropped.
         ...this.strippedRawAttributes(),
         ...this.filledGroups(),
         price_tiers: this.priceTiers()
           .filter((t) => String(t.price).trim() !== '')
-          .map((t) => ({
-            min: t.min === '' ? 0 : Number(t.min),
-            max: t.max === '' ? null : Number(t.max),
-            price: Number(t.price),
-          })),
+          .map((t) => ({ min: t.min === '' ? 0 : Number(t.min), max: t.max === '' ? null : Number(t.max), price: Number(t.price) })),
         options: this.optionsRows()
           .filter((o) => o.name.trim() !== '')
           .map((o) => ({ name: o.name.trim(), price: Number(o.price) || 0 })),
       },
-      // Approved edits don't set a status — the server keeps it approved and
-      // the schema only accepts draft|pending anyway.
       ...(status === 'approved' ? {} : { approval_status: status }),
     };
+  }
+
+  private async persist(status: 'draft' | 'pending' | 'approved', successMsg: string): Promise<void> {
+    const f = this.form();
+    if (!f.name.trim()) {
+      this.toast.add({ severity: 'warn', summary: 'Product Name is required', life: 3000 });
+      return;
+    }
+    if (!f.category_id) {
+      this.toast.add({ severity: 'warn', summary: 'Pick a category', life: 3000 });
+      return;
+    }
+    const body = this.buildBody(status);
     this.saving.set(true);
     try {
       if (this.targetOrgId) {
-        // Admin editing another org's catalogue — org-scoped endpoints.
         if (this.itemId) await firstValueFrom(this.store.updateForOrg(this.targetOrgId, this.itemId, body));
         else await firstValueFrom(this.store.createForOrg(this.targetOrgId, body));
       } else if (this.itemId) {
@@ -846,7 +859,6 @@ export class ItemEditComponent {
         await firstValueFrom(this.store.create(body));
       }
       this.toast.add({ severity: 'success', summary: successMsg, life: 3000 });
-      // Admin → back to the supplier's Shop tab; owner → their own supplier page.
       if (this.targetOrgId) {
         void this.router.navigate(['/suppliers', this.targetOrgId], { queryParams: { tab: 'store' } });
       } else {
@@ -857,6 +869,40 @@ export class ItemEditComponent {
       this.toast.add({ severity: 'error', summary: "Couldn't save — please try again.", detail: errorDetail(e), life: 5000 });
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  // ── Save-on-blur (existing items) — the shared "Details saved" pill, like the
+  //    profile pages. Keeps the item's CURRENT status (never auto-submits). New
+  //    items (no id) fall back to the explicit Create/Submit buttons. ───────────
+  protected readonly saveState = signal<SaveState>('idle');
+  private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Only autosave an EXISTING item being edited by the owner/admin with the
+   *  required fields present. */
+  private autosaveEligible(): boolean {
+    const f = this.form();
+    return this.editing() && !!this.itemId && !this.isModerator() && !this.isViewer()
+      && !!f.name.trim() && !!f.category_id;
+  }
+  /** Debounced trigger — call from any edit handler; collapses rapid edits. */
+  protected scheduleSave(): void {
+    if (!this.autosaveEligible()) return;
+    if (this.saveTimer) clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(() => void this.autosaveNow(), 700);
+  }
+  private async autosaveNow(): Promise<void> {
+    if (!this.autosaveEligible()) return;
+    const cs = this.currentStatus();
+    const status: 'draft' | 'pending' | 'approved' = cs === 'approved' ? 'approved' : cs === 'pending' ? 'pending' : 'draft';
+    const body = this.buildBody(status);
+    this.saveState.set('saving');
+    try {
+      if (this.targetOrgId) await firstValueFrom(this.store.updateForOrg(this.targetOrgId, this.itemId!, body));
+      else await firstValueFrom(this.store.update(this.itemId!, body));
+      this.saveState.set('saved');
+    } catch (e) {
+      console.warn('[ItemEdit] autosave failed', e);
+      this.saveState.set('error');
     }
   }
 

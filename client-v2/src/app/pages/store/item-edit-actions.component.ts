@@ -24,15 +24,19 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
     } @else if (isApproved()) {
       <!-- Owner, approved — editable (fields), photos locked. Stays live. -->
       <div class="mt-4 flex flex-wrap gap-3">
-        <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="saveApproved.emit()">{{ saving() ? 'Saving…' : 'Save Changes' }}</button>
-        <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="cancel.emit()">Back to store</button>
+        @if (!autosave()) {
+          <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="saveApproved.emit()">{{ saving() ? 'Saving…' : 'Save Changes' }}</button>
+        }
+        <button type="button" class="bp-btn-outline" (click)="cancel.emit()">Back to store</button>
         @if (canDelete()) {
           <button type="button" class="bp-btn-danger ml-auto" [disabled]="deleting()" (click)="deleteRequested.emit()">{{ deleting() ? 'Deleting…' : 'Delete' }}</button>
         }
       </div>
     } @else {
       <div class="mt-4 flex flex-wrap gap-3">
-        <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="saveDraft.emit()">{{ saving() ? 'Saving…' : 'Save Draft' }}</button>
+        @if (!autosave()) {
+          <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="saveDraft.emit()">{{ saving() ? 'Saving…' : 'Save Draft' }}</button>
+        }
         @if (currentStatus() === 'pending') {
           <!-- Submitted — withdraw the request instead of re-submitting. -->
           <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="cancelRequest.emit()">{{ saving() ? 'Saving…' : 'Cancel approval request' }}</button>
@@ -56,6 +60,8 @@ export class ItemEditActionsComponent {
   /** Owner (own item) or platform admin (admin-edit route) — shows Delete. */
   readonly canDelete = input<boolean>(false);
   readonly deleting = input<boolean>(false);
+  /** Existing item edited with save-on-blur — hides the manual Save buttons. */
+  readonly autosave = input<boolean>(false);
 
   readonly approve = output<void>();
   readonly reject = output<void>();
