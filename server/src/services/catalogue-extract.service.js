@@ -597,13 +597,42 @@ function planPull(urls) {
   return { selected: raw.length, list, droppedRows };
 }
 
+/** Deterministic REVIEW extract from a page's Product JSON-LD (name / price /
+ *  description) — ZERO AI. Review needs only the lean vetting set, and on JSON-LD
+ *  sites it's all in the markup, so Review skips the Haiku call. Handles a single
+ *  or Aggregate offer (price / lowPrice). Returns null when there's no usable
+ *  Product node → the caller falls back to the Haiku extractor. */
+function extractReviewFromJsonLd(html, url) {
+  for (const b of String(html || '').matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    let j;
+    try { j = JSON.parse(b[1].trim()); } catch { continue; }
+    const nodes = Array.isArray(j) ? j : (j['@graph'] || [j]);
+    for (const n of nodes) {
+      const t = n && n['@type'];
+      if (!t || !(Array.isArray(t) ? t : [t]).some((x) => /product/i.test(String(x)))) continue;
+      const name = typeof n.name === 'string' ? n.name.trim() : '';
+      const offer = Array.isArray(n.offers) ? n.offers[0] : n.offers;
+      const price = toNumber(offer && (offer.price ?? offer.lowPrice));
+      if (name && price != null) {
+        return { name, base_price: price, description: typeof n.description === 'string' ? n.description.trim() : null, unit: 'each' };
+      }
+    }
+  }
+  return null;
+}
+
 /** Extract + create ONE product. Returns a single outcome row and mutates the shared
  *  ctx (gap tally, in-pull id dedup). Never throws — errors become an 'error' row. */
 async function processUrl(ctx, url) {
   try {
     const groupRow = ctx.mapping[groupKeyOf(url)] || null; // group keyed off the selected URL
     const { finalUrl, html } = await guardedFetch(url);
-    const p = await extractProduct(htmlToText(html, finalUrl), finalUrl, ctx.categoryNames);
+    // Review mode: try a DETERMINISTIC extract from the Product JSON-LD first
+    // (name/price/description) — ZERO AI. Review only needs the lean vetting set,
+    // and on JSON-LD sites (Yahire etc.) it's all in the markup. Full mode, or a
+    // page with no usable JSON-LD, falls back to the Haiku extractor.
+    let p = ctx.review ? extractReviewFromJsonLd(html, finalUrl) : null;
+    if (!p) p = await extractProduct(htmlToText(html, finalUrl), finalUrl, ctx.categoryNames);
     const name = (p && typeof p.name === 'string') ? p.name.trim() : '';
     if (!name) return { url: finalUrl, status: 'skipped', reason: 'no product found (not a detail page?)' };
 
@@ -945,4 +974,4 @@ function pruneNull(obj) {
   return out;
 }
 
-module.exports = { analyse, prepare, pull, startPull, getJob, activeJobForOrg, cancelJob, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity } };
+module.exports = { analyse, prepare, pull, startPull, getJob, activeJobForOrg, cancelJob, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity, extractReviewFromJsonLd } };
