@@ -56,8 +56,11 @@ import { MarketplaceWorkspaceComponent } from './marketplace-workspace.component
           [totalCount]="allItemsCount()"
           [subcategories]="store.mode() === 'items' ? stripSubcategories() : []"
           [activeSubId]="store.subcategoryId()"
+          [subSubcategories]="store.mode() === 'items' ? stripSubSubcategories() : []"
+          [activeSubSubId]="store.subSubcategoryId()"
           (categorySelected)="store.setCategory($event)"
           (subcategorySelected)="store.setSubcategory($event)"
+          (subSubcategorySelected)="store.setSubSubcategory($event)"
         />
 
         @if (store.mode() === 'suppliers') {
@@ -174,6 +177,8 @@ export class MarketplacePageComponent {
   /** Hide empty categories/subcats in the rail — matches the in-project tab. */
   protected readonly stripCategories = computed(() => this.store.categories().filter((c) => c.count > 0));
   protected readonly stripSubcategories = computed(() => this.store.subcategories().filter((s) => s.count > 0));
+  /** The 3rd rail level — the drilled-into subcategory's non-empty children. */
+  protected readonly stripSubSubcategories = computed(() => this.store.subSubcategories().filter((s) => s.count > 0));
 
   /** Hero rides the standard per-page settings (eyebrow / title / subtitle);
    *  /settings/pages overrides win over PAGE_HERO_DEFAULTS. HERO ONLY — v1's

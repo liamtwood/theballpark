@@ -49,8 +49,16 @@ classification never hides an item from its parent-level browse. `GET /api/marke
 the subcategory-strip count (`/categories/:id/subcategories`) is likewise subtree-aware so the
 rail count matches the grid; `item.service.getAll` (supplier shop / project marketplace) got the
 same treatment. Verified: Seating's subtree = {Seating, Folding Chair, Chiavari Chair}, so browsing
-Seating rolls up their items. (The drill-down rail still shows one level of subcats; deeper items
-roll up into their parent chip.)
+Seating rolls up their items.
+
+**Rail now surfaces the 3rd level (v2.560 client):** the marketplace drill-down rail drills a level
+deeper — Category → Subcategory → **Sub-subcategory**. Selecting a subcategory that has children
+reveals them (a back pill for the subcategory + its children); selecting one narrows the grid to it.
+Store gained `?sub2=` (`subSubcategoryId`) + `subSubcategoriesRes` (children of the selected subcat) +
+`setSubSubcategory`; the items filter uses the DEEPEST selected node (tree-aware rolls up the rest).
+`category-strip` gained a level-3 state (inputs `subSubcategories`/`activeSubSubId`, output
+`subSubcategorySelected`); other consumers pass nothing so they stay 2-level. Empty nodes hidden
+(count > 0), matching the other rail levels.
 
 ## NOT yet (next steps, agreed)
 1. ~~Item editor cascading picker~~ — DONE v2.559.

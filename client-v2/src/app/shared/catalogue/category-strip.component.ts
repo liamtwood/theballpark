@@ -23,24 +23,44 @@ import { CategoryInfo } from './catalogue.types';
            Pills: transparent on the gray rail, white on hover, pink when selected. -->
       <nav class="flex flex-col gap-1 bp-catstrip--pills">
         @if (activeCat(); as cat) {
-          <!-- The header pill IS the back control: back chevron + category name
-               + count. Clicking it returns to All Categories. -->
-          <button type="button" class="bp-catstrip-pill mb-1.5" aria-label="Back to all categories"
-                  (click)="categorySelected.emit(null)">
-            <span class="flex min-w-0 items-center gap-1.5">
-              <lucide-icon name="chevron-left" [size]="16" class="shrink-0" />
-              <span class="truncate">{{ cat.name }}</span>
-            </span>
-            <span class="bp-count-badge">{{ cat.count }}</span>
-          </button>
-          <!-- Subcategories — NOT indented (the pill already gives the context). -->
-          @for (sub of subcategories(); track sub.id) {
-            <button type="button" class="bp-catstrip-row"
-                    [class.bp-catstrip-row--pill]="activeSubId() === sub.id"
-                    (click)="subcategorySelected.emit(activeSubId() === sub.id ? null : sub.id)">
-              <span class="truncate">{{ sub.name }}</span>
-              <span class="bp-count-badge">{{ sub.count }}</span>
+          @if (activeSubId() && subSubcategories().length) {
+            <!-- Level 3: the drilled-into subcategory + its sub-subcategories. The
+                 back pill returns to the subcategory list (clears the sub drill). -->
+            <button type="button" class="bp-catstrip-pill mb-1.5" aria-label="Back to subcategories"
+                    (click)="subcategorySelected.emit(null)">
+              <span class="flex min-w-0 items-center gap-1.5">
+                <lucide-icon name="chevron-left" [size]="16" class="shrink-0" />
+                <span class="truncate">{{ activeSub()?.name ?? cat.name }}</span>
+              </span>
+              <span class="bp-count-badge">{{ activeSub()?.count ?? cat.count }}</span>
             </button>
+            @for (ss of subSubcategories(); track ss.id) {
+              <button type="button" class="bp-catstrip-row"
+                      [class.bp-catstrip-row--pill]="activeSubSubId() === ss.id"
+                      (click)="subSubcategorySelected.emit(activeSubSubId() === ss.id ? null : ss.id)">
+                <span class="truncate">{{ ss.name }}</span>
+                <span class="bp-count-badge">{{ ss.count }}</span>
+              </button>
+            }
+          } @else {
+            <!-- Level 2: the category + its subcategories. -->
+            <button type="button" class="bp-catstrip-pill mb-1.5" aria-label="Back to all categories"
+                    (click)="categorySelected.emit(null)">
+              <span class="flex min-w-0 items-center gap-1.5">
+                <lucide-icon name="chevron-left" [size]="16" class="shrink-0" />
+                <span class="truncate">{{ cat.name }}</span>
+              </span>
+              <span class="bp-count-badge">{{ cat.count }}</span>
+            </button>
+            <!-- Subcategories — NOT indented (the pill already gives the context). -->
+            @for (sub of subcategories(); track sub.id) {
+              <button type="button" class="bp-catstrip-row"
+                      [class.bp-catstrip-row--pill]="activeSubId() === sub.id"
+                      (click)="subcategorySelected.emit(activeSubId() === sub.id ? null : sub.id)">
+                <span class="truncate">{{ sub.name }}</span>
+                <span class="bp-count-badge">{{ sub.count }}</span>
+              </button>
+            }
           }
         } @else {
           <button type="button" class="bp-catstrip-row"
@@ -132,12 +152,20 @@ export class CategoryStripComponent {
   /** The active category's subcategories (the shared store loads them). */
   readonly subcategories = input<readonly CategoryInfo[]>([]);
   readonly activeSubId = input<string | null>(null);
+  /** The active subcategory's children — the 3rd drill level (drilldown mode). */
+  readonly subSubcategories = input<readonly CategoryInfo[]>([]);
+  readonly activeSubSubId = input<string | null>(null);
   readonly categorySelected = output<string | null>();
   readonly subcategorySelected = output<string | null>();
+  readonly subSubcategorySelected = output<string | null>();
 
   /** The drilled-into category (drill-down mode) — null at the top level. */
   protected readonly activeCat = computed(
     () => this.categories().find((c) => c.id === this.activeId()) ?? null,
+  );
+  /** The drilled-into subcategory (its name/count for the level-3 back pill). */
+  protected readonly activeSub = computed(
+    () => this.subcategories().find((c) => c.id === this.activeSubId()) ?? null,
   );
 
   /** Expansion follows selection (auto-open on select) but the chevron

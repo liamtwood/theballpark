@@ -62,6 +62,8 @@ export class MarketplaceStore {
 
   /** Subcategory drill (?sub=) — only meaningful with a category set. */
   readonly subcategoryId = computed(() => this.query().get('sub') || null);
+  /** Sub-subcategory drill (?sub2=) — the 3rd rail level, meaningful with a sub set. */
+  readonly subSubcategoryId = computed(() => this.query().get('sub2') || null);
 
   // pV2-06c filters (URL: ?price= bracket key, ?tier=, ?sup=)
   readonly priceBracket = computed(() => this.query().get('price') || null);
@@ -97,7 +99,7 @@ export class MarketplaceStore {
   /** The filter signature — offset + accumulation reset on ANY change. */
   private readonly filterKey = computed(
     () =>
-      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}|${this.statusFilter() ?? ''}|${this.activeFilter() ?? ''}`
+      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.subSubcategoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}|${this.statusFilter() ?? ''}|${this.activeFilter() ?? ''}`
   );
 
   /** Local page offset; snaps back to 0 when the filters change. */
@@ -119,6 +121,14 @@ export class MarketplaceStore {
     loader: ({ params }) => this.catalogue.subcategories(params),
   });
   readonly subcategories = computed(() => this.subcategoriesRes.value() ?? []);
+
+  /** The selected subcategory's children — the 3rd rail level (drills only when
+   *  non-empty). Loads children of ANY node via the same endpoint. */
+  readonly subSubcategoriesRes = resource({
+    params: () => this.subcategoryId() ?? undefined,
+    loader: ({ params }) => this.catalogue.subcategories(params),
+  });
+  readonly subSubcategories = computed(() => this.subSubcategoriesRes.value() ?? []);
 
   /** Suppliers serving the selected category — the rail's CATEGORY mode
    *  (pV2-06e). ONE definition everywhere (Liam, 2026-06-12: the store
@@ -149,7 +159,8 @@ export class MarketplaceStore {
       const bracket = bracketFor(this.priceBracket());
       return {
         cat: this.categoryId(),
-        sub: this.subcategoryId(),
+        // Filter by the DEEPEST selected node; tree-aware browse rolls up the rest.
+        sub: this.subSubcategoryId() ?? this.subcategoryId(),
         q: this.search() || null,
         priceMin: bracket?.min ?? null,
         priceMax: bracket?.max ?? null,
@@ -214,11 +225,15 @@ export class MarketplaceStore {
 
   // ── Writers (navigate — never set state) ─────────────────────────────
   setCategory(id: string | null): void {
-    // Changing category invalidates the subcategory drill.
-    this.merge({ cat: id, sub: null, item: null });
+    // Changing category invalidates the subcategory drill (both levels).
+    this.merge({ cat: id, sub: null, sub2: null, item: null });
   }
   setSubcategory(id: string | null): void {
-    this.merge({ sub: id, item: null });
+    // Changing subcategory invalidates the 3rd-level drill.
+    this.merge({ sub: id, sub2: null, item: null });
+  }
+  setSubSubcategory(id: string | null): void {
+    this.merge({ sub2: id, item: null });
   }
   setMode(mode: string): void {
     // Item-only filters don't apply to suppliers — drop them on switch.
