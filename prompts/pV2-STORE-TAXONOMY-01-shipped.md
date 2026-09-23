@@ -60,6 +60,14 @@ Store gained `?sub2=` (`subSubcategoryId`) + `subSubcategoriesRes` (children of 
 `subSubcategorySelected`); other consumers pass nothing so they stay 2-level. Empty nodes hidden
 (count > 0), matching the other rail levels.
 
+## Fix — v2.560 (approved-but-inactive items were invisible on the org page)
+QC (Liam): approving an item didn't make it appear on the org page, so it couldn't be activated. The
+admin default marketplace filter was `(is_active OR approval_status = 'pending')` — an item that's
+**approved but is_active=false** is neither, so it fell into a gap and vanished (can't activate what you
+can't see). Fixed: default now `(is_active OR approval_status IN ('pending','approved'))`, surfacing
+approved-not-yet-active items so they can be published; still hides rejected + drafts. (This was also
+why the "active" Yahire org showed no supplier — its one approved item was inactive → no visible items.)
+
 ## NOT yet (next steps, agreed)
 1. ~~Item editor cascading picker~~ — DONE v2.559.
 2. ~~Tree-aware browse~~ — DONE v2.560.

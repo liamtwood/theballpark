@@ -262,11 +262,13 @@ router.get('/items', async (req, res, next) => {
         vals.push(status); where.push(`i.approval_status = $${vals.length}`);
       } else if (adminScope && !status && !active) {
         // FR-00215 visibility rule — admin default (no explicit status/publish
-        // filter): live OR awaiting review. Excludes rejected + inactive-not-
-        // submitted. Explicit ?status=all skips this (the whole catalogue);
+        // filter): live OR awaiting review OR APPROVED-not-yet-active (so an item
+        // approved but not published still shows and can be activated — otherwise
+        // it falls into a gap: neither active nor pending). Excludes rejected +
+        // drafts. Explicit ?status=all skips this (the whole catalogue);
         // ?status=pending narrows to the approval queue. Owner default (no
         // adminScope) still falls through to the whole catalogue.
-        where.push(`(i.is_active OR i.approval_status = 'pending')`);
+        where.push(`(i.is_active OR i.approval_status IN ('pending', 'approved'))`);
       }
       if (active === 'active') where.push(`i.is_active`);
       else if (active === 'inactive') where.push(`NOT i.is_active`);
