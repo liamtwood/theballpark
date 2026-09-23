@@ -66,6 +66,44 @@ gaps, error, created_by, created_at, updated_at. Index on (org_id, created_at DE
 - Server boots (health 200) after each service edit; `node --check` clean on all
   changed server files; `ng build` clean.
 
+## Iteration 2 — cost control + fan-out (2026-09-23, v2.579–v2.581)
+
+Follow-on to the job feature, in the order Liam asked ("Review-zero-AI → cost → fan-out"):
+
+**v2.579 — Review = zero-AI on JSON-LD.** Review made the *same* full Haiku call as
+Full and just stored less (linen Review cost ~50c). `extractReviewFromJsonLd` now
+parses name/price/description straight from the Product JSON-LD (single/Aggregate
+offer); Review uses it first, Haiku only as fallback when a page lacks JSON-LD. Full
+unchanged. Verified: Yahire Review = 0 tokens / free.
+
+**v2.580 — AI cost tracking per job.** `callHaikuJson` returns `usage`; `extractProduct`
+returns `{ data, usage }`; the pull context tallies tokens; the job persists them
+(additive `input_tokens`/`output_tokens`) and `getJob` returns `costUsd` from the
+Haiku 4.5 rate ($1/$5 per MTok, verified from platform.claude.com/docs pricing) held
+as one config constant. Panel shows "AI $0.01" / "AI free". Verified: Review free;
+Full = 5230in/1076out = $0.0106 for one rich item. Cost history is now queryable on
+the job table per supplier/mode/run.
+
+**v2.581 — fan-out ANALYSE (whole-site, zero AI).** The 250-page BFS cap starved a
+whole-site crawl (late sections empty — the linen bug). A homepage Analyse now runs a
+background job (`kind='analyse'`) that enumerates sections (homepage nav ∪ sitemap
+section roots) and crawls EACH with its own full budget, unioning + handle-deduping →
+our own complete index. `startAnalyseJob`/`runAnalyseJob`; `jobToClient` branches by
+kind and returns a report-shaped payload (productLinks + per-section coverage). Route:
+homepage → job, section/product URL → sync (unchanged). Panel detects the async start,
+polls, shows "Scanning N/total sections · X products", and builds the task list on
+done (reattach works for both kinds). No admin DB context needed (writes only the
+job row; never items). **Verified on yahire.com: 18 sections → 468 distinct products
+(vs ~250 capped / 347 sitemap); linen COMPLETE at 39/8 groups incl. round/trestle/
+poseur that both the cap and the sitemap missed; per-section counts sum ~949 → dedup
+468 (double-indexing collapsed by handle).** Additive `kind` column (all schemas).
+
+Note on the sitemap: a full sitemap-driven discovery was built and REVERTED (unshipped)
+— Yahire's sitemap is stale (omits round/trestle/poseur linen children; 15 vs the
+crawl's 39). Neither source is authoritative alone; the fan-out (crawl per section) +
+handle/SKU dedup is what gives complete + de-duplicated coverage. The sitemap is used
+ONLY for the reliable part — enumerating section roots.
+
 ## Follow-ups / notes
 
 - **Concurrency:** the runner still processes URLs sequentially (~5s each). A

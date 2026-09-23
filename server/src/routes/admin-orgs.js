@@ -204,10 +204,19 @@ const ExtractPullBody = z.object({
 });
 
 // POST /api/admin/orgs/:orgId/extract/analyse { url } → the read-only report.
+// A HOMEPAGE (whole-site) analyse fans out over every section as a BACKGROUND job
+// (returns { jobId, async:true } → poll the job route); a section/product URL stays
+// a fast synchronous crawl.
 router.post('/:orgId/extract/analyse', async (req, res, next) => {
   const parsed = ExtractUrlBody.safeParse(req.body || {});
   if (!parsed.success) return res.status(400).json({ error: 'A valid url is required' });
-  try { res.json(await CatalogueExtract.analyse(parsed.data.url)); } catch (err) { next(err); }
+  let isHome = false;
+  try { isHome = new URL(parsed.data.url).pathname.replace(/\/$/, '') === ''; } catch { /* treat as section */ }
+  try {
+    res.json(isHome
+      ? await CatalogueExtract.startAnalyseJob(req.params.orgId, parsed.data.url)
+      : await CatalogueExtract.analyse(parsed.data.url));
+  } catch (err) { next(err); }
 });
 
 // POST /api/admin/orgs/:orgId/extract/prepare { groups[] } → per-group cat/subcat

@@ -53,6 +53,7 @@ const migrate = async () => {
             CREATE TABLE IF NOT EXISTS %I.catalogue_extract_job (
               id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
               org_id uuid NOT NULL,
+              kind text NOT NULL DEFAULT 'pull',   -- 'pull' | 'analyse' (fan-out discovery)
               status text NOT NULL DEFAULT 'running',
               mode text,
               selected integer NOT NULL DEFAULT 0,
@@ -69,7 +70,8 @@ const migrate = async () => {
               updated_at timestamptz NOT NULL DEFAULT now()
             )
           $f$, s);
-          -- Additive columns for tables created before the token tally shipped.
+          -- Additive columns for tables created before these fields shipped.
+          EXECUTE format('ALTER TABLE %I.catalogue_extract_job ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT ''pull''', s);
           EXECUTE format('ALTER TABLE %I.catalogue_extract_job ADD COLUMN IF NOT EXISTS input_tokens integer NOT NULL DEFAULT 0', s);
           EXECUTE format('ALTER TABLE %I.catalogue_extract_job ADD COLUMN IF NOT EXISTS output_tokens integer NOT NULL DEFAULT 0', s);
           EXECUTE format('CREATE INDEX IF NOT EXISTS ix_cat_extract_job_org ON %I.catalogue_extract_job (org_id, created_at DESC)', s);

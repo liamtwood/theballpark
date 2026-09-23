@@ -827,17 +827,40 @@ async function withAdminContext({ orgId, userId }, fn) {
   }
 }
 
-/** Shape a job row for the client — the PullResult fields + live progress/status. */
+/** Shape a job row for the client. Two kinds:
+ *   'pull'    → the PullResult fields + live progress + AI cost.
+ *   'analyse' → a report-shaped payload (productLinks + per-section coverage) so the
+ *               panel can drop straight into its task list when the fan-out finishes. */
 function jobToClient(row) {
   if (!row) return null;
   const progress = row.progress || {};
-  return {
+  const base = {
     jobId: row.id,
+    kind: row.kind || 'pull',
     status: row.status,                 // running | cancelling | cancelled | done | error
+    processed: progress.processed || 0,
+    total: row.total,
+    error: row.error || null,
+    updatedAt: row.updated_at,
+  };
+  if ((row.kind || 'pull') === 'analyse') {
+    const productLinks = (row.plan && row.plan.productLinks) || [];
+    return {
+      ...base,
+      sections: row.results || [],      // [{ section, path, count }] — the coverage map
+      productLinks,
+      // Report-shaped fields the panel consumes when the fan-out completes.
+      url: (row.plan && row.plan.home) || null,
+      pageShape: 'site',
+      pullable: productLinks.length > 0,
+      verdict: `Fan-out scan: ${progress.processed || 0}/${row.total || 0} sections · ${productLinks.length} products found.`,
+      mapped: { itemCount: productLinks.length },
+    };
+  }
+  return {
+    ...base,
     mode: row.mode,
     selected: row.selected,
-    total: row.total,                   // URLs that will be processed (post dedupe+cap)
-    processed: progress.processed || 0,
     created: progress.created || 0,
     skipped: progress.skipped || 0,
     failed: progress.failed || 0,
@@ -847,8 +870,6 @@ function jobToClient(row) {
     inputTokens: row.input_tokens || 0,
     outputTokens: row.output_tokens || 0,
     costUsd: aiCostUsd(row.input_tokens, row.output_tokens),
-    error: row.error || null,
-    updatedAt: row.updated_at,
   };
 }
 
@@ -928,13 +949,118 @@ async function activeJobForOrg(orgId) {
   return jobToClient(r.rows[0]);
 }
 
-/** Request cancel — the runner stops before the next item. Only a running job. */
+/** Request cancel — the runner stops before the next item/section. Only a running job. */
 async function cancelJob(jobId, orgId) {
   const r = await pool.query(
     `UPDATE catalogue_extract_job SET status='cancelling', updated_at=now() WHERE id=$1 AND org_id=$2 AND status='running' RETURNING id`,
     [jobId, orgId],
   );
   return r.rows.length > 0;
+}
+
+// ── Fan-out ANALYSE (pV2-STORE-EXTRACT-JOB-01) ────────────────────────────────
+// A whole-site crawl starves under the 250-page cap (BFS spreads it thin, so late
+// sections come back empty — the linen bug). The fan-out enumerates the top-level
+// sections and crawls EACH with its own full budget, then unions — a complete,
+// correctly-nested index (our own "sitemap") the supplier's own doesn't expose.
+// Zero AI (pure crawl). Runs as a background job with per-section coverage.
+const MAX_ANALYSE_SECTIONS = 60; // guard a pathological site with hundreds of roots.
+
+/** Section roots the site's SITEMAP lists — reliable for the SECTION LIST even
+ *  though it omits deep products (why we crawl each section rather than trust it). */
+async function fetchSitemapSectionRoots(homeUrl) {
+  const origin = new URL(homeUrl).origin;
+  let files = [];
+  try {
+    const { html: robots } = await guardedFetch(origin + '/robots.txt');
+    for (const m of String(robots).matchAll(/^\s*sitemap:\s*(\S+)/gim)) files.push(m[1].trim());
+  } catch { /* no robots — try the conventional path */ }
+  if (!files.length) files = [origin + '/sitemap.xml'];
+  const roots = new Set();
+  const seen = new Set();
+  const queue = [...files];
+  let fetched = 0;
+  while (queue.length && fetched < 20) {
+    const su = queue.shift();
+    if (!su || seen.has(su)) continue;
+    seen.add(su);
+    let xml;
+    try { ({ html: xml } = await guardedFetch(su)); fetched++; } catch { continue; }
+    xml = String(xml || '');
+    const locs = [...xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((m) => m[1]);
+    if (/<sitemapindex/i.test(xml)) {
+      for (const l of locs) if (!/\.gz(\?|$)/i.test(l)) queue.push(l);
+    } else {
+      for (const l of locs) { try { const segs = new URL(l).pathname.split('/').filter(Boolean); if (segs.length >= 1) roots.add('/' + segs[0]); } catch { /* skip */ } }
+    }
+  }
+  return [...roots];
+}
+
+/** The top-level sections to fan out over: homepage nav links ∪ sitemap section
+ *  roots (belt and braces), same-host, non-asset, de-duplicated to depth-1 paths. */
+async function discoverSections(homeUrl) {
+  const host = new URL(homeUrl).host;
+  const roots = new Set();
+  const addPath = (p) => { const segs = String(p).split('/').filter(Boolean); if (segs.length >= 1 && !CRAWL_SKIP.test('/' + segs[0])) roots.add('/' + segs[0]); };
+  try {
+    const { html } = await guardedFetch(homeUrl);
+    for (const m of String(html).matchAll(/href=["']([^"'#]+)["']/gi)) {
+      let abs; try { abs = normUrl(new URL(m[1], homeUrl).toString()); } catch { continue; }
+      try { const u = new URL(abs); if (u.host !== host || CRAWL_SKIP.test(abs) || abs.includes('?')) continue; addPath(u.pathname); } catch { /* skip */ }
+    }
+  } catch { /* homepage unreachable — sitemap may still yield sections */ }
+  try { for (const p of await fetchSitemapSectionRoots(homeUrl)) addPath(p); } catch { /* no sitemap */ }
+  return [...roots];
+}
+
+/** Create a fan-out ANALYSE job + kick the runner; return the job id immediately.
+ *  No admin DB context needed — it writes only the job row (no RLS) and never
+ *  touches items. */
+async function startAnalyseJob(orgId, url) {
+  const plan = { home: normUrl(url), sections: [], productLinks: [] };
+  const r = await pool.query(
+    `INSERT INTO catalogue_extract_job (org_id, kind, status, plan, progress) VALUES ($1, 'analyse', 'running', $2, '{}'::jsonb) RETURNING id`,
+    [orgId, JSON.stringify(plan)],
+  );
+  const jobId = r.rows[0].id;
+  runAnalyseJob(jobId, orgId, plan.home).catch((e) => {
+    pool.query(`UPDATE catalogue_extract_job SET status='error', error=$2, updated_at=now() WHERE id=$1`, [jobId, String(e && e.message || e)]).catch(() => {});
+  });
+  return { jobId, kind: 'analyse', async: true };
+}
+
+/** The runner: crawl each section with its own full budget, unioning + deduping the
+ *  products, persisting per-section coverage + the running product list. */
+async function runAnalyseJob(jobId, orgId, home) {
+  const sections = (await discoverSections(home)).slice(0, MAX_ANALYSE_SECTIONS);
+  await pool.query(
+    `UPDATE catalogue_extract_job SET total=$2, plan=jsonb_set(plan,'{sections}',$3::jsonb), updated_at=now() WHERE id=$1`,
+    [jobId, sections.length, JSON.stringify(sections)],
+  );
+  const found = new Map(); // product handle → url (cross-section dedup)
+  const coverage = [];     // [{ section, path, count }] — the per-section success map
+  const progress = { processed: 0 };
+  for (const section of sections) {
+    if (await isCancelled(jobId)) {
+      await pool.query(`UPDATE catalogue_extract_job SET status='cancelled', updated_at=now() WHERE id=$1`, [jobId]);
+      return;
+    }
+    let products = [];
+    try { ({ products } = await crawlSite(home, CRAWL_MAX_PAGES, section)); } catch { /* section unreachable → 0 */ }
+    for (const u of products) { const h = productHandle(u); if (!found.has(h)) found.set(h, u); }
+    coverage.push({ section: groupLabel(section.replace(/^\//, '')), path: section, count: products.length });
+    progress.processed += 1;
+    const productLinks = [...found.values()];
+    await pool.query(
+      `UPDATE catalogue_extract_job SET progress=$2, results=$3, plan=jsonb_set(plan,'{productLinks}',$4::jsonb), updated_at=now() WHERE id=$1`,
+      [jobId, JSON.stringify(progress), JSON.stringify(coverage), JSON.stringify(productLinks)],
+    );
+  }
+  await pool.query(
+    `UPDATE catalogue_extract_job SET status = CASE WHEN status='cancelling' THEN 'cancelled' ELSE 'done' END, updated_at=now() WHERE id=$1`,
+    [jobId],
+  );
 }
 
 /** Existing item for this org matching the source URL (external_url, the primary
@@ -994,4 +1120,4 @@ function pruneNull(obj) {
   return out;
 }
 
-module.exports = { analyse, prepare, pull, startPull, getJob, activeJobForOrg, cancelJob, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity, extractReviewFromJsonLd } };
+module.exports = { analyse, startAnalyseJob, prepare, pull, startPull, getJob, activeJobForOrg, cancelJob, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity, extractReviewFromJsonLd } };

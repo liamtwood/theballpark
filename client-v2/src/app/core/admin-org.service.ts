@@ -102,11 +102,16 @@ export interface MappingRow { categoryId: string | null; subcategoryId?: string 
  *  plan snapshot counts — the panel polls the job and can re-attach after leaving. */
 export interface PullStart { jobId: string; selected: number; total: number; dropped: number; }
 
+/** A whole-site (homepage) Analyse fans out over sections as a background job and
+ *  returns this instead of a report; the panel polls the job then builds the report. */
+export interface AnalyseJobStart { jobId: string; kind: 'analyse'; async: true; }
+
 /** A background pull job — live status/progress plus the same results/gaps a
  *  finished PullResult carries. Polled while running; terminal when status is
  *  done | cancelled | error. */
 export interface PullJob {
   jobId: string;
+  kind?: 'pull' | 'analyse';
   status: 'running' | 'cancelling' | 'cancelled' | 'done' | 'error';
   mode?: 'review' | 'full';
   selected: number;
@@ -121,6 +126,14 @@ export interface PullJob {
   costUsd?: number;
   gaps?: PullResult['gaps'];
   results: PullResult['results'];
+  // Analyse (fan-out) jobs carry these instead — a report-shaped payload + coverage.
+  productLinks?: string[];
+  sections?: Array<{ section: string; path: string; count: number }>;
+  url?: string;
+  pageShape?: string;
+  pullable?: boolean;
+  verdict?: string;
+  mapped?: { itemCount?: number | null };
   error?: string | null;
   updatedAt?: string;
 }
@@ -173,9 +186,11 @@ export class AdminOrgService {
     return this.api.post<OrgImportPreview>('/api/v2/org-import/preview', { url });
   }
 
-  /** ANALYSE (read-only) — a report on what's pull-able from a supplier page. */
-  extractAnalyse(orgId: string, url: string): Observable<ExtractReport> {
-    return this.api.post<ExtractReport>(`/api/admin/orgs/${orgId}/extract/analyse`, { url });
+  /** ANALYSE — a section/product URL returns a report synchronously; a HOMEPAGE
+   *  (whole-site) URL returns { jobId, async:true } as a background fan-out job to
+   *  poll via extractJob (crawls every section with its own budget). */
+  extractAnalyse(orgId: string, url: string): Observable<ExtractReport | AnalyseJobStart> {
+    return this.api.post<ExtractReport | AnalyseJobStart>(`/api/admin/orgs/${orgId}/extract/analyse`, { url });
   }
 
   /** PREPARE — for the selected groups, get a Ballpark cat/subcat suggestion each

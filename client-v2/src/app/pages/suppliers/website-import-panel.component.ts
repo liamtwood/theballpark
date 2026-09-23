@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
-import { AdminOrgService, CatNode, ExtractReport, MappingRow, PrepareResult, PullResult, PullJob } from '../../core/admin-org.service';
+import { AdminOrgService, CatNode, ExtractReport, MappingRow, PrepareResult, PullResult, PullJob, AnalyseJobStart } from '../../core/admin-org.service';
 import { ImportTreeNodeComponent, TreeNode } from './import-tree-node.component';
 
 /** One editable cat/subcat mapping row in the Prepare step. `subChoice` is a
@@ -191,12 +191,20 @@ interface EditRow {
       @if (job(); as j) {
         @if (j.status === 'running' || j.status === 'cancelling') {
           <div class="mt-3 bp-body-small" style="border-top:1px solid var(--border); padding-top:0.75rem;">
-            <p class="mb-2">
-              <strong>Loading {{ j.processed }} / {{ j.total }}</strong>
-              <span class="text-secondary">· {{ j.created }} created · {{ j.skipped }} skipped · {{ j.failed }} failed@if (j.dropped) { · {{ j.dropped }} dropped }</span>
-              @if (j.costUsd != null) { <span class="text-secondary"> · AI {{ fmtCost(j.costUsd) }}</span> }
-              @if (j.status === 'cancelling') { <span class="text-secondary"> — cancelling…</span> }
-            </p>
+            @if (j.kind === 'analyse') {
+              <p class="mb-2">
+                <strong>{{ j.total ? 'Scanning ' + j.processed + ' / ' + j.total + ' sections' : 'Discovering sections…' }}</strong>
+                <span class="text-secondary">· {{ j.productLinks?.length || 0 }} products found</span>
+                @if (j.status === 'cancelling') { <span class="text-secondary"> — cancelling…</span> }
+              </p>
+            } @else {
+              <p class="mb-2">
+                <strong>Loading {{ j.processed }} / {{ j.total }}</strong>
+                <span class="text-secondary">· {{ j.created }} created · {{ j.skipped }} skipped · {{ j.failed }} failed@if (j.dropped) { · {{ j.dropped }} dropped }</span>
+                @if (j.costUsd != null) { <span class="text-secondary"> · AI {{ fmtCost(j.costUsd) }}</span> }
+                @if (j.status === 'cancelling') { <span class="text-secondary"> — cancelling…</span> }
+              </p>
+            }
             <div style="height:6px; background:var(--color-border-hairline); border-radius:999px; overflow:hidden;">
               <div [style.width.%]="j.total ? (j.processed / j.total) * 100 : 0" style="height:100%; background:var(--theme-accent, #e11d74); transition:width .3s;"></div>
             </div>
@@ -270,14 +278,21 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
   /** Re-attach to a pull that's still running (started before we navigated away). */
   ngOnInit(): void {
     this.admin.extractActiveJob(this.orgId()).subscribe({
-      next: (j) => { if (j && (j.status === 'running' || j.status === 'cancelling')) { this.job.set(j); this.startPolling(j.jobId); } },
+      next: (j) => {
+        if (j && (j.status === 'running' || j.status === 'cancelling')) {
+          this.job.set(j);
+          if (j.kind === 'analyse') this.analyzing.set(true); else this.pulling.set(true);
+          this.startPolling(j.jobId);
+        }
+      },
       error: () => { /* no active job / not reachable — nothing to re-attach */ },
     });
   }
   ngOnDestroy(): void { this.stopPolling(); }
 
   private stopPolling(): void { if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; } }
-  /** Poll the job every 1.5s; on a terminal status settle into the result summary. */
+  /** Poll the job every 1.5s; on a terminal status settle it (pull → result summary,
+   *  analyse → task-list report). Handles both kinds so reattach works either way. */
   private startPolling(jobId: string): void {
     this.stopPolling();
     this.pollTimer = setInterval(() => {
@@ -286,21 +301,37 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
           this.job.set(j);
           if (j.status === 'done' || j.status === 'cancelled' || j.status === 'error') {
             this.stopPolling();
-            this.pulling.set(false);
-            if (j.status === 'error') this.error.set(j.error || 'The import failed.');
-            // Settle into the existing result summary + reload the shop grid.
-            const res: PullResult = {
-              created: j.created, skipped: j.skipped, failed: j.failed, dropped: j.dropped,
-              selected: j.selected, mode: j.mode, gaps: j.gaps, results: j.results,
-              inputTokens: j.inputTokens, outputTokens: j.outputTokens, costUsd: j.costUsd,
-            };
-            this.result.set(res);
-            this.pulled.emit(res);
+            if (j.kind === 'analyse') this.onAnalyseDone(j);
+            else this.onPullDone(j);
           }
         },
         error: () => { /* transient poll error — keep the last known job, try again next tick */ },
       });
     }, 1500);
+  }
+
+  private onPullDone(j: PullJob): void {
+    this.pulling.set(false);
+    if (j.status === 'error') this.error.set(j.error || 'The import failed.');
+    const res: PullResult = {
+      created: j.created, skipped: j.skipped, failed: j.failed, dropped: j.dropped,
+      selected: j.selected, mode: j.mode, gaps: j.gaps, results: j.results,
+      inputTokens: j.inputTokens, outputTokens: j.outputTokens, costUsd: j.costUsd,
+    };
+    this.result.set(res);
+    this.pulled.emit(res);
+  }
+
+  private onAnalyseDone(j: PullJob): void {
+    this.analyzing.set(false);
+    this.job.set(null); // hand the screen over to the task-list report
+    if (j.status === 'error') { this.error.set(j.error || 'The scan failed.'); return; }
+    // 'done' or 'cancelled' both carry whatever products were found → show them.
+    this.applyReport({
+      url: j.url ?? this.url().trim(), pageShape: 'site', pullable: !!j.pullable,
+      verdict: j.verdict ?? '', mapped: j.mapped, productLinks: j.productLinks ?? [],
+      alsoFound: [], sample: null,
+    });
   }
 
   /** Ask the runner to stop before the next item (items already created stay pending). */
@@ -446,20 +477,36 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
     this.error.set(null);
     this.report.set(null);
     this.result.set(null);
+    this.job.set(null);
     this.analyzing.set(true);
     this.admin.extractAnalyse(this.orgId(), url).subscribe({
       next: (r) => {
-        this.report.set(r);
-        // Default-select the whole task list (crawl or listing) so Pull is one click;
-        // start with all category groups collapsed (accordion).
-        this.selected.set(new Set(r.productLinks ?? []));
-        this.expandedCats.set(new Set());
-        this.prepared.set(null);
-        this.rows.set([]);
-        this.analyzing.set(false);
+        if ((r as AnalyseJobStart).async) {
+          // Whole-site fan-out — runs as a background job; seed a running job so the
+          // progress block shows, then poll (report is built when it completes).
+          this.job.set({
+            jobId: (r as AnalyseJobStart).jobId, kind: 'analyse', status: 'running',
+            selected: 0, total: 0, processed: 0, created: 0, skipped: 0, failed: 0,
+            dropped: 0, results: [], productLinks: [], sections: [],
+          });
+          this.startPolling((r as AnalyseJobStart).jobId);
+        } else {
+          this.applyReport(r as ExtractReport);
+          this.analyzing.set(false);
+        }
       },
       error: (e) => { this.error.set(this.msg(e)); this.analyzing.set(false); },
     });
+  }
+
+  /** Adopt an analyse report (sync or fan-out): show the task list, default-select
+   *  everything (Pull is one click), collapse groups, reset any prior Prepare. */
+  private applyReport(r: ExtractReport): void {
+    this.report.set(r);
+    this.selected.set(new Set(r.productLinks ?? []));
+    this.expandedCats.set(new Set());
+    this.prepared.set(null);
+    this.rows.set([]);
   }
 
   protected toggle(link: string): void {
