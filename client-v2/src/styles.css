@@ -2086,6 +2086,11 @@ input.bp-input-field::-webkit-inner-spin-button { -webkit-appearance: none; marg
 /* Focus ring is accent, never the browser-default blue outline. */
 .bp-check:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 1px; }
 .bp-check:disabled { cursor: not-allowed; }
+/* Collapsible edit sections (item editor): full padding when open, compact +
+   smaller heading when collapsed so more fits on one screen. */
+.bp-edit-section { padding: 1.25rem; }
+.bp-edit-section.is-collapsed { padding-top: 0.6rem; padding-bottom: 0.6rem; }
+.bp-edit-section.is-collapsed .bp-edit-section-title { font-size: 0.95rem; }
 /* Extract panel section headings (Analysis Summary / Items Found / Classification):
    a touch larger than the body-small panel text, with a little vertical breathing room. */
 .bp-extract-heading { font-size: 0.95rem; font-weight: 600; color: var(--color-text); margin: 0.9rem 0 0.45rem; }

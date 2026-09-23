@@ -73,7 +73,7 @@ interface ItemForm {
           <div>
           <!-- PRIMARY INFORMATION (open by default) — name + category on one line,
                description, cost. Renamed from "Product" (Liam). -->
-          <div class="bp-card p-5">
+          <div class="bp-card bp-edit-section" [class.is-collapsed]="!sectionOpen('primary')">
             <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('primary')">
               <h3 class="bp-edit-section-title">{{ isModerator() ? 'Review Product' : (isEdit ? 'Primary Information' : 'Add New Product') }}</h3>
               <lucide-icon [name]="sectionOpen('primary') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
@@ -102,7 +102,7 @@ interface ItemForm {
           </div>
 
           <!-- DETAILS (collapsed by default) — the 5 describe-attribute groups. -->
-          <div class="bp-card p-5 mt-4">
+          <div class="bp-card bp-edit-section mt-4" [class.is-collapsed]="!sectionOpen('details')">
             <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('details')">
               <h3 class="bp-edit-section-title">Details</h3>
               <lucide-icon [name]="sectionOpen('details') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
@@ -140,7 +140,7 @@ interface ItemForm {
           </div>
 
           <!-- INSTALLATION (collapsed by default) — its own section (Liam). -->
-          <div class="bp-card p-5 mt-4">
+          <div class="bp-card bp-edit-section mt-4" [class.is-collapsed]="!sectionOpen('installation')">
             <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('installation')">
               <h3 class="bp-edit-section-title">Installation</h3>
               <lucide-icon [name]="sectionOpen('installation') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
@@ -161,7 +161,7 @@ interface ItemForm {
                (Liam), separate from the 5 describe-groups. Editing only; the
                read-only view renders them via app-item-attribute-cards below. -->
           @if (editing()) {
-            <div class="bp-card p-5 mt-4">
+            <div class="bp-card bp-edit-section mt-4" [class.is-collapsed]="!sectionOpen('extras')">
               <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('extras')">
                 <h3 class="bp-edit-section-title">Volume pricing &amp; Options</h3>
                 <lucide-icon [name]="sectionOpen('extras') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
@@ -213,7 +213,7 @@ interface ItemForm {
           <!-- pV2-STORE-TAXONOMY-01 — Classification (collapsed by default) above the
                action buttons (Liam): Category cascade → Subcategory → Sub-subcategory. -->
           @if (isEdit) {
-            <div class="bp-card p-5 mt-4">
+            <div class="bp-card bp-edit-section mt-4" [class.is-collapsed]="!sectionOpen('classification')">
               <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('classification')">
                 <h3 class="bp-edit-section-title">Classification</h3>
                 <lucide-icon [name]="sectionOpen('classification') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
@@ -275,7 +275,7 @@ interface ItemForm {
           <!-- pV2-STORE-ITEM-EDIT-LAYOUT-01 — images live in the right column beside
                the Image Approval Process (moved out of the left to gain room):
                main image large on top, gallery thumbnails below to review. -->
-          <div class="bp-card p-5 self-start">
+          <div class="bp-card bp-edit-section self-start" [class.is-collapsed]="!sectionOpen('images')">
             <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('images')">
               <h3 class="bp-edit-section-title">Images</h3>
               <lucide-icon [name]="sectionOpen('images') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
