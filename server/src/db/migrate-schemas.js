@@ -39,6 +39,41 @@ const migrate = async () => {
     `);
     console.log('  Schemas created: preview, master, shared, marketing, internal');
 
+    // ── 1b. catalogue_extract_job (pV2-STORE-EXTRACT-JOB-01) ─────────────
+    // Background pull jobs for the catalogue extractor. Placed EARLY + idempotent
+    // (this file historically fatals partway on a later statement — BE-00095) so
+    // the table + grants land in ALL env schemas even if a later step aborts.
+    console.log('  Ensuring catalogue_extract_job (all schemas)...');
+    await client.query(`
+      DO $$
+      DECLARE s text;
+      BEGIN
+        FOREACH s IN ARRAY ARRAY['public','preview','master'] LOOP
+          EXECUTE format($f$
+            CREATE TABLE IF NOT EXISTS %I.catalogue_extract_job (
+              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+              org_id uuid NOT NULL,
+              status text NOT NULL DEFAULT 'running',
+              mode text,
+              selected integer NOT NULL DEFAULT 0,
+              total integer NOT NULL DEFAULT 0,
+              plan jsonb NOT NULL DEFAULT '{}'::jsonb,
+              progress jsonb NOT NULL DEFAULT '{}'::jsonb,
+              results jsonb NOT NULL DEFAULT '[]'::jsonb,
+              gaps jsonb NOT NULL DEFAULT '[]'::jsonb,
+              error text,
+              created_by uuid,
+              created_at timestamptz NOT NULL DEFAULT now(),
+              updated_at timestamptz NOT NULL DEFAULT now()
+            )
+          $f$, s);
+          EXECUTE format('CREATE INDEX IF NOT EXISTS ix_cat_extract_job_org ON %I.catalogue_extract_job (org_id, created_at DESC)', s);
+          EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON %I.catalogue_extract_job TO web_app_user', s);
+          EXECUTE format('GRANT ALL ON %I.catalogue_extract_job TO service_role', s);
+        END LOOP;
+      END $$;
+    `);
+
     // ── 2. Create all tables in preview schema ───────────────────────────
     console.log('  Creating preview schema tables...');
     await client.query(`

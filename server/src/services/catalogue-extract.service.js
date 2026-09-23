@@ -12,6 +12,7 @@
 // Admin-gated + preview-first at the ROUTE (admin-orgs.js under /api/admin).
 
 const pool = require('../db/pool');
+const { als } = require('../db/request-context');
 const { guardedFetch } = require('./org-import.service');
 const { analyseCatalogue, extractProduct, classifyGroup: classifyGroupToCategory } = require('./ai.service');
 const ItemService = require('./item.service');
@@ -565,168 +566,326 @@ function dedupeByHandle(urls) {
   return { list: [...best.values()], dropped };
 }
 
-async function pull(orgId, urls, opts = {}) {
-  // Dedup the selection by product handle FIRST (drops "all"/"front-page" copies of a
-  // product that's also in a real collection), then cap — so the cap isn't spent on dups.
-  // Both reductions are RECORDED as 'dropped' result rows so created+skipped+failed+
-  // dropped reconciles against `selected` — nothing leaves the selection untraced.
+/** Build the shared pull context — the state that persists ACROSS the per-URL loop
+ *  (in-pull dedup, gap tally, subcat cache, the AI vocabulary). One per pull/job. */
+async function makePullContext(orgId, opts) {
+  return {
+    orgId,
+    // 'review' = lean triage set (name/description/price/one image); 'full' =
+    // everything mappable. Both capture external_url + _source (dedup) + the gaps.
+    review: opts.mode === 'review',
+    // Prepare-step mapping { groupKey → {categoryId, subcategoryId?, …} } — when
+    // present for a group it's AUTHORITATIVE and the per-item AI classifier is skipped.
+    mapping: opts.mapping && typeof opts.mapping === 'object' ? opts.mapping : {},
+    subcatCache: new Map(),
+    gapMap: new Map(),   // "kind|label" → { label, kind, count, example }
+    seenIds: new Set(),  // in-pull dedup by the stable vendor identity (sku/product id)
+    batch: `extract-${new Date().toISOString().slice(0, 10)}`,
+    categoryNames: await topLevelCategoryNames(), // pass OUR vocabulary to the AI
+  };
+}
+
+/** Plan a pull: dedup by handle + apply the per-pull cap, recording every pre-loop
+ *  drop as a 'dropped' outcome row so created+skipped+failed+dropped reconciles
+ *  against `selected` — nothing leaves the selection untraced (Liam: "20 of 24"). */
+function planPull(urls) {
   const raw = (Array.isArray(urls) ? urls : [urls]).filter(Boolean);
   const { list: deduped, dropped: handleDropped } = dedupeByHandle(raw);
   const list = deduped.slice(0, MAX_PULL_URLS);
   const capDropped = deduped.slice(MAX_PULL_URLS).map((u) => ({ url: u, reason: `over the per-pull cap (${MAX_PULL_URLS}) — pull the rest separately` }));
-  // Pull mode (Liam): 'review' = lean triage set (name/description/price/one image)
-  // for marketplace vetting; 'full' = everything mappable, run after the supplier
-  // contracts. Both still capture external_url + _source (dedup) and the gap list.
-  const review = opts.mode === 'review';
-  // Prepare-step mapping (Liam's step 2): { groupKey → {categoryId, subcategoryId?,
-  // subcategoryName?, isNew?} }. When present for a group, it is AUTHORITATIVE — the
-  // item gets that cat/subcat and the per-item AI classifier is skipped.
-  const mapping = opts.mapping && typeof opts.mapping === 'object' ? opts.mapping : {};
-  const subcatCache = new Map();
-  const batch = `extract-${new Date().toISOString().slice(0, 10)}`;
-  const categoryNames = await topLevelCategoryNames(); // pass OUR vocabulary to the AI
-  // Seed with the pre-loop drops so every selected URL has a visible outcome row.
-  const results = [...handleDropped, ...capDropped].map((d) => ({ url: d.url, status: 'dropped', reason: d.reason }));
-  const gapMap = new Map(); // "kind|label" → { label, kind, count, example }
-  const seenIds = new Set(); // in-pull dedup by the stable vendor identity (sku/product id)
-  for (const url of list) {
-    try {
-      const groupRow = mapping[groupKeyOf(url)] || null; // group keyed off the selected URL
-      const { finalUrl, html } = await guardedFetch(url);
-      const p = await extractProduct(htmlToText(html, finalUrl), finalUrl, categoryNames);
-      const name = (p && typeof p.name === 'string') ? p.name.trim() : '';
-      if (!name) { results.push({ url: finalUrl, status: 'skipped', reason: 'no product found (not a detail page?)' }); continue; }
+  const droppedRows = [...handleDropped, ...capDropped].map((d) => ({ url: d.url, status: 'dropped', reason: d.reason }));
+  return { selected: raw.length, list, droppedRows };
+}
 
-      // Stable vendor identity, parsed deterministically from structured data (not the
-      // AI): the SKU/id is the vendor's + agent's key AND the reliable dedup key.
-      const identity = extractIdentity(html, finalUrl);
-      const sku = identity.sku || (p.sku ? String(p.sku).trim() : null);
-      const productId = identity.productId;
-      const idKey = productId || sku || identity.handle;
-      if (idKey && seenIds.has(idKey)) { results.push({ url: finalUrl, status: 'skipped', reason: 'duplicate in selection' }); continue; }
-      if (idKey) seenIds.add(idKey);
-      const dupe = await findExisting(orgId, finalUrl, sku, productId);
-      if (dupe) { results.push({ url: finalUrl, status: 'skipped', reason: 'already imported', itemId: dupe }); continue; }
+/** Extract + create ONE product. Returns a single outcome row and mutates the shared
+ *  ctx (gap tally, in-pull id dedup). Never throws — errors become an 'error' row. */
+async function processUrl(ctx, url) {
+  try {
+    const groupRow = ctx.mapping[groupKeyOf(url)] || null; // group keyed off the selected URL
+    const { finalUrl, html } = await guardedFetch(url);
+    const p = await extractProduct(htmlToText(html, finalUrl), finalUrl, ctx.categoryNames);
+    const name = (p && typeof p.name === 'string') ? p.name.trim() : '';
+    if (!name) return { url: finalUrl, status: 'skipped', reason: 'no product found (not a detail page?)' };
 
-      // Gap report: data present on the page with no home in our model. Aggregated
-      // across the imported items → "couldn't store yet: X (12 items)". Free — it
-      // rides on the extract call we already made. (See noHome in PULL_SYSTEM.)
-      for (const g of (Array.isArray(p.noHome) ? p.noHome : [])) {
-        const label = String(g?.label ?? '').trim();
-        if (!label) continue;
-        const kind = String(g?.kind ?? 'other').trim().toLowerCase() || 'other';
-        const key = `${kind}|${label.toLowerCase()}`;
-        const hit = gapMap.get(key) || { label, kind, count: 0, example: String(g?.value ?? '').trim() || null };
-        hit.count += 1;
-        gapMap.set(key, hit);
-      }
+    // Stable vendor identity, parsed deterministically from structured data (not the
+    // AI): the SKU/id is the vendor's + agent's key AND the reliable dedup key.
+    const identity = extractIdentity(html, finalUrl);
+    const sku = identity.sku || (p.sku ? String(p.sku).trim() : null);
+    const productId = identity.productId;
+    const idKey = productId || sku || identity.handle;
+    if (idKey && ctx.seenIds.has(idKey)) return { url: finalUrl, status: 'skipped', reason: 'duplicate in selection' };
+    if (idKey) ctx.seenIds.add(idKey);
+    const dupe = await findExisting(ctx.orgId, finalUrl, sku, productId);
+    if (dupe) return { url: finalUrl, status: 'skipped', reason: 'already imported', itemId: dupe };
 
-      // attributes = the canonical groups (pV2-STORE-ATTRIBUTE-GROUPS-01) +
-      // options {name,price} + price_tiers[] + the INTERNAL _source block. Each
-      // descriptive group is [{label,value}]; empty groups are omitted.
-      const attributes = {};
-      const groups = routeAttributes(p.attributes);
-      for (const k of GROUP_KEYS) { if (groups[k].length) attributes[k] = groups[k]; }
-      // Selectable priced choices → options [{name, price}] (additive delta). No
-      // longer child items — the option list lives on the parent item.
-      const options = (Array.isArray(p.options) ? p.options : [])
-        .map((o) => ({ name: String(o?.name ?? '').trim(), price: toNumber(o?.price ?? o?.upcharge) || 0 }))
-        .filter((o) => o.name);
-      if (options.length) attributes.options = options;
-      if (Array.isArray(p.priceTiers) && p.priceTiers.length) {
-        // Canonical tier shape is { min, max, price } (item-edit + line-pricing).
-        // Sort by lower threshold and DERIVE each upper bound from the next tier's
-        // min − 1 (last tier open-ended) so ranges never overlap, even if the model
-        // returned min=1 for every tier or omitted max.
-        const tiers = p.priceTiers
-          .map((t) => ({ min: toNumber(t.min ?? t.minQty), price: toNumber(t.price) }))
-          .filter((t) => t.min != null && t.price != null)
-          .sort((a, b) => a.min - b.min);
-        tiers.forEach((t, i) => { t.max = i < tiers.length - 1 ? tiers[i + 1].min - 1 : null; });
-        if (tiers.length) attributes.price_tiers = tiers;
-      }
-      // Internal source-identity block (_ prefix → item view/editor skip it).
-      // The PRIMARY source URL lives in the dedicated items.external_url column
-      // (below) — the dedup/delta key; the other stable ids live here.
-      const supplierRef = p.supplier_ref ? String(p.supplier_ref).trim() : null;
-      attributes._source = pruneNull({
-        sku, // deterministic vendor SKU (structured data), else the AI's guess
-        product_id: productId || (p.product_id ? String(p.product_id).trim() : null),
-        handle: identity.handle,
-        supplier_ref: supplierRef,
-        extracted_at: new Date().toISOString(), batch,
-      });
-      // Visible "Identifiers" group — all ids we found (a product may carry several).
-      const idRows = [...(identity.ids || [])];
-      if (supplierRef && !idRows.some((r) => r.value === supplierRef)) idRows.push({ label: 'Supplier Ref', value: supplierRef });
-      if (idRows.length) attributes.ids = idRows;
-
-      let images = (Array.isArray(p.images) ? p.images : [])
-        .map((u) => absolutize(u, finalUrl)).filter(Boolean)
-        .map((u, i) => ({ url: u, is_hero: i === 0 }));
-      // Image extraction is non-deterministic — when the AI returned none, fall
-      // back to the first product-looking image on the page so the item lands
-      // with a photo instead of the placeholder (Liam, v2.531).
-      if (!images.length) {
-        const cand = collectImageUrls(html, finalUrl).filter(isProductImage);
-        if (cand.length) images = [{ url: cand[0], is_hero: true }];
-      }
-
-      // Review mode: keep the lean vetting set only. attributes narrows to the
-      // internal _source block (so re-run dedup still works); images to the hero;
-      // install/lead-time dropped. base_price + category stay — needed to review.
-      // Review keeps the lean set, but ALWAYS carries _source + the ids group (the
-      // vendor/agent key must survive even a triage load).
-      const reviewAttrs = {};
-      if (attributes._source) reviewAttrs._source = attributes._source;
-      if (attributes.ids) reviewAttrs.ids = attributes.ids;
-      // Category + subcategory: if this group has a Prepare mapping, it's authoritative
-      // (all items in the supplier's group get the SAME cat/subcat, creating a new
-      // subcat if the mapping asked for one) and we skip the per-item AI classifier.
-      // No mapping → fall back to the AI's per-item guess + the default 'Other'.
-      let categoryId, subcategoryId = null, skipClassify = false;
-      if (groupRow && groupRow.categoryId) {
-        const resolved = await resolveMappingRow(groupRow, subcatCache);
-        categoryId = resolved.categoryId || (await defaultCategoryId());
-        subcategoryId = resolved.subcategoryId;
-        skipClassify = true;
-      } else {
-        categoryId = (await matchCategoryId(p.category)) || (await defaultCategoryId());
-      }
-      const item = await ItemService.createForOrg({
-        data: {
-          name,
-          base_price: toNumber(p.base_price),
-          description: typeof p.description === 'string' ? p.description.trim() : null,
-          unit: p.unit || 'each',
-          // Map to REAL columns when the model found them (homes exist in the model);
-          // only spec key:values with no column fall to the attributes bag.
-          install_description: review ? null : (typeof p.install_description === 'string' ? p.install_description.trim() : null),
-          install_cost: review ? null : toNumber(p.install_cost),
-          lead_time_days: review ? null : toNumber(p.lead_time_days),
-          external_url: finalUrl, // PRIMARY source URL — dedup/delta key
-          category_id: categoryId,
-          subcategory_id: subcategoryId,
-          attributes: review ? reviewAttrs : attributes,
-          images: review ? images.slice(0, 1) : images,
-        },
-        orgId,
-        defaultStatus: 'pending',
-        skipClassify,
-      });
-
-      results.push({ url: finalUrl, status: 'created', itemId: item.id, name: item.name, optionCount: review ? 0 : options.length });
-    } catch (err) {
-      results.push({ url, status: 'error', reason: err.message });
+    // Gap report: data present on the page with no home in our model. Aggregated
+    // across the imported items → "couldn't store yet: X (12 items)". Free — it
+    // rides on the extract call we already made. (See noHome in PULL_SYSTEM.)
+    for (const g of (Array.isArray(p.noHome) ? p.noHome : [])) {
+      const label = String(g?.label ?? '').trim();
+      if (!label) continue;
+      const kind = String(g?.kind ?? 'other').trim().toLowerCase() || 'other';
+      const key = `${kind}|${label.toLowerCase()}`;
+      const hit = ctx.gapMap.get(key) || { label, kind, count: 0, example: String(g?.value ?? '').trim() || null };
+      hit.count += 1;
+      ctx.gapMap.set(key, hit);
     }
+
+    // attributes = the canonical groups (pV2-STORE-ATTRIBUTE-GROUPS-01) +
+    // options {name,price} + price_tiers[] + the INTERNAL _source block. Each
+    // descriptive group is [{label,value}]; empty groups are omitted.
+    const attributes = {};
+    const groups = routeAttributes(p.attributes);
+    for (const k of GROUP_KEYS) { if (groups[k].length) attributes[k] = groups[k]; }
+    // Selectable priced choices → options [{name, price}] (additive delta). No
+    // longer child items — the option list lives on the parent item.
+    const options = (Array.isArray(p.options) ? p.options : [])
+      .map((o) => ({ name: String(o?.name ?? '').trim(), price: toNumber(o?.price ?? o?.upcharge) || 0 }))
+      .filter((o) => o.name);
+    if (options.length) attributes.options = options;
+    if (Array.isArray(p.priceTiers) && p.priceTiers.length) {
+      // Canonical tier shape is { min, max, price } (item-edit + line-pricing).
+      // Sort by lower threshold and DERIVE each upper bound from the next tier's
+      // min − 1 (last tier open-ended) so ranges never overlap, even if the model
+      // returned min=1 for every tier or omitted max.
+      const tiers = p.priceTiers
+        .map((t) => ({ min: toNumber(t.min ?? t.minQty), price: toNumber(t.price) }))
+        .filter((t) => t.min != null && t.price != null)
+        .sort((a, b) => a.min - b.min);
+      tiers.forEach((t, i) => { t.max = i < tiers.length - 1 ? tiers[i + 1].min - 1 : null; });
+      if (tiers.length) attributes.price_tiers = tiers;
+    }
+    // Internal source-identity block (_ prefix → item view/editor skip it).
+    // The PRIMARY source URL lives in the dedicated items.external_url column
+    // (below) — the dedup/delta key; the other stable ids live here.
+    const supplierRef = p.supplier_ref ? String(p.supplier_ref).trim() : null;
+    attributes._source = pruneNull({
+      sku, // deterministic vendor SKU (structured data), else the AI's guess
+      product_id: productId || (p.product_id ? String(p.product_id).trim() : null),
+      handle: identity.handle,
+      supplier_ref: supplierRef,
+      extracted_at: new Date().toISOString(), batch: ctx.batch,
+    });
+    // Visible "Identifiers" group — all ids we found (a product may carry several).
+    const idRows = [...(identity.ids || [])];
+    if (supplierRef && !idRows.some((r) => r.value === supplierRef)) idRows.push({ label: 'Supplier Ref', value: supplierRef });
+    if (idRows.length) attributes.ids = idRows;
+
+    let images = (Array.isArray(p.images) ? p.images : [])
+      .map((u) => absolutize(u, finalUrl)).filter(Boolean)
+      .map((u, i) => ({ url: u, is_hero: i === 0 }));
+    // Image extraction is non-deterministic — when the AI returned none, fall
+    // back to the first product-looking image on the page so the item lands
+    // with a photo instead of the placeholder (Liam, v2.531).
+    if (!images.length) {
+      const cand = collectImageUrls(html, finalUrl).filter(isProductImage);
+      if (cand.length) images = [{ url: cand[0], is_hero: true }];
+    }
+
+    // Review mode: keep the lean vetting set only. attributes narrows to the
+    // internal _source block (so re-run dedup still works); images to the hero;
+    // install/lead-time dropped. base_price + category stay — needed to review.
+    // Review keeps the lean set, but ALWAYS carries _source + the ids group (the
+    // vendor/agent key must survive even a triage load).
+    const reviewAttrs = {};
+    if (attributes._source) reviewAttrs._source = attributes._source;
+    if (attributes.ids) reviewAttrs.ids = attributes.ids;
+    // Category + subcategory: if this group has a Prepare mapping, it's authoritative
+    // (all items in the supplier's group get the SAME cat/subcat, creating a new
+    // subcat if the mapping asked for one) and we skip the per-item AI classifier.
+    // No mapping → fall back to the AI's per-item guess + the default 'Other'.
+    let categoryId, subcategoryId = null, skipClassify = false;
+    if (groupRow && groupRow.categoryId) {
+      const resolved = await resolveMappingRow(groupRow, ctx.subcatCache);
+      categoryId = resolved.categoryId || (await defaultCategoryId());
+      subcategoryId = resolved.subcategoryId;
+      skipClassify = true;
+    } else {
+      categoryId = (await matchCategoryId(p.category)) || (await defaultCategoryId());
+    }
+    const item = await ItemService.createForOrg({
+      data: {
+        name,
+        base_price: toNumber(p.base_price),
+        description: typeof p.description === 'string' ? p.description.trim() : null,
+        unit: p.unit || 'each',
+        // Map to REAL columns when the model found them (homes exist in the model);
+        // only spec key:values with no column fall to the attributes bag.
+        install_description: ctx.review ? null : (typeof p.install_description === 'string' ? p.install_description.trim() : null),
+        install_cost: ctx.review ? null : toNumber(p.install_cost),
+        lead_time_days: ctx.review ? null : toNumber(p.lead_time_days),
+        external_url: finalUrl, // PRIMARY source URL — dedup/delta key
+        category_id: categoryId,
+        subcategory_id: subcategoryId,
+        attributes: ctx.review ? reviewAttrs : attributes,
+        images: ctx.review ? images.slice(0, 1) : images,
+      },
+      orgId: ctx.orgId,
+      defaultStatus: 'pending',
+      skipClassify,
+    });
+
+    return { url: finalUrl, status: 'created', itemId: item.id, name: item.name, optionCount: ctx.review ? 0 : options.length };
+  } catch (err) {
+    return { url, status: 'error', reason: err.message };
   }
-  const created = results.filter((r) => r.status === 'created').length;
-  const skipped = results.filter((r) => r.status === 'skipped').length;
-  const failed = results.filter((r) => r.status === 'error').length;
-  const dropped = results.filter((r) => r.status === 'dropped').length;
-  const gaps = [...gapMap.values()].sort((a, b) => b.count - a.count);
-  // selected = what the caller asked for; the four outcome counts sum to it.
-  return { created, skipped, failed, dropped, selected: raw.length, mode: review ? 'review' : 'full', gaps, results };
+}
+
+/** Tally outcome rows + the gap report into the summary the client renders. */
+function summarizePull(ctx, results, selected) {
+  const count = (s) => results.filter((r) => r.status === s).length;
+  return {
+    created: count('created'), skipped: count('skipped'), failed: count('error'), dropped: count('dropped'),
+    selected, mode: ctx.review ? 'review' : 'full',
+    gaps: [...ctx.gapMap.values()].sort((a, b) => b.count - a.count),
+    results,
+  };
+}
+
+/** Synchronous pull — kept for a single detail page / small selection where waiting
+ *  is fine. Whole-catalogue pulls go through the background job (startPull) instead. */
+async function pull(orgId, urls, opts = {}) {
+  const { selected, list, droppedRows } = planPull(urls);
+  const ctx = await makePullContext(orgId, opts);
+  const results = [...droppedRows];
+  for (const url of list) results.push(await processUrl(ctx, url));
+  return summarizePull(ctx, results, selected);
+}
+
+// ── Background PULL jobs (pV2-STORE-EXTRACT-JOB-01) ────────────────────────────
+// A whole-catalogue pull is minutes long — too long for one HTTP request, and the
+// admin may navigate away. So a pull becomes a JOB row: the plan (deduped URL list
+// + mapping) is snapshotted BEFORE any work, an in-process runner processes it,
+// persisting progress per item, and the panel polls (re-attaching on return). A
+// cancel flag stops it cleanly between items; items already created stay pending.
+
+/** Run `fn` with a PINNED DB client carrying the admin GUCs (app.is_admin='t' +
+ *  org/user), so the DETACHED runner's writes satisfy the same RLS the admin
+ *  REQUEST did — the request's own pinned client (middleware/request-context.js)
+ *  is released once the HTTP response ends, so a fire-and-forget task must
+ *  re-establish the context. Legitimate: startPull is only reachable through the
+ *  admin gate. pool.js prefers ctx.client for every query, so createForOrg's
+ *  insert + our job writes all carry the admin context. RESET ALL on the way out. */
+async function withAdminContext({ orgId, userId }, fn) {
+  const client = await pool.connect();
+  const ctx = { userId: userId || null, orgId: orgId || null, isAdmin: true, client };
+  try {
+    await client.query(
+      "SELECT set_config('app.current_org_id',$1,false), set_config('app.current_user_id',$2,false), set_config('app.is_admin','t',false)",
+      [ctx.orgId, ctx.userId],
+    );
+    return await als.run(ctx, fn);
+  } finally {
+    await client.query('RESET ALL').catch(() => {});
+    client.release();
+  }
+}
+
+/** Shape a job row for the client — the PullResult fields + live progress/status. */
+function jobToClient(row) {
+  if (!row) return null;
+  const progress = row.progress || {};
+  return {
+    jobId: row.id,
+    status: row.status,                 // running | cancelling | cancelled | done | error
+    mode: row.mode,
+    selected: row.selected,
+    total: row.total,                   // URLs that will be processed (post dedupe+cap)
+    processed: progress.processed || 0,
+    created: progress.created || 0,
+    skipped: progress.skipped || 0,
+    failed: progress.failed || 0,
+    dropped: (row.plan?.dropped || []).length,
+    gaps: row.gaps || [],
+    results: row.results || [],
+    error: row.error || null,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function loadPlan(jobId) {
+  const r = await pool.query(`SELECT plan FROM catalogue_extract_job WHERE id = $1`, [jobId]);
+  const plan = r.rows[0]?.plan || {};
+  return { list: plan.list || [], dropped: plan.dropped || [], mapping: plan.mapping || {} };
+}
+async function isCancelled(jobId) {
+  const r = await pool.query(`SELECT status FROM catalogue_extract_job WHERE id = $1`, [jobId]);
+  return r.rows[0]?.status === 'cancelling';
+}
+
+/** Create the job (plan snapshot) + kick off the runner; return the job id at once. */
+async function startPull(orgId, urls, opts = {}, createdBy = null) {
+  const { selected, list, droppedRows } = planPull(urls);
+  const plan = { list, dropped: droppedRows, mapping: opts.mapping && typeof opts.mapping === 'object' ? opts.mapping : {} };
+  const progress = { processed: 0, created: 0, skipped: 0, failed: 0 };
+  const r = await pool.query(
+    `INSERT INTO catalogue_extract_job (org_id, status, mode, selected, total, plan, progress, results, created_by)
+     VALUES ($1, 'running', $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+    [orgId, opts.mode === 'review' ? 'review' : 'full', selected, list.length,
+     JSON.stringify(plan), JSON.stringify(progress), JSON.stringify(droppedRows), createdBy],
+  );
+  const jobId = r.rows[0].id;
+  // Fire-and-forget — the HTTP response returns now; the runner outlives the request,
+  // so it re-establishes the admin DB context (the request's is gone) for its writes.
+  withAdminContext({ orgId, userId: createdBy }, () => runJob(jobId, orgId, opts)).catch((e) => {
+    pool.query(`UPDATE catalogue_extract_job SET status='error', error=$2, updated_at=now() WHERE id=$1`, [jobId, String(e && e.message || e)]).catch(() => {});
+  });
+  return { jobId, selected, total: list.length, dropped: droppedRows.length };
+}
+
+/** The runner: process the planned URLs one at a time, persisting progress + results
+ *  after each, and stopping cleanly when the job is cancelled. */
+async function runJob(jobId, orgId, opts) {
+  const ctx = await makePullContext(orgId, opts);
+  const plan = await loadPlan(jobId);
+  const results = [...plan.dropped];
+  const progress = { processed: 0, created: 0, skipped: 0, failed: 0 };
+  for (const url of plan.list) {
+    if (await isCancelled(jobId)) {
+      await pool.query(`UPDATE catalogue_extract_job SET status='cancelled', updated_at=now() WHERE id=$1`, [jobId]);
+      return;
+    }
+    const row = await processUrl(ctx, url);
+    results.push(row);
+    progress.processed += 1;
+    if (row.status === 'created') progress.created += 1;
+    else if (row.status === 'skipped') progress.skipped += 1;
+    else if (row.status === 'error') progress.failed += 1;
+    const gaps = [...ctx.gapMap.values()].sort((a, b) => b.count - a.count);
+    await pool.query(
+      `UPDATE catalogue_extract_job SET progress=$2, results=$3, gaps=$4, updated_at=now() WHERE id=$1`,
+      [jobId, JSON.stringify(progress), JSON.stringify(results), JSON.stringify(gaps)],
+    );
+  }
+  // A cancel that lands after the last item still resolves to 'cancelled'; else 'done'.
+  await pool.query(
+    `UPDATE catalogue_extract_job SET status = CASE WHEN status='cancelling' THEN 'cancelled' ELSE 'done' END, updated_at=now() WHERE id=$1`,
+    [jobId],
+  );
+}
+
+/** Poll target — one job by id, scoped to its org. */
+async function getJob(jobId, orgId) {
+  const r = await pool.query(`SELECT * FROM catalogue_extract_job WHERE id = $1 AND org_id = $2`, [jobId, orgId]);
+  return jobToClient(r.rows[0]);
+}
+
+/** The org's most recent still-running job — for the panel to re-attach on return. */
+async function activeJobForOrg(orgId) {
+  const r = await pool.query(
+    `SELECT * FROM catalogue_extract_job WHERE org_id = $1 AND status IN ('running','cancelling') ORDER BY created_at DESC LIMIT 1`,
+    [orgId],
+  );
+  return jobToClient(r.rows[0]);
+}
+
+/** Request cancel — the runner stops before the next item. Only a running job. */
+async function cancelJob(jobId, orgId) {
+  const r = await pool.query(
+    `UPDATE catalogue_extract_job SET status='cancelling', updated_at=now() WHERE id=$1 AND org_id=$2 AND status='running' RETURNING id`,
+    [jobId, orgId],
+  );
+  return r.rows.length > 0;
 }
 
 /** Existing item for this org matching the source URL (external_url, the primary
@@ -786,4 +945,4 @@ function pruneNull(obj) {
   return out;
 }
 
-module.exports = { analyse, prepare, pull, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity } };
+module.exports = { analyse, prepare, pull, startPull, getJob, activeJobForOrg, cancelJob, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity } };

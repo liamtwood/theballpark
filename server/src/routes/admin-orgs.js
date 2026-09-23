@@ -196,7 +196,9 @@ const MappingRow = z.object({
   newParentId: z.string().uuid().nullable().optional(), // parent for a new 3rd-level node (the L2)
 });
 const ExtractPullBody = z.object({
-  urls: z.array(z.string().trim().url()).min(1).max(100),
+  // Allow a large selection — the service caps processing at MAX_PULL_URLS and
+  // reports the overflow as 'dropped' rows (visible), rather than a hard 400.
+  urls: z.array(z.string().trim().url()).min(1).max(500),
   mode: z.enum(['review', 'full']).optional(),
   mapping: z.record(z.string(), MappingRow).optional(),
 });
@@ -216,13 +218,38 @@ router.post('/:orgId/extract/prepare', async (req, res, next) => {
   try { res.json(await CatalogueExtract.prepare(parsed.data.groups)); } catch (err) { next(err); }
 });
 
-// POST /api/admin/orgs/:orgId/extract/pull { urls[], mode?, mapping? } → create pending items.
+// POST /api/admin/orgs/:orgId/extract/pull { urls[], mode?, mapping? } → START a
+// background pull job (a whole catalogue takes minutes). Returns the job id at once;
+// the client polls the job route below and can re-attach after leaving the page.
 router.post('/:orgId/extract/pull', async (req, res, next) => {
   const parsed = ExtractPullBody.safeParse(req.body || {});
-  if (!parsed.success) return res.status(400).json({ error: 'urls (1-100 valid URLs) are required' });
+  if (!parsed.success) return res.status(400).json({ error: 'urls (1-500 valid URLs) are required' });
   try {
-    res.json(await CatalogueExtract.pull(req.params.orgId, parsed.data.urls, { mode: parsed.data.mode, mapping: parsed.data.mapping }));
+    res.json(await CatalogueExtract.startPull(req.params.orgId, parsed.data.urls, { mode: parsed.data.mode, mapping: parsed.data.mapping }, req.user?.id || null));
   } catch (err) { next(err); }
+});
+
+// GET /api/admin/orgs/:orgId/extract/job → the org's active (running) pull job, or
+// null — the panel calls this on load to re-attach to a pull started earlier.
+router.get('/:orgId/extract/job', async (req, res, next) => {
+  try { res.json(await CatalogueExtract.activeJobForOrg(req.params.orgId)); } catch (err) { next(err); }
+});
+
+// GET /api/admin/orgs/:orgId/extract/job/:jobId → poll one job (status/progress/results).
+router.get('/:orgId/extract/job/:jobId', async (req, res, next) => {
+  if (!z.string().uuid().safeParse(req.params.jobId).success) return res.status(400).json({ error: 'Invalid job id' });
+  try {
+    const job = await CatalogueExtract.getJob(req.params.jobId, req.params.orgId);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    res.json(job);
+  } catch (err) { next(err); }
+});
+
+// POST /api/admin/orgs/:orgId/extract/job/:jobId/cancel → request cancel; the runner
+// stops before the next item. Items already created stay pending.
+router.post('/:orgId/extract/job/:jobId/cancel', async (req, res, next) => {
+  if (!z.string().uuid().safeParse(req.params.jobId).success) return res.status(400).json({ error: 'Invalid job id' });
+  try { res.json({ cancelling: await CatalogueExtract.cancelJob(req.params.jobId, req.params.orgId) }); } catch (err) { next(err); }
 });
 
 module.exports = router;

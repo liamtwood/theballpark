@@ -98,6 +98,30 @@ export interface PrepareResult { categories: CatNode[]; groups: PrepareGroup[]; 
 /** A confirmed cat/subcat mapping row sent to Pull, keyed by group. */
 export interface MappingRow { categoryId: string | null; subcategoryId?: string | null; subcategoryName?: string; isNew?: boolean; newParentId?: string | null; }
 
+/** Starting a pull now returns a JOB id (the pull runs in the background) + the
+ *  plan snapshot counts — the panel polls the job and can re-attach after leaving. */
+export interface PullStart { jobId: string; selected: number; total: number; dropped: number; }
+
+/** A background pull job — live status/progress plus the same results/gaps a
+ *  finished PullResult carries. Polled while running; terminal when status is
+ *  done | cancelled | error. */
+export interface PullJob {
+  jobId: string;
+  status: 'running' | 'cancelling' | 'cancelled' | 'done' | 'error';
+  mode?: 'review' | 'full';
+  selected: number;
+  total: number;
+  processed: number;
+  created: number;
+  skipped: number;
+  failed: number;
+  dropped: number;
+  gaps?: PullResult['gaps'];
+  results: PullResult['results'];
+  error?: string | null;
+  updatedAt?: string;
+}
+
 export interface PullResult {
   created: number;
   skipped: number;
@@ -153,15 +177,30 @@ export class AdminOrgService {
     return this.api.post<PrepareResult>(`/api/admin/orgs/${orgId}/extract/prepare`, { groups });
   }
 
-  /** PULL — create pending items on the org from these product URLs.
-   *  mode 'review' = lean vetting set (name/description/price/one image);
-   *  'full' = everything mappable (after the supplier contracts). mapping =
-   *  confirmed cat/subcat per group key (authoritative; skips the AI classifier). */
+  /** PULL — START a background job that creates pending items from these product
+   *  URLs. Returns the job id at once (a whole catalogue takes minutes); poll with
+   *  extractJob. mode 'review' = lean vetting set; 'full' = everything mappable.
+   *  mapping = confirmed cat/subcat per group key (authoritative; skips the AI). */
   extractPull(
     orgId: string, urls: string[], mode: 'review' | 'full' = 'full',
     mapping?: Record<string, MappingRow>,
-  ): Observable<PullResult> {
-    return this.api.post<PullResult>(`/api/admin/orgs/${orgId}/extract/pull`, { urls, mode, mapping });
+  ): Observable<PullStart> {
+    return this.api.post<PullStart>(`/api/admin/orgs/${orgId}/extract/pull`, { urls, mode, mapping });
+  }
+
+  /** Poll one pull job's live status/progress/results. */
+  extractJob(orgId: string, jobId: string): Observable<PullJob> {
+    return this.api.get<PullJob>(`/api/admin/orgs/${orgId}/extract/job/${jobId}`);
+  }
+
+  /** The org's active (running) pull job, or null — for re-attaching on return. */
+  extractActiveJob(orgId: string): Observable<PullJob | null> {
+    return this.api.get<PullJob | null>(`/api/admin/orgs/${orgId}/extract/job`);
+  }
+
+  /** Request cancel — the runner stops before the next item; created items stay. */
+  extractCancel(orgId: string, jobId: string): Observable<{ cancelling: boolean }> {
+    return this.api.post<{ cancelling: boolean }>(`/api/admin/orgs/${orgId}/extract/job/${jobId}/cancel`, {});
   }
 
   /** Admin soft-delete of an item on another org (cascades to its option children

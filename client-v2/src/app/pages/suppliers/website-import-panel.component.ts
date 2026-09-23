@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
-import { AdminOrgService, CatNode, ExtractReport, MappingRow, PrepareResult, PullResult } from '../../core/admin-org.service';
+import { AdminOrgService, CatNode, ExtractReport, MappingRow, PrepareResult, PullResult, PullJob } from '../../core/admin-org.service';
 import { ImportTreeNodeComponent, TreeNode } from './import-tree-node.component';
 
 /** One editable cat/subcat mapping row in the Prepare step. `subChoice` is a
@@ -173,8 +173,8 @@ interface EditRow {
                 </label>
               </div>
               <div class="mt-4">
-                <button type="button" class="bp-btn-grad" [disabled]="pulling()" (click)="pull()">
-                  {{ pulling() ? 'Loading…' : 'Load ' + selected().size + ' selected' }}
+                <button type="button" class="bp-btn-grad" [disabled]="pulling() || jobRunning()" (click)="pull()">
+                  {{ (pulling() || jobRunning()) ? 'Loading…' : 'Load ' + selected().size + ' selected' }}
                 </button>
                 <button type="button" class="bp-caption ml-3" style="text-decoration:underline;" (click)="backToSelection()">Back to selection</button>
               </div>
@@ -184,6 +184,27 @@ interface EditRow {
           }
         </div>
        }
+      }
+
+      <!-- Live background-job progress: survives leaving the page (re-attaches on
+           return), with a Cancel that stops the runner before the next item. -->
+      @if (job(); as j) {
+        @if (j.status === 'running' || j.status === 'cancelling') {
+          <div class="mt-3 bp-body-small" style="border-top:1px solid var(--border); padding-top:0.75rem;">
+            <p class="mb-2">
+              <strong>Loading {{ j.processed }} / {{ j.total }}</strong>
+              <span class="text-secondary">· {{ j.created }} created · {{ j.skipped }} skipped · {{ j.failed }} failed@if (j.dropped) { · {{ j.dropped }} dropped }</span>
+              @if (j.status === 'cancelling') { <span class="text-secondary"> — cancelling…</span> }
+            </p>
+            <div style="height:6px; background:var(--color-border-hairline); border-radius:999px; overflow:hidden;">
+              <div [style.width.%]="j.total ? (j.processed / j.total) * 100 : 0" style="height:100%; background:var(--theme-accent, #e11d74); transition:width .3s;"></div>
+            </div>
+            <p class="bp-caption mt-2 text-secondary">Runs in the background — you can leave this page and come back; it keeps going.</p>
+            <button type="button" class="bp-btn-outline mt-3" [disabled]="j.status === 'cancelling'" (click)="cancel()">
+              {{ j.status === 'cancelling' ? 'Cancelling…' : 'Cancel' }}
+            </button>
+          </div>
+        }
       }
 
       @if (result(); as res) {
@@ -222,7 +243,7 @@ interface EditRow {
     </div>
   `,
 })
-export class WebsiteImportPanelComponent {
+export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
   private readonly admin = inject(AdminOrgService);
 
   /** The org (supplier) to import into. */
@@ -237,6 +258,58 @@ export class WebsiteImportPanelComponent {
   protected readonly result = signal<PullResult | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly selected = signal<Set<string>>(new Set());
+  /** The background pull job — polled while running, terminal on done/cancelled/error. */
+  protected readonly job = signal<PullJob | null>(null);
+  protected readonly jobRunning = computed(() => {
+    const j = this.job();
+    return !!j && (j.status === 'running' || j.status === 'cancelling');
+  });
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** Re-attach to a pull that's still running (started before we navigated away). */
+  ngOnInit(): void {
+    this.admin.extractActiveJob(this.orgId()).subscribe({
+      next: (j) => { if (j && (j.status === 'running' || j.status === 'cancelling')) { this.job.set(j); this.startPolling(j.jobId); } },
+      error: () => { /* no active job / not reachable — nothing to re-attach */ },
+    });
+  }
+  ngOnDestroy(): void { this.stopPolling(); }
+
+  private stopPolling(): void { if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; } }
+  /** Poll the job every 1.5s; on a terminal status settle into the result summary. */
+  private startPolling(jobId: string): void {
+    this.stopPolling();
+    this.pollTimer = setInterval(() => {
+      this.admin.extractJob(this.orgId(), jobId).subscribe({
+        next: (j) => {
+          this.job.set(j);
+          if (j.status === 'done' || j.status === 'cancelled' || j.status === 'error') {
+            this.stopPolling();
+            this.pulling.set(false);
+            if (j.status === 'error') this.error.set(j.error || 'The import failed.');
+            // Settle into the existing result summary + reload the shop grid.
+            const res: PullResult = {
+              created: j.created, skipped: j.skipped, failed: j.failed, dropped: j.dropped,
+              selected: j.selected, mode: j.mode, gaps: j.gaps, results: j.results,
+            };
+            this.result.set(res);
+            this.pulled.emit(res);
+          }
+        },
+        error: () => { /* transient poll error — keep the last known job, try again next tick */ },
+      });
+    }, 1500);
+  }
+
+  /** Ask the runner to stop before the next item (items already created stay pending). */
+  protected cancel(): void {
+    const j = this.job();
+    if (!j) return;
+    this.admin.extractCancel(this.orgId(), j.jobId).subscribe({
+      next: () => this.job.update((cur) => (cur ? { ...cur, status: 'cancelling' } : cur)),
+      error: (e) => this.error.set(this.msg(e)),
+    });
+  }
   /** Pull mode — default Review (lean vetting set) per the contract lifecycle. */
   protected readonly mode = signal<'review' | 'full'>('review');
   /** Prepare step (2): taxonomy + per-group cat/subcat, and the editable rows. */
@@ -465,9 +538,19 @@ export class WebsiteImportPanelComponent {
     const urls = this.hasLinks() ? [...this.selected()] : [r.url];
     if (!urls.length) return;
     this.error.set(null);
+    this.result.set(null);
     this.pulling.set(true);
+    // Start the background job — returns a job id at once; we poll it (and it
+    // survives leaving the page). Seed a running job so the progress bar shows now.
     this.admin.extractPull(this.orgId(), urls, this.mode(), this.buildMapping()).subscribe({
-      next: (res) => { this.result.set(res); this.pulling.set(false); this.pulled.emit(res); },
+      next: (s) => {
+        this.job.set({
+          jobId: s.jobId, status: 'running', mode: this.mode(),
+          selected: s.selected, total: s.total, processed: 0,
+          created: 0, skipped: 0, failed: 0, dropped: s.dropped, results: [],
+        });
+        this.startPolling(s.jobId);
+      },
       error: (e) => { this.error.set(this.msg(e)); this.pulling.set(false); },
     });
   }
@@ -475,6 +558,8 @@ export class WebsiteImportPanelComponent {
   /** Collapse the panel back to just the URL input after a pull — the shop grid
    *  below has already reloaded (pulled emitted), so the reviewer sees the imports. */
   protected done(): void {
+    this.stopPolling();
+    this.job.set(null);
     this.report.set(null);
     this.result.set(null);
     this.selected.set(new Set());
