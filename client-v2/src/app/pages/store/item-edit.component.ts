@@ -178,48 +178,58 @@ interface ItemForm {
                       }
                     </div>
                   }
-
-                  <!-- Volume pricing — preview + edit-in-dialog -->
-                  <div class="bp-qv-spec">
-                    <span class="bp-qv-spec__label"><lucide-icon name="tags" [size]="13" /> Volume pricing</span>
-                    @if (filledTiers().length) {
-                      <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
-                        @for (t of filledTiers().slice(0, 3); track $index) {
-                          <dt class="bp-body-small text-secondary">{{ t.min || '1' }}@if (t.max !== '' && t.max != null) {–{{ t.max }}} @else {+}</dt>
-                          <dd class="bp-body-small text-text">£{{ t.price }}</dd>
-                        }
-                      </dl>
-                      @if (filledTiers().length > 3) { <p class="bp-caption text-secondary mt-1">+{{ filledTiers().length - 3 }} more</p> }
-                    } @else {
-                      <p class="bp-qv-spec__val bp-qv-spec__val--soon">No volume pricing</p>
-                    }
-                    <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openVolumeDialog()">
-                      <lucide-icon name="pencil" [size]="14" /> Edit volume pricing
-                    </button>
-                  </div>
-
-                  <!-- Options — preview + edit-in-dialog -->
-                  <div class="bp-qv-spec">
-                    <span class="bp-qv-spec__label"><lucide-icon name="list" [size]="13" /> Options</span>
-                    @if (filledOptions().length) {
-                      <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
-                        @for (o of filledOptions().slice(0, 3); track $index) {
-                          <dt class="bp-body-small text-secondary">{{ o.name }}</dt>
-                          <dd class="bp-body-small text-text">{{ o.price ? ('+£' + o.price) : 'included' }}</dd>
-                        }
-                      </dl>
-                      @if (filledOptions().length > 3) { <p class="bp-caption text-secondary mt-1">+{{ filledOptions().length - 3 }} more</p> }
-                    } @else {
-                      <p class="bp-qv-spec__val bp-qv-spec__val--soon">No options</p>
-                    }
-                    <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openOptionsDialog()">
-                      <lucide-icon name="pencil" [size]="14" /> Edit options
-                    </button>
-                  </div>
                 </div>
               }
             </div>
           </div>
+
+          <!-- pV2-STORE-TAXONOMY-01 — Volume pricing + Options as their OWN section
+               (Liam), separate from the 5 describe-groups. Editing only; the
+               read-only view renders them via app-item-attribute-cards below. -->
+          @if (editing()) {
+            <div class="bp-card p-5 mt-4">
+              <h3 class="bp-edit-section-title mb-4">Volume pricing &amp; Options</h3>
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <!-- Volume pricing — preview + edit-in-dialog -->
+                <div class="bp-qv-spec">
+                  <span class="bp-qv-spec__label"><lucide-icon name="tags" [size]="13" /> Volume pricing</span>
+                  @if (filledTiers().length) {
+                    <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+                      @for (t of filledTiers().slice(0, 3); track $index) {
+                        <dt class="bp-body-small text-secondary">{{ t.min || '1' }}@if (t.max !== '' && t.max != null) {–{{ t.max }}} @else {+}</dt>
+                        <dd class="bp-body-small text-text">£{{ t.price }}</dd>
+                      }
+                    </dl>
+                    @if (filledTiers().length > 3) { <p class="bp-caption text-secondary mt-1">+{{ filledTiers().length - 3 }} more</p> }
+                  } @else {
+                    <p class="bp-qv-spec__val bp-qv-spec__val--soon">No volume pricing</p>
+                  }
+                  <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openVolumeDialog()">
+                    <lucide-icon name="pencil" [size]="14" /> Edit volume pricing
+                  </button>
+                </div>
+
+                <!-- Options — preview + edit-in-dialog -->
+                <div class="bp-qv-spec">
+                  <span class="bp-qv-spec__label"><lucide-icon name="list" [size]="13" /> Options</span>
+                  @if (filledOptions().length) {
+                    <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+                      @for (o of filledOptions().slice(0, 3); track $index) {
+                        <dt class="bp-body-small text-secondary">{{ o.name }}</dt>
+                        <dd class="bp-body-small text-text">{{ o.price ? ('+£' + o.price) : 'included' }}</dd>
+                      }
+                    </dl>
+                    @if (filledOptions().length > 3) { <p class="bp-caption text-secondary mt-1">+{{ filledOptions().length - 3 }} more</p> }
+                  } @else {
+                    <p class="bp-qv-spec__val bp-qv-spec__val--soon">No options</p>
+                  }
+                  <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openOptionsDialog()">
+                    <lucide-icon name="pencil" [size]="14" /> Edit options
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
 
           <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — read-only VIEW: the shared grouped
                rounded cards + options picklist (same component the quick-view uses). -->
@@ -227,20 +237,8 @@ interface ItemForm {
             <app-item-attribute-cards [attributes]="rawAttributes()" />
           }
 
-          <app-item-edit-actions
-            [isModerator]="isModerator()" [isViewer]="isViewer()" [isApproved]="isApproved()"
-            [currentStatus]="currentStatus()" [deciding]="deciding()" [saving]="saving()"
-            [canDelete]="canDelete()" [deleting]="deleting()"
-            (approve)="decide('approve')" (reject)="decide('reject')" (cancel)="cancel()"
-            (saveApproved)="saveApproved()" (saveDraft)="save('draft')" (submit)="save('pending')"
-            (cancelRequest)="cancelRequest()" (deleteRequested)="onDelete()" />
-          </div>
-
-          <app-item-approval-panel [status]="currentStatus()" [statusAt]="statusAt()" />
-
-          <!-- pV2-STORE-ITEM-INDEX-VIEW-01 — the auto-classification, READ-ONLY
-               (subcategory + structured dimension tags). Editing is the later
-               Index-tab slice. Existing items only. -->
+          <!-- pV2-STORE-TAXONOMY-01 — Classification above the action buttons (Liam):
+               Category cascade → Subcategory → Sub-subcategory + tags. -->
           @if (isEdit) {
             <div class="mt-4 rounded-xl border border-hairline bg-surface p-4">
               <h3 class="bp-edit-section-title">Classification</h3>
@@ -286,6 +284,17 @@ interface ItemForm {
               </div>
             </div>
           }
+
+          <app-item-edit-actions
+            [isModerator]="isModerator()" [isViewer]="isViewer()" [isApproved]="isApproved()"
+            [currentStatus]="currentStatus()" [deciding]="deciding()" [saving]="saving()"
+            [canDelete]="canDelete()" [deleting]="deleting()"
+            (approve)="decide('approve')" (reject)="decide('reject')" (cancel)="cancel()"
+            (saveApproved)="saveApproved()" (saveDraft)="save('draft')" (submit)="save('pending')"
+            (cancelRequest)="cancelRequest()" (deleteRequested)="onDelete()" />
+          </div>
+
+          <app-item-approval-panel [status]="currentStatus()" [statusAt]="statusAt()" />
         </div>
         </div>
 
