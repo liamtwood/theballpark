@@ -330,6 +330,16 @@ function houseStyleName(label) {
   return words.join(' ');
 }
 
+/** Bounded-concurrency map — run `fn` over items with at most `limit` in flight.
+ *  Preserves order. Lets Prepare fire its per-group AI calls in parallel. */
+async function mapPool(items, limit, fn) {
+  const out = new Array(items.length);
+  let i = 0;
+  const worker = async () => { while (i < items.length) { const idx = i++; out[idx] = await fn(items[idx], idx); } };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker));
+  return out;
+}
+
 /** PREPARE (Liam's step 2): for each SELECTED group, map the supplier's category
  *  → a Ballpark category + subcategory (existing or a proposed NEW one). One cheap
  *  AI call per group — we only classify what we're about to load. Returns the real
@@ -341,15 +351,21 @@ async function prepare(groups) {
     name: c.name, description: c.description,
     subcats: c.subcats.map((s) => ({ name: s.name, description: s.description, subcats: (s.subcats || []).map((gc) => ({ name: gc.name })) })),
   }));
-  const list = Array.isArray(groups) ? groups : [];
-  const out = [];
-  for (const g of list) {
-    const key = String(g?.key ?? '').trim();
-    if (!key) continue;
+  const list = (Array.isArray(groups) ? groups : [])
+    .map((g) => ({ g, key: String(g?.key ?? '').trim() }))
+    .filter((x) => x.key);
+  // Classify every group's category CONCURRENTLY (bounded) — one Haiku call each, but
+  // in parallel so Prepare isn't N sequential round-trips (analyse is instant now, so
+  // the serial classify was the bottleneck). Resolution below is pure/sync.
+  const classified = await mapPool(list, 8, async ({ g, key }) => {
     const label = groupLabel(key);
     const pathLabel = groupPathLabel(key); // full supplier path → richer AI context
     let sug = { category: null, subcategory: null, isNew: false, subsubcategory: null, subsubIsNew: false, confidence: 0 };
     try { sug = await classifyGroupToCategory(pathLabel, g?.sample || label, treeForAi); } catch { /* keep default */ }
+    return { key, label, pathLabel, sug };
+  });
+  const out = [];
+  for (const { key, label, pathLabel, sug } of classified) {
     // Resolve the suggested category to a real id (else 'Other').
     const cat = tree.find((c) => norm(c.name) === norm(sug.category)) || tree.find((c) => norm(c.name) === 'other') || null;
     let subId = null, subName = sug.subcategory ? String(sug.subcategory).trim() : null, isNew = !!sug.isNew;
