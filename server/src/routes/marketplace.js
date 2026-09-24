@@ -122,6 +122,8 @@ router.post(
         );
         if (!anc.rows[0]?.d) return res.status(400).json({ error: 'Parent category not found' });
         level = Number(anc.rows[0].d);
+        // 3 levels max (0/1/2) — a sub-subcategory can't have children.
+        if (level > 2) return res.status(409).json({ error: 'too_deep', message: 'Only 3 levels are supported (Category ▸ Subcategory ▸ Sub-subcategory).' });
       }
       const ins = await pool.query(
         `INSERT INTO categories (name, parent_id, namespace, model, level, is_active, enabled, sort_order)

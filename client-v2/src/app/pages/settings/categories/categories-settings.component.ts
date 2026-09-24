@@ -98,16 +98,20 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
                     <button type="button" class="bp-subcat-expander" title="Cancel move" aria-label="Cancel move" (click)="cancelMove()">
                       <lucide-icon name="x" [size]="14" />
                     </button>
-                  } @else {
+                  } @else if (row.depth < 2) {
+                    <!-- Only L1/L2 can receive a child — an L3 (sub-subcategory) is the deepest, so it's not a valid destination. -->
                     <button type="button" class="bp-subcat-expander" title="Move here (into this category)" aria-label="Move here" (click)="moveTo(row.node)">
                       <lucide-icon name="arrow-right" [size]="14" />
                     </button>
                   }
                 } @else {
                   <div class="flex items-center gap-1">
-                    <button type="button" class="bp-subcat-expander" title="Add child level" aria-label="Add child level" (click)="startAdd(row.node)">
-                      <lucide-icon name="plus" [size]="14" />
-                    </button>
+                    @if (row.depth < 2) {
+                      <!-- 3 levels max: a sub-subcategory (L3) can't have children, so no Add-child here. -->
+                      <button type="button" class="bp-subcat-expander" title="Add child level" aria-label="Add child level" (click)="startAdd(row.node)">
+                        <lucide-icon name="plus" [size]="14" />
+                      </button>
+                    }
                     <button type="button" class="bp-subcat-expander" title="Move" aria-label="Move" (click)="startMove(row.node)">
                       <lucide-icon name="arrow-left-right" [size]="14" />
                     </button>
