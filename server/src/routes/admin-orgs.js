@@ -212,10 +212,10 @@ router.post('/:orgId/extract/analyse', async (req, res, next) => {
   if (!parsed.success) return res.status(400).json({ error: 'A valid url is required' });
   try {
     const url = parsed.data.url;
-    // WooCommerce → structured Store-API analyse (sync, fast), whatever the path.
-    // Generic homepage → the fan-out job; generic section/product → the sync crawl.
+    // API-backed profiles (Woo / WordPress) → structured analyse (sync, fast), whatever
+    // the path. Generic homepage → the fan-out job; generic section/product → sync crawl.
     const profile = await CatalogueExtract.detectProfile(url);
-    if (profile === 'woo') return res.json(await CatalogueExtract.analyse(url, 'woo'));
+    if (profile === 'woo' || profile === 'wordpress') return res.json(await CatalogueExtract.analyse(url, profile));
     const isHome = (() => { try { return new URL(url).pathname.replace(/\/$/, '') === ''; } catch { return false; } })();
     res.json(isHome
       ? await CatalogueExtract.startAnalyseJob(req.params.orgId, url)

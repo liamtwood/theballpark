@@ -16,6 +16,14 @@ const { als } = require('../db/request-context');
 const { guardedFetch } = require('./org-import.service');
 const { analyseCatalogue, extractProduct, classifyGroup: classifyGroupToCategory } = require('./ai.service');
 const ItemService = require('./item.service');
+const { normUrl, htmlToPlain } = require('./catalogue-extract/util');
+// Platform profiles (pV2-STORE-PROFILES-01) — structured, crawl-free reads for sites
+// that expose an API (WooCommerce Store API / WordPress REST). detectProfile picks one;
+// the generic crawler below handles everything else.
+const {
+  detectProfile, analyseWoo, analyseWordpress,
+  wooGetJson, wooPrice, wooPrimaryCategory, wpFetchProduct,
+} = require('./catalogue-extract/profiles');
 
 const MAX_TEXT_CHARS = 14000; // keep the model prompt bounded; product pages sit well under
 const MAX_PULL_URLS = 100;    // per pull request — small catalogues (<100 items) in one go
@@ -46,7 +54,6 @@ function isProductHtml(html) {
 }
 // Skip assets + non-catalogue pages when crawling for item pages.
 const CRAWL_SKIP = /(cart|checkout|basket|account|login|register|sign-?in|contact|about|privacy|terms|cookie|blog|news|faqs?|wishlist|delivery|returns|policy|gallery|inspired|story|trade-with|my-quote|\.pdf|\.jpe?g|\.png|\.webp|\.svg|\.css|\.js|\.woff2?|\.ico|webmanifest|\.atom|\.oembed|\.rss|\.json|\/feed)/i;
-const normUrl = (u) => String(u).split('#')[0].replace(/\/$/, '');
 
 // ── HTML → text (+ a few on-page hrefs so the AI can spot product links) ──────
 function htmlToText(html, baseUrl) {
@@ -543,96 +550,14 @@ function pickItemUrls(urls) {
   return [...new Set(items)];
 }
 
-// ── Platform profile (pV2-STORE-PROFILES-01) ─────────────────────────────────
-// The generic crawler is the FALLBACK profile (path-hierarchy sites like Yahire).
-// WooCommerce needs its own: flat /product/ permalinks + inconsistent product markup
-// make the crawler near-useless (Adana = 249 junk, Blue Sky = 4 of hundreds), while
-// the Store API gives structured products + clean categories. Detect, then pivot.
-const WOO_MAX_PAGES = 30; // Store API per_page=100 → up to 3000 products
-
-async function wooGetJson(url) {
-  const { html } = await guardedFetch(url);
-  return JSON.parse(html);
-}
-
-/** Which extraction profile fits this site. 'woo' when the WooCommerce Store API
- *  answers; else 'generic' (crawler). Shopify profile is a separate follow-up. */
-async function detectProfile(url) {
-  const origin = new URL(url).origin;
-  try {
-    const j = await wooGetJson(`${origin}/wp-json/wc/store/v1/products?per_page=1`);
-    if (Array.isArray(j)) return 'woo';
-  } catch { /* not Woo, or blocked */ }
-  return 'generic';
-}
-
-/** Woo Store API prices are minor-unit strings ("13000" + currency_minor_unit 2 → 130.00). */
-function wooPrice(prices) {
-  if (!prices || prices.price == null) return null;
-  const minor = Number(prices.currency_minor_unit ?? 2);
-  const n = Number(prices.price);
-  return Number.isFinite(n) ? n / Math.pow(10, minor) : null;
-}
-
-/** Strip HTML to clean prose (Woo descriptions are HTML). */
-function htmlToPlain(h) {
-  return String(h || '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&pound;/gi, '£')
-    .replace(/&#(\d+);/g, (_, n) => { try { return String.fromCharCode(+n); } catch { return ' '; } })
-    .replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 2000);
-}
-
-/** A product's primary category (first non-Uncategorized) — the grouping key. */
-function wooPrimaryCategory(p) {
-  const cats = Array.isArray(p.categories) ? p.categories : [];
-  return cats.find((c) => !/^uncategor/i.test(c.slug || '')) || cats[0] || null;
-}
-
-/** Fetch every product from the Woo Store API (paged, bounded). */
-async function wooAllProducts(origin) {
-  const out = [];
-  for (let page = 1; page <= WOO_MAX_PAGES; page++) {
-    let batch;
-    try { batch = await wooGetJson(`${origin}/wp-json/wc/store/v1/products?per_page=100&page=${page}`); }
-    catch { break; }
-    if (!Array.isArray(batch) || !batch.length) break;
-    out.push(...batch);
-    if (batch.length < 100) break;
-  }
-  return out;
-}
-
-/** ANALYSE (Woo) — structured, no crawl. Products from the Store API, grouped by their
- *  real category. Returns the report + `linkGroups` (permalink → {key,label}) so the
- *  panel groups by category, not the flat /product/ URL. */
-async function analyseWoo(url) {
-  const origin = new URL(url).origin;
-  const products = await wooAllProducts(origin);
-  const linkGroups = {};
-  const groupCount = {};
-  const productLinks = [];
-  for (const p of products) {
-    const permalink = normUrl(p.permalink || '');
-    if (!permalink || !p.name) continue;
-    const primary = wooPrimaryCategory(p);
-    const key = primary?.slug || 'uncategorized';
-    const label = primary?.name || 'Uncategorized';
-    linkGroups[permalink] = { key, label };
-    groupCount[key] = (groupCount[key] || 0) + 1;
-    productLinks.push(permalink);
-  }
-  const nCats = Object.keys(groupCount).length;
-  return {
-    url: normUrl(url), pageShape: 'site', pullable: productLinks.length > 0,
-    verdict: productLinks.length
-      ? `WooCommerce store — ${productLinks.length} products across ${nCats} categories (structured, via the Store API).`
-      : 'WooCommerce detected but the Store API returned no products.',
-    mapped: { itemCount: productLinks.length },
-    alsoFound: [], sample: null,
-    productLinks, linkGroups, source: 'woo',
-  };
-}
+// ── Platform profiles (pV2-STORE-PROFILES-01) ────────────────────────────────
+// The generic crawler below is the FALLBACK profile (path-hierarchy sites like Yahire).
+// Sites that expose an API get a structured, crawl-free profile instead — WooCommerce
+// (flat /product/ permalinks + patchy markup make the crawler near-useless: Adana = 249
+// junk, Blue Sky = 4 of hundreds) and WordPress posts-as-catalogue (Divi/blog-module
+// hire sites like SK Projections, whose items are WP posts on flat permalinks). Both
+// live in ./catalogue-extract/profiles; detectProfile picks one, analyse pivots below,
+// and the PULL side (processWooUrl / processWordpressUrl) calls back into that module.
 
 // ── ANALYSE (read-only) ───────────────────────────────────────────────────────
 // Crawl scoped to the URL's own path — homepage → whole site; a section/category
@@ -641,8 +566,10 @@ async function analyseWoo(url) {
 // works at any depth), so listing pages are followed for links but never pulled.
 // The task list is grouped by the supplier's URL hierarchy in the panel.
 async function analyse(url, profile) {
-  // WooCommerce → structured Store-API analyse (no crawl). Generic → the crawler below.
-  if ((profile || await detectProfile(url)) === 'woo') return analyseWoo(url);
+  // API-backed profiles → structured analyse (no crawl). Generic → the crawler below.
+  const prof = profile || await detectProfile(url);
+  if (prof === 'woo') return analyseWoo(url);
+  if (prof === 'wordpress') return analyseWordpress(url);
   const path = isHomepage(url) ? null : new URL(url).pathname.replace(/\/$/, '');
   const { pagesFetched, urls, products, seedError, rateLimited } = await crawlSite(url, CRAWL_MAX_PAGES, path);
   // Couldn't even fetch the starting page — say WHY (rate-limit vs unreachable),
@@ -729,7 +656,7 @@ async function makePullContext(orgId, opts) {
     usage: { input: 0, output: 0, calls: 0 }, // AI token tally (Haiku extractProduct calls)
     batch: `extract-${new Date().toISOString().slice(0, 10)}`,
     categoryNames: await topLevelCategoryNames(), // pass OUR vocabulary to the AI
-    profile: opts.profile || 'generic', // 'woo' → structured Store-API pull (no AI)
+    profile: opts.profile || 'generic', // 'woo' / 'wordpress' → structured API pull (no AI)
   };
 }
 
@@ -831,8 +758,63 @@ async function processWooUrl(ctx, url) {
   }
 }
 
+/** WordPress pull — fetch ONE post via the WP REST API (structured, ZERO AI), group by
+ *  its post category (→ the Prepare mapping keyed by category slug), map + create.
+ *  Mirrors processWooUrl; price is parsed from the excerpt/content by the profile. */
+async function processWordpressUrl(ctx, url) {
+  try {
+    const u = new URL(url);
+    const slug = u.pathname.split('/').filter(Boolean).pop();
+    const p = await wpFetchProduct(u.origin, slug);
+    if (!p || !p.name) return { url, status: 'skipped', reason: 'no post found (WP REST API)' };
+
+    const permalink = p.permalink || normUrl(url);
+    const idKey = p.productId || p.slug;
+    if (idKey && ctx.seenIds.has(idKey)) return { url: permalink, status: 'skipped', reason: 'duplicate in selection' };
+    if (idKey) ctx.seenIds.add(idKey);
+    const dupe = await findExisting(ctx.orgId, permalink, null, p.productId);
+    if (dupe) return { url: permalink, status: 'skipped', reason: 'already imported', itemId: dupe };
+
+    // Group by the post's PRIMARY category → the Prepare mapping (keyed by cat slug).
+    const groupRow = ctx.mapping[p.categorySlug] || null;
+    let categoryId, subcategoryId = null, skipClassify = false;
+    if (groupRow && groupRow.categoryId) {
+      const resolved = await resolveMappingRow(groupRow, ctx.subcatCache);
+      categoryId = resolved.categoryId || (await defaultCategoryId());
+      subcategoryId = resolved.subcategoryId;
+      skipClassify = true;
+    } else {
+      categoryId = (await matchCategoryId(p.categoryName)) || (await defaultCategoryId());
+    }
+
+    const images = p.imageUrl ? [{ url: p.imageUrl, is_hero: true }] : [];
+    const attributes = { _source: pruneNull({ product_id: p.productId, handle: p.slug, extracted_at: new Date().toISOString(), batch: ctx.batch }) };
+
+    const item = await ItemService.createForOrg({
+      data: {
+        name: p.name,
+        base_price: p.price,
+        description: p.description,
+        unit: 'each',
+        external_url: permalink,
+        category_id: categoryId,
+        subcategory_id: subcategoryId,
+        attributes,
+        images: ctx.review ? images.slice(0, 1) : images,
+      },
+      orgId: ctx.orgId,
+      defaultStatus: 'pending',
+      skipClassify,
+    });
+    return { url: permalink, status: 'created', itemId: item.id, name: item.name };
+  } catch (err) {
+    return { url, status: 'error', reason: err.message };
+  }
+}
+
 async function processUrl(ctx, url) {
-  if (ctx.profile === 'woo') return processWooUrl(ctx, url); // structured, no AI
+  if (ctx.profile === 'woo') return processWooUrl(ctx, url);             // structured, no AI
+  if (ctx.profile === 'wordpress') return processWordpressUrl(ctx, url); // structured, no AI
   try {
     const groupRow = ctx.mapping[groupKeyOf(url)] || null; // group keyed off the selected URL
     const { finalUrl, html } = await guardedFetch(url);
