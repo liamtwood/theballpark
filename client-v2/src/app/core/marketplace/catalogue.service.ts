@@ -151,4 +151,21 @@ export class CatalogueService {
       .post<CategoryInfo>('/api/marketplace/categories', { name, parentId: parentId ?? null })
       .pipe(tap(() => this.invalidate()));
   }
+
+  /** Soft-delete a taxonomy node. Subtree-aware: without cascade the server refuses a
+   *  non-empty node (409 { error:'not_empty', subcats, items }); with cascade it removes
+   *  the whole subtree + its items. Admin-gated. */
+  deleteCategory(id: string, cascade = false): Observable<{ deleted: boolean; subcats: number; items: number }> {
+    return this.api
+      .delete<{ deleted: boolean; subcats: number; items: number }>(`/api/marketplace/categories/${id}${cascade ? '?cascade=true' : ''}`)
+      .pipe(tap(() => this.invalidate()));
+  }
+
+  /** Reparent a node (parentId null → top-level). Server re-levels the subtree, guards
+   *  the 3-level depth (409 { error:'too_deep' }), and repoints items on a top change. */
+  moveCategory(id: string, parentId: string | null): Observable<{ moved: boolean; level: number }> {
+    return this.api
+      .patch<{ moved: boolean; level: number }>(`/api/marketplace/categories/${id}/move`, { parentId })
+      .pipe(tap(() => this.invalidate()));
+  }
 }

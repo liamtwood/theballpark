@@ -44,8 +44,16 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
           </button>
         </div>
 
+        @if (moving(); as m) {
+          <div class="mb-3 flex items-center gap-3 rounded-lg border border-hairline bg-fill px-3 py-2">
+            <span class="bp-body-small">Moving <strong>{{ m.cat.name }}</strong> — click the → on a destination row to move it inside, or</span>
+            <button type="button" class="bp-btn-outline" (click)="moveTo(null)">Move to top level</button>
+            <button type="button" class="bp-caption" style="text-decoration:underline" (click)="cancelMove()">Cancel</button>
+          </div>
+        }
+
         <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
-          <div class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px_36px] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-2">
+          <div class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px_104px] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-2">
             <span></span>
             <span class="bp-table-column-header">Category</span>
             <span class="bp-table-column-header">Tagline</span>
@@ -57,7 +65,7 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
 
           @for (row of visible(); track row.add ? 'add:' + row.parentId : row.node.cat.id) {
             @if (row.add) {
-              <div class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px_36px] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-1.5"
+              <div class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px_104px] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-1.5"
                    [style.padding-left.rem]="0.75 + row.depth * 1.25">
                 <span></span>
                 <input class="ed-input" maxlength="60" placeholder="New name…" autofocus
@@ -67,7 +75,7 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
                 <span></span><span></span><span></span><span></span>
               </div>
             } @else {
-              <div class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px_36px] items-center gap-x-4 border-b border-hairline px-4 py-1.5"
+              <div class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px_104px] items-center gap-x-4 border-b border-hairline px-4 py-1.5"
                    [class.opacity-60]="!row.node.cat.isActive" [class.bg-fill]="row.depth > 0"
                    [style.padding-left.rem]="0.75 + row.depth * 1.25">
                 <button type="button" class="bp-subcat-expander"
@@ -85,10 +93,29 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
                 <input class="ed-input" type="number" aria-label="Sort order"
                        [ngModel]="String(row.node.cat.sortOrder ?? 0)" (blur)="commitSort($event, row.node)" />
                 <span class="bp-body-small text-secondary">{{ row.node.cat.count }}</span>
-                <button type="button" class="bp-subcat-expander" title="Add child level" aria-label="Add child level"
-                        (click)="startAdd(row.node)">
-                  <lucide-icon name="plus" [size]="14" />
-                </button>
+                @if (moving(); as m) {
+                  @if (m.cat.id === row.node.cat.id) {
+                    <button type="button" class="bp-subcat-expander" title="Cancel move" aria-label="Cancel move" (click)="cancelMove()">
+                      <lucide-icon name="x" [size]="14" />
+                    </button>
+                  } @else {
+                    <button type="button" class="bp-subcat-expander" title="Move here (into this category)" aria-label="Move here" (click)="moveTo(row.node)">
+                      <lucide-icon name="arrow-right" [size]="14" />
+                    </button>
+                  }
+                } @else {
+                  <div class="flex items-center gap-1">
+                    <button type="button" class="bp-subcat-expander" title="Add child level" aria-label="Add child level" (click)="startAdd(row.node)">
+                      <lucide-icon name="plus" [size]="14" />
+                    </button>
+                    <button type="button" class="bp-subcat-expander" title="Move" aria-label="Move" (click)="startMove(row.node)">
+                      <lucide-icon name="arrow-left-right" [size]="14" />
+                    </button>
+                    <button type="button" class="bp-subcat-expander" title="Delete" aria-label="Delete" (click)="removeNode(row.node)">
+                      <lucide-icon name="trash-2" [size]="14" />
+                    </button>
+                  </div>
+                }
               </div>
             }
           }
@@ -217,5 +244,61 @@ export class CategoriesSettingsComponent {
       node.cat = before; this.bump();
       this.error.set(`Couldn't save "${before.name}" — change reverted.`);
     }
+  }
+
+  // ── Delete (subtree-aware) ──────────────────────────────────────────────────
+  protected async removeNode(node: TaxNode): Promise<void> {
+    try {
+      await firstValueFrom(this.catalogue.deleteCategory(node.cat.id, false));
+      this.dropFromTree(node); this.error.set('');
+    } catch (e) {
+      const body = (e as { error?: { error?: string; subcats?: number; items?: number } })?.error;
+      if (body?.error === 'not_empty') {
+        const subs = body.subcats ?? 0, items = body.items ?? 0;
+        const ok = confirm(
+          `"${node.cat.name}" has ${subs} subcategor${subs === 1 ? 'y' : 'ies'} and ${items} item${items === 1 ? '' : 's'} beneath it.\n\nDelete it and everything inside? (Items include unapproved/pending.)`);
+        if (!ok) return;
+        try {
+          await firstValueFrom(this.catalogue.deleteCategory(node.cat.id, true));
+          this.dropFromTree(node); this.error.set('');
+        } catch { this.error.set(`Couldn't delete "${node.cat.name}".`); }
+      } else {
+        this.error.set(`Couldn't delete "${node.cat.name}".`);
+      }
+    }
+  }
+  private dropFromTree(node: TaxNode): void {
+    if (node.parentId) {
+      const p = this.find(this.tree(), node.parentId);
+      if (p) p.children = p.children.filter((c) => c.cat.id !== node.cat.id);
+    } else {
+      this.tree.set(this.tree().filter((n) => n.cat.id !== node.cat.id));
+    }
+    this.bump();
+  }
+
+  // ── Move / reparent (two-click: pick source, click a destination) ───────────
+  protected readonly moving = signal<TaxNode | null>(null);
+  protected startMove(node: TaxNode): void { this.moving.set(node); this.error.set(''); }
+  protected cancelMove(): void { this.moving.set(null); }
+  protected async moveTo(parent: TaxNode | null): Promise<void> {
+    const m = this.moving();
+    if (!m) return;
+    if (parent && parent.cat.id === m.cat.id) return;
+    this.moving.set(null);
+    try {
+      await firstValueFrom(this.catalogue.moveCategory(m.cat.id, parent ? parent.cat.id : null));
+      await this.reloadTree(); this.error.set('');
+    } catch (e) {
+      const body = (e as { error?: { error?: string; message?: string } })?.error;
+      if (body?.error === 'too_deep') this.error.set(body.message || 'That move would exceed 3 levels.');
+      else if (body?.message) this.error.set(body.message);
+      else if (body?.error) this.error.set(body.error);
+      else this.error.set(`Couldn't move "${m.cat.name}".`);
+    }
+  }
+  private async reloadTree(): Promise<void> {
+    const roots = await firstValueFrom(this.catalogue.adminCategories());
+    this.tree.set(roots.map((c) => this.toNode(c, null)));
   }
 }

@@ -18,6 +18,7 @@
 const router = require('express').Router();
 const { z } = require('zod');
 const pool = require('../db/pool');
+const { withTransaction } = require('../db/with-transaction');
 const { requireActiveMembership } = require('../middleware/require-active-membership');
 const { CategoryUpdateSchema, CategoryCreateSchema } = require('../schemas/category-admin.schema');
 const { ItemsQuerySchema, PAGE_SIZE } = require('../schemas/marketplace-query.schema');
@@ -187,6 +188,114 @@ router.patch(
         [id.data]
       );
       res.json(toCategory(fresh.rows[0]));
+    } catch (err) { next(err); }
+  }
+);
+
+// DELETE /api/marketplace/categories/:id[?cascade=true] — soft-delete a taxonomy node.
+// SUBTREE-AWARE: a node with children or items is refused (409 not_empty + the real
+// subtree counts, incl. pending items) unless cascade=true, which then soft-deletes the
+// whole subtree AND the items in it. Never silently orphans (the "0 approved / N pending"
+// trap). Admin-gated.
+router.delete(
+  '/categories/:id',
+  requireActiveMembership('admin.cross_org_view'),
+  async (req, res, next) => {
+    try {
+      const id = z.uuid().safeParse(req.params.id);
+      if (!id.success) return res.status(400).json({ error: 'Invalid id' });
+      const cascade = String(req.query.cascade) === 'true';
+      const sub = await pool.query(
+        `WITH RECURSIVE t AS (
+           SELECT id FROM categories WHERE id=$1 AND namespace='catalogue' AND deleted_at IS NULL
+           UNION ALL
+           SELECT c.id FROM categories c JOIN t ON c.parent_id=t.id WHERE c.deleted_at IS NULL
+         ) SELECT id FROM t`,
+        [id.data]
+      );
+      if (!sub.rows.length) return res.status(404).json({ error: 'Category not found' });
+      const ids = sub.rows.map((r) => r.id);
+      const subcats = ids.length - 1;
+      const itemsR = await pool.query(
+        `SELECT count(*)::int AS n FROM items
+          WHERE deleted_at IS NULL AND (category_id = ANY($1::uuid[]) OR subcategory_id = ANY($1::uuid[]))`,
+        [ids]
+      );
+      const items = itemsR.rows[0].n;
+      if ((subcats > 0 || items > 0) && !cascade) {
+        return res.status(409).json({ error: 'not_empty', subcats, items });
+      }
+      await withTransaction(async (client) => {
+        if (items > 0) {
+          await client.query(
+            `UPDATE items SET deleted_at=NOW()
+              WHERE deleted_at IS NULL AND (category_id = ANY($1::uuid[]) OR subcategory_id = ANY($1::uuid[]))`,
+            [ids]
+          );
+        }
+        await client.query(`UPDATE categories SET deleted_at=NOW() WHERE id = ANY($1::uuid[])`, [ids]);
+      });
+      res.json({ deleted: true, subcats, items });
+    } catch (err) { next(err); }
+  }
+);
+
+// PATCH /api/marketplace/categories/:id/move { parentId } — reparent a node (parentId
+// null → top-level). Re-levels the node + its whole subtree, guards the 3-level depth
+// (deepest descendant must stay ≤ level 2), and — when the top-level ancestor changes —
+// repoints affected items' category_id so the descendant trigger stays valid. Admin-gated.
+router.patch(
+  '/categories/:id/move',
+  requireActiveMembership('admin.cross_org_view'),
+  async (req, res, next) => {
+    try {
+      const id = z.uuid().safeParse(req.params.id);
+      if (!id.success) return res.status(400).json({ error: 'Invalid id' });
+      const parentId = req.body?.parentId ?? null;
+      if (parentId !== null && !z.uuid().safeParse(parentId).success) return res.status(400).json({ error: 'Invalid parentId' });
+      if (parentId === id.data) return res.status(400).json({ error: 'Cannot move a node onto itself' });
+
+      const nodeR = await pool.query(
+        `SELECT id, level FROM categories WHERE id=$1 AND namespace='catalogue' AND deleted_at IS NULL`, [id.data]);
+      if (!nodeR.rows.length) return res.status(404).json({ error: 'Category not found' });
+      const node = nodeR.rows[0];
+
+      const subR = await pool.query(
+        `WITH RECURSIVE t AS (
+           SELECT id, level FROM categories WHERE id=$1 AND deleted_at IS NULL
+           UNION ALL SELECT c.id, c.level FROM categories c JOIN t ON c.parent_id=t.id WHERE c.deleted_at IS NULL
+         ) SELECT id, level FROM t`, [id.data]);
+      const subIds = subR.rows.map((r) => r.id);
+      if (parentId && subIds.includes(parentId)) return res.status(400).json({ error: 'Cannot move a node under its own descendant' });
+
+      let newLevel = 0, newTop = id.data; // top-level default
+      if (parentId) {
+        const pr = await pool.query(
+          `SELECT level FROM categories WHERE id=$1 AND namespace='catalogue' AND deleted_at IS NULL`, [parentId]);
+        if (!pr.rows.length) return res.status(400).json({ error: 'Parent not found' });
+        newLevel = Number(pr.rows[0].level) + 1;
+        const topR = await pool.query(
+          `WITH RECURSIVE up AS (
+             SELECT id, parent_id FROM categories WHERE id=$1
+             UNION ALL SELECT c.id, c.parent_id FROM categories c JOIN up ON up.parent_id=c.id
+           ) SELECT id FROM up WHERE parent_id IS NULL LIMIT 1`, [parentId]);
+        newTop = topR.rows[0]?.id || parentId;
+      }
+      const delta = newLevel - Number(node.level);
+      const maxLevel = Math.max(...subR.rows.map((r) => Number(r.level)));
+      if (maxLevel + delta > 2) {
+        return res.status(409).json({ error: 'too_deep', message: 'Move would exceed 3 levels — move it higher, or move a shallower branch.' });
+      }
+      await withTransaction(async (client) => {
+        await client.query(`UPDATE categories SET parent_id=$2 WHERE id=$1`, [id.data, parentId]);
+        if (delta !== 0) await client.query(`UPDATE categories SET level = level + $2 WHERE id = ANY($1::uuid[])`, [subIds, delta]);
+        await client.query(
+          `UPDATE items SET category_id=$2
+            WHERE deleted_at IS NULL AND (category_id = ANY($1::uuid[]) OR subcategory_id = ANY($1::uuid[]))`,
+          [subIds, newTop]
+        );
+      });
+      res.json({ moved: true, level: newLevel });
     } catch (err) { next(err); }
   }
 );
