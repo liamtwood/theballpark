@@ -400,6 +400,10 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
    *  except the product slug). MUST match the server's groupKeyOf so the Pull
    *  mapping lines up. /catering-equipment-hire/cutlery-hire/fork → the sub-group. */
   private groupKey(u: string): string {
+    // Woo profile: the server supplies the category group (flat /product/ URLs carry
+    // no hierarchy). Fall back to URL-path grouping for crawl/path sites.
+    const g = this.report()?.linkGroups?.[u];
+    if (g) return g.key;
     try {
       const segs = new URL(u).pathname.split('/').filter(Boolean);
       const pi = segs.indexOf('products'); // Shopify/Woo: group by the collection, not "products"
@@ -410,11 +414,20 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
       return (segs.length > 1 ? segs.slice(0, -1) : segs).join('/') || 'other';
     } catch { return 'other'; }
   }
+  /** key → human label, from the server's linkGroups when present (Woo categories). */
+  private readonly groupLabelMap = computed<Map<string, string>>(() => {
+    const m = new Map<string, string>();
+    const lg = this.report()?.linkGroups;
+    if (lg) for (const g of Object.values(lg)) if (g?.key && !m.has(g.key)) m.set(g.key, g.label);
+    return m;
+  });
   private humanize(s: string): string {
     return s.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, (c) => c.toUpperCase());
   }
   /** Display label for a group key — its leaf segment humanised ("Cutlery Hire"). */
-  protected groupLabel(key: string): string { return this.humanize(key.split('/').filter(Boolean).pop() || key); }
+  protected groupLabel(key: string): string {
+    return this.groupLabelMap().get(key) ?? this.humanize(key.split('/').filter(Boolean).pop() || key);
+  }
 
   /** Task list grouped by the supplier's hierarchy (parent path), alphabetical. */
   protected readonly grouped = computed(() => {
@@ -436,7 +449,7 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
       let node = nodes.get(key);
       if (node) return node;
       const segs = key.split('/').filter(Boolean);
-      node = { key, label: this.humanize(segs[segs.length - 1] || key), items: [], children: [], allItems: [] };
+      node = { key, label: this.groupLabelMap().get(key) ?? this.humanize(segs[segs.length - 1] || key), items: [], children: [], allItems: [] };
       nodes.set(key, node);
       if (segs.length > 1) ensure(segs.slice(0, -1).join('/')).children.push(node);
       return node;

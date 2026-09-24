@@ -210,12 +210,16 @@ const ExtractPullBody = z.object({
 router.post('/:orgId/extract/analyse', async (req, res, next) => {
   const parsed = ExtractUrlBody.safeParse(req.body || {});
   if (!parsed.success) return res.status(400).json({ error: 'A valid url is required' });
-  let isHome = false;
-  try { isHome = new URL(parsed.data.url).pathname.replace(/\/$/, '') === ''; } catch { /* treat as section */ }
   try {
+    const url = parsed.data.url;
+    // WooCommerce → structured Store-API analyse (sync, fast), whatever the path.
+    // Generic homepage → the fan-out job; generic section/product → the sync crawl.
+    const profile = await CatalogueExtract.detectProfile(url);
+    if (profile === 'woo') return res.json(await CatalogueExtract.analyse(url, 'woo'));
+    const isHome = (() => { try { return new URL(url).pathname.replace(/\/$/, '') === ''; } catch { return false; } })();
     res.json(isHome
-      ? await CatalogueExtract.startAnalyseJob(req.params.orgId, parsed.data.url)
-      : await CatalogueExtract.analyse(parsed.data.url));
+      ? await CatalogueExtract.startAnalyseJob(req.params.orgId, url)
+      : await CatalogueExtract.analyse(url, profile));
   } catch (err) { next(err); }
 });
 

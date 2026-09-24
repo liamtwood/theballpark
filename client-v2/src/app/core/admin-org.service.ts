@@ -71,6 +71,11 @@ export interface ExtractReport {
   alsoFound?: string[];
   sample?: Record<string, unknown> | null;
   productLinks?: string[];
+  /** Woo profile: permalink → its category group {key,label} (grouping isn't in the
+   *  flat /product/ URL, so the server supplies it). Absent for crawl/path sites. */
+  linkGroups?: Record<string, { key: string; label: string }>;
+  /** Which profile produced this report — 'woo' | 'generic' (crawl) | undefined. */
+  source?: string;
   raw_response?: string;
 }
 
