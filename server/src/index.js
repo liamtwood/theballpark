@@ -374,6 +374,10 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Ballpark server listening on port ${PORT}`);
 
+  // Boot janitor: in-process catalogue-extract job runners don't survive a restart,
+  // so finalise any job orphaned by the previous process (left running/cancelling).
+  require('./services/catalogue-extract.service').failStaleJobs().catch(() => {});
+
   // Supabase keep-alive: run a trivial DB query every 5 minutes so the
   // free-tier project never hits its 7-day inactivity pause. The interval
   // lives inside this Node process — if the process dies, Railway's

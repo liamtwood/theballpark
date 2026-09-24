@@ -1122,13 +1122,32 @@ async function getJob(jobId, orgId) {
   return jobToClient(r.rows[0]);
 }
 
-/** The org's most recent still-running job — for the panel to re-attach on return. */
+/** The org's most recent still-running job — for the panel to re-attach on return.
+ *  Ignores rows not updated in 10 min: a live runner writes progress far more often
+ *  (every item/section), so a stale row is an orphan (dead runner), not a live job. */
 async function activeJobForOrg(orgId) {
   const r = await pool.query(
-    `SELECT * FROM catalogue_extract_job WHERE org_id = $1 AND status IN ('running','cancelling') ORDER BY created_at DESC LIMIT 1`,
+    `SELECT * FROM catalogue_extract_job
+      WHERE org_id = $1 AND status IN ('running','cancelling')
+        AND updated_at > now() - interval '10 minutes'
+      ORDER BY created_at DESC LIMIT 1`,
     [orgId],
   );
   return jobToClient(r.rows[0]);
+}
+
+/** Boot janitor: in-process job runners don't survive a server restart, so any job
+ *  left 'running'/'cancelling' when the process starts is an orphan — mark it errored.
+ *  Called once from index.js at startup. Single-server assumption (no other process
+ *  could own a live job). */
+async function failStaleJobs() {
+  try {
+    const r = await pool.query(
+      `UPDATE catalogue_extract_job SET status='error', error='interrupted by a server restart', updated_at=now()
+        WHERE status IN ('running','cancelling') RETURNING id`,
+    );
+    if (r.rows.length) console.log(`[extract] cleared ${r.rows.length} stale job(s) on boot`);
+  } catch (e) { console.warn('[extract] failStaleJobs failed:', e.message); }
 }
 
 /** Request cancel — the runner stops before the next item/section. Only a running job. */
@@ -1302,4 +1321,4 @@ function pruneNull(obj) {
   return out;
 }
 
-module.exports = { analyse, startAnalyseJob, detectProfile, prepare, pull, startPull, getJob, activeJobForOrg, cancelJob, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity, extractReviewFromJsonLd } };
+module.exports = { analyse, startAnalyseJob, detectProfile, prepare, pull, startPull, getJob, activeJobForOrg, cancelJob, failStaleJobs, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity, extractReviewFromJsonLd } };
