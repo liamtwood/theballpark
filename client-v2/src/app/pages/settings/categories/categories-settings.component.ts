@@ -44,9 +44,9 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
           </button>
         </div>
 
-        @if (moving(); as m) {
+        @if (isMoving()) {
           <div class="mb-3 flex items-center gap-3 rounded-lg border border-hairline bg-fill px-3 py-2">
-            <span class="bp-body-small">Moving <strong>{{ m.cat.name }}</strong> — click the → on a destination row to move it inside, or</span>
+            <span class="bp-body-small">Moving <strong>{{ movingLabel() }}</strong> ({{ moving().length }}) — tap ⇄ to add/remove rows, then click the → on a destination, or</span>
             <button type="button" class="bp-btn-outline" (click)="moveTo(null)">Move to top level</button>
             <button type="button" class="bp-caption" style="text-decoration:underline" (click)="cancelMove()">Cancel</button>
           </div>
@@ -93,17 +93,20 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
                 <input class="ed-input" type="number" aria-label="Sort order"
                        [ngModel]="String(row.node.cat.sortOrder ?? 0)" (blur)="commitSort($event, row.node)" />
                 <span class="bp-body-small text-secondary">{{ row.node.cat.count }}</span>
-                @if (moving(); as m) {
-                  @if (m.cat.id === row.node.cat.id) {
-                    <button type="button" class="bp-subcat-expander" title="Cancel move" aria-label="Cancel move" (click)="cancelMove()">
-                      <lucide-icon name="x" [size]="14" />
+                @if (isMoving()) {
+                  <div class="flex items-center gap-1">
+                    <button type="button" class="bp-subcat-expander"
+                            [title]="isSelected(row.node) ? 'Remove from selection' : 'Add to selection'"
+                            [attr.aria-pressed]="isSelected(row.node)" (click)="toggleMove(row.node)">
+                      <lucide-icon [name]="isSelected(row.node) ? 'check' : 'arrow-left-right'" [size]="14" />
                     </button>
-                  } @else if (row.depth < 2) {
-                    <!-- Only L1/L2 can receive a child — an L3 (sub-subcategory) is the deepest, so it's not a valid destination. -->
-                    <button type="button" class="bp-subcat-expander" title="Move here (into this category)" aria-label="Move here" (click)="moveTo(row.node)">
-                      <lucide-icon name="arrow-right" [size]="14" />
-                    </button>
-                  }
+                    @if (!isSelected(row.node) && row.depth < 2) {
+                      <!-- Valid destination: L1/L2 only (an L3 can't receive children). -->
+                      <button type="button" class="bp-subcat-expander" title="Move selected here" aria-label="Move selected here" (click)="moveTo(row.node)">
+                        <lucide-icon name="arrow-right" [size]="14" />
+                      </button>
+                    }
+                  </div>
                 } @else {
                   <div class="flex items-center gap-1">
                     @if (row.depth < 2) {
@@ -112,7 +115,7 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
                         <lucide-icon name="plus" [size]="14" />
                       </button>
                     }
-                    <button type="button" class="bp-subcat-expander" title="Move" aria-label="Move" (click)="startMove(row.node)">
+                    <button type="button" class="bp-subcat-expander" title="Move" aria-label="Move" (click)="toggleMove(row.node)">
                       <lucide-icon name="arrow-left-right" [size]="14" />
                     </button>
                     <button type="button" class="bp-subcat-expander" title="Delete" aria-label="Delete" (click)="removeNode(row.node)">
@@ -281,25 +284,41 @@ export class CategoriesSettingsComponent {
     this.bump();
   }
 
-  // ── Move / reparent (two-click: pick source, click a destination) ───────────
-  protected readonly moving = signal<TaxNode | null>(null);
-  protected startMove(node: TaxNode): void { this.moving.set(node); this.error.set(''); }
-  protected cancelMove(): void { this.moving.set(null); }
+  // ── Move / reparent (multi-pick: ⇄ toggles rows into the selection, then click a
+  //    destination → to move them all; reuses the single move endpoint per node) ────
+  protected readonly moving = signal<TaxNode[]>([]);
+  protected readonly isMoving = computed(() => this.moving().length > 0);
+  protected isSelected(node: TaxNode): boolean { return this.moving().some((n) => n.cat.id === node.cat.id); }
+  /** A short banner label: "Glassware, Crockery +2 more". */
+  protected readonly movingLabel = computed(() => {
+    const ns = this.moving();
+    if (!ns.length) return '';
+    const head = ns.slice(0, 2).map((n) => n.cat.name).join(', ');
+    return ns.length > 2 ? `${head} +${ns.length - 2} more` : head;
+  });
+  protected toggleMove(node: TaxNode): void {
+    this.error.set('');
+    this.moving.update((cur) => cur.some((n) => n.cat.id === node.cat.id)
+      ? cur.filter((n) => n.cat.id !== node.cat.id)
+      : [...cur, node]);
+  }
+  protected cancelMove(): void { this.moving.set([]); }
   protected async moveTo(parent: TaxNode | null): Promise<void> {
-    const m = this.moving();
-    if (!m) return;
-    if (parent && parent.cat.id === m.cat.id) return;
-    this.moving.set(null);
-    try {
-      await firstValueFrom(this.catalogue.moveCategory(m.cat.id, parent ? parent.cat.id : null));
-      await this.reloadTree(); this.error.set('');
-    } catch (e) {
-      const body = (e as { error?: { error?: string; message?: string } })?.error;
-      if (body?.error === 'too_deep') this.error.set(body.message || 'That move would exceed 3 levels.');
-      else if (body?.message) this.error.set(body.message);
-      else if (body?.error) this.error.set(body.error);
-      else this.error.set(`Couldn't move "${m.cat.name}".`);
+    const nodes = this.moving();
+    if (!nodes.length) return;
+    this.moving.set([]);
+    const failures: string[] = [];
+    for (const m of nodes) {
+      if (parent && parent.cat.id === m.cat.id) continue; // can't move a node into itself
+      try {
+        await firstValueFrom(this.catalogue.moveCategory(m.cat.id, parent ? parent.cat.id : null));
+      } catch (e) {
+        const body = (e as { error?: { error?: string; message?: string } })?.error;
+        failures.push(`${m.cat.name}: ${body?.message || body?.error || 'failed'}`);
+      }
     }
+    await this.reloadTree();
+    this.error.set(failures.length ? `Some moves failed — ${failures.join('; ')}` : '');
   }
   private async reloadTree(): Promise<void> {
     const roots = await firstValueFrom(this.catalogue.adminCategories());
