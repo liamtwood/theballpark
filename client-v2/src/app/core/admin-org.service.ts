@@ -204,6 +204,12 @@ export class AdminOrgService {
     return this.api.post<PrepareResult>(`/api/admin/orgs/${orgId}/extract/prepare`, { groups });
   }
 
+  /** CATEGORIES-ONLY — create the new subcats/sub-subcats the mapping needs, without
+   *  pulling items (shape the taxonomy up front; load items later). Idempotent. */
+  extractApplyMapping(orgId: string, mapping: Record<string, MappingRow>): Observable<{ created: number; groups: Array<{ key: string; status: string }> }> {
+    return this.api.post<{ created: number; groups: Array<{ key: string; status: string }> }>(`/api/admin/orgs/${orgId}/extract/prepare/apply`, { mapping });
+  }
+
   /** PULL — START a background job that creates pending items from these product
    *  URLs. Returns the job id at once (a whole catalogue takes minutes); poll with
    *  extractJob. mode 'review' = lean vetting set; 'full' = everything mappable.

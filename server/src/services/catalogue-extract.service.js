@@ -429,8 +429,10 @@ async function resolveMappingRow(row, cache) {
       const found = await pool.query(
         `SELECT id FROM categories WHERE parent_id = $1 AND deleted_at IS NULL
            AND lower(name) = lower($2) LIMIT 1`, [parentId, row.subcategoryName]);
+      let didCreate = false;
       if (found.rows[0]) subcategoryId = found.rows[0].id;
       else {
+        didCreate = true;
         const anc = await pool.query(
           `WITH RECURSIVE a AS (
              SELECT id, parent_id, 1 AS d FROM categories WHERE id = $1
@@ -444,9 +446,29 @@ async function resolveMappingRow(row, cache) {
         subcategoryId = ins.rows[0].id;
       }
       cache.set(ck, subcategoryId);
+      return { categoryId: row.categoryId, subcategoryId, created: didCreate };
     }
   }
-  return { categoryId: row.categoryId, subcategoryId };
+  return { categoryId: row.categoryId, subcategoryId, created: false };
+}
+
+/** Categories-only apply (Liam's 3rd Load mode): create the NEW subcats / sub-subcats
+ *  the Prepare mapping needs WITHOUT pulling any items — shape the taxonomy from a
+ *  supplier's structure up front, then load items later / in preview. Idempotent
+ *  (resolveMappingRow matches an existing node by name), so a later Review/Full pull
+ *  reuses these, never duplicates. Admin-gated at the route. */
+async function applyMapping(mapping) {
+  const map = mapping && typeof mapping === 'object' ? mapping : {};
+  const cache = new Map();
+  const groups = [];
+  let created = 0;
+  for (const [key, row] of Object.entries(map)) {
+    if (!row || !row.categoryId) { groups.push({ key, status: 'skipped', reason: 'no category chosen' }); continue; }
+    const resolved = await resolveMappingRow(row, cache);
+    if (resolved.created) created += 1;
+    groups.push({ key, status: resolved.created ? 'created' : 'exists', categoryId: resolved.categoryId, subcategoryId: resolved.subcategoryId });
+  }
+  return { created, groups };
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -1321,4 +1343,4 @@ function pruneNull(obj) {
   return out;
 }
 
-module.exports = { analyse, startAnalyseJob, detectProfile, prepare, pull, startPull, getJob, activeJobForOrg, cancelJob, failStaleJobs, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity, extractReviewFromJsonLd } };
+module.exports = { analyse, startAnalyseJob, detectProfile, prepare, applyMapping, pull, startPull, getJob, activeJobForOrg, cancelJob, failStaleJobs, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity, extractReviewFromJsonLd } };

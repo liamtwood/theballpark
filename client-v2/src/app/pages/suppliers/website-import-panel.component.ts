@@ -50,7 +50,7 @@ interface EditRow {
       @if (error(); as e) { <p class="bp-body-small text-warn mt-2">{{ e }}</p> }
 
       @if (report(); as r) {
-       @if (!result()) {
+       @if (!result() && !applied()) {
         <div class="mt-3 bp-body-small" style="border-top:1px solid var(--border); padding-top:0.75rem;">
           <p class="bp-extract-heading">Analysis Summary</p>
           <div class="flex flex-wrap items-center gap-2 mb-2">
@@ -171,10 +171,14 @@ interface EditRow {
                   <input type="radio" name="pullmode" class="bp-radio" [checked]="mode() === 'full'" (change)="mode.set('full')" />
                   <span>Full <span class="text-secondary">— everything we can store</span></span>
                 </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="pullmode" class="bp-radio" [checked]="mode() === 'categories'" (change)="mode.set('categories')" />
+                  <span>Categories only <span class="text-secondary">— create the cats/subcats, no items</span></span>
+                </label>
               </div>
               <div class="mt-4">
                 <button type="button" class="bp-btn-grad" [disabled]="pulling() || jobRunning()" (click)="pull()">
-                  {{ (pulling() || jobRunning()) ? 'Loading…' : 'Load ' + selected().size + ' selected' }}
+                  {{ pullLabel() }}
                 </button>
                 <button type="button" class="bp-caption ml-3" style="text-decoration:underline;" (click)="backToSelection()">Back to selection</button>
               </div>
@@ -246,6 +250,14 @@ interface EditRow {
           }
           <!-- Done: clear the panel so it collapses back to the input and the
                reviewer drops straight to the (now-reloaded) shop grid below. -->
+          <button type="button" class="bp-btn-outline mt-3" (click)="done()">Done</button>
+        </div>
+      }
+
+      <!-- Categories-only result: taxonomy shaped, no items pulled. -->
+      @if (applied(); as ap) {
+        <div class="mt-3 bp-body-small" style="border-top:1px solid var(--border); padding-top:0.75rem;">
+          <p class="mb-1"><strong>{{ ap.created }}</strong> {{ ap.created === 1 ? 'category' : 'categories' }} created<span class="text-secondary"> across {{ ap.groups }} {{ ap.groups === 1 ? 'group' : 'groups' }} — no items loaded. Load them later from this panel.</span></p>
           <button type="button" class="bp-btn-outline mt-3" (click)="done()">Done</button>
         </div>
       }
@@ -343,8 +355,11 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
       error: (e) => this.error.set(this.msg(e)),
     });
   }
-  /** Pull mode — default Review (lean vetting set) per the contract lifecycle. */
-  protected readonly mode = signal<'review' | 'full'>('review');
+  /** Pull mode — Review (lean vetting set) / Full (everything) / Categories only
+   *  (shape the taxonomy up front, load no items). Default Review. */
+  protected readonly mode = signal<'review' | 'full' | 'categories'>('review');
+  /** Categories-only result — "N categories created" (no items pulled). */
+  protected readonly applied = signal<{ created: number; groups: number } | null>(null);
   /** Prepare step (2): taxonomy + per-group cat/subcat, and the editable rows. */
   protected readonly preparing = signal(false);
   protected readonly prepared = signal<PrepareResult | null>(null);
@@ -388,8 +403,11 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
     if (!r) return false;
     return this.hasLinks() ? this.selected().size > 0 : r.pageShape === 'detail';
   });
-  protected readonly pullLabel = computed(() =>
-    this.hasLinks() ? `Pull ${this.selected().size} selected` : 'Pull this product');
+  protected readonly pullLabel = computed(() => {
+    if (this.pulling() || this.jobRunning()) return this.mode() === 'categories' ? 'Creating…' : 'Loading…';
+    if (this.mode() === 'categories') return 'Create categories';
+    return this.hasLinks() ? `Load ${this.selected().size} selected` : 'Load this product';
+  });
 
   protected toggleAll(): void {
     const links = this.report()?.productLinks ?? [];
@@ -597,6 +615,9 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
   protected pull(): void {
     const r = this.report();
     if (!r) return;
+    // Categories only — create the mapping's cats/subcats, pull no items.
+    if (this.mode() === 'categories') { this.applyCats(); return; }
+    const mode = this.mode() as 'review' | 'full';
     const urls = this.hasLinks() ? [...this.selected()] : [r.url];
     if (!urls.length) return;
     this.error.set(null);
@@ -604,14 +625,29 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
     this.pulling.set(true);
     // Start the background job — returns a job id at once; we poll it (and it
     // survives leaving the page). Seed a running job so the progress bar shows now.
-    this.admin.extractPull(this.orgId(), urls, this.mode(), this.buildMapping()).subscribe({
+    this.admin.extractPull(this.orgId(), urls, mode, this.buildMapping()).subscribe({
       next: (s) => {
         this.job.set({
-          jobId: s.jobId, status: 'running', mode: this.mode(),
+          jobId: s.jobId, status: 'running', mode,
           selected: s.selected, total: s.total, processed: 0,
           created: 0, skipped: 0, failed: 0, dropped: s.dropped, results: [],
         });
         this.startPolling(s.jobId);
+      },
+      error: (e) => { this.error.set(this.msg(e)); this.pulling.set(false); },
+    });
+  }
+
+  /** Categories only — create the new cats/subcats the mapping needs (idempotent),
+   *  without pulling any items. Lets us shape the taxonomy up front. */
+  private applyCats(): void {
+    this.error.set(null);
+    this.applied.set(null);
+    this.pulling.set(true);
+    this.admin.extractApplyMapping(this.orgId(), this.buildMapping()).subscribe({
+      next: (s) => {
+        this.applied.set({ created: s.created, groups: s.groups.length });
+        this.pulling.set(false);
       },
       error: (e) => { this.error.set(this.msg(e)); this.pulling.set(false); },
     });
@@ -624,6 +660,7 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
     this.job.set(null);
     this.report.set(null);
     this.result.set(null);
+    this.applied.set(null);
     this.selected.set(new Set());
     this.expandedCats.set(new Set());
     this.prepared.set(null);

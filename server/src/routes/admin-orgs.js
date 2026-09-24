@@ -231,6 +231,17 @@ router.post('/:orgId/extract/prepare', async (req, res, next) => {
   try { res.json(await CatalogueExtract.prepare(parsed.data.groups)); } catch (err) { next(err); }
 });
 
+// POST /api/admin/orgs/:orgId/extract/prepare/apply { mapping } → CATEGORIES-ONLY:
+// create the new subcats/sub-subcats the Prepare mapping needs, WITHOUT pulling items
+// (shape the taxonomy up front; load items later). Idempotent.
+router.post('/:orgId/extract/prepare/apply', async (req, res, next) => {
+  const mapping = req.body?.mapping;
+  if (!mapping || typeof mapping !== 'object') return res.status(400).json({ error: 'mapping is required' });
+  const parsed = z.record(z.string(), MappingRow).safeParse(mapping);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid mapping' });
+  try { res.json(await CatalogueExtract.applyMapping(parsed.data)); } catch (err) { next(err); }
+});
+
 // POST /api/admin/orgs/:orgId/extract/pull { urls[], mode?, mapping? } → START a
 // background pull job (a whole catalogue takes minutes). Returns the job id at once;
 // the client polls the job route below and can re-attach after leaving the page.
