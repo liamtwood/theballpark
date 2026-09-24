@@ -109,7 +109,10 @@ export class MarketplaceStore {
   });
 
   // ── Data ─────────────────────────────────────────────────────────────
-  readonly categoriesRes = resource<CategoryInfo[], void>({
+  // `rev` (bumped by catalogue.invalidate() on any write) is folded into each params
+  // so a create/edit/delete reloads the live view without a page refresh.
+  readonly categoriesRes = resource<CategoryInfo[], number>({
+    params: () => this.catalogue.rev(),
     loader: () => this.catalogue.categories(),
   });
   readonly categories = computed(() => this.categoriesRes.value() ?? []);
@@ -117,16 +120,16 @@ export class MarketplaceStore {
   /** The selected category's subcategory strip (cached reads; skips when
    *  no category is selected). */
   readonly subcategoriesRes = resource({
-    params: () => this.categoryId() ?? undefined,
-    loader: ({ params }) => this.catalogue.subcategories(params),
+    params: () => { const id = this.categoryId(); return id ? { id, rev: this.catalogue.rev() } : undefined; },
+    loader: ({ params }) => this.catalogue.subcategories(params.id),
   });
   readonly subcategories = computed(() => this.subcategoriesRes.value() ?? []);
 
   /** The selected subcategory's children — the 3rd rail level (drills only when
    *  non-empty). Loads children of ANY node via the same endpoint. */
   readonly subSubcategoriesRes = resource({
-    params: () => this.subcategoryId() ?? undefined,
-    loader: ({ params }) => this.catalogue.subcategories(params),
+    params: () => { const id = this.subcategoryId(); return id ? { id, rev: this.catalogue.rev() } : undefined; },
+    loader: ({ params }) => this.catalogue.subcategories(params.id),
   });
   readonly subSubcategories = computed(() => this.subSubcategoriesRes.value() ?? []);
 
@@ -171,9 +174,11 @@ export class MarketplaceStore {
         status: this.statusFilter(),
         active: this.activeFilter(),
         offset: this.offset(),
+        rev: this.catalogue.rev(), // reload the grid after any write (new item shows without refresh)
       };
     },
     loader: async ({ params }) => {
+      // params carries `rev` (to trigger reloads); items() reads only known keys, ignores it.
       const page = await this.catalogue.items(params);
       if (params.offset === 0) this.items.set(page.items);
       else this.items.update((list) => [...list, ...page.items]);

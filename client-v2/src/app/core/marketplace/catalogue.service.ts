@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { Observable, firstValueFrom, tap } from 'rxjs';
 import { ApiService } from '../api.service';
 import {
@@ -28,9 +28,15 @@ export class CatalogueService {
    *  identical requests share one flight. */
   private readonly cache = new Map<string, Promise<unknown>>();
 
+  /** Bumped on every invalidate — resources that include `rev()` in their params
+   *  re-run when a write happens, so newly added items/categories appear WITHOUT a
+   *  page refresh (the cache clear alone doesn't re-trigger a live resource). */
+  readonly rev = signal(0);
+
   /** Bust every cached read — call after ANY catalogue write. */
   invalidate(): void {
     this.cache.clear();
+    this.rev.update((v) => v + 1);
   }
 
   /** Stable cache key: sort params so logically identical queries never
