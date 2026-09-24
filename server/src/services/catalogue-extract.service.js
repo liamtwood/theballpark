@@ -390,11 +390,16 @@ async function prepare(groups) {
     // Fallback: a NESTED supplier sub-group (key has ≥2 path segments, e.g.
     // "table-hire/trestle-table-hire") is a specific type — it should get a 3rd
     // level even when the AI omits one (so Trestle behaves like Coffee/Poseur).
-    if (subMatch && !subSubName && key.split('/').filter(Boolean).length >= 2) {
+    // …but only when the leaf is genuinely MORE SPECIFIC than the subcategory. Skip
+    // when the group's bare leaf name already IS the subcategory (e.g. "Glassware Hire"
+    // under subcat "Glassware" — deriving "Glasswares" is redundant + mis-pluralised).
+    const bareLeaf = String(label).replace(/\s*(hire|rental)\s*$/i, '').trim();
+    if (subMatch && !subSubName && key.split('/').filter(Boolean).length >= 2
+        && norm(bareLeaf) !== norm(subMatch.name)) {
       const derived = houseStyleName(label); // "Trestle Table Hire" → "Trestle Tables"
       const existingSS = (subMatch.subcats || []).find((gc) => norm(gc.name) === norm(derived));
       if (existingSS) { subSubId = existingSS.id; subSubName = existingSS.name; subSubIsNew = false; }
-      else if (derived) { subSubName = derived; subSubIsNew = true; }
+      else if (derived && norm(derived) !== norm(subMatch.name)) { subSubName = derived; subSubIsNew = true; }
     }
     out.push({
       key, label, path: pathLabel,
