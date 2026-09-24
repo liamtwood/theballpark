@@ -361,6 +361,9 @@ async function prepare(groups) {
     const label = groupLabel(key);
     const pathLabel = groupPathLabel(key); // full supplier path → richer AI context
     let sug = { category: null, subcategory: null, isNew: false, subsubcategory: null, subsubIsNew: false, confidence: 0 };
+    // Sample kept: it disambiguates the CATEGORY well (e.g. Refrigeration → Appliances).
+    // It can nudge a broad group into a narrow L3 (Chairs + folding-chair sample), but
+    // the prompt steers L3 by label, and those broad edges are a quick reclassify.
     try { sug = await classifyGroupToCategory(pathLabel, g?.sample || label, treeForAi); } catch { /* keep default */ }
     return { key, label, pathLabel, sug };
   });
