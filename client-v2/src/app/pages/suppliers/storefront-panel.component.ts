@@ -107,7 +107,7 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
       <h3 class="bp-edit-section-title">Company Information</h3>
       <div class="mt-3 flex items-start gap-4">
         @if (logoSrc()) {
-          <img class="h-16 w-16 shrink-0 rounded-[var(--radius-card)] border border-hairline object-cover" [src]="logoSrc()" alt="" />
+          <img class="h-12 w-auto max-w-[12rem] shrink-0 object-contain" [src]="logoSrc()" alt="" />
         }
         <div class="min-w-0">
           <p class="text-md font-medium text-text">{{ supplier().name }}</p>
