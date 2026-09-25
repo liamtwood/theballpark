@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DialogModule } from 'primeng/dialog';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { CatalogueService } from '../../../core/marketplace/catalogue.service';
@@ -21,7 +22,7 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
 @Component({
   selector: 'app-categories-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, SelectComponent, LucideAngularModule, PageHeroComponent],
+  imports: [FormsModule, DialogModule, SelectComponent, LucideAngularModule, PageHeroComponent],
   host: { class: 'block' },
   template: `
     <app-page-hero
@@ -53,10 +54,9 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
         }
 
         <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
-          <div class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px_104px] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-2">
+          <div class="grid grid-cols-[28px_1fr_110px_90px_70px_132px] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-2">
             <span></span>
             <span class="bp-table-column-header">Category</span>
-            <span class="bp-table-column-header">Tagline</span>
             <span class="bp-table-column-header">Visibility</span>
             <span class="bp-table-column-header">Sort</span>
             <span class="bp-table-column-header">Items</span>
@@ -65,17 +65,16 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
 
           @for (row of visible(); track row.add ? 'add:' + row.parentId : row.node.cat.id) {
             @if (row.add) {
-              <div class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px_104px] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-1.5"
+              <div class="grid grid-cols-[28px_1fr_110px_90px_70px_132px] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-1.5"
                    [style.padding-left.rem]="0.75 + row.depth * 1.25">
                 <span></span>
                 <input class="ed-input" maxlength="60" placeholder="New name…" autofocus
                        [ngModel]="addName()" (ngModelChange)="addName.set($event)"
                        (keydown.enter)="submitAdd(row.parentId)" (keydown.escape)="cancelAdd()" (blur)="submitAdd(row.parentId)" />
-                <span class="bp-caption text-secondary">Enter to add · Esc to cancel</span>
-                <span></span><span></span><span></span><span></span>
+                <span class="bp-caption text-secondary" style="grid-column: span 4;">Enter to add · Esc to cancel</span>
               </div>
             } @else {
-              <div class="grid grid-cols-[28px_1fr_1.4fr_110px_90px_70px_104px] items-center gap-x-4 border-b border-hairline px-4 py-1.5"
+              <div class="grid grid-cols-[28px_1fr_110px_90px_70px_132px] items-center gap-x-4 border-b border-hairline px-4 py-1.5"
                    [class.opacity-60]="!row.node.cat.isActive" [class.bg-fill]="row.depth > 0"
                    [style.padding-left.rem]="0.75 + row.depth * 1.25">
                 <button type="button" class="bp-subcat-expander"
@@ -85,8 +84,6 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
                 </button>
                 <input class="ed-input" maxlength="60" aria-label="Name"
                        [ngModel]="row.node.cat.name" (blur)="commitText($event, row.node, 'name')" />
-                <input class="ed-input" maxlength="120" placeholder="Shown on the card / chip" aria-label="Tagline"
-                       [ngModel]="row.node.cat.tagline ?? ''" (blur)="commitText($event, row.node, 'tagline')" />
                 <app-select ariaLabel="Visibility" [options]="visibility"
                             [value]="row.node.cat.isActive ? 'visible' : 'hidden'"
                             (changed)="save(row.node, { isActive: $event === 'visible' })" />
@@ -115,6 +112,9 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
                         <lucide-icon name="plus" [size]="14" />
                       </button>
                     }
+                    <button type="button" class="bp-subcat-expander" title="Edit tagline" aria-label="Edit tagline" (click)="openTagline(row.node)">
+                      <lucide-icon name="square-pen" [size]="14" />
+                    </button>
                     <button type="button" class="bp-subcat-expander" title="Move" aria-label="Move" (click)="toggleMove(row.node)">
                       <lucide-icon name="arrow-left-right" [size]="14" />
                     </button>
@@ -131,6 +131,44 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
         @if (error()) { <p class="bp-caption mt-3 text-danger">{{ error() }}</p> }
       }
     </div>
+
+    <!-- Tagline editor — a roomy dialog (taglines run long + edit poorly inline). -->
+    <p-dialog
+      [visible]="!!taglineNode()"
+      (visibleChange)="onTaglineVisible($event)"
+      styleClass="bp-modal"
+      [closable]="false"
+      [closeOnEscape]="true"
+      [dismissableMask]="true"
+      [modal]="true"
+      [style]="{ width: '480px' }"
+    >
+      <ng-template pTemplate="header">
+        <div>
+          <div class="bp-modal__icon"><lucide-icon name="square-pen" [size]="20" /></div>
+          <h2 class="bp-card-title">Edit tagline</h2>
+          @if (taglineNode(); as n) {
+            <p class="bp-body mt-2 text-secondary">{{ n.cat.name }} — shown on the card and chip.</p>
+          }
+        </div>
+      </ng-template>
+      <ng-template pTemplate="content">
+        <textarea
+          class="ed-input"
+          rows="3"
+          maxlength="120"
+          style="width:100%; resize:vertical;"
+          aria-label="Tagline"
+          placeholder="A short line shown on the category card / chip"
+          [ngModel]="taglineDraft()"
+          (ngModelChange)="taglineDraft.set($event)"
+        ></textarea>
+      </ng-template>
+      <ng-template pTemplate="footer">
+        <button type="button" class="bp-btn-outline" (click)="closeTagline()">Cancel</button>
+        <button type="button" class="bp-btn-grad" (click)="saveTagline()">Save</button>
+      </ng-template>
+    </p-dialog>
   `,
 })
 export class CategoriesSettingsComponent {
@@ -233,6 +271,23 @@ export class CategoriesSettingsComponent {
   private find(nodes: TaxNode[], id: string): TaxNode | null {
     for (const n of nodes) { if (n.cat.id === id) return n; const d = this.find(n.children, id); if (d) return d; }
     return null;
+  }
+
+  // ── Tagline editor (dialog) — taglines run long + edit poorly inline ────────
+  protected readonly taglineNode = signal<TaxNode | null>(null);
+  protected readonly taglineDraft = signal('');
+  protected openTagline(node: TaxNode): void {
+    this.taglineDraft.set(node.cat.tagline ?? '');
+    this.taglineNode.set(node);
+  }
+  protected closeTagline(): void { this.taglineNode.set(null); }
+  protected onTaglineVisible(visible: boolean): void { if (!visible) this.closeTagline(); }
+  protected saveTagline(): void {
+    const node = this.taglineNode();
+    if (!node) return;
+    const next = this.taglineDraft().trim();
+    if (next !== (node.cat.tagline ?? '')) void this.save(node, { tagline: next });
+    this.closeTagline();
   }
 
   // ── Inline edit (save-on-blur), optimistic ─────────────────────────────────
