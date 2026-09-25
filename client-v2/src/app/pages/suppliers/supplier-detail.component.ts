@@ -49,40 +49,49 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
   host: { class: 'block bp-vpfit' },
   template: `
     @if (detail.value(); as sup) {
-      <app-page-hero align="block" [eyebrow]="heroEyebrow()" [back]="heroBack()" [title]="sup.name" [subtitle]="sup.city ?? ''">
-        <div hero-actions class="flex items-center gap-3">
-          @if (isOwner()) {
-            <!-- pV2-STORE-01 — owner manages their own shop here. -->
-            <a routerLink="/store/items/new" class="bp-btn-grad">
-              <lucide-icon name="plus" [size]="15" /> Add product
-            </a>
-          } @else if (isPlatformAdmin() && tab() === 'store') {
-            <!-- pV2-ADMIN-ORG-ITEM-CREATE-01 — admin adds a product FOR this org. -->
-            <a [routerLink]="['/admin/orgs', store.pinnedSupplierId(), 'items', 'new']" class="bp-btn-grad">
-              <lucide-icon name="plus" [size]="15" /> Add product
-            </a>
-          } @else if (isAgent()) {
-            <button
-              type="button"
-              class="bp-fav-btn !static"
-              [class.bp-fav-btn--on]="favs.suppliers().has(sup.id)"
-              [attr.aria-label]="'Favourite ' + sup.name"
-              (click)="favs.toggle('supplier', sup.id)"
-            >
-              <lucide-icon name="heart" [size]="15" />
-            </button>
-          }
-        </div>
-      </app-page-hero>
+      <!-- Brand header (pV2-STOREFRONT-MENU-01 / Liam 2026-09-25): on the Shopfront
+           tab the supplier's cover image sits BEHIND the hero (name + city) and the
+           tab band, so the header IS the brand banner. Other tabs render it plain. -->
+      <div
+        class="bp-supplier-brandhead"
+        [class.bp-supplier-brandhead--cover]="brandCover(sup)"
+        [style.background-image]="brandCoverUrl(sup)"
+      >
+        <app-page-hero align="block" [eyebrow]="heroEyebrow()" [back]="heroBack()" [title]="sup.name" [subtitle]="sup.city ?? ''">
+          <div hero-actions class="flex items-center gap-3">
+            @if (isOwner()) {
+              <!-- pV2-STORE-01 — owner manages their own shop here. -->
+              <a routerLink="/store/items/new" class="bp-btn-grad">
+                <lucide-icon name="plus" [size]="15" /> Add product
+              </a>
+            } @else if (isPlatformAdmin() && tab() === 'store') {
+              <!-- pV2-ADMIN-ORG-ITEM-CREATE-01 — admin adds a product FOR this org. -->
+              <a [routerLink]="['/admin/orgs', store.pinnedSupplierId(), 'items', 'new']" class="bp-btn-grad">
+                <lucide-icon name="plus" [size]="15" /> Add product
+              </a>
+            } @else if (isAgent()) {
+              <button
+                type="button"
+                class="bp-fav-btn !static"
+                [class.bp-fav-btn--on]="favs.suppliers().has(sup.id)"
+                [attr.aria-label]="'Favourite ' + sup.name"
+                (click)="favs.toggle('supplier', sup.id)"
+              >
+                <lucide-icon name="heart" [size]="15" />
+              </button>
+            }
+          </div>
+        </app-page-hero>
 
-      <!-- Storefront / Store toggle — above the banner, centred (pV2-MEDIA-01e QC).
-           The OWNER's shop is items-only (pV2-STORE-01): their shopfront now
-           lives on /settings/profile, so the toggle hides and Store shows. -->
-      @if (!isOwner()) {
-        <div class="flex justify-center px-6 pt-4">
-          <app-tab-band [tabs]="tabs()" [active]="tab()" (activeChange)="setTab($event)" />
-        </div>
-      }
+        <!-- Storefront / Store toggle — centred (pV2-MEDIA-01e QC). The OWNER's shop
+             is items-only (pV2-STORE-01): their shopfront now lives on
+             /settings/profile, so the toggle hides and Store shows. -->
+        @if (!isOwner()) {
+          <div class="flex justify-center px-6 pt-4 pb-1">
+            <app-tab-band [tabs]="tabs()" [active]="tab()" (activeChange)="setTab($event)" />
+          </div>
+        }
+      </div>
 
       <div class="bp-page-body" [class.overflow-y-auto]="tab() !== 'store'">
         @if (tab() === 'profile') {
@@ -249,6 +258,19 @@ export class SupplierDetailComponent {
   protected readonly isAgent = computed(() => this.auth.user()?.activeOrgType === 'agency');
   /** Platform admin (ballpark) — edits this org's Profile tab in place. */
   protected readonly isPlatformAdmin = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
+
+  /** Shopfront tab only: the supplier's cover backs the brand header (name + tabs
+   *  ride on top of it). Other tabs — and suppliers with no cover — render plain. */
+  protected brandCover(sup: SupplierDetail): boolean {
+    return this.tab() === 'storefront' && !!sup.coverUrl;
+  }
+  /** The cover as a CSS background-image value (spaces encoded — some imported
+   *  cover URLs carry raw spaces that break the load). Null when no cover shows. */
+  protected brandCoverUrl(sup: SupplierDetail): string | null {
+    if (!this.brandCover(sup)) return null;
+    const u = (sup.coverUrl ?? '').trim().replace(/ /g, '%20');
+    return u ? `url("${u}")` : null;
+  }
 
   /** Hero eyebrow (uppercased by the hero) — "My Shop" for the owner, else a
    *  stable "Supplier" (the three tabs now name the surface; a fixed "Storefront"

@@ -964,51 +964,33 @@ body {
 /* pV2-STOREFRONT-MENU-01 — the shopfront VIEW hero (Amazon Brand Store pattern):
    full-width cover photo with the org logo overlaid in the corner; the category
    nav bar + org name sit in a white bar BELOW the image (edit uses app-org-banner). */
-.bp-shopfront-cover {
+/* Supplier brand header (pV2-STOREFRONT-MENU-01) — on the Shopfront tab the
+   supplier's cover image sits BEHIND the page hero (name + city) and the tab
+   band, turning the header into the brand banner. A light veil keeps the dark
+   hero text + tab pills legible over any cover. Other tabs render plain. */
+.bp-supplier-brandhead {
   position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 7;
-  /* Cap the height so a full-bleed 16/7 cover doesn't dominate a wide laptop —
-     the overlaid nav shares this band, so the hero stays compact. */
-  max-height: 20rem;
-  border-radius: var(--radius-card);
-  overflow: hidden;
-  border: 1px solid var(--color-border-hairline);
-  background: var(--color-surface);
 }
-.bp-shopfront-cover > img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.bp-shopfront-cover--empty { background: var(--theme-soft); }
-/* Bottom scrim — keeps the frosted nav legible over any cover image. */
-.bp-shopfront-cover__scrim {
+.bp-supplier-brandhead--cover {
+  background-size: cover;
+  background-position: center;
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+.bp-supplier-brandhead--cover::before {
+  content: '';
   position: absolute;
-  inset: auto 0 0 0;
-  height: 45%;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0));
-  pointer-events: none;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-surface) 60%, transparent),
+    color-mix(in srgb, var(--color-surface) 80%, transparent)
+  );
 }
-/* Frosted nav band that overlays the bottom of the cover (image shows behind). */
-.bp-shopfront-nav {
-  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
-  border: 1px solid color-mix(in srgb, #fff 55%, transparent);
-  box-shadow: var(--shadow-md);
-  -webkit-backdrop-filter: blur(10px) saturate(1.1);
-  backdrop-filter: blur(10px) saturate(1.1);
+.bp-supplier-brandhead--cover > * {
+  position: relative;
+  z-index: 1;
 }
-.bp-shopfront-cover__logo {
-  position: absolute;
-  right: 1rem;
-  top: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: var(--shadow-md);
-}
-/* Explicit height (not just max-*) so a viewBox-only SVG logo — e.g. Yahire's, which
-   has no width/height attrs — still renders instead of collapsing to a dot. */
-.bp-shopfront-cover__logo img { height: 3.25rem; width: auto; max-width: 10rem; object-fit: contain; display: block; }
 .bp-org-banner__cover-btn {
   position: absolute;
   top: 14px;
