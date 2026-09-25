@@ -20,54 +20,59 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
          own catalogue: nav = the categories they sell in, mega-menu = each
          subcategory (column) listing its sub-subcategories. A click drills the
          Store. Lights up the moment their items are loaded (pV2-STOREFRONT-MENU-01). -->
-    <!-- 1. Shopfront hero (Amazon Brand Store pattern): full-width cover with the org
-         logo in the corner, then a nav bar (org name + category menu) BELOW the image.
-         The mega-menu drops from the nav; a click drills the Store (pV2-STOREFRONT-MENU-01). -->
-    <div class="bp-shopfront-cover" [class.bp-shopfront-cover--empty]="!supplier().coverUrl">
-      @if (supplier().coverUrl) { <img [src]="supplier().coverUrl" alt="" /> }
-      @if (logoSrc()) {
-        <div class="bp-shopfront-cover__logo"><img [src]="logoSrc()" alt="" /></div>
+    <!-- 1. Shopfront hero (Amazon Brand Store pattern): the cover sits BEHIND a
+         frosted nav bar (org name + category menu) that overlays its bottom edge,
+         so the hero is one band, not a tall image + a separate nav below it (kills
+         the laptop dead-space). The mega-menu drops from the nav; a click drills
+         the Store (pV2-STOREFRONT-MENU-01). -->
+    <div class="relative">
+      <div class="bp-shopfront-cover" [class.bp-shopfront-cover--empty]="!supplier().coverUrl">
+        @if (supplier().coverUrl) { <img [src]="supplier().coverUrl" alt="" /> }
+        @if (logoSrc()) {
+          <div class="bp-shopfront-cover__logo"><img [src]="logoSrc()" alt="" /></div>
+        }
+        @if (navCats().length) { <div class="bp-shopfront-cover__scrim"></div> }
+      </div>
+
+      @if (navCats().length) {
+        <div class="absolute inset-x-3 bottom-3 z-20">
+          <nav class="bp-shopfront-nav flex items-center gap-1 overflow-x-auto rounded-[var(--radius-card)] px-3 py-2.5">
+            <span class="mr-3 shrink-0 whitespace-nowrap text-lg font-medium text-text">{{ supplier().name }}</span>
+            <button type="button" class="whitespace-nowrap px-3 py-1 text-lg text-secondary hover:text-accent" (click)="pick(null, null, 'All items')">All items</button>
+            @for (c of navCats(); track c.id) {
+              <button
+                type="button"
+                class="flex items-center gap-1.5 whitespace-nowrap px-3 py-1 text-lg hover:text-accent"
+                [class.font-medium]="openCat() === c.id"
+                [class.text-accent]="openCat() === c.id"
+                [class.text-secondary]="openCat() !== c.id"
+                [style.box-shadow]="openCat() === c.id ? 'inset 0 -2px 0 0 var(--theme-accent)' : 'none'"
+                (click)="toggleCat(c.id)"
+              >
+                {{ c.name }}
+                <lucide-icon name="chevron-down" [size]="16" [style.transform]="openCat() === c.id ? 'rotate(180deg)' : 'none'" />
+              </button>
+            }
+          </nav>
+
+          <!-- Mega-menu drops from the nav (Amazon-style), floating over the content below. -->
+          @if (menu(); as m) {
+            <div class="absolute inset-x-0 top-full z-10 mt-1 rounded-[var(--radius-card)] border border-hairline bg-surface p-6 shadow-[var(--shadow-md)]">
+              <div class="grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3">
+                @for (col of m.columns; track col.l2.id) {
+                  <div class="flex flex-col gap-2">
+                    <button type="button" class="text-left text-lg font-medium text-accent hover:underline" (click)="pick(m.categoryId, col.l2.id, col.l2.name, col.l2.tagline)">{{ col.l2.name }}</button>
+                    @for (leaf of col.children; track leaf.id) {
+                      <button type="button" class="text-left text-base text-secondary hover:text-accent" (click)="pick(m.categoryId, leaf.id, leaf.name, leaf.tagline)">{{ leaf.name }}</button>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
       }
     </div>
-
-    @if (navCats().length) {
-      <div class="relative z-20 -mt-6">
-        <nav class="flex items-center gap-1 overflow-x-auto rounded-[var(--radius-card)] border border-hairline bg-surface px-3 py-2.5">
-          <span class="mr-3 shrink-0 whitespace-nowrap text-lg font-medium text-text">{{ supplier().name }}</span>
-          <button type="button" class="whitespace-nowrap px-3 py-1 text-lg text-secondary hover:text-accent" (click)="pick(null, null, 'All items')">All items</button>
-          @for (c of navCats(); track c.id) {
-            <button
-              type="button"
-              class="flex items-center gap-1.5 whitespace-nowrap px-3 py-1 text-lg hover:text-accent"
-              [class.font-medium]="openCat() === c.id"
-              [class.text-accent]="openCat() === c.id"
-              [class.text-secondary]="openCat() !== c.id"
-              [style.box-shadow]="openCat() === c.id ? 'inset 0 -2px 0 0 var(--theme-accent)' : 'none'"
-              (click)="toggleCat(c.id)"
-            >
-              {{ c.name }}
-              <lucide-icon name="chevron-down" [size]="16" [style.transform]="openCat() === c.id ? 'rotate(180deg)' : 'none'" />
-            </button>
-          }
-        </nav>
-
-        <!-- Mega-menu drops from the nav (Amazon-style), floating over the content below. -->
-        @if (menu(); as m) {
-          <div class="absolute inset-x-0 top-full z-10 mt-1 rounded-[var(--radius-card)] border border-hairline bg-surface p-6 shadow-[var(--shadow-md)]">
-            <div class="grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3">
-              @for (col of m.columns; track col.l2.id) {
-                <div class="flex flex-col gap-2">
-                  <button type="button" class="text-left text-lg font-medium text-accent hover:underline" (click)="pick(m.categoryId, col.l2.id, col.l2.name, col.l2.tagline)">{{ col.l2.name }}</button>
-                  @for (leaf of col.children; track leaf.id) {
-                    <button type="button" class="text-left text-base text-secondary hover:text-accent" (click)="pick(m.categoryId, leaf.id, leaf.name, leaf.tagline)">{{ leaf.name }}</button>
-                  }
-                </div>
-              }
-            </div>
-          </div>
-        }
-      </div>
-    }
 
     <!-- Browse-in-place: picking a category/sub renders the supplier's items right
          here (reuses catalogue-grid + the store's items) so buyers never leave the
