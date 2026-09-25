@@ -259,10 +259,11 @@ export class SupplierDetailComponent {
   /** Platform admin (ballpark) — edits this org's Profile tab in place. */
   protected readonly isPlatformAdmin = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
 
-  /** Shopfront tab only: the supplier's cover backs the brand header (name + tabs
-   *  ride on top of it). Other tabs — and suppliers with no cover — render plain. */
+  /** Shopfront + Shop tabs: the supplier's cover backs the brand header (name +
+   *  tabs ride on top of it). Profile/AI Assist — and suppliers with no cover —
+   *  render plain (a photo backdrop would fight the editor / extractor). */
   protected brandCover(sup: SupplierDetail): boolean {
-    return this.tab() === 'storefront' && !!sup.coverUrl;
+    return (this.tab() === 'storefront' || this.tab() === 'store') && !!sup.coverUrl;
   }
   /** The cover as a CSS background-image value (spaces encoded — some imported
    *  cover URLs carry raw spaces that break the load). Null when no cover shows. */

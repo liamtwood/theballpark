@@ -974,7 +974,6 @@ body {
 .bp-supplier-brandhead--cover {
   background-size: cover;
   background-position: center;
-  border-bottom: 1px solid var(--color-border-hairline);
 }
 .bp-supplier-brandhead--cover::before {
   content: '';
