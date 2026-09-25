@@ -27,12 +27,13 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
         [coverUrl]="supplier().coverUrl"
       />
       @if (navCats().length) {
-        <nav class="absolute inset-x-0 bottom-0 flex items-stretch gap-1 overflow-x-auto border-t border-hairline bg-surface px-2" style="height:2.75rem;">
-          <button type="button" class="whitespace-nowrap px-3 text-sm text-secondary hover:text-accent" (click)="pick(null, null)">All items</button>
+        <!-- Category nav pinned to the TOP of the banner. -->
+        <nav class="absolute inset-x-0 top-0 z-20 flex items-stretch gap-1 overflow-x-auto rounded-t-[var(--radius-card)] border-b border-hairline bg-surface px-3" style="height:3rem;">
+          <button type="button" class="whitespace-nowrap px-3 text-base text-secondary hover:text-accent" (click)="pick(null, null)">All items</button>
           @for (c of navCats(); track c.id) {
             <button
               type="button"
-              class="flex items-center gap-1 whitespace-nowrap px-3 text-sm hover:text-accent"
+              class="flex items-center gap-1.5 whitespace-nowrap px-3 text-base hover:text-accent"
               [class.font-medium]="openCat() === c.id"
               [class.text-accent]="openCat() === c.id"
               [class.text-secondary]="openCat() !== c.id"
@@ -40,29 +41,30 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
               (click)="toggleCat(c.id)"
             >
               {{ c.name }}
-              <lucide-icon name="chevron-down" [size]="14" [style.transform]="openCat() === c.id ? 'rotate(180deg)' : 'none'" />
+              <lucide-icon name="chevron-down" [size]="16" [style.transform]="openCat() === c.id ? 'rotate(180deg)' : 'none'" />
             </button>
           }
         </nav>
       }
-    </div>
 
-    <!-- Mega-menu: one column per subcategory (accent heading), listing its
-         sub-subcategories beneath — the supplier's live tree, our chrome. -->
-    @if (menu(); as m) {
-      <div class="rounded-[var(--radius-card)] border border-hairline bg-surface p-5">
-        <div class="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
-          @for (col of m.columns; track col.l2.id) {
-            <div class="flex flex-col gap-1.5">
-              <button type="button" class="text-left text-sm font-medium text-accent hover:underline" (click)="pick(m.categoryId, col.l2.id)">{{ col.l2.name }}</button>
-              @for (leaf of col.children; track leaf.id) {
-                <button type="button" class="bp-body-small text-left text-secondary hover:text-accent" (click)="pick(m.categoryId, leaf.id)">{{ leaf.name }}</button>
-              }
-            </div>
-          }
+      <!-- Mega-menu: overlays the banner just below the nav — a SOLID panel so it
+           stays readable over any cover photo (pV2-STOREFRONT-MENU-01). One column
+           per subcategory (accent heading) listing its sub-subcategories. -->
+      @if (menu(); as m) {
+        <div class="absolute inset-x-0 top-12 z-10 border-b border-hairline bg-surface p-6 shadow-[var(--shadow-md)]">
+          <div class="grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3">
+            @for (col of m.columns; track col.l2.id) {
+              <div class="flex flex-col gap-2">
+                <button type="button" class="text-left text-base font-medium text-accent hover:underline" (click)="pick(m.categoryId, col.l2.id)">{{ col.l2.name }}</button>
+                @for (leaf of col.children; track leaf.id) {
+                  <button type="button" class="text-left text-base text-secondary hover:text-accent" (click)="pick(m.categoryId, leaf.id)">{{ leaf.name }}</button>
+                }
+              </div>
+            }
+          </div>
         </div>
-      </div>
-    }
+      }
+    </div>
 
     <!-- 2. Company Information — logo + name + description, left-aligned. -->
     <section class="rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
