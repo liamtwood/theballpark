@@ -250,7 +250,10 @@ router.post('/:orgId/extract/pull', async (req, res, next) => {
   if (!parsed.success) return res.status(400).json({ error: 'urls (1-500 valid URLs) are required' });
   try {
     res.json(await CatalogueExtract.startPull(req.params.orgId, parsed.data.urls, { mode: parsed.data.mode, mapping: parsed.data.mapping }, req.user?.id || null));
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (err && err.code === 'pull_in_progress') return res.status(409).json({ error: err.message, jobId: err.jobId });
+    next(err);
+  }
 });
 
 // GET /api/admin/orgs/:orgId/extract/job → the org's active (running) pull job, or

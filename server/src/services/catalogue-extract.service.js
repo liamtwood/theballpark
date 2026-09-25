@@ -439,18 +439,26 @@ async function resolveMappingRow(row, cache) {
       let didCreate = false;
       if (found.rows[0]) subcategoryId = found.rows[0].id;
       else {
-        didCreate = true;
         const anc = await pool.query(
           `WITH RECURSIVE a AS (
              SELECT id, parent_id, 1 AS d FROM categories WHERE id = $1
              UNION ALL SELECT c.id, c.parent_id, a.d + 1 FROM categories c JOIN a ON c.id = a.parent_id
            ) SELECT MAX(d) AS m FROM a`, [parentId]);
         const level = Number(anc.rows[0]?.m || 1); // parent's depth = new node's level
-        const ins = await pool.query(
-          `INSERT INTO categories (name, parent_id, namespace, model, level, is_active, enabled, sort_order)
-             VALUES ($1, $2, 'catalogue', 'A', $3, false, true, 999) RETURNING id`,
-          [row.subcategoryName, parentId, level]);
-        subcategoryId = ins.rows[0].id;
+        // 3-level cap (levels 0/1/2) — the same invariant marketplace.js createCategory
+        // enforces. This is the create path for BOTH the cat-load and the item pull, so
+        // guard here too: never fabricate a 4th level; attach to the deepest allowed node
+        // (the parent) instead. Keeps the item placed, just no illegal subtree.
+        if (level > 2) {
+          subcategoryId = parentId;
+        } else {
+          didCreate = true;
+          const ins = await pool.query(
+            `INSERT INTO categories (name, parent_id, namespace, model, level, is_active, enabled, sort_order)
+               VALUES ($1, $2, 'catalogue', 'A', $3, false, true, 999) RETURNING id`,
+            [row.subcategoryName, parentId, level]);
+          subcategoryId = ins.rows[0].id;
+        }
       }
       cache.set(ck, subcategoryId);
       return { categoryId: row.categoryId, subcategoryId, created: didCreate };
@@ -1070,6 +1078,17 @@ async function isCancelled(jobId) {
 
 /** Create the job (plan snapshot) + kick off the runner; return the job id at once. */
 async function startPull(orgId, urls, opts = {}, createdBy = null) {
+  // One active pull per org. A second concurrent pull would race the app-level dedup
+  // (per-run seenIds + non-atomic findExisting) and could create duplicate items, so
+  // refuse to start while one is live. An analyse (fan-out) job writes no items, so it
+  // doesn't block. The panel already guards client-side; this closes the server side.
+  const active = await activeJobForOrg(orgId);
+  if (active && active.kind !== 'analyse') {
+    const err = new Error('A pull is already running for this supplier — wait for it to finish or cancel it first.');
+    err.code = 'pull_in_progress';
+    err.jobId = active.jobId;
+    throw err;
+  }
   const { selected, list, droppedRows } = planPull(urls);
   const profile = opts.profile || (list.length ? await detectProfile(list[0]) : 'generic');
   const plan = { list, dropped: droppedRows, mapping: opts.mapping && typeof opts.mapping === 'object' ? opts.mapping : {}, profile };
