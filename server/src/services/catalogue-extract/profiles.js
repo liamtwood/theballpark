@@ -66,6 +66,24 @@ function wooPrimaryCategory(p) {
   return cats.find((c) => !/^uncategor/i.test(c.slug || '')) || cats[0] || null;
 }
 
+/** Every purchasable variation of a variable product, id → price (Store API, paged,
+ *  bounded). The PARENT product carries each variation's attribute VALUES but no price;
+ *  this endpoint carries the price. One page covers ≤100 combos (pV2-STORE-VARIANTS-01).
+ *  Note: `include=`/`?parent=` alone return nothing — the `type=variation&parent=` pair
+ *  is what surfaces variations (they're hidden from the normal catalogue listing). */
+async function wooVariationPrices(origin, productId) {
+  const byId = new Map();
+  for (let page = 1; page <= 10; page++) {   // ≤1000 combos — generous bound
+    let batch;
+    try { batch = await wooGetJson(`${origin}/wp-json/wc/store/v1/products?type=variation&parent=${productId}&per_page=100&page=${page}`); }
+    catch { break; }
+    if (!Array.isArray(batch) || !batch.length) break;
+    for (const v of batch) if (v && v.id != null) byId.set(v.id, wooPrice(v.prices));
+    if (batch.length < 100) break;
+  }
+  return byId;
+}
+
 /** Fetch every product from the Woo Store API (paged, bounded). */
 async function wooAllProducts(origin) {
   const out = [];
@@ -198,7 +216,7 @@ async function wpFetchProduct(origin, slug) {
 module.exports = {
   detectProfile,
   // Woo
-  analyseWoo, wooGetJson, wooPrice, wooPrimaryCategory,
+  analyseWoo, wooGetJson, wooPrice, wooPrimaryCategory, wooVariationPrices,
   // WordPress
   analyseWordpress, wpFetchProduct,
 };

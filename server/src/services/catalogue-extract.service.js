@@ -22,7 +22,7 @@ const { normUrl, htmlToPlain } = require('./catalogue-extract/util');
 // the generic crawler below handles everything else.
 const {
   detectProfile, analyseWoo, analyseWordpress,
-  wooGetJson, wooPrice, wooPrimaryCategory, wpFetchProduct,
+  wooGetJson, wooPrice, wooPrimaryCategory, wooVariationPrices, wpFetchProduct,
 } = require('./catalogue-extract/profiles');
 
 const MAX_TEXT_CHARS = 14000; // keep the model prompt bounded; product pages sit well under
@@ -180,6 +180,61 @@ const norm = (s) => String(s == null ? '' : s).trim().toLowerCase().replace(/\s+
 // The 5 canonical descriptive groups (fixed order + keys) — pV2-STORE-ATTRIBUTE-GROUPS-01.
 const GROUP_KEYS = ['specifications', 'features', 'style', 'measurements', 'materials'];
 const emptyGroups = () => ({ specifications: [], features: [], style: [], measurements: [], materials: [] });
+
+/** Variant-matrix (pV2-STORE-VARIANTS-01) for a Woo variable product. Joins the parent's
+ *  per-variation attribute VALUES (p.variations[].attributes) with the variation-endpoint
+ *  PRICES (priceById) into a flat combo list + the picker dimensions (declared term order,
+ *  so A4/A5/A6 not alphabetical). Attributes that don't vary across the priced combos fall
+ *  to `specs` (the Specifications group). Returns null when it isn't a priced matrix. */
+function buildWooVariants(p, priceById) {
+  const variations = Array.isArray(p.variations) ? p.variations : [];
+  if (!variations.length) return null;
+  const attrName = (n) => humanizeLabel(String(n || '').toLowerCase());
+
+  const combos = [];
+  for (const v of variations) {
+    const price = priceById.get(v.id);
+    if (price == null) continue;                       // skip combos we couldn't price
+    const values = {};
+    for (const a of (v.attributes || [])) {
+      if (a && a.name && a.value != null && a.value !== '') values[attrName(a.name)] = String(a.value);
+    }
+    combos.push({ values, price });
+  }
+  if (!combos.length) return null;
+
+  // Which values actually appear across the priced combos.
+  const present = new Map();                            // name → Set(values)
+  for (const c of combos) for (const [k, val] of Object.entries(c.values)) {
+    if (!present.has(k)) present.set(k, new Set());
+    present.get(k).add(val);
+  }
+  // Declared attribute order from the parent (drives picker value order).
+  const declared = (Array.isArray(p.attributes) ? p.attributes : [])
+    .map((a) => ({ name: attrName(a.name), terms: (a.terms || []).map((t) => t.name) }));
+
+  const dimensions = [];
+  const specs = [];
+  for (const a of declared) {
+    const seen = present.get(a.name);
+    if (seen && seen.size >= 2) {
+      const ordered = a.terms.filter((t) => seen.has(t));
+      for (const val of seen) if (!ordered.includes(val)) ordered.push(val); // any value not in declared order
+      dimensions.push({ name: a.name, values: ordered });
+    } else if (seen && seen.size === 1) {
+      specs.push({ label: a.name, value: [...seen][0] });        // fixed across combos → a spec
+    } else if (a.terms && a.terms.length) {
+      specs.push({ label: a.name, value: a.terms.join(', ') });  // declared but never varied → display-only
+    }
+  }
+  // Defensive: a combo attribute the parent didn't declare still becomes a dimension.
+  for (const [name, seen] of present) {
+    if (!declared.some((d) => d.name === name) && seen.size >= 2) dimensions.push({ name, values: [...seen] });
+  }
+
+  const minPrice = combos.reduce((m, c) => (c.price != null && c.price < m ? c.price : m), Infinity);
+  return { dimensions, combos, specs, minPrice: Number.isFinite(minPrice) ? minPrice : null };
+}
 
 const cleanRow = (r) => {
   if (!r || typeof r !== 'object') return null;
@@ -719,8 +774,12 @@ async function processWooUrl(ctx, url) {
   try {
     const u = new URL(url);
     const slug = u.pathname.split('/').filter(Boolean).pop();
-    const arr = await wooGetJson(`${u.origin}/wp-json/wc/store/v1/products?slug=${encodeURIComponent(slug)}&per_page=1`);
-    const p = Array.isArray(arr) ? arr[0] : null;
+    // A variable product SHARES its slug with its variations, and the Store API returns
+    // both — so per_page=1 + arr[0] can grab a variation (wrong price, no description, no
+    // options). Fetch a few and pick the PARENT (never a type='variation') (pV2-STORE-VARIANTS-01).
+    const arr = await wooGetJson(`${u.origin}/wp-json/wc/store/v1/products?slug=${encodeURIComponent(slug)}&per_page=20`);
+    const list = Array.isArray(arr) ? arr : [];
+    const p = list.find((x) => x && x.name && x.type !== 'variation') || list[0] || null;
     if (!p || !p.name) return { url, status: 'skipped', reason: 'no product found (Woo Store API)' };
 
     const sku = p.sku ? String(p.sku).trim() : null;
@@ -751,10 +810,30 @@ async function processWooUrl(ctx, url) {
     const attributes = { _source: pruneNull({ sku, product_id: productId, handle: p.slug, extracted_at: new Date().toISOString(), batch: ctx.batch }) };
     if (sku) attributes.ids = [{ label: 'SKU', value: sku }];
 
+    // Variant-matrix (pV2-STORE-VARIANTS-01): a variable product is a priced set of
+    // combinations. One extra Store API call gets all variation prices; we store the
+    // picker dimensions + a flat combo list and set base_price to the cheapest combo
+    // (an honest "From"). Non-varying attributes fall to the Specifications group.
+    // Best-effort: a failure must never drop the product.
+    let basePrice = wooPrice(p.prices);
+    if (p.type === 'variable') {
+      try {
+        const priceById = await wooVariationPrices(u.origin, productId);
+        const v = buildWooVariants(p, priceById);
+        if (v) {
+          attributes.variants = { dimensions: v.dimensions, combos: v.combos };
+          if (v.specs.length) attributes.specifications = v.specs;
+          if (v.minPrice != null) basePrice = v.minPrice;
+        }
+      } catch (err) {
+        console.warn('[extract:woo] variant enrichment failed for', permalink, '—', err.message);
+      }
+    }
+
     const item = await ItemService.createForOrg({
       data: {
         name: String(p.name).trim(),
-        base_price: wooPrice(p.prices),
+        base_price: basePrice,
         description: htmlToPlain(p.short_description || p.description || '') || null,
         unit: 'each',
         external_url: permalink,
