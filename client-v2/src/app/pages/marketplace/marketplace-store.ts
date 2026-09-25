@@ -115,7 +115,6 @@ export class MarketplaceStore {
     params: () => this.catalogue.rev(),
     loader: () => this.catalogue.categories(),
   });
-  readonly categories = computed(() => this.categoriesRes.value() ?? []);
 
   /** The selected category's subcategory strip (cached reads; skips when
    *  no category is selected). */
@@ -123,7 +122,6 @@ export class MarketplaceStore {
     params: () => { const id = this.categoryId(); return id ? { id, rev: this.catalogue.rev() } : undefined; },
     loader: ({ params }) => this.catalogue.subcategories(params.id),
   });
-  readonly subcategories = computed(() => this.subcategoriesRes.value() ?? []);
 
   /** The selected subcategory's children — the 3rd rail level (drills only when
    *  non-empty). Loads children of ANY node via the same endpoint. */
@@ -131,7 +129,47 @@ export class MarketplaceStore {
     params: () => { const id = this.subcategoryId(); return id ? { id, rev: this.catalogue.rev() } : undefined; },
     loader: ({ params }) => this.catalogue.subcategories(params.id),
   });
-  readonly subSubcategories = computed(() => this.subSubcategoriesRes.value() ?? []);
+
+  // ── Supplier-scoped rail (filter-aware) ──────────────────────────────────
+  // When the ?sup= supplier filter is active, the rail must show only THAT
+  // supplier's cats/subcats with their own counts — not the global tree. Reuse
+  // the supplier endpoints; the whole subcat tree (L2+L3) comes in one call.
+  private toCatInfo(x: { id: string; name: string; count: number }): CategoryInfo {
+    return { id: x.id, name: x.name, count: x.count, tagline: null, iconName: null, isActive: true, sortOrder: null };
+  }
+  readonly scopedDetailRes = resource({
+    params: () => { const s = this.supplierId(); return s ? { s, rev: this.catalogue.rev() } : undefined; },
+    loader: ({ params }) => this.catalogue.supplierDetail(params.s),
+  });
+  readonly scopedSubcatsRes = resource({
+    params: () => { const s = this.supplierId(); return s ? { s, rev: this.catalogue.rev() } : undefined; },
+    loader: ({ params }) => this.catalogue.supplierSubcategories(params.s),
+  });
+
+  readonly categories = computed<CategoryInfo[]>(() =>
+    this.supplierId()
+      ? (this.scopedDetailRes.value()?.categories ?? []).map((c) => this.toCatInfo(c))
+      : (this.categoriesRes.value() ?? []));
+
+  readonly subcategories = computed<CategoryInfo[]>(() => {
+    if (this.supplierId()) {
+      const cat = this.categoryId();
+      return (this.scopedSubcatsRes.value() ?? [])
+        .filter((s) => !s.isCatchAll && s.parentId === cat && s.count > 0)
+        .map((s) => this.toCatInfo(s));
+    }
+    return this.subcategoriesRes.value() ?? [];
+  });
+
+  readonly subSubcategories = computed<CategoryInfo[]>(() => {
+    if (this.supplierId()) {
+      const sub = this.subcategoryId();
+      return (this.scopedSubcatsRes.value() ?? [])
+        .filter((s) => s.parentId === sub && s.count > 0)
+        .map((s) => this.toCatInfo(s));
+    }
+    return this.subSubcategoriesRes.value() ?? [];
+  });
 
   /** Suppliers serving the selected category — the rail's CATEGORY mode
    *  (pV2-06e). ONE definition everywhere (Liam, 2026-06-12: the store
