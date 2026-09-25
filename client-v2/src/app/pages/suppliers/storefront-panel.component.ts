@@ -31,14 +31,14 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
     </div>
 
     @if (navCats().length) {
-      <div class="relative z-20">
-        <nav class="flex items-center gap-1 overflow-x-auto rounded-[var(--radius-card)] border border-hairline bg-surface px-3 py-2">
-          <span class="mr-3 shrink-0 whitespace-nowrap text-base font-medium text-text">{{ supplier().name }}</span>
-          <button type="button" class="whitespace-nowrap px-3 py-1 text-base text-secondary hover:text-accent" (click)="pick(null, null, 'All items')">All items</button>
+      <div class="relative z-20 -mt-6">
+        <nav class="flex items-center gap-1 overflow-x-auto rounded-[var(--radius-card)] border border-hairline bg-surface px-3 py-2.5">
+          <span class="mr-3 shrink-0 whitespace-nowrap text-lg font-medium text-text">{{ supplier().name }}</span>
+          <button type="button" class="whitespace-nowrap px-3 py-1 text-lg text-secondary hover:text-accent" (click)="pick(null, null, 'All items')">All items</button>
           @for (c of navCats(); track c.id) {
             <button
               type="button"
-              class="flex items-center gap-1.5 whitespace-nowrap px-3 py-1 text-base hover:text-accent"
+              class="flex items-center gap-1.5 whitespace-nowrap px-3 py-1 text-lg hover:text-accent"
               [class.font-medium]="openCat() === c.id"
               [class.text-accent]="openCat() === c.id"
               [class.text-secondary]="openCat() !== c.id"
@@ -57,7 +57,7 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
             <div class="grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3">
               @for (col of m.columns; track col.l2.id) {
                 <div class="flex flex-col gap-2">
-                  <button type="button" class="text-left text-base font-medium text-accent hover:underline" (click)="pick(m.categoryId, col.l2.id, col.l2.name, col.l2.tagline)">{{ col.l2.name }}</button>
+                  <button type="button" class="text-left text-lg font-medium text-accent hover:underline" (click)="pick(m.categoryId, col.l2.id, col.l2.name, col.l2.tagline)">{{ col.l2.name }}</button>
                   @for (leaf of col.children; track leaf.id) {
                     <button type="button" class="text-left text-base text-secondary hover:text-accent" (click)="pick(m.categoryId, leaf.id, leaf.name, leaf.tagline)">{{ leaf.name }}</button>
                   }
