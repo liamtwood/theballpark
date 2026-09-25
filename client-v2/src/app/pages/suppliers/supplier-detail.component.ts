@@ -99,32 +99,43 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
            moment their items are loaded (pV2-STOREFRONT-MENU-01). -->
       @if (tab() === 'storefront' && shopNavCats(sup).length) {
         <div class="bp-shopfront-menu relative">
-          <nav class="mx-auto flex max-w-[var(--workspace-max)] items-center justify-center gap-2 overflow-x-auto px-4 py-2.5">
-            <button type="button" class="bp-shopfront-menu__link" (click)="shopPick(null, null, 'All items')">All items</button>
-            @for (c of shopNavCats(sup); track c.id) {
-              <button
-                type="button"
-                class="bp-shopfront-menu__link"
-                [class.bp-shopfront-menu__link--on]="openCat() === c.id"
-                (click)="toggleCat(c.id)"
-              >{{ c.name }}</button>
-            }
-          </nav>
+          @if (shopSoleCat(sup); as sole) {
+            <!-- Single-category shopfront (Liam): promote the ONE category's subcategories
+                 to the menu — each browses in place; no mega-menu needed. -->
+            <nav class="mx-auto flex max-w-[var(--workspace-max)] items-center justify-center gap-2 overflow-x-auto px-4 py-2.5">
+              <button type="button" class="bp-shopfront-menu__link" (click)="shopPick(null, null, 'All items')">All items</button>
+              @for (s of shopSoleSubcats(sup); track s.id) {
+                <button type="button" class="bp-shopfront-menu__link" (click)="shopPick(sole.id, s.id, s.name, s.tagline)">{{ s.name }}</button>
+              }
+            </nav>
+          } @else {
+            <nav class="mx-auto flex max-w-[var(--workspace-max)] items-center justify-center gap-2 overflow-x-auto px-4 py-2.5">
+              <button type="button" class="bp-shopfront-menu__link" (click)="shopPick(null, null, 'All items')">All items</button>
+              @for (c of shopNavCats(sup); track c.id) {
+                <button
+                  type="button"
+                  class="bp-shopfront-menu__link"
+                  [class.bp-shopfront-menu__link--on]="openCat() === c.id"
+                  (click)="toggleCat(c.id)"
+                >{{ c.name }}</button>
+              }
+            </nav>
 
-          <!-- Mega-menu drops full-width (Amazon-style), floating over the content below. -->
-          @if (shopMenu(sup); as m) {
-            <div class="absolute inset-x-0 top-full z-30 border-b border-hairline bg-surface shadow-[var(--shadow-md)]">
-              <div class="mx-auto grid max-w-[var(--workspace-max)] grid-cols-2 gap-x-8 gap-y-6 px-6 py-6 sm:grid-cols-3">
-                @for (col of m.columns; track col.l2.id) {
-                  <div class="flex flex-col gap-2">
-                    <button type="button" class="text-left text-sm font-medium uppercase tracking-wide text-accent hover:underline" (click)="shopPick(m.categoryId, col.l2.id, col.l2.name, col.l2.tagline)">{{ col.l2.name }}</button>
-                    @for (leaf of col.children; track leaf.id) {
-                      <button type="button" class="text-left text-sm text-secondary hover:text-accent" (click)="shopPick(m.categoryId, leaf.id, leaf.name, leaf.tagline)">{{ leaf.name }}</button>
-                    }
-                  </div>
-                }
+            <!-- Mega-menu drops full-width (Amazon-style), floating over the content below. -->
+            @if (shopMenu(sup); as m) {
+              <div class="absolute inset-x-0 top-full z-30 border-b border-hairline bg-surface shadow-[var(--shadow-md)]">
+                <div class="mx-auto grid max-w-[var(--workspace-max)] grid-cols-2 gap-x-8 gap-y-6 px-6 py-6 sm:grid-cols-3">
+                  @for (col of m.columns; track col.l2.id) {
+                    <div class="flex flex-col gap-2">
+                      <button type="button" class="text-left text-sm font-medium uppercase tracking-wide text-accent hover:underline" (click)="shopPick(m.categoryId, col.l2.id, col.l2.name, col.l2.tagline)">{{ col.l2.name }}</button>
+                      @for (leaf of col.children; track leaf.id) {
+                        <button type="button" class="text-left text-sm text-secondary hover:text-accent" (click)="shopPick(m.categoryId, leaf.id, leaf.name, leaf.tagline)">{{ leaf.name }}</button>
+                      }
+                    </div>
+                  }
+                </div>
               </div>
-            </div>
+            }
           }
         </div>
       }
@@ -144,7 +155,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
             [hasMore]="store.hasMore()"
             [favouriteIds]="favs.items()"
             [quoteDraftIds]="favs.quoteDraft()"
-            (subcategorySelected)="openStoreSubcat($event)"
+            (subcategorySelected)="browseSubcatCard($event)"
             (quickView)="openQuickView($event)"
             (favouriteToggled)="favs.toggle('item', $event)"
             (quoteToggled)="favs.toggleQuoteDraft($event)"
@@ -366,6 +377,28 @@ export class SupplierDetailComponent {
     return sup.categories.filter((c) => c.count > 0);
   }
 
+  /** The single category a supplier sells in (else null). When there's exactly one,
+   *  the menu promotes its subcategories to the top level (Liam). */
+  protected shopSoleCat(sup: SupplierDetail): { id: string; name: string; count: number } | null {
+    const cats = this.shopNavCats(sup);
+    return cats.length === 1 ? cats[0] : null;
+  }
+
+  /** Subcategories of the sole category — the menu links in single-category mode. */
+  protected shopSoleSubcats(sup: SupplierDetail): SupplierSubcategory[] {
+    const cat = this.shopSoleCat(sup);
+    if (!cat) return [];
+    return (this.subcats.value() ?? [])
+      .filter((s) => !s.isCatchAll && s.parentId === cat.id && s.count > 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /** Subcat card click → browse in place on the shopfront (not a jump to the Shop tab).
+   *  Catch-all cards carry the category id and drill cat-only. */
+  protected browseSubcatCard(sub: SupplierSubcategory): void {
+    this.shopPick(sub.parentId, sub.isCatchAll ? null : sub.id, sub.name, sub.tagline);
+  }
+
   /** Mega-menu model for the open category: one column per L2 subcategory (with
    *  live items), each holding its L3 children. Sourced from the org-scoped
    *  subcategories feed (it emits every node in each item's chain). */
@@ -408,23 +441,6 @@ export class SupplierDetailComponent {
       .navigate([], {
         relativeTo: this.route,
         queryParams: { tab: 'storefront', cat: e.categoryId, sub: e.subcategoryId, item: null },
-        queryParamsHandling: 'merge',
-      })
-      .catch((err) => console.warn('[SupplierDetail] navigation failed', err));
-  }
-
-  /** Subcat-card drill: Store tab pre-filtered to cat + sub (QC #5).
-   *  Catch-all cards (items with no subcat) drill cat-only. */
-  protected openStoreSubcat(sub: SupplierSubcategory): void {
-    this.router
-      .navigate([], {
-        relativeTo: this.route,
-        queryParams: {
-          tab: 'store',
-          cat: sub.parentId,
-          sub: sub.isCatchAll ? null : sub.id,
-          item: null,
-        },
         queryParamsHandling: 'merge',
       })
       .catch((err) => console.warn('[SupplierDetail] navigation failed', err));
