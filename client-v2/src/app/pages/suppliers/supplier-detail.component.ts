@@ -93,8 +93,18 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
           <app-storefront-panel
             [supplier]="sup"
             [subcategories]="subcats.value() ?? []"
+            [items]="store.items()"
+            [itemsLoading]="store.itemsRes.isLoading()"
+            [hasMore]="store.hasMore()"
+            [favouriteIds]="favs.items()"
+            [quoteDraftIds]="favs.quoteDraft()"
             (subcategorySelected)="openStoreSubcat($event)"
             (browse)="openStoreBrowse($event)"
+            (quickView)="openQuickView($event)"
+            (favouriteToggled)="favs.toggle('item', $event)"
+            (quoteToggled)="favs.toggleQuoteDraft($event)"
+            (showMore)="store.showMore()"
+            (gridChanged)="store.reloadItems()"
           />
         } @else if (tab() === 'ai') {
           <!-- AI Assist — admin-only catalogue extractor (Analyse → Prepare → Load).
@@ -277,10 +287,12 @@ export class SupplierDetailComponent {
    *  a resolved {categoryId, subcategoryId} (subcategoryId may be an L2 or an L3),
    *  so navigate the Store tab straight to it. Both null = "All items". */
   protected openStoreBrowse(e: { categoryId: string | null; subcategoryId: string | null }): void {
+    // Stay on the shopfront (tab:'storefront') — set the store's cat/sub so it loads
+    // this supplier's items, which the panel renders inline (pV2-STOREFRONT-MENU-01).
     this.router
       .navigate([], {
         relativeTo: this.route,
-        queryParams: { tab: 'store', cat: e.categoryId, sub: e.subcategoryId, item: null },
+        queryParams: { tab: 'storefront', cat: e.categoryId, sub: e.subcategoryId, item: null },
         queryParamsHandling: 'merge',
       })
       .catch((err) => console.warn('[SupplierDetail] navigation failed', err));

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
+import { CatalogueItem, SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
+import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
 import { SubcatCardComponent } from '../../shared/catalogue/subcat-card.component';
 import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
 
@@ -12,7 +13,7 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
 @Component({
   selector: 'app-storefront-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, SubcatCardComponent, OrgMediaComponent],
+  imports: [LucideAngularModule, CatalogueGridComponent, SubcatCardComponent, OrgMediaComponent],
   host: { class: 'mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-8' },
   template: `
     <!-- 1. Hero banner + an overlaid category menu. Automagic from the supplier's
@@ -32,9 +33,6 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
     @if (navCats().length) {
       <div class="relative">
         <nav class="flex items-center gap-1 overflow-x-auto rounded-[var(--radius-card)] border border-hairline bg-surface px-3 py-2">
-          @if (supplier().logoUrl) {
-            <img class="h-6 w-6 shrink-0 rounded object-contain" [src]="supplier().logoUrl" alt="" />
-          }
           <span class="mr-3 shrink-0 whitespace-nowrap text-base font-medium text-text">{{ supplier().name }}</span>
           <button type="button" class="whitespace-nowrap px-3 py-1 text-base text-secondary hover:text-accent" (click)="pick(null, null)">All items</button>
           @for (c of navCats(); track c.id) {
@@ -69,6 +67,33 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
           </div>
         }
       </div>
+    }
+
+    <!-- Browse-in-place: picking a category/sub renders the supplier's items right
+         here (reuses catalogue-grid + the store's items) so buyers never leave the
+         shopfront (pV2-STOREFRONT-MENU-01). -->
+    @if (browsing()) {
+      @if (items().length === 0 && !itemsLoading()) {
+        <p class="bp-body-small text-secondary">No items in this selection.</p>
+      } @else {
+        <app-catalogue-grid
+          [items]="items()"
+          [favouriteIds]="favouriteIds()"
+          [quoteDraftIds]="quoteDraftIds()"
+          [showQuickView]="true"
+          [dense]="true"
+          (entitySelected)="quickView.emit($event)"
+          (quickView)="quickView.emit($event)"
+          (favouriteToggled)="favouriteToggled.emit($event)"
+          (quoteToggled)="quoteToggled.emit($event)"
+          (changed)="gridChanged.emit()"
+        />
+        @if (hasMore()) {
+          <div class="mt-6 flex justify-center">
+            <button type="button" class="bp-btn-outline" (click)="showMore.emit()">Show more</button>
+          </div>
+        }
+      }
     }
 
     <!-- 2. Company Information — logo + name + description, left-aligned. -->
@@ -153,12 +178,30 @@ export class StorefrontPanelComponent {
    *  L2 or an L3; both null = "All items"). The shell navigates the Store. */
   readonly browse = output<{ categoryId: string | null; subcategoryId: string | null }>();
 
+  /** Browse-in-place: the parent feeds its store's items back so the grid renders
+   *  here (same visibility/pagination as the Store tab). */
+  readonly items = input<readonly CatalogueItem[]>([]);
+  readonly itemsLoading = input(false);
+  readonly hasMore = input(false);
+  readonly favouriteIds = input<ReadonlySet<string>>(new Set<string>());
+  readonly quoteDraftIds = input<ReadonlySet<string>>(new Set<string>());
+  readonly quickView = output<string>();
+  readonly favouriteToggled = output<string>();
+  readonly quoteToggled = output<string>();
+  readonly showMore = output<void>();
+  readonly gridChanged = output<void>();
+
+  /** True once the visitor has picked a category/sub from the menu — shows the grid. */
+  protected readonly browsing = signal(false);
+
   /** The open category in the banner nav (null = menu closed). */
   protected readonly openCat = signal<string | null>(null);
   /** Nav tabs = the categories the supplier actually has items in. */
   protected readonly navCats = computed(() => this.supplier().categories.filter((c) => c.count > 0));
   protected toggleCat(id: string): void { this.openCat.update((v) => (v === id ? null : id)); }
   protected pick(categoryId: string | null, subcategoryId: string | null): void {
+    this.openCat.set(null);      // close the dropdown
+    this.browsing.set(true);     // reveal the in-place grid
     this.browse.emit({ categoryId, subcategoryId });
   }
 
