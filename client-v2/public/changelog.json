@@ -2,6 +2,36 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.3.1",
+      "name": "Storefront polish",
+      "build": "v2.618",
+      "date": "2026-09-25",
+      "datetime": "2026-09-25",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Storefront",
+          "items": [
+            {
+              "ref": "FR-00222",
+              "type": "improved",
+              "feature": "Supplier brand storefront",
+              "text": "the supplier page now leads with a proper brand banner: the cover image sits behind the name and the tab bar, with a full-width category menu beneath it. Browse a category or subcategory and its items appear in place under a titled header — no page change. A full-width mega-menu spans each category's subcategories, and supplier logos render reliably (including logo-only SVGs)."
+            }
+          ]
+        }
+      ],
+      "fixes": [
+        {
+          "ref": "BE-00133",
+          "type": "Fixed",
+          "reporter": "Liam",
+          "text": "Storefront & marketplace polish — the marketplace category rail is now supplier-filter aware; the \"From\" price shows pence for items under £100; catalogue extraction lifts its per-run cap to 500 URLs; de-duplication keeps the deeper (subcategory) URL; the taxonomy manager no longer double-creates a category; and imported supplier text decodes HTML entities.",
+          "done": true
+        }
+      ]
+    },
+    {
       "version": "v0.3.0",
       "name": "Catalogue & Marketplace",
       "build": "v2.595",

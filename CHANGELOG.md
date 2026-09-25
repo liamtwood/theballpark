@@ -8,7 +8,17 @@ _Nothing pending — dev and preview are level._
 
 ---
 
-## ✅ On preview — current release `v0.3.0`
+## ✅ On preview — current release `v0.3.1`
+
+### v0.3.1 — Storefront polish · built from v2.618 · 2026-09-25
+
+**Storefront**
+
+- [improved] the supplier page now leads with a proper brand banner: the cover image sits behind the name and the tab bar, with a full-width category menu beneath it. Browse a category or subcategory and its items appear in place under a titled header — no page change. A full-width mega-menu spans each category's subcategories, and supplier logos render reliably (including logo-only SVGs).
+
+**Fixes**
+
+- BE-00133 · Liam · Storefront & marketplace polish — the marketplace category rail is now supplier-filter aware; the "From" price shows pence for items under £100; catalogue extraction lifts its per-run cap to 500 URLs; de-duplication keeps the deeper (subcategory) URL; the taxonomy manager no longer double-creates a category; and imported supplier text decodes HTML entities. · ✓
 
 ### v0.3.0 — Catalogue & Marketplace · built from v2.595 · 2026-09-25 10:56
 
