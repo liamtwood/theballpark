@@ -16,6 +16,7 @@ import { OrgProfileEditComponent } from '../settings/profile/org-profile-edit.co
 import { WebsiteImportPanelComponent } from './website-import-panel.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
+import { HScrollComponent } from '../../shared/hscroll/hscroll.component';
 
 /** pV2-06d — /suppliers/:id (the v1.65dm supplier detail, decomposed):
  *  hero (name + city + favourite heart + tab band) over two tabs —
@@ -32,6 +33,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
     LucideAngularModule,
     PageHeroComponent,
     TabBandComponent,
+    HScrollComponent,
     CatalogueGridComponent,
     CategoryStripComponent,
     MarketplaceWorkspaceComponent,
@@ -102,24 +104,28 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
           @if (shopSoleCat(sup); as sole) {
             <!-- Single-category shopfront (Liam): promote the ONE category's subcategories
                  to the menu — each browses in place; no mega-menu needed. -->
-            <nav class="mx-auto flex max-w-[var(--workspace-max)] items-center justify-center gap-2 overflow-x-auto px-4 py-2.5">
-              <button type="button" class="bp-shopfront-menu__link" (click)="shopPick(null, null, 'All items')">All items</button>
-              @for (s of shopSoleSubcats(sup); track s.id) {
-                <button type="button" class="bp-shopfront-menu__link" (click)="shopPick(sole.id, s.id, s.name, s.tagline)">{{ s.name }}</button>
-              }
-            </nav>
+            <div class="mx-auto w-full max-w-[var(--workspace-max)] px-2 py-2">
+              <app-hscroll>
+                <button type="button" class="bp-shopfront-menu__link" (click)="shopPick(null, null, 'All items')">All items</button>
+                @for (s of shopSoleSubcats(sup); track s.id) {
+                  <button type="button" class="bp-shopfront-menu__link" (click)="shopPick(sole.id, s.id, s.name, s.tagline)">{{ s.name }}</button>
+                }
+              </app-hscroll>
+            </div>
           } @else {
-            <nav class="mx-auto flex max-w-[var(--workspace-max)] items-center justify-center gap-2 overflow-x-auto px-4 py-2.5">
-              <button type="button" class="bp-shopfront-menu__link" (click)="shopPick(null, null, 'All items')">All items</button>
-              @for (c of shopNavCats(sup); track c.id) {
-                <button
-                  type="button"
-                  class="bp-shopfront-menu__link"
-                  [class.bp-shopfront-menu__link--on]="openCat() === c.id"
-                  (click)="toggleCat(c.id)"
-                >{{ c.name }}</button>
-              }
-            </nav>
+            <div class="mx-auto w-full max-w-[var(--workspace-max)] px-2 py-2">
+              <app-hscroll>
+                <button type="button" class="bp-shopfront-menu__link" (click)="shopPick(null, null, 'All items')">All items</button>
+                @for (c of shopNavCats(sup); track c.id) {
+                  <button
+                    type="button"
+                    class="bp-shopfront-menu__link"
+                    [class.bp-shopfront-menu__link--on]="openCat() === c.id"
+                    (click)="toggleCat(c.id)"
+                  >{{ c.name }}</button>
+                }
+              </app-hscroll>
+            </div>
 
             <!-- Mega-menu drops full-width (Amazon-style), floating over the content below. -->
             @if (shopMenu(sup); as m) {

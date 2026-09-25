@@ -1012,6 +1012,7 @@ body {
 }
 .bp-shopfront-menu__link {
   white-space: nowrap;
+  flex: 0 0 auto;
   padding: 0.35rem 0.9rem;
   font-size: var(--text-sm);
   letter-spacing: 0.06em;
