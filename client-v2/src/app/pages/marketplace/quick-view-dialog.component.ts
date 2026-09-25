@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
@@ -36,7 +36,10 @@ import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-
           <div class="min-w-0">
             <h2 class="bp-card-title">{{ it.name }}</h2>
             @if (it.description) {
-              <p class="bp-body mt-1 text-secondary">{{ it.description }}</p>
+              <p class="bp-body mt-1 text-secondary bp-qv-desc" [class.bp-qv-desc--clamp]="descLong() && !descOpen()">{{ it.description }}</p>
+              @if (descLong()) {
+                <button type="button" class="bp-qv-morebtn" (click)="descOpen.set(!descOpen())">{{ descOpen() ? 'Show less' : 'Show more' }}</button>
+              }
             }
           </div>
         }
@@ -146,6 +149,24 @@ import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-
         color: var(--color-text-secondary);
       }
       /* .bp-qv-spec* now live in global styles.css (shared with the item view). */
+      .bp-qv-desc--clamp {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .bp-qv-morebtn {
+        margin-top: 4px;
+        background: none;
+        border: 0;
+        padding: 0;
+        color: var(--theme-accent);
+        font-family: var(--font-body);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        cursor: pointer;
+      }
+      .bp-qv-morebtn:hover { text-decoration: underline; }
     `,
   ],
 })
@@ -170,7 +191,12 @@ export class QuickViewDialogComponent {
     return !!(v && Array.isArray(v.combos) && v.combos.length);
   });
 
+  /** Long descriptions (e.g. a supplier who put the whole page in the body) clamp to a
+   *  few lines with a Show more toggle, so the header doesn't swamp the dialog. */
+  protected readonly descOpen = signal(false);
+  protected readonly descLong = computed(() => (this.item()?.description ?? '').length > 220);
+
   protected onVisible(visible: boolean): void {
-    if (!visible) this.close.emit();
+    if (!visible) { this.descOpen.set(false); this.close.emit(); }
   }
 }
