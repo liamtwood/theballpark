@@ -96,7 +96,7 @@ import { AuthService } from '../../core/auth/auth.service';
            preview rail + detail view. -->
       <div class="mt-2 flex items-baseline gap-1.5">
         @if (item().basePrice !== null) {
-          <span class="bp-price-large">From {{ item().basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+          <span class="bp-price-large">From {{ item().basePrice | currency: 'GBP' : 'symbol' : ((item().basePrice ?? 0) < 100 ? '1.2-2' : '1.0-0') }}</span>
         } @else {
           <span class="bp-caption">Price on request</span>
         }
