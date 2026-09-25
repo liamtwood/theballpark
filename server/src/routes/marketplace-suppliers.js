@@ -194,7 +194,7 @@ router.get('/suppliers/:id/subcategories', async (req, res, next) => {
     const liveOuter = ownerVisibleFilter(req, id.data, 'i');
     const liveCover = ownerVisibleFilter(req, id.data, 'i2');
     const r = await pool.query(
-      `SELECT sc.id, sc.name, sc.parent_id, false AS is_catch_all,
+      `SELECT sc.id, sc.name, sc.parent_id, sc.tagline, false AS is_catch_all,
               COUNT(i.id) AS item_count,
               (SELECT i2.image_url FROM items i2
                 WHERE i2.org_id = $1
@@ -222,9 +222,9 @@ router.get('/suppliers/:id/subcategories', async (req, res, next) => {
          ) AS node ON true
          JOIN categories sc ON sc.id = node.id
         WHERE i.org_id = $1 AND i.deleted_at IS NULL ${liveOuter}
-        GROUP BY sc.id, sc.name, sc.parent_id
+        GROUP BY sc.id, sc.name, sc.parent_id, sc.tagline
        UNION ALL
-       SELECT c.id, c.name, c.id AS parent_id, true AS is_catch_all,
+       SELECT c.id, c.name, c.id AS parent_id, c.tagline, true AS is_catch_all,
               COUNT(i.id) AS item_count,
               (SELECT i2.image_url FROM items i2
                 WHERE i2.org_id = $1 AND i2.category_id = c.id
@@ -235,7 +235,7 @@ router.get('/suppliers/:id/subcategories', async (req, res, next) => {
          JOIN categories c ON c.id = i.category_id
         WHERE i.org_id = $1 AND i.subcategory_id IS NULL
           AND i.deleted_at IS NULL ${liveOuter}
-        GROUP BY c.id, c.name
+        GROUP BY c.id, c.name, c.tagline
         ORDER BY name ASC`,
       [id.data]
     );
@@ -244,6 +244,7 @@ router.get('/suppliers/:id/subcategories', async (req, res, next) => {
         id: row.id,
         name: row.name,
         parentId: row.parent_id,
+        tagline: row.tagline ?? null,
         isCatchAll: row.is_catch_all,
         count: Number(row.item_count),
         coverUrl: row.cover_url,

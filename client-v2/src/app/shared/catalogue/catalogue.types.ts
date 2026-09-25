@@ -113,6 +113,8 @@ export interface SupplierSubcategory {
   id: string;
   name: string;
   parentId: string | null;
+  /** The node's tagline (customer-facing) — shown above the in-place item grid. */
+  tagline: string | null;
   /** True = the per-category catch-all card (items with no subcat) —
    *  carries the CATEGORY's id/name; drills cat-only. */
   isCatchAll: boolean;

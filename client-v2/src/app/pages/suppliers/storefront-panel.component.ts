@@ -34,7 +34,7 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
       <div class="relative z-20">
         <nav class="flex items-center gap-1 overflow-x-auto rounded-[var(--radius-card)] border border-hairline bg-surface px-3 py-2">
           <span class="mr-3 shrink-0 whitespace-nowrap text-base font-medium text-text">{{ supplier().name }}</span>
-          <button type="button" class="whitespace-nowrap px-3 py-1 text-base text-secondary hover:text-accent" (click)="pick(null, null)">All items</button>
+          <button type="button" class="whitespace-nowrap px-3 py-1 text-base text-secondary hover:text-accent" (click)="pick(null, null, 'All items')">All items</button>
           @for (c of navCats(); track c.id) {
             <button
               type="button"
@@ -57,9 +57,9 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
             <div class="grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3">
               @for (col of m.columns; track col.l2.id) {
                 <div class="flex flex-col gap-2">
-                  <button type="button" class="text-left text-base font-medium text-accent hover:underline" (click)="pick(m.categoryId, col.l2.id)">{{ col.l2.name }}</button>
+                  <button type="button" class="text-left text-base font-medium text-accent hover:underline" (click)="pick(m.categoryId, col.l2.id, col.l2.name, col.l2.tagline)">{{ col.l2.name }}</button>
                   @for (leaf of col.children; track leaf.id) {
-                    <button type="button" class="text-left text-base text-secondary hover:text-accent" (click)="pick(m.categoryId, leaf.id)">{{ leaf.name }}</button>
+                    <button type="button" class="text-left text-base text-secondary hover:text-accent" (click)="pick(m.categoryId, leaf.id, leaf.name, leaf.tagline)">{{ leaf.name }}</button>
                   }
                 </div>
               }
@@ -73,6 +73,12 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
          here (reuses catalogue-grid + the store's items) so buyers never leave the
          shopfront (pV2-STOREFRONT-MENU-01). -->
     @if (browsing()) {
+      @if (selectedTitle()) {
+        <div>
+          <h3 class="bp-edit-section-title">{{ selectedTitle() }}</h3>
+          @if (selectedTagline()) { <p class="bp-body-small mt-1 text-secondary">{{ selectedTagline() }}</p> }
+        </div>
+      }
       @if (items().length === 0 && !itemsLoading()) {
         <p class="bp-body-small text-secondary">No items in this selection.</p>
       } @else {
@@ -196,13 +202,18 @@ export class StorefrontPanelComponent {
 
   /** True once the visitor has picked a category/sub from the menu — shows the grid. */
   protected readonly browsing = signal(false);
+  /** Title + tagline of the current selection, shown above the in-place grid. */
+  protected readonly selectedTitle = signal<string | null>(null);
+  protected readonly selectedTagline = signal<string | null>(null);
 
   /** The open category in the banner nav (null = menu closed). */
   protected readonly openCat = signal<string | null>(null);
   /** Nav tabs = the categories the supplier actually has items in. */
   protected readonly navCats = computed(() => this.supplier().categories.filter((c) => c.count > 0));
   protected toggleCat(id: string): void { this.openCat.update((v) => (v === id ? null : id)); }
-  protected pick(categoryId: string | null, subcategoryId: string | null): void {
+  protected pick(categoryId: string | null, subcategoryId: string | null, title: string, tagline: string | null = null): void {
+    this.selectedTitle.set(title);
+    this.selectedTagline.set(tagline);
     this.openCat.set(null);      // close the dropdown
     this.browsing.set(true);     // reveal the in-place grid
     this.browse.emit({ categoryId, subcategoryId });
