@@ -627,9 +627,15 @@ function productHandle(u) {
     return pi >= 0 ? (segs[pi + 1] || segs[segs.length - 1]) : segs[segs.length - 1];
   } catch { return u; }
 }
-/** 0 for generic/utility collections (all/front-page/products), 1 for a real one —
- *  so dedup keeps the specific collection (better group + cat/subcat) over "all". */
-const groupSpecificity = (u) => (['all', 'front-page', 'frontpage', 'products', 'other'].includes(groupKeyOf(u)) ? 0 : 1);
+/** Specificity of a URL's collection, for picking the best of duplicate handles:
+ *  0 for generic/utility collections (all/front-page/products), else the path DEPTH
+ *  (segment count). A deeper path carries more hierarchy, so it keeps the better
+ *  cat/subcat — e.g. /table-hire/coffee-table-hire/x (3) beats /table-hire/x (2),
+ *  preserving the Coffee Tables subcategory instead of collapsing to Tables. */
+const groupSpecificity = (u) => {
+  if (['all', 'front-page', 'frontpage', 'products', 'other'].includes(groupKeyOf(u))) return 0;
+  try { return new URL(u).pathname.split('/').filter(Boolean).length; } catch { return 1; }
+};
 /** Dedup a URL list by product handle, keeping the most specific collection URL —
  *  a Shopify product sits in "all" AND its real collection at different URLs.
  *  Returns { list, dropped:[{url,reason}] } — the dropped set lets the caller
