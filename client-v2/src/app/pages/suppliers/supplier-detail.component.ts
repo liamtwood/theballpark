@@ -46,7 +46,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
      2026-06-22). Store scrolls per-column inside catalogue-layout; Storefront
      scrolls its own single column (overflow-y on .bp-page-body below). md+
      only — mobile keeps the natural page scroll (the .bp-vpfit media query). */
-  host: { class: 'block bp-vpfit' },
+  host: { class: 'block bp-vpfit', '(document:click)': 'onDocumentClick($event)' },
   template: `
     @if (detail.value(); as sup) {
       <!-- Brand header (pV2-STOREFRONT-MENU-01 / Liam 2026-09-25): on the Shopfront
@@ -352,6 +352,14 @@ export class SupplierDetailComponent {
   protected readonly openCat = signal<string | null>(null);
   protected readonly shopBrowse = signal<{ title: string; tagline: string | null } | null>(null);
   protected toggleCat(id: string): void { this.openCat.update((v) => (v === id ? null : id)); }
+
+  /** Close the open mega-menu on any click outside the menu band (the band's own
+   *  buttons live inside .bp-shopfront-menu, so their toggle survives). */
+  protected onDocumentClick(ev: MouseEvent): void {
+    if (!this.openCat()) return;
+    const target = ev.target as HTMLElement | null;
+    if (!target?.closest('.bp-shopfront-menu')) this.openCat.set(null);
+  }
 
   /** Categories the supplier actually has items in — the nav links. */
   protected shopNavCats(sup: SupplierDetail) {
