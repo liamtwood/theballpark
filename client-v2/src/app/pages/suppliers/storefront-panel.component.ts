@@ -19,21 +19,28 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
          own catalogue: nav = the categories they sell in, mega-menu = each
          subcategory (column) listing its sub-subcategories. A click drills the
          Store. Lights up the moment their items are loaded (pV2-STOREFRONT-MENU-01). -->
-    <div class="relative">
-      <app-org-media
-        show="banner"
-        mode="view"
-        [name]="supplier().name"
-        [coverUrl]="supplier().coverUrl"
-      />
-      @if (navCats().length) {
-        <!-- Category nav pinned to the TOP of the banner. -->
-        <nav class="absolute inset-x-0 top-0 z-20 flex items-stretch gap-1 overflow-x-auto rounded-t-[var(--radius-card)] border-b border-hairline bg-surface px-3" style="height:3rem;">
-          <button type="button" class="whitespace-nowrap px-3 text-base text-secondary hover:text-accent" (click)="pick(null, null)">All items</button>
+    <!-- 1. Shopfront hero (Amazon Brand Store pattern): full-width cover with the org
+         logo in the corner, then a nav bar (org name + category menu) BELOW the image.
+         The mega-menu drops from the nav; a click drills the Store (pV2-STOREFRONT-MENU-01). -->
+    <div class="bp-shopfront-cover" [class.bp-shopfront-cover--empty]="!supplier().coverUrl">
+      @if (supplier().coverUrl) { <img [src]="supplier().coverUrl" alt="" /> }
+      @if (supplier().logoUrl) {
+        <div class="bp-shopfront-cover__logo"><img [src]="supplier().logoUrl" alt="" /></div>
+      }
+    </div>
+
+    @if (navCats().length) {
+      <div class="relative">
+        <nav class="flex items-center gap-1 overflow-x-auto rounded-[var(--radius-card)] border border-hairline bg-surface px-3 py-2">
+          @if (supplier().logoUrl) {
+            <img class="h-6 w-6 shrink-0 rounded object-contain" [src]="supplier().logoUrl" alt="" />
+          }
+          <span class="mr-3 shrink-0 whitespace-nowrap text-base font-medium text-text">{{ supplier().name }}</span>
+          <button type="button" class="whitespace-nowrap px-3 py-1 text-base text-secondary hover:text-accent" (click)="pick(null, null)">All items</button>
           @for (c of navCats(); track c.id) {
             <button
               type="button"
-              class="flex items-center gap-1.5 whitespace-nowrap px-3 text-base hover:text-accent"
+              class="flex items-center gap-1.5 whitespace-nowrap px-3 py-1 text-base hover:text-accent"
               [class.font-medium]="openCat() === c.id"
               [class.text-accent]="openCat() === c.id"
               [class.text-secondary]="openCat() !== c.id"
@@ -45,26 +52,24 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
             </button>
           }
         </nav>
-      }
 
-      <!-- Mega-menu: overlays the banner just below the nav — a SOLID panel so it
-           stays readable over any cover photo (pV2-STOREFRONT-MENU-01). One column
-           per subcategory (accent heading) listing its sub-subcategories. -->
-      @if (menu(); as m) {
-        <div class="absolute inset-x-0 top-12 z-10 border-b border-hairline bg-surface p-6 shadow-[var(--shadow-md)]">
-          <div class="grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3">
-            @for (col of m.columns; track col.l2.id) {
-              <div class="flex flex-col gap-2">
-                <button type="button" class="text-left text-base font-medium text-accent hover:underline" (click)="pick(m.categoryId, col.l2.id)">{{ col.l2.name }}</button>
-                @for (leaf of col.children; track leaf.id) {
-                  <button type="button" class="text-left text-base text-secondary hover:text-accent" (click)="pick(m.categoryId, leaf.id)">{{ leaf.name }}</button>
-                }
-              </div>
-            }
+        <!-- Mega-menu drops from the nav (Amazon-style), floating over the content below. -->
+        @if (menu(); as m) {
+          <div class="absolute inset-x-0 top-full z-10 mt-1 rounded-[var(--radius-card)] border border-hairline bg-surface p-6 shadow-[var(--shadow-md)]">
+            <div class="grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3">
+              @for (col of m.columns; track col.l2.id) {
+                <div class="flex flex-col gap-2">
+                  <button type="button" class="text-left text-base font-medium text-accent hover:underline" (click)="pick(m.categoryId, col.l2.id)">{{ col.l2.name }}</button>
+                  @for (leaf of col.children; track leaf.id) {
+                    <button type="button" class="text-left text-base text-secondary hover:text-accent" (click)="pick(m.categoryId, leaf.id)">{{ leaf.name }}</button>
+                  }
+                </div>
+              }
+            </div>
           </div>
-        </div>
-      }
-    </div>
+        }
+      </div>
+    }
 
     <!-- 2. Company Information — logo + name + description, left-aligned. -->
     <section class="rounded-[var(--radius-card)] border border-hairline bg-surface p-6">

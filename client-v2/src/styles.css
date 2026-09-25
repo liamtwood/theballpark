@@ -961,6 +961,33 @@ body {
   object-fit: cover;
   display: block;
 }
+/* pV2-STOREFRONT-MENU-01 — the shopfront VIEW hero (Amazon Brand Store pattern):
+   full-width cover photo with the org logo overlaid in the corner; the category
+   nav bar + org name sit in a white bar BELOW the image (edit uses app-org-banner). */
+.bp-shopfront-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  border: 1px solid var(--color-border-hairline);
+  background: var(--color-surface);
+}
+.bp-shopfront-cover > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bp-shopfront-cover--empty { background: var(--theme-soft); }
+.bp-shopfront-cover__logo {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+}
+.bp-shopfront-cover__logo img { max-height: 3.5rem; max-width: 8rem; object-fit: contain; display: block; }
 .bp-org-banner__cover-btn {
   position: absolute;
   top: 14px;
