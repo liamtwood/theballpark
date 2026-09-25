@@ -5,6 +5,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { DialogModule } from 'primeng/dialog';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribute-cards.component';
+import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-picker.component';
 
 /** pV2 marketplace-redesign — the item Quick View dialog (replaces the right
  *  rail preview). Renders from the already-loaded CatalogueItem: name,
@@ -16,7 +17,7 @@ import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribu
 @Component({
   selector: 'app-quick-view-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, RouterLink, LucideAngularModule, DialogModule, ItemAttributeCardsComponent],
+  imports: [CurrencyPipe, RouterLink, LucideAngularModule, DialogModule, ItemAttributeCardsComponent, ItemVariantPickerComponent],
   template: `
     <p-dialog
       [visible]="!!item()"
@@ -62,10 +63,14 @@ import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribu
               }
               <span class="bp-meta truncate">{{ it.supplierName }}{{ it.supplierCity ? ' · ' + it.supplierCity : '' }}</span>
             </div>
-            @if (it.basePrice !== null) {
+            @if (it.basePrice !== null && !hasVariants()) {
               <span class="bp-price-large shrink-0">From {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-2' }}</span>
             }
           </div>
+
+          <!-- Variant configurator (pV2-STORE-VARIANTS-01) — owns the price when the
+               item is a variable product; renders nothing otherwise. -->
+          <app-item-variant-picker [attributes]="it.attributes ?? null" [basePrice]="it.basePrice" />
 
           <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — KEY: Volume pricing (guide tiers);
                then the shared Options picklist + Show-more spec-group cards. Only
@@ -156,6 +161,13 @@ export class QuickViewDialogComponent {
   protected readonly tiers = computed(() => {
     const a = this.item()?.attributes as Record<string, unknown> | null | undefined;
     return (a && Array.isArray(a['price_tiers']) ? a['price_tiers'] : []) as { min: number; max: number | null; price: number }[];
+  });
+
+  /** Variable product? — the variant picker then owns the price display. */
+  protected readonly hasVariants = computed(() => {
+    const a = this.item()?.attributes as Record<string, unknown> | null | undefined;
+    const v = a && typeof a === 'object' ? (a['variants'] as { combos?: unknown } | undefined) : undefined;
+    return !!(v && Array.isArray(v.combos) && v.combos.length);
   });
 
   protected onVisible(visible: boolean): void {
