@@ -94,6 +94,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
             [supplier]="sup"
             [subcategories]="subcats.value() ?? []"
             (subcategorySelected)="openStoreSubcat($event)"
+            (browse)="openStoreBrowse($event)"
           />
         } @else if (tab() === 'ai') {
           <!-- AI Assist — admin-only catalogue extractor (Analyse → Prepare → Load).
@@ -267,6 +268,19 @@ export class SupplierDetailComponent {
       .navigate([], {
         relativeTo: this.route,
         queryParams: { tab: 'store', cat: catId, item: null },
+        queryParamsHandling: 'merge',
+      })
+      .catch((err) => console.warn('[SupplierDetail] navigation failed', err));
+  }
+
+  /** Shopfront category menu drill (pV2-STOREFRONT-MENU-01): the mega-menu emits
+   *  a resolved {categoryId, subcategoryId} (subcategoryId may be an L2 or an L3),
+   *  so navigate the Store tab straight to it. Both null = "All items". */
+  protected openStoreBrowse(e: { categoryId: string | null; subcategoryId: string | null }): void {
+    this.router
+      .navigate([], {
+        relativeTo: this.route,
+        queryParams: { tab: 'store', cat: e.categoryId, sub: e.subcategoryId, item: null },
         queryParamsHandling: 'merge',
       })
       .catch((err) => console.warn('[SupplierDetail] navigation failed', err));

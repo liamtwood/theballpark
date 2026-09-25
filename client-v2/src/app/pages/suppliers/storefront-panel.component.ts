@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
 import { SubcatCardComponent } from '../../shared/catalogue/subcat-card.component';
@@ -15,14 +15,54 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
   imports: [LucideAngularModule, SubcatCardComponent, OrgMediaComponent],
   host: { class: 'mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-8' },
   template: `
-    <!-- 1. Hero banner — cover photo alone, full-width (logo moved to Company
-         Information below, v2.34s). -->
-    <app-org-media
-      show="banner"
-      mode="view"
-      [name]="supplier().name"
-      [coverUrl]="supplier().coverUrl"
-    />
+    <!-- 1. Hero banner + an overlaid category menu. Automagic from the supplier's
+         own catalogue: nav = the categories they sell in, mega-menu = each
+         subcategory (column) listing its sub-subcategories. A click drills the
+         Store. Lights up the moment their items are loaded (pV2-STOREFRONT-MENU-01). -->
+    <div class="relative">
+      <app-org-media
+        show="banner"
+        mode="view"
+        [name]="supplier().name"
+        [coverUrl]="supplier().coverUrl"
+      />
+      @if (navCats().length) {
+        <nav class="absolute inset-x-0 bottom-0 flex items-stretch gap-1 overflow-x-auto border-t border-hairline bg-surface px-2" style="height:2.75rem;">
+          <button type="button" class="whitespace-nowrap px-3 text-sm text-secondary hover:text-accent" (click)="pick(null, null)">All items</button>
+          @for (c of navCats(); track c.id) {
+            <button
+              type="button"
+              class="flex items-center gap-1 whitespace-nowrap px-3 text-sm hover:text-accent"
+              [class.font-medium]="openCat() === c.id"
+              [class.text-accent]="openCat() === c.id"
+              [class.text-secondary]="openCat() !== c.id"
+              [style.box-shadow]="openCat() === c.id ? 'inset 0 -2px 0 0 var(--theme-accent)' : 'none'"
+              (click)="toggleCat(c.id)"
+            >
+              {{ c.name }}
+              <lucide-icon name="chevron-down" [size]="14" [style.transform]="openCat() === c.id ? 'rotate(180deg)' : 'none'" />
+            </button>
+          }
+        </nav>
+      }
+    </div>
+
+    <!-- Mega-menu: one column per subcategory (accent heading), listing its
+         sub-subcategories beneath — the supplier's live tree, our chrome. -->
+    @if (menu(); as m) {
+      <div class="rounded-[var(--radius-card)] border border-hairline bg-surface p-5">
+        <div class="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
+          @for (col of m.columns; track col.l2.id) {
+            <div class="flex flex-col gap-1.5">
+              <button type="button" class="text-left text-sm font-medium text-accent hover:underline" (click)="pick(m.categoryId, col.l2.id)">{{ col.l2.name }}</button>
+              @for (leaf of col.children; track leaf.id) {
+                <button type="button" class="bp-body-small text-left text-secondary hover:text-accent" (click)="pick(m.categoryId, leaf.id)">{{ leaf.name }}</button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
 
     <!-- 2. Company Information — logo + name + description, left-aligned. -->
     <section class="rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
@@ -102,6 +142,42 @@ export class StorefrontPanelComponent {
   readonly supplier = input.required<SupplierDetail>();
   readonly subcategories = input<SupplierSubcategory[]>([]);
   readonly subcategorySelected = output<SupplierSubcategory>();
+  /** Category-menu drill — a resolved {categoryId, subcategoryId} (sub may be an
+   *  L2 or an L3; both null = "All items"). The shell navigates the Store. */
+  readonly browse = output<{ categoryId: string | null; subcategoryId: string | null }>();
+
+  /** The open category in the banner nav (null = menu closed). */
+  protected readonly openCat = signal<string | null>(null);
+  /** Nav tabs = the categories the supplier actually has items in. */
+  protected readonly navCats = computed(() => this.supplier().categories.filter((c) => c.count > 0));
+  protected toggleCat(id: string): void { this.openCat.update((v) => (v === id ? null : id)); }
+  protected pick(categoryId: string | null, subcategoryId: string | null): void {
+    this.browse.emit({ categoryId, subcategoryId });
+  }
+
+  /** Mega-menu model for the open category: one column per L2 subcategory (with
+   *  live items), each holding its L3 sub-subcategories. Both levels come from the
+   *  org-scoped subcategories feed (it emits every node in each item's chain). */
+  protected readonly menu = computed(() => {
+    const open = this.openCat();
+    if (!open) return null;
+    const cat = this.supplier().categories.find((c) => c.id === open);
+    if (!cat) return null;
+    const subs = this.subcategories();
+    const l2s = subs
+      .filter((s) => !s.isCatchAll && s.parentId === cat.id && s.count > 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (!l2s.length) return null;
+    return {
+      categoryId: cat.id,
+      columns: l2s.map((l2) => ({
+        l2,
+        children: subs
+          .filter((s) => s.parentId === l2.id && s.count > 0)
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      })),
+    };
+  });
 
   /** One group per category the supplier sells in (supplier.categories is
    *  already items-only), holding its subcat cards + the catch-all. */
