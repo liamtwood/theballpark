@@ -987,7 +987,9 @@ body {
   border-radius: 12px;
   box-shadow: var(--shadow-md);
 }
-.bp-shopfront-cover__logo img { max-height: 3.5rem; max-width: 8rem; object-fit: contain; display: block; }
+/* Explicit height (not just max-*) so a viewBox-only SVG logo — e.g. Yahire's, which
+   has no width/height attrs — still renders instead of collapsing to a dot. */
+.bp-shopfront-cover__logo img { height: 3.25rem; width: auto; max-width: 10rem; object-fit: contain; display: block; }
 .bp-org-banner__cover-btn {
   position: absolute;
   top: 14px;
