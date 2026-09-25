@@ -17,7 +17,12 @@ const MAX_BODY_BYTES = 2 * 1024 * 1024; // 2MB cap
 const firstNonEmpty = (xs) => xs.map((s) => (s ?? '').toString().trim()).find((s) => s) || null;
 
 /** A found field: { value, confidence }. Omitted entirely when value is null. */
-const field = (value, confidence) => (value ? { value: String(value).trim(), confidence } : null);
+// Decode the common HTML entities so captured text/URLs don't store raw "&amp;" etc.
+const decodeEntities = (s) => String(s)
+  .replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
+  .replace(/&quot;/gi, '"').replace(/&apos;|&#0*39;/gi, "'").replace(/&nbsp;/gi, ' ')
+  .replace(/&#(\d+);/g, (_, n) => { try { return String.fromCharCode(+n); } catch { return ' '; } });
+const field = (value, confidence) => (value ? { value: decodeEntities(String(value)).trim(), confidence } : null);
 
 /** Parse every <script type="application/ld+json"> block; tolerant (skip bad). */
 function extractJsonLdBlocks(html) {

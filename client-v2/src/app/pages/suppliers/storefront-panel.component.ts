@@ -25,13 +25,13 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
          The mega-menu drops from the nav; a click drills the Store (pV2-STOREFRONT-MENU-01). -->
     <div class="bp-shopfront-cover" [class.bp-shopfront-cover--empty]="!supplier().coverUrl">
       @if (supplier().coverUrl) { <img [src]="supplier().coverUrl" alt="" /> }
-      @if (supplier().logoUrl) {
-        <div class="bp-shopfront-cover__logo"><img [src]="supplier().logoUrl" alt="" /></div>
+      @if (logoSrc()) {
+        <div class="bp-shopfront-cover__logo"><img [src]="logoSrc()" alt="" /></div>
       }
     </div>
 
     @if (navCats().length) {
-      <div class="relative">
+      <div class="relative z-20">
         <nav class="flex items-center gap-1 overflow-x-auto rounded-[var(--radius-card)] border border-hairline bg-surface px-3 py-2">
           <span class="mr-3 shrink-0 whitespace-nowrap text-base font-medium text-text">{{ supplier().name }}</span>
           <button type="button" class="whitespace-nowrap px-3 py-1 text-base text-secondary hover:text-accent" (click)="pick(null, null)">All items</button>
@@ -100,8 +100,8 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
     <section class="rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
       <h3 class="bp-edit-section-title">Company Information</h3>
       <div class="mt-3 flex items-start gap-4">
-        @if (supplier().logoUrl) {
-          <img class="h-16 w-16 shrink-0 rounded-[var(--radius-card)] border border-hairline object-cover" [src]="supplier().logoUrl" alt="" />
+        @if (logoSrc()) {
+          <img class="h-16 w-16 shrink-0 rounded-[var(--radius-card)] border border-hairline object-cover" [src]="logoSrc()" alt="" />
         }
         <div class="min-w-0">
           <p class="text-md font-medium text-text">{{ supplier().name }}</p>
@@ -146,19 +146,22 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
       </section>
     }
 
-    <!-- 4. Categories the supplier sells in — left-aligned header, card grid. -->
-    @for (group of groups(); track group.id) {
-      <section>
-        <div class="flex items-center gap-2">
-          <h3 class="bp-edit-section-title">{{ group.name }}</h3>
-          <span class="bp-meta ml-auto">{{ group.cards.length }} categor{{ group.cards.length === 1 ? 'y' : 'ies' }}</span>
-        </div>
-        <div class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-          @for (sub of group.cards; track sub.id) {
-            <app-subcat-card [subcat]="sub" (clicked)="subcategorySelected.emit($event)" />
-          }
-        </div>
-      </section>
+    <!-- 4. Categories the supplier sells in — hidden while browsing (the menu +
+         in-place grid replace it). -->
+    @if (!browsing()) {
+      @for (group of groups(); track group.id) {
+        <section>
+          <div class="flex items-center gap-2">
+            <h3 class="bp-edit-section-title">{{ group.name }}</h3>
+            <span class="bp-meta ml-auto">{{ group.cards.length }} categor{{ group.cards.length === 1 ? 'y' : 'ies' }}</span>
+          </div>
+          <div class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+            @for (sub of group.cards; track sub.id) {
+              <app-subcat-card [subcat]="sub" (clicked)="subcategorySelected.emit($event)" />
+            }
+          </div>
+        </section>
+      }
     }
 
     <!-- 5. Portfolio — below the categories (pV2-MEDIA-01e QC). -->
@@ -227,6 +230,13 @@ export class StorefrontPanelComponent {
           .sort((a, b) => a.name.localeCompare(b.name)),
       })),
     };
+  });
+
+  /** Logo src with spaces encoded — some imported logo URLs (e.g. Yahire's) carry
+   *  raw spaces that break the <img> load, leaving an empty chip. */
+  protected readonly logoSrc = computed(() => {
+    const u = (this.supplier().logoUrl ?? '').trim();
+    return u ? u.replace(/ /g, '%20') : null;
   });
 
   /** One group per category the supplier sells in (supplier.categories is
