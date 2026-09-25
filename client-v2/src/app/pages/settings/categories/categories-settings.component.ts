@@ -202,10 +202,17 @@ export class CategoriesSettingsComponent {
     this.addingUnder.set(parent.cat.id);
   }
   protected cancelAdd(): void { this.addingUnder.set(null); this.addName.set(''); }
+  /** Re-entrancy guard: Enter fires submitAdd AND then blur (the input unmounts
+   *  when addingUnder clears) fired a SECOND submitAdd → two categories created.
+   *  Guard + clear the name synchronously so any re-fire bails immediately. */
+  private addBusy = false;
   protected async submitAdd(parentId: string | null): Promise<void> {
+    if (this.addBusy) return;
     const name = this.addName().trim();
     if (name.length < 2) { this.cancelAdd(); return; }
-    this.addingUnder.set(null); // one create per submit; guard the blur+enter double-fire
+    this.addBusy = true;
+    this.addName.set('');       // clear NOW so the blur re-fire sees empty + bails
+    this.addingUnder.set(null);
     try {
       const created = await firstValueFrom(this.catalogue.createCategory(name, parentId));
       if (!parentId) {
@@ -220,7 +227,7 @@ export class CategoriesSettingsComponent {
       console.warn('[Taxonomy] create failed', err);
       this.error.set(`Couldn't add "${name}".`);
     } finally {
-      this.addName.set('');
+      this.addBusy = false;
     }
   }
   private find(nodes: TaxNode[], id: string): TaxNode | null {
