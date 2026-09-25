@@ -8,7 +8,33 @@ _Nothing pending — dev and preview are level._
 
 ---
 
-## ✅ On preview — current release `v0.1.1`
+## ✅ On preview — current release `v0.3.0`
+
+### v0.3.0 — Catalogue & Marketplace · built from v2.595 · 2026-09-25 10:56
+
+**Onboarding & Catalogue**
+
+- [new] onboard a supplier by reading their existing website. Auto-detects the platform (WooCommerce · WordPress · generic site), reads the catalogue the optimal way — structured API where one exists, intelligent crawl otherwise — and stages every product as pending for review. Runs as a background job with live progress, cancel and re-attach; tracks AI cost per pull; and dedupes by vendor identity so re-runs only add new products, never duplicates.
+- [new] a live three-level category manager: create, rename, delete, and move or reparent whole branches of the marketplace taxonomy — with no data migration. Items ride along by reference, so reshaping the tree is instant.
+
+**Marketplace**
+
+- [new] browse now understands the full three-level taxonomy: subcategory filters, descendant item counts, and a three-level drill-down rail. Items classified at any depth roll up to their parent so nothing is hidden.
+
+**Items**
+
+- [new] a redesigned item editor built on canonical attribute groups (Specifications · Features · Style · Measurements · Materials) plus priced Options, with save-on-blur, cascading Category ▸ Subcategory ▸ Sub-sub classification, and delete-with-cascade.
+
+### v0.2.0 — Admin & Security · built from v2.518 · 2026-09-21 12:31
+
+**Platform & Admin**
+
+- [new] manage organisations end-to-end: list, filter and search all orgs, create a new org, approve or suspend suppliers, and edit any org's profile — with website import to pre-fill a new supplier's brand, About and details from their existing site.
+- [new] a full supplier view for admins (Profile · My Shop · Shopfront) plus the ability to add catalogue items on a supplier's behalf, routed through the same approval flow as supplier-added items.
+
+**Security**
+
+- [new] every organisation's data is isolated at the database itself: a non-owner application role under row-level security, with org identity re-proven from a signed token on every request. A mis-scoped query cannot leak another tenant's data — the database is the backstop, not application discipline.
 
 ### v0.1.1 — Bug fixes (Beth review) · built from v2.471 · 2026-09-16 18:47
 
