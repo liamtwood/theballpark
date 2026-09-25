@@ -299,6 +299,15 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
       },
       error: () => { /* no active job / not reachable — nothing to re-attach */ },
     });
+    // Default the URL to this org's own website (from its profile) — one less paste.
+    // Only when the field is still empty, so it never clobbers a typed URL.
+    this.admin.get(this.orgId()).subscribe({
+      next: (org) => {
+        const w = (org?.website || '').trim();
+        if (w && !this.url().trim()) this.url.set(/^https?:\/\//i.test(w) ? w : `https://${w}`);
+      },
+      error: () => { /* profile unavailable — leave the field empty */ },
+    });
   }
   ngOnDestroy(): void { this.stopPolling(); }
 
