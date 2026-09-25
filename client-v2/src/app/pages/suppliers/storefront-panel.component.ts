@@ -32,6 +32,7 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
           [favouriteIds]="favouriteIds()"
           [quoteDraftIds]="quoteDraftIds()"
           [showQuickView]="true"
+          [quickViewOnly]="true"
           [dense]="true"
           (entitySelected)="quickView.emit($event)"
           (quickView)="quickView.emit($event)"

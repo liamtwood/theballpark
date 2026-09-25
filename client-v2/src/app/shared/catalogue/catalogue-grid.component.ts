@@ -28,6 +28,7 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
               [quoted]="quoteDraftIds().has(item.id)"
               [showQuickView]="showQuickView()"
               [adminEditOrgId]="adminEditOrgId()"
+              [quickViewOnly]="quickViewOnly()"
               (clicked)="entitySelected.emit($event)"
               (favouriteToggled)="favouriteToggled.emit($event)"
               (quoteToggled)="quoteToggled.emit($event)"
@@ -107,6 +108,8 @@ export class CatalogueGridComponent {
   /** pV2-ADMIN-ORG-ITEM-CREATE-01 — passthrough: platform admin editing a
    *  supplier's items → card click opens the admin editor for that org. */
   readonly adminEditOrgId = input<string | null>(null);
+  /** Browse-only surface (shopfront): a body click always opens the Quick View. */
+  readonly quickViewOnly = input<boolean>(false);
   readonly entitySelected = output<string>();
   readonly favouriteToggled = output<string>();
   readonly quoteToggled = output<string>();

@@ -224,6 +224,9 @@ export class ItemCardComponent {
   /** pV2-ADMIN-ORG-ITEM-CREATE-01 — when set (platform admin on a supplier's Shop
    *  tab), a card click opens the admin item EDITOR for that org, not review/QV. */
   readonly adminEditOrgId = input<string | null>(null);
+  /** Browse-only surface (shopfront): a body click always opens the Quick View,
+   *  never the editor/review — even for admins/owners (Liam 2026-09-25). */
+  readonly quickViewOnly = input<boolean>(false);
   readonly clicked = output<string>();
   readonly favouriteToggled = output<string>();
   readonly quoteToggled = output<string>();
@@ -254,6 +257,10 @@ export class ItemCardComponent {
    *  view (`?view=1`) — which the page resolves to moderate for ballpark admins
    *  and view for agents. The Edit button below is the owner's explicit edit. */
   protected open(): void {
+    // Browse-only surfaces (the public shopfront) ALWAYS open the read-only Quick View
+    // on a body click — even for admins/owners. Editing there is via the pencil in the
+    // dialog, never a jump to the editor/approve page (Liam 2026-09-25).
+    if (this.quickViewOnly() && this.showQuickView()) { this.quickView.emit(this.item().id); return; }
     const owned = this.item().ownedByActiveOrg;
     // pV2-ADMIN-ORG-ITEM-CREATE-01 — admin editing a supplier's catalogue: a card
     // click opens the org-scoped item editor (takes precedence over review/QV).

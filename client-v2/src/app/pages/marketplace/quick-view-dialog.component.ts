@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../../core/auth/auth.service';
 import { LucideAngularModule } from 'lucide-angular';
 import { DialogModule } from 'primeng/dialog';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
@@ -109,6 +110,13 @@ import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-
 
       <ng-template pTemplate="footer">
         @if (item(); as it) {
+          @if (editLink(); as link) {
+            <!-- Edit pencil for people with edit rights (owner or platform admin) — the
+                 way to reach the editor/approve page from a browse surface (Liam). -->
+            <a [routerLink]="link" class="bp-btn-outline" (click)="close.emit()">
+              <lucide-icon name="square-pen" [size]="15" /> Edit
+            </a>
+          }
           <button type="button" class="bp-btn-outline" (click)="close.emit()">Close</button>
           @if (showAdd()) {
             <button type="button" class="bp-btn-grad" (click)="add.emit(it.id)">
@@ -177,6 +185,20 @@ export class QuickViewDialogComponent {
   readonly showAdd = input<boolean>(true);
   readonly close = output<void>();
   readonly add = output<string>();
+
+  private readonly auth = inject(AuthService);
+
+  /** Edit destination for viewers with rights (owner → their editor; platform admin →
+   *  the org-scoped editor/approve page); null otherwise (no pencil). */
+  protected readonly editLink = computed<unknown[] | null>(() => {
+    const it = this.item();
+    const u = this.auth.user();
+    if (!it || !u) return null;
+    const owned = u.activeOrgId === it.supplierId;
+    if (u.activeOrgType === 'ballpark' && !owned) return ['/admin/orgs', it.supplierId, 'items', it.id];
+    if (owned) return ['/store/items', it.id];
+    return null;
+  });
 
   /** Volume price tiers (guide pricing) — KEY data shown up top. */
   protected readonly tiers = computed(() => {
