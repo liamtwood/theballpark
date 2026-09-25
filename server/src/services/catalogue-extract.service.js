@@ -26,7 +26,8 @@ const {
 } = require('./catalogue-extract/profiles');
 
 const MAX_TEXT_CHARS = 14000; // keep the model prompt bounded; product pages sit well under
-const MAX_PULL_URLS = 100;    // per pull request — small catalogues (<100 items) in one go
+const MAX_PULL_URLS = 500;    // per pull request — matches the route's 500-URL cap; a whole
+                              // mid-size catalogue in one background job (runs sequentially + cancellable)
 const CRAWL_MAX_PAGES = 250;  // bounded BFS ceiling — covers a whole small/mid catalogue; a
                               // very large one needs pagination/concurrency (future).
 // Claude Haiku 4.5 rate (USD per token, verified 2026-09-23: $1/MTok in, $5/MTok out).
