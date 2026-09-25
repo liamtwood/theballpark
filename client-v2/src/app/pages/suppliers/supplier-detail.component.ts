@@ -93,6 +93,42 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
         }
       </div>
 
+      <!-- Category menu band (Shopfront) — full-bleed, flush under the brand image;
+           centred UPPERCASE links, no chevron. The mega-menu drops each subcategory's
+           children; a click browses this supplier's items in place. Lights up the
+           moment their items are loaded (pV2-STOREFRONT-MENU-01). -->
+      @if (tab() === 'storefront' && shopNavCats(sup).length) {
+        <div class="bp-shopfront-menu relative">
+          <nav class="mx-auto flex max-w-[var(--workspace-max)] items-center justify-center gap-2 overflow-x-auto px-4 py-2.5">
+            <button type="button" class="bp-shopfront-menu__link" (click)="shopPick(null, null, 'All items')">All items</button>
+            @for (c of shopNavCats(sup); track c.id) {
+              <button
+                type="button"
+                class="bp-shopfront-menu__link"
+                [class.bp-shopfront-menu__link--on]="openCat() === c.id"
+                (click)="toggleCat(c.id)"
+              >{{ c.name }}</button>
+            }
+          </nav>
+
+          <!-- Mega-menu drops full-width (Amazon-style), floating over the content below. -->
+          @if (shopMenu(sup); as m) {
+            <div class="absolute inset-x-0 top-full z-30 border-b border-hairline bg-surface shadow-[var(--shadow-md)]">
+              <div class="mx-auto grid max-w-[var(--workspace-max)] grid-cols-2 gap-x-8 gap-y-6 px-6 py-6 sm:grid-cols-3">
+                @for (col of m.columns; track col.l2.id) {
+                  <div class="flex flex-col gap-2">
+                    <button type="button" class="text-left text-sm font-medium uppercase tracking-wide text-accent hover:underline" (click)="shopPick(m.categoryId, col.l2.id, col.l2.name, col.l2.tagline)">{{ col.l2.name }}</button>
+                    @for (leaf of col.children; track leaf.id) {
+                      <button type="button" class="text-left text-sm text-secondary hover:text-accent" (click)="shopPick(m.categoryId, leaf.id, leaf.name, leaf.tagline)">{{ leaf.name }}</button>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
       <div class="bp-page-body" [class.overflow-y-auto]="tab() !== 'store'">
         @if (tab() === 'profile') {
           <!-- Profile — editable org editor (save-on-blur). Owner/admin only. -->
@@ -102,13 +138,13 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
           <app-storefront-panel
             [supplier]="sup"
             [subcategories]="subcats.value() ?? []"
+            [selection]="shopBrowse()"
             [items]="store.items()"
             [itemsLoading]="store.itemsRes.isLoading()"
             [hasMore]="store.hasMore()"
             [favouriteIds]="favs.items()"
             [quoteDraftIds]="favs.quoteDraft()"
             (subcategorySelected)="openStoreSubcat($event)"
-            (browse)="openStoreBrowse($event)"
             (quickView)="openQuickView($event)"
             (favouriteToggled)="favs.toggle('item', $event)"
             (quoteToggled)="favs.toggleQuoteDraft($event)"
@@ -285,6 +321,10 @@ export class SupplierDetailComponent {
   });
 
   protected setTab(tab: string): void {
+    // Reset the shopfront menu state so returning to Shopfront shows the category
+    // cards again (not a stale in-place selection).
+    this.openCat.set(null);
+    this.shopBrowse.set(null);
     // Explicit key for all three surfaces (profile / storefront / store) so deep
     // links are unambiguous; clear the store's cat/item drill on tab switch.
     this.router
@@ -304,6 +344,50 @@ export class SupplierDetailComponent {
         queryParamsHandling: 'merge',
       })
       .catch((err) => console.warn('[SupplierDetail] navigation failed', err));
+  }
+
+  /** Shopfront category menu (pV2-STOREFRONT-MENU-01) — the full-bleed band under
+   *  the brand image. openCat = the open dropdown; shopBrowse = the in-place
+   *  selection (title/tagline shown above the grid, null = show category cards). */
+  protected readonly openCat = signal<string | null>(null);
+  protected readonly shopBrowse = signal<{ title: string; tagline: string | null } | null>(null);
+  protected toggleCat(id: string): void { this.openCat.update((v) => (v === id ? null : id)); }
+
+  /** Categories the supplier actually has items in — the nav links. */
+  protected shopNavCats(sup: SupplierDetail) {
+    return sup.categories.filter((c) => c.count > 0);
+  }
+
+  /** Mega-menu model for the open category: one column per L2 subcategory (with
+   *  live items), each holding its L3 children. Sourced from the org-scoped
+   *  subcategories feed (it emits every node in each item's chain). */
+  protected shopMenu(sup: SupplierDetail) {
+    const open = this.openCat();
+    if (!open) return null;
+    const cat = sup.categories.find((c) => c.id === open);
+    if (!cat) return null;
+    const subs = this.subcats.value() ?? [];
+    const l2s = subs
+      .filter((s) => !s.isCatchAll && s.parentId === cat.id && s.count > 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (!l2s.length) return null;
+    return {
+      categoryId: cat.id,
+      columns: l2s.map((l2) => ({
+        l2,
+        children: subs
+          .filter((s) => s.parentId === l2.id && s.count > 0)
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      })),
+    };
+  }
+
+  /** A menu click: remember the selection (title/tagline above the grid), close the
+   *  dropdown, and browse this supplier's items in place. */
+  protected shopPick(categoryId: string | null, subcategoryId: string | null, title: string, tagline: string | null = null): void {
+    this.shopBrowse.set({ title, tagline });
+    this.openCat.set(null);
+    this.openStoreBrowse({ categoryId, subcategoryId });
   }
 
   /** Shopfront category menu drill (pV2-STOREFRONT-MENU-01): the mega-menu emits

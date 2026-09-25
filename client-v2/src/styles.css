@@ -964,12 +964,18 @@ body {
 /* pV2-STOREFRONT-MENU-01 — the shopfront VIEW hero (Amazon Brand Store pattern):
    full-width cover photo with the org logo overlaid in the corner; the category
    nav bar + org name sit in a white bar BELOW the image (edit uses app-org-banner). */
-/* Supplier brand header (pV2-STOREFRONT-MENU-01) — on the Shopfront tab the
-   supplier's cover image sits BEHIND the page hero (name + city) and the tab
-   band, turning the header into the brand banner. A light veil keeps the dark
-   hero text + tab pills legible over any cover. Other tabs render plain. */
+/* Supplier brand header (pV2-STOREFRONT-MENU-01) — on the Shopfront/Shop tabs the
+   supplier's cover image sits BEHIND the page hero (name + city) and the tab band,
+   turning the header into the brand banner. A light directional veil keeps the dark
+   hero text (top-left) legible while letting most of the image show. Both the cover
+   and the menu band break out of the <main> px-6 gutter to go edge-to-edge. */
 .bp-supplier-brandhead {
   position: relative;
+}
+.bp-supplier-brandhead--cover,
+.bp-shopfront-menu {
+  /* Cancel the <main> px-6 (1.5rem) so the banner + menu are full-bleed. */
+  margin-inline: -1.5rem;
 }
 .bp-supplier-brandhead--cover {
   background-size: cover;
@@ -980,15 +986,41 @@ body {
   position: absolute;
   inset: 0;
   z-index: 0;
+  /* Lighter than before, and strongest at the top-left where the title sits —
+     fades to near-clear so more of the image reads across the banner. */
   background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--color-surface) 60%, transparent),
-    color-mix(in srgb, var(--color-surface) 80%, transparent)
+    115deg,
+    color-mix(in srgb, var(--color-surface) 62%, transparent) 0%,
+    color-mix(in srgb, var(--color-surface) 34%, transparent) 45%,
+    color-mix(in srgb, var(--color-surface) 20%, transparent) 100%
   );
 }
 .bp-supplier-brandhead--cover > * {
   position: relative;
   z-index: 1;
+}
+
+/* Full-width category menu band, flush under the brand image. White bar, no
+   rounding; centred UPPERCASE links, no chevron (pV2-STOREFRONT-MENU-01). */
+.bp-shopfront-menu {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+.bp-shopfront-menu__link {
+  white-space: nowrap;
+  padding: 0.35rem 0.9rem;
+  font-size: var(--text-sm);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.bp-shopfront-menu__link:hover {
+  color: var(--theme-accent);
+}
+.bp-shopfront-menu__link--on {
+  color: var(--theme-accent);
+  font-weight: 500;
+  box-shadow: inset 0 -2px 0 0 var(--theme-accent);
 }
 .bp-org-banner__cover-btn {
   position: absolute;

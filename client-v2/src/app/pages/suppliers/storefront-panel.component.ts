@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { CatalogueItem, SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
@@ -16,59 +16,14 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
   imports: [LucideAngularModule, CatalogueGridComponent, SubcatCardComponent, OrgMediaComponent],
   host: { class: 'mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-8' },
   template: `
-    <!-- 1. Category menu bar — sits below the brand banner (the cover image now
-         lives in the page header, behind the hero + tabs). Automagic from the
-         supplier's catalogue: nav = the categories they sell in, mega-menu = each
-         subcategory (column) listing its sub-subcategories. A click drills in place.
-         Lights up the moment their items are loaded (pV2-STOREFRONT-MENU-01). -->
-    @if (navCats().length) {
-      <div class="relative z-20">
-        <nav class="flex items-center gap-1 overflow-x-auto rounded-[var(--radius-card)] border border-hairline bg-surface px-3 py-2.5">
-          <button type="button" class="whitespace-nowrap px-3 py-1 text-lg text-secondary hover:text-accent" (click)="pick(null, null, 'All items')">All items</button>
-          @for (c of navCats(); track c.id) {
-            <button
-              type="button"
-              class="flex items-center gap-1.5 whitespace-nowrap px-3 py-1 text-lg hover:text-accent"
-              [class.font-medium]="openCat() === c.id"
-              [class.text-accent]="openCat() === c.id"
-              [class.text-secondary]="openCat() !== c.id"
-              [style.box-shadow]="openCat() === c.id ? 'inset 0 -2px 0 0 var(--theme-accent)' : 'none'"
-              (click)="toggleCat(c.id)"
-            >
-              {{ c.name }}
-              <lucide-icon name="chevron-down" [size]="16" [style.transform]="openCat() === c.id ? 'rotate(180deg)' : 'none'" />
-            </button>
-          }
-        </nav>
-
-        <!-- Mega-menu drops from the nav (Amazon-style), floating over the content below. -->
-        @if (menu(); as m) {
-          <div class="absolute inset-x-0 top-full z-10 mt-1 rounded-[var(--radius-card)] border border-hairline bg-surface p-6 shadow-[var(--shadow-md)]">
-            <div class="grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3">
-              @for (col of m.columns; track col.l2.id) {
-                <div class="flex flex-col gap-2">
-                  <button type="button" class="text-left text-lg font-medium text-accent hover:underline" (click)="pick(m.categoryId, col.l2.id, col.l2.name, col.l2.tagline)">{{ col.l2.name }}</button>
-                  @for (leaf of col.children; track leaf.id) {
-                    <button type="button" class="text-left text-base text-secondary hover:text-accent" (click)="pick(m.categoryId, leaf.id, leaf.name, leaf.tagline)">{{ leaf.name }}</button>
-                  }
-                </div>
-              }
-            </div>
-          </div>
-        }
+    <!-- Browse-in-place: the menu band (now in the page header) sets a selection;
+         we render the supplier's items right here (reuses catalogue-grid + the
+         store's items) so buyers never leave the shopfront (pV2-STOREFRONT-MENU-01). -->
+    @if (selection(); as sel) {
+      <div>
+        <h3 class="bp-edit-section-title">{{ sel.title }}</h3>
+        @if (sel.tagline) { <p class="bp-body-small mt-1 text-secondary">{{ sel.tagline }}</p> }
       </div>
-    }
-
-    <!-- Browse-in-place: picking a category/sub renders the supplier's items right
-         here (reuses catalogue-grid + the store's items) so buyers never leave the
-         shopfront (pV2-STOREFRONT-MENU-01). -->
-    @if (browsing()) {
-      @if (selectedTitle()) {
-        <div>
-          <h3 class="bp-edit-section-title">{{ selectedTitle() }}</h3>
-          @if (selectedTagline()) { <p class="bp-body-small mt-1 text-secondary">{{ selectedTagline() }}</p> }
-        </div>
-      }
       @if (items().length === 0 && !itemsLoading()) {
         <p class="bp-body-small text-secondary">No items in this selection.</p>
       } @else {
@@ -144,7 +99,7 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
 
     <!-- 4. Categories the supplier sells in — hidden while browsing (the menu +
          in-place grid replace it). -->
-    @if (!browsing()) {
+    @if (!selection()) {
       @for (group of groups(); track group.id) {
         <section>
           <div class="flex items-center gap-2">
@@ -173,9 +128,10 @@ export class StorefrontPanelComponent {
   readonly supplier = input.required<SupplierDetail>();
   readonly subcategories = input<SupplierSubcategory[]>([]);
   readonly subcategorySelected = output<SupplierSubcategory>();
-  /** Category-menu drill — a resolved {categoryId, subcategoryId} (sub may be an
-   *  L2 or an L3; both null = "All items"). The shell navigates the Store. */
-  readonly browse = output<{ categoryId: string | null; subcategoryId: string | null }>();
+
+  /** The current menu selection (set by the header menu band): title + tagline
+   *  shown above the in-place grid. Null = show the category cards instead. */
+  readonly selection = input<{ title: string; tagline: string | null } | null>(null);
 
   /** Browse-in-place: the parent feeds its store's items back so the grid renders
    *  here (same visibility/pagination as the Store tab). */
@@ -189,49 +145,6 @@ export class StorefrontPanelComponent {
   readonly quoteToggled = output<string>();
   readonly showMore = output<void>();
   readonly gridChanged = output<void>();
-
-  /** True once the visitor has picked a category/sub from the menu — shows the grid. */
-  protected readonly browsing = signal(false);
-  /** Title + tagline of the current selection, shown above the in-place grid. */
-  protected readonly selectedTitle = signal<string | null>(null);
-  protected readonly selectedTagline = signal<string | null>(null);
-
-  /** The open category in the banner nav (null = menu closed). */
-  protected readonly openCat = signal<string | null>(null);
-  /** Nav tabs = the categories the supplier actually has items in. */
-  protected readonly navCats = computed(() => this.supplier().categories.filter((c) => c.count > 0));
-  protected toggleCat(id: string): void { this.openCat.update((v) => (v === id ? null : id)); }
-  protected pick(categoryId: string | null, subcategoryId: string | null, title: string, tagline: string | null = null): void {
-    this.selectedTitle.set(title);
-    this.selectedTagline.set(tagline);
-    this.openCat.set(null);      // close the dropdown
-    this.browsing.set(true);     // reveal the in-place grid
-    this.browse.emit({ categoryId, subcategoryId });
-  }
-
-  /** Mega-menu model for the open category: one column per L2 subcategory (with
-   *  live items), each holding its L3 sub-subcategories. Both levels come from the
-   *  org-scoped subcategories feed (it emits every node in each item's chain). */
-  protected readonly menu = computed(() => {
-    const open = this.openCat();
-    if (!open) return null;
-    const cat = this.supplier().categories.find((c) => c.id === open);
-    if (!cat) return null;
-    const subs = this.subcategories();
-    const l2s = subs
-      .filter((s) => !s.isCatchAll && s.parentId === cat.id && s.count > 0)
-      .sort((a, b) => a.name.localeCompare(b.name));
-    if (!l2s.length) return null;
-    return {
-      categoryId: cat.id,
-      columns: l2s.map((l2) => ({
-        l2,
-        children: subs
-          .filter((s) => s.parentId === l2.id && s.count > 0)
-          .sort((a, b) => a.name.localeCompare(b.name)),
-      })),
-    };
-  });
 
   /** Logo src with spaces encoded — some imported logo URLs (e.g. Yahire's) carry
    *  raw spaces that break the <img> load, leaving an empty chip. */
