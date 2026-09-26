@@ -8,7 +8,14 @@ _Nothing pending — dev and preview are level._
 
 ---
 
-## ✅ On preview — current release `v0.3.2`
+## ✅ On preview — current release `v0.3.3`
+
+### v0.3.3 — Supplier cards & marketplace polish · built from v2.636 · 2026-09-26
+
+**Marketplace**
+
+- [new] supplier tiles now render consistently across the grid: a store can fill the tile with its cover photo or fit its logo on a clean white ground, set per supplier. Owners choose it on their profile (Branding), and platform admins can set it for any store — so a mix of photos, logos and logo-as-cover art all look intentional.
+- [fixed] the quick-view "Add to ballpark" now shows the chosen variant combination's price; the project Suppliers tab browses every category ("All Categories" lists every store, not just those already in the quote); the Supplier filter is wider so long names fit; and supplier cards gain a soft rose footer.
 
 ### v0.3.2 — Configurable products · built from v2.625 · 2026-09-26
 
