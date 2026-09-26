@@ -17,22 +17,18 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
   host: { class: 'bp-card bp-card--zoom' },
   template: `
     <a [routerLink]="['/suppliers', supplier().id]" class="bp-supplier-card__link" [attr.aria-label]="supplier().name">
+      <!-- Auto-normalised hero (pV2-CARDS-01): a blurred cover backdrop (or soft
+           brand wash when there's none) with the logo on a clean white plate,
+           centred. Uniform across every supplier regardless of what art they
+           uploaded — real covers, logo-as-cover, or nothing all read the same. -->
       <div class="bp-supplier-card__hero">
         @if (supplier().coverUrl) {
-          <img class="bp-item-card__img" [src]="coverSrc()" [alt]="''" loading="lazy" decoding="async" />
-          <!-- Brand logo chip over the cover (recognisable store identity). -->
-          @if (logoSrc()) {
-            <span class="bp-supplier-card__logochip"><img [src]="logoSrc()" [alt]="supplier().name" /></span>
-          }
-        } @else if (logoSrc()) {
-          <!-- No cover → show the logo itself (contained), not the generic icon. -->
-          <div class="bp-item-card__img bp-item-card__img--empty">
-            <img class="bp-supplier-card__logo-only" [src]="logoSrc()" [alt]="supplier().name" />
-          </div>
+          <img class="bp-supplier-card__bg" [src]="coverSrc()" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+        }
+        @if (logoSrc()) {
+          <span class="bp-supplier-card__plate"><img [src]="logoSrc()" [alt]="supplier().name" loading="lazy" decoding="async" /></span>
         } @else {
-          <div class="bp-item-card__img bp-item-card__img--empty">
-            <lucide-icon name="store" [size]="22" [strokeWidth]="1.5" />
-          </div>
+          <span class="bp-supplier-card__plate bp-supplier-card__plate--icon"><lucide-icon name="store" [size]="24" [strokeWidth]="1.5" /></span>
         }
       </div>
       <div class="min-w-0 px-3.5 pb-3.5 pt-3">
@@ -86,34 +82,55 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
       color: var(--theme-accent);
     }
     .store-link:hover { text-decoration: underline; }
-    .bp-supplier-card__hero { position: relative; }
-    /* Brand logo chip over the cover — white pill, contained logo. */
-    .bp-supplier-card__logochip {
-      position: absolute;
-      left: 10px;
-      bottom: 10px;
+    .bp-supplier-card__hero {
+      position: relative;
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 5px 8px;
+      background: var(--theme-soft);
+    }
+    /* Blurred cover backdrop — brand colour/texture without the crop problem. */
+    .bp-supplier-card__bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scale(1.15);
+      filter: blur(16px) saturate(1.15);
+    }
+    /* A soft veil lifts the plate off any backdrop (light or dark). */
+    .bp-supplier-card__hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: color-mix(in srgb, #fff 42%, transparent);
+    }
+    /* White plate holds the contained logo — always crisp, never cropped. */
+    .bp-supplier-card__plate {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 72%;
+      max-height: 66%;
+      padding: 14px 18px;
       background: #fff;
-      border-radius: 10px;
+      border-radius: 14px;
       box-shadow: var(--shadow-md);
     }
-    .bp-supplier-card__logochip img {
-      height: 26px;
+    .bp-supplier-card__plate img {
+      max-width: 100%;
+      max-height: 84px;
       width: auto;
-      max-width: 104px;
+      height: auto;
       object-fit: contain;
       display: block;
     }
-    /* No cover → the logo itself, contained on the empty surface. */
-    .bp-supplier-card__logo-only {
-      max-height: 62%;
-      max-width: 72%;
-      width: auto;
-      object-fit: contain;
-    }
+    .bp-supplier-card__plate--icon { color: var(--color-text-secondary); padding: 18px; }
   `,
 })
 export class SupplierCardComponent {
