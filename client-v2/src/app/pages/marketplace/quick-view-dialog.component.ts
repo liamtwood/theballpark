@@ -73,8 +73,9 @@ import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-
           </div>
 
           <!-- Variant configurator (pV2-STORE-VARIANTS-01) — owns the price when the
-               item is a variable product; renders nothing otherwise. -->
-          <app-item-variant-picker [attributes]="it.attributes ?? null" [basePrice]="it.basePrice" />
+               item is a variable product; renders nothing otherwise. The chosen combo
+               drives the "Add to ballpark" value below. -->
+          <app-item-variant-picker [attributes]="it.attributes ?? null" [basePrice]="it.basePrice" (selectionChange)="chosenCombo.set($event)" />
 
           <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — KEY: Volume pricing (guide tiers);
                then the shared Options picklist + Show-more spec-group cards. Only
@@ -120,7 +121,7 @@ import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-
           <button type="button" class="bp-btn-outline" (click)="close.emit()">Close</button>
           @if (showAdd()) {
             <button type="button" class="bp-btn-grad" (click)="add.emit(it.id)">
-              Add to ballpark@if (it.basePrice !== null) { &nbsp;·&nbsp;{{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-2' }} }
+              Add to ballpark@if ((chosenCombo()?.price ?? it.basePrice) !== null) { &nbsp;·&nbsp;{{ (chosenCombo()?.price ?? it.basePrice) | currency: 'GBP' : 'symbol' : '1.0-2' }} }
             </button>
           }
         }
@@ -205,6 +206,10 @@ export class QuickViewDialogComponent {
     const a = this.item()?.attributes as Record<string, unknown> | null | undefined;
     return (a && Array.isArray(a['price_tiers']) ? a['price_tiers'] : []) as { min: number; max: number | null; price: number }[];
   });
+
+  /** The combo chosen in the variant picker (null until a full combo is picked) —
+   *  drives the "Add to ballpark" value. */
+  protected readonly chosenCombo = signal<{ values: Record<string, string>; price: number } | null>(null);
 
   /** Variable product? — the variant picker then owns the price display. */
   protected readonly hasVariants = computed(() => {
