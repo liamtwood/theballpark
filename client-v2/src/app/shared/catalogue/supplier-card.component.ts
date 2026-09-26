@@ -26,9 +26,9 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
           <img class="bp-supplier-card__bg" [src]="coverSrc()" alt="" aria-hidden="true" loading="lazy" decoding="async" />
         }
         @if (logoSrc()) {
-          <span class="bp-supplier-card__plate"><img [src]="logoSrc()" [alt]="supplier().name" loading="lazy" decoding="async" /></span>
+          <img class="bp-supplier-card__logo" [src]="logoSrc()" [alt]="supplier().name" loading="lazy" decoding="async" />
         } @else {
-          <span class="bp-supplier-card__plate bp-supplier-card__plate--icon"><lucide-icon name="store" [size]="24" [strokeWidth]="1.5" /></span>
+          <lucide-icon name="store" [size]="26" [strokeWidth]="1.5" class="bp-supplier-card__logo bp-supplier-card__logo--icon" />
         }
       </div>
       <div class="min-w-0 px-3.5 pb-3.5 pt-3">
@@ -108,29 +108,19 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
       inset: 0;
       background: color-mix(in srgb, #fff 42%, transparent);
     }
-    /* White plate holds the contained logo — always crisp, never cropped. */
-    .bp-supplier-card__plate {
+    /* The logo sits directly on the backdrop (no plate) — contained, never
+       cropped, with a soft shadow to lift it off the blur. */
+    .bp-supplier-card__logo {
       position: relative;
       z-index: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      max-width: 72%;
-      max-height: 66%;
-      padding: 14px 18px;
-      background: #fff;
-      border-radius: 14px;
-      box-shadow: var(--shadow-md);
-    }
-    .bp-supplier-card__plate img {
-      max-width: 100%;
-      max-height: 84px;
+      max-width: 64%;
+      max-height: 58%;
       width: auto;
       height: auto;
       object-fit: contain;
-      display: block;
+      filter: drop-shadow(0 2px 8px rgba(15, 23, 42, 0.22));
     }
-    .bp-supplier-card__plate--icon { color: var(--color-text-secondary); padding: 18px; }
+    .bp-supplier-card__logo--icon { color: var(--color-text-secondary); filter: none; }
   `,
 })
 export class SupplierCardComponent {
