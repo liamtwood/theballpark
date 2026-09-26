@@ -17,13 +17,24 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
   host: { class: 'bp-card bp-card--zoom' },
   template: `
     <a [routerLink]="['/suppliers', supplier().id]" class="bp-supplier-card__link" [attr.aria-label]="supplier().name">
-      @if (supplier().coverUrl) {
-        <img class="bp-item-card__img" [src]="coverSrc()" [alt]="''" loading="lazy" decoding="async" />
-      } @else {
-        <div class="bp-item-card__img bp-item-card__img--empty">
-          <lucide-icon name="store" [size]="22" [strokeWidth]="1.5" />
-        </div>
-      }
+      <div class="bp-supplier-card__hero">
+        @if (supplier().coverUrl) {
+          <img class="bp-item-card__img" [src]="coverSrc()" [alt]="''" loading="lazy" decoding="async" />
+          <!-- Brand logo chip over the cover (recognisable store identity). -->
+          @if (logoSrc()) {
+            <span class="bp-supplier-card__logochip"><img [src]="logoSrc()" [alt]="supplier().name" /></span>
+          }
+        } @else if (logoSrc()) {
+          <!-- No cover → show the logo itself (contained), not the generic icon. -->
+          <div class="bp-item-card__img bp-item-card__img--empty">
+            <img class="bp-supplier-card__logo-only" [src]="logoSrc()" [alt]="supplier().name" />
+          </div>
+        } @else {
+          <div class="bp-item-card__img bp-item-card__img--empty">
+            <lucide-icon name="store" [size]="22" [strokeWidth]="1.5" />
+          </div>
+        }
+      </div>
       <div class="min-w-0 px-3.5 pb-3.5 pt-3">
         <div class="truncate text-md font-semibold text-text">{{ supplier().name }}</div>
         <div class="mt-1 flex items-center gap-1 text-secondary">
@@ -75,6 +86,34 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
       color: var(--theme-accent);
     }
     .store-link:hover { text-decoration: underline; }
+    .bp-supplier-card__hero { position: relative; }
+    /* Brand logo chip over the cover — white pill, contained logo. */
+    .bp-supplier-card__logochip {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px 8px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: var(--shadow-md);
+    }
+    .bp-supplier-card__logochip img {
+      height: 26px;
+      width: auto;
+      max-width: 104px;
+      object-fit: contain;
+      display: block;
+    }
+    /* No cover → the logo itself, contained on the empty surface. */
+    .bp-supplier-card__logo-only {
+      max-height: 62%;
+      max-width: 72%;
+      width: auto;
+      object-fit: contain;
+    }
   `,
 })
 export class SupplierCardComponent {
@@ -94,6 +133,13 @@ export class SupplierCardComponent {
   protected coverSrc(): string | null {
     return sizedImage(this.supplier().coverUrl, 480);
   }
+
+  /** Logo src with spaces encoded — some imported logo URLs carry raw spaces
+   *  that break the <img> load (matches the shopfront fix). */
+  protected readonly logoSrc = computed(() => {
+    const u = (this.supplier().logoUrl ?? '').trim();
+    return u ? u.replace(/ /g, '%20') : null;
+  });
 
   /** The CTA sits inside the card's <a>; always stop the navigation. Only
    *  ADD here — once in the quote it's inert (removal is via the rail), and
