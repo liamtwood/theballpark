@@ -103,6 +103,9 @@ export interface CatalogueSupplier {
   description: string | null;
   logoUrl: string | null;
   coverUrl: string | null;
+  /** How the card renders the art: 'cover' (zoom/fill, default) or 'contain'
+   *  (logo — or cover — shown whole on a white ground). From orgs.image_display. */
+  imageDisplay: string | null;
   count: number;
 }
 

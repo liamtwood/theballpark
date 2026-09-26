@@ -78,7 +78,7 @@ router.get('/suppliers', async (req, res, next) => {
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     vals.push(PAGE_SIZE, offset);
     const r = await pool.query(
-      `SELECT o.id, o.name, o.city, o.description, o.logo_url, o.cover_image_url,
+      `SELECT o.id, o.name, o.city, o.description, o.logo_url, o.cover_image_url, o.image_display,
               COUNT(i.id) AS item_count,
               COUNT(*) OVER() AS total
          FROM orgs_public o
@@ -87,7 +87,7 @@ router.get('/suppliers', async (req, res, next) => {
         ${whereSql}
         -- BE-00129 — group every selected orgs_public column (it's a VIEW, no PK
         -- functional dependency; see /suppliers/options above).
-        GROUP BY o.id, o.name, o.city, o.description, o.logo_url, o.cover_image_url
+        GROUP BY o.id, o.name, o.city, o.description, o.logo_url, o.cover_image_url, o.image_display
         ORDER BY o.name ASC
         LIMIT $${vals.length - 1} OFFSET $${vals.length}`,
       vals
@@ -100,6 +100,7 @@ router.get('/suppliers', async (req, res, next) => {
       description: row.description,
       logoUrl: row.logo_url,
       coverUrl: row.cover_image_url,
+      imageDisplay: row.image_display ?? null,
       count: Number(row.item_count),
     }));
     res.json({ items, total, hasMore: offset + items.length < total });

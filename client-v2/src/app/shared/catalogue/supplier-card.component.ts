@@ -21,12 +21,12 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
            brand wash when there's none) with the logo on a clean white plate,
            centred. Uniform across every supplier regardless of what art they
            uploaded — real covers, logo-as-cover, or nothing all read the same. -->
-      <div class="bp-supplier-card__hero">
-        @if (heroSrc(); as src) {
-          <!-- Blurred-fill: the same art fills the box (blurred) behind the full,
-               contained image — so any cover/logo-as-cover shows whole, never cropped. -->
-          <img class="bp-supplier-card__bg" [src]="src" alt="" aria-hidden="true" loading="lazy" decoding="async" />
-          <img class="bp-supplier-card__fg" [src]="src" [alt]="supplier().name" loading="lazy" decoding="async" />
+      <!-- Per-supplier display (orgs.image_display): 'cover' zooms/fills the cover
+           photo; 'contain' shows the logo (or cover) WHOLE on a white ground. -->
+      <div class="bp-supplier-card__hero" [class.bp-supplier-card__hero--contain]="render()?.fit === 'contain'">
+        @if (render(); as r) {
+          <img [class]="r.fit === 'contain' ? 'bp-supplier-card__contain' : 'bp-supplier-card__cover'"
+               [src]="r.src" [alt]="supplier().name" loading="lazy" decoding="async" />
         } @else {
           <lucide-icon name="store" [size]="26" [strokeWidth]="1.5" class="bp-supplier-card__fallback" />
         }
@@ -91,22 +91,19 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
       justify-content: center;
       background: var(--theme-soft);
     }
-    /* Blurred copy of the art fills the box — brand colour/texture, no crop. */
-    .bp-supplier-card__bg {
-      position: absolute;
-      inset: 0;
+    /* Contain mode → white ground, logo/cover shown whole. */
+    .bp-supplier-card__hero--contain { background: #fff; }
+    /* Cover mode → the photo zooms to fill the tile. */
+    .bp-supplier-card__cover {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transform: scale(1.18);
-      filter: blur(18px) saturate(1.2);
+      display: block;
     }
-    /* The real art, shown WHOLE (contained) and centred over the blurred fill. */
-    .bp-supplier-card__fg {
-      position: relative;
-      z-index: 1;
-      max-width: 100%;
-      max-height: 100%;
+    /* Contain mode → the art centred, whole, with breathing room. */
+    .bp-supplier-card__contain {
+      max-width: 78%;
+      max-height: 70%;
       width: auto;
       height: auto;
       object-fit: contain;
@@ -139,9 +136,21 @@ export class SupplierCardComponent {
     return u ? u.replace(/ /g, '%20') : null;
   });
 
-  /** Hero art: prefer the cover (most suppliers have one), fall back to the logo.
-   *  Shown as a blurred-fill so it's never cropped regardless of aspect. */
-  protected readonly heroSrc = computed(() => this.coverSrc() ?? this.logoSrc());
+  /** What to render + how (pV2-CARDS-01):
+   *  - 'contain' mode → the logo (or cover if none) shown WHOLE on a white ground.
+   *  - 'cover' mode (default) → the cover photo zoomed to fill; no cover falls back
+   *    to the logo shown contained, else the store icon. */
+  protected readonly render = computed<{ src: string; fit: 'cover' | 'contain' } | null>(() => {
+    const cover = this.coverSrc();
+    const logo = this.logoSrc();
+    if (this.supplier().imageDisplay === 'contain') {
+      const src = logo ?? cover;
+      return src ? { src, fit: 'contain' } : null;
+    }
+    if (cover) return { src: cover, fit: 'cover' };
+    if (logo) return { src: logo, fit: 'contain' };
+    return null;
+  });
 
   /** The CTA sits inside the card's <a>; always stop the navigation. Only
    *  ADD here — once in the quote it's inert (removal is via the rail), and
