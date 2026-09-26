@@ -68,7 +68,7 @@ import { isDeclined } from './quote-line.util';
           <p class="bp-body-small text-secondary">Loading…</p>
         } @else if (relevantSuppliers().length === 0) {
           <p class="bp-body-small text-secondary">
-            No suppliers serve {{ store.categoryId() ? 'this category' : 'your project categories' }} yet.
+            No suppliers serve {{ store.categoryId() ? 'this category' : 'any category' }} yet.
           </p>
         } @else {
           <app-supplier-grid
@@ -168,13 +168,13 @@ export class ProjectMarketplaceComponent {
   /** The category set in the strip. Items mode = the full catalogue;
    *  Suppliers mode = only the categories present in this project's quote,
    *  so the agent fans out to project-relevant suppliers only. */
-  protected readonly stripCategories = computed(() => {
-    // Hide empty categories (no items) in the project Marketplace.
-    const withItems = this.store.categories().filter((c) => c.count > 0);
-    if (this.store.mode() !== 'suppliers') return withItems;
-    const ids = this.quoteCategoryIds();
-    return withItems.filter((c) => ids.has(c.id));
-  });
+  protected readonly stripCategories = computed(() =>
+    // Both modes show the full catalogue (categories with items). The Suppliers tab
+    // must let you browse ANY category — pick one → that category's suppliers; "All
+    // Categories" → every supplier with an active item (Liam 2026-09-26; was scoped
+    // to the project's quote categories, which hid off-project stores).
+    this.store.categories().filter((c) => c.count > 0)
+  );
 
   /** Subcategories with at least one item — empties hidden from the rail. */
   protected readonly stripSubcategories = computed(() =>
@@ -185,40 +185,19 @@ export class ProjectMarketplaceComponent {
     this.store.subSubcategories().filter((s) => s.count > 0),
   );
 
-  /** The distinct categories present in this project's quote. */
-  private readonly quoteCategoryIds = computed(
-    () => new Set(this.quoteLines().map((l) => l.categoryId).filter((id): id is string => !!id))
-  );
-
-  /** "All Categories" count in Suppliers mode = the relevant categories'
-   *  item counts only (not the whole catalogue). */
+  /** "All Categories" count in Suppliers mode = the full catalogue's item count
+   *  (matches the widened strip). */
   protected readonly scopedTotal = computed(() =>
     this.stripCategories().reduce((sum, c) => sum + c.count, 0)
   );
 
-  /** Suppliers shown in the fan-out. A specific category → that category's
-   *  suppliers; "All Categories" → the UNION across the quote's categories
-   *  (project-relevant only, never the whole catalogue). The per-category
-   *  reads are cached by the catalogue service, so the union is cheap.
-   *  First page per category by design (the supplier set is small); a
-   *  no-silent-cap note rides the ship report. */
+  /** Suppliers shown in the Suppliers tab. A specific category → that category's
+   *  suppliers; "All Categories" (no cat) → EVERY supplier with an active approved
+   *  item in any category (Liam 2026-09-26; was scoped to the project's quote
+   *  categories, which hid off-project stores). Server sorts by name. */
   protected readonly relevantSuppliersRes = resource({
-    params: () => {
-      if (this.store.mode() !== 'suppliers') return undefined;
-      const cat = this.store.categoryId();
-      const cats = cat ? [cat] : [...this.quoteCategoryIds()];
-      return cats.length ? cats : undefined;
-    },
-    loader: async ({ params: cats }) => {
-      const pages = await Promise.all(cats.map((c) => this.catalogue.suppliers({ cat: c })));
-      const byId = new Map<string, CatalogueSupplier>();
-      for (const page of pages) {
-        for (const s of page.items) {
-          if (!byId.has(s.id)) byId.set(s.id, s);
-        }
-      }
-      return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
-    },
+    params: () => (this.store.mode() === 'suppliers' ? { cat: this.store.categoryId() } : undefined),
+    loader: async ({ params }) => (await this.catalogue.suppliers({ cat: params.cat })).items,
   });
   protected readonly relevantSuppliers = computed(() => this.relevantSuppliersRes.value() ?? []);
 
