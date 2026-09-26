@@ -2,6 +2,39 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.3.2",
+      "name": "Configurable products",
+      "build": "v2.625",
+      "date": "2026-09-26",
+      "datetime": "2026-09-26",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Store",
+          "items": [
+            {
+              "ref": "FR-00223",
+              "type": "new",
+              "feature": "Configurable products",
+              "text": "supplier products that come in variations (size × sides × quantity, and the like) are now captured as a full priced matrix. On the shopfront the item's quick view shows a configurator: pick each option and the exact price resolves (\"From £53\" until every option is chosen). Also fixes an import bug where a variable product could be imported as one of its variations (wrong price, no description, no options)."
+            }
+          ]
+        },
+        {
+          "area": "Shopfront",
+          "items": [
+            {
+              "ref": "BE-00134",
+              "type": "improved",
+              "feature": "Shopfront browsing",
+              "text": "a single-category shopfront now lists its subcategories on the menu; clicking a subcategory card browses its items in place; clicking any item opens the quick view (with an Edit pencil for people with edit rights) instead of jumping away; long descriptions collapse behind \"Show more\"; and the category menu scrolls with left/right arrows instead of a scrollbar."
+            }
+          ]
+        }
+      ],
+      "fixes": []
+    },
+    {
       "version": "v0.3.1",
       "name": "Storefront polish",
       "build": "v2.618",

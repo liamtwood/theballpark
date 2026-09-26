@@ -8,7 +8,17 @@ _Nothing pending — dev and preview are level._
 
 ---
 
-## ✅ On preview — current release `v0.3.1`
+## ✅ On preview — current release `v0.3.2`
+
+### v0.3.2 — Configurable products · built from v2.625 · 2026-09-26
+
+**Store**
+
+- [new] supplier products that come in variations (size × sides × quantity, and the like) are now captured as a full priced matrix. On the shopfront the item's quick view shows a configurator: pick each option and the exact price resolves ("From £53" until every option is chosen). Also fixes an import bug where a variable product could be imported as one of its variations (wrong price, no description, no options).
+
+**Shopfront**
+
+- [improved] a single-category shopfront now lists its subcategories on the menu; clicking a subcategory card browses its items in place; clicking any item opens the quick view (with an Edit pencil for people with edit rights) instead of jumping away; long descriptions collapse behind "Show more"; and the category menu scrolls with left/right arrows instead of a scrollbar.
 
 ### v0.3.1 — Storefront polish · built from v2.618 · 2026-09-25
 
