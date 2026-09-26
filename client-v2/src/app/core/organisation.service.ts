@@ -29,6 +29,9 @@ export interface OrgProfile {
    *  supplier card image. */
   logoUrl: string | null;
   coverImageUrl: string | null;
+  /** pV2-CARDS-01 — how the marketplace card shows the art: 'cover' (zoom/fill the
+   *  cover photo) or 'contain' (logo shown whole on white). */
+  imageDisplay: 'cover' | 'contain';
   images: GalleryImage[];
   /** pV2-BUILDUP-04 — the agency's standard Terms & Conditions PDF (SOW Annex A). */
   termsPdfUrl: string | null;

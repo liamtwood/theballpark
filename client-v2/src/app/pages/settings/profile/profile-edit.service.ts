@@ -242,6 +242,10 @@ export class ProfileEditService {
   setCover(img: GalleryImage): void {
     void this.saveMedia({ coverImageUrl: img.url }, 'Cover updated.');
   }
+  /** pV2-CARDS-01 — marketplace card image mode (cover/zoom vs contain/white). */
+  setImageDisplay(mode: 'cover' | 'contain'): void {
+    void this.saveMedia({ imageDisplay: mode }, 'Card display updated.');
+  }
   // ── pV2-BUILDUP-04 — standard Terms & Conditions PDF (SOW Annex A). ────────
   readonly savingTerms = signal(false);
   async uploadTerms(file: File): Promise<void> {

@@ -4,7 +4,7 @@
 
 const ORG_PROFILE_SELECT = `SELECT id, name, description, website, address, city, country, email, phone, ref_prefix, ref_counter,
        default_vat_pct, default_margin_pct, default_contingency_pct, default_currency,
-       logo_url, cover_image_url, images, terms_pdf_url, company_number
+       logo_url, cover_image_url, image_display, images, terms_pdf_url, company_number
   FROM orgs WHERE id = $1 AND deleted_at IS NULL`;
 
 function toProfile(row) {
@@ -26,6 +26,7 @@ function toProfile(row) {
     defaultContingencyPct: Number(row.default_contingency_pct ?? 0),
     logoUrl: row.logo_url ?? null,
     coverImageUrl: row.cover_image_url ?? null,
+    imageDisplay: row.image_display ?? 'cover',
     images: Array.isArray(row.images) ? row.images : [],
     termsPdfUrl: row.terms_pdf_url ?? null,
     companyNumber: row.company_number ?? null,
@@ -56,6 +57,7 @@ function buildOrgUpdate(p) {
     default_contingency_pct: p.defaultContingencyPct,
     logo_url: p.logoUrl,
     cover_image_url: p.coverImageUrl,
+    image_display: p.imageDisplay,
     terms_pdf_url: p.termsPdfUrl,
     company_number: p.companyNumber === '' ? null : p.companyNumber,
   };

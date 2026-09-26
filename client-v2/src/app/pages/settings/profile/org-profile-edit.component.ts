@@ -57,6 +57,15 @@ import { ProfileEditService } from './profile-edit.service';
                   [coverUrl]="org.coverImageUrl" [logoUrl]="org.logoUrl" [images]="org.images"
                   (editCover)="store.coverDrawer.set(true)" (editLogo)="store.logoDrawer.set(true)" />
               </div>
+              <!-- pV2-CARDS-01 — how this store's tile renders in the marketplace grid. -->
+              <div class="mt-5">
+                <p class="bp-body-small font-medium text-text">Marketplace card image</p>
+                <div class="mt-1.5 flex flex-wrap gap-2">
+                  <button type="button" [class]="org.imageDisplay === 'cover' ? 'bp-btn-grad' : 'bp-btn-outline'" [disabled]="!store.canEdit()" (click)="store.setImageDisplay('cover')">Fill with cover</button>
+                  <button type="button" [class]="org.imageDisplay === 'contain' ? 'bp-btn-grad' : 'bp-btn-outline'" [disabled]="!store.canEdit()" (click)="store.setImageDisplay('contain')">Fit logo (white)</button>
+                </div>
+                <p class="bp-caption text-secondary mt-1">How your store tile appears in the marketplace grid — fill with the cover photo, or fit your logo on white.</p>
+              </div>
             </div>
             <app-drawer [(open)]="store.coverDrawer" title="Cover image">
               <app-image-picker entityType="profile" [enabledTabs]="store.coverTabs" [focalStep]="false"
