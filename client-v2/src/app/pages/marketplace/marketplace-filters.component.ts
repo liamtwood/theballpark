@@ -22,7 +22,7 @@ import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
           (changed)="store.setTier($event === 'any' ? null : $event)" />
         <!-- Supplier filter is pointless on a pinned single-supplier store. -->
         @if (!store.pinnedSupplierId()) {
-          <app-select ariaLabel="Supplier" class="w-44" [compact]="true" [options]="supplierOptions()"
+          <app-select ariaLabel="Supplier" class="w-64" [compact]="true" [options]="supplierOptions()"
             [value]="store.supplierId() ?? 'any'"
             (changed)="store.setSupplier($event === 'any' ? null : $event)" />
         }
