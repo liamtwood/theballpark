@@ -22,13 +22,13 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
            centred. Uniform across every supplier regardless of what art they
            uploaded — real covers, logo-as-cover, or nothing all read the same. -->
       <div class="bp-supplier-card__hero">
-        @if (supplier().coverUrl) {
-          <img class="bp-supplier-card__bg" [src]="coverSrc()" alt="" aria-hidden="true" loading="lazy" decoding="async" />
-        }
-        @if (logoSrc()) {
-          <img class="bp-supplier-card__logo" [src]="logoSrc()" [alt]="supplier().name" loading="lazy" decoding="async" />
+        @if (heroSrc(); as src) {
+          <!-- Blurred-fill: the same art fills the box (blurred) behind the full,
+               contained image — so any cover/logo-as-cover shows whole, never cropped. -->
+          <img class="bp-supplier-card__bg" [src]="src" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+          <img class="bp-supplier-card__fg" [src]="src" [alt]="supplier().name" loading="lazy" decoding="async" />
         } @else {
-          <lucide-icon name="store" [size]="26" [strokeWidth]="1.5" class="bp-supplier-card__logo bp-supplier-card__logo--icon" />
+          <lucide-icon name="store" [size]="26" [strokeWidth]="1.5" class="bp-supplier-card__fallback" />
         }
       </div>
       <div class="min-w-0 px-3.5 pb-3.5 pt-3">
@@ -91,36 +91,27 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
       justify-content: center;
       background: var(--theme-soft);
     }
-    /* Blurred cover backdrop — brand colour/texture without the crop problem. */
+    /* Blurred copy of the art fills the box — brand colour/texture, no crop. */
     .bp-supplier-card__bg {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transform: scale(1.15);
-      filter: blur(16px) saturate(1.15);
+      transform: scale(1.18);
+      filter: blur(18px) saturate(1.2);
     }
-    /* A soft veil lifts the plate off any backdrop (light or dark). */
-    .bp-supplier-card__hero::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: color-mix(in srgb, #fff 42%, transparent);
-    }
-    /* The logo sits directly on the backdrop (no plate) — contained, never
-       cropped, with a soft shadow to lift it off the blur. */
-    .bp-supplier-card__logo {
+    /* The real art, shown WHOLE (contained) and centred over the blurred fill. */
+    .bp-supplier-card__fg {
       position: relative;
       z-index: 1;
-      max-width: 64%;
-      max-height: 58%;
+      max-width: 100%;
+      max-height: 100%;
       width: auto;
       height: auto;
       object-fit: contain;
-      filter: drop-shadow(0 2px 8px rgba(15, 23, 42, 0.22));
     }
-    .bp-supplier-card__logo--icon { color: var(--color-text-secondary); filter: none; }
+    .bp-supplier-card__fallback { color: var(--color-text-secondary); }
   `,
 })
 export class SupplierCardComponent {
@@ -147,6 +138,10 @@ export class SupplierCardComponent {
     const u = (this.supplier().logoUrl ?? '').trim();
     return u ? u.replace(/ /g, '%20') : null;
   });
+
+  /** Hero art: prefer the cover (most suppliers have one), fall back to the logo.
+   *  Shown as a blurred-fill so it's never cropped regardless of aspect. */
+  protected readonly heroSrc = computed(() => this.coverSrc() ?? this.logoSrc());
 
   /** The CTA sits inside the card's <a>; always stop the navigation. Only
    *  ADD here — once in the quote it's inert (removal is via the rail), and
