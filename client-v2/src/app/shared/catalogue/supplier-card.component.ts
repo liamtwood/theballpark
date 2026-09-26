@@ -31,7 +31,7 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
           <lucide-icon name="store" [size]="26" [strokeWidth]="1.5" class="bp-supplier-card__fallback" />
         }
       </div>
-      <div class="min-w-0 px-3.5 pb-3.5 pt-3">
+      <div class="bp-supplier-card__body min-w-0 px-3.5 pb-3.5 pt-3">
         <div class="truncate text-md font-semibold text-text">{{ supplier().name }}</div>
         <div class="mt-1 flex items-center gap-1 text-secondary">
           <lucide-icon name="map-pin" [size]="13" [strokeWidth]="1.75" />
@@ -109,6 +109,10 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
       object-fit: contain;
     }
     .bp-supplier-card__fallback { color: var(--color-text-secondary); }
+    /* Soft ballpark-rose footer under the image (Liam). */
+    .bp-supplier-card__body {
+      background: color-mix(in srgb, var(--theme-accent) 9%, var(--color-surface));
+    }
   `,
 })
 export class SupplierCardComponent {
