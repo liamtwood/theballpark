@@ -121,9 +121,14 @@ import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-
           }
           <button type="button" class="bp-btn-outline" (click)="close.emit()">Close</button>
           @if (showAdd()) {
-            <button type="button" class="bp-btn-grad" (click)="add.emit(it.id)">
-              Add to ballpark@if ((chosenCombo()?.price ?? it.basePrice) !== null) { &nbsp;·&nbsp;{{ (chosenCombo()?.price ?? it.basePrice) | currency: 'GBP' : 'symbol' : '1.0-2' }} }
-            </button>
+            @if (needsSelection()) {
+              <!-- Variants: force a choice first (Liam) — no blind add-to-cart. -->
+              <button type="button" class="bp-btn-grad" disabled>Select options</button>
+            } @else {
+              <button type="button" class="bp-btn-grad" (click)="add.emit(it.id)">
+                Add to ballpark@if ((chosenCombo()?.price ?? it.basePrice) !== null) { &nbsp;·&nbsp;{{ (chosenCombo()?.price ?? it.basePrice) | currency: 'GBP' : 'symbol' : '1.0-2' }} }
+              </button>
+            }
           }
         }
       </ng-template>
@@ -222,6 +227,14 @@ export class QuickViewDialogComponent {
     const v = a && typeof a === 'object' ? (a['variants'] as { combos?: unknown } | undefined) : undefined;
     return !!(v && Array.isArray(v.combos) && v.combos.length);
   });
+  /** Has picker DIMENSIONS (incl. free-pick with no combos) — needs a choice before
+   *  add-to-quote (Liam: variants → "Select options", never a blind add). */
+  protected readonly hasVariantDims = computed(() => {
+    const a = this.item()?.attributes as Record<string, unknown> | null | undefined;
+    const v = a && typeof a === 'object' ? (a['variants'] as { dimensions?: unknown } | undefined) : undefined;
+    return !!(v && Array.isArray(v.dimensions) && v.dimensions.length);
+  });
+  protected readonly needsSelection = computed(() => this.hasVariantDims() && !this.chosenCombo());
 
   /** Long descriptions (e.g. a supplier who put the whole page in the body) clamp to a
    *  few lines with a Show more toggle, so the header doesn't swamp the dialog. */

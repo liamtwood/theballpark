@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { TooltipModule } from 'primeng/tooltip';
 
 /** One picker axis + its selectable values. */
 interface VariantDimension { name: string; values: string[]; }
@@ -17,7 +18,7 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
 @Component({
   selector: 'app-item-variant-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe],
+  imports: [CurrencyPipe, TooltipModule],
   template: `
     @if (dimensions().length) {
       <div class="bp-variant-picker">
@@ -31,6 +32,9 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
                   class="bp-variant-chip"
                   [class.bp-variant-chip--on]="selected()[d.name] === v"
                   [class.bp-variant-chip--off]="!isAvailable(d.name, v)"
+                  [pTooltip]="priceLabel(d.name, v) ?? ''"
+                  tooltipStyleClass="bp-tooltip"
+                  tooltipPosition="top"
                   (click)="pick(d.name, v)"
                 >{{ v }}</button>
               }
@@ -178,5 +182,23 @@ export class ItemVariantPickerComponent {
 
   protected priceDigits(p: number | null): string {
     return p != null && p < 100 ? '1.2-2' : '1.0-0';
+  }
+
+  /** Hover tooltip: the price a value leads to, given the OTHER current pricing picks.
+   *  Exact when unique, "from £X" when the value still spans a range; null for a
+   *  non-pricing dimension (free pick — no cost to show). */
+  protected priceLabel(dim: string, value: string): string | null {
+    const combos = this.combos();
+    if (!combos.some((c) => dim in c.values)) return null; // non-pricing dimension
+    const sel = this.selected();
+    const matches = combos.filter(
+      (c) => c.values[dim] === value
+        && Object.entries(sel).every(([k, v]) => k === dim || !(k in c.values) || c.values[k] === v)
+    );
+    if (!matches.length) return null;
+    const prices = matches.map((c) => c.price);
+    const min = Math.min(...prices), max = Math.max(...prices);
+    const fmt = (n: number) => '£' + (n < 100 ? n.toFixed(2) : String(Math.round(n)));
+    return min === max ? fmt(min) : `from ${fmt(min)}`;
   }
 }

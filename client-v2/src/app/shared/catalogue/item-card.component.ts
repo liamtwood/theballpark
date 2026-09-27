@@ -74,16 +74,16 @@ import { AuthService } from '../../core/auth/auth.service';
       <button
         type="button"
         class="bp-fav-btn bp-fav-btn--second"
-        [class.bp-fav-btn--on]="quoted()"
-        [attr.aria-label]="quoted() ? 'Added to Quote' : 'Add to Quote'"
-        [pTooltip]="quoted() ? 'Added to Quote' : 'Add to Quote'"
+        [class.bp-fav-btn--on]="quoted() && !hasVariantDims()"
+        [attr.aria-label]="quoteBtnLabel()"
+        [pTooltip]="quoteBtnLabel()"
         tooltipStyleClass="bp-tooltip"
         tooltipPosition="top"
         (click)="onQuoteClick($event)"
       >
-        <!-- Always a plus (QC: the check read as a Nike swoosh at 15px) —
-             the gradient circle alone carries the added state. -->
-        <lucide-icon name="plus" [size]="15" />
+        <!-- Plus for add-to-quote; sliders for "select options" (variants need a
+             choice first — the "+" opens the picker instead). -->
+        <lucide-icon [name]="hasVariantDims() ? 'sliders-horizontal' : 'plus'" [size]="15" />
       </button>
     }
 
@@ -247,8 +247,22 @@ export class ItemCardComponent {
     this.favouriteToggled.emit(this.item().id);
   }
 
+  /** Item has picker dimensions (variants, incl. free-pick) — the buyer must choose
+   *  before adding, so the "+" opens the Quick View instead of blind-adding (Liam). */
+  protected readonly hasVariantDims = computed(() => {
+    const a = this.item().attributes as Record<string, unknown> | null | undefined;
+    const v = a && typeof a === 'object' ? (a['variants'] as { dimensions?: unknown } | undefined) : undefined;
+    return !!(v && Array.isArray(v.dimensions) && (v.dimensions as unknown[]).length);
+  });
+  /** "+" button label — "Select options" for variant items, else the quote toggle. */
+  protected readonly quoteBtnLabel = computed(() =>
+    this.hasVariantDims() ? 'Select options' : (this.quoted() ? 'Added to Quote' : 'Add to Quote')
+  );
+
   protected onQuoteClick(e: Event): void {
     e.stopPropagation();
+    // Variants → send them to the picker (Quick View), never a blind add-to-quote.
+    if (this.hasVariantDims()) { this.quickView.emit(this.item().id); return; }
     this.quoteToggled.emit(this.item().id);
   }
 
