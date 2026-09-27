@@ -2,6 +2,39 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.4.1",
+      "name": "Variant images",
+      "build": "v2.655",
+      "date": "2026-09-27",
+      "datetime": "2026-09-27",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Store & Variants",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Add an image per variant value in the editor (one photo per option, e.g. the orange chair for Colour: Orange)."
+            }
+          ]
+        },
+        {
+          "area": "Marketplace",
+          "items": [
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "The item dialog cover is now a carousel — arrows page through the item photo and each option's image, and picking an option switches the cover to that option's image (nothing changes if the option has no image). The photo gallery is unchanged."
+            }
+          ]
+        }
+      ],
+      "fixes": []
+    },
+    {
       "version": "v0.4.0",
       "name": "Variants, tags & quote pricing",
       "build": "v2.653",

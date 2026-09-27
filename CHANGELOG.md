@@ -8,7 +8,17 @@ _Nothing pending — dev and preview are level._
 
 ---
 
-## ✅ On preview — current release `v0.4.0`
+## ✅ On preview — current release `v0.4.1`
+
+### v0.4.1 — Variant images · built from v2.655 · 2026-09-27
+
+**Store & Variants**
+
+- [new] Add an image per variant value in the editor (one photo per option, e.g. the orange chair for Colour: Orange).
+
+**Marketplace**
+
+- [improved] The item dialog cover is now a carousel — arrows page through the item photo and each option's image, and picking an option switches the cover to that option's image (nothing changes if the option has no image). The photo gallery is unchanged.
 
 ### v0.4.0 — Variants, tags & quote pricing · built from v2.653 · 2026-09-27
 
