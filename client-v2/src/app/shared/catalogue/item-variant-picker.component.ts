@@ -119,17 +119,24 @@ export class ItemVariantPickerComponent {
     return this.dimensions().length > 0 && this.dimensions().every((d) => sel[d.name] != null);
   });
 
-  /** The combo matching the full current selection (null until complete + valid). */
+  /** The priced combo matching the current selection. Matches on the COMBO's own
+   *  keys (the pricing dimensions) — a non-pricing dimension like Paper Type is a
+   *  real choice but doesn't appear in the combos, so it must not block the match. */
   protected readonly chosen = computed<VariantCombo | null>(() => {
     if (!this.allChosen()) return null;
     const sel = this.selected();
-    return this.combos().find((c) => this.dimensions().every((d) => c.values[d.name] === sel[d.name])) ?? null;
+    return this.combos().find((c) => Object.keys(c.values).every((k) => c.values[k] === sel[k])) ?? null;
   });
 
   constructor() {
-    // Reset the picks whenever the item changes, and surface the resolved combo.
+    // Reset the picks whenever the item changes, and surface the resolved selection.
     effect(() => { this.variants(); this.selected.set({}); });
-    effect(() => this.selectionChange.emit(this.chosen()));
+    // Emit the FULL selection (incl. non-pricing choices like Paper Type) + the
+    // priced combo's price, so add-to-quote captures the whole config (Stage 3).
+    effect(() => {
+      const combo = this.chosen();
+      this.selectionChange.emit(combo ? { values: { ...this.selected() }, price: combo.price } : null);
+    });
   }
 
   protected pick(dim: string, value: string): void {
@@ -144,10 +151,15 @@ export class ItemVariantPickerComponent {
   /** Is `value` for `dim` reachable given the OTHER current picks? (soft-dims impossible
    *  combos without hard-locking the axis being changed). */
   protected isAvailable(dim: string, value: string): boolean {
+    const combos = this.combos();
+    // Non-pricing dimension (not present in any combo, e.g. Paper Type) — every
+    // value is always selectable; it doesn't constrain the price.
+    if (!combos.some((c) => dim in c.values)) return true;
     const sel = this.selected();
-    return this.combos().some((c) => {
+    return combos.some((c) => {
       if (c.values[dim] !== value) return false;
-      return Object.entries(sel).every(([k, v]) => k === dim || c.values[k] === v);
+      // Only other PRICING selections constrain; ignore non-pricing picks.
+      return Object.entries(sel).every(([k, v]) => k === dim || !(k in c.values) || c.values[k] === v);
     });
   }
 

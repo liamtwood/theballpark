@@ -223,8 +223,14 @@ function buildWooVariants(p, priceById) {
       dimensions.push({ name: a.name, values: ordered });
     } else if (seen && seen.size === 1) {
       specs.push({ label: a.name, value: [...seen][0] });        // fixed across combos → a spec
+    } else if (a.terms && a.terms.length >= 2) {
+      // Declared as a variation attribute with several terms, but the priced combos
+      // don't distinguish it (e.g. Paper Type: all variations null) — a genuine
+      // customer CHOICE that doesn't change price. Keep it a picker dimension
+      // (non-pricing), not a spec, so the buyer can still choose it.
+      dimensions.push({ name: a.name, values: a.terms });
     } else if (a.terms && a.terms.length) {
-      specs.push({ label: a.name, value: a.terms.join(', ') });  // declared but never varied → display-only
+      specs.push({ label: a.name, value: a.terms[0] });          // single declared term → display-only spec
     }
   }
   // Defensive: a combo attribute the parent didn't declare still becomes a dimension.
