@@ -17,31 +17,31 @@ interface DimState { name: string; values: ValState[]; }
   imports: [LucideAngularModule],
   template: `
     <div class="flex flex-col gap-3">
-      @for (d of dims(); track $index) {
+      @for (d of dims(); track $index; let di = $index) {
         <div class="bp-qv-spec">
           <div class="flex items-center gap-2">
             <input class="bp-input-field flex-1" [value]="d.name" placeholder="Dimension (e.g. Size)"
-                   (input)="renameDim($index, $any($event.target).value)" />
-            <button type="button" class="shrink-0 text-muted hover:text-text" (click)="removeDim($index)" aria-label="Remove dimension"><lucide-icon name="trash-2" [size]="15" /></button>
+                   (input)="renameDim(di, $any($event.target).value)" />
+            <button type="button" class="shrink-0 text-muted hover:text-text" (click)="removeDim(di)" aria-label="Remove dimension"><lucide-icon name="trash-2" [size]="15" /></button>
           </div>
           <div class="mt-2 grid grid-cols-[1fr_8.5rem_7rem_28px] items-center gap-2">
             <span class="bp-caption text-muted">Value</span>
             <span class="bp-caption text-muted">Pricing</span>
             <span class="bp-caption text-muted">Amount £</span><span></span>
             @for (v of d.values; track $index; let vi = $index) {
-              <input class="bp-input-field" placeholder="e.g. A4" [value]="v.value" (input)="setValue($index, vi, $any($event.target).value)" />
-              <select class="bp-input-field" [value]="v.mode" (change)="setMode($index, vi, $any($event.target).value)">
+              <input class="bp-input-field" placeholder="e.g. A4" [value]="v.value" (input)="setValue(di, vi, $any($event.target).value)" />
+              <select class="bp-input-field" [value]="v.mode" (change)="setMode(di, vi, $any($event.target).value)">
                 <option value="none">No cost</option>
                 <option value="upcharge">Upcharge (+£)</option>
                 <option value="absolute">Cost (£)</option>
               </select>
               <input type="number" class="bp-input-field" [placeholder]="v.mode === 'none' ? 'Free' : '0.00'"
                      [disabled]="v.mode === 'none'" [value]="v.amount"
-                     (input)="setAmount($index, vi, $any($event.target).value)" />
-              <button type="button" class="text-muted hover:text-text" (click)="removeValue($index, vi)" aria-label="Remove value"><lucide-icon name="x" [size]="15" /></button>
+                     (input)="setAmount(di, vi, $any($event.target).value)" />
+              <button type="button" class="text-muted hover:text-text" (click)="removeValue(di, vi)" aria-label="Remove value"><lucide-icon name="x" [size]="15" /></button>
             }
           </div>
-          <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="addValue($index)"><lucide-icon name="plus" [size]="14" /> Add value</button>
+          <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="addValue(di)"><lucide-icon name="plus" [size]="14" /> Add value</button>
         </div>
       }
       <button type="button" class="bp-btn-outline bp-body-small self-start" (click)="addDim()">
