@@ -110,6 +110,8 @@ import {
   ShoppingCart,
   // pV2-WHATSNEW — base-release group icon (Platform & Admin)
   Shield,
+  // pV2-STORE-WHATS-HOT-01 / VARIANTS-EDIT-01 — What's Hot tag toggle + variants section
+  Flame, Layers,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -204,6 +206,8 @@ export const appConfig: ApplicationConfig = {
         ShoppingCart,
         // pV2-WHATSNEW — base-release group icon (Platform & Admin)
         Shield,
+        // pV2-STORE-WHATS-HOT-01 / VARIANTS-EDIT-01
+        Flame, Layers,
         // pV2-PROJECTS-02 — Estimate summary cards (Date/Location/Duration/Guests/Budget)
         Calendar, Users, Wallet,
         // pV2-MEDIA-01c — gallery tile actions

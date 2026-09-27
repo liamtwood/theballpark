@@ -25,6 +25,7 @@ import { ImagePickerComponent } from '../../shared/image-picker/image-picker.com
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
 import { ItemApprovalPanelComponent } from './item-approval-panel.component';
 import { ItemEditActionsComponent } from './item-edit-actions.component';
+import { ItemVariantsEditorComponent, VariantMatrix } from './item-variants-editor.component';
 
 interface ItemForm {
   name: string;
@@ -58,6 +59,7 @@ const WHATS_HOT = "What's Hot";
     FormsModule, LucideAngularModule, ToastModule, DialogModule, PageHeroComponent, EditFieldComponent,
     ImageGalleryComponent, ImagePickerComponent, DrawerComponent, ItemApprovalPanelComponent,
     ItemEditActionsComponent, ItemAttributeCardsComponent, SaveStatePillComponent,
+    ItemVariantsEditorComponent,
   ],
   providers: [MessageService],
   template: `
@@ -176,7 +178,7 @@ const WHATS_HOT = "What's Hot";
           @if (editing()) {
             <div class="bp-card bp-edit-section mt-4" [class.is-collapsed]="!sectionOpen('extras')">
               <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('extras')">
-                <h3 class="bp-edit-section-title">Volume pricing &amp; Options</h3>
+                <h3 class="bp-edit-section-title">Volume pricing, Options &amp; Variants</h3>
                 <lucide-icon [name]="sectionOpen('extras') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
               </button>
               @if (sectionOpen('extras')) {
@@ -216,6 +218,26 @@ const WHATS_HOT = "What's Hot";
                   }
                   <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openOptionsDialog()">
                     <lucide-icon name="pencil" [size]="14" /> Edit options
+                  </button>
+                </div>
+
+                <!-- Variants (multi-dimension matrix) — same preview + edit-in-dialog
+                     pattern as Options/Volume, for consistency (Liam). -->
+                <div class="bp-qv-spec">
+                  <span class="bp-qv-spec__label"><lucide-icon name="layers" [size]="13" /> Variants</span>
+                  @if (variantsSummary(); as vs) {
+                    <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+                      @for (d of vs.dims; track d.name) {
+                        <dt class="bp-body-small text-secondary">{{ d.name }}</dt>
+                        <dd class="bp-body-small text-text">{{ d.count }}{{ d.pricing ? '' : ' · picker' }}</dd>
+                      }
+                    </dl>
+                    <p class="bp-caption text-secondary mt-1">{{ vs.comboCount }} priced combination{{ vs.comboCount === 1 ? '' : 's' }}</p>
+                  } @else {
+                    <p class="bp-qv-spec__val bp-qv-spec__val--soon">No variants</p>
+                  }
+                  <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openVariantsDialog()">
+                    <lucide-icon name="pencil" [size]="14" /> Edit variants
                   </button>
                 </div>
               </div>
@@ -453,6 +475,19 @@ const WHATS_HOT = "What's Hot";
       </ng-template>
     </p-dialog>
 
+    <!-- Variants (multi-dimension matrix) — draft edited in the dialog, committed on
+         Done (same pattern as Options/Volume). Wider — the combo table needs room. -->
+    <p-dialog [visible]="variantsDialogOpen()" (visibleChange)="onVariantsVisible($event)"
+      styleClass="bp-modal" [modal]="true" [closable]="true" [dismissableMask]="true"
+      [style]="{ width: '760px', maxWidth: '96vw' }">
+      <ng-template pTemplate="header"><h2 class="bp-card-title">Variants</h2></ng-template>
+      <app-item-variants-editor [variants]="variantsSeed()" (variantsChange)="variantsDraft.set($event)" />
+      <ng-template pTemplate="footer">
+        <button type="button" class="bp-btn-outline" (click)="cancelVariantsDialog()">Cancel</button>
+        <button type="button" class="bp-btn-grad" (click)="saveVariantsDialog()">Done</button>
+      </ng-template>
+    </p-dialog>
+
     <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
 })
@@ -528,6 +563,30 @@ export class ItemEditComponent {
   protected readonly rawAttributes = signal<Record<string, unknown>>({});
   protected readonly measureSuggestions = ['Height', 'Width', 'Depth', 'Weight', 'Seat Height', 'Volume', 'Material'];
 
+  // pV2-STORE-VARIANTS-EDIT-01 — the variant matrix (attributes.variants), edited in
+  // its own dialog (consistent with Options/Volume). `variantsState` is committed;
+  // `variantsSeed` is the stable input the dialog opens with; `variantsDraft` captures
+  // live edits and is committed to state on Done.
+  protected readonly variantsState = signal<VariantMatrix | null>(null);
+  protected readonly variantsSeed = signal<VariantMatrix | null>(null);
+  protected readonly variantsDraft = signal<VariantMatrix | null>(null);
+  protected readonly variantsDialogOpen = signal(false);
+  /** Preview-card summary — one row per dimension (value count + picker flag). */
+  protected readonly variantsSummary = computed(() => {
+    const v = this.variantsState();
+    if (!v || !v.dimensions?.length) return null;
+    const pricingNames = new Set<string>();
+    for (const c of v.combos ?? []) for (const k of Object.keys(c.values ?? {})) pricingNames.add(k);
+    return {
+      dims: v.dimensions.map((d) => ({ name: d.name, count: d.values?.length ?? 0, pricing: pricingNames.has(d.name) })),
+      comboCount: (v.combos ?? []).length,
+    };
+  });
+  protected openVariantsDialog(): void { this.variantsSeed.set(this.variantsState()); this.variantsDraft.set(this.variantsState()); this.variantsDialogOpen.set(true); }
+  protected cancelVariantsDialog(): void { this.variantsDialogOpen.set(false); }
+  protected saveVariantsDialog(): void { this.variantsState.set(this.variantsDraft()); this.variantsDialogOpen.set(false); this.scheduleSave(); }
+  protected onVariantsVisible(v: boolean): void { if (!v) this.cancelVariantsDialog(); }
+
   /** Rows with BOTH a label and a value, for one group — what saves on submit. */
   protected filledFor(key: string): { label: string; value: string }[] {
     return (this.groupRows()[key] ?? []).filter((r) => r.label.trim() !== '' && r.value.trim() !== '');
@@ -565,8 +624,8 @@ export class ItemEditComponent {
    *  groups, `options`, `price_tiers`) — keeps _source + anything else untouched. */
   private strippedRawAttributes(): Record<string, unknown> {
     const { dimensions: _legacy, specifications: _s, features: _f, style: _st,
-      measurements: _m, materials: _mt, options: _o, price_tiers: _pt, ...rest } = this.rawAttributes();
-    void _legacy; void _s; void _f; void _st; void _m; void _mt; void _o; void _pt;
+      measurements: _m, materials: _mt, options: _o, price_tiers: _pt, variants: _v, ...rest } = this.rawAttributes();
+    void _legacy; void _s; void _f; void _st; void _m; void _mt; void _o; void _pt; void _v;
     return rest;
   }
 
@@ -782,6 +841,9 @@ export class ItemEditComponent {
       })));
       const opts = Array.isArray(attrs['options']) ? (attrs['options'] as { name?: string; price?: number }[]) : [];
       this.optionsRows.set(opts.map((o) => ({ name: o.name ?? '', price: o.price == null ? '' : String(o.price) })));
+      // pV2-STORE-VARIANTS-EDIT-01 — hydrate the variant matrix (dimensions + combos).
+      const rawV = attrs['variants'] as VariantMatrix | undefined;
+      this.variantsState.set(rawV && Array.isArray(rawV.dimensions) && rawV.dimensions.length ? rawV : null);
       return item;
     },
   });
@@ -911,6 +973,9 @@ export class ItemEditComponent {
         options: this.optionsRows()
           .filter((o) => o.name.trim() !== '')
           .map((o) => ({ name: o.name.trim(), price: Number(o.price) || 0 })),
+        // pV2-STORE-VARIANTS-EDIT-01 — write the matrix only when present, so
+        // non-variant items keep a clean attributes bag (no empty `variants` key).
+        ...(this.variantsState() ? { variants: this.variantsState() } : {}),
       },
       ...(status === 'approved' ? {} : { approval_status: status }),
     };
