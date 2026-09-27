@@ -65,6 +65,9 @@ function pricingInput(l: QuoteLine): LinePricingInput {
     basePrice: l.basePrice,
     priceCurrent: l.negotiated ? l.basePrice : null,
     priceTiers: l.priceTiers ?? null,
+    // pV2-STORE-VARIANTS-UPCHARGE-01 — the chosen variant's per-unit upcharge stacks
+    // on the guide (tier/base); suppressed when negotiated, matching the module.
+    variantUpcharge: l.variant?.upcharge ?? 0,
     quantity: l.quantity ?? 1,
     installed: l.installed,
     installCost: l.installCost,

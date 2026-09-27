@@ -9,6 +9,13 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribute-cards.component';
 import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-picker.component';
 
+/** Add-to-ballpark payload — the item + the chosen variant (pV2-STORE-VARIANTS-
+ *  UPCHARGE-01). `variant` is null when the item has no variants / nothing picked. */
+export interface QuickAddEvent {
+  id: string;
+  variant: { values: Record<string, string>; upcharge: number; label: string } | null;
+}
+
 /** pV2 marketplace-redesign — the item Quick View dialog (replaces the right
  *  rail preview). Renders from the already-loaded CatalogueItem: name,
  *  description, cover, category/supplier/location, indicative price, and the
@@ -125,7 +132,7 @@ import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-
               <!-- Variants: force a choice first (Liam) — no blind add-to-cart. -->
               <button type="button" class="bp-btn-grad" disabled>Select options</button>
             } @else {
-              <button type="button" class="bp-btn-grad" (click)="add.emit(it.id)">
+              <button type="button" class="bp-btn-grad" (click)="emitAdd(it)">
                 Add to ballpark@if ((chosenCombo()?.price ?? it.basePrice) !== null) { &nbsp;·&nbsp;{{ (chosenCombo()?.price ?? it.basePrice) | currency: 'GBP' : 'symbol' : '1.0-2' }} }
               </button>
             }
@@ -195,7 +202,18 @@ export class QuickViewDialogComponent {
    *  project's estimate — a read-only quick view). */
   readonly showAdd = input<boolean>(true);
   readonly close = output<void>();
-  readonly add = output<string>();
+  readonly add = output<QuickAddEvent>();
+
+  /** Assemble the add payload — the item id + the chosen variant (values, per-unit
+   *  upcharge relative to base, and a display label), or null variant when none. */
+  protected emitAdd(it: CatalogueItem): void {
+    const c = this.chosenCombo();
+    const base = it.basePrice ?? 0;
+    const variant = c
+      ? { values: c.values, upcharge: Math.round((c.price - base) * 100) / 100, label: Object.values(c.values).join(' · ') }
+      : null;
+    this.add.emit({ id: it.id, variant });
+  }
 
   private readonly auth = inject(AuthService);
 

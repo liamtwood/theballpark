@@ -19,6 +19,10 @@ export interface LinePricingInput {
   /** Volume tiers (guide). Only reached when neither priceCurrent nor priceRef
    *  is set. */
   priceTiers?: PriceTierInput[] | null;
+  /** Per-unit upcharge from the chosen variant (pV2-STORE-VARIANTS-UPCHARGE-01).
+   *  Stacks on the guide (tier/base) per unit; ignored when priceCurrent/priceRef
+   *  win. 0/absent when the line has no variant. */
+  variantUpcharge?: number | string | null;
   quantity?: number | null;
   /** null/true = installed; false = install opted out. */
   installed?: boolean | null;

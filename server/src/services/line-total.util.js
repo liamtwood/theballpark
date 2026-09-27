@@ -39,7 +39,13 @@ function lineTotalSql({ current = null, ref = null, base = null, flat = false } 
        LIMIT 1
     ) END)`
     : null;
-  const parts = [current, ref, tierUnit, base].filter(Boolean);
+  // GUIDE = (tier ?? base) + the per-unit variant upcharge (pV2-STORE-VARIANTS-
+  // UPCHARGE-01). The upcharge stacks on the tier/base per unit; a negotiated
+  // (current) or briefed (ref) rate below still wins outright over the guide.
+  const guide = base
+    ? `(COALESCE(${tierUnit}, ${base}) + COALESCE((pi.variant ->> 'upcharge')::numeric, 0))`
+    : null;
+  const parts = [current, ref, guide].filter(Boolean);
   const unit = parts.length > 1 ? `COALESCE(${parts.join(', ')})` : (parts[0] || '0');
   const ic = 'COALESCE(pi.install_cost, i.install_cost)';
   const iu = 'COALESCE(pi.install_unit, i.install_unit)';

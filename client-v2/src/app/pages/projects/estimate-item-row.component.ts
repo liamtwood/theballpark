@@ -48,8 +48,12 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
       @if (line().supplierName) {
         <div class="bp-meta mt-0.5 truncate">{{ line().supplierName }}</div>
       }
+      <!-- pV2-STORE-VARIANTS-UPCHARGE-01 — the chosen variant ("Ivory · Bedazzled"). -->
+      @if (line().variant?.label) {
+        <div class="bp-meta mt-0.5 truncate text-secondary"><lucide-icon name="layers" [size]="12" class="mr-1 inline align-[-1px]" />{{ line().variant!.label }}</div>
+      }
       @if (line().basePrice != null || line().unit) {
-        <div class="bp-meta mt-0.5">{{ line().basePrice != null ? (displayUnit() | currency: cur() : 'symbol' : '1.0-0') : '' }}@if (line().unit) { / {{ unitText() }} }</div>
+        <div class="bp-meta mt-0.5">{{ line().basePrice != null ? (displayUnit() | currency: cur() : 'symbol' : '1.0-2') : '' }}@if (line().unit) { / {{ unitText() }} }</div>
       }
       <label class="mt-1.5 flex w-fit items-center gap-2.5" [class.opacity-40]="!canInstall() || !canEdit()"
              [title]="canInstall() ? 'Include installation' : 'No install price'">

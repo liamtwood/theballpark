@@ -127,7 +127,16 @@ router.post('/:id/recommend', async (req, res, next) => {
 });
 
 // ── Project Quote (slice 2) — minimal add/remove on project_items ────────
-const QuoteAddSchema = z.object({ itemId: z.string().uuid() });
+const QuoteAddSchema = z.object({
+  itemId: z.string().uuid(),
+  // pV2-STORE-VARIANTS-UPCHARGE-01 — the chosen variant (optional): the per-unit
+  // upcharge (guide modifier), the picked values, and a display label.
+  variant: z.object({
+    values: z.record(z.string(), z.string()).optional(),
+    upcharge: z.coerce.number().min(-100000).max(1000000).default(0),
+    label: z.string().trim().max(200).optional(),
+  }).nullable().optional(),
+});
 
 // GET /:id/items — the project's quote lines.
 router.get('/:id/items', async (req, res, next) => {
@@ -162,7 +171,7 @@ router.post('/:id/items', async (req, res, next) => {
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
     }
-    const line = await projects.addItem(req.user.org_id, req.params.id, parsed.data.itemId);
+    const line = await projects.addItem(req.user.org_id, req.params.id, parsed.data.itemId, parsed.data.variant ?? null);
     if (line === null) return res.status(404).json({ error: 'Project or item not found' });
     res.status(201).json(line);
   } catch (err) {

@@ -486,6 +486,9 @@ function toQuoteLine(row) {
     // pV2-BUILDUP-04 — the AGENT's client-facing line description (what prints on
     // the Quote document). Agent-owned on any line; defaults to the supplier text.
     quoteDescription: row.quote_description ?? null,
+    // pV2-STORE-VARIANTS-UPCHARGE-01 — the chosen variant ({values, upcharge, label}).
+    // `label` shows under the item name; `upcharge` feeds the client line-total.
+    variant: row.variant ?? null,
   };
 }
 
@@ -531,6 +534,10 @@ const QUOTE_LINE_JOIN = `
          -- qty exactly as the server line-total.util.js does. Live (i.attributes),
          -- not snapshotted, matching the SQL tier read. Null for custom lines.
          i.attributes -> 'price_tiers' AS price_tiers,
+         -- pV2-STORE-VARIANTS-UPCHARGE-01 — the chosen variant on THIS line
+         -- ({values, upcharge, label}); drives the line's per-unit upcharge (SSOT)
+         -- + the "Ivory · Bedazzled" label in the cart/quote.
+         pi.variant,
          -- pV2-BUILDUP-03 — does the catalogue item carry options (child items)?
          -- Drives the Final Quote "Options" button.
          EXISTS (SELECT 1 FROM items ci WHERE ci.parent_item_id = pi.item_id AND ci.deleted_at IS NULL) AS has_options,
@@ -711,7 +718,11 @@ function toPositiveInt(v) {
  *  same item is reused, not duplicated). Snapshots name/price/unit/image
  *  from the catalogue item, and seeds a smart default quantity from the
  *  unit↔project-field mapping. Returns the line, or null if not the org's. */
-async function addItem(orgId, projectId, itemId) {
+async function addItem(orgId, projectId, itemId, variant = null) {
+  // pV2-STORE-VARIANTS-UPCHARGE-01 — normalise the chosen variant to store (or null).
+  const variantJson = variant && (variant.label || variant.upcharge || variant.values)
+    ? JSON.stringify({ values: variant.values ?? {}, upcharge: Number(variant.upcharge) || 0, label: variant.label ?? null })
+    : null;
   return withTransaction(async (client) => {
     const owns = await client.query(
       `SELECT guest_count, duration_days FROM projects
@@ -747,17 +758,18 @@ async function addItem(orgId, projectId, itemId) {
       const up = await client.query(
         `UPDATE project_items
             SET deleted_at = NULL, deleted_by = NULL, name = $2, base_price = $3, unit = $4,
-                image_url = $5, quantity = $6, selection_type = 'selected', category_id = $7
+                image_url = $5, quantity = $6, selection_type = 'selected', category_id = $7,
+                variant = $8::jsonb
           WHERE id = $1 RETURNING id`,
-        [existing.rows[0].id, s.name, s.base_price, s.unit, s.image_url, qty, s.category_id]
+        [existing.rows[0].id, s.name, s.base_price, s.unit, s.image_url, qty, s.category_id, variantJson]
       );
       rowId = up.rows[0].id;
     } else {
       const ins = await client.query(
-        `INSERT INTO project_items (project_id, item_id, name, base_price, unit, image_url, quantity, selection_type, category_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'selected', $8)
+        `INSERT INTO project_items (project_id, item_id, name, base_price, unit, image_url, quantity, selection_type, category_id, variant)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'selected', $8, $9::jsonb)
          RETURNING id`,
-        [projectId, itemId, s.name, s.base_price, s.unit, s.image_url, qty, s.category_id]
+        [projectId, itemId, s.name, s.base_price, s.unit, s.image_url, qty, s.category_id, variantJson]
       );
       rowId = ins.rows[0].id;
     }

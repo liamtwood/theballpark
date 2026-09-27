@@ -39,6 +39,7 @@ const SURFACES = {
     sql: { current: 'pi.price_current', base: 'pi.base_price', flat: true },
     input: (c) => ({
       priceCurrent: c.price_current, basePrice: c.base_price, priceTiers: c.tiers,
+      variantUpcharge: c.variant_upcharge,
       quantity: c.quantity, installed: c.installed,
       installCost: pick(c.pi_install_cost, c.i_install_cost),
       installUnit: pick(c.pi_install_unit, c.i_install_unit),
@@ -80,7 +81,7 @@ const TIERS = [
 const base = {
   quantity: 1, price_current: null, price_ref: null, base_price: null,
   flat_total: null, installed: null, pi_install_cost: null, pi_install_unit: null,
-  i_install_cost: null, i_install_unit: null, tiers: null,
+  i_install_cost: null, i_install_unit: null, tiers: null, variant_upcharge: null,
 };
 const CASES = [
   { name: 'no tiers, base only', on: ['estimate'], row: { base_price: 10, quantity: 3 } },
@@ -101,6 +102,10 @@ const CASES = [
   { name: 'not installed (installed=false)', on: ['estimate'], row: { base_price: 10, quantity: 4, installed: false, pi_install_cost: 100, pi_install_unit: 'per_order' } },
   { name: 'pi install override beats catalogue i', on: ['estimate'], row: { base_price: 10, quantity: 2, pi_install_cost: 5, pi_install_unit: 'per_item', i_install_cost: 99, i_install_unit: 'per_order' } },
   { name: 'install falls back to catalogue i', on: ['estimate'], row: { base_price: 10, quantity: 2, i_install_cost: 7, i_install_unit: 'per_item' } },
+  // pV2-STORE-VARIANTS-UPCHARGE-01 — the variant upcharge stacks on the guide per unit.
+  { name: 'variant upcharge on base', on: ['estimate'], row: { base_price: 10, variant_upcharge: 2, quantity: 3 } },
+  { name: 'variant upcharge on tier (2.99+0.5)', on: ['estimate'], row: { base_price: 3.75, tiers: TIERS, variant_upcharge: 0.5, quantity: 100 } },
+  { name: 'variant upcharge suppressed by negotiated', on: ['estimate', 'revised'], row: { base_price: 3.75, price_current: 5, variant_upcharge: 2, tiers: TIERS, quantity: 200 } },
 ];
 
 const SQL = Object.fromEntries(Object.entries(SURFACES).map(([k, v]) => [k, lineTotalSql(v.sql)]));
@@ -110,7 +115,7 @@ function query(pool, surface, c) {
     WITH pi AS (
       SELECT $1::numeric AS quantity, $2::numeric AS price_current, $3::numeric AS price_ref,
              $4::numeric AS base_price, $5::numeric AS flat_total, $6::boolean AS installed,
-             $7::numeric AS install_cost, $8::text AS install_unit
+             $7::numeric AS install_cost, $8::text AS install_unit, $12::jsonb AS variant
     ), i AS (
       SELECT $9::jsonb AS attributes, $10::numeric AS install_cost, $11::text AS install_unit
     )
@@ -120,6 +125,7 @@ function query(pool, surface, c) {
     c.pi_install_cost, c.pi_install_unit,
     c.tiers ? JSON.stringify({ price_tiers: c.tiers }) : null,
     c.i_install_cost, c.i_install_unit,
+    c.variant_upcharge != null ? JSON.stringify({ upcharge: c.variant_upcharge }) : null,
   ]);
 }
 

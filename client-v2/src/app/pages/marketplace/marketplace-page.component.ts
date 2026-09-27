@@ -3,7 +3,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { AddToProjectDialogComponent, AddToProjectItem } from './add-to-project-dialog.component';
-import { QuickViewDialogComponent } from './quick-view-dialog.component';
+import { QuickViewDialogComponent, QuickAddEvent } from './quick-view-dialog.component';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
@@ -152,10 +152,12 @@ export class MarketplacePageComponent {
     this.quickItem.set(this.store.items().find((i) => i.id === itemId) ?? null);
   }
 
-  /** Quick View "Add to ballpark" → close it, open the project picker. */
-  protected onQuickAdd(itemId: string): void {
+  /** Quick View "Add to ballpark" → close it, open the project picker.
+   *  (Variant selection carries in the in-project flow; the global picker path
+   *  threading it through is a follow-up — pV2-STORE-VARIANTS-UPCHARGE-01.) */
+  protected onQuickAdd(e: QuickAddEvent): void {
     this.quickItem.set(null);
-    this.openPicker(itemId);
+    this.openPicker(e.id);
   }
 
   /** Open the project picker for the clicked item (standalone marketplace). */

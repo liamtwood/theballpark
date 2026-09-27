@@ -1314,6 +1314,9 @@ const migrate = async () => {
         ALTER TABLE ${schema}.project_items ADD COLUMN IF NOT EXISTS ai_confidence INTEGER;
         ALTER TABLE ${schema}.project_items ADD COLUMN IF NOT EXISTS ai_match_reason TEXT;
         ALTER TABLE ${schema}.project_items ADD COLUMN IF NOT EXISTS ai_estimated_price NUMERIC(12,2);
+        -- pV2-STORE-VARIANTS-UPCHARGE-01 — the chosen variant on a quote line
+        -- ({values, upcharge, label}); upcharge feeds the line-total SSOT.
+        ALTER TABLE ${schema}.project_items ADD COLUMN IF NOT EXISTS variant JSONB;
 
         CREATE TABLE IF NOT EXISTS ${schema}.ai_search_hints (
           id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

@@ -48,16 +48,22 @@ function num(v) {
 }
 
 /** The effective per-unit price for a line at its current quantity (Part A
- *  step 2). See the precedence note above. */
+ *  step 2). See the precedence note above.
+ *
+ *  variantUpcharge (pV2-STORE-VARIANTS-UPCHARGE-01): a per-unit delta from the
+ *  chosen variant (0/absent when none). It modifies the GUIDE only — it stacks on
+ *  the tier/base per unit (100+ tier 2.99 + 0.50 = 3.49) — but a negotiated (2a) or
+ *  briefed (2b) rate already wins outright, so the upcharge never applies there
+ *  (that rate is assumed to already reflect the configuration). */
 function effectiveUnitPrice(input) {
   const current = num(input.priceCurrent);
-  if (current != null) return current; // 2a — negotiated rate wins, tiers do NOT apply
+  if (current != null) return current; // 2a — negotiated rate wins, tiers/upcharge do NOT apply
   const ref = num(input.priceRef);
-  if (ref != null) return ref; // 2b — briefed "Original" rate (frozen), tiers do NOT apply
+  if (ref != null) return ref; // 2b — briefed "Original" rate (frozen), tiers/upcharge do NOT apply
+  const up = num(input.variantUpcharge) || 0; // per-unit variant delta (guide modifier)
   const tier = tierUnitPrice(input.priceTiers, input.quantity); // 2c — guide tier
-  if (tier != null) return tier;
-  const base = num(input.basePrice); // 2d — guide base
-  return base == null ? 0 : base;
+  const guide = tier != null ? tier : (num(input.basePrice) ?? 0); // 2d — else guide base
+  return guide + up;
 }
 
 /** The full line total (Part A step 1 + 3): a `flat_total` override on a

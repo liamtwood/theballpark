@@ -117,6 +117,10 @@ export interface QuoteLine {
   quoteDescription?: string | null;
   /** The line's supplier default currency (ISO code) — e.g. 'GBP', 'USD'. */
   supplierCurrency?: string | null;
+  /** pV2-STORE-VARIANTS-UPCHARGE-01 — the chosen variant on this line: the picked
+   *  values, the per-unit upcharge (stacks on the guide), and a display label
+   *  ("Ivory · Bedazzled"). Null when the item has no variant. */
+  variant?: { values: Record<string, string>; upcharge: number; label: string | null } | null;
 }
 
 /** Per-item send-state — the single switch between the cart and final views. */

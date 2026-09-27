@@ -5,7 +5,7 @@ import { MessageService } from 'primeng/api';
 import { MarketplaceStore } from '../marketplace/marketplace-store';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { CatalogueSupplier, CatalogueItem } from '../../shared/catalogue/catalogue.types';
-import { QuickViewDialogComponent } from '../marketplace/quick-view-dialog.component';
+import { QuickViewDialogComponent, QuickAddEvent } from '../marketplace/quick-view-dialog.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
 import { SupplierGridComponent } from '../../shared/catalogue/supplier-grid.component';
@@ -152,13 +152,13 @@ export class ProjectMarketplaceComponent {
 
   /** Quick View "Add to ballpark" → add to THIS project's quote (no picker).
    *  No-op with a note if it's already in the quote (toggle would remove it). */
-  protected onQuickAdd(itemId: string): void {
+  protected onQuickAdd(e: QuickAddEvent): void {
     this.quickItem.set(null);
-    if (this.quoteIds().has(itemId)) {
+    if (this.quoteIds().has(e.id)) {
       this.toast.add({ severity: 'info', summary: 'Already in the ballpark.', life: 3000 });
       return;
     }
-    void this.onQuoteToggle(itemId);
+    void this.onQuoteToggle(e.id, e.variant);
   }
 
   /** "All Categories" count = sum of the rail counts (no extra request). */
@@ -233,7 +233,7 @@ export class ProjectMarketplaceComponent {
    *  space (quoteIds is a Set of item_ids); ADD is by item_id, but REMOVE must
    *  resolve to the project_items ROW id — the one key every per-line mutation
    *  uses (pV2-PRICING-SSOT-01 Part E). */
-  protected async onQuoteToggle(itemId: string): Promise<void> {
+  protected async onQuoteToggle(itemId: string, variant: QuickAddEvent['variant'] = null): Promise<void> {
     const id = this.projectId();
     const before = this.quoteLines();
     const existing = this.quoteLines().find((l) => l.itemId === itemId);
@@ -242,7 +242,7 @@ export class ProjectMarketplaceComponent {
         this.quoteLines.update((ls) => ls.filter((l) => l.id !== existing.id));
         await firstValueFrom(this.projects.removeQuoteItem(id, existing.id)); // ROW id
       } else {
-        const line = await firstValueFrom(this.projects.addQuoteItem(id, itemId));
+        const line = await firstValueFrom(this.projects.addQuoteItem(id, itemId, variant));
         this.quoteLines.update((ls) => [...ls, line]);
       }
       this.est.reload();
