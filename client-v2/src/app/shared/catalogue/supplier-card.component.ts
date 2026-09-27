@@ -16,11 +16,14 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
   imports: [RouterLink, LucideAngularModule, TooltipModule],
   host: { class: 'bp-card bp-card--zoom' },
   template: `
-    <a [routerLink]="['/suppliers', supplier().id]" class="bp-supplier-card__link" [attr.aria-label]="supplier().name">
-      <!-- Auto-normalised hero (pV2-CARDS-01): a blurred cover backdrop (or soft
-           brand wash when there's none) with the logo on a clean white plate,
-           centred. Uniform across every supplier regardless of what art they
-           uploaded — real covers, logo-as-cover, or nothing all read the same. -->
+    <!-- Card BODY click → show this supplier's items in the marketplace (flip to
+         Items + filter by supplier). The "Visit … Store" link is the way to the
+         full shopfront (pV2-CARDS-01, Liam 2026-09-27). -->
+    <div class="bp-supplier-card__link cursor-pointer" role="button" tabindex="0"
+         [attr.aria-label]="'Show ' + supplier().name + ' items'"
+         (click)="selected.emit(supplier().id)"
+         (keydown.enter)="selected.emit(supplier().id)"
+         (keydown.space)="$event.preventDefault(); selected.emit(supplier().id)">
       <!-- Per-supplier display (orgs.image_display): 'cover' zooms/fills the cover
            photo; 'contain' shows the logo (or cover) WHOLE on a white ground. -->
       <div class="bp-supplier-card__hero" [class.bp-supplier-card__hero--contain]="render()?.fit === 'contain'">
@@ -54,11 +57,11 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
             {{ inQuote() ? 'Added to Quote' : 'Add to Quote' }}
           </button>
         } @else {
-          <!-- Not a button — a text link cue (the whole card is the link). -->
-          <span class="store-link mt-3 block">Visit the {{ supplier().name }} Store</span>
+          <!-- Explicit shopfront link — stops the body's "filter to supplier" click. -->
+          <a [routerLink]="['/suppliers', supplier().id]" class="store-link mt-3 block" (click)="$event.stopPropagation()">Visit the {{ supplier().name }} Store</a>
         }
       </div>
-    </a>
+    </div>
     <!-- Wishlist is a buyer (agency) action — hidden for suppliers/others. -->
     @if (isAgent()) {
       <button
@@ -123,6 +126,9 @@ export class SupplierCardComponent {
   readonly supplier = input.required<CatalogueSupplier>();
   readonly favourited = input<boolean>(false);
   readonly favouriteToggled = output<string>();
+  /** Card body click — "show this supplier's items" (the shell flips to Items +
+   *  filters by this supplier). The Visit-Store link handles the shopfront. */
+  readonly selected = output<string>();
   /** Project fan-out (pV2-INBOX-02): show "Add to Quote" instead of the
    *  "View supplier" cue, reflecting + toggling roster membership. */
   readonly quotable = input<boolean>(false);

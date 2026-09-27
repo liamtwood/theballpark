@@ -304,6 +304,11 @@ export class MarketplaceStore {
   setSupplier(id: string | null): void {
     this.merge({ sup: id, item: null });
   }
+  /** Suppliers tab → a supplier card body click: flip to Items and filter to that
+   *  supplier (the "Visit Store" link handles the shopfront) — Liam 2026-09-27. */
+  viewSupplierItems(id: string): void {
+    this.merge({ mode: null, sup: id, item: null });
+  }
   /** Owner store filters (pV2-STORE-01). Clear the param only when the choice
    *  equals the CONTEXT default — otherwise an admin (whose default is
    *  `pending`) could never pick `all`: clearing would snap back to pending. */

@@ -23,6 +23,7 @@ import { CatalogueSupplier, ViewMode } from './catalogue.types';
               [inQuote]="quoteIds().has(sup.id)"
               (favouriteToggled)="favouriteToggled.emit($event)"
               (quoteToggled)="quoteToggled.emit($event)"
+              (selected)="supplierSelected.emit($event)"
             />
           }
         </div>
@@ -71,6 +72,8 @@ export class SupplierGridComponent {
   readonly viewMode = input<ViewMode>('card');
   readonly favouriteIds = input<ReadonlySet<string>>(new Set<string>());
   readonly favouriteToggled = output<string>();
+  /** Card body click — the shell flips to Items + filters by this supplier. */
+  readonly supplierSelected = output<string>();
   /** Project fan-out (pV2-INBOX-02): card-view "Add to Quote" CTA. */
   readonly quotable = input<boolean>(false);
   readonly quoteIds = input<ReadonlySet<string>>(new Set<string>());

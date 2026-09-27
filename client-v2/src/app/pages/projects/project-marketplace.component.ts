@@ -76,6 +76,7 @@ import { isDeclined } from './quote-line.util';
             [viewMode]="store.viewMode()"
             [favouriteIds]="favs.suppliers()"
             (favouriteToggled)="favs.toggle('supplier', $event)"
+            (supplierSelected)="store.viewSupplierItems($event)"
           />
         }
       } @else if (store.loadingFirstPage()) {

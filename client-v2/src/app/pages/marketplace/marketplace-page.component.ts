@@ -74,6 +74,7 @@ import { MarketplaceWorkspaceComponent } from './marketplace-workspace.component
               [viewMode]="store.viewMode()"
               [favouriteIds]="favs.suppliers()"
               (favouriteToggled)="favs.toggle('supplier', $event)"
+              (supplierSelected)="store.viewSupplierItems($event)"
             />
             @if (store.suppliersHasMore()) {
               <div class="mt-6 flex justify-center">
