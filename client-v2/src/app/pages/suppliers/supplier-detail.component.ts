@@ -396,7 +396,7 @@ export class SupplierDetailComponent {
     if (!cat) return [];
     return (this.subcats.value() ?? [])
       .filter((s) => !s.isCatchAll && s.parentId === cat.id && s.count > 0)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => (a.sortOrder ?? 999999) - (b.sortOrder ?? 999999) || a.name.localeCompare(b.name));
   }
 
   /** Subcat card click → browse in place on the shopfront (not a jump to the Shop tab).
@@ -416,7 +416,7 @@ export class SupplierDetailComponent {
     const subs = this.subcats.value() ?? [];
     const l2s = subs
       .filter((s) => !s.isCatchAll && s.parentId === cat.id && s.count > 0)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => (a.sortOrder ?? 999999) - (b.sortOrder ?? 999999) || a.name.localeCompare(b.name));
     if (!l2s.length) return null;
     return {
       categoryId: cat.id,
@@ -424,7 +424,7 @@ export class SupplierDetailComponent {
         l2,
         children: subs
           .filter((s) => s.parentId === l2.id && s.count > 0)
-          .sort((a, b) => a.name.localeCompare(b.name)),
+          .sort((a, b) => (a.sortOrder ?? 999999) - (b.sortOrder ?? 999999) || a.name.localeCompare(b.name)),
       })),
     };
   }

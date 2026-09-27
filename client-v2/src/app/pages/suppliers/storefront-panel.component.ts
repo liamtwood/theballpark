@@ -165,7 +165,7 @@ export class StorefrontPanelComponent {
         // must not silently shift if the endpoint's ORDER BY changes.
         cards: this.subcategories()
           .filter((s) => s.parentId === cat.id)
-          .sort((a, b) => a.name.localeCompare(b.name)),
+          .sort((a, b) => (a.sortOrder ?? 999999) - (b.sortOrder ?? 999999) || a.name.localeCompare(b.name)),
       }))
       .filter((g) => g.cards.length > 0)
   );
