@@ -35,11 +35,9 @@ interface DimState { name: string; values: ValState[]; }
                 <option value="upcharge">Upcharge (+£)</option>
                 <option value="absolute">Cost (£)</option>
               </select>
-              @if (v.mode === 'none') {
-                <span class="bp-body-small text-muted">—</span>
-              } @else {
-                <input type="number" class="bp-input-field" placeholder="0.00" [value]="v.amount" (input)="setAmount($index, vi, $any($event.target).value)" />
-              }
+              <input type="number" class="bp-input-field" [placeholder]="v.mode === 'none' ? 'Free' : '0.00'"
+                     [disabled]="v.mode === 'none'" [value]="v.amount"
+                     (input)="setAmount($index, vi, $any($event.target).value)" />
               <button type="button" class="text-muted hover:text-text" (click)="removeValue($index, vi)" aria-label="Remove value"><lucide-icon name="x" [size]="15" /></button>
             }
           </div>
