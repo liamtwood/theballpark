@@ -1,20 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { TooltipModule } from 'primeng/tooltip';
+import { VariantMatrix, normalizeVariants, totalUpcharge } from './variants.util';
 
-/** One picker axis + its selectable values. */
-interface VariantDimension { name: string; values: string[]; }
-/** One purchasable combination: the chosen value per dimension + its price. */
-interface VariantCombo { values: Record<string, string>; price: number; }
 /** The resolved selection emitted to the host (for add-to-quote wiring). */
 export interface VariantSelection { values: Record<string, string>; price: number; }
 
-/** pV2-STORE-VARIANTS-01 (Stage 2) — the configurator for a variable product.
- *  Reads `attributes.variants` { dimensions, combos } (see docs/ITEMS.md), renders one
- *  selector row per dimension, and resolves the chosen combination's exact price. Shows
- *  "From £X" until every dimension is chosen, then the exact price. Emits the resolved
- *  combo so the host can capture it into a quote line via the flat_total SSOT (Stage 3).
- *  Renders nothing when the item has no variant matrix. */
+/** pV2-STORE-VARIANTS-UPCHARGE-01 — the configurator for a variant product. Reads
+ *  `attributes.variants` (upcharge shape via normalizeVariants — legacy combos still
+ *  read), renders one selector row per dimension, and computes the configured unit
+ *  price = base + Σ(selected upcharges). Volume pricing (a qty-based % discount) is a
+ *  SEPARATE mechanism applied at the quote line, so it never collides here. Each chip
+ *  shows its "+£" on hover. Emits the resolved selection + configured price. Renders
+ *  nothing when the item has no dimensions. */
 @Component({
   selector: 'app-item-variant-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -26,30 +24,26 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
           <div class="bp-variant-row">
             <span class="bp-variant-row__label">{{ d.name }}</span>
             <div class="bp-variant-row__opts">
-              @for (v of d.values; track v) {
+              @for (v of d.values; track v.value) {
                 <button
                   type="button"
                   class="bp-variant-chip"
-                  [class.bp-variant-chip--on]="selected()[d.name] === v"
-                  [class.bp-variant-chip--off]="!isAvailable(d.name, v)"
-                  [pTooltip]="priceLabel(d.name, v) ?? ''"
+                  [class.bp-variant-chip--on]="selected()[d.name] === v.value"
+                  [pTooltip]="upchargeLabel(v.upcharge) ?? ''"
                   tooltipStyleClass="bp-tooltip"
                   tooltipPosition="top"
-                  (click)="pick(d.name, v)"
-                >{{ v }}</button>
+                  (click)="pick(d.name, v.value)"
+                >{{ v.value }}</button>
               }
             </div>
           </div>
         }
 
-        <!-- Price line only when the matrix actually affects price. A free-pick
-             variant (no combos) shows just the selectors. -->
+        <!-- Price line only when a choice can change the price (any non-zero upcharge). -->
         @if (hasPricing()) {
           <div class="bp-variant-price">
-            @if (chosen(); as c) {
-              <span class="bp-price-large">{{ c.price | currency: 'GBP' : 'symbol' : priceDigits(c.price) }}</span>
-            } @else if (allChosen()) {
-              <span class="bp-body-small text-warn">That combination isn't available — try another.</span>
+            @if (allChosen()) {
+              <span class="bp-price-large">{{ unitPrice() | currency: 'GBP' : 'symbol' : priceDigits(unitPrice()) }}</span>
             } @else {
               <span class="bp-price-large">From {{ minPrice() | currency: 'GBP' : 'symbol' : priceDigits(minPrice()) }}</span>
               <span class="bp-caption text-secondary">Choose all options for the exact price</span>
@@ -87,8 +81,6 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
         border-color: var(--theme-accent);
         color: var(--theme-accent-contrast, #fff);
       }
-      /* Value that leads to no available combination given the current picks. */
-      .bp-variant-chip--off { opacity: 0.45; }
       .bp-variant-price { display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.15rem; }
     `,
   ],
@@ -96,63 +88,48 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
 export class ItemVariantPickerComponent {
   /** The item's attributes bag (reads `.variants`). */
   readonly attributes = input<Record<string, unknown> | null>(null);
-  /** Fallback base/"From" price when no combo is fully chosen. */
+  /** Base unit price — the configured price builds on this (+ upcharges). */
   readonly basePrice = input<number | null>(null);
-  /** The resolved combination (null until a valid full combo is chosen). */
+  /** The resolved selection (null until every dimension is chosen). */
   readonly selectionChange = output<VariantSelection | null>();
 
-  private readonly variants = computed(() => {
-    const a = this.attributes();
-    const v = a && typeof a === 'object' ? (a as Record<string, unknown>)['variants'] : null;
-    if (!v || typeof v !== 'object') return null;
-    const block = v as { dimensions?: unknown; combos?: unknown };
-    const dimensions = Array.isArray(block.dimensions) ? (block.dimensions as VariantDimension[]) : [];
-    const combos = Array.isArray(block.combos) ? (block.combos as VariantCombo[]) : [];
-    // Render whenever there are dimensions — a "free pick" variant (all one price →
-    // NO combos, e.g. seat-pad colour) is still a real selector; it just doesn't
-    // change the price. Requiring combos hid those pickers entirely (Liam QC).
-    return dimensions.length ? { dimensions, combos } : null;
-  });
-
-  protected readonly dimensions = computed(() => this.variants()?.dimensions ?? []);
-  private readonly combos = computed(() => this.variants()?.combos ?? []);
-  /** Does the matrix carry priced combinations? (false = a pure free-pick — show the
-   *  selectors but no price line; the item's own price stands.) */
-  protected readonly hasPricing = computed(() => this.combos().length > 0);
+  private readonly matrix = computed<VariantMatrix | null>(() => normalizeVariants(
+    (this.attributes() as Record<string, unknown> | null)?.['variants']
+  ));
+  protected readonly dimensions = computed(() => this.matrix()?.dimensions ?? []);
+  /** Any value carries a non-zero upcharge → a choice affects the price. */
+  protected readonly hasPricing = computed(() =>
+    this.dimensions().some((d) => d.values.some((v) => v.upcharge !== 0))
+  );
 
   /** The chosen value per dimension (empty until the visitor picks). */
   protected readonly selected = signal<Record<string, string>>({});
-
-  protected readonly minPrice = computed(() => {
-    const prices = this.combos().map((c) => c.price).filter((p) => typeof p === 'number');
-    return prices.length ? Math.min(...prices) : this.basePrice();
-  });
 
   protected readonly allChosen = computed(() => {
     const sel = this.selected();
     return this.dimensions().length > 0 && this.dimensions().every((d) => sel[d.name] != null);
   });
 
-  /** The priced combo matching the current selection. Matches on the COMBO's own
-   *  keys (the pricing dimensions) — a non-pricing dimension like Paper Type is a
-   *  real choice but doesn't appear in the combos, so it must not block the match. */
-  protected readonly chosen = computed<VariantCombo | null>(() => {
-    if (!this.allChosen()) return null;
-    const sel = this.selected();
-    // Free-pick variant (no priced combos): the selection is valid at the item's
-    // base price — synthesize the combo so add-to-quote still captures the config.
-    if (!this.combos().length) return { values: { ...sel }, price: this.basePrice() ?? 0 };
-    return this.combos().find((c) => Object.keys(c.values).every((k) => c.values[k] === sel[k])) ?? null;
+  /** Configured unit price = base + Σ(selected upcharges). */
+  protected readonly unitPrice = computed(() => (this.basePrice() ?? 0) + totalUpcharge(this.matrix(), this.selected()));
+
+  /** Cheapest configured price — base + the min upcharge of each dimension. */
+  protected readonly minPrice = computed(() => {
+    let p = this.basePrice() ?? 0;
+    for (const d of this.dimensions()) {
+      const mins = d.values.map((v) => v.upcharge);
+      if (mins.length) p += Math.min(...mins);
+    }
+    return p;
   });
 
   constructor() {
-    // Reset the picks whenever the item changes, and surface the resolved selection.
-    effect(() => { this.variants(); this.selected.set({}); });
-    // Emit the FULL selection (incl. non-pricing choices like Paper Type) + the
-    // priced combo's price, so add-to-quote captures the whole config (Stage 3).
+    // Reset picks whenever the item changes.
+    effect(() => { this.matrix(); this.selected.set({}); });
+    // Emit the full selection + configured price once every dimension is chosen.
     effect(() => {
-      const combo = this.chosen();
-      this.selectionChange.emit(combo ? { values: { ...this.selected() }, price: combo.price } : null);
+      if (!this.allChosen()) { this.selectionChange.emit(null); return; }
+      this.selectionChange.emit({ values: { ...this.selected() }, price: this.unitPrice() });
     });
   }
 
@@ -165,40 +142,15 @@ export class ItemVariantPickerComponent {
     });
   }
 
-  /** Is `value` for `dim` reachable given the OTHER current picks? (soft-dims impossible
-   *  combos without hard-locking the axis being changed). */
-  protected isAvailable(dim: string, value: string): boolean {
-    const combos = this.combos();
-    // Non-pricing dimension (not present in any combo, e.g. Paper Type) — every
-    // value is always selectable; it doesn't constrain the price.
-    if (!combos.some((c) => dim in c.values)) return true;
-    const sel = this.selected();
-    return combos.some((c) => {
-      if (c.values[dim] !== value) return false;
-      // Only other PRICING selections constrain; ignore non-pricing picks.
-      return Object.entries(sel).every(([k, v]) => k === dim || !(k in c.values) || c.values[k] === v);
-    });
+  /** Hover label for a chip — "+£5", "−£2", or null for a free (£0) value. */
+  protected upchargeLabel(upcharge: number): string | null {
+    if (!upcharge) return null;
+    const abs = Math.abs(upcharge);
+    const money = '£' + (abs < 100 ? abs.toFixed(2) : String(Math.round(abs)));
+    return (upcharge > 0 ? '+' : '−') + money;
   }
 
   protected priceDigits(p: number | null): string {
     return p != null && p < 100 ? '1.2-2' : '1.0-0';
-  }
-
-  /** Hover tooltip: the price a value leads to, given the OTHER current pricing picks.
-   *  Exact when unique, "from £X" when the value still spans a range; null for a
-   *  non-pricing dimension (free pick — no cost to show). */
-  protected priceLabel(dim: string, value: string): string | null {
-    const combos = this.combos();
-    if (!combos.some((c) => dim in c.values)) return null; // non-pricing dimension
-    const sel = this.selected();
-    const matches = combos.filter(
-      (c) => c.values[dim] === value
-        && Object.entries(sel).every(([k, v]) => k === dim || !(k in c.values) || c.values[k] === v)
-    );
-    if (!matches.length) return null;
-    const prices = matches.map((c) => c.price);
-    const min = Math.min(...prices), max = Math.max(...prices);
-    const fmt = (n: number) => '£' + (n < 100 ? n.toFixed(2) : String(Math.round(n)));
-    return min === max ? fmt(min) : `from ${fmt(min)}`;
   }
 }

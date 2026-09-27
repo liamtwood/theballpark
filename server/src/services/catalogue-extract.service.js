@@ -974,11 +974,10 @@ async function processUrl(ctx, url) {
       .map((o) => ({ name: String(o?.name ?? '').trim(), price: toNumber(o?.price ?? o?.upcharge) || 0 }))
       .filter((o) => o.name);
     if (options.length && !attributes.variants) {
-      const base = toNumber(p.base_price) || 0;
-      const priced = options.some((o) => o.price);
+      // pV2-STORE-VARIANTS-UPCHARGE-01 — a single UPCHARGE dimension: each choice adds
+      // its delta to the base (0 = free pick). No combos — variants are additive now.
       attributes.variants = {
-        dimensions: [{ name: 'Option', values: options.map((o) => o.name) }],
-        combos: priced ? options.map((o) => ({ values: { Option: o.name }, price: base + (o.price || 0) })) : [],
+        dimensions: [{ name: 'Option', values: options.map((o) => ({ value: o.name, upcharge: o.price || 0 })) }],
       };
     }
     if (Array.isArray(p.priceTiers) && p.priceTiers.length) {

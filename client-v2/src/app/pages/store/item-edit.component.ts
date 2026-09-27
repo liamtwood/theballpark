@@ -25,7 +25,8 @@ import { ImagePickerComponent } from '../../shared/image-picker/image-picker.com
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
 import { ItemApprovalPanelComponent } from './item-approval-panel.component';
 import { ItemEditActionsComponent } from './item-edit-actions.component';
-import { ItemVariantsEditorComponent, VariantMatrix } from './item-variants-editor.component';
+import { ItemVariantsEditorComponent } from './item-variants-editor.component';
+import { VariantMatrix, normalizeVariants } from '../../shared/catalogue/variants.util';
 
 interface ItemForm {
   name: string;
@@ -178,7 +179,7 @@ const WHATS_HOT = "What's Hot";
           @if (editing()) {
             <div class="bp-card bp-edit-section mt-4" [class.is-collapsed]="!sectionOpen('extras')">
               <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('extras')">
-                <h3 class="bp-edit-section-title">Volume pricing, Options &amp; Variants</h3>
+                <h3 class="bp-edit-section-title">Volume pricing &amp; Variants</h3>
                 <lucide-icon [name]="sectionOpen('extras') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
               </button>
               @if (sectionOpen('extras')) {
@@ -210,10 +211,9 @@ const WHATS_HOT = "What's Hot";
                     <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
                       @for (d of vs.dims; track d.name) {
                         <dt class="bp-body-small text-secondary">{{ d.name }}</dt>
-                        <dd class="bp-body-small text-text">{{ d.count }}{{ d.pricing ? '' : ' · picker' }}</dd>
+                        <dd class="bp-body-small text-text">{{ d.count }} value{{ d.count === 1 ? '' : 's' }}{{ d.pricing ? ' · +£' : ' · free' }}</dd>
                       }
                     </dl>
-                    <p class="bp-caption text-secondary mt-1">{{ vs.comboCount }} priced combination{{ vs.comboCount === 1 ? '' : 's' }}</p>
                   } @else {
                     <p class="bp-qv-spec__val bp-qv-spec__val--soon">No variants</p>
                   }
@@ -526,15 +526,17 @@ export class ItemEditComponent {
   protected readonly variantsSeed = signal<VariantMatrix | null>(null);
   protected readonly variantsDraft = signal<VariantMatrix | null>(null);
   protected readonly variantsDialogOpen = signal(false);
-  /** Preview-card summary — one row per dimension (value count + picker flag). */
+  /** Preview-card summary — one row per dimension (value count + whether any value
+   *  carries an upcharge, i.e. it affects price vs a free pick). */
   protected readonly variantsSummary = computed(() => {
     const v = this.variantsState();
     if (!v || !v.dimensions?.length) return null;
-    const pricingNames = new Set<string>();
-    for (const c of v.combos ?? []) for (const k of Object.keys(c.values ?? {})) pricingNames.add(k);
     return {
-      dims: v.dimensions.map((d) => ({ name: d.name, count: d.values?.length ?? 0, pricing: pricingNames.has(d.name) })),
-      comboCount: (v.combos ?? []).length,
+      dims: v.dimensions.map((d) => ({
+        name: d.name,
+        count: d.values?.length ?? 0,
+        pricing: (d.values ?? []).some((x) => x.upcharge !== 0),
+      })),
     };
   });
   protected openVariantsDialog(): void { this.variantsSeed.set(this.variantsState()); this.variantsDraft.set(this.variantsState()); this.variantsDialogOpen.set(true); }
@@ -794,9 +796,9 @@ export class ItemEditComponent {
         max: t.max == null ? '' : String(t.max),
         price: t.price == null ? '' : String(t.price),
       })));
-      // pV2-STORE-VARIANTS-EDIT-01 — hydrate the variant matrix (dimensions + combos).
-      const rawV = attrs['variants'] as VariantMatrix | undefined;
-      this.variantsState.set(rawV && Array.isArray(rawV.dimensions) && rawV.dimensions.length ? rawV : null);
+      // pV2-STORE-VARIANTS-UPCHARGE-01 — hydrate the variant matrix (upcharge shape;
+      // legacy combos normalised to per-value upcharges).
+      this.variantsState.set(normalizeVariants(attrs['variants']));
       return item;
     },
   });
