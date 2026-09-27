@@ -2,6 +2,109 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.4.0",
+      "name": "Variants, tags & quote pricing",
+      "build": "v2.653",
+      "date": "2026-09-27",
+      "datetime": "2026-09-27",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Store & Variants",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Item variants — suppliers configure choices as variant dimensions (e.g. Size, Paper Type, Colour); each value is priced as No cost, an Upcharge (+£), or an absolute Cost. Edited inline in the item editor."
+            },
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "Options folded into variants — one consistent model, including free \"pick one\" choices like colour. The old separate Options list is retired."
+            },
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Tags & Tier are now editable in an item's Classification, with a one-click \"What's Hot\" tag (Tier gains Bronze / Silver / Gold)."
+            },
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "Item descriptions keep their formatting (bold, bullet lists) from the supplier's own site."
+            }
+          ]
+        },
+        {
+          "area": "Marketplace",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "What's Hot — a store's shopfront leads with its What's Hot items and surfaces a What's Hot menu link when it has any."
+            },
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "Variant products show a configurator — pick the options, see the price update, with the cost shown on hover — and require a choice before adding to a ballpark."
+            },
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "Supplier cards and the project Suppliers tab polish carried over from v0.3.x."
+            }
+          ]
+        },
+        {
+          "area": "Quotes",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "The chosen variant carries into the quote — the option (\"Ivory · Bedazzled\") shows on the line, the cart, the preview panel and the client quote document."
+            },
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "A variant's upcharge prices per unit on top of any volume tier (e.g. £2.99 + £0.50 = £3.49 each)."
+            },
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Set the quantity directly in the item dialog."
+            }
+          ]
+        },
+        {
+          "area": "Polish",
+          "items": [
+            {
+              "ref": "",
+              "type": "fixed",
+              "feature": "",
+              "text": "The item dialog's close button now fully closes the preview."
+            },
+            {
+              "ref": "",
+              "type": "fixed",
+              "feature": "",
+              "text": "Per-unit prices show pence where present, so unit × quantity reconciles with the line total."
+            }
+          ]
+        }
+      ],
+      "fixes": []
+    },
+    {
       "version": "v0.3.3",
       "name": "Supplier cards & marketplace polish",
       "build": "v2.636",
