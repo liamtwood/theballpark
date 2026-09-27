@@ -22,6 +22,7 @@ import { lineCost, lineItemized, quoteLineToCatalogueItem } from './quote-line.u
         [showStoreLink]="false" [showFromPrefix]="false"
         descriptionLabel="Item description"
         [lineTotal]="total()"
+        [variantLabel]="line()?.variant?.label ?? null"
         [clientDescription]="line()?.quoteDescription ?? null"
         [clientDescriptionEditable]="clientDescriptionEditable()"
         [details]="line()?.details ?? null"

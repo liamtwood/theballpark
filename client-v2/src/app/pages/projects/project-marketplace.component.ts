@@ -158,7 +158,7 @@ export class ProjectMarketplaceComponent {
       this.toast.add({ severity: 'info', summary: 'Already in the ballpark.', life: 3000 });
       return;
     }
-    void this.onQuoteToggle(e.id, e.variant);
+    void this.onQuoteToggle(e.id, e.variant, e.quantity);
   }
 
   /** "All Categories" count = sum of the rail counts (no extra request). */
@@ -233,7 +233,7 @@ export class ProjectMarketplaceComponent {
    *  space (quoteIds is a Set of item_ids); ADD is by item_id, but REMOVE must
    *  resolve to the project_items ROW id — the one key every per-line mutation
    *  uses (pV2-PRICING-SSOT-01 Part E). */
-  protected async onQuoteToggle(itemId: string, variant: QuickAddEvent['variant'] = null): Promise<void> {
+  protected async onQuoteToggle(itemId: string, variant: QuickAddEvent['variant'] = null, quantity?: number): Promise<void> {
     const id = this.projectId();
     const before = this.quoteLines();
     const existing = this.quoteLines().find((l) => l.itemId === itemId);
@@ -242,7 +242,7 @@ export class ProjectMarketplaceComponent {
         this.quoteLines.update((ls) => ls.filter((l) => l.id !== existing.id));
         await firstValueFrom(this.projects.removeQuoteItem(id, existing.id)); // ROW id
       } else {
-        const line = await firstValueFrom(this.projects.addQuoteItem(id, itemId, variant));
+        const line = await firstValueFrom(this.projects.addQuoteItem(id, itemId, variant, quantity));
         this.quoteLines.update((ls) => [...ls, line]);
       }
       this.est.reload();

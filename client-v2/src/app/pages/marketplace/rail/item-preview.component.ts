@@ -83,7 +83,7 @@ import { DetailsEditorComponent } from '../../../shared/details-editor.component
                  [ngModel]="item().unit" (ngModelChange)="unitChange.emit($event)" (click)="$event.stopPropagation()" />
         </span>
       } @else if (lineTotal() !== null) {
-        <span class="bp-price-large">{{ lineTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+        <span class="bp-price-large">{{ lineTotal() | currency: 'GBP' : 'symbol' : '1.0-2' }}</span>
         <span class="bp-meta uppercase tracking-wide">Total</span>
       } @else if (item().basePrice !== null) {
         <span class="bp-price-large">@if (showFromPrefix()) {From }{{ item().basePrice | currency: 'GBP' : 'symbol' : ((item().basePrice ?? 0) < 100 ? '1.2-2' : '1.0-0') }}</span>
@@ -94,6 +94,11 @@ import { DetailsEditorComponent } from '../../../shared/details-editor.component
         <span class="bp-caption">Price on request</span>
       }
     </div>
+
+    <!-- pV2-STORE-VARIANTS-UPCHARGE-01 — the chosen variant ("Ivory · Bedazzled"). -->
+    @if (variantLabel()) {
+      <div class="bp-meta mt-2 text-secondary"><lucide-icon name="layers" [size]="12" class="mr-1 inline align-[-1px]" />{{ variantLabel() }}</div>
+    }
 
     <!-- Everything below the image + price collapses behind "More" when
          collapsible; always shown when expanded OR editing (never hide fields). -->
@@ -243,6 +248,9 @@ export class ItemPreviewComponent {
   /** Project side: the client-facing line TOTAL (what they'll pay). When set,
    *  the price shows this as "£X TOTAL" instead of "From £/unit". */
   readonly lineTotal = input<number | null>(null);
+  /** pV2-STORE-VARIANTS-UPCHARGE-01 — the chosen variant label ("Ivory · Bedazzled"),
+   *  shown under the price. Null when the line has no variant. */
+  readonly variantLabel = input<string | null>(null);
   /** The AGENT's client-facing quote text (rendered as the first block, view
    *  mode). null → an empty prompt when editable, else the block is hidden. */
   readonly clientDescription = input<string | null>(null);

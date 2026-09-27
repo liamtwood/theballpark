@@ -315,7 +315,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
     </div>
 
     <!-- Quick View — read-only (the line is already in the ballpark). -->
-    <app-quick-view-dialog [item]="quickItem()" [showAdd]="false" (close)="quickItem.set(null)" />
+    <app-quick-view-dialog [item]="quickItem()" [showAdd]="false" (close)="closeQuickView()" />
 
     <!-- Add Custom Line Item modal (Final view). -->
     @if (adding()) {
@@ -421,6 +421,13 @@ export class ProjectEstimateComponent {
     // Ballpark Cost tab: the right preview rail is hidden — clicking a line
     // opens the Quick View dialog instead (read-only; already in the ballpark).
     this.quickItem.set(quoteLineToCatalogueItem(l));
+  }
+
+  /** Close the item dialog AND deselect the line, so the preview truly closes
+   *  (before, the desktop rail stayed selected → looked like the X did nothing). */
+  protected closeQuickView(): void {
+    this.quickItem.set(null);
+    this.selectedItemId.set(null);
   }
 
   // ── pV2-BUILDUP-03 — the Options picker (an item's options → quote lines) ──

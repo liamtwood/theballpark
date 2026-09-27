@@ -58,8 +58,11 @@ import { isDeclined, lineCost, unitPrice } from './quote-line.util';
                       <lucide-icon name="x" [size]="15" />
                     </button>
                   </div>
+                  @if (l.variant?.label) {
+                    <span class="bp-meta text-secondary">{{ l.variant!.label }}</span>
+                  }
                   <div class="flex items-center justify-between gap-2">
-                    <span class="bp-body-small text-secondary">{{ l.basePrice === null ? 'POA' : (railUnit(l) | currency: 'GBP' : 'symbol' : '1.0-0') }}{{ l.unit ? ' / ' + l.unit : '' }}</span>
+                    <span class="bp-body-small text-secondary">{{ l.basePrice === null ? 'POA' : (railUnit(l) | currency: 'GBP' : 'symbol' : '1.0-2') }}{{ l.unit ? ' / ' + l.unit : '' }}</span>
                     <app-qty-input
                       class="shrink-0"
                       [value]="l.quantity"

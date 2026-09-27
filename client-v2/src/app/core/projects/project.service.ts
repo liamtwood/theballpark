@@ -146,8 +146,9 @@ export class ProjectService {
     projectId: string,
     itemId: string,
     variant: { values: Record<string, string>; upcharge: number; label: string } | null = null,
+    quantity?: number,
   ): Observable<QuoteLine> {
-    return this.api.post<QuoteLine>(`/api/projects-v2/${projectId}/items`, { itemId, variant });
+    return this.api.post<QuoteLine>(`/api/projects-v2/${projectId}/items`, { itemId, variant, quantity });
   }
 
   /** pV2-CUSTOMS-01 — add a custom (ad-hoc) line with no catalogue backing. */

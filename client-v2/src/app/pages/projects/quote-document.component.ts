@@ -145,6 +145,9 @@ import { isDeclined, lineCost, unitPlain, unitPrice } from './quote-line.util';
                 <div class="flex items-start justify-between gap-4 border-b border-hairline py-3 last:border-b-0">
                   <div class="min-w-0 flex-1">
                     <div class="bp-body-small font-semibold text-text">{{ l.name }}</div>
+                    @if (l.variant?.label) {
+                      <div class="bp-meta mt-0.5 text-secondary">{{ l.variant!.label }}</div>
+                    }
                     @if (showItemDesc() && desc(l); as d) {
                       <div class="bp-md bp-meta mt-1 max-w-prose text-secondary" [innerHTML]="d | md"></div>
                     }

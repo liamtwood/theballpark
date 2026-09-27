@@ -14,6 +14,8 @@ import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-
 export interface QuickAddEvent {
   id: string;
   variant: { values: Record<string, string>; upcharge: number; label: string } | null;
+  /** Quantity chosen in the dialog (≥1). */
+  quantity: number;
 }
 
 /** pV2 marketplace-redesign — the item Quick View dialog (replaces the right
@@ -126,6 +128,16 @@ export interface QuickAddEvent {
               <lucide-icon name="square-pen" [size]="15" /> Edit
             </a>
           }
+          @if (showAdd()) {
+            <!-- Quantity — enter it here rather than nudging the card stepper (Liam). -->
+            <div class="mr-auto flex items-center gap-1.5">
+              <span class="bp-field-label">Qty</span>
+              <button type="button" class="bp-qty-step" aria-label="Decrease quantity" (click)="stepQty(-1)"><lucide-icon name="minus" [size]="13" /></button>
+              <input type="number" min="1" step="1" inputmode="numeric" class="bp-input-field text-center" style="width: 4rem;"
+                     [value]="qty()" (input)="setQty($any($event.target).value)" aria-label="Quantity" />
+              <button type="button" class="bp-qty-step" aria-label="Increase quantity" (click)="stepQty(1)"><lucide-icon name="plus" [size]="13" /></button>
+            </div>
+          }
           <button type="button" class="bp-btn-outline" (click)="close.emit()">Close</button>
           @if (showAdd()) {
             @if (needsSelection()) {
@@ -212,7 +224,7 @@ export class QuickViewDialogComponent {
     const variant = c
       ? { values: c.values, upcharge: Math.round((c.price - base) * 100) / 100, label: Object.values(c.values).join(' · ') }
       : null;
-    this.add.emit({ id: it.id, variant });
+    this.add.emit({ id: it.id, variant, quantity: this.qty() });
   }
 
   private readonly auth = inject(AuthService);
@@ -239,6 +251,13 @@ export class QuickViewDialogComponent {
    *  drives the "Add to ballpark" value. */
   protected readonly chosenCombo = signal<{ values: Record<string, string>; price: number } | null>(null);
 
+  /** Quantity to add (pV2-STORE-VARIANTS-UPCHARGE-01 / Liam) — enterable in the
+   *  dialog so you can type 100 rather than nudging the card stepper. Resets to 1
+   *  when the dialog opens on a new item. */
+  protected readonly qty = signal(1);
+  protected stepQty(d: number): void { this.qty.set(Math.max(1, this.qty() + d)); }
+  protected setQty(v: string): void { const n = Math.floor(Number(v)); this.qty.set(Number.isFinite(n) && n >= 1 ? n : 1); }
+
   /** Variable product? — the variant picker then owns the price display. */
   protected readonly hasVariants = computed(() => {
     const a = this.item()?.attributes as Record<string, unknown> | null | undefined;
@@ -260,6 +279,6 @@ export class QuickViewDialogComponent {
   protected readonly descLong = computed(() => (this.item()?.description ?? '').length > 220);
 
   protected onVisible(visible: boolean): void {
-    if (!visible) { this.descOpen.set(false); this.close.emit(); }
+    if (!visible) { this.descOpen.set(false); this.qty.set(1); this.close.emit(); }
   }
 }

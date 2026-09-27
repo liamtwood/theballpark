@@ -718,7 +718,7 @@ function toPositiveInt(v) {
  *  same item is reused, not duplicated). Snapshots name/price/unit/image
  *  from the catalogue item, and seeds a smart default quantity from the
  *  unit↔project-field mapping. Returns the line, or null if not the org's. */
-async function addItem(orgId, projectId, itemId, variant = null) {
+async function addItem(orgId, projectId, itemId, variant = null, quantity = null) {
   // pV2-STORE-VARIANTS-UPCHARGE-01 — normalise the chosen variant to store (or null).
   const variantJson = variant && (variant.label || variant.upcharge || variant.values)
     ? JSON.stringify({ values: variant.values ?? {}, upcharge: Number(variant.upcharge) || 0, label: variant.label ?? null })
@@ -750,7 +750,10 @@ async function addItem(orgId, projectId, itemId, variant = null) {
     );
     if (!snap.rows.length) return null; // unknown item → 404
     const s = snap.rows[0];
-    const qty = await defaultQuantity(client, s.unit, s.serves, owns.rows[0]);
+    // Explicit quantity from the item dialog wins; else the smart default by unit.
+    const qty = quantity != null && quantity >= 1
+      ? Math.floor(quantity)
+      : await defaultQuantity(client, s.unit, s.serves, owns.rows[0]);
 
     let rowId;
     if (existing.rows.length) {

@@ -136,6 +136,8 @@ const QuoteAddSchema = z.object({
     upcharge: z.coerce.number().min(-100000).max(1000000).default(0),
     label: z.string().trim().max(200).optional(),
   }).nullable().optional(),
+  // Quantity entered in the item dialog (optional; else the smart default).
+  quantity: z.coerce.number().int().min(1).max(1000000).optional(),
 });
 
 // GET /:id/items — the project's quote lines.
@@ -171,7 +173,7 @@ router.post('/:id/items', async (req, res, next) => {
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
     }
-    const line = await projects.addItem(req.user.org_id, req.params.id, parsed.data.itemId, parsed.data.variant ?? null);
+    const line = await projects.addItem(req.user.org_id, req.params.id, parsed.data.itemId, parsed.data.variant ?? null, parsed.data.quantity ?? null);
     if (line === null) return res.status(404).json({ error: 'Project or item not found' });
     res.status(201).json(line);
   } catch (err) {
