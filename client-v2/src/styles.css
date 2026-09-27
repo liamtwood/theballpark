@@ -1027,6 +1027,11 @@ body {
   font-weight: 600;
   box-shadow: inset 0 -2px 0 0 #fff;
 }
+/* What's Hot — the featured menu link stands out on the rose bar (pV2-STORE-WHATS-HOT-01). */
+.bp-shopfront-menu__link--hot {
+  color: #fff;
+  font-weight: 600;
+}
 .bp-org-banner__cover-btn {
   position: absolute;
   top: 14px;

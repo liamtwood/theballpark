@@ -29,6 +29,8 @@ export interface StoreItem {
   image_url: string | null;
   images: GalleryImage[];
   tags: string[];
+  /** Item quality/merchandising tier (item_tier codelist code) — nullable. */
+  tier: string | null;
   approval_status: string;
   is_active: boolean;
   created_at?: string;
@@ -65,6 +67,8 @@ export interface StoreItemWrite {
   image_url?: string | null;
   images?: GalleryImage[];
   tags?: string[];
+  /** Item quality/merchandising tier (item_tier codelist code) — null clears it. */
+  tier?: string | null;
   /** Measurements (dimensions[]) + volume pricing (price_tiers[]) + preserved
    *  other keys (pV2-STORE-ITEM-MEASURE-VOLUME-01). */
   attributes?: Record<string, unknown>;

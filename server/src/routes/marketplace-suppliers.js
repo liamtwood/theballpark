@@ -150,12 +150,24 @@ router.get('/suppliers/:id', async (req, res, next) => {
         ORDER BY (c.id IS NULL), c.name ASC`,
       [id.data]
     );
+    // pV2-STORE-WHATS-HOT-01 — does this store have any "What's Hot" items in scope?
+    // Drives the shopfront's What's Hot menu link + default landing. Same visibility
+    // scope as the category counts (owner/admin see drafts; public sees live+approved).
+    const hot = await pool.query(
+      `SELECT COUNT(i.id) AS n
+         FROM items i
+        WHERE i.org_id = $1 AND i.deleted_at IS NULL
+          AND i.kind IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL
+          AND 'What''s Hot' = ANY(i.tags) ${liveFilter}`,
+      [id.data]
+    );
     const row = r.rows[0];
     res.json({
       id: row.id,
       name: row.name,
       city: row.city,
       country: row.country,
+      hotCount: Number(hot.rows[0]?.n ?? 0),
       // Not public on the shopfront (BE-00115) — kept in the shape as null.
       address: null,
       phone: null,

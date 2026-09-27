@@ -77,6 +77,8 @@ export interface ItemsQuery {
    *  caller owns `supplier`. status = approval_status; active = publish state. */
   status?: string | null;
   active?: string | null;
+  /** Free-text tag filter (items.tags) — e.g. the shopfront "What's Hot" menu. */
+  tag?: string | null;
   offset?: number;
 }
 
@@ -144,6 +146,9 @@ export interface SupplierDetail {
   /** Portfolio gallery (pV2-MEDIA-01e) — rendered read-only on the storefront. */
   images: GalleryImage[];
   categories: { id: string; name: string; count: number }[];
+  /** How many "What's Hot" items this store has in scope (pV2-STORE-WHATS-HOT-01)
+   *  — drives the shopfront's What's Hot menu link + default landing. */
+  hotCount?: number;
 }
 
 /** The org's favourite ids (org-scoped, server-derived). */

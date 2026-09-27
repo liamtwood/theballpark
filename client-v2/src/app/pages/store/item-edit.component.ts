@@ -38,7 +38,12 @@ interface ItemForm {
   location_coverage: string;   // free text
   lead_time_days: string;
   description: string;
+  tier: string;                // item_tier codelist code ('' = unset)
+  tags: string[];              // items.tags free-text array (incl. "What's Hot")
 }
+
+/** The merchandising tag the shopfront's "What's Hot" menu keys on. */
+const WHATS_HOT = "What's Hot";
 
 /** pV2-STORE-01 — the product page, ONE definition in three modes: supplier
  *  (editable + Save/Submit), ballpark admin (read-only + Approve/Reject), agent
@@ -250,9 +255,53 @@ interface ItemForm {
                   }
                 }
               </div>
-              <div class="mt-3">
+              <!-- Tier (item_tier codelist) — quality/merchandising band. -->
+              <div class="mt-4">
+                @if (editing()) {
+                  <app-edit-field label="Tier" type="select" density="page"
+                    [options]="tierOptions()" [editing]="true" [value]="form().tier" (valueChange)="patch({ tier: $event })" />
+                } @else {
+                  <div class="bp-field-label">Tier</div>
+                  @if (form().tier) { <div class="bp-body-small text-text capitalize">{{ form().tier }}</div> }
+                  @else { <div class="bp-body-small text-muted">Not set</div> }
+                }
+              </div>
+
+              <!-- Tags (items.tags) — editable chips + a one-click What's Hot toggle
+                   (pV2-STORE-WHATS-HOT-01). The shopfront features "What's Hot" items. -->
+              <div class="mt-4">
                 <div class="bp-field-label">Tags</div>
-                @if (classificationTags().length) {
+                @if (editing()) {
+                  <button type="button" class="bp-btn-outline bp-body-small mt-1"
+                    [class.bp-btn-grad]="hasWhatsHot()" (click)="toggleWhatsHot()">
+                    <lucide-icon name="flame" [size]="14" /> {{ hasWhatsHot() ? "What's Hot ✓" : "Mark What's Hot" }}
+                  </button>
+                  @if (form().tags.length) {
+                    <div class="mt-2 flex flex-wrap gap-1.5">
+                      @for (t of form().tags; track t) {
+                        <span class="bp-tag-chip inline-flex items-center gap-1">{{ t }}
+                          <button type="button" class="text-muted hover:text-text" (click)="removeTag(t)" aria-label="Remove tag"><lucide-icon name="x" [size]="12" /></button>
+                        </span>
+                      }
+                    </div>
+                  }
+                  <input class="bp-input-field mt-2 w-full" placeholder="Add a tag and press Enter"
+                    [ngModel]="tagInput()" (ngModelChange)="tagInput.set($event)"
+                    (keydown.enter)="$event.preventDefault(); addTag(tagInput())" (blur)="addTag(tagInput())" />
+                } @else if (form().tags.length) {
+                  <div class="mt-1 flex flex-wrap gap-1.5">
+                    @for (t of form().tags; track t) { <span class="bp-tag-chip">{{ t }}</span> }
+                  </div>
+                } @else {
+                  <div class="bp-body-small text-muted">No tags</div>
+                }
+              </div>
+
+              <!-- Auto tags (supplier_item_tag) — the classifier's dimension tags,
+                   read-only (colour/material/style…). Distinct from the free-text tags. -->
+              @if (classificationTags().length) {
+                <div class="mt-4">
+                  <div class="bp-field-label">Auto tags</div>
                   <div class="mt-1 flex flex-col gap-2">
                     @for (g of classificationTags(); track g.dimension) {
                       <div class="flex flex-wrap items-baseline gap-1.5">
@@ -263,10 +312,8 @@ interface ItemForm {
                       </div>
                     }
                   </div>
-                } @else {
-                  <div class="bp-body-small text-muted">No tags</div>
-                }
-              </div>
+                </div>
+              }
               }
             </div>
           }
@@ -455,7 +502,7 @@ export class ItemEditComponent {
 
   protected readonly form = signal<ItemForm>({
     name: '', category_id: '', subcategory_id: '', unit: '', base_price: '', install_cost: '', install_unit: '',
-    install_description: '', location_coverage: '', lead_time_days: '', description: '',
+    install_description: '', location_coverage: '', lead_time_days: '', description: '', tier: '', tags: [],
   });
   protected readonly imageUrl = signal<string | null>(null);
   protected readonly images = signal<GalleryImage[]>([]);
@@ -644,6 +691,34 @@ export class ItemEditComponent {
   private readonly unitsRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/item_unit/values');
   protected readonly unitOptions = computed<EditFieldOption[]>(() => (this.unitsRes.value() ?? []).map((u) => ({ label: u.label, value: u.code })));
 
+  // pV2-STORE-WHATS-HOT-01 — item quality/merchandising tier (item_tier codelist:
+  // budget…luxury + bronze/silver/gold). '—' clears it (tier is optional).
+  private readonly tiersRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/item_tier/values');
+  protected readonly tierOptions = computed<EditFieldOption[]>(() => [
+    { label: '—', value: '' },
+    ...(this.tiersRes.value() ?? []).map((t) => ({ label: t.label, value: t.code })),
+  ]);
+
+  /** Free-text tag editor state (items.tags). The "What's Hot" quick toggle + the
+   *  add-input write here; save persists via buildBody. */
+  protected readonly tagInput = signal('');
+  protected readonly WHATS_HOT = WHATS_HOT;
+  protected readonly hasWhatsHot = computed(() => this.form().tags.includes(WHATS_HOT));
+  protected addTag(raw: string): void {
+    const t = raw.trim();
+    if (!t) return;
+    if (!this.form().tags.some((x) => x.toLowerCase() === t.toLowerCase())) {
+      this.patch({ tags: [...this.form().tags, t] });
+    }
+    this.tagInput.set('');
+  }
+  protected removeTag(tag: string): void {
+    this.patch({ tags: this.form().tags.filter((t) => t !== tag) });
+  }
+  protected toggleWhatsHot(): void {
+    this.hasWhatsHot() ? this.removeTag(WHATS_HOT) : this.addTag(WHATS_HOT);
+  }
+
   /** How install_cost applies (fixed set — not a codelist). */
   protected readonly installUnitOptions: EditFieldOption[] = [
     { label: 'Per item (× quantity)', value: 'per_item' },
@@ -678,6 +753,8 @@ export class ItemEditComponent {
         location_coverage: item.location_coverage ?? '',
         lead_time_days: item.lead_time_days != null ? String(item.lead_time_days) : '',
         description: item.description ?? '',
+        tier: item.tier ?? '',
+        tags: Array.isArray(item.tags) ? [...item.tags] : [],
       });
       await this.initCascade(item.category_id ?? '', item.subcategory_id ?? '');
       this.imageUrl.set(item.image_url ?? null);
@@ -821,6 +898,8 @@ export class ItemEditComponent {
       install_description: f.install_description.trim() || null,
       location_coverage: f.location_coverage.trim() || null,
       lead_time_days: f.lead_time_days === '' ? null : Number(f.lead_time_days),
+      tier: f.tier || null,
+      tags: f.tags,
       image_url: this.imageUrl(),
       images: this.images(),
       attributes: {

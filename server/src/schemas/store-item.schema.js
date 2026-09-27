@@ -40,6 +40,10 @@ const StoreItemCreateSchema = z
     image_url: z.string().trim().max(1000).nullable().optional(),
     images: z.array(GalleryImageSchema).max(20).optional(),
     tags: z.array(z.string().trim().max(60)).max(30).optional(),
+    // pV2-STORE-WHATS-HOT-01 — item quality/merchandising tier (item_tier codelist:
+    // budget…luxury + bronze/silver/gold). Free string here; the editor offers the
+    // codelist values. null clears it.
+    tier: z.string().trim().max(40).nullable().optional(),
     // pV2-STORE-ITEM-MEASURE-VOLUME-01 — attributes JSON bag (item.service
     // already persists it; it was being .strip()'d here). Shallow-validated:
     // `dimensions` = freeform label/value measurement rows; `price_tiers` =

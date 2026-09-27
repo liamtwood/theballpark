@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, resource, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { LucideAngularModule } from 'lucide-angular';
@@ -17,6 +17,9 @@ import { WebsiteImportPanelComponent } from './website-import-panel.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { HScrollComponent } from '../../shared/hscroll/hscroll.component';
+
+/** The merchandising tag the shopfront's "What's Hot" menu features. */
+const WHATS_HOT = "What's Hot";
 
 /** pV2-06d — /suppliers/:id (the v1.65dm supplier detail, decomposed):
  *  hero (name + city + favourite heart + tab band) over two tabs —
@@ -106,6 +109,9 @@ import { HScrollComponent } from '../../shared/hscroll/hscroll.component';
                  to the menu — each browses in place; no mega-menu needed. -->
             <div class="mx-auto w-full max-w-[var(--workspace-max)] px-2 py-2">
               <app-hscroll>
+                @if (hasHot(sup)) {
+                  <button type="button" class="bp-shopfront-menu__link bp-shopfront-menu__link--hot" [class.bp-shopfront-menu__link--on]="isHotSelected()" (click)="shopPickHot()">🔥 What's Hot</button>
+                }
                 <button type="button" class="bp-shopfront-menu__link" (click)="shopPick(null, null, 'All items')">All items</button>
                 @for (s of shopSoleSubcats(sup); track s.id) {
                   <button type="button" class="bp-shopfront-menu__link" (click)="shopPick(sole.id, s.id, s.name, s.tagline)">{{ s.name }}</button>
@@ -115,6 +121,9 @@ import { HScrollComponent } from '../../shared/hscroll/hscroll.component';
           } @else {
             <div class="mx-auto w-full max-w-[var(--workspace-max)] px-2 py-2">
               <app-hscroll>
+                @if (hasHot(sup)) {
+                  <button type="button" class="bp-shopfront-menu__link bp-shopfront-menu__link--hot" [class.bp-shopfront-menu__link--on]="isHotSelected()" (click)="shopPickHot()">🔥 What's Hot</button>
+                }
                 <button type="button" class="bp-shopfront-menu__link" (click)="shopPick(null, null, 'All items')">All items</button>
                 @for (c of shopNavCats(sup); track c.id) {
                   <button
@@ -342,12 +351,14 @@ export class SupplierDetailComponent {
     // cards again (not a stale in-place selection).
     this.openCat.set(null);
     this.shopBrowse.set(null);
+    // Re-arm the What's Hot default so re-entering the Shopfront lands on it again.
+    this.hotDefaultArmed = true;
     // Explicit key for all three surfaces (profile / storefront / store) so deep
-    // links are unambiguous; clear the store's cat/item drill on tab switch.
+    // links are unambiguous; clear the store's cat/sub/tag/item drill on tab switch.
     this.router
       .navigate([], {
         relativeTo: this.route,
-        queryParams: { tab, cat: null, item: null },
+        queryParams: { tab, cat: null, sub: null, tag: null, item: null },
         queryParamsHandling: 'merge',
       })
       .catch((err) => console.warn('[SupplierDetail] navigation failed', err));
@@ -369,6 +380,42 @@ export class SupplierDetailComponent {
   protected readonly openCat = signal<string | null>(null);
   protected readonly shopBrowse = signal<{ title: string; tagline: string | null } | null>(null);
   protected toggleCat(id: string): void { this.openCat.update((v) => (v === id ? null : id)); }
+
+  /** pV2-STORE-WHATS-HOT-01 — does this store have any "What's Hot" items? */
+  protected hasHot(sup: SupplierDetail): boolean { return (sup.hotCount ?? 0) > 0; }
+  /** The What's Hot menu link is the active one when the ?tag= filter is on it. */
+  protected readonly isHotSelected = computed(() => this.store.tagFilter() === WHATS_HOT);
+
+  /** What's Hot menu click / default landing — browse this store's hot items in place.
+   *  `replace` avoids adding a history entry when it's the automatic default. */
+  protected shopPickHot(replace = false): void {
+    this.shopBrowse.set({ title: "What's Hot", tagline: null });
+    this.openCat.set(null);
+    this.router
+      .navigate([], {
+        relativeTo: this.route,
+        queryParams: { tab: 'storefront', cat: null, sub: null, tag: WHATS_HOT, item: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: replace,
+      })
+      .catch((err) => console.warn('[SupplierDetail] navigation failed', err));
+  }
+
+  /** Default the shopfront to What's Hot the first time you land on it for a store
+   *  that has hot items (Liam: "when you go into a store it defaults to What's Hot").
+   *  One-shot per storefront entry; re-armed by setTab so returning re-defaults, but
+   *  an explicit pick (All items / a category) sticks. */
+  private hotDefaultArmed = true;
+  private readonly hotDefaultEffect = effect(() => {
+    const sup = this.detail.value();
+    if (!sup || !this.hotDefaultArmed || this.tab() !== 'storefront') return;
+    const q = this.query();
+    const hasSelection = q.get('cat') || q.get('sub') || q.get('tag') || q.get('item');
+    if (this.hasHot(sup) && !hasSelection) {
+      this.hotDefaultArmed = false;
+      this.shopPickHot(true);
+    }
+  });
 
   /** Close the open mega-menu on any click outside the menu band (the band's own
    *  buttons live inside .bp-shopfront-menu, so their toggle survives). */
@@ -446,7 +493,7 @@ export class SupplierDetailComponent {
     this.router
       .navigate([], {
         relativeTo: this.route,
-        queryParams: { tab: 'storefront', cat: e.categoryId, sub: e.subcategoryId, item: null },
+        queryParams: { tab: 'storefront', cat: e.categoryId, sub: e.subcategoryId, tag: null, item: null },
         queryParamsHandling: 'merge',
       })
       .catch((err) => console.warn('[SupplierDetail] navigation failed', err));

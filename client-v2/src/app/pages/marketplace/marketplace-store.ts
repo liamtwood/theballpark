@@ -69,6 +69,8 @@ export class MarketplaceStore {
   readonly priceBracket = computed(() => this.query().get('price') || null);
   readonly tier = computed(() => asTier(this.query().get('tier')));
   readonly supplierId = computed(() => this.query().get('sup') || null);
+  /** Free-text tag filter (?tag=) — e.g. the shopfront "What's Hot" menu. */
+  readonly tagFilter = computed(() => this.query().get('tag') || null);
   readonly hasFilters = computed(
     () => !!(this.priceBracket() || this.tier() || this.supplierId())
   );
@@ -99,7 +101,7 @@ export class MarketplaceStore {
   /** The filter signature — offset + accumulation reset on ANY change. */
   private readonly filterKey = computed(
     () =>
-      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.subSubcategoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}|${this.statusFilter() ?? ''}|${this.activeFilter() ?? ''}`
+      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.subSubcategoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}|${this.tagFilter() ?? ''}|${this.statusFilter() ?? ''}|${this.activeFilter() ?? ''}`
   );
 
   /** Local page offset; snaps back to 0 when the filters change. */
@@ -206,6 +208,7 @@ export class MarketplaceStore {
         priceMin: bracket?.min ?? null,
         priceMax: bracket?.max ?? null,
         tier: this.tier(),
+        tag: this.tagFilter(),
         supplier: this.pinnedSupplierId() ?? this.supplierId(),
         // Sent raw (null omitted by the query builder): 'all' reaches the server
         // so it can tell "explicit everything" from the admin default (absent).
@@ -303,6 +306,10 @@ export class MarketplaceStore {
   }
   setSupplier(id: string | null): void {
     this.merge({ sup: id, item: null });
+  }
+  /** Free-text tag filter (?tag=) — the shopfront "What's Hot" menu drives this. */
+  setTagFilter(tag: string | null): void {
+    this.merge({ tag: tag || null, item: null });
   }
   /** Suppliers tab → a supplier card body click: flip to Items and filter to that
    *  supplier (the "Visit Store" link handles the shopfront) — Liam 2026-09-27. */

@@ -352,7 +352,7 @@ router.get('/items', async (req, res, next) => {
         details: z.flattenError(parsed.error).fieldErrors,
       });
     }
-    const { cat, sub, q, offset, priceMin, priceMax, tier, supplier, status, active } = parsed.data;
+    const { cat, sub, q, offset, priceMin, priceMax, tier, supplier, status, active, tag } = parsed.data;
     const vals = [req.user.org_id]; // $1 — ownership flag, never from the client
     // kind='component' items are the supplier's private cost-buildup library —
     // surfaced ONLY in Customize (Explore), never in the marketplace browse
@@ -407,6 +407,8 @@ router.get('/items', async (req, res, next) => {
     if (priceMax !== undefined) { vals.push(priceMax); where.push(`i.base_price <= $${vals.length}`); }
     if (tier) { vals.push(tier); where.push(`i.tier = $${vals.length}`); }
     if (supplier) { vals.push(supplier); where.push(`i.org_id = $${vals.length}`); }
+    // pV2-STORE-WHATS-HOT-01 — tag filter (e.g. the shopfront "What's Hot" menu).
+    if (tag) { vals.push(tag); where.push(`$${vals.length} = ANY(i.tags)`); }
     if (q) {
       vals.push(`%${q.replace(/[%_\\]/g, '\\$&')}%`);
       where.push(`(i.name ILIKE $${vals.length} OR i.description ILIKE $${vals.length})`);

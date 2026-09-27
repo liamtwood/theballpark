@@ -108,6 +108,11 @@ const NEW_VALUES = {
     { code: 'premium',          label: 'Premium',          sort: 2, def: false },
     { code: 'luxury',           label: 'Luxury',           sort: 3, def: false },
     { code: 'aim_for_the_moon', label: 'Aim for the Moon', sort: 4, def: false },
+    // Bronze/Silver/Gold merchandising tiers (Liam 2026-09-27) — additive alongside
+    // the budget→luxury quality scale; suppliers pick per item in the editor.
+    { code: 'bronze',           label: 'Bronze',           sort: 5, def: false },
+    { code: 'silver',           label: 'Silver',           sort: 6, def: false },
+    { code: 'gold',             label: 'Gold',             sort: 7, def: false },
   ],
   // Mood/vibe — seed only; hidden in UI for now (classifier-fed later).
   mood: [
