@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
@@ -8,6 +8,7 @@ import { DialogModule } from 'primeng/dialog';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribute-cards.component';
 import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-picker.component';
+import { normalizeVariants, allVariantImages } from '../../shared/catalogue/variants.util';
 
 /** Add-to-ballpark payload — the item + the chosen variant (pV2-STORE-VARIANTS-
  *  UPCHARGE-01). `variant` is null when the item has no variants / nothing picked. */
@@ -64,11 +65,20 @@ export interface QuickAddEvent {
             <lucide-icon name="chevron-right" [size]="15" />
           </a>
 
-          @if (it.coverUrl) {
-            <img class="bp-qv-img" [src]="it.coverUrl" [alt]="it.name" loading="eager" />
-          } @else {
-            <div class="bp-qv-img bp-qv-img--empty"><lucide-icon name="store" [size]="26" [strokeWidth]="1.5" /></div>
-          }
+          <!-- Cover carousel (pV2-STORE-IMAGE-VARIANTS-01): arrows page through the item
+               cover + each variant option's image; picking an option jumps to its image
+               (does nothing if that option has none). -->
+          <div class="bp-qv-imgwrap">
+            @if (currentImage(); as cover) {
+              <img class="bp-qv-img" [src]="cover" [alt]="it.name" loading="eager" />
+            } @else {
+              <div class="bp-qv-img bp-qv-img--empty"><lucide-icon name="store" [size]="26" [strokeWidth]="1.5" /></div>
+            }
+            @if (imageList().length > 1) {
+              <button type="button" class="bp-qv-arrow bp-qv-arrow--l" (click)="prevImage()" aria-label="Previous image"><lucide-icon name="chevron-left" [size]="20" /></button>
+              <button type="button" class="bp-qv-arrow bp-qv-arrow--r" (click)="nextImage()" aria-label="Next image"><lucide-icon name="chevron-right" [size]="20" /></button>
+            }
+          </div>
 
           <div class="flex items-center justify-between gap-3">
             <div class="flex min-w-0 items-center gap-2">
@@ -85,7 +95,7 @@ export interface QuickAddEvent {
           <!-- Variant configurator (pV2-STORE-VARIANTS-01) — owns the price when the
                item is a variable product; renders nothing otherwise. The chosen combo
                drives the "Add to ballpark" value below. -->
-          <app-item-variant-picker [attributes]="it.attributes ?? null" [basePrice]="it.basePrice" (selectionChange)="chosenCombo.set($event)" />
+          <app-item-variant-picker [attributes]="it.attributes ?? null" [basePrice]="it.basePrice" (selectionChange)="chosenCombo.set($event)" (imageChange)="onVariantImage($event)" />
 
           <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — KEY: Volume pricing (guide tiers);
                then the shared Options picklist + Show-more spec-group cards. Only
@@ -169,12 +179,32 @@ export interface QuickAddEvent {
         font-size: var(--text-sm);
         box-shadow: var(--shadow-md);
       }
+      .bp-qv-imgwrap { position: relative; }
       .bp-qv-img {
         width: 100%;
         aspect-ratio: 16 / 10;
         object-fit: cover;
         border-radius: var(--radius-lg);
       }
+      .bp-qv-arrow {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: var(--radius-pill);
+        background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+        color: var(--color-text);
+        border: 1px solid var(--color-border-hairline);
+        box-shadow: var(--shadow-md);
+        cursor: pointer;
+      }
+      .bp-qv-arrow:hover { background: var(--color-surface); border-color: var(--theme-accent); }
+      .bp-qv-arrow--l { left: 10px; }
+      .bp-qv-arrow--r { right: 10px; }
       .bp-qv-img--empty {
         display: flex;
         align-items: center;
@@ -250,6 +280,30 @@ export class QuickViewDialogComponent {
   /** The combo chosen in the variant picker (null until a full combo is picked) —
    *  drives the "Add to ballpark" value. */
   protected readonly chosenCombo = signal<{ values: Record<string, string>; price: number } | null>(null);
+
+  // ── Cover carousel (pV2-STORE-IMAGE-VARIANTS-01) ──────────────────────────────
+  /** The item cover + each variant option's image, deduped — what the arrows page. */
+  protected readonly imageList = computed(() => {
+    const cover = this.item()?.coverUrl ?? null;
+    const m = normalizeVariants((this.item()?.attributes as Record<string, unknown> | null)?.['variants']);
+    const imgs = [cover, ...allVariantImages(m)].filter((u): u is string => !!u);
+    return [...new Set(imgs)];
+  });
+  protected readonly imgIndex = signal(0);
+  protected readonly currentImage = computed(() => this.imageList()[this.imgIndex()] ?? null);
+  protected prevImage(): void { const n = this.imageList().length; if (n) this.imgIndex.set((this.imgIndex() - 1 + n) % n); }
+  protected nextImage(): void { const n = this.imageList().length; if (n) this.imgIndex.set((this.imgIndex() + 1) % n); }
+  /** Picking an option jumps to its image; if it has none, stay put (Liam). */
+  protected onVariantImage(img: string | null): void {
+    if (!img) return;
+    const i = this.imageList().indexOf(img);
+    if (i >= 0) this.imgIndex.set(i);
+  }
+
+  constructor() {
+    // Reset the carousel to the cover whenever the dialog opens on a new item.
+    effect(() => { this.item(); this.imgIndex.set(0); });
+  }
 
   /** Quantity to add (pV2-STORE-VARIANTS-UPCHARGE-01 / Liam) — enterable in the
    *  dialog so you can type 100 rather than nudging the card stepper. Resets to 1

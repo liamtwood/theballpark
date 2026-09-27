@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { TooltipModule } from 'primeng/tooltip';
-import { VariantMatrix, VariantValue, normalizeVariants, computeUnitPrice, minUnitPrice, hasPricing } from './variants.util';
+import { VariantMatrix, VariantValue, normalizeVariants, computeUnitPrice, minUnitPrice, hasPricing, selectedImage } from './variants.util';
 
 /** The resolved selection emitted to the host (for add-to-quote wiring). */
 export interface VariantSelection { values: Record<string, string>; price: number; }
@@ -92,6 +92,10 @@ export class ItemVariantPickerComponent {
   readonly basePrice = input<number | null>(null);
   /** The resolved selection (null until every dimension is chosen). */
   readonly selectionChange = output<VariantSelection | null>();
+  /** pV2-STORE-IMAGE-VARIANTS-01 — the image for the current pick (the most specific
+   *  selected value that has one), or null. Fires on every pick so the host can swap
+   *  the hero/cover image live — even before all dimensions are chosen. */
+  readonly imageChange = output<string | null>();
 
   private readonly matrix = computed<VariantMatrix | null>(() => normalizeVariants(
     (this.attributes() as Record<string, unknown> | null)?.['variants']
@@ -122,6 +126,8 @@ export class ItemVariantPickerComponent {
       if (!this.allChosen()) { this.selectionChange.emit(null); return; }
       this.selectionChange.emit({ values: { ...this.selected() }, price: this.unitPrice() });
     });
+    // Swap the hero image live as values are picked (the selected value's image).
+    effect(() => { this.imageChange.emit(selectedImage(this.matrix(), this.selected())); });
   }
 
   protected pick(dim: string, value: string): void {

@@ -13,7 +13,14 @@
 // working until re-saved. `price is a guide`, so approximate derivations are fine.
 
 export type VariantMode = 'none' | 'upcharge' | 'absolute';
-export interface VariantValue { value: string; mode: VariantMode; amount: number; }
+export interface VariantValue {
+  value: string;
+  mode: VariantMode;
+  amount: number;
+  /** pV2-STORE-IMAGE-VARIANTS-01 — an image for this value (e.g. the orange chair),
+   *  shown as the hero when the buyer picks it. */
+  imageUrl?: string | null;
+}
 export interface VariantDimension { name: string; values: VariantValue[]; }
 export interface VariantMatrix { dimensions: VariantDimension[]; }
 
@@ -34,11 +41,11 @@ export function normalizeVariants(raw: unknown): VariantMatrix | null {
     const name = String(dim.name ?? '');
     const rawVals = Array.isArray(dim.values) ? dim.values : [];
     const values: VariantValue[] = rawVals.map((v) => {
-      // Current shape: {value, mode, amount}.
+      // Current shape: {value, mode, amount, imageUrl?}.
       if (v && typeof v === 'object' && 'mode' in (v as object)) {
-        const o = v as { value?: unknown; mode?: unknown; amount?: unknown };
+        const o = v as { value?: unknown; mode?: unknown; amount?: unknown; imageUrl?: unknown };
         const mode = (o.mode === 'absolute' || o.mode === 'upcharge') ? o.mode : 'none';
-        return { value: String(o.value ?? ''), mode: mode as VariantMode, amount: Number(o.amount) || 0 };
+        return { value: String(o.value ?? ''), mode: mode as VariantMode, amount: Number(o.amount) || 0, imageUrl: o.imageUrl ? String(o.imageUrl) : null };
       }
       // Earlier upcharge shape: {value, upcharge}.
       if (v && typeof v === 'object' && 'value' in (v as object)) {
@@ -93,4 +100,31 @@ export function minUnitPrice(base: number | null, m: VariantMatrix | null): numb
 /** Does any value affect the price? (false = every value is a free pick.) */
 export function hasPricing(m: VariantMatrix | null): boolean {
   return !!m && m.dimensions.some((d) => d.values.some((v) => v.mode !== 'none'));
+}
+
+/** The image to show for a selection — the last selected value (most specific
+ *  dimension) that carries an imageUrl, or null. Powers the hero-swap. */
+export function selectedImage(m: VariantMatrix | null, selected: Record<string, string>): string | null {
+  if (!m) return null;
+  let img: string | null = null;
+  for (const d of m.dimensions) {
+    const hit = d.values.find((x) => x.value === selected[d.name]);
+    if (hit?.imageUrl) img = hit.imageUrl;
+  }
+  return img;
+}
+
+/** Any value in the matrix carries an image? (drives whether hero-swap is possible.) */
+export function hasVariantImages(m: VariantMatrix | null): boolean {
+  return !!m && m.dimensions.some((d) => d.values.some((v) => !!v.imageUrl));
+}
+
+/** Every distinct variant-value image, in dimension/value order (for the carousel). */
+export function allVariantImages(m: VariantMatrix | null): string[] {
+  if (!m) return [];
+  const out: string[] = [];
+  for (const d of m.dimensions) for (const v of d.values) {
+    if (v.imageUrl && !out.includes(v.imageUrl)) out.push(v.imageUrl);
+  }
+  return out;
 }
