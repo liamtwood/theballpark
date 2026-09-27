@@ -38,16 +38,20 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
           </div>
         }
 
-        <div class="bp-variant-price">
-          @if (chosen(); as c) {
-            <span class="bp-price-large">{{ c.price | currency: 'GBP' : 'symbol' : priceDigits(c.price) }}</span>
-          } @else if (allChosen()) {
-            <span class="bp-body-small text-warn">That combination isn't available — try another.</span>
-          } @else {
-            <span class="bp-price-large">From {{ minPrice() | currency: 'GBP' : 'symbol' : priceDigits(minPrice()) }}</span>
-            <span class="bp-caption text-secondary">Choose all options for the exact price</span>
-          }
-        </div>
+        <!-- Price line only when the matrix actually affects price. A free-pick
+             variant (no combos) shows just the selectors. -->
+        @if (hasPricing()) {
+          <div class="bp-variant-price">
+            @if (chosen(); as c) {
+              <span class="bp-price-large">{{ c.price | currency: 'GBP' : 'symbol' : priceDigits(c.price) }}</span>
+            } @else if (allChosen()) {
+              <span class="bp-body-small text-warn">That combination isn't available — try another.</span>
+            } @else {
+              <span class="bp-price-large">From {{ minPrice() | currency: 'GBP' : 'symbol' : priceDigits(minPrice()) }}</span>
+              <span class="bp-caption text-secondary">Choose all options for the exact price</span>
+            }
+          </div>
+        }
       </div>
     }
   `,
@@ -100,11 +104,17 @@ export class ItemVariantPickerComponent {
     const block = v as { dimensions?: unknown; combos?: unknown };
     const dimensions = Array.isArray(block.dimensions) ? (block.dimensions as VariantDimension[]) : [];
     const combos = Array.isArray(block.combos) ? (block.combos as VariantCombo[]) : [];
-    return dimensions.length && combos.length ? { dimensions, combos } : null;
+    // Render whenever there are dimensions — a "free pick" variant (all one price →
+    // NO combos, e.g. seat-pad colour) is still a real selector; it just doesn't
+    // change the price. Requiring combos hid those pickers entirely (Liam QC).
+    return dimensions.length ? { dimensions, combos } : null;
   });
 
   protected readonly dimensions = computed(() => this.variants()?.dimensions ?? []);
   private readonly combos = computed(() => this.variants()?.combos ?? []);
+  /** Does the matrix carry priced combinations? (false = a pure free-pick — show the
+   *  selectors but no price line; the item's own price stands.) */
+  protected readonly hasPricing = computed(() => this.combos().length > 0);
 
   /** The chosen value per dimension (empty until the visitor picks). */
   protected readonly selected = signal<Record<string, string>>({});
@@ -125,6 +135,9 @@ export class ItemVariantPickerComponent {
   protected readonly chosen = computed<VariantCombo | null>(() => {
     if (!this.allChosen()) return null;
     const sel = this.selected();
+    // Free-pick variant (no priced combos): the selection is valid at the item's
+    // base price — synthesize the combo so add-to-quote still captures the config.
+    if (!this.combos().length) return { values: { ...sel }, price: this.basePrice() ?? 0 };
     return this.combos().find((c) => Object.keys(c.values).every((k) => c.values[k] === sel[k])) ?? null;
   });
 
