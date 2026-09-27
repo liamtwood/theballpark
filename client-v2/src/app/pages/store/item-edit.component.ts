@@ -535,7 +535,7 @@ export class ItemEditComponent {
       dims: v.dimensions.map((d) => ({
         name: d.name,
         count: d.values?.length ?? 0,
-        pricing: (d.values ?? []).some((x) => x.upcharge !== 0),
+        pricing: (d.values ?? []).some((x) => x.mode !== 'none'),
       })),
     };
   });

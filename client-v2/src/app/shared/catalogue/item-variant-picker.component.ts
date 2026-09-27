@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { TooltipModule } from 'primeng/tooltip';
-import { VariantMatrix, normalizeVariants, totalUpcharge } from './variants.util';
+import { VariantMatrix, VariantValue, normalizeVariants, computeUnitPrice, minUnitPrice, hasPricing } from './variants.util';
 
 /** The resolved selection emitted to the host (for add-to-quote wiring). */
 export interface VariantSelection { values: Record<string, string>; price: number; }
@@ -29,7 +29,7 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
                   type="button"
                   class="bp-variant-chip"
                   [class.bp-variant-chip--on]="selected()[d.name] === v.value"
-                  [pTooltip]="upchargeLabel(v.upcharge) ?? ''"
+                  [pTooltip]="priceHint(v) ?? ''"
                   tooltipStyleClass="bp-tooltip"
                   tooltipPosition="top"
                   (click)="pick(d.name, v.value)"
@@ -97,10 +97,8 @@ export class ItemVariantPickerComponent {
     (this.attributes() as Record<string, unknown> | null)?.['variants']
   ));
   protected readonly dimensions = computed(() => this.matrix()?.dimensions ?? []);
-  /** Any value carries a non-zero upcharge → a choice affects the price. */
-  protected readonly hasPricing = computed(() =>
-    this.dimensions().some((d) => d.values.some((v) => v.upcharge !== 0))
-  );
+  /** Any value affects the price → show the price line. */
+  protected readonly hasPricing = computed(() => hasPricing(this.matrix()));
 
   /** The chosen value per dimension (empty until the visitor picks). */
   protected readonly selected = signal<Record<string, string>>({});
@@ -110,18 +108,11 @@ export class ItemVariantPickerComponent {
     return this.dimensions().length > 0 && this.dimensions().every((d) => sel[d.name] != null);
   });
 
-  /** Configured unit price = base + Σ(selected upcharges). */
-  protected readonly unitPrice = computed(() => (this.basePrice() ?? 0) + totalUpcharge(this.matrix(), this.selected()));
+  /** Configured unit price = base, then per dimension (absolute sets, upcharge adds). */
+  protected readonly unitPrice = computed(() => computeUnitPrice(this.basePrice(), this.matrix(), this.selected()));
 
-  /** Cheapest configured price — base + the min upcharge of each dimension. */
-  protected readonly minPrice = computed(() => {
-    let p = this.basePrice() ?? 0;
-    for (const d of this.dimensions()) {
-      const mins = d.values.map((v) => v.upcharge);
-      if (mins.length) p += Math.min(...mins);
-    }
-    return p;
-  });
+  /** Cheapest achievable configured price — the honest "From". */
+  protected readonly minPrice = computed(() => minUnitPrice(this.basePrice(), this.matrix()));
 
   constructor() {
     // Reset picks whenever the item changes.
@@ -142,12 +133,13 @@ export class ItemVariantPickerComponent {
     });
   }
 
-  /** Hover label for a chip — "+£5", "−£2", or null for a free (£0) value. */
-  protected upchargeLabel(upcharge: number): string | null {
-    if (!upcharge) return null;
-    const abs = Math.abs(upcharge);
+  /** Hover label for a chip — absolute "£68", upcharge "+£5"/"−£2", null for free. */
+  protected priceHint(v: VariantValue): string | null {
+    if (v.mode === 'none' || !v.amount) return null;
+    const abs = Math.abs(v.amount);
     const money = '£' + (abs < 100 ? abs.toFixed(2) : String(Math.round(abs)));
-    return (upcharge > 0 ? '+' : '−') + money;
+    if (v.mode === 'absolute') return money;
+    return (v.amount > 0 ? '+' : '−') + money;
   }
 
   protected priceDigits(p: number | null): string {

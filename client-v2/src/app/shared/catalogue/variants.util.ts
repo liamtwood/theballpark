@@ -1,22 +1,26 @@
-// pV2-STORE-VARIANTS-UPCHARGE-01 — the variant model is UPCHARGE-based (Liam):
-// each dimension value carries a +£ delta (0 = free pick); the final unit price is
-// base + Σ(selected upcharges). Volume pricing owns the quantity axis separately, so
-// the two compose instead of colliding (the old absolute combo matrix did both).
+// pV2-STORE-VARIANTS-UPCHARGE-01 — variants carry a per-value PRICE MODE (Liam):
+//   none     — free pick (colour); no price effect.
+//   upcharge — adds its amount to the running price (Gold +£5).
+//   absolute — SETS the running price to its amount (A4 = £68).
 //
-// Stored shape (attributes.variants): { dimensions: [{ name, values: [{value, upcharge}] }] }.
-// This normalizer also reads the LEGACY shape ({ dimensions:[{name,values:[str]}], combos }),
-// deriving each value's upcharge from the cheapest combo carrying it — so items loaded
-// before the switch keep working until re-saved. `price is a guide`, so the derived
-// deltas being approximate for non-additive matrices is acceptable.
+// Final unit price: start at the item base, then walk the dimensions in order —
+// `absolute` sets, `upcharge` adds, `none` skips. So Size(absolute £68) +
+// Paper(upcharge +£5) = £73. Volume pricing is a separate mechanism (not combined).
+//
+// Stored shape (attributes.variants): { dimensions: [{ name, values: [{value, mode, amount}] }] }.
+// normalizeVariants also reads the earlier upcharge shape ({value, upcharge}) and the
+// legacy combo matrix ({values:[str], combos}), so items saved before each switch keep
+// working until re-saved. `price is a guide`, so approximate derivations are fine.
 
-export interface VariantValue { value: string; upcharge: number; }
+export type VariantMode = 'none' | 'upcharge' | 'absolute';
+export interface VariantValue { value: string; mode: VariantMode; amount: number; }
 export interface VariantDimension { name: string; values: VariantValue[]; }
 export interface VariantMatrix { dimensions: VariantDimension[]; }
 
 interface LegacyCombo { values: Record<string, string>; price: number; }
 
-/** Coerce any stored `attributes.variants` into the upcharge shape, or null when
- *  there are no dimensions. Tolerates the legacy combo matrix. */
+/** Coerce any stored `attributes.variants` into the mode shape, or null when there
+ *  are no dimensions. Tolerates the upcharge shape and the legacy combo matrix. */
 export function normalizeVariants(raw: unknown): VariantMatrix | null {
   if (!raw || typeof raw !== 'object') return null;
   const block = raw as { dimensions?: unknown; combos?: unknown };
@@ -30,29 +34,63 @@ export function normalizeVariants(raw: unknown): VariantMatrix | null {
     const name = String(dim.name ?? '');
     const rawVals = Array.isArray(dim.values) ? dim.values : [];
     const values: VariantValue[] = rawVals.map((v) => {
-      // New shape: {value, upcharge}.
+      // Current shape: {value, mode, amount}.
+      if (v && typeof v === 'object' && 'mode' in (v as object)) {
+        const o = v as { value?: unknown; mode?: unknown; amount?: unknown };
+        const mode = (o.mode === 'absolute' || o.mode === 'upcharge') ? o.mode : 'none';
+        return { value: String(o.value ?? ''), mode: mode as VariantMode, amount: Number(o.amount) || 0 };
+      }
+      // Earlier upcharge shape: {value, upcharge}.
       if (v && typeof v === 'object' && 'value' in (v as object)) {
         const o = v as { value?: unknown; upcharge?: unknown };
-        return { value: String(o.value ?? ''), upcharge: Number(o.upcharge) || 0 };
+        const up = Number(o.upcharge) || 0;
+        return { value: String(o.value ?? ''), mode: up ? 'upcharge' : 'none', amount: up };
       }
-      // Legacy shape: a bare string value — derive its upcharge from the combos.
+      // Legacy: a bare string value — derive an upcharge from the combos.
       const value = String(v);
       const matching = combos.filter((c) => c.values && c.values[name] === value);
-      const upcharge = matching.length ? Math.min(...matching.map((c) => Number(c.price) || 0)) - globalMin : 0;
-      return { value, upcharge: Math.max(0, Math.round(upcharge * 100) / 100) };
+      const up = matching.length ? Math.min(...matching.map((c) => Number(c.price) || 0)) - globalMin : 0;
+      const clean = Math.max(0, Math.round(up * 100) / 100);
+      return { value, mode: clean ? 'upcharge' : 'none', amount: clean };
     });
     return { name, values };
   });
   return { dimensions };
 }
 
-/** Σ of the selected values' upcharges. */
-export function totalUpcharge(m: VariantMatrix | null, selected: Record<string, string>): number {
-  if (!m) return 0;
-  let t = 0;
+/** Final unit price for a selection: base, then per dimension in order — absolute
+ *  sets, upcharge adds, none skips. Unselected dimensions are ignored. */
+export function computeUnitPrice(base: number | null, m: VariantMatrix | null, selected: Record<string, string>): number {
+  let unit = base ?? 0;
+  if (!m) return unit;
   for (const d of m.dimensions) {
     const hit = d.values.find((x) => x.value === selected[d.name]);
-    if (hit) t += hit.upcharge;
+    if (!hit) continue;
+    if (hit.mode === 'absolute') unit = hit.amount;
+    else if (hit.mode === 'upcharge') unit += hit.amount;
   }
-  return t;
+  return unit;
+}
+
+/** The lowest achievable unit price — greedy per dimension in order (each dimension
+ *  picks the value that minimises the running price). Exact for single dimensions;
+ *  an honest "From" guide across several. */
+export function minUnitPrice(base: number | null, m: VariantMatrix | null): number {
+  let unit = base ?? 0;
+  if (!m) return unit;
+  for (const d of m.dimensions) {
+    if (!d.values.length) continue;
+    let best: number | null = null;
+    for (const v of d.values) {
+      const u = v.mode === 'absolute' ? v.amount : v.mode === 'upcharge' ? unit + v.amount : unit;
+      if (best === null || u < best) best = u;
+    }
+    if (best !== null) unit = best;
+  }
+  return unit;
+}
+
+/** Does any value affect the price? (false = every value is a free pick.) */
+export function hasPricing(m: VariantMatrix | null): boolean {
+  return !!m && m.dimensions.some((d) => d.values.some((v) => v.mode !== 'none'));
 }
