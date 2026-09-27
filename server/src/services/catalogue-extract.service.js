@@ -965,12 +965,22 @@ async function processUrl(ctx, url) {
     const attributes = {};
     const groups = routeAttributes(p.attributes);
     for (const k of GROUP_KEYS) { if (groups[k].length) attributes[k] = groups[k]; }
-    // Selectable priced choices → options [{name, price}] (additive delta). No
-    // longer child items — the option list lives on the parent item.
+    // Selectable choices → a single-dimension VARIANT (flat `options` retired,
+    // pV2-STORE-VARIANTS-EDIT-01: variants are the one model, and handle the free-
+    // pick case cleanly). Free picks (all £0) → a picker-only dimension (no combos);
+    // real upcharges → absolute combo prices (base + delta). Skipped when the item
+    // already has a variant matrix (e.g. a Woo variable product).
     const options = (Array.isArray(p.options) ? p.options : [])
       .map((o) => ({ name: String(o?.name ?? '').trim(), price: toNumber(o?.price ?? o?.upcharge) || 0 }))
       .filter((o) => o.name);
-    if (options.length) attributes.options = options;
+    if (options.length && !attributes.variants) {
+      const base = toNumber(p.base_price) || 0;
+      const priced = options.some((o) => o.price);
+      attributes.variants = {
+        dimensions: [{ name: 'Option', values: options.map((o) => o.name) }],
+        combos: priced ? options.map((o) => ({ values: { Option: o.name }, price: base + (o.price || 0) })) : [],
+      };
+    }
     if (Array.isArray(p.priceTiers) && p.priceTiers.length) {
       // Canonical tier shape is { min, max, price } (item-edit + line-pricing).
       // Sort by lower threshold and DERIVE each upper bound from the next tier's

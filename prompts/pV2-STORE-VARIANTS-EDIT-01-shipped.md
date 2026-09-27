@@ -27,6 +27,15 @@ Extracted variable products (e.g. "Same Day Flyers London" — `bbb306af…/cac8
 - Build — ✓ `ng build` clean (pre-existing bundle-budget warnings only).
 - Editor shows + edits the flyer's 4-dimension matrix — ⏳ pending Liam QC on :4201.
 
+## Iteration 2 (2026-09-27) — Options retired; variants are the one model
+
+Liam QC'd variants ("great even with 1 option, even the no-cost is great") and decided to **remove flat Options entirely** — variants (incl. a single picker-only dimension) cover every case. No migration: the 60 dev items with options were test data (soft-deleted), the 1 preview item was deleted, and prod (master) was never deployed (0 items, still v1 shape).
+
+- **Import** (`catalogue-extract.service.js`): extracted selectable choices now become a **single-dimension variant** (`dimensions:[{name:'Option', values:[…]}]`) instead of `attributes.options`. Free picks (all £0) → picker-only (no combos); upcharges → absolute combo prices (base + delta). Skipped if the item already has a variant matrix.
+- **Editor** (`item-edit.component.ts`): removed the Options preview card, dialog, `optionsRows`/`optionsDraft` state + handlers, hydration and buildBody write. `options` still stripped from the raw-attributes passthrough so any legacy key is dropped on save.
+- **Read surface** (`item-attribute-cards.component.ts`): removed the "Choose your option" `<select>` (+ FormsModule); the variant picker owns choice/price on the surfaces that have it.
+- The separate BUILDUP child-item options picker (`project-estimate` / `options-picker`) is unrelated and untouched.
+
 ## Notes / follow-ups
 
 - base_price vs matrix: the item's `base_price` (quick-view "From £…") still comes from the cheapest combo at read time; not recomputed on edit here.

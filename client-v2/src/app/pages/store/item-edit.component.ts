@@ -202,25 +202,6 @@ const WHATS_HOT = "What's Hot";
                   </button>
                 </div>
 
-                <!-- Options — preview + edit-in-dialog -->
-                <div class="bp-qv-spec">
-                  <span class="bp-qv-spec__label"><lucide-icon name="list" [size]="13" /> Options</span>
-                  @if (filledOptions().length) {
-                    <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
-                      @for (o of filledOptions().slice(0, 3); track $index) {
-                        <dt class="bp-body-small text-secondary">{{ o.name }}</dt>
-                        <dd class="bp-body-small text-text">{{ o.price ? ('+£' + o.price) : 'included' }}</dd>
-                      }
-                    </dl>
-                    @if (filledOptions().length > 3) { <p class="bp-caption text-secondary mt-1">+{{ filledOptions().length - 3 }} more</p> }
-                  } @else {
-                    <p class="bp-qv-spec__val bp-qv-spec__val--soon">No options</p>
-                  }
-                  <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openOptionsDialog()">
-                    <lucide-icon name="pencil" [size]="14" /> Edit options
-                  </button>
-                </div>
-
                 <!-- Variants (multi-dimension matrix) — same preview + edit-in-dialog
                      pattern as Options/Volume, for consistency (Liam). -->
                 <div class="bp-qv-spec">
@@ -450,31 +431,6 @@ const WHATS_HOT = "What's Hot";
       </ng-template>
     </p-dialog>
 
-    <!-- Options add/edit (name + additive £ delta). -->
-    <p-dialog [visible]="optionsDialogOpen()" (visibleChange)="onOptionsVisible($event)"
-      styleClass="bp-modal" [modal]="true" [closable]="true" [dismissableMask]="true"
-      [style]="{ width: '540px', maxWidth: '94vw' }">
-      <ng-template pTemplate="header"><h2 class="bp-card-title">Options</h2></ng-template>
-      <div class="flex flex-col gap-2">
-        <div class="grid grid-cols-[2fr_1fr_28px] gap-2">
-          <span class="bp-caption text-muted">Option name</span>
-          <span class="bp-caption text-muted">+ £ delta</span><span></span>
-        </div>
-        @for (o of optionsDraft(); track $index) {
-          <div class="grid grid-cols-[2fr_1fr_28px] items-center gap-2">
-            <input class="bp-input-field" placeholder="e.g. Medium Orange" [value]="o.name" (input)="patchDraftOption($index, 'name', $any($event.target).value)" />
-            <input type="number" class="bp-input-field" placeholder="0.00" [value]="o.price" (input)="patchDraftOption($index, 'price', $any($event.target).value)" />
-            <button type="button" class="text-muted hover:text-text" (click)="removeDraftOption($index)" aria-label="Remove option"><lucide-icon name="trash-2" [size]="16" /></button>
-          </div>
-        }
-        <button type="button" class="bp-btn-outline bp-body-small self-start" (click)="addDraftOption()"><lucide-icon name="plus" [size]="14" /> Add option</button>
-      </div>
-      <ng-template pTemplate="footer">
-        <button type="button" class="bp-btn-outline" (click)="cancelOptionsDialog()">Cancel</button>
-        <button type="button" class="bp-btn-grad" (click)="saveOptionsDialog()">Done</button>
-      </ng-template>
-    </p-dialog>
-
     <!-- Variants (multi-dimension matrix) — draft edited in the dialog, committed on
          Done (same pattern as Options/Volume). Wider — the combo table needs room. -->
     <p-dialog [visible]="variantsDialogOpen()" (visibleChange)="onVariantsVisible($event)"
@@ -559,7 +515,6 @@ export class ItemEditComponent {
     specifications: [], features: [], style: [], measurements: [], materials: [],
   });
   protected readonly priceTiers = signal<{ min: string; max: string; price: string }[]>([]);
-  protected readonly optionsRows = signal<{ name: string; price: string }[]>([]);
   protected readonly rawAttributes = signal<Record<string, unknown>>({});
   protected readonly measureSuggestions = ['Height', 'Width', 'Depth', 'Weight', 'Seat Height', 'Volume', 'Material'];
 
@@ -839,8 +794,6 @@ export class ItemEditComponent {
         max: t.max == null ? '' : String(t.max),
         price: t.price == null ? '' : String(t.price),
       })));
-      const opts = Array.isArray(attrs['options']) ? (attrs['options'] as { name?: string; price?: number }[]) : [];
-      this.optionsRows.set(opts.map((o) => ({ name: o.name ?? '', price: o.price == null ? '' : String(o.price) })));
       // pV2-STORE-VARIANTS-EDIT-01 — hydrate the variant matrix (dimensions + combos).
       const rawV = attrs['variants'] as VariantMatrix | undefined;
       this.variantsState.set(rawV && Array.isArray(rawV.dimensions) && rawV.dimensions.length ? rawV : null);
@@ -874,12 +827,9 @@ export class ItemEditComponent {
 
   // ── Volume pricing + Options — preview cards + Ballpark-dialog add/edit ───
   protected readonly filledTiers = computed(() => this.priceTiers().filter((t) => String(t.price).trim() !== ''));
-  protected readonly filledOptions = computed(() => this.optionsRows().filter((o) => o.name.trim() !== ''));
 
   protected readonly volumeDialogOpen = signal(false);
-  protected readonly optionsDialogOpen = signal(false);
   protected readonly volumeDraft = signal<{ min: string; max: string; price: string }[]>([]);
-  protected readonly optionsDraft = signal<{ name: string; price: string }[]>([]);
 
   // Volume dialog — edits a draft; Done commits to priceTiers, Cancel discards.
   protected openVolumeDialog(): void { this.volumeDraft.set(this.priceTiers().map((t) => ({ ...t }))); this.volumeDialogOpen.set(true); }
@@ -890,17 +840,6 @@ export class ItemEditComponent {
   protected removeDraftTier(i: number): void { this.volumeDraft.update((d) => d.filter((_, x) => x !== i)); }
   protected patchDraftTier(i: number, key: 'min' | 'max' | 'price', val: string): void {
     this.volumeDraft.update((d) => d.map((r, x) => (x === i ? { ...r, [key]: val } : r)));
-  }
-
-  // Options dialog — edits a draft; Done commits to optionsRows, Cancel discards.
-  protected openOptionsDialog(): void { this.optionsDraft.set(this.optionsRows().map((o) => ({ ...o }))); this.optionsDialogOpen.set(true); }
-  protected cancelOptionsDialog(): void { this.optionsDialogOpen.set(false); }
-  protected saveOptionsDialog(): void { this.optionsRows.set(this.optionsDraft().map((o) => ({ ...o }))); this.optionsDialogOpen.set(false); this.scheduleSave(); }
-  protected onOptionsVisible(v: boolean): void { if (!v) this.cancelOptionsDialog(); }
-  protected addDraftOption(): void { this.optionsDraft.update((d) => [...d, { name: '', price: '' }]); }
-  protected removeDraftOption(i: number): void { this.optionsDraft.update((d) => d.filter((_, x) => x !== i)); }
-  protected patchDraftOption(i: number, key: 'name' | 'price', val: string): void {
-    this.optionsDraft.update((d) => d.map((r, x) => (x === i ? { ...r, [key]: val } : r)));
   }
 
   protected onPickImage(r: PickerResult): void {
@@ -970,9 +909,6 @@ export class ItemEditComponent {
         price_tiers: this.priceTiers()
           .filter((t) => String(t.price).trim() !== '')
           .map((t) => ({ min: t.min === '' ? 0 : Number(t.min), max: t.max === '' ? null : Number(t.max), price: Number(t.price) })),
-        options: this.optionsRows()
-          .filter((o) => o.name.trim() !== '')
-          .map((o) => ({ name: o.name.trim(), price: Number(o.price) || 0 })),
         // pV2-STORE-VARIANTS-EDIT-01 — write the matrix only when present, so
         // non-variant items keep a clean attributes bag (no empty `variants` key).
         ...(this.variantsState() ? { variants: this.variantsState() } : {}),
