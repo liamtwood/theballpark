@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output, si
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { LucideAngularModule } from 'lucide-angular';
 import { DialogModule } from 'primeng/dialog';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
@@ -18,7 +19,7 @@ import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-
 @Component({
   selector: 'app-quick-view-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, RouterLink, LucideAngularModule, DialogModule, ItemAttributeCardsComponent, ItemVariantPickerComponent],
+  imports: [CurrencyPipe, RouterLink, LucideAngularModule, DialogModule, ItemAttributeCardsComponent, ItemVariantPickerComponent, MarkdownPipe],
   template: `
     <p-dialog
       [visible]="!!item()"
@@ -37,7 +38,7 @@ import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-
           <div class="min-w-0">
             <h2 class="bp-card-title">{{ it.name }}</h2>
             @if (it.description) {
-              <p class="bp-body mt-1 text-secondary bp-qv-desc" [class.bp-qv-desc--clamp]="descLong() && !descOpen()">{{ it.description }}</p>
+              <div class="bp-md bp-body mt-1 text-secondary bp-qv-desc" [class.bp-qv-desc--clamp]="descLong() && !descOpen()" [innerHTML]="it.description | md"></div>
               @if (descLong()) {
                 <button type="button" class="bp-qv-morebtn" (click)="descOpen.set(!descOpen())">{{ descOpen() ? 'Show less' : 'Show more' }}</button>
               }
@@ -158,12 +159,16 @@ import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-
         color: var(--color-text-secondary);
       }
       /* .bp-qv-spec* now live in global styles.css (shared with the item view). */
+      /* Block-level markdown (paragraphs, lists) can't clamp with -webkit-line-clamp,
+         so cap the height instead — a soft fade would need a mask; a hard cut + Show
+         more reads fine for a Quick View header. */
       .bp-qv-desc--clamp {
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
+        max-height: 4.8em;
         overflow: hidden;
       }
+      /* Tighten the markdown block so it sits like the old <p> in the header. */
+      .bp-qv-desc.bp-md :first-child { margin-top: 0; }
+      .bp-qv-desc.bp-md :last-child { margin-bottom: 0; }
       .bp-qv-morebtn {
         margin-top: 4px;
         background: none;

@@ -17,7 +17,7 @@
 // lives in the main service and calls back into wooGetJson / wpFetchProduct here.
 
 const { guardedFetch } = require('../org-import.service');
-const { normUrl, htmlToPlain } = require('./util');
+const { normUrl, htmlToPlain, htmlToMarkdown } = require('./util');
 
 const WOO_MAX_PAGES = 30; // Store API per_page=100 → up to 3000 products
 const WP_MAX_PAGES = 30;  // wp/v2 per_page=100 → up to 3000 posts
@@ -207,7 +207,7 @@ async function wpFetchProduct(origin, slug) {
     slug: post.slug || slug,
     categorySlug: term?.slug || 'uncategorized',
     categoryName: (term && htmlToPlain(term.name)) || 'Uncategorized',
-    description: htmlToPlain(excerpt || content) || null,
+    description: htmlToMarkdown(excerpt || content) || null,
     price: wpParsePrice(excerpt) ?? wpParsePrice(content),
     imageUrl: (media && media.source_url) || null,
   };

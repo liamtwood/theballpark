@@ -15,4 +15,27 @@ function htmlToPlain(h) {
     .replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 2000);
 }
 
-module.exports = { normUrl, htmlToPlain };
+/** Convert supplier HTML to the small markdown subset the client `md` pipe renders
+ *  (bold, italic, bullet lists, paragraphs). Headings become bold lines (the pipe has
+ *  no `#` support). Preserves structure instead of flattening — used for DESCRIPTIONS
+ *  so they read as formatted text, not one blob. Bounded. */
+function htmlToMarkdown(h) {
+  let s = String(h || '');
+  s = s.replace(/<\s*(h[1-6])[^>]*>/gi, '\n\n**').replace(/<\s*\/\s*h[1-6]\s*>/gi, '**\n\n');
+  s = s.replace(/<\s*li[^>]*>/gi, '\n- ').replace(/<\s*\/\s*li\s*>/gi, '');
+  s = s.replace(/<\s*\/\s*(ul|ol)\s*>/gi, '\n');
+  s = s.replace(/<\s*(strong|b)[^>]*>/gi, '**').replace(/<\s*\/\s*(strong|b)\s*>/gi, '**');
+  s = s.replace(/<\s*(em|i)[^>]*>/gi, '*').replace(/<\s*\/\s*(em|i)\s*>/gi, '*');
+  s = s.replace(/<\s*br\s*\/?\s*>/gi, '\n');
+  s = s.replace(/<\s*\/\s*p\s*>/gi, '\n\n').replace(/<\s*p[^>]*>/gi, '');
+  s = s.replace(/<\s*hr[^>]*>/gi, '\n\n');
+  s = s.replace(/<[^>]+>/g, ' ');
+  s = s.replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&pound;/gi, '£')
+    .replace(/&#0*39;/g, "'").replace(/&(rsquo|#8217);/gi, "'").replace(/&(ldquo|rdquo|#8220|#8221);/gi, '"')
+    .replace(/&#(\d+);/g, (_, n) => { try { return String.fromCharCode(+n); } catch { return ' '; } })
+    .replace(/&[a-z]+;/gi, ' ');
+  s = s.replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  return s.slice(0, 4000);
+}
+
+module.exports = { normUrl, htmlToPlain, htmlToMarkdown };

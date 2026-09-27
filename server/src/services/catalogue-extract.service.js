@@ -16,7 +16,7 @@ const { als } = require('../db/request-context');
 const { guardedFetch } = require('./org-import.service');
 const { analyseCatalogue, extractProduct, classifyGroup: classifyGroupToCategory } = require('./ai.service');
 const ItemService = require('./item.service');
-const { normUrl, htmlToPlain } = require('./catalogue-extract/util');
+const { normUrl, htmlToPlain, htmlToMarkdown } = require('./catalogue-extract/util');
 // Platform profiles (pV2-STORE-PROFILES-01) — structured, crawl-free reads for sites
 // that expose an API (WooCommerce Store API / WordPress REST). detectProfile picks one;
 // the generic crawler below handles everything else.
@@ -840,7 +840,7 @@ async function processWooUrl(ctx, url) {
       data: {
         name: String(p.name).trim(),
         base_price: basePrice,
-        description: htmlToPlain(p.short_description || p.description || '') || null,
+        description: htmlToMarkdown(p.short_description || p.description || '') || null,
         unit: 'each',
         external_url: permalink,
         category_id: categoryId,
