@@ -55,11 +55,27 @@ the 2026-10-01 walkthrough. Status per table: **LOCKED** / **DRAFT** / **TODO**.
 ### `users`, `user_orgs` — TODO (detailed pass not done)
 Identity + membership (role/status). `user_orgs` = the access group (membership = inbox access).
 
-### `categories` — DRAFT (slimmed)
-`id`, `ref` (slug), `parent_id → categories` (recursive tree), `sort_order`, `name`, `icon_name`,
-`icon_color`, `cover`, `tagline`?, `org_id NOT NULL` (**= Ballpark for the shared taxonomy**; org-private
-categories possible later), + audit. **Dropped:** `level` (derive), `namespace` (single-purpose now),
-`model`, `object_type`, `card_color`, `enabled` (→ status), denormalized junk.
+### `categories` — LOCKED (2026-10-02)
+Marketplace taxonomy ONLY (one product vocabulary everything classifies against). The recursive-tree
+*pattern* is reused per domain — but NOT one shared table across unrelated trees (feedback has its own table).
+`id`, `ref` (slug), `name`, `description`, `parent_id → categories` (recursive tree), `sort_order`,
+`icon_name`, `icon_color`, `cover` (← `cover_image_url`), `tagline` (34/209 used), `org_id NOT NULL`
+(= Ballpark for the shared taxonomy), `status` (new/active/retired), + audit.
+- **Dropped:** `level` (derive from parent chain), `namespace` (table = its namespace), `object_type`
+  (209/209 null — dead here), `icon` (legacy → `icon_name`), `card_color` (tokens), `model` (junk),
+  `tags[]` (confirm unused), `is_active` + `enabled` (two flags → one `status`).
+- **Data cull owed:** evict the 17 `namespace='feedback'` residue rows (dupes; live home is
+  `shared.feedback_categories`), then drop `namespace`. (DB-CLEANUP-CHECKLIST line 49.)
+
+### `shared.feedback_categories` — LOCKED (2026-10-02)
+The feedback trackers' own tree (28 rows) — the "two tables, not one namespace-partitioned table" split, already
+in place. `id`, `name`, `description`, `parent_id`, `sort_order`, `icon_name`, `icon_color`, `tagline`
+(13/28 used), `object_type` (issue/folder — meaningful here), + audit. **Dropped:** `namespace` (table = its
+namespace). No `org_id`/`cover`/`ref` (internal ops config, cross-env `shared`).
+
+**Shared recursive-tree core** (both tables): `id, name, description, parent_id, sort_order, icon_name,
+icon_color, tagline, + audit`. `categories` adds `ref/cover/org_id/status`; `feedback_categories` adds
+`object_type`. Both drop `namespace`.
 
 ### `items` — DRAFT (uses the locked item model)
 Org-owned (`org_id NOT NULL`). Universal core + unit-driven fields + `attributes` jsonb (5 describe-groups)
@@ -229,7 +245,7 @@ All 27 base tables + 1 view, grouped by main object. ✅ locked · 🟡 review �
 | **Config / Reference** | `coachmarks` | 🟡 global UI config (no per-user state — dismissals client-side) |
 | | `bp_brand_config`, `org_type_config` | 🟡 review (brand / org-type config) |
 | | `reference_codelists`, `feature_flags` (shared) | ➖ keep (shared, cross-env) |
-| **Taxonomy** | `categories` | 🟡 review (ADR-0001) |
+| **Taxonomy** | `categories` | ✅ locked (marketplace-only; evict 17 residue rows) |
 | | `tag` → **`tags`** | 🟡 keep — faceted tag vocabulary (`category_id`, `dimension`, `label`) |
 | **Item** | `items` | ✅ reviewed |
 | | `supplier_item_tag` → **`item_tag`** | 🟡 keep + rename — pure item↔tag junction (no `supplier_org_id`) |
@@ -326,9 +342,16 @@ When a question lands on something already built, the reasoning goes here.
 
 ## Where we are
 
-- **Done (base level):** `orgs` (+ satellites), `projects` base + `project_settings`/`project_categories`,
-  the **messaging/engagement cluster** (`project_suppliers`, `messages`, `message_relations`, `message_events`),
-  the culls, and the **org-#1 ownership principle**.
-- **Next big passes:** `project_items` (the 41-col line table + the clone-vs-quotes fork), `project_documents`
-  (SOW/Quote), and the foundation detail (`users`/`user_orgs`, `items`, `categories` column-level).
-- **Send paths:** A traced; B/C/D to walk.
+- **Locked ✅:** principles (freeze+overlay, currency, org-#1, ADR-0002) · **Line** cluster · **Engagement**
+  (`project_providers`) · **Messaging** (`messages`/`message_reads`/`message_relations`/`message_events`) +
+  approvals/conversations · **`items`** · **`categories`** + **`shared.feedback_categories`** · full table
+  inventory + decision log.
+- **Resume here (review queue):**
+  1. **Project core** — `projects` / `project_categories` / `project_settings` (the spine; facts/buyer/cover
+     walked early but never column-locked).
+  2. **Document** — `project_documents` (SOW/Quote; TODO design — biggest unknown).
+  3. **User** — `users` / `user_orgs`.
+  4. Small: `org_credits` / `org_favourites` fields, `org_type_config` / `bp_brand_config`, `coachmarks`,
+     `item_extract_jobs`, `orgs_public` → `security_invoker`.
+  5. Cross-cutting: send paths B/C/D · `org_id` on project children (denormalize vs derive).
+- **Owed data culls** (DB-CLEANUP-CHECKLIST): evict 17 `categories` feedback residue rows; the legacy-table culls.
