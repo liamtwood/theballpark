@@ -59,11 +59,15 @@ Identity + membership (role/status). `user_orgs` = the access group (membership 
 Marketplace taxonomy ONLY (one product vocabulary everything classifies against). The recursive-tree
 *pattern* is reused per domain — but NOT one shared table across unrelated trees (feedback has its own table).
 `id`, `ref` (slug), `name`, `description`, `parent_id → categories` (recursive tree), `sort_order`,
-`icon_name`, `icon_color`, `cover` (← `cover_image_url`), `tagline` (34/209 used), `org_id NOT NULL`
+`icon_name`, `icon_color`, `tagline` (34/209 used), `org_id NOT NULL`
 (= Ballpark for the shared taxonomy), `status` (new/active/retired), + audit.
-- **Dropped:** `level` (derive from parent chain), `namespace` (table = its namespace), `object_type`
-  (209/209 null — dead here), `icon` (legacy → `icon_name`), `card_color` (tokens), `model` (junk),
-  `tags[]` (confirm unused), `is_active` + `enabled` (two flags → one `status`).
+- **The face is the ICON, not an image.** `icon_name` (Lucide glyph, lazy-resolved) + `icon_color` (pastel
+  token bg) render via `<app-entity-icon>`; fallback `folder-open`. The client `CategoryInfo` type carries
+  `iconName`/`tagline`, **no cover** — categories are not image-backed.
+- **Dropped:** `cover_image_url` (**0/209 populated — dead**; was used once, icon replaced it), `level` (derive
+  from parent chain), `namespace` (table = its namespace), `object_type` (209/209 null — dead here), `icon`
+  (legacy → `icon_name`), `card_color` (tokens), `model` (junk), `tags[]` (confirm unused), `is_active` +
+  `enabled` (two flags → one `status`).
 - **Data cull owed:** evict the 17 `namespace='feedback'` residue rows (dupes; live home is
   `shared.feedback_categories`), then drop `namespace`. (DB-CLEANUP-CHECKLIST line 49.)
 
@@ -74,8 +78,10 @@ in place. `id`, `name`, `description`, `parent_id`, `sort_order`, `icon_name`, `
 namespace). No `org_id`/`cover`/`ref` (internal ops config, cross-env `shared`).
 
 **Shared recursive-tree core** (both tables): `id, name, description, parent_id, sort_order, icon_name,
-icon_color, tagline, + audit`. `categories` adds `ref/cover/org_id/status`; `feedback_categories` adds
+icon_color, tagline, + audit`. `categories` adds `ref/org_id/status`; `feedback_categories` adds
 `object_type`. Both drop `namespace`.
+**Gap (FR-00233):** no admin UI to set a category's `icon_name`/`icon_color` (only 15/209 have an icon) — add a
+face editor reusing the existing `image-picker` component.
 
 ### `items` — DRAFT (uses the locked item model)
 Org-owned (`org_id NOT NULL`). Universal core + unit-driven fields + `attributes` jsonb (5 describe-groups)
