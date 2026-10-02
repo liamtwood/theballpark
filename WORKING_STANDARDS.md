@@ -1361,6 +1361,44 @@ you move the operation to a different container, the logic breaks.
 - *Fix:* extract the operation into a service or self-contained component;
   let containers mount it but not own it.
 
+**8. Mutating affordance in a read-only context**
+
+The same entity is reachable from more than one surface — an owner/edit
+context (their own store) AND a browse/foreign/read-only context (the
+marketplace). A write affordance (edit route, edit form, save button) leaks
+into the read-only context, so a user can mutate an entity they should only be
+able to view. Dangerous: it's a permissions + data-integrity hole, not a
+cosmetic slip.
+
+- *Examples we've hit:* **BE-00104** — an item opened from the marketplace
+  could reach the *editable* item screen; the product decision (v2.486) is that
+  a browse surface must always open the read-only Quick View, edit being
+  owner-in-store only via the explicit Edit pencil. (Here the prior
+  owned→edit / not-owned→view behaviour was actually working — and the server
+  gate was already authoritative — so this was a deliberate "make the
+  marketplace read-only all around" call, not a proven regression. The class is
+  still worth auditing for: the *dangerous* version is a write affordance
+  reaching a foreign/read-only context with no server gate behind it.)
+- *How to spot it:* for **every entity reachable from more than one surface**,
+  enumerate the surfaces and state which open the editable form vs the
+  read-only view. A browse / marketplace / foreign-org / public surface must
+  route to the read-only view — never the edit form. Grep every navigation or
+  click handler that targets the entity's edit route (e.g. `/store/items/:id`)
+  or opens the edit component, and confirm each caller's context is
+  owner-in-store. Any caller in a browse context is a finding.
+- *Class-shaped, not question-shaped:* don't ask "does the marketplace card
+  open the view dialog?" (passes today, regresses tomorrow). Ask "which of the
+  N surfaces that reach this entity can mutate it, and is each one supposed
+  to?" Ownership/context gating is **server-authoritative** — the client
+  hiding an edit button is not the guard; the guard is that the edit route and
+  the write endpoint both reject a non-owner. Default to read-only; edit is
+  the explicit opt-in for the owner-in-store context only.
+- *Fix:* gate the edit affordance AND route AND write endpoint on
+  ownership+context. Default every reuse of a shared card/row/detail to the
+  read-only view; make edit the explicit exception (ties to #5 —
+  allow-list-when-default-on: read-only should be the default, edit the
+  countable opt-in).
+
 ### Sweep Completeness — procedural rule for coordinated changes
 
 When running a change that should affect "every editable surface" or
@@ -1424,6 +1462,7 @@ Not every anti-pattern can be linted; the ones that can, should be.
 | #2 — Hand-applied standard | Lint rule banning specific class literals (`bp-fld`, `is-edit`) outside the extracting component's template |
 | #4 — Behavioral drift | Structural test: every parent of `<app-catalogue-grid>` must call a method that mutates the entities array in `onCategoryChanged` |
 | #6 — Read/write key mismatch | Typed constants for storage keys; type-check on get/set |
+| #8 — Mutating affordance in read-only context | Structural test: no browse/marketplace/public component navigates to an entity's edit route or mounts its edit component; server rejects edit/write for a non-owner |
 
 The catch-net is not a substitute for the checklist. Patterns #3, #5, and #7
 require human judgment. The checklist is the durable mechanism; automation
@@ -1716,6 +1755,25 @@ Local .env:        APP_SCHEMA=public
 Railway preview:   APP_SCHEMA=preview
 Railway production: APP_SCHEMA=master
 ```
+
+### Read through views, write to base tables (ADR-0002)
+
+CQRS-lite. The application **reads through `security_invoker` views** and **writes directly
+to base tables via services** — never the reverse.
+
+- **Base tables** = storage + the sole write target. Services (`projects.service` etc.) issue
+  all INSERT/UPDATE/DELETE against tables. Physical column order is whatever `CREATE TABLE`
+  set; `ALTER … ADD` appends — **reference columns by name, never by ordinal.**
+- **Read views** (dedicated read schema) carry curated column order + overlay/join/computed
+  logic (e.g. `vw_project_line` = `COALESCE(quote, project_items)` + matches). All public /
+  cross-org views (`orgs_public`) **must** be `WITH (security_invoker = true)` so RLS is
+  enforced for the querying role (EP-00020); `web_app_user` holds the base-table `SELECT`s.
+- **No `INSTEAD OF` triggers** — writes never pass through views, so view updatability is a
+  non-issue. A view that would need a write-back is a signal the write belongs in a service.
+- Add a view only where it earns it — **security, a stable contract, or computed logic** —
+  not as a blind 1:1 mapping (that just doubles DDL and fights column-drop dependencies).
+
+See `docs/adr/ADR-0002-read-views-write-tables.md`.
 
 ---
 
