@@ -181,6 +181,23 @@ New 1:1 satellite (PK = `project_id`) — absorbs the project-level estimate set
 - **Change vs today:** `null = inherit` instead of copy-at-create → changing an org default flows to projects
   that never overrode. (Matches the overlay pattern used across the model.)
 
+### `project_categories` — LOCKED (2026-10-03)
+The per-(project × category) bucket — the **spine of the AI create flow**: the brief decomposes into per-category
+buckets, each holds the AI match, and `project_items` hang off `project_category_id`. 30 → ~11.
+`id`, `project_id`, `category_id`, `requirement_brief` (per-category brief — **SSOT**, seeded from the AI
+`oneLiner` at scaffold, then user-editable), `requirement_detail`, `match_result_json` (AI match provenance per
+category — sibling to `project_item_matches`), `sort_order`, `status`
+(`draft`/`out_for_quote`/`need_supplier`/`client_managed`/`descoped`), + audit.
+➕ **`unique(project_id, category_id)`** — today it's SELECT-then-upsert because the composite unique *"isn't
+guaranteed historically"*; add it → real `ON CONFLICT` upsert.
+- **Dropped (19):** the **11 cost-rollup cols** (`ballpark_cost, base_cost, contingency_pct/amount, subtotal,
+  margin_pct/amount, net_cost, vat_pct/amount, client_cost` — v1 costing; v2 computes from `project_items` + the
+  `project_settings` cascade); `ballpark_budget` (project-level budget covers it); `name`/`description`
+  (denormalized — join `categories`); `status_id` + `is_active` (→ `status`; `is_active=false` becomes
+  `status='descoped'`, brief preserved for re-scope).
+- **Brief SSOT:** `requirement_brief` is the one per-category brief; `projects.parsed_brief_json` stays the raw AI
+  parse *archive* only (not a second live brief).
+
 ### Line cluster — LOCKED (2026-10-02 walkthrough)
 
 Follows **Freeze + overlay** + **Currency travels with price** (Principles). Three tables; moving
@@ -325,8 +342,8 @@ All 27 base tables + 1 view, grouped by main object. ✅ locked · 🟡 review �
 | | `supplier_item_tag` → **`item_tag`** | 🟡 keep + rename — pure item↔tag junction (no `supplier_org_id`) |
 | | `catalogue_extract_job` → **`item_extract_jobs`** | 🟡 keep + rename (FR-00229) — the extractor job ledger |
 | | `ai_search_hints` | ➖ cull (empty) |
-| **Project** (core) | `projects`, `project_categories` | 🟡 review |
-| | `project_settings` | ✨ new satellite |
+| **Project** (core) | `projects`, `project_categories` | ✅ locked |
+| | `project_settings` | ✨ new satellite — ✅ locked |
 | &nbsp;&nbsp;↳ **Line** | `project_items` | ✅ locked |
 | | `project_item_quotes`, `project_item_matches` | ✨ ✅ locked |
 | | `project_item_suppliers`, `quote_requests` | ➖ cull |
@@ -425,6 +442,13 @@ When a question lands on something already built, the reasoning goes here.
   `project_links` is **polymorphic `(anchor, type, ref_id)` matching `favourites`** — low-stakes decoration, so no
   typed-FK integrity needed (unlike `message_relations`). Base `projects` 66→~24: 14 cols → `project_documents`,
   8 → `project_settings`, buyer/cover → jsonb, gallery → `project_media`.
+- **`project_categories` is the AI-create spine, not odd — just carrying dead costing.** Per (project ×
+  category): the brief decomposes into buckets, each holds `match_result_json` (AI match) and the per-category
+  `requirement_brief`, and `project_items` hang off `project_category_id`. 30→~11: dropped the 11 v1 cost-rollup
+  cols (computed now), `ballpark_budget`, denormalized `name`/`description`; `status_id`+`is_active` → `status`
+  (`is_active=false` = `descoped`, brief preserved). Brief SSOT = `requirement_brief` (seeded from the AI
+  `oneLiner`); `parsed_brief_json` is the raw archive — fixes today's two-unsynced-briefs smell. Add
+  `unique(project_id, category_id)`.
 - **`project_settings` (new 1:1) + null-inherit rates.** Moves `project_budget` + the 4 rate overrides off
   `projects`; `null = inherit org default` (COALESCE), not copy-at-create. Dropped `card_color` (unused in v2),
   `insurance_amount` (dead — superseded by `insurance_pct`, both `orgs` + `projects`), and
@@ -439,11 +463,11 @@ When a question lands on something already built, the reasoning goes here.
 - **Locked ✅:** principles (freeze+overlay, currency, org-#1, ADR-0002) · **Line** cluster · **Engagement**
   (`project_providers`) · **Messaging** (`messages`/`message_reads`/`message_relations`/`message_events`) +
   approvals/conversations · **`items`** · **`categories`** + **`shared.feedback_categories`** · **`users`** +
-  **`user_orgs`** (OIDC-aligned) · **`projects`** base (66→~24) · full table inventory + decision log.
+  **`user_orgs`** (OIDC-aligned) · **`projects`** base + **`project_settings`** + **`project_categories`** ·
+  full table inventory + decision log.
 - **Resume here (review queue):**
-  1. **Project satellites** — `project_settings` / `project_categories` (quick passes; `projects` base locked).
-  2. **Document** — `project_documents` (SOW/Quote; absorbs 14 quote/sow cols from projects — TODO design).
-  3. Small: `org_credits` / `org_favourites` fields, `org_type_config` / `bp_brand_config`, `coachmarks`,
+  1. **Document** — `project_documents` (SOW/Quote; absorbs 14 quote/sow cols from projects — TODO design, biggest unknown).
+  2. Small: `org_credits` / `org_favourites` fields, `org_type_config` / `bp_brand_config`, `coachmarks`,
      `item_extract_jobs`, `addresses`, `orgs_public` → `security_invoker`.
-  4. Cross-cutting: send paths B/C/D · `org_id` on project children (denormalize vs derive).
+  3. Cross-cutting: send paths B/C/D · `org_id` on project children (denormalize vs derive).
 - **Owed data culls** (DB-CLEANUP-CHECKLIST): evict 17 `categories` feedback residue rows; the legacy-table culls.
