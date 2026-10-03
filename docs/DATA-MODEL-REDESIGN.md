@@ -52,8 +52,50 @@ the 2026-10-01 walkthrough. Status per table: **LOCKED** / **DRAFT** / **TODO**.
 - **`org_subscription`** (1:1, deferred to payments): `tier`, `balls_balance` (cached), `balls_monthly_allowance`, future Stripe fields.
 - **Later:** `org_addresses` / `org_contacts` (multi), `org_media` (gallery).
 
-### `users`, `user_orgs` — TODO (detailed pass not done)
-Identity + membership (role/status). `user_orgs` = the access group (membership = inbox access).
+### `users` / `user_orgs` — LOCKED (2026-10-03)
+
+**Split by the OIDC/SCIM pattern: identity+profile on `users`, membership+authority on `user_orgs`.**
+
+**`users` — identity + profile, OIDC-aligned** (we auth via Google/OIDC, so mirror its claims):
+`id` (internal uuid), `sub` (← `google_sub`), `email`, `email_verified` (**add**), `name`, `display_name`
+(OIDC `nickname`/`preferred_username` — keep only if full-vs-preferred matters), `avatar_url` (OIDC `picture`),
+`locale`? / `timezone`? (**add** — multi-region date/number/notification), `default_org_id` (app: active-org
+preference), `description` (nullable — kept for object-contract consistency, not an OIDC claim), `status`
+(← `is_active`), + audit.
+- **Dropped:** `org_id` (legacy single-tenant pointer — authority is `user_orgs`), `role` (**not stored** — role
+  is derived from org per request, and platform-admin = Ballpark membership; see below).
+- **No `users.role`:** the code already derives everything (`effectiveRole(org.type, membership)` in
+  `permissions.service`) and treats platform-admin as **Ballpark-org membership only** — a `users.role` would be
+  a redundant 2nd source of truth.
+
+**`user_orgs` — membership + authority** (composite PK `(user_id, org_id)`; a junction, no `id`):
+`user_id`, `org_id`, `role` (`member`/`admin`/`owner`), `job_title`, `status`
+(invited/active/suspended/removed), `invited_by_user_id`, `invited_at`, `joined_at`, + audit.
+- **Effective role = `org.type` × `user_orgs.role`.** agency/supplier comes from `org.type` (NOT stored here);
+  within-org authority is `role` (`member` < `admin` < `owner`). This deliberately avoids the combinatorial
+  `agent`/`agent_admin`/`supplier`/`supplier_admin` set. `owner` = creator / billing / can't-be-removed (the
+  one level `is_admin` couldn't express). Membership = inbox access (per the messaging cluster).
+- Migration (greenfield): existing `is_admin=true` → `admin` (org creator → `owner`), `false` → `member`.
+
+**Authority model (matches the code today — one stored role, everything else derived):**
+- **Stored:** `user_orgs.role` (`member`/`admin`/`owner`) + `org.type`. Nothing else.
+- **Derived per request** (`permissions.service.effectiveRole`): the effective role = `{org.type}_{role}`
+  (e.g. `agency_admin`, `supplier_member`, `ballpark_*`). Re-read live from `user_orgs` each request
+  (`requireActiveMembership`), so demote/suspend takes effect next request.
+- **Platform admin = Ballpark-org (#1) membership** — never a per-org flag, never a `users.role`. (Code comment:
+  *"Platform admin = BALLPARK membership only — NEVER row.is_admin."*)
+- `org.type` (agency/supplier) is the "agent vs supplier" kind — per membership, so a user can be an agent in one
+  org and a supplier in another.
+
+**Only change vs today:** `user_orgs.is_admin` (bool) → `role` (member/admin/owner), adding the `owner` tier;
+`effectiveRole` extends accordingly.
+- **`role` and `org.type` are code-enforced enums (CHECK/PG enum), NOT codelists.** Their values are branched on
+  in `permissions.service` (`effectiveRole` + the permission `MATRIX`), so they're a closed code contract — an
+  admin-editable codelist would silently grant a new value no permissions. Rule: *if `permissions.service`
+  pattern-matches on it, it's code, not a codelist.* Codelists stay for descriptive/data-driven LOVs. **FR-00215** (the `app_is_admin` cross-org backdoor) is a separate admin
+route, not the role model — `ballpark_admin`'s matrix is already `cross_org_view` + `manage_billing` only.
+
+**Data drift:** 21 users but 12 memberships → 9 users have no `user_orgs` row (dual-model residue — cleanup).
 
 ### `categories` — LOCKED (2026-10-02)
 Marketplace taxonomy ONLY (one product vocabulary everything classifies against). The recursive-tree
@@ -247,7 +289,7 @@ All 27 base tables + 1 view, grouped by main object. ✅ locked · 🟡 review �
 | **Org** | `orgs` | ✅ base locked |
 | | `balls_transactions` → **`org_credits`** | 🟡 review + rename — credits **ledger** (append-only; `direction`/`amount`/`reason`); home of the outreach cost |
 | | `favourites` → **`org_favourites`** | 🟡 review + rename (FR-00229) — org saved-list (`org_id, type, ref_id`); transactional, not config |
-| **User** | `users`, `user_orgs` | 🔲 not reviewed |
+| **User** | `users`, `user_orgs` | ✅ locked — OIDC identity/profile + membership/authority split |
 | **Config / Reference** | `coachmarks` | 🟡 global UI config (no per-user state — dismissals client-side) |
 | | `bp_brand_config`, `org_type_config` | 🟡 review (brand / org-type config) |
 | | `reference_codelists`, `feature_flags` (shared) | ➖ keep (shared, cross-env) |
@@ -342,6 +384,13 @@ When a question lands on something already built, the reasoning goes here.
 - **`catalogue_extract_job` → `item_extract_jobs`.** The extractor's job ledger (org_id, status, plan/results/
   gaps jsonb, token spend; 30 rows) sits under Item. Renamed to the convention (singular owner prefix + plural
   child, like `project_items`) and to name its output (items) not its source. Spelling parked to FR-00229.
+- **Users: OIDC-aligned identity; authority in `user_orgs`.** Split per OIDC/SCIM — `users` = identity+profile
+  (`sub`/`email`/`email_verified`/`name`/`picture`/`locale`/`timezone`/`default_org`/`status`), `user_orgs` =
+  membership+authority. Dropped legacy `users.org_id` + `role` (stale; role is derived). **One stored role,
+  everything derived** (matches code): stored = `user_orgs.role` (`member`/`admin`/`owner`) + `org.type`; derived
+  = `effectiveRole(org.type, role)` per request; **platform-admin = Ballpark-org membership only** (never a
+  `users.role` — that'd be a 2nd source of truth). `org.type` = agency/supplier per membership (a user can be
+  agent in one org, supplier in another). Only change vs today: `is_admin` bool → `role` (adds `owner`).
 - **Read-views / write-tables (ADR-0002).** Reads via `security_invoker` views (curated order + overlay/joins),
   writes to base tables via services, no `INSTEAD OF` triggers. Column order is cosmetic (reference by name);
   the view layer earns its place on security + contract + computed logic.
@@ -350,14 +399,13 @@ When a question lands on something already built, the reasoning goes here.
 
 - **Locked ✅:** principles (freeze+overlay, currency, org-#1, ADR-0002) · **Line** cluster · **Engagement**
   (`project_providers`) · **Messaging** (`messages`/`message_reads`/`message_relations`/`message_events`) +
-  approvals/conversations · **`items`** · **`categories`** + **`shared.feedback_categories`** · full table
-  inventory + decision log.
+  approvals/conversations · **`items`** · **`categories`** + **`shared.feedback_categories`** · **`users`** +
+  **`user_orgs`** (OIDC-aligned) · full table inventory + decision log.
 - **Resume here (review queue):**
   1. **Project core** — `projects` / `project_categories` / `project_settings` (the spine; facts/buyer/cover
      walked early but never column-locked).
   2. **Document** — `project_documents` (SOW/Quote; TODO design — biggest unknown).
-  3. **User** — `users` / `user_orgs`.
-  4. Small: `org_credits` / `org_favourites` fields, `org_type_config` / `bp_brand_config`, `coachmarks`,
-     `item_extract_jobs`, `orgs_public` → `security_invoker`.
-  5. Cross-cutting: send paths B/C/D · `org_id` on project children (denormalize vs derive).
+  3. Small: `org_credits` / `org_favourites` fields, `org_type_config` / `bp_brand_config`, `coachmarks`,
+     `item_extract_jobs`, `addresses`, `orgs_public` → `security_invoker`.
+  4. Cross-cutting: send paths B/C/D · `org_id` on project children (denormalize vs derive).
 - **Owed data culls** (DB-CLEANUP-CHECKLIST): evict 17 `categories` feedback residue rows; the legacy-table culls.
