@@ -137,23 +137,32 @@ Org-owned (`org_id NOT NULL`). Universal core + unit-driven fields + `attributes
 
 ## Projects
 
-### `projects` — DRAFT (base, 66 → ~24)
-Groups, in column order: **identity** (`id, ref, name, description, status, org_id, tier, currency, po_ref`) ·
-**project facts** (`event_date, event_type, guest_count, duration_days, venue_name, venue_address_id`) ·
-**buyer party** (`client_name` column + `client` jsonb snapshot — see below) · **cover** (`cover` jsonb,
-`icon_name`, `icon_color`) · **brief input** (`raw_brief_text`, `parsed_brief_json`) · **audit**.
-- **Buyer:** `client_name` (the one queried field — column) + `client` jsonb snapshot
-  (`company_number, logo_url, address, contact`). **No `client_id`** (clients entity retired); if clients
-  ever become a tenant, *add* `client_id` — the jsonb stays as the snapshot. Buyer address is a **snapshot
-  inside the jsonb**, not a live FK.
-- **Dropped:** `total_*` (computed), `status_id`/`is_active` (→ status), `event_name` (→ name),
-  `client_id` + flat client/venue_city (→ value-object / address FK), `images` (→ `project_media`),
-  `quote_*`/`sow_*` (→ `project_documents`).
-- **Satellites:** `project_settings` (budget + per-project rate overrides + card_color);
-  `project_categories` (the **structured brief** `requirement_brief`/`requirement_detail` + `match_result_json`
-  — cost-rollup/name/status_code dropped); `project_items` (TODO — big pass); `project_suppliers`
-  (engagement); `project_documents` (SOW/Quote); `project_media` (later).
-- **Brief:** the structured brief **is** `project_categories`; `projects` keeps only the raw input.
+### `projects` — LOCKED (2026-10-03) — base 66 → ~24
+Confirmed against the live 66 columns (102 rows). Groups:
+- **identity:** `id, ref, name, description, status, org_id, tier, currency, po_ref`
+- **facts (planning):** `event_date` (**TEXT — deliberately fuzzy**: "2nd Tuesday", "TBD"), `event_type`,
+  `guest_count`, `duration_days` (int — pre-date hint), `venue_name` (**TEXT — fuzzy**), `venue_address_id → addresses`
+- **buyer:** `client_name` (the one queried column) + `client` jsonb snapshot (`company_number, logo_url,
+  address, contact`). **No `client_id`** (clients retired; add later only if client becomes a tenant — jsonb stays the snapshot)
+- **cover:** `cover` jsonb (consolidates `cover_image_url` + `cover_focal_x/y` + `unsplash_photographer_name/photo_url`), `icon_name`, `icon_color`
+- **brief:** `raw_brief_text`, `parsed_brief_json` · **audit**
+
+- **Planning → structured principle:** the planning fields are **fuzzy text — the source of truth for intent**
+  (TBD always valid); they *resolve* to structured entities later via a deferred **`project_links`** satellite
+  (FR-00234): `event_date` → a calendar event, `venue_name` → a venue entity (item/org, can become a
+  `project_provider`) and/or an `address`. UI shows an optional "open" link next to the fuzzy field.
+  `event_date`/`duration_days`/`venue_name` stay **unchanged** now.
+- **→ `project_settings`** (8): `project_budget, share_budget_with_suppliers, default_margin_pct,
+  default_contingency_pct, default_vat_pct, default_insurance_pct, default_insurance_amount, card_color`.
+- **→ `project_documents`** (14): `quote_theme_mode, quote_theme_color, quote_footer, quote_show_*` (×8),
+  `sow_timeline, sow_payment_terms, sow_special_terms`.
+- **→ `project_media`:** `images` jsonb gallery.
+- **⇒ jsonb folds:** buyer (`client_logo_url, client_company_number, client_address` → `client`);
+  cover (the 5 cover/unsplash cols → `cover`).
+- **Dropped:** `event_name` (→ name), `client_id` (clients retired), `status_id` + `is_active` (→ status),
+  `total_ballpark_cost/total_base_cost/total_client_cost` (computed). `project_notes` → fold into brief (confirm).
+- **Satellites:** `project_settings`, `project_categories` (structured brief), `project_items` (locked),
+  `project_providers`, `project_documents`, `project_media`, **`project_links`** (deferred — FR-00234).
 
 ### Line cluster — LOCKED (2026-10-02 walkthrough)
 
@@ -391,6 +400,14 @@ When a question lands on something already built, the reasoning goes here.
   = `effectiveRole(org.type, role)` per request; **platform-admin = Ballpark-org membership only** (never a
   `users.role` — that'd be a 2nd source of truth). `org.type` = agency/supplier per membership (a user can be
   agent in one org, supplier in another). Only change vs today: `is_admin` bool → `role` (adds `owner`).
+- **Projects: fuzzy planning text → structured entity refs (`project_links`).** Planning fields (`event_date`
+  text "2nd Tuesday/TBD", `venue_name` text, `duration_days` int) are the source of truth for *intent* and stay
+  unchanged — events are fuzzy in planning. They resolve LATER to structured entities via a deferred
+  `project_links` satellite (FR-00234): `event_date` → a calendar event, `venue_name` → a venue item/org (can
+  become a `project_provider`) and/or an address. UI shows an optional "open" link next to the fuzzy field.
+  `project_links` is **polymorphic `(anchor, type, ref_id)` matching `favourites`** — low-stakes decoration, so no
+  typed-FK integrity needed (unlike `message_relations`). Base `projects` 66→~24: 14 cols → `project_documents`,
+  8 → `project_settings`, buyer/cover → jsonb, gallery → `project_media`.
 - **Read-views / write-tables (ADR-0002).** Reads via `security_invoker` views (curated order + overlay/joins),
   writes to base tables via services, no `INSTEAD OF` triggers. Column order is cosmetic (reference by name);
   the view layer earns its place on security + contract + computed logic.
@@ -400,11 +417,10 @@ When a question lands on something already built, the reasoning goes here.
 - **Locked ✅:** principles (freeze+overlay, currency, org-#1, ADR-0002) · **Line** cluster · **Engagement**
   (`project_providers`) · **Messaging** (`messages`/`message_reads`/`message_relations`/`message_events`) +
   approvals/conversations · **`items`** · **`categories`** + **`shared.feedback_categories`** · **`users`** +
-  **`user_orgs`** (OIDC-aligned) · full table inventory + decision log.
+  **`user_orgs`** (OIDC-aligned) · **`projects`** base (66→~24) · full table inventory + decision log.
 - **Resume here (review queue):**
-  1. **Project core** — `projects` / `project_categories` / `project_settings` (the spine; facts/buyer/cover
-     walked early but never column-locked).
-  2. **Document** — `project_documents` (SOW/Quote; TODO design — biggest unknown).
+  1. **Project satellites** — `project_settings` / `project_categories` (quick passes; `projects` base locked).
+  2. **Document** — `project_documents` (SOW/Quote; absorbs 14 quote/sow cols from projects — TODO design).
   3. Small: `org_credits` / `org_favourites` fields, `org_type_config` / `bp_brand_config`, `coachmarks`,
      `item_extract_jobs`, `addresses`, `orgs_public` → `security_invoker`.
   4. Cross-cutting: send paths B/C/D · `org_id` on project children (denormalize vs derive).
