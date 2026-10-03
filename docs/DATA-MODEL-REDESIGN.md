@@ -8,9 +8,18 @@ the 2026-10-01 walkthrough. Status per table: **LOCKED** / **DRAFT** / **TODO**.
 - **Naming:** plural entity tables (`orgs`, `items`, `projects`, `users`, `categories`);
   owner-prefixed children/satellites (`org_settings`, `project_items`, `message_relations`);
   snake_case; `x_id` FKs.
-- **Object base contract** — every object carries: `id`, `ref` (stable public handle/slug, where
-  user-facing), `name`, `description`, `status` (codelist-backed — **replaces `is_active`**),
-  `org_id` **NOT NULL**, + 3 audit pairs (`created/updated/deleted _at/_by`).
+- **Object base contract** — every **object** carries: `id`, `ref`, `name`, `description`, `status`
+  (codelist-backed — **replaces `is_active`**), `org_id` **NOT NULL**, + 3 audit pairs
+  (`created/updated/deleted _at/_by`).
+  - **`ref` = nullable on ALL objects** (uniform header), **populated where user-facing** (slug / handle /
+    doc-number) and null otherwise — e.g. `project_items` (addressed via its project) carries a null `ref`.
+    It's a generated public handle with a UNIQUE constraint; nulls are allowed.
+  - **Contract columns are OMITTED entirely on NON-objects** — the three classes: **junctions** (`item_tag`,
+    `user_orgs`, `message_reads` — composite PK), **satellites** keyed to a parent (`project_settings`,
+    `project_item_matches`), **append-only** (`message_events`, `message_relations`). These carry no `ref`/
+    `name`/`description` header; audit is minimal (often `created_at`/`by` only).
+  - Identity-layer: `orgs` has no `org_id` (it *is* the tenant — `parent_id`, Ballpark = root); `users` carries
+    `org_id = Ballpark #1` (instance ownership, not authority).
 - **Ballpark = org #1.** A **singleton platform org** (`type='ballpark'`, `ref='ballpark'`,
   `parent_id = null`). It makes "**every object has an owner**" literally true:
   - `org_id NOT NULL` everywhere; **global/platform data is *owned by* Ballpark** (not null).
@@ -42,15 +51,27 @@ the 2026-10-01 walkthrough. Status per table: **LOCKED** / **DRAFT** / **TODO**.
 
 ## Foundation tables
 
-### `orgs` — LOCKED (base)
-`id`, `ref`, `name`, `description`, `status`, `type` (agency/supplier/ballpark), `parent_id → orgs`
-(Ballpark root), `company_number`, `vat_number`, `vat_registered`, `primary_address_id → addresses`,
-`primary_contact` (jsonb), `logo_url`, `cover_image_url`, `ref_prefix`, `ref_counter`, + audit.
-*(No `org_id` — it is the tenant; uses `parent_id`.)*
-- **`org_settings`** (1:1): estimate defaults (`default_margin/contingency/vat/insurance_pct`,
-  `default_insurance_amount`, `default_currency`), `auto_publish_items` (wire in FR-00214), `image_display`.
-- **`org_subscription`** (1:1, deferred to payments): `tier`, `balls_balance` (cached), `balls_monthly_allowance`, future Stripe fields.
-- **Later:** `org_addresses` / `org_contacts` (multi), `org_media` (gallery).
+### `orgs` — LOCKED (2026-10-03) — 33 cols (no `org_id`; it *is* the tenant, `parent_id` → Ballpark root)
+Grouped, in column order:
+- **identity:** `id, ref, name, description, status, type` (agency/supplier/ballpark), `parent_id → orgs`
+- **address:** `primary_address_id → addresses`
+- **contact:** `email, phone, website` (flat — not a jsonb; org's own contact)
+- **legal / tax:** `company_number, vat_number, vat_registered`
+- **brand / media:** `logo_url, cover_image_url, image_display, images` (jsonb), `terms_pdf_url`
+- **estimate defaults:** `default_currency, default_margin_pct, default_contingency_pct, default_vat_pct,
+  default_insurance_pct, auto_publish_items`
+- **ref generation:** `ref_prefix, ref_counter` · **audit**
+- **Dropped:** flat `address`/`city`/`country` (→ `addresses`), `default_insurance_amount` (dead),
+  `subscription_tier`/`balls_balance`/`balls_monthly_allowance` (→ satellite / ledger), `is_active` (→ status).
+- **Estimate defaults stay on `orgs`** for now — the `org_settings` satellite is **deferred**;
+  `project_settings` overrides null-inherit from these (`COALESCE`).
+- **`org_subscription`** (satellite, **1-to-many history**): `id, org_id, tier, status`
+  (trialing/active/cancelled/expired), `started_at, ended_at` (NULL = current), `monthly_allowance`,
+  + future Stripe fields, + audit. `UNIQUE(org_id) WHERE status='active'`. Cancel-then-resubscribe = a new row;
+  current plan = the active row.
+- **Wallet balance = DERIVED** from the `org_credits` ledger (`SUM`), not stored on `orgs` (cache later if the
+  ledger grows).
+- **Later:** `org_media` (gallery), `org_addresses` (multi-owner link — only if an address is shared *across* orgs).
 
 ### `users` / `user_orgs` — LOCKED (2026-10-03)
 
@@ -60,8 +81,14 @@ the 2026-10-01 walkthrough. Status per table: **LOCKED** / **DRAFT** / **TODO**.
 `id` (internal uuid), `sub` (← `google_sub`), `email`, `email_verified` (**add**), `name`, `display_name`
 (OIDC `nickname`/`preferred_username` — keep only if full-vs-preferred matters), `avatar_url` (OIDC `picture`),
 `locale`? / `timezone`? (**add** — multi-region date/number/notification), `default_org_id` (app: active-org
-preference), `description` (nullable — kept for object-contract consistency, not an OIDC claim), `status`
-(← `is_active`), + audit.
+preference), `org_id` (**= Ballpark #1 — instance ownership**, NOT authority; see below), `description`
+(nullable — kept for object-contract consistency, not an OIDC claim), `status` (← `is_active`), + audit.
+- **`org_id` = instance ownership (2026-10-03 decision).** `users.org_id = Ballpark (org #1)` means "this user
+  belongs to *this* instance" — it keeps the object contract uniform (every object has `org_id` except `orgs`
+  itself). It is **not** authority (that's `user_orgs`) and **not** a single home org (membership is many, via
+  `user_orgs`). `email` is **unique within the instance** → one account per person per instance, member of any
+  number of orgs. Multi-instance (e.g. "The Knot 2" = separate DB, its own org #1) → the same person has a
+  **separate, unrelated** account there; a user's data lives in and stays in its instance.
 - **Dropped:** `org_id` (legacy single-tenant pointer — authority is `user_orgs`), `role` (**not stored** — role
   is derived from org per request, and platform-admin = Ballpark membership; see below).
 - **No `users.role`:** the code already derives everything (`effectiveRole(org.type, membership)` in
