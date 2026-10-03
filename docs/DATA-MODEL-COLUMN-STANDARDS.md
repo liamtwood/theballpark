@@ -107,3 +107,31 @@ is a false contract (and a silent place to violate an append-only invariant) —
 (reference) · `feature_flags`, `feedback`, `feedback_categories` (ops) · `migration_flags` (infra). These follow
 the object contract where they're objects (`feedback`, `feedback_categories`), key/value or payload shapes
 otherwise; they are **not** tenant-scoped (no `org_id`).
+
+## Rules — creating a new table
+
+1. **Classify it on three axes first** — the class (and its columns) is *derived*, not invented:
+   - **A. entity vs attachment** — is it its own thing (referenced / user-facing) → **object**; or does it hang off a parent → **non-object**.
+   - **B. cardinality to parent** (non-objects) — 1:1 → **satellite** (PK = parent FK, no own `id`); 1:N → **child** (own `id` + parent FK); M:N → **junction** (composite PK).
+   - **C. mutability** (orthogonal) — editable → full audit; link-only → `created`+`deleted`; immutable/ledger → `created` only.
+2. **Apply the class template** (above) for the standard columns; don't hand-pick the header.
+3. **Column order:** objects = `id · ref · name · description · status · type · [org_id + FKs] · [domain groups] · audit`; non-objects = `[keys] · status · type · [domain] · audit`. Group domain columns by sub-topic.
+4. **Naming:** snake_case; **plural** entity tables (`items`, `projects`); **owner-prefix** children/satellites (`project_items`, `org_credits`); self-ref FK = `parent_id`, cross-ref = `<table>_id`.
+5. **`org_id` NOT NULL** (owning tenant, or Ballpark #1 for global) — **denormalized onto children** for uniform RLS. Exceptions: `orgs` (it *is* the tenant → `parent_id`), identity layer.
+6. **`ref`** nullable on objects (fill where user-facing: slug/handle/number); **omit on non-objects**.
+7. **`status`** only where there's a real lifecycle; codelist/enum, **never `is_active`/`enabled`/`status_id`**.
+8. **Schema placement:** tenant/business data, or app config you *iterate per-env* → `public`. Cross-env **single-copy, non-staged** reference/ops → `shared`.
+9. **read via `security_invoker` views, write to base tables via services** (ADR-0002); no `INSTEAD OF` triggers.
+
+## Rules — adding a column
+
+1. **Column vs jsonb:** queryable / filtered / FK'd / aggregated → a **real column**; read-as-a-unit with no query need → a field in an existing **jsonb** value-object. Promote jsonb→column when it becomes query-hot.
+2. **Derive before you store.** If it's computable (a balance from the ledger, a role from `org.type`, "before" from the prior event), derive it — don't add a column that can drift.
+3. **One name per concept.** Reuse the standard names — `status`, `type`, `org_id`, `ref`, `target_id`, `parent_id` — don't coin a synonym (`is_active`, `kind`, `ref_code`, `supplier_org_id` are retired).
+4. **Types:** strings = `text` (not `varchar`); money/qty = `numeric`; ids = `uuid`; time = `timestamptz`; flags = `boolean`; bags = `jsonb`.
+5. **Discriminator the code branches on** (a role/type in `permissions.service` or a formula) → **enum / `CHECK`**, *not* a codelist. Data-driven LOVs → codelist.
+6. **Live ref → FK; frozen copy → jsonb snapshot.** Addresses: `*_address_id` → `addresses` when live/geo; a snapshot in jsonb when it must freeze (documents, buyer). **Never flat `address`/`city` columns.**
+7. **Duplicated-across-a-boundary data needs enforcement** (FK + trigger, a test, or codegen) — or derive it instead.
+8. **Additive nullable column** = not a "migration" — add it (NULL for existing) after a quick confirm. Heavy/backfill changes need an explicit ask.
+9. **Update `migrate-schemas.js`** (the single source of truth) in the same change; put new DDL **early** (it fatals partway) and verify via `information_schema`.
+10. **Place it in the right group** per the column-order rule — physical append is fine (reference columns by **name**, never ordinal).

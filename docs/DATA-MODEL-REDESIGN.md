@@ -281,6 +281,51 @@ requirement, one row per (requirement × provider):
 **Provider generalisation:** `project_provider_id` → `project_providers` (renamed from `project_suppliers`);
 the provider is a supplier OR the agent (agent-own lines, self-quoted + auto-accepted).
 
+### Document cluster — LOCKED (2026-10-03)
+
+A **SOW/Quote** = a two-party (**Agency ↔ Supplier**, both Ballpark orgs) contract, **generated from the
+project**, **frozen at issue**, **signed**, **versioned by supersession**. The live `project_item_quotes` are
+the mutable offers; the document is an immutable *issuance* of them (same live-vs-frozen split used everywhere).
+The end client is **context only**, never a Ballpark party. Validated against the real annotated SOW + Annex A.
+
+**Two scopes, identical structure — differ only by item-set + second party:**
+- **supplier → agency** (`project_provider_id` = supplier): that supplier's lines; parties = agency + supplier. **← launch build.**
+- **agency → client** (`project_provider_id` = null): ALL project lines assembled; parties = agency + external end-client. **← model-reserved, post-launch build.**
+
+**`project_documents`** (object, the instance):
+`id · ref · name · description · status (draft/ready_to_sign/signed/superseded) · type (sow|quote) · org_id (agency)
+· project_id · project_provider_id (null = agency→client) · project_category_id (null) · version (int) ·
+supersedes_document_id (self, null) · content (jsonb) · presentation (jsonb) · parties_snapshot (jsonb) ·
+terms_snapshot (jsonb) · issued_at · + audit.`
+- **Freeze on ISSUE, not create.** A draft re-derives live and is regeneratable ("redraft from conversations");
+  the snapshots (lines / parties / terms) populate at `ready_to_sign`/issue.
+- **Immutable + versioned by supersession.** A change (a `message_event`, both-confirm — Annex A §6) issues a
+  **new** document, `version+1`, `supersedes_document_id` → prior. Displayed "V1→V2" = chain depth.
+- **`content` = ordered narrative sections** `[{name, content, order}]` — standard set (concept, render,
+  install_derig, staffing, logistics, payment_schedule, special_terms, open_points) + supplier-added; "NA"
+  explicit (scope boundary). Structured blocks (§3 lines, parties, signatures, total) render from their
+  tables/snapshots, interleaved. A one-field "add section" UI edits the array → supplier-template flexibility
+  nearly free. (Moving today's flat `sow_*` columns → this jsonb *is* most of the build.)
+
+**`project_document_lines`** (child, frozen/append) — the §3 items table + per-item §1/§2:
+`id · org_id · document_id · project_item_id · name · spec · quantity · unit · unit_price · line_total · currency ·
+source (own_design|price_matched) · price_notes (AI, frozen) · approval_date · concept_ref · branding_delta ·
+render_included · amendment_rounds · quote_description · + created audit.`
+
+**`project_document_signatures`** (child, append) — exactly the two parties:
+`id · org_id · document_id · signer_org_id · signer_user_id · role (agency|supplier|client) · name · title ·
+signed_at · + created audit.` (`client` = external end-client: org/user null, captured by `name`/`title`.)
+
+**Deferred — model-reserved, built post-launch (all additive, no repaint):**
+- **`document_templates`** (object, org-owned: Ballpark base = org #1 + supplier/agency templates via
+  `based_on_template_id`) **+ `project_documents.template_id`** — reusable standards; clone-to-project. A new
+  table + nullable FK, added when the template editor ships.
+- **AI redline** — diff a template/doc vs the Ballpark base → flag deviations; **commercial/scope edits free,
+  legal/Annex-A edits gated + redlined** (FR).
+- **agency→client** documents (provider_id null, all-items) — after supplier→agency.
+- **Payments** — deposit 50% / balance / 3% platform fee: the SOW *states* terms in `content.payment_schedule`;
+  the money/Stripe collection = the payments subsystem (roadmap). Build FR-00226.
+
 ## Messaging / engagement cluster — LOCKED (2026-10-02)
 
 ### `project_providers` — the engagement spine — LOCKED
@@ -399,7 +444,8 @@ All 27 base tables + 1 view, grouped by main object. ✅ locked · 🟡 review �
 | &nbsp;&nbsp;↳ **Engagement** | `project_providers` | ✨ ✅ locked |
 | &nbsp;&nbsp;↳ **Messaging** | `messages`, `message_reads`, `message_relations`, `message_events` | ✅ locked |
 | | `message_items`, `message_item_events`, `message_item_decisions` | ➖ cull/fold |
-| &nbsp;&nbsp;↳ **Document** | `project_documents` | 🔲 ✨ TODO design |
+| &nbsp;&nbsp;↳ **Document** | `project_documents`, `project_document_lines`, `project_document_signatures` | ✨ ✅ locked |
+| | `document_templates` (+ `template_id`) | ✨ deferred (post-launch, additive) |
 | **Address** | `addresses` | ✨ ✅ locked — new global table (owner + kind + standard fields) |
 | **Legacy / cull** | `clients`, `estimates`, `estimate_items`, `statuses` | ➖ cull |
 | **Views** | `orgs_public` | ✅ → `security_invoker` (ADR-0002, BE-00139) |
@@ -502,6 +548,14 @@ When a question lands on something already built, the reasoning goes here.
   `insurance_amount` (dead — superseded by `insurance_pct`, both `orgs` + `projects`), and
   `share_budget_with_suppliers` (**budget is agency-private by principle — never shared with suppliers**; the
   stored toggle was never consumed). Leaves four consistent `_pct` rates at both levels.
+- **Documents = frozen, two-party, versioned-by-supersession issuances.** A SOW/Quote is an **Agency ↔ Supplier**
+  contract (both Ballpark orgs; end client = context, never a party), generated from the project, **frozen at
+  issue** (draft re-derives live), **immutable + superseded** on an approved change (`message_event`, Annex A §6),
+  **signed** by both parties. Two scopes, same structure: supplier→agency (one supplier's lines) vs agency→client
+  (`provider_id` null, all lines) — **launch = supplier→agency only**. Sections = `content` jsonb
+  `[{name,content,order}]` (standard + supplier-added; moving today's flat `sow_*` cols → jsonb is most of the
+  build). `_lines` freezes §3 + AI `price_notes`; `_signatures` = both parties. Reserved post-launch:
+  `document_templates` + `template_id` (clone-to-project), AI redline (gate legal edits), payments (Stripe).
 - **Read-views / write-tables (ADR-0002).** Reads via `security_invoker` views (curated order + overlay/joins),
   writes to base tables via services, no `INSTEAD OF` triggers. Column order is cosmetic (reference by name);
   the view layer earns its place on security + contract + computed logic.
@@ -514,10 +568,18 @@ When a question lands on something already built, the reasoning goes here.
   **`user_orgs`** (OIDC-aligned) · **`projects`** base + **`project_settings`** + **`project_categories`** ·
   full table inventory + decision log.
 - **Also locked (2026-10-03):** `org_credits`, `org_favourites`, `org_type_config`, `bp_brand_config`,
-  `coachmarks`, `item_extract_jobs`, `addresses` (new), `orgs_public` (→ security_invoker). See "Config, ledgers
-  & addresses".
-- **Resume here — the ONE big piece left:**
-  1. **Document** — `project_documents` (SOW/Quote; absorbs 14 `quote_*`/`sow_*` cols from projects — item-set,
-     snapshots, signatures, versioning-vs-multiple; TODO design).
-- **Then cross-cutting:** send paths B/C/D · `org_id` on project children (denormalize vs derive).
+  `coachmarks`, `item_extract_jobs`, `addresses` (new), `orgs_public` (→ security_invoker), `orgs` (33-col) +
+  `org_subscription` (history), **Document cluster** (`project_documents`/`_lines`/`_signatures`). See the
+  relevant sections.
+- **🎉 MODEL DESIGN COMPLETE.** Every table reviewed and locked; the only tables left unbuilt are the
+  **deferred-additive** ones (`document_templates`, `project_links`, `project_media`) and the payments subsystem.
+- **Remaining = build + ops, not model:**
+  - **Launch build order** (per `project_launch_prep_plan`): new dev DB (same stack) → schema build + seed
+    (taxonomy/config/Ballpark-#1) → reload catalogue via extractor → line/quote/inbox → SOW instance
+    (supplier→agency, extend `sow-document`) + freeze/sign/version.
+  - **Deferred post-launch:** `document_templates` + redline, agency→client docs, payments (Stripe), `project_links`
+    (calendar), per-node margin (FR-00230).
+  - **Cross-cutting (decided):** `org_id` **denormalized** onto children; send paths B/C/D to walk at build time.
+  - **Topology (decided):** DB-per-instance (dev/preview/prod separate DBs, `public`+`shared`), self-hosted on
+    Supabase+Railway, portable; ADR-0003 to write.
 - **Owed data culls** (DB-CLEANUP-CHECKLIST): evict 17 `categories` feedback residue rows; the legacy-table culls.
