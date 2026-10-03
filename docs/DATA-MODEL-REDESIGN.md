@@ -135,6 +135,28 @@ Org-owned (`org_id NOT NULL`). Universal core + unit-driven fields + `attributes
 
 ### `tags` / `supplier_item_tag` — keep (the m2m tagging layer).
 
+## Config, ledgers & addresses — LOCKED (2026-10-03)
+
+- **`org_credits`** (← `balls_transactions`) — credits **ledger**: `id, org_id, project_id, supplier_org_id,
+  user_id, amount (int), direction, reason, description, message_id (new — links the outreach message), + audit`.
+  Dropped `estimate_id` (v1). Balance cached on `org.credits_balance`. UI term decoupled via
+  `org_type_config.payload.creditLabel`. Balls-specific (money → its own ledger when payments land).
+- **`org_favourites`** (← `favourites`) — saved-list: `id, org_id, type, ref_id, + audit`. Polymorphic
+  `(type, ref_id)`. `is_active` → **soft-delete via `deleted_at`** (remove from list = soft-delete).
+- **`org_type_config`** — per-org-type **page config** (`org_type` PK, `payload` jsonb = labels incl.
+  `creditLabel`, hero). Keep as-is.
+- **`bp_brand_config`** — singleton key/value **theme** (`font_pair`/`gradient`/`text_color`). Keep as-is.
+- **`coachmarks`** — global UI config (`page, name, description, tail, sort_order`); `is_active` → `status`;
+  **add the full audit pairs** (has only `created_at`/`updated_at`) for contract consistency.
+- **`item_extract_jobs`** (← `catalogue_extract_job`) — extractor job ledger. Keep as-is (active infra). Later
+  housekeeping: age out the `plan`/`results`/`gaps` jsonb once items are created.
+- **`addresses`** — ✨ **new global table**: `id, org_id (owner), kind (registered/store/shipping/billing/venue),
+  label, line1/2, city, region, postcode, country, lat?/lng?, + audit`. Entities hold `*_address_id`;
+  **documents snapshot a frozen copy**, never FK the live one.
+- **`orgs_public`** — the one **view** → recreate `WITH (security_invoker = true)` (ADR-0002, BE-00139), per-env.
+- **`orgs`:** drop `default_insurance_amount` (with `projects`); `org_settings` satellite **deferred** (org
+  defaults stay on `orgs` for now).
+
 ## Projects
 
 ### `projects` — LOCKED (2026-10-03) — base 66 → ~24
@@ -330,17 +352,17 @@ All 27 base tables + 1 view, grouped by main object. ✅ locked · 🟡 review �
 | Object | Tables | Status |
 |---|---|---|
 | **Org** | `orgs` | ✅ base locked |
-| | `balls_transactions` → **`org_credits`** | 🟡 review + rename — credits **ledger** (append-only; `direction`/`amount`/`reason`); home of the outreach cost |
-| | `favourites` → **`org_favourites`** | 🟡 review + rename (FR-00229) — org saved-list (`org_id, type, ref_id`); transactional, not config |
+| | `balls_transactions` → **`org_credits`** | ✅ locked — credits ledger (+ `message_id`, drop `estimate_id`) |
+| | `favourites` → **`org_favourites`** | ✅ locked — polymorphic saved-list; `is_active` → soft-delete |
 | **User** | `users`, `user_orgs` | ✅ locked — OIDC identity/profile + membership/authority split |
-| **Config / Reference** | `coachmarks` | 🟡 global UI config (no per-user state — dismissals client-side) |
-| | `bp_brand_config`, `org_type_config` | 🟡 review (brand / org-type config) |
+| **Config / Reference** | `coachmarks` | ✅ locked — global UI config (`is_active`→status, +audit) |
+| | `bp_brand_config`, `org_type_config` | ✅ locked — theme / page-config, keep as-is |
 | | `reference_codelists`, `feature_flags` (shared) | ➖ keep (shared, cross-env) |
 | **Taxonomy** | `categories` | ✅ locked (marketplace-only; evict 17 residue rows) |
-| | `tag` → **`tags`** | 🟡 keep — faceted tag vocabulary (`category_id`, `dimension`, `label`) |
+| | `tag` → **`tags`** | ✅ keep — faceted tag vocabulary (`category_id`, `dimension`, `label`) |
 | **Item** | `items` | ✅ reviewed |
-| | `supplier_item_tag` → **`item_tag`** | 🟡 keep + rename — pure item↔tag junction (no `supplier_org_id`) |
-| | `catalogue_extract_job` → **`item_extract_jobs`** | 🟡 keep + rename (FR-00229) — the extractor job ledger |
+| | `supplier_item_tag` → **`item_tag`** | ✅ keep + rename — pure item↔tag junction (no `supplier_org_id`) |
+| | `catalogue_extract_job` → **`item_extract_jobs`** | ✅ keep + rename — the extractor job ledger |
 | | `ai_search_hints` | ➖ cull (empty) |
 | **Project** (core) | `projects`, `project_categories` | ✅ locked |
 | | `project_settings` | ✨ new satellite — ✅ locked |
@@ -351,13 +373,12 @@ All 27 base tables + 1 view, grouped by main object. ✅ locked · 🟡 review �
 | &nbsp;&nbsp;↳ **Messaging** | `messages`, `message_reads`, `message_relations`, `message_events` | ✅ locked |
 | | `message_items`, `message_item_events`, `message_item_decisions` | ➖ cull/fold |
 | &nbsp;&nbsp;↳ **Document** | `project_documents` | 🔲 ✨ TODO design |
+| **Address** | `addresses` | ✨ ✅ locked — new global table (owner + kind + standard fields) |
 | **Legacy / cull** | `clients`, `estimates`, `estimate_items`, `statuses` | ➖ cull |
-| **Views** | `orgs_public` | 🟡 → `security_invoker` (ADR-0002, BE-00139) |
+| **Views** | `orgs_public` | ✅ → `security_invoker` (ADR-0002, BE-00139) |
 
-**Review queue (🟡/🔲):** Project (projects / project_categories / project_settings) · User (users / user_orgs) ·
-Config/Reference (coachmarks / bp_brand_config / org_type_config) · Org (balls_transactions / `org_favourites`) ·
-Taxonomy (categories) · Item extract (`item_extract_jobs`) · **Document** (project_documents, TODO) ·
-`orgs_public` (security_invoker).
+**Review queue:** everything is locked **except `project_documents`** (🔲 TODO — the SOW/Quote design) + the two
+cross-cutting items (send paths B/C/D · `org_id` on project children).
 
 ## Decision log — walkthrough rationale
 
@@ -465,9 +486,11 @@ When a question lands on something already built, the reasoning goes here.
   approvals/conversations · **`items`** · **`categories`** + **`shared.feedback_categories`** · **`users`** +
   **`user_orgs`** (OIDC-aligned) · **`projects`** base + **`project_settings`** + **`project_categories`** ·
   full table inventory + decision log.
-- **Resume here (review queue):**
-  1. **Document** — `project_documents` (SOW/Quote; absorbs 14 quote/sow cols from projects — TODO design, biggest unknown).
-  2. Small: `org_credits` / `org_favourites` fields, `org_type_config` / `bp_brand_config`, `coachmarks`,
-     `item_extract_jobs`, `addresses`, `orgs_public` → `security_invoker`.
-  3. Cross-cutting: send paths B/C/D · `org_id` on project children (denormalize vs derive).
+- **Also locked (2026-10-03):** `org_credits`, `org_favourites`, `org_type_config`, `bp_brand_config`,
+  `coachmarks`, `item_extract_jobs`, `addresses` (new), `orgs_public` (→ security_invoker). See "Config, ledgers
+  & addresses".
+- **Resume here — the ONE big piece left:**
+  1. **Document** — `project_documents` (SOW/Quote; absorbs 14 `quote_*`/`sow_*` cols from projects — item-set,
+     snapshots, signatures, versioning-vs-multiple; TODO design).
+- **Then cross-cutting:** send paths B/C/D · `org_id` on project children (denormalize vs derive).
 - **Owed data culls** (DB-CLEANUP-CHECKLIST): evict 17 `categories` feedback residue rows; the legacy-table culls.
