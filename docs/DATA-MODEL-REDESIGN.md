@@ -152,8 +152,9 @@ Confirmed against the live 66 columns (102 rows). Groups:
   (FR-00234): `event_date` → a calendar event, `venue_name` → a venue entity (item/org, can become a
   `project_provider`) and/or an `address`. UI shows an optional "open" link next to the fuzzy field.
   `event_date`/`duration_days`/`venue_name` stay **unchanged** now.
-- **→ `project_settings`** (8): `project_budget, share_budget_with_suppliers, default_margin_pct,
-  default_contingency_pct, default_vat_pct, default_insurance_pct, default_insurance_amount, card_color`.
+- **→ `project_settings`** (budget + 4 rate overrides): `project_budget, default_margin_pct,
+  default_contingency_pct, default_vat_pct, default_insurance_pct`. (Dropped in the move:
+  `share_budget_with_suppliers`, `default_insurance_amount`, `card_color`.)
 - **→ `project_documents`** (14): `quote_theme_mode, quote_theme_color, quote_footer, quote_show_*` (×8),
   `sow_timeline, sow_payment_terms, sow_special_terms`.
 - **→ `project_media`:** `images` jsonb gallery.
@@ -163,6 +164,22 @@ Confirmed against the live 66 columns (102 rows). Groups:
   `total_ballpark_cost/total_base_cost/total_client_cost` (computed). `project_notes` → fold into brief (confirm).
 - **Satellites:** `project_settings`, `project_categories` (structured brief), `project_items` (locked),
   `project_providers`, `project_documents`, `project_media`, **`project_links`** (deferred — FR-00234).
+
+### `project_settings` — LOCKED (2026-10-03)
+New 1:1 satellite (PK = `project_id`) — absorbs the project-level estimate settings off `projects`:
+`project_budget` and the rate overrides `margin_pct` / `contingency_pct` / `vat_pct` / `insurance_pct`
+(**null = inherit the org default**; effective rate = `COALESCE(project_settings.x, orgs.default_x)`), + audit.
+- **Dropped:** `card_color` (unused in v2 — only in the type, never rendered; a tint, if ever needed, comes from
+  the colour tokens/codelist like `icon_color`, not a free-text column); `insurance_amount` (**dead** — superseded
+  by `insurance_pct`, unused in `estimate.js`; drop on **both** `orgs` and `projects`);
+  `share_budget_with_suppliers` (stored but never consumed — and **budget is agency-private by principle: never
+  shared with suppliers**; no toggle to keep).
+- **Naming:** drop the `default_` prefix at project level (`margin_pct`, not `default_margin_pct`) — it's the
+  project's value/override, not a default. Park to FR-00229.
+- **Org defaults** live on `orgs` today (`default_*_pct`, all four now consistent once `_amount` is dropped); a
+  parallel `org_settings` satellite is an Org-object call (defer).
+- **Change vs today:** `null = inherit` instead of copy-at-create → changing an org default flows to projects
+  that never overrode. (Matches the overlay pattern used across the model.)
 
 ### Line cluster — LOCKED (2026-10-02 walkthrough)
 
@@ -408,6 +425,11 @@ When a question lands on something already built, the reasoning goes here.
   `project_links` is **polymorphic `(anchor, type, ref_id)` matching `favourites`** — low-stakes decoration, so no
   typed-FK integrity needed (unlike `message_relations`). Base `projects` 66→~24: 14 cols → `project_documents`,
   8 → `project_settings`, buyer/cover → jsonb, gallery → `project_media`.
+- **`project_settings` (new 1:1) + null-inherit rates.** Moves `project_budget` + the 4 rate overrides off
+  `projects`; `null = inherit org default` (COALESCE), not copy-at-create. Dropped `card_color` (unused in v2),
+  `insurance_amount` (dead — superseded by `insurance_pct`, both `orgs` + `projects`), and
+  `share_budget_with_suppliers` (**budget is agency-private by principle — never shared with suppliers**; the
+  stored toggle was never consumed). Leaves four consistent `_pct` rates at both levels.
 - **Read-views / write-tables (ADR-0002).** Reads via `security_invoker` views (curated order + overlay/joins),
   writes to base tables via services, no `INSTEAD OF` triggers. Column order is cosmetic (reference by name);
   the view layer earns its place on security + contract + computed logic.
