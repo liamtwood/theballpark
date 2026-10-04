@@ -252,3 +252,48 @@ dirty-data gap: *register AND enforce*).
 - Partial-unique: add `WHERE deleted_at IS NULL` to `orgs.name`, `favourites`, `tag`.
 - `coachmarks (page, name)` — dedupe (defined as both a constraint and an index).
 - Legacy-table CHECKs (`quote_requests.status`, etc.) vanish with their superseded tables.
+
+## FK delete rules
+
+**Decision (2026-10-04):** default every FK to `NO ACTION` + rely on soft-delete (above);
+`CASCADE` only where a parent *purge* should sweep an empty shell.
+
+- **Frozen-copy FKs never `CASCADE`.** A frozen line must **outlive** its source. Fix:
+  `project_items.item_id → items` is `CASCADE` today → change to **`SET NULL`** (the project
+  line survives the catalogue item being removed). Same rule for any freeze/snapshot ref.
+- **`project → its children` `CASCADE` stays** — but only ever fires on **purge** (a provably
+  empty project); the everyday "delete" is the soft flag, which never triggers it.
+- **Self-ref FKs `NO ACTION`** (see self-ref rules; kills the lone `option_of_line_id` CASCADE).
+- **Same relationship, same rule** — today `project_id → projects` is CASCADE on 6 children but
+  NO ACTION on `balls_transactions`; `supplier_org_id → orgs` is NO ACTION except
+  `project_item_suppliers`. Make each relationship consistent in the rebuild.
+
+## Row-level security (RLS) — acquisition-grade, EP-00020
+
+**Status (verified 2026-10-04):** implemented and **passes review**. 26/27 public tables have
+RLS with a uniform helper-function model — do **not** rebuild it; the work is alignment + cleanup.
+
+**The model (keep):**
+- Per-request identity via SQL helpers — `app_current_org()` / `app_current_user_id()` (GUC-backed
+  from the validated `bp_session` JWT), `app_is_admin()`, and relationship helpers
+  `app_owns_project()`, `app_is_project_supplier()`, `app_shares_project()`,
+  `app_can_access_project_item()`, `app_owns_item()`, `app_is_org_admin()`.
+- Uniform **two-party** gate, e.g. `USING (app_is_admin() OR supplier_org_id = app_current_org()
+  OR app_owns_project(project_id))` — owner **or** counterparty supplier, admin override.
+- App connects as **`web_app_user`** (`bypassrls = false`); never `service_role`/`postgres` for
+  app queries. This is the "enforce context" that the per-query `WHERE` alone didn't give.
+
+**Alignment + cleanup (rebuild):**
+1. **Drop 2 dead legacy policies** — `tag` (`tags_read_all`, `tags_write_admin`) and
+   `supplier_item_tag` (`item_tags_read_all`, `item_tags_write_supplier`): `roles=authenticated`,
+   using `auth.uid()` + dead `users.role`. Supabase-Auth leftovers; inert but clutter.
+2. **Enable RLS on `catalogue_extract_job`** (only table with it off) + standard org policy.
+3. **`USING (true)` reads are intentional** on global reference tables (`bp_brand_config`,
+   `coachmarks`, `statuses`, catalogue `categories`/`tag`) — keep. Caveat: `categories` open-read
+   leaks **feedback-namespace** rows until feedback leaves that table in the split.
+4. **Re-point helper functions** at the redesigned tables (estimates gone, overlay model) — the
+   pattern stays; the joins inside update.
+5. **Close the `app_is_admin()` backdoor (FR-00215)** — today it grants blanket cross-org access;
+   tighten to **membership-based** pre-launch.
+6. **Confirm role + `FORCE`** — policies are PUBLIC (`roles=-`) and no table is `FORCE`d (owner
+   bypasses). Confirm the app connects as `web_app_user`; add `FORCE ROW LEVEL SECURITY`.
