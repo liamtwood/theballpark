@@ -44,9 +44,10 @@ columns · `+ full audit`. **No `ref`/`name`/`description`/`status`** (the paren
 `id  uuid pk` · `<parent>_id` FK(s) · `org_id` (denormalized) · `status` **only where it has a lifecycle** ·
 domain columns · `+ full audit`. **No `ref`/`name`/`description` header.**
 **Members:** `project_categories`, `project_item_quotes`, `project_providers`, `project_links`,
-`org_subscription`, `org_credits`, `org_favourites`, `item_extract_jobs`.
+`org_subscription`, `org_favourites`, `item_extract_jobs`.
 (status: `project_categories`/`project_item_quotes`/`project_providers`/`org_subscription` = yes;
-`project_links`/`org_credits`/`org_favourites` = no.)
+`project_links`/`org_favourites` = no.)
+(`org_credits` is **class E**, not C — a ledger is append-only; see below.)
 
 ### D — Junction m2m (links two parents)
 `(<a>_id, <b>_id)  composite pk` · link attributes · `created_at/by` **+ `deleted_at` for soft-unlink**
@@ -57,7 +58,8 @@ domain columns · `+ full audit`. **No `ref`/`name`/`description` header.**
 `id  uuid pk` · parent FK(s) · event columns · **`created_at, created_by` ONLY** (no `updated_*`/`deleted_*` —
 the *absence* of those columns enforces immutability). **No header.**
 **Members:** `message_events` (`message_id, message_relation_id, status, price_*, changes, …`),
-`message_relations` (`message_id, typed target FKs`).
+`message_relations` (`message_id, typed target FKs`), **`org_credits`** (the credits ledger — balance =
+`SUM`; a correction is a **reversing entry**, never an edit/delete, so the balance stays auditable).
 
 ## Audit scaling (summary)
 
@@ -93,7 +95,7 @@ is a false contract (and a silent place to violate an append-only invariant) —
 | `project_providers` | C |
 | `project_links` | C |
 | `org_subscription` | C |
-| `org_credits` | C |
+| `org_credits` | E (append-only ledger) |
 | `org_favourites` | C |
 | `item_extract_jobs` | C |
 | `user_orgs` | D |

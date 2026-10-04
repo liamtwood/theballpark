@@ -164,10 +164,12 @@ Org-owned (`org_id NOT NULL`). Universal core + unit-driven fields + `attributes
 
 ## Config, ledgers & addresses — LOCKED (2026-10-03)
 
-- **`org_credits`** (← `balls_transactions`) — credits **ledger**: `id, org_id, project_id, supplier_org_id,
-  user_id, amount (int), direction, reason, description, message_id (new — links the outreach message), + audit`.
-  Dropped `estimate_id` (v1). Balance cached on `org.credits_balance`. UI term decoupled via
-  `org_type_config.payload.creditLabel`. Balls-specific (money → its own ledger when payments land).
+- **`org_credits`** (← `balls_transactions`) — credits **ledger**, **append-only (class E)**: `id, org_id,
+  project_id, supplier_org_id, user_id, amount (int), direction, reason, description, message_id (new — links
+  the outreach message), created_at, created_by` ONLY (no `updated_*`/`deleted_*` — immutability enforced by
+  absence; a correction is a **reversing entry**, never an edit/delete). Dropped `estimate_id` (v1). **Balance
+  is DERIVED = `SUM` of ledger entries, NOT stored on `orgs`** (the dropped `balls_balance`; cache later only if
+  the ledger grows hot). UI term decoupled via `org_type_config.payload.creditLabel`.
 - **`org_favourites`** (← `favourites`) — saved-list: `id, org_id, type, ref_id, + audit`. Polymorphic
   `(type, ref_id)`. `is_active` → **soft-delete via `deleted_at`** (remove from list = soft-delete).
 - **`org_type_config`** — per-org-type **page config** (`org_type` PK, `payload` jsonb = labels incl.
