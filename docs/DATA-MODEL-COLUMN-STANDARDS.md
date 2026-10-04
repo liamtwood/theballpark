@@ -210,3 +210,45 @@ proof the rule is sufficient.)
 kitchen-sink (issues + meetings + sprints + test runs), its `object_type` (folder/issue) +
 `type` (sub-kind) two-tier discriminator, and the broader tracker model. Off the launch
 critical path; the standards above still apply to its trees in the meantime.
+
+## Constraints — the three buckets + mandatory guards
+
+**Decision (2026-10-04):** today's DB is *under*-constrained (~15 CHECKs across 25+ tables).
+Constraints are **rules applied at build time**, not a column-by-column walk — the rebuild
+DDL follows the checklist below.
+
+### Allowed-values: which gate, by scope (the three buckets)
+
+| bucket | examples | codelist? | gate | add a value |
+|---|---|---|---|---|
+| **1 — security / logic discriminator** | `org.type`, `user_orgs.role`, `direction`, `selection_type`, `reason` | **no** | hard-coded `CHECK` | **code release** |
+| **2 — system list, needs labels** | `status` family, `country` | **yes — labels/pills only** | `CHECK` / generated-from-seed (values release-gated) | code release |
+| **3 — ballpark / org list** | `tier`, `mood`, `project_type` | **yes — the source** | validate against the codelist **at write** (not a hand-copied list) | admin adds live, no deploy |
+
+**Why bucket 1 is never a codelist:** code/permissions branch on it — a runtime-added value
+no code path knows about is a security hole or a crash. A release is the *correct* gate.
+**Why bucket 3 is never a hard `CHECK`:** the DB wins, so a `CHECK` would block the admin
+from adding a value without a deploy — defeating the editable list. Enforce by asking the
+codelist "is this valid?" at write, so garbage is still rejected (closes the `event_type`
+dirty-data gap: *register AND enforce*).
+
+### Mandatory guards — every new table runs this checklist
+
+1. **Money / qty `≥ 0`** — `CHECK (price >= 0)` etc. on every `numeric` amount. (None exist today.)
+2. **`org_id NOT NULL`** on every tenant row — a null `org_id` silently escapes RLS.
+3. **`ref` / handle / slug** — **unique per scope, partial on `deleted_at`**
+   (`UNIQUE (…) WHERE deleted_at IS NULL`). Soft-deleted rows must not block reuse.
+4. **Self-ref** — `CHECK (id <> parent_id)` + app ancestor-walk (see self-ref rules).
+5. **Status** — enforced via codelist validation (bucket 2/3), never a hand-copied `CHECK`.
+6. **Mutual-exclusion** — model "either/or" money fields as a **real `CHECK`**, not app-only
+   (e.g. `project_items`: `price_current` XOR `price_override` — exactly one non-null).
+
+### Cleanup fixes (rebuild)
+
+- `orgs.type` → `agency / supplier / ballpark` (drop stray `admin`; align with `org_type_config`).
+- `users.role` → **drop** the column + CHECK (dead in v2; authority = `user_orgs` + derived role).
+- `projects.tier` → **bucket 3** (the merged `tier` codelist); `orgs.subscription_tier` → **bucket 1**
+  hard `CHECK` (billing branches on it).
+- Partial-unique: add `WHERE deleted_at IS NULL` to `orgs.name`, `favourites`, `tag`.
+- `coachmarks (page, name)` — dedupe (defined as both a constraint and an index).
+- Legacy-table CHECKs (`quote_requests.status`, etc.) vanish with their superseded tables.
