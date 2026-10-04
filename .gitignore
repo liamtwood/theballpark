@@ -1,5 +1,6 @@
 node_modules
 dist
+bp_old/
 .env
 .env.local
 .env.preview
