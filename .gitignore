@@ -1,6 +1,8 @@
 node_modules
 dist
 bp_old/
+*.zip
+.angular
 .env
 .env.local
 .env.preview
