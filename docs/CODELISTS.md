@@ -10,6 +10,141 @@ The `reference_` prefix is deliberate, not verbosity — it marks these as
 reference data (Oracle RC/RCV lineage), never transactional tables, so
 future readers don't shorten the names to `codelist*`.
 
+---
+
+# CANONICAL MODEL (v0.2 redesign, 2026-10-04)
+
+The **current target**. Supersedes the shape in the v2.18 history below (kept
+for provenance). Four decisions land here: **id-keyed** (renames stop
+cascading), **shared lists** (one list, many consumer columns — subsets were
+considered and dropped), **scope = env-sharing policy**, and the
+**one-value-per-concept convention**.
+
+## Three tables — id-keyed
+
+```
+reference_codelists          the LIST
+  id            uuid PK
+  name          text UNIQUE      -- mutable handle; code references it (system lists only)
+  description   text
+  type          text NOT NULL    -- SCOPE: system | ballpark | org  (see below)
+  family        text NULL        -- optional grouping tag: 'status', 'unit', …
+  default_code  text             -- UI pre-select
+  is_active     boolean
+  + audit
+
+reference_codelist_values    the VALUES of a list
+  id            uuid PK
+  codelist_id   uuid FK -> reference_codelists.id   -- id-keyed, not name-keyed
+  code          text             -- stored on entity rows (projects.status='active'); stays stable
+  label, symbol, sort_order, meta(jsonb), is_active, retired_at
+  + audit
+
+reference_codelist_consumers which columns use a list  (NEW — replaces the single
+  id            uuid PK                                 consumer_table/column pair on
+  codelist_id   uuid FK -> reference_codelists.id       the parent, which allowed only
+  consumer_table  text                                  ONE consumer and blocked shared lists)
+  consumer_column text
+  + created audit
+  UNIQUE (consumer_table, consumer_column)
+```
+
+## Keying — by **id**, so renaming a list is free
+
+- The list is keyed by **`id` (uuid)**; `name` is a **mutable unique handle**.
+  Values and consumers FK on `id`, so **renaming a list = one column update** —
+  no cascade, no orphans. (Pre-redesign PK was `list_name`, FK-less → a rename
+  silently cascaded across values + consumers + code. Fixed here.)
+- The **only** thing still bound to the name is code that hard-codes the string
+  (`CodelistService.list('item_unit')`) — and that's only **`system`** lists.
+  **Freeze system list names like constants; `ballpark`/`org` names rename freely.**
+- **Value `code`s stay load-bearing** — entity rows store the readable `code`
+  string, not the value's uuid. Codes are meant to be stable; separate from the
+  list-name decision.
+
+## Sharing — one list, many consumers (NOT subsets)
+
+Sharing is **N consumer rows pointing at one list, all seeing its full value
+set**. `tier` → `items.tier` + `projects.tier`; `currency` → 5 columns. Free and
+worth it.
+
+**Subsets were considered and dropped.** A subset = columns seeing *different
+partial slices* of one list. Only `status` would have used it, for two extra
+tables + a `subset` column on every binding. Not worth it. Instead, `status` is
+**per-concept lists** (`project_status`, `document_status`, …), grouped by
+`family='status'`. The one-value guarantee becomes a **convention** (below)
+rather than structure.
+
+## The one-value-per-concept convention
+
+Shared intents use the **same `code` + `label`** across the lists in a family.
+No "Retired" in one status list and "Not in use" in another for the same intent.
+
+- Not structural anymore (that was subsets) — enforced by **one seed file as the
+  single source** + an **optional lint**: *across `family='status'`, any shared
+  `code` must have the same `label`.*
+- Acceptable at this scale (~8 status lists). The `family` tag makes the lint cheap.
+
+## Scope (`type`) = who edits + env-sharing policy
+
+`type` does two aligned jobs — *who may edit* and *does it sync across envs*:
+
+| type | who edits | env behaviour |
+|---|---|---|
+| **system** | dev only, design-time, migration-controlled | **identical across dev/preview/prod** — canonical seed, synced; code depends on the values (`country`, state machines) |
+| **ballpark** | ballpark_admin at runtime (`/settings/codelists`) | **local — may diverge per env**; staged on dev, promoted deliberately (`tier`, `mood`, `project_type`) |
+| **org** | per-tenant (reserved, none yet) | local, per-org rows |
+
+They line up today (system=synced, ballpark/org=local). If they ever split (a
+ballpark list you *do* want synced), add a separate `is_synced` flag — not now.
+
+## Register ≠ enforce
+
+A `reference_codelist_consumers` row is a **registry entry, not a constraint**.
+Enforcement needs a **`CHECK` or FK** on the column. The LOV audit found
+`event_type` had dirty data despite a codelist — registered, never enforced.
+**Register AND enforce, or the list is only advice.**
+
+## Discriminators are NOT codelists
+
+A column code/permissions **branch on** (`orgs.type`, `items.type`,
+`project_items.type`, `reference_codelists.type`, `messages.direction`) is a
+**`CHECK` enum**, not a codelist. Data-driven LOVs the admin curates → codelist.
+(`kind` is retired as a column name → `type`; see `DATA-MODEL-COLUMN-STANDARDS.md`.)
+
+## Inventory — today 20 → final 21 (up to 25)
+
+**Today: 20 live lists.**
+- ballpark (8): `budget_tier`, `item_tier`, `currency`, `event_type`, `item_unit`,
+  `item_time_unit`, `mood`, `item_attribute`
+- system (12): `project_status`, `category_status`, `message_status`,
+  `message_item_status`, `item_approval_status`, `membership_status`, `country`,
+  `decline_reason_pre_agreement`, `decline_reason_post_agreement`, `hero_align`,
+  `page_title_mode`, `quick_reply_templates`
+
+**Changes:**
+- **Merge** `budget_tier` + `item_tier` → **`tier`** (shared list: items+projects) — net −1
+- **Rename** `event_type` → **`project_type`**
+- **Retire** `item_time_unit` (dead — leaked into `item_unit`) — net −1
+- → **18 carried**
+
+**Add — firm (+3):** `document_status`, `subscription_status`, `install_unit`
+**Add — promote-if-data (+4):** `image_display`, `icon_name`, `icon_color`, `tag_dimension`
+
+| | count |
+|---|---|
+| Today | 20 |
+| After merge/retire | 18 |
+| New (firm) | +3 |
+| New (promote-if-data) | +4 |
+| **Final** | **21 firm → 25** |
+
+Status family (`family='status'`): `project_status`, `category_status`,
+`message_status`, `message_item_status`, `item_approval_status`,
+`membership_status` + new `document_status`, `subscription_status` = **8 lists**.
+
+---
+
 ## What it was (v1 — renamed to `reference_codelist_values` in v2.18a)
 
 A single key/value lookup table holding every platform-wide reference
@@ -371,6 +506,7 @@ in the **Detail** table below.
 | v2.18d | 2026-06-12 | QC fix — `appendTo="body"` on edit-field p-select (overlay was CLIPPED by `overflow-hidden`, not z-fought; closes pV2-04c thread app-wide) + RP-09 ledger row | dev `f4e6a05` | ✓ confirmed (dropdown over table; duplicate-code path exercised) | n/a |
 | v2.19a/b + v1.70b | 2026-06-12 | **pV2-CODELISTS-02 SHIPPED** — consumer sweep: Profile Country + Currency selects (new `orgs.default_currency`); pages title-mode + hero-align codelist-fed; RP-04 + RP-09 CLOSED (13 hex → `--color-state-*` refs, tokens in both apps at original hues, v1 `resolveMetaColor()` at 4 sites); F-7 value-row extracted (248 → 198 + 63); 409 add copy confident | dev `7aa7986` / `415fbf2` / `72020d8` | ✓ accepted ("lov behaved lovely") — pending/approved pills render, Profile country/currency + /settings/pages dropdowns confirmed | ✓ clean |
 | v2.19c | 2026-06-12 | Architect audit triage — 4 fixes accepted (the real catch was F-2: Profile save now per-section payloads — Company Info save no longer overwrites stale Financial values), 2 rejected with rationale, 1 noted (edit-field + codelists-settings + pages-settings in bloat watch) | (per shipped file) | n/a | ✓ clean |
+| v2.33i-n | 2026-06-22 | **STORE-01 — added `draft` value to `item_approval_status` codelist** (no schema change; codelist value insertion only). New transitions: `(new) → draft` (Save Draft); `draft → pending` (Submit for Approval); `pending → draft` (Cancel Approval Request, supplier-side). Item moderation actions stay admin-only (`pending → approved/rejected`). See `STORE.md` for full status workflow + actor permissions. | dev | ✓ | — |
 
 ### Detail — QC + Audit findings per version
 
