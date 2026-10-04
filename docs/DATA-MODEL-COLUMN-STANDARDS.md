@@ -135,3 +135,78 @@ otherwise; they are **not** tenant-scoped (no `org_id`).
 8. **Additive nullable column** = not a "migration" — add it (NULL for existing) after a quick confirm. Heavy/backfill changes need an explicit ask.
 9. **Update `migrate-schemas.js`** (the single source of truth) in the same change; put new DDL **early** (it fatals partway) and verify via `information_schema`.
 10. **Place it in the right group** per the column-order rule — physical append is fine (reference columns by **name**, never ordinal).
+
+## Delete & visibility (soft-delete) — one rule, every parent
+
+**Decision (2026-10-04):** soft-delete the **parent only**; **never stamp children**.
+Derive a child's visibility from its owner key in **one hop**. Applied **uniformly to
+every parent→subtree** (projects, orgs, and any future parent) — not case by case.
+
+**Why uniform even if it's later judged wrong:** a single rule applied everywhere is
+reversible as **one predictable sweep** (e.g. "stamp-on-delete everywhere" or "add a
+branch gate everywhere"); a pile of per-table choices is archaeology. Consistency is
+the hedge, not the model being provably optimal.
+
+**The model:**
+
+1. **Parent delete = set `parent.deleted_at`.** Children are untouched. Undelete =
+   clear the flag — a pure, exact restore (no cascade to run *or reverse*).
+2. **Two-predicate visibility gate:** a row is live iff `row.deleted_at IS NULL AND
+   <owner>.deleted_at IS NULL`. The owner predicate handles parent deletes; the row's
+   own predicate handles a child deleted **independently**. Both are required.
+3. **One hop, via the denormalised owner key** — `project_id` on every project
+   descendant, `org_id` on every tenant row (the RLS key). One join gates the whole
+   subtree; no recursive walk. (This is *why* denormalising those keys is mandatory.)
+4. **The view owns the gate** (ADR-0002). Counts/aggregates run through the read view
+   so the gate can't be forgotten; a count hitting a **base table directly** is the
+   only way to get a stale number — forbid it.
+5. **Partial unique indexes** — `UNIQUE (…) WHERE deleted_at IS NULL`; a soft-deleted
+   row still holds its handle/`ref`.
+6. **Owner key gates; referenced (non-owning) key does not.** A row naming two orgs
+   (`supplier_org_id`, two-party docs) is gated by its **owning** `org_id` only. A
+   *referenced* org/parent being deleted is a **display** concern ("unavailable"),
+   never a reason to hide another tenant's row.
+7. **Identity is membership-scoped, not owner-gated.** A user belongs to many orgs via
+   `user_orgs`; deleting an org must not hide shared users.
+8. **Delete vs Cancel vs Purge.** User "delete" = the flag (private/throwaway, hides the
+   subtree for everyone). An **engaged** parent uses **Cancel** (a status — two-party,
+   stays visible). **Purge** (hard delete + FK `CASCADE`) is a rare admin/retention path;
+   everyday delete never fires the cascade. **Ballpark org #1 is never deletable.**
+9. **Out of scope:** hiding an **intermediate node** inside a self-ref tree (the one-hop
+   owner gate doesn't encode "under node A"). Resolved by the self-ref tree rules —
+   lines die with the project or via their own status, not by branch-hiding.
+
+**Regression test (the invariant):** delete child → delete parent → undelete parent →
+**child stays deleted.** If that holds, the orthogonal-flag model is intact.
+
+## Self-referencing trees — one rule, every tree
+
+**Decision (2026-10-04):** adjacency-list (`parent_id`) everywhere; same rule on **all**
+self-ref trees — `taxonomy_categories`, `feedback_categories`, `feedback` (items), and
+the dormant `items` / `project_items` buildup columns. (Feedback already lives this way —
+two working trees, 90 nested rows incl. Test Run→Test Case, **no `level`** — which is the
+proof the rule is sufficient.)
+
+1. **Cycle guard, two layers:**
+   - DB `CHECK (id <> parent_id)` — blocks the self-loop.
+   - **App-level ancestor-walk on reparent** — walk up from the proposed new parent; if
+     you meet the node being moved, reject. Handles the multi-node loop a `CHECK` can't see.
+2. **No stored depth.** `level` is **dropped** — it's derived, drifts, and maintaining it
+   re-levels the whole subtree on reparent (the exact O(n) cost the adjacency list exists to
+   avoid). `feedback_categories`/`feedback` already run with none.
+   - **Depth cap** (taxonomy's 3-deep) = **ancestor-count on write** (recursive CTE, reject
+     if depth > 2 / 409 `too_deep`), not a stored number.
+   - **Display `level`** = **computed in the read view** (ADR-0002) — always correct, costs
+     a cached recursive CTE on a tiny table.
+3. **Reparent = a single `UPDATE parent_id`.** O(1), nothing downstream. (Drops the
+   "re-level the subtree" step from the current move endpoint.)
+4. **All self-ref FKs `NO ACTION`** — consistent with "purge is the only hard delete";
+   kills the lone `project_items.option_of_line_id` CASCADE.
+5. **Dormant columns stay dormant-but-safe** (`items.parent_item_id`/`derived_from_id`,
+   `project_items.parent_id`/`option_of_line_id`) — exist, nothing writes them, same rule
+   applies if/when the buildup feature ships.
+
+**Parked (revisit ~2026-10-08):** a dedicated `shared.feedback` walk — the 36-column
+kitchen-sink (issues + meetings + sprints + test runs), its `object_type` (folder/issue) +
+`type` (sub-kind) two-tier discriminator, and the broader tracker model. Off the launch
+critical path; the standards above still apply to its trees in the meantime.
