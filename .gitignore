@@ -3,6 +3,8 @@ dist
 bp_old/
 *.zip
 .angular
+.env*
+*.v2dev
 .env
 .env.local
 .env.preview
