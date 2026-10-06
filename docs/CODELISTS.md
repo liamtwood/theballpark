@@ -143,6 +143,26 @@ Status family (`family='status'`): `project_status`, `category_status`,
 `message_status`, `message_item_status`, `item_approval_status`,
 `membership_status` + new `document_status`, `subscription_status` = **8 lists**.
 
+## Seed grooming before env promotion (2026-10-06)
+
+v2dev is seeded (`0007_codelists_seed.sql` — 21 lists, 384 values). **Before
+promoting codelists to any other environment, groom the seed.** Open items:
+
+- **3 new lists carry PLACEHOLDER values** (I chose them, not migrated) — review
+  codes/labels before they go anywhere:
+  - `document_status` (system, synced) — draft/sent/viewed/accepted/declined/expired
+  - `subscription_status` (system, synced) — trialing/active/past_due/canceled/suspended
+  - `install_unit` (ballpark, per-env/curatable) — flat/per_item/per_hour/per_day
+- **4 "promote-if-data" lists NOT seeded** — add only when there's data to justify:
+  `image_display`, `icon_name`, `icon_color`, `tag_dimension`.
+- **Promotion rule by scope:** `system` lists are canonical + **synced** across
+  envs → groom once in the seed. `ballpark` lists are **local/curatable per env**
+  → may legitimately differ; don't force-sync them.
+- **One-value-per-concept lint** (family=`status`): confirm shared `code`s share a
+  `label` across the 8 status lists before promotion.
+
+The seed is the single source — keep it groomed, then promote deliberately.
+
 ---
 
 ## What it was (v1 — renamed to `reference_codelist_values` in v2.18a)
