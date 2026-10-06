@@ -102,6 +102,7 @@ preference), `org_id` (**= Ballpark #1 — instance ownership**, NOT authority; 
   within-org authority is `role` (`member` < `admin` < `owner`). This deliberately avoids the combinatorial
   `agent`/`agent_admin`/`supplier`/`supplier_admin` set. `owner` = creator / billing / can't-be-removed (the
   one level `is_admin` couldn't express). Membership = inbox access (per the messaging cluster).
+  - **Owners are MULTIPLE, not singular (decided 2026-10-06).** An org may — and ideally does — have **~2 owners** for resilience / bus-factor; there is **no one-owner-per-org constraint**. "Can't-be-removed" therefore means **can't remove the *last* owner/admin**, not "can't remove an owner" — already enforced by the team service's last-admin guard (counts `role IN ('admin','owner')`). `owner` stays a `role` tier — a separate `is_owner` field was considered on 2026-10-06 and **rejected**; the locked single-field role model holds. Ballpark itself legitimately carries 2 owners (the human + the bootstrap System user).
 - Migration (greenfield): existing `is_admin=true` → `admin` (org creator → `owner`), `false` → `member`.
 
 **Authority model (matches the code today — one stored role, everything else derived):**
