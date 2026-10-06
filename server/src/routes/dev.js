@@ -19,12 +19,14 @@ router.get('/users', authReadLimit, async (req, res, next) => {
   }
   try {
     const r = await pool.query(
+      // v2dev: OIDC subject is `sub`; org-admin derives from the role enum.
       `SELECT u.id, u.email, COALESCE(u.display_name, u.name) AS display_name, u.avatar_url,
-              o.id AS org_id, o.name AS org_name, o.type AS org_type, uo.is_admin
+              o.id AS org_id, o.name AS org_name, o.type AS org_type,
+              (uo.role IN ('admin','owner')) AS is_admin
          FROM users u
          JOIN user_orgs uo ON uo.user_id = u.id AND uo.status = 'active' AND uo.deleted_at IS NULL
          JOIN orgs o ON o.id = uo.org_id
-        WHERE u.google_sub IS NULL AND u.deleted_at IS NULL
+        WHERE u.sub IS NULL AND u.deleted_at IS NULL
           AND (u.default_org_id IS NULL OR o.id = u.default_org_id)
         ORDER BY u.email`,
     );

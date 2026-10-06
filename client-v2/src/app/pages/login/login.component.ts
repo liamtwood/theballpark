@@ -1,11 +1,22 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { AuthService } from '../../core/auth/auth.service';
+import { ApiService } from '../../core/api.service';
 import { PublicHeaderComponent } from '../../shared/public-header/public-header.component';
 
-/** Sign-in page: ONE action — the Google-branded button (Liam, 2026-06-12:
- *  the dev role picker is gone; role testing uses real Google accounts, one
- *  per role, through the normal OAuth → onboarding flow). Carries the
- *  public chrome so a direct /login hit matches the landing page. */
+/** A seeded dev identity (GET /api/dev/users — dev/non-prod only). */
+interface DevUser {
+  id: string;
+  email: string;
+  displayName: string;
+  activeOrgName: string | null;
+  role: string | null;
+}
+
+/** Sign-in page. Primary action is the Google button (real role testing uses
+ *  real Google accounts — Liam, 2026-06-12). The rebuild/org-slice branch runs
+ *  against v2dev where OAuth isn't wired, so the old dev picker is restored HERE
+ *  as QC tooling: it renders ONLY when GET /api/dev/users returns seeds (empty /
+ *  403 in any real env), so it's invisible in prod. */
 @Component({
   selector: 'app-login',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,9 +39,31 @@ import { PublicHeaderComponent } from '../../shared/public-header/public-header.
         <img src="/google-g.svg" alt="" width="18" height="18" />
         Continue with Google
       </button>
+
+      @if (devUsers().length) {
+        <div class="mt-6 border-t border-default pt-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-secondary">Dev sign-in · v2dev</p>
+          @for (u of devUsers(); track u.id) {
+            <button type="button" class="bp-btn-outline mt-2 w-full justify-start text-left" (click)="auth.devLogin(u.id)">
+              <span class="truncate">{{ u.displayName || u.email }}</span>
+              <span class="ml-auto text-xs text-secondary">{{ u.activeOrgName }} · {{ u.role }}</span>
+            </button>
+          }
+        </div>
+      }
     </section>
   `,
 })
 export class LoginComponent {
   protected readonly auth = inject(AuthService);
+  private readonly api = inject(ApiService);
+  protected readonly devUsers = signal<DevUser[]>([]);
+
+  constructor() {
+    // Dev-only: populate the picker when seeds exist; silent no-op otherwise.
+    this.api.get<DevUser[]>('/api/dev/users').subscribe({
+      next: (u) => this.devUsers.set(u || []),
+      error: () => this.devUsers.set([]),
+    });
+  }
 }
