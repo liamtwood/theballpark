@@ -7,7 +7,7 @@ const {
   CodelistValuePatchSchema,
   ListNameSchema,
 } = require('./codelist-value.schema');
-const { consumerRef, CONSUMER_WHITELIST } = require('../services/codelist.consumers');
+const { isSafeIdentifier, CONSUMER_WHITELIST } = require('../services/codelist.consumers');
 
 test('create: accepts a clean value and strips unknowns', () => {
   const r = CodelistValueCreateSchema.safeParse({ code: 'SGD', label: 'SGD (S$)', symbol: 'S$', evil: 1 });
@@ -39,11 +39,14 @@ test('whitelist entries are bare lowercase identifiers (audit F-1 contract)', ()
   }
 });
 
-test('consumerRef: whitelist gates identifiers (Rule 8)', () => {
-  assert.equal(consumerRef({ consumer_table: 'items', consumer_column: 'unit' }), 'items.unit');
-  // A poisoned parent row must NEVER reach SQL identifiers:
-  assert.equal(consumerRef({ consumer_table: 'users; DROP TABLE x', consumer_column: 'status' }), null);
-  assert.equal(consumerRef({ consumer_table: 'pg_shadow', consumer_column: 'passwd' }), null);
-  assert.equal(consumerRef({ consumer_table: null, consumer_column: 'status' }), null);
-  assert.equal(consumerRef(null), null);
+test('isSafeIdentifier: shape-guards consumer identifiers before SQL (Rule 8)', () => {
+  // Registry identifiers are interpolated into SQL — only bare snake identifiers pass.
+  assert.equal(isSafeIdentifier('items'), true);
+  assert.equal(isSafeIdentifier('approval_status'), true);
+  // A poisoned registry row must NEVER reach SQL identifiers:
+  assert.equal(isSafeIdentifier('users; DROP TABLE x'), false);
+  assert.equal(isSafeIdentifier('a.b'), false);
+  assert.equal(isSafeIdentifier('Items'), false); // uppercase → fail closed
+  assert.equal(isSafeIdentifier(null), false);
+  assert.equal(isSafeIdentifier(''), false);
 });

@@ -1,64 +1,68 @@
-// Codelists service — RC/RCV since pV2-CODELISTS-01 (docs/CODELISTS.md).
-// Serves BOTH routers: v1's ungated reads (routes/codelists.js — dropdowns
-// on :4200 until v1 retires) and the gated v2 surface
-// (routes/codelists-v2.js — reads any member, curation ballpark admins).
+// Codelists service — the new 3-table id-keyed model (docs/CODELISTS.md v0.2).
+// reference_codelists (LIST) + reference_codelist_values (VALUES, FK codelist_id)
+// + reference_codelist_consumers (which columns use a list). v2dev: these live in
+// the instance's OWN public schema (not a cross-env `shared` schema). Lists are
+// addressed by `name`; values join via codelist_id. Response shapes are unchanged
+// so the client CodelistService / dropdowns need no edits.
+//
+// Serves both routers: v1 ungated reads (routes/codelists.js) + the gated v2
+// surface (routes/codelists-v2.js — reads any member, curation ballpark admins).
 
 const pool = require('../db/pool');
 
+// Join once: active values of a list, by the list's name.
+const VALUES_BY_NAME = `
+  SELECT v.* FROM public.reference_codelist_values v
+    JOIN public.reference_codelists l ON l.id = v.codelist_id AND l.deleted_at IS NULL
+   WHERE l.name = $1 AND v.deleted_at IS NULL`;
+
 // ── v1 reads (unchanged shape — :4200 dropdowns depend on these) ────────
 async function getByName(listName) {
-  const result = await pool.query(
-    `SELECT * FROM shared.reference_codelist_values
-      WHERE list_name = $1 AND is_active = true
-      ORDER BY sort_order ASC`,
-    [listName]
-  );
+  const result = await pool.query(`${VALUES_BY_NAME} AND v.is_active = true ORDER BY v.sort_order ASC`, [listName]);
   return result.rows;
 }
 
 async function getAll() {
   const result = await pool.query(
-    `SELECT DISTINCT list_name FROM shared.reference_codelist_values ORDER BY list_name ASC`
+    `SELECT name FROM public.reference_codelists WHERE deleted_at IS NULL ORDER BY name ASC`
   );
-  return result.rows.map((r) => r.list_name);
+  return result.rows.map((r) => r.name);
 }
 
 // ── v2 (RC-aware) ───────────────────────────────────────────────────────
 
-function toValue(row) {
+function toValue(row, defaultCode) {
   return {
     code: row.code,
     label: row.label,
     symbol: row.symbol,
-    description: row.description,
+    description: null, // the redesigned values table has no description column
     sortOrder: row.sort_order === null ? null : Number(row.sort_order),
     isActive: !!row.is_active,
-    isDefault: !!row.is_default,
+    isDefault: defaultCode !== undefined ? row.code === defaultCode : undefined,
     meta: row.meta ?? {},
   };
 }
 
-/** Every parent + its value counts — the admin master list. */
+/** Every list + its value counts — the admin master list. */
 async function lists() {
   const r = await pool.query(
-    `SELECT c.list_name, c.description, c.is_active, c.default_code, c.type,
-            c.application, c.consumer_table, c.consumer_column,
+    `SELECT l.name, l.description, l.is_active, l.default_code, l.type, l.family,
             COUNT(v.id) AS value_count,
             COUNT(v.id) FILTER (WHERE v.is_active) AS active_count
-       FROM shared.reference_codelists c
-       LEFT JOIN shared.reference_codelist_values v ON v.list_name = c.list_name
-      GROUP BY c.list_name
-      ORDER BY c.application ASC, c.list_name ASC`
+       FROM public.reference_codelists l
+       LEFT JOIN public.reference_codelist_values v ON v.codelist_id = l.id AND v.deleted_at IS NULL
+      WHERE l.deleted_at IS NULL
+      GROUP BY l.id
+      ORDER BY l.type ASC, l.name ASC`
   );
   return r.rows.map((row) => ({
-    listName: row.list_name,
+    listName: row.name,
     description: row.description,
     isActive: !!row.is_active,
     defaultCode: row.default_code,
     type: row.type,
-    application: row.application,
-    consumerTable: row.consumer_table,
-    consumerColumn: row.consumer_column,
+    family: row.family,
     valueCount: Number(row.value_count),
     activeCount: Number(row.active_count),
   }));
@@ -66,100 +70,98 @@ async function lists() {
 
 /** Active values of one list, consumer-shaped (the CodelistService read). */
 async function values(listName) {
-  const r = await pool.query(
-    `SELECT * FROM shared.reference_codelist_values
-      WHERE list_name = $1 AND is_active = true
-      ORDER BY sort_order ASC, label ASC`,
-    [listName]
-  );
-  return r.rows.map(toValue);
+  const parent = await getParent(listName);
+  if (!parent) return [];
+  const r = await pool.query(`${VALUES_BY_NAME} AND v.is_active = true ORDER BY v.sort_order ASC, v.label ASC`, [listName]);
+  return r.rows.map((row) => toValue(row, parent.default_code));
 }
 
 /** ALL values incl. inactive — the curation table. */
 async function valuesAll(listName) {
-  const r = await pool.query(
-    `SELECT * FROM shared.reference_codelist_values
-      WHERE list_name = $1
-      ORDER BY sort_order ASC, label ASC`,
-    [listName]
-  );
-  return r.rows.map(toValue);
+  const parent = await getParent(listName);
+  if (!parent) return [];
+  const r = await pool.query(`${VALUES_BY_NAME} ORDER BY v.sort_order ASC, v.label ASC`, [listName]);
+  return r.rows.map((row) => toValue(row, parent.default_code));
 }
 
 async function getParent(listName) {
   const r = await pool.query(
-    `SELECT * FROM shared.reference_codelists WHERE list_name = $1`,
+    `SELECT * FROM public.reference_codelists WHERE name = $1 AND deleted_at IS NULL`,
     [listName]
   );
   return r.rows[0] ?? null;
 }
 
-/** Rows currently using a value — the deactivation gate count. The
- *  consumer pointer comes from the PARENT ROW (trusted data), never from
- *  request input, and is double-checked against a whitelist so a bad
- *  parent row can never reach SQL identifiers (Rule 8 pure fn — lives in
- *  codelist.consumers.js so its specs run pool-free). */
-const { consumerRef } = require('./codelist.consumers');
-
-async function inUseCount(listName, code) {
-  const parent = await getParent(listName);
-  const ref = consumerRef(parent);
-  if (!ref) return null; // no consumer pointer → no gate count available
-  const [table, column] = ref.split('.');
-  // Audit F-1: identifiers can't be parameterised — the whitelist is the
-  // gate, this regex makes its contract EXPLICIT (a future whitelist entry
-  // that isn't a bare lowercase identifier fails closed, not into SQL).
-  if (!/^[a-z_][a-z0-9_]*$/.test(table) || !/^[a-z_][a-z0-9_]*$/.test(column)) return null;
-  try {
-    // Not every v1-era consumer table carries deleted_at — detect once.
-    const hasDeletedAt = await pool.query(
-      `SELECT 1 FROM information_schema.columns
-        WHERE table_schema = current_schema() AND table_name = $1 AND column_name = 'deleted_at'`,
-      [table]
-    );
-    const filter = hasDeletedAt.rows.length ? 'AND deleted_at IS NULL' : '';
-    const r = await pool.query(
-      `SELECT COUNT(*) AS n FROM ${table} WHERE ${column} = $1 ${filter}`,
-      [code]
-    );
-    return Number(r.rows[0].n);
-  } catch (err) {
-    // Consumer table may not exist yet (e.g. messages pre-inbox-arc) —
-    // a missing gate count must not break curation (logged, null).
-    console.warn(`[codelists] inUseCount failed for ${ref}:`, err.message);
-    return null;
-  }
+/** Registered consumer columns for a list (reference_codelist_consumers). */
+async function consumers(listName) {
+  const r = await pool.query(
+    `SELECT c.consumer_table, c.consumer_column
+       FROM public.reference_codelist_consumers c
+       JOIN public.reference_codelists l ON l.id = c.codelist_id
+      WHERE l.name = $1`,
+    [listName]
+  );
+  return r.rows;
 }
 
-/** Add a value to a BALLPARK-type list (the only kind admins may extend —
- *  locked rule 1). Caller has already authorised. */
+/** Rows currently using a value — the deactivation gate count, summed across
+ *  ALL registered consumers (the model now allows many). Identifiers can't be
+ *  parameterised, so each (table,column) is whitelisted-by-shape (Rule 8 pure fn
+ *  in codelist.consumers.js). A consumer table that doesn't exist yet (its slice
+ *  isn't built) is skipped, not fatal. Returns null when nothing is registered. */
+const { isSafeIdentifier } = require('./codelist.consumers');
+
+async function inUseCount(listName, code) {
+  const refs = await consumers(listName);
+  if (!refs.length) return null;
+  let total = 0;
+  let counted = false;
+  for (const { consumer_table: table, consumer_column: column } of refs) {
+    if (!isSafeIdentifier(table) || !isSafeIdentifier(column)) continue;
+    try {
+      const hasDeletedAt = await pool.query(
+        `SELECT 1 FROM information_schema.columns
+          WHERE table_schema = current_schema() AND table_name = $1 AND column_name = 'deleted_at'`,
+        [table]
+      );
+      const filter = hasDeletedAt.rows.length ? 'AND deleted_at IS NULL' : '';
+      const r = await pool.query(`SELECT COUNT(*) AS n FROM ${table} WHERE ${column} = $1 ${filter}`, [code]);
+      total += Number(r.rows[0].n);
+      counted = true;
+    } catch (err) {
+      // Consumer table may not exist yet (its slice isn't built) — skip, logged.
+      console.warn(`[codelists] inUseCount skipped ${table}.${column} for ${listName}:`, err.message);
+    }
+  }
+  return counted ? total : null;
+}
+
+/** Add a value to a BALLPARK-type list (the only kind admins may extend). */
 async function addValue(listName, data) {
   const parent = await getParent(listName);
   if (!parent) return { error: 404 };
   if (parent.type !== 'ballpark') return { error: 'system' };
   const next = await pool.query(
-    `SELECT COALESCE(MAX(sort_order), 0) + 1 AS next
-       FROM shared.reference_codelist_values WHERE list_name = $1`,
-    [listName]
+    `SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM public.reference_codelist_values WHERE codelist_id = $1`,
+    [parent.id]
   );
   try {
     const r = await pool.query(
-      `INSERT INTO shared.reference_codelist_values
-         (list_name, code, label, symbol, description, sort_order, is_active, is_system, is_default, meta)
-       VALUES ($1, $2, $3, $4, $5, $6, true, false, false, $7::jsonb)
+      `INSERT INTO public.reference_codelist_values
+         (codelist_id, code, label, symbol, sort_order, is_active, meta)
+       VALUES ($1, $2, $3, $4, $5, true, $6::jsonb)
        RETURNING *`,
-      [listName, data.code, data.label, data.symbol ?? null, data.description ?? null,
+      [parent.id, data.code, data.label, data.symbol ?? null,
        data.sortOrder ?? next.rows[0].next, JSON.stringify(data.meta ?? {})]
     );
-    return { value: toValue(r.rows[0]) };
+    return { value: toValue(r.rows[0], parent.default_code) };
   } catch (err) {
     if (err.code === '23505') return { error: 'conflict' };
     throw err;
   }
 }
 
-/** Patch a value (label/symbol/description/sort/isActive). Deactivating
- *  the list's default is refused — the default must stay selectable. */
+/** Patch a value. Deactivating the list's default is refused. */
 async function patchValue(listName, code, patch) {
   const parent = await getParent(listName);
   if (!parent) return { error: 404 };
@@ -169,7 +171,6 @@ async function patchValue(listName, code, patch) {
   const map = {
     label: patch.label,
     symbol: patch.symbol,
-    description: patch.description,
     sort_order: patch.sortOrder,
     is_active: patch.isActive,
   };
@@ -181,23 +182,21 @@ async function patchValue(listName, code, patch) {
       sets.push(`${col} = $${vals.length}`);
     }
   }
-  // meta is jsonb — handled separately so it gets the ::jsonb cast (a plain
-  // object bound as a param would be sent as text and rejected).
   if (patch.meta !== undefined) {
     vals.push(JSON.stringify(patch.meta));
     sets.push(`meta = $${vals.length}::jsonb`);
   }
   if (!sets.length) return { error: 'empty' };
-  vals.push(listName, code);
+  vals.push(parent.id, code);
   const r = await pool.query(
-    `UPDATE shared.reference_codelist_values
+    `UPDATE public.reference_codelist_values
         SET ${sets.join(', ')}, updated_at = NOW()
-      WHERE list_name = $${vals.length - 1} AND code = $${vals.length}
+      WHERE codelist_id = $${vals.length - 1} AND code = $${vals.length} AND deleted_at IS NULL
       RETURNING *`,
     vals
   );
   if (!r.rows.length) return { error: 404 };
-  return { value: toValue(r.rows[0]) };
+  return { value: toValue(r.rows[0], parent.default_code) };
 }
 
 module.exports = {
@@ -207,6 +206,7 @@ module.exports = {
   values,
   valuesAll,
   getParent,
+  consumers,
   inUseCount,
   addValue,
   patchValue,
