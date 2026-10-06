@@ -133,6 +133,9 @@ create policy orgs_self on public.orgs for all
   with check (id = public.app_current_org() or public.app_is_admin());
 -- counterparty read (supplier sees agency via a shared project) ships with the project slice.
 
+-- NOTE: the `org_id = app_current_org()` clause below is DEAD in v2dev (org_id is
+-- the Ballpark instance, not the functional org) and is SUPERSEDED by 0005, which
+-- recreates this policy with membership-overlap visibility (app_can_see_user).
 create policy users_self on public.users for all
   using (id = public.app_current_user_id() or org_id = public.app_current_org() or public.app_is_admin())
   with check (id = public.app_current_user_id() or public.app_is_admin());

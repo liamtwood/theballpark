@@ -5,10 +5,13 @@ async function getAll() {
   return result.rows;
 }
 
-/** BE-00127 — admin org list: ALL orgs (incl. suspended/is_active=false so the
- *  admin can re-activate), excluding only hard-removed (deleted_at). */
+/** BE-00127 — admin org list: ALL orgs (incl. suspended so the admin can
+ *  re-activate), excluding only hard-removed (deleted_at). v2dev: `status`
+ *  replaced v1's is_active — expose a computed is_active for client compat. */
 async function getAllForAdmin() {
-  const result = await pool.query('SELECT * FROM orgs WHERE deleted_at IS NULL ORDER BY created_at DESC');
+  const result = await pool.query(
+    `SELECT *, (status = 'active') AS is_active FROM orgs WHERE deleted_at IS NULL ORDER BY created_at DESC`
+  );
   return result.rows;
 }
 
@@ -22,26 +25,33 @@ async function getCurrentAgency() {
   return result.rows[0] || null;
 }
 
+// v2dev: the streamlined orgs object drops v1's embedded address (→ addresses
+// satellite) and subscription_tier / balls_* (→ org_subscription / org_credits).
+// New orgs hang under the Ballpark root (parent_id) and start 'active'. created_by
+// is stamped from the request GUC (no audit trigger on v2dev yet) — app_is_admin()
+// is on for this ballpark-admin request, so orgs_self WITH CHECK permits the write.
+const BALLPARK_ORG_ID = '00000000-0000-0000-0000-000000000001';
 async function create(data) {
   const {
-    name, description, type, address, city, country, phone, email, website,
-    logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
+    name, description, type, phone, email, website,
+    logo_url, cover_image_url, default_currency,
     default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
-    auto_publish_items,
-    // BE-00127 — fields the website-import pre-fills (were previously dropped).
-    company_number, cover_image_url, default_currency,
+    auto_publish_items, company_number,
   } = data;
   const result = await pool.query(
     `INSERT INTO orgs (
-      name, description, type, address, city, country, phone, email, website,
-      logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
+      name, description, type, status, parent_id,
+      phone, email, website, logo_url, cover_image_url, default_currency,
       default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
-      auto_publish_items, company_number, cover_image_url, default_currency
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING *`,
-    [name, description, type, address, city, country, phone, email, website,
-     logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
-     default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
-     auto_publish_items ?? true, company_number ?? null, cover_image_url ?? null, default_currency ?? null]
+      auto_publish_items, company_number, created_by, updated_by
+    ) VALUES ($1,$2,$3,'active',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
+              app_current_user_id(), app_current_user_id())
+    RETURNING *, (status = 'active') AS is_active`,
+    [name, description ?? null, type, BALLPARK_ORG_ID,
+     phone ?? null, email || null, website || null, logo_url ?? null, cover_image_url ?? null, default_currency ?? null,
+     default_vat_pct ?? null, vat_registered ?? false, vat_number ?? null,
+     default_margin_pct ?? null, default_contingency_pct ?? null,
+     auto_publish_items ?? true, company_number ?? null]
   );
   return result.rows[0];
 }
@@ -87,10 +97,12 @@ async function update(id, data) {
   return result.rows[0] || null;
 }
 
-/** BE-00127 — approve/suspend an org (is_active toggle; approve=activate). */
+/** BE-00127 — approve/suspend an org. v2dev: status enum, not is_active. */
 async function setActive(id, active) {
   const result = await pool.query(
-    'UPDATE orgs SET is_active = $2, updated_at = NOW() WHERE id = $1 RETURNING *', [id, !!active]
+    `UPDATE orgs SET status = $2, updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL
+       RETURNING *, (status = 'active') AS is_active`,
+    [id, active ? 'active' : 'suspended']
   );
   return result.rows[0] || null;
 }

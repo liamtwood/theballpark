@@ -2,7 +2,9 @@
 // so the self-serve PUT /api/organisation and the admin PUT /api/admin/orgs/:id
 // use ONE definition (no duplicated field-set logic). camelCase out.
 
-const ORG_PROFILE_SELECT = `SELECT id, name, description, website, address, city, country, email, phone, ref_prefix, ref_counter,
+// v2dev: address/city/country are no longer columns on orgs (they live in the
+// addresses satellite, surfaced via primary_address_id — wired in a later slice).
+const ORG_PROFILE_SELECT = `SELECT id, name, description, website, email, phone, ref_prefix, ref_counter,
        default_vat_pct, default_margin_pct, default_contingency_pct, default_currency,
        logo_url, cover_image_url, image_display, images, terms_pdf_url, company_number
   FROM orgs WHERE id = $1 AND deleted_at IS NULL`;
@@ -13,11 +15,11 @@ function toProfile(row) {
     name: row.name,
     description: row.description ?? null,
     website: row.website ?? null,
-    address: row.address,
-    city: row.city,
+    address: row.address ?? null,   // v2dev: addresses satellite (not yet wired)
+    city: row.city ?? null,
     email: row.email,
     phone: row.phone,
-    country: row.country,
+    country: row.country ?? null,
     refPrefix: row.ref_prefix,
     refCounter: Number(row.ref_counter ?? 0),
     defaultCurrency: row.default_currency ?? 'GBP',
@@ -45,12 +47,10 @@ function buildOrgUpdate(p) {
     name: p.name,
     description: p.description === '' ? null : p.description,
     website: p.website === '' ? null : p.website,
-    address: p.address,
-    city: p.city,
+    // address/city/country intentionally omitted on v2dev (addresses satellite).
     email: p.email,
     phone: p.phone,
     ref_prefix: p.refPrefix === '' ? null : p.refPrefix,
-    country: p.country === '' ? null : p.country,
     default_currency: p.defaultCurrency,
     default_vat_pct: p.defaultVatPct,
     default_margin_pct: p.defaultMarginPct,

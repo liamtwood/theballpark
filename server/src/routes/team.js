@@ -24,9 +24,10 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 router.use(authenticate, requireActiveMembership('org.invite_member'));
 
+// v2dev: membership authority is the role enum; is_admin is derived (admin|owner).
 const memberSelect = `
   SELECT u.id AS user_id, u.email, u.display_name, u.avatar_url,
-         uo.job_title, uo.is_admin, uo.status,
+         uo.job_title, (uo.role IN ('admin','owner')) AS is_admin, uo.status,
          uo.invited_at, uo.joined_at
     FROM user_orgs uo JOIN users u ON u.id = uo.user_id
    WHERE uo.org_id = $1 AND uo.deleted_at IS NULL AND u.deleted_at IS NULL`;
@@ -56,7 +57,8 @@ router.get('/', async (req, res, next) => {
 /** Target membership within the requester's org, or null (cross-org → 404). */
 async function targetMembership(userId, orgId, { includeDeleted = false } = {}) {
   const r = await pool.query(
-    `SELECT uo.user_id, uo.org_id, uo.is_admin, uo.status, uo.deleted_at
+    `SELECT uo.user_id, uo.org_id, (uo.role IN ('admin','owner')) AS is_admin, uo.role,
+            uo.status, uo.deleted_at
        FROM user_orgs uo WHERE uo.user_id = $1 AND uo.org_id = $2
         ${includeDeleted ? '' : 'AND uo.deleted_at IS NULL'}`,
     [userId, orgId]
@@ -68,7 +70,7 @@ async function targetMembership(userId, orgId, { includeDeleted = false } = {}) 
 async function otherActiveAdmins(orgId, excludeUserId) {
   const r = await pool.query(
     `SELECT COUNT(*)::int AS n FROM user_orgs
-      WHERE org_id = $1 AND user_id <> $2 AND is_admin = true
+      WHERE org_id = $1 AND user_id <> $2 AND role IN ('admin','owner')
         AND status = 'active' AND deleted_at IS NULL`,
     [orgId, excludeUserId]
   );
@@ -83,8 +85,12 @@ router.post('/invite', async (req, res, next) => {
     if (!EMAIL_RE.test(cleanEmail)) return res.status(400).json({ error: 'Valid email required' });
     const orgId = req.user.org_id;
 
-    // User by email — stub if absent (google_sub NULL until first sign-in). Both
-    // the cross-org lookup and the stub INSERT go through the owner pool (BE-00115).
+    // User by email — stub if absent (sub NULL until first sign-in). Both the
+    // cross-org lookup and the stub INSERT go through the owner pool (BE-00115).
+    // v2dev: users.org_id (the owning Ballpark instance) + created_by are NOT NULL,
+    // so the stub must set them (the owner pool carries no current_user GUC → pass
+    // the inviter explicitly).
+    const BALLPARK_ORG_ID = '00000000-0000-0000-0000-000000000001';
     let u = await ownerPool.query(`SELECT id FROM users WHERE lower(email) = $1 AND deleted_at IS NULL`, [cleanEmail]);
     let userId;
     if (u.rows.length) {
@@ -92,8 +98,9 @@ router.post('/invite', async (req, res, next) => {
     } else {
       const name = (displayName || '').trim() || cleanEmail;
       u = await ownerPool.query(
-        `INSERT INTO users (name, display_name, email) VALUES ($1, $2, $3) RETURNING id`,
-        [name, (displayName || '').trim() || null, cleanEmail]
+        `INSERT INTO users (name, display_name, email, org_id, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, $5) RETURNING id`,
+        [name, (displayName || '').trim() || null, cleanEmail, BALLPARK_ORG_ID, req.user.id]
       );
       userId = u.rows[0].id;
     }
@@ -102,20 +109,21 @@ router.post('/invite', async (req, res, next) => {
     if (existing && !existing.deleted_at) {
       return res.status(409).json({ error: 'Already a member' });
     }
+    const inviteRole = isAdmin ? 'admin' : 'member'; // v2dev: role enum, not is_admin
     if (existing && existing.deleted_at) {
       // Re-invite: undelete + back to invited.
       await pool.query(
         `UPDATE user_orgs SET deleted_at = NULL, deleted_by = NULL, status = 'invited',
-                is_admin = $3, job_title = COALESCE($4, job_title),
+                role = $3, job_title = COALESCE($4, job_title),
                 invited_by_user_id = $5, invited_at = NOW(), updated_at = NOW()
           WHERE user_id = $1 AND org_id = $2`,
-        [userId, orgId, !!isAdmin, (jobTitle || '').trim() || null, req.user.id]
+        [userId, orgId, inviteRole, (jobTitle || '').trim() || null, req.user.id]
       );
     } else {
       await pool.query(
-        `INSERT INTO user_orgs (user_id, org_id, is_admin, job_title, status, invited_by_user_id, invited_at)
-         VALUES ($1, $2, $3, $4, 'invited', $5, NOW())`,
-        [userId, orgId, !!isAdmin, (jobTitle || '').trim() || null, req.user.id]
+        `INSERT INTO user_orgs (user_id, org_id, role, job_title, status, invited_by_user_id, invited_at, created_by)
+         VALUES ($1, $2, $3, $4, 'invited', $5, NOW(), $5)`,
+        [userId, orgId, inviteRole, (jobTitle || '').trim() || null, req.user.id]
       );
     }
 
@@ -143,11 +151,11 @@ router.patch('/:userId', async (req, res, next) => {
     }
     await pool.query(
       `UPDATE user_orgs SET
-         is_admin  = COALESCE($3, is_admin),
+         role      = COALESCE($3, role),
          job_title = COALESCE($4, job_title),
          updated_at = NOW()
        WHERE user_id = $1 AND org_id = $2`,
-      [userId, orgId, typeof isAdmin === 'boolean' ? isAdmin : null,
+      [userId, orgId, typeof isAdmin === 'boolean' ? (isAdmin ? 'admin' : 'member') : null,
         typeof jobTitle === 'string' ? jobTitle : null]
     );
     const row = await pool.query(`${memberSelect} AND u.id = $2`, [orgId, userId]);
