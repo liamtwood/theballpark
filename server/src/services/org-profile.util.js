@@ -2,12 +2,16 @@
 // so the self-serve PUT /api/organisation and the admin PUT /api/admin/orgs/:id
 // use ONE definition (no duplicated field-set logic). camelCase out.
 
-// v2dev: address/city/country are no longer columns on orgs (they live in the
-// addresses satellite, surfaced via primary_address_id — wired in a later slice).
-const ORG_PROFILE_SELECT = `SELECT id, name, description, website, email, phone, ref_prefix, ref_counter,
-       default_vat_pct, default_margin_pct, default_contingency_pct, default_currency,
-       logo_url, cover_image_url, image_display, images, terms_pdf_url, company_number
-  FROM orgs WHERE id = $1 AND deleted_at IS NULL`;
+// v2dev: address/city/country live in the addresses satellite, surfaced via the
+// org's primary address (orgs.primary_address_id). The profile editor edits ONE
+// address line → addresses.line1 (aliased AS address), plus city + country.
+const ORG_PROFILE_SELECT = `SELECT o.id, o.name, o.description, o.website, o.email, o.phone, o.ref_prefix, o.ref_counter,
+       o.default_vat_pct, o.default_margin_pct, o.default_contingency_pct, o.default_currency,
+       o.logo_url, o.cover_image_url, o.image_display, o.images, o.terms_pdf_url, o.company_number,
+       a.line1 AS address, a.city AS city, a.country AS country
+  FROM orgs o
+  LEFT JOIN addresses a ON a.id = o.primary_address_id AND a.deleted_at IS NULL
+ WHERE o.id = $1 AND o.deleted_at IS NULL`;
 
 function toProfile(row) {
   return {

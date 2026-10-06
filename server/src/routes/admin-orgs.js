@@ -11,7 +11,8 @@ const ItemService = require('../services/item.service');
 const CatalogueExtract = require('../services/catalogue-extract.service');
 const { OrganisationUpdateSchema } = require('../schemas/organisation.schema');
 const { StoreItemCreateSchema, StoreItemUpdateSchema } = require('../schemas/store-item.schema');
-const { ORG_PROFILE_SELECT, toProfile, buildOrgUpdate } = require('../services/org-profile.util');
+const { ORG_PROFILE_SELECT, toProfile } = require('../services/org-profile.util');
+const { updateOrgProfile } = require('../services/org-profile.service');
 
 const CreateBody = z
   .object({
@@ -58,16 +59,10 @@ router.put('/:id', async (req, res, next) => {
     return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
   }
   try {
-    const { sets, vals } = buildOrgUpdate(parsed.data);
-    if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
-    vals.push(req.params.id);
-    const upd = await pool.query(
-      `UPDATE orgs SET ${sets.join(', ')}, updated_at = NOW()
-        WHERE id = $${vals.length} AND deleted_at IS NULL RETURNING id`,
-      vals,
-    );
-    if (!upd.rows.length) return res.status(404).json({ error: 'Not found' });
+    const changed = await updateOrgProfile(req.params.id, parsed.data);
+    if (!changed) return res.status(400).json({ error: 'No fields to update' });
     const fresh = await pool.query(ORG_PROFILE_SELECT, [req.params.id]);
+    if (!fresh.rows.length) return res.status(404).json({ error: 'Not found' });
     res.json(toProfile(fresh.rows[0]));
   } catch (err) { next(err); }
 });

@@ -12,7 +12,8 @@ const { requireActiveMembership } = require('../middleware/require-active-member
 const { OrganisationUpdateSchema } = require('../schemas/organisation.schema');
 // pV2-ADMIN-ORG-PROFILE-EDIT-01 — projection/mapper/update-builder shared with
 // the admin cross-org PUT (/api/admin/orgs/:id) so the field-set lives once.
-const { ORG_PROFILE_SELECT: SELECT, toProfile, buildOrgUpdate } = require('../services/org-profile.util');
+const { ORG_PROFILE_SELECT: SELECT, toProfile } = require('../services/org-profile.util');
+const { updateOrgProfile } = require('../services/org-profile.service');
 const { extractOrg } = require('../services/org-import.service');
 
 // GET /api/organisation — the caller's own org profile.
@@ -35,17 +36,10 @@ router.put('/', requireActiveMembership('org.manage_billing'), async (req, res, 
         details: z.flattenError(parsed.error).fieldErrors,
       });
     }
-    const { sets, vals } = buildOrgUpdate(parsed.data);
-    if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
-    vals.push(req.user.org_id);
-    const r = await pool.query(
-      `UPDATE orgs SET ${sets.join(', ')}, updated_at = NOW()
-        WHERE id = $${vals.length} AND deleted_at IS NULL
-        RETURNING id`,
-      vals
-    );
-    if (!r.rows.length) return res.status(404).json({ error: 'Organisation not found' });
+    const changed = await updateOrgProfile(req.user.org_id, parsed.data);
+    if (!changed) return res.status(400).json({ error: 'No fields to update' });
     const fresh = await pool.query(SELECT, [req.user.org_id]);
+    if (!fresh.rows.length) return res.status(404).json({ error: 'Organisation not found' });
     res.json(toProfile(fresh.rows[0]));
   } catch (err) { next(err); }
 });
