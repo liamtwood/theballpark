@@ -59,6 +59,14 @@ export const routes: Routes = [
           import('./pages/admin/orgs/orgs-admin.component').then((m) => m.OrgsAdminComponent),
       },
       {
+        // Platform-admin org profile edit (reuses OrgProfileEditComponent in
+        // admin mode) — edit any org without the marketplace supplier page.
+        path: 'admin/orgs/:orgId/edit',
+        canActivate: [ballparkAdminGuard],
+        loadComponent: () =>
+          import('./pages/admin/orgs/admin-org-edit.component').then((m) => m.AdminOrgEditComponent),
+      },
+      {
         // Version history (user menu → above Sign out). Renders
         // public/changelog.json — what's on dev vs already on preview.
         path: 'whats-new',

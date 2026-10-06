@@ -290,7 +290,10 @@ export class OrgsAdminComponent {
   }
 
   protected openOrg(o: AdminOrg): void {
-    if (this.isSupplier(o)) void this.router.navigate(['/suppliers', o.id]);
+    // Org slice: open the admin profile editor for ANY type. (Supplier →
+    // storefront /suppliers/:id returns with the marketplace/catalogue slice;
+    // it needs catalogue tables not present here.)
+    void this.router.navigate(['/admin/orgs', o.id, 'edit']);
   }
 
   private async load(): Promise<void> {
