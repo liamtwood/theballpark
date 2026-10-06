@@ -34,7 +34,9 @@ function requireActiveMembership(perm) {
       let row = req.freshMembership;
       if (!row) {
         const r = await pool.query(
-          `SELECT uo.is_admin, uo.status, o.type AS org_type
+          // v2dev: org-admin derives from the role enum (admin|owner), not a
+          // boolean is_admin column.
+          `SELECT (uo.role IN ('admin','owner')) AS is_admin, uo.status, o.type AS org_type
              FROM user_orgs uo
              JOIN orgs o ON o.id = uo.org_id
             WHERE uo.user_id = $1 AND uo.org_id = $2 AND uo.deleted_at IS NULL`,

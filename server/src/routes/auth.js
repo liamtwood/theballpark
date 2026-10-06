@@ -92,7 +92,7 @@ router.post('/dev/login', authWriteLimit, async (req, res, next) => {
     if (!userId) return res.status(400).json({ error: 'userId required' });
     const r = await ownerPool.query(
       `SELECT u.id FROM users u
-        WHERE u.id = $1 AND u.google_sub IS NULL AND u.deleted_at IS NULL
+        WHERE u.id = $1 AND u.sub IS NULL AND u.deleted_at IS NULL
           AND EXISTS (SELECT 1 FROM user_orgs uo
                        WHERE uo.user_id = u.id AND uo.status = 'active' AND uo.deleted_at IS NULL)`,
       [userId]

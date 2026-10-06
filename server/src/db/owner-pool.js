@@ -38,6 +38,15 @@ const ownerPool = new Pool({
 
 ownerPool.on('connect', (client) => {
   client.query(`SET search_path TO ${schema}, public`);
+  // v2dev (rebuild) has NO schema-owner role — only web_app_user — so there is
+  // no true RLS bypass available. MIGRATION_DATABASE_URL is unset here, so the
+  // connectionString above falls back to DATABASE_URL (= web_app_user). To keep
+  // this pool's role as the trusted cross-tenant BOOTSTRAP path (OAuth upsert /
+  // dev-login identity read / first-org onboarding), set the admin GUC on the
+  // connection: app_is_admin() is then true, so the orgs/users/user_orgs policies
+  // grant full access — the policy-level equivalent of owner bypass. This pool is
+  // used ONLY for those bootstrap flows (see header), never request-scoped work.
+  client.query("SELECT set_config('app.is_admin', 't', false)");
 });
 ownerPool.on('error', (err) => {
   console.error('Unexpected owner-pool error:', err);

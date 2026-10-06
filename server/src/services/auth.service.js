@@ -29,8 +29,8 @@ async function upsertUserFromGoogle(profile) {
   const avatarUrl = (profile.photos && profile.photos[0] && profile.photos[0].value) || null;
   if (!email) throw new Error('Google profile has no email');
 
-  // 1. by google_sub
-  let r = await pool.query('SELECT id FROM users WHERE google_sub = $1 AND deleted_at IS NULL', [sub]);
+  // 1. by sub (OIDC subject; v2dev renamed v1's google_sub → sub)
+  let r = await pool.query('SELECT id FROM users WHERE sub = $1 AND deleted_at IS NULL', [sub]);
   if (r.rows.length) {
     await pool.query(
       `UPDATE users SET display_name = $2, avatar_url = $3, updated_at = NOW() WHERE id = $1`,
@@ -44,7 +44,7 @@ async function upsertUserFromGoogle(profile) {
   if (r.rows.length) {
     const userId = r.rows[0].id;
     await pool.query(
-      `UPDATE users SET google_sub = $2, display_name = COALESCE(display_name, $3),
+      `UPDATE users SET sub = $2, display_name = COALESCE(display_name, $3),
               avatar_url = COALESCE($4, avatar_url), updated_at = NOW() WHERE id = $1`,
       [userId, sub, displayName, avatarUrl]
     );
@@ -73,9 +73,11 @@ async function upsertUserFromGoogle(profile) {
   // role is EXPLICITLY null — the column carries v1's DEFAULT 'member', which
   // would silently re-grant the legacy authority this prompt removes. On the
   // owner pool (BE-00115) — a single INSERT, no cross-table txn needed.
+  // v2dev: no users.role column (authority lives in user_orgs.role); OIDC
+  // subject column is `sub`. Org + membership still land at onboarding.
   const user = await pool.query(
-    `INSERT INTO users (name, display_name, email, google_sub, avatar_url, role)
-     VALUES ($1, $2, $3, $4, $5, NULL) RETURNING id`,
+    `INSERT INTO users (name, display_name, email, sub, avatar_url)
+     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
     [displayName, displayName, email, sub, avatarUrl]
   );
   return { userId: user.rows[0].id };
@@ -90,7 +92,8 @@ async function upsertUserFromGoogle(profile) {
 async function buildSession(userId) {
   const r = await pool.query(
     `SELECT u.id, u.email, COALESCE(u.display_name, u.name) AS display_name, u.avatar_url,
-            o.id AS org_id, o.name AS org_name, o.type AS org_type, uo.is_admin
+            o.id AS org_id, o.name AS org_name, o.type AS org_type,
+            (uo.role IN ('admin','owner')) AS is_admin   -- v2dev: derive org-admin from role enum
        FROM users u
        JOIN user_orgs uo ON uo.user_id = u.id AND uo.status = 'active' AND uo.deleted_at IS NULL
        JOIN orgs o ON o.id = uo.org_id
