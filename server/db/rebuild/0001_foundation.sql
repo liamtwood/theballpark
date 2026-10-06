@@ -16,7 +16,10 @@ create or replace function public.app_current_user_id()
 
 create or replace function public.app_is_admin()
   returns boolean language sql stable set search_path to 'pg_catalog'
-  as $$ select coalesce(current_setting('app.is_admin', true), 'f')::boolean $$;
+  -- NULLIF handles the empty-string GUC the request-context middleware sets when
+  -- is_admin is falsy; COALESCE catches an unset GUC. (coalesce(…,'f') alone threw
+  -- "invalid input syntax for type boolean" on '' — the ::boolean ran before coalesce.)
+  as $$ select coalesce(nullif(current_setting('app.is_admin', true), '')::boolean, false) $$;
 
 -- The app's runtime role: RLS-subject (no bypass). Login + password + per-table
 -- grants are wired when the server connection lands; created now so later
