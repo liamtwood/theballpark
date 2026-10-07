@@ -6,16 +6,17 @@ async function getAll(orgId, categoryId, tag, subcategoryId) {
   // v1.41) so the legacy OR-clause is a no-op for fresh data — kept
   // for safety in case any historical row hasn't migrated. The new
   // subcategory_id filter is a direct equality on the child FK.
+  // v2dev: orgs.city moved to the addresses satellite; tags[] column dropped +
+  // the supplier_item_tag junction isn't in the rebuild yet (tags sub-slice) —
+  // tag_ids returns empty for now.
   let query = `
     SELECT i.*,
       c.name  AS category_name,
       sc.name AS subcategory_name,
       o.name  AS supplier_name,
-      o.city  AS supplier_city,
       o.cover_image_url AS supplier_cover_url,
       o.image_display   AS supplier_image_display,
-      COALESCE((SELECT array_agg(sit.tag_id)
-                  FROM supplier_item_tag sit WHERE sit.item_id = i.id), '{}') AS tag_ids
+      '{}'::uuid[] AS tag_ids
     FROM items i
     LEFT JOIN categories c  ON i.category_id    = c.id
     LEFT JOIN categories sc ON i.subcategory_id = sc.id
@@ -41,7 +42,8 @@ async function getAll(orgId, categoryId, tag, subcategoryId) {
         SELECT c2.id FROM categories c2 JOIN sub_tree ON c2.parent_id = sub_tree.id
       ) SELECT id FROM sub_tree)`;
   }
-  if (tag) { params.push(tag); query += ` AND $${params.length} = ANY(i.tags)`; }
+  // (tag filter dropped — tags[] column removed; junction-based filtering returns
+  // with the tags sub-slice. `tag` arg is currently a no-op.)
   query += ' ORDER BY i.created_at DESC';
   const result = await pool.query(query, params);
   return result.rows;
@@ -71,16 +73,10 @@ async function countsByCategory() {
   return { counts: map, total };
 }
 
-async function getTagsByCategory(categoryId) {
-  const result = await pool.query(
-    `SELECT DISTINCT UNNEST(tags) AS tag
-     FROM items
-     WHERE (category_id = $1 OR category_id IN (SELECT id FROM categories WHERE parent_id = $1))
-       AND is_active = true AND deleted_at IS NULL AND tags IS NOT NULL AND array_length(tags, 1) > 0
-     ORDER BY tag ASC`,
-    [categoryId]
-  );
-  return result.rows.map(r => r.tag);
+async function getTagsByCategory(_categoryId) {
+  // v2dev: the tags[] column is dropped; tag discovery returns with the tags
+  // sub-slice (supplier_item_tag junction). Empty for now.
+  return [];
 }
 
 async function getById(id) {
@@ -89,7 +85,6 @@ async function getById(id) {
       c.name  AS category_name,
       sc.name AS subcategory_name,
       o.name  AS supplier_name,
-      o.city  AS supplier_city,
       o.cover_image_url AS supplier_cover_url,
       o.image_display   AS supplier_image_display
      FROM items i
@@ -101,17 +96,9 @@ async function getById(id) {
   );
   const item = result.rows[0] || null;
   if (!item) return null;
-  // v1.43: hydrate the structured (dimension-scoped) tags from the
-  // supplier_item_tag junction so detail/drawer surfaces can show them.
-  const tags = await pool.query(
-    `SELECT t.id AS tag_id, t.dimension, t.label
-       FROM supplier_item_tag sit
-       JOIN tag t ON t.id = sit.tag_id
-      WHERE sit.item_id = $1
-      ORDER BY t.dimension ASC, t.sort_order ASC`,
-    [id]
-  );
-  item.item_tags = tags.rows;
+  // v2dev: structured tags (supplier_item_tag junction) return with the tags
+  // sub-slice; empty for now.
+  item.item_tags = [];
   return item;
 }
 
@@ -129,49 +116,43 @@ function heroFromImages(images) {
 async function create(data) {
   const {
     org_id, category_id, subcategory_id, name, description,
-    unit, time_unit, base_price, install_cost,
-    lead_time_days, coverage_area, tier, tags,
-    image_url, image_display, external_url,
+    unit, serves, time_unit, base_price, install_cost,
+    lead_time_days, tier,
+    image_url, image_display,
     derived_from_id, parent_item_id, attributes, images,
-    // pV2-STORE-01 — the supplier draft/submit flow sets these explicitly. When
-    // omitted (v1 callers) the column defaults stand in: 'approved' + true, so
-    // existing behaviour is unchanged.
+    // pV2-STORE-01 — supplier draft/submit flow sets these; defaults otherwise.
     approval_status, is_active,
-    // pV2-STORE-01 (data model) — install_description = "Included Services";
-    // location_coverage = free text; currency defaults to the supplier's org
-    // currency when not supplied (the COALESCE below).
+    // install_description = Included Services; location_coverage = free text;
+    // currency defaults to the supplier's org currency (COALESCE below).
     install_description, location_coverage, currency, install_unit,
-    // pV2-BUILDUP / STORE-EXTRACT — item kind ('option'/'component' for child
-    // rows; null for normal catalogue items). Was silently dropped before, so
-    // extract option-children landed kind=NULL.
-    kind
+    // item kind — 'variant'/'addon'/'component' for child rows; null for normal.
+    kind,
   } = data;
-  // Keep image_url in sync with the hero image on the new array, so existing
-  // cards / detail surfaces continue to render the same primary image
-  // without reading images[].
+  // v2dev: dropped coverage_area / external_url / tags[]. serves (platter) added.
+  // Keep image_url synced with the hero image for card surfaces.
   const heroUrl = heroFromImages(images);
   const finalImageUrl = heroUrl != null ? heroUrl : (image_url ?? null);
   const result = await pool.query(
     `INSERT INTO items
       (org_id, category_id, subcategory_id, name, description,
-       unit, time_unit, base_price, install_cost,
-       lead_time_days, coverage_area, tier, tags,
-       image_url, image_display, external_url,
+       unit, serves, time_unit, base_price, install_cost,
+       lead_time_days, tier,
+       image_url, image_display,
        derived_from_id, parent_item_id, attributes, images,
        approval_status, is_active,
-       install_description, location_coverage, currency, install_unit, kind)
+       install_description, location_coverage, install_unit, kind, currency)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
-       COALESCE($25, (SELECT default_currency FROM orgs WHERE id = $1)), $26, $27)
+       COALESCE($25, (SELECT default_currency FROM orgs WHERE id = $1)))
      RETURNING *`,
     [org_id, category_id, subcategory_id || null, name, description,
-     unit, time_unit || null, base_price, install_cost ?? null,
-     lead_time_days, coverage_area, tier, tags || [],
-     finalImageUrl, image_display || 'cover', external_url || null,
+     unit, serves ?? null, time_unit || null, base_price, install_cost ?? null,
+     lead_time_days ?? null, tier ?? null,
+     finalImageUrl, image_display || 'cover',
      derived_from_id || null, parent_item_id || null, attributes || {},
      JSON.stringify(images || []),
      approval_status ?? 'approved', is_active ?? true,
-     install_description ?? null, location_coverage ?? null, currency ?? null,
-     install_unit ?? null, kind ?? null]
+     install_description ?? null, location_coverage ?? null, install_unit ?? null, kind ?? null,
+     currency ?? null]
   );
   return result.rows[0];
 }
@@ -183,20 +164,16 @@ async function create(data) {
 // subcategory's parent_id matches the row's category_id.
 const UPDATABLE_COLS = [
   'org_id', 'category_id', 'subcategory_id', 'name', 'description',
-  'unit', 'time_unit', 'base_price', 'install_cost',
-  'lead_time_days', 'coverage_area', 'tier', 'tags',
-  'image_url', 'image_display', 'external_url',
+  'unit', 'serves', 'time_unit', 'base_price', 'install_cost',
+  'lead_time_days', 'tier',
+  'image_url', 'image_display',
   'derived_from_id', 'parent_item_id', 'attributes', 'images',
-  // pV2-STORE-01 (data model) — install cost / included services / coverage /
-  // currency.
+  // install cost / included services / coverage area / currency.
   'install_description', 'location_coverage', 'currency', 'install_unit',
-  // v1.68b — is_active is the publish/hide toggle (distinct from the
-  // deleted_at soft-delete). The supplier store's eye/eye-off action
-  // PUTs { is_active } through update() to hide/show an item.
+  // is_active — publish/hide toggle (distinct from deleted_at soft-delete).
   'is_active',
-  // pV2-STORE-01 — draft/submit/approve flow. Callers gate which values they
-  // allow (supplier: draft|pending; ballpark admin: approved|rejected).
-  'approval_status'
+  // draft/submit/approve flow (callers gate which values they allow).
+  'approval_status',
 ];
 
 async function update(id, data) {
@@ -274,20 +251,20 @@ async function duplicate(id) {
     const ins = await client.query(
       `INSERT INTO items
          (org_id, category_id, subcategory_id, name, description,
-          unit, time_unit, base_price, install_cost,
-          lead_time_days, coverage_area, tier, tags,
-          image_url, image_display, external_url,
+          unit, serves, time_unit, base_price, install_cost,
+          lead_time_days, tier,
+          image_url, image_display,
           derived_from_id, parent_item_id, attributes, images, is_active,
           approval_status,
-          install_description, location_coverage, currency)
+          install_description, location_coverage, install_unit, kind, currency)
        SELECT
           org_id, category_id, subcategory_id, name || ' (copy)', description,
-          unit, time_unit, base_price, install_cost,
-          lead_time_days, coverage_area, tier, tags,
-          image_url, image_display, external_url,
+          unit, serves, time_unit, base_price, install_cost,
+          lead_time_days, tier,
+          image_url, image_display,
           derived_from_id, parent_item_id, attributes, images, false,
           'draft',
-          install_description, location_coverage, currency
+          install_description, location_coverage, install_unit, kind, currency
        FROM items
        WHERE id = $1 AND deleted_at IS NULL
        RETURNING *`,
@@ -295,11 +272,7 @@ async function duplicate(id) {
     );
     const copy = ins.rows[0];
     if (!copy) return null;
-    await client.query(
-      `INSERT INTO supplier_item_tag (item_id, tag_id)
-       SELECT $1, tag_id FROM supplier_item_tag WHERE item_id = $2`,
-      [copy.id, id]
-    );
+    // (supplier_item_tag copy returns with the tags sub-slice — junction not in v2dev yet.)
     return copy;
   });
 }
