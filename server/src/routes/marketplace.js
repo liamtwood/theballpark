@@ -29,19 +29,16 @@ const { ItemsQuerySchema, PAGE_SIZE } = require('../schemas/marketplace-query.sc
  *  (which already filter approved). Otherwise the pill over-counts (e.g. 9 vs
  *  the 5 shown). Items point at TOP-LEVEL categories via category_id;
  *  subcategory_id is a separate axis. */
+// v2dev (rebuild): streamlined categories — `status` (not is_active), no
+// `namespace` (catalogue is the only tree here; feedback has its own table).
+// Item counts are 0 until the items slice lands (no `items` table yet).
 const SELECT_CATEGORIES = `
-  SELECT c.id, c.name, c.tagline, c.icon_name, c.is_active, c.sort_order,
-         COUNT(i.id) FILTER (WHERE i.deleted_at IS NULL AND i.is_active
-                               AND i.approval_status = 'approved'
-                               AND i.kind IS DISTINCT FROM 'component'
-                               AND i.parent_item_id IS NULL) AS item_count
+  SELECT c.id, c.name, c.tagline, c.icon_name, (c.status = 'active') AS is_active, c.sort_order,
+         0 AS item_count
     FROM categories c
-    LEFT JOIN items i ON i.category_id = c.id
    WHERE c.deleted_at IS NULL
      AND c.parent_id IS NULL
-     AND c.namespace = 'catalogue'
      %ACTIVE%
-   GROUP BY c.id
    ORDER BY c.sort_order ASC NULLS LAST, c.name ASC`;
 
 function toCategory(row) {
@@ -59,7 +56,7 @@ function toCategory(row) {
 // GET /api/marketplace/categories — the browse rail (active only).
 router.get('/categories', async (req, res, next) => {
   try {
-    const r = await pool.query(SELECT_CATEGORIES.replace('%ACTIVE%', 'AND c.is_active'));
+    const r = await pool.query(SELECT_CATEGORIES.replace('%ACTIVE%', "AND c.status = 'active'"));
     res.json(r.rows.map(toCategory));
   } catch (err) { next(err); }
 });
@@ -77,12 +74,10 @@ router.get(
       if (parent) {
         // Subcategory curation rows (pV2-06-subcats): counts by subcategory_id.
         const r = await pool.query(
-          `SELECT c.id, c.name, c.tagline, c.icon_name, c.is_active, c.sort_order,
-                  COUNT(i.id) FILTER (WHERE i.deleted_at IS NULL AND i.is_active) AS item_count
+          `SELECT c.id, c.name, c.tagline, c.icon_name, (c.status = 'active') AS is_active, c.sort_order,
+                  0 AS item_count
              FROM categories c
-             LEFT JOIN items i ON i.subcategory_id = c.id
-            WHERE c.deleted_at IS NULL AND c.namespace = 'catalogue' AND c.parent_id = $1
-            GROUP BY c.id
+            WHERE c.deleted_at IS NULL AND c.parent_id = $1
             ORDER BY c.sort_order ASC NULLS LAST, c.name ASC`,
           [parent.data]
         );
@@ -114,7 +109,7 @@ router.post(
         const anc = await pool.query(
           `WITH RECURSIVE anc AS (
              SELECT id, parent_id, 1 AS depth FROM categories
-              WHERE id = $1 AND namespace = 'catalogue' AND deleted_at IS NULL
+              WHERE id = $1 AND deleted_at IS NULL
              UNION ALL
              SELECT c.id, c.parent_id, anc.depth + 1 FROM categories c JOIN anc ON c.id = anc.parent_id
            ) SELECT MAX(depth) AS d FROM anc`,
@@ -125,11 +120,16 @@ router.post(
         // 3 levels max (0/1/2) — a sub-subcategory can't have children.
         if (level > 2) return res.status(409).json({ error: 'too_deep', message: 'Only 3 levels are supported (Category ▸ Subcategory ▸ Sub-subcategory).' });
       }
+      // v2dev: streamlined shape — org_id = Ballpark root (shared taxonomy),
+      // status enum (not is_active/enabled), level derived (not stored),
+      // created_by stamped from the request GUC. `level` above only enforces the
+      // 3-level cap.
       const ins = await pool.query(
-        `INSERT INTO categories (name, parent_id, namespace, model, level, is_active, enabled, sort_order)
-           VALUES ($1, $2, 'catalogue', 'A', $3, $4, true, $5)
-         RETURNING id, name, tagline, icon_name, is_active, sort_order, parent_id`,
-        [name, parentId || null, level, isActive ?? true, sortOrder ?? 999]
+        `INSERT INTO categories (name, parent_id, org_id, status, sort_order, created_by, updated_by)
+           VALUES ($1, $2, '00000000-0000-0000-0000-000000000001', $3, $4,
+                   app_current_user_id(), app_current_user_id())
+         RETURNING id, name, tagline, icon_name, (status = 'active') AS is_active, sort_order, parent_id`,
+        [name, parentId || null, (isActive ?? true) ? 'active' : 'retired', sortOrder ?? 999]
       );
       res.status(201).json(toCategory({ ...ins.rows[0], item_count: 0 }));
     } catch (err) { next(err); }
@@ -157,7 +157,8 @@ router.patch(
       const map = {
         name: p.name,
         tagline: p.tagline,
-        is_active: p.isActive,
+        // v2dev: is_active toggle maps onto the status enum.
+        status: p.isActive === undefined ? undefined : (p.isActive ? 'active' : 'retired'),
         sort_order: p.sortOrder,
       };
       const sets = [];
@@ -172,21 +173,15 @@ router.patch(
       const r = await pool.query(
         `UPDATE categories SET ${sets.join(', ')}, updated_at = NOW()
           WHERE id = $${vals.length} AND deleted_at IS NULL
-            AND namespace = 'catalogue'
           RETURNING id, parent_id`,
         vals
       );
       if (!r.rows.length) return res.status(404).json({ error: 'Category not found' });
-      // Return the fresh row WITH its live count — count axis depends on the
-      // level (top-level: items.category_id; subcat: items.subcategory_id).
-      const isSub = !!r.rows[0].parent_id;
+      // Fresh row; item counts are 0 until the items slice lands.
       const fresh = await pool.query(
-        `SELECT c.id, c.name, c.tagline, c.icon_name, c.is_active, c.sort_order,
-                COUNT(i.id) FILTER (WHERE i.deleted_at IS NULL AND i.is_active) AS item_count
-           FROM categories c
-           LEFT JOIN items i ON ${isSub ? 'i.subcategory_id' : 'i.category_id'} = c.id
-          WHERE c.id = $1
-          GROUP BY c.id`,
+        `SELECT c.id, c.name, c.tagline, c.icon_name, (c.status = 'active') AS is_active, c.sort_order,
+                0 AS item_count
+           FROM categories c WHERE c.id = $1`,
         [id.data]
       );
       res.json(toCategory(fresh.rows[0]));
@@ -209,7 +204,7 @@ router.delete(
       const cascade = String(req.query.cascade) === 'true';
       const sub = await pool.query(
         `WITH RECURSIVE t AS (
-           SELECT id FROM categories WHERE id=$1 AND namespace='catalogue' AND deleted_at IS NULL
+           SELECT id FROM categories WHERE id=$1 AND deleted_at IS NULL
            UNION ALL
            SELECT c.id FROM categories c JOIN t ON c.parent_id=t.id WHERE c.deleted_at IS NULL
          ) SELECT id FROM t`,
@@ -218,23 +213,12 @@ router.delete(
       if (!sub.rows.length) return res.status(404).json({ error: 'Category not found' });
       const ids = sub.rows.map((r) => r.id);
       const subcats = ids.length - 1;
-      const itemsR = await pool.query(
-        `SELECT count(*)::int AS n FROM items
-          WHERE deleted_at IS NULL AND (category_id = ANY($1::uuid[]) OR subcategory_id = ANY($1::uuid[]))`,
-        [ids]
-      );
-      const items = itemsR.rows[0].n;
-      if ((subcats > 0 || items > 0) && !cascade) {
+      // v2dev: no `items` table yet (items slice) — item count is 0 for now.
+      const items = 0;
+      if (subcats > 0 && !cascade) {
         return res.status(409).json({ error: 'not_empty', subcats, items });
       }
       await withTransaction(async (client) => {
-        if (items > 0) {
-          await client.query(
-            `UPDATE items SET deleted_at=NOW()
-              WHERE deleted_at IS NULL AND (category_id = ANY($1::uuid[]) OR subcategory_id = ANY($1::uuid[]))`,
-            [ids]
-          );
-        }
         await client.query(`UPDATE categories SET deleted_at=NOW() WHERE id = ANY($1::uuid[])`, [ids]);
       });
       res.json({ deleted: true, subcats, items });
@@ -311,23 +295,13 @@ router.get('/categories/:id/subcategories', async (req, res, next) => {
     if (!id.success) return res.status(400).json({ error: 'Invalid id' });
     // Count is tree-aware: a subcategory's count includes items classified to any
     // of its descendants (so the rail count matches the tree-aware browse grid).
+    // v2dev: streamlined shape — status (not is_active), no namespace; item
+    // counts are 0 until the items slice lands (tree-aware count returns with it).
     const r = await pool.query(
-      `SELECT c.id, c.name, c.tagline, c.icon_name, c.is_active, c.sort_order,
-              (SELECT COUNT(*) FROM items i
-                WHERE i.deleted_at IS NULL AND i.is_active
-                  AND i.approval_status = 'approved'
-                  AND i.kind IS DISTINCT FROM 'component'
-                  AND i.parent_item_id IS NULL
-                  AND i.subcategory_id IN (
-                    WITH RECURSIVE sub_tree AS (
-                      SELECT c.id AS id
-                      UNION ALL
-                      SELECT c2.id FROM categories c2 JOIN sub_tree ON c2.parent_id = sub_tree.id
-                    ) SELECT id FROM sub_tree)
-              ) AS item_count
+      `SELECT c.id, c.name, c.tagline, c.icon_name, (c.status = 'active') AS is_active, c.sort_order,
+              0 AS item_count
          FROM categories c
-        WHERE c.deleted_at IS NULL AND c.namespace = 'catalogue'
-          AND c.parent_id = $1 AND c.is_active
+        WHERE c.deleted_at IS NULL AND c.parent_id = $1 AND c.status = 'active'
         ORDER BY c.sort_order ASC NULLS LAST, c.name ASC`,
       [id.data]
     );
