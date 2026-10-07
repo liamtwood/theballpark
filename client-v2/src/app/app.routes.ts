@@ -22,15 +22,6 @@ export const routes: Routes = [
       import('./pages/onboarding/onboarding.component').then((m) => m.OnboardingComponent),
   },
   {
-    // PUBLIC marketing deck (welcome pages) — ported verbatim from v1. No
-    // shell, no guard; fully self-contained (own brand styling, public
-    // marketing endpoints on the shared server). Off the design system by
-    // design (style-guard exempt).
-    path: 'welcome',
-    loadComponent: () =>
-      import('./public/welcome/welcome.component').then((m) => m.WelcomeComponent),
-  },
-  {
     path: '',
     component: AppShellComponent, // header + outlet — every feature route gets the shell
     canActivate: [requiresOrgGuard], // signed-out → /login; orgless → /onboarding
@@ -264,5 +255,5 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/auth-callback/auth-callback.component').then((m) => m.AuthCallbackComponent),
   },
-  { path: '**', redirectTo: 'welcome' },
+  { path: '**', redirectTo: '' },
 ];

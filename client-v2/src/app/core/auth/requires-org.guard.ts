@@ -14,7 +14,7 @@ import { AuthService } from './auth.service';
 export const requiresOrgGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  if (!auth.isLoggedIn()) return router.createUrlTree(['/welcome']);
+  if (!auth.isLoggedIn()) return router.createUrlTree(['/login']);
   if (!auth.hasActiveOrg()) return router.createUrlTree(['/onboarding']);
   return true;
 };
