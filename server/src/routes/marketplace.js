@@ -241,47 +241,48 @@ router.patch(
       if (parentId !== null && !z.uuid().safeParse(parentId).success) return res.status(400).json({ error: 'Invalid parentId' });
       if (parentId === id.data) return res.status(400).json({ error: 'Cannot move a node onto itself' });
 
-      const nodeR = await pool.query(
-        `SELECT id, level FROM categories WHERE id=$1 AND namespace='catalogue' AND deleted_at IS NULL`, [id.data]);
+      const nodeR = await pool.query(`SELECT id FROM categories WHERE id=$1 AND deleted_at IS NULL`, [id.data]);
       if (!nodeR.rows.length) return res.status(404).json({ error: 'Category not found' });
-      const node = nodeR.rows[0];
 
+      // v2dev: no stored `level` — derive. Subtree of the moved node + its deepest
+      // RELATIVE depth (0 = the node alone).
       const subR = await pool.query(
         `WITH RECURSIVE t AS (
-           SELECT id, level FROM categories WHERE id=$1 AND deleted_at IS NULL
-           UNION ALL SELECT c.id, c.level FROM categories c JOIN t ON c.parent_id=t.id WHERE c.deleted_at IS NULL
-         ) SELECT id, level FROM t`, [id.data]);
+           SELECT id, 0 AS d FROM categories WHERE id=$1 AND deleted_at IS NULL
+           UNION ALL SELECT c.id, t.d+1 FROM categories c JOIN t ON c.parent_id=t.id WHERE c.deleted_at IS NULL
+         ) SELECT id, d FROM t`, [id.data]);
       const subIds = subR.rows.map((r) => r.id);
+      const subDepth = Math.max(...subR.rows.map((r) => Number(r.d)));
       if (parentId && subIds.includes(parentId)) return res.status(400).json({ error: 'Cannot move a node under its own descendant' });
 
-      let newLevel = 0, newTop = id.data; // top-level default
+      let newBase = 0, newTop = id.data; // top-level default
       if (parentId) {
-        const pr = await pool.query(
-          `SELECT level FROM categories WHERE id=$1 AND namespace='catalogue' AND deleted_at IS NULL`, [parentId]);
-        if (!pr.rows.length) return res.status(400).json({ error: 'Parent not found' });
-        newLevel = Number(pr.rows[0].level) + 1;
-        const topR = await pool.query(
+        // Parent's absolute depth (ancestor count) + its top-level ancestor, walked UP.
+        const up = await pool.query(
           `WITH RECURSIVE up AS (
-             SELECT id, parent_id FROM categories WHERE id=$1
-             UNION ALL SELECT c.id, c.parent_id FROM categories c JOIN up ON up.parent_id=c.id
-           ) SELECT id FROM up WHERE parent_id IS NULL LIMIT 1`, [parentId]);
-        newTop = topR.rows[0]?.id || parentId;
+             SELECT id, parent_id, 0 AS d FROM categories WHERE id=$1 AND deleted_at IS NULL
+             UNION ALL SELECT c.id, c.parent_id, up.d+1 FROM categories c JOIN up ON c.id=up.parent_id
+           ) SELECT (SELECT MAX(d) FROM up) AS depth, (SELECT id FROM up WHERE parent_id IS NULL LIMIT 1) AS top`,
+          [parentId]);
+        if (up.rows[0].depth === null) return res.status(400).json({ error: 'Parent not found' });
+        newBase = Number(up.rows[0].depth) + 1;
+        newTop = up.rows[0].top || parentId;
       }
-      const delta = newLevel - Number(node.level);
-      const maxLevel = Math.max(...subR.rows.map((r) => Number(r.level)));
-      if (maxLevel + delta > 2) {
+      // 3 levels max: top(0) ▸ sub(1) ▸ sub-sub(2) — deepest descendant must stay ≤ 2.
+      if (newBase + subDepth > 2) {
         return res.status(409).json({ error: 'too_deep', message: 'Move would exceed 3 levels — move it higher, or move a shallower branch.' });
       }
       await withTransaction(async (client) => {
-        await client.query(`UPDATE categories SET parent_id=$2 WHERE id=$1`, [id.data, parentId]);
-        if (delta !== 0) await client.query(`UPDATE categories SET level = level + $2 WHERE id = ANY($1::uuid[])`, [subIds, delta]);
+        await client.query(`UPDATE categories SET parent_id=$2, updated_at=NOW() WHERE id=$1`, [id.data, parentId]);
+        // Keep items' top-level category_id valid when the top ancestor changed
+        // (items table may be empty until the items slice loads data).
         await client.query(
           `UPDATE items SET category_id=$2
             WHERE deleted_at IS NULL AND (category_id = ANY($1::uuid[]) OR subcategory_id = ANY($1::uuid[]))`,
           [subIds, newTop]
         );
       });
-      res.json({ moved: true, level: newLevel });
+      res.json({ moved: true, level: newBase });
     } catch (err) { next(err); }
   }
 );
