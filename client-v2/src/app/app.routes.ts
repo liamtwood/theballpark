@@ -123,17 +123,6 @@ export const routes: Routes = [
           ),
       },
       {
-        // Settings → Early Access (pV2-EA-02) — waitlist signups + welcome
-        // content + admin notifications. Ballpark admins only, gated on the
-        // SAME session role as Pages/Categories/Codelists (no separate secret).
-        path: 'settings/early-access',
-        canActivate: [ballparkAdminGuard],
-        loadComponent: () =>
-          import('./pages/settings/early-access/early-access.component').then(
-            (m) => m.EarlyAccessComponent
-          ),
-      },
-      {
         // Settings → Coachmarks — edit the app's help-bubble content. Ballpark
         // admins only, same gate as Pages/Categories/Codelists.
         path: 'settings/coachmarks',

@@ -87,7 +87,7 @@ export const BALLPARK_TILES: readonly LauncherTile[] = [
     // BE-00128 — the Admin hub groups the platform config surfaces.
     icon: 'settings',
     label: 'Admin',
-    subtitle: 'Page settings, categories, codelists, coachmarks and early access.',
+    subtitle: 'Page settings, categories, codelists and coachmarks.',
     href: '/admin',
   },
   {
@@ -107,13 +107,6 @@ export const ADMIN_HUB_TILES: readonly LauncherTile[] = [
     label: 'Organisations',
     subtitle: 'Manage agencies and suppliers — create, approve, or import from a website.',
     href: '/admin/orgs',
-  },
-  {
-    // pV2-EA-02 — waitlist signups + welcome content + admin notifications.
-    icon: 'rocket',
-    label: 'Early Access',
-    subtitle: 'Manage waitlist signups, welcome-page content and notifications.',
-    href: '/settings/early-access',
   },
   {
     icon: 'settings',
