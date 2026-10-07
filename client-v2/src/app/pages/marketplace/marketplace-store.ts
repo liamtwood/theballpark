@@ -85,6 +85,11 @@ export class MarketplaceStore {
   /** The status/active filters show for the owner of a pinned store AND for
    *  ballpark admins (moderation); elsewhere they stay null (public grid). */
   readonly showStatusFilters = computed(() => this.isOwnerStore() || this.isBallparkAdmin());
+  /** Public-view mode — the Shopfront (public brand page) sets this so the grid
+   *  shows the PUBLIC item set (approved + active) for EVERY viewer, overriding
+   *  owner/admin scope. The Shop (management) tab leaves it false. Driven by
+   *  supplier-detail; the global marketplace never sets it. */
+  readonly publicView = signal(false);
   /** Approval-status filter: all|draft|pending|approved|rejected — the explicit
    *  URL value, else null. When null (no explicit choice), the server applies the
    *  scope default: owner → whole catalogue; ADMIN → live OR awaiting review
@@ -101,7 +106,7 @@ export class MarketplaceStore {
   /** The filter signature — offset + accumulation reset on ANY change. */
   private readonly filterKey = computed(
     () =>
-      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.subSubcategoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}|${this.tagFilter() ?? ''}|${this.statusFilter() ?? ''}|${this.activeFilter() ?? ''}`
+      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.subSubcategoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}|${this.tagFilter() ?? ''}|${this.statusFilter() ?? ''}|${this.activeFilter() ?? ''}|${this.publicView() ? 'pub' : ''}`
   );
 
   /** Local page offset; snaps back to 0 when the filters change. */
@@ -212,8 +217,11 @@ export class MarketplaceStore {
         supplier: this.pinnedSupplierId() ?? this.supplierId(),
         // Sent raw (null omitted by the query builder): 'all' reaches the server
         // so it can tell "explicit everything" from the admin default (absent).
-        status: this.statusFilter(),
-        active: this.activeFilter(),
+        // Shopfront forces the public set (approved+active) regardless of viewer;
+        // status/active are moot then (the server ignores them under scope=public).
+        scope: this.publicView() ? ('public' as const) : null,
+        status: this.publicView() ? null : this.statusFilter(),
+        active: this.publicView() ? null : this.activeFilter(),
         offset: this.offset(),
         rev: this.catalogue.rev(), // reload the grid after any write (new item shows without refresh)
       };

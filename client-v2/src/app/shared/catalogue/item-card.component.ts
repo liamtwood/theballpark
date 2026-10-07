@@ -108,9 +108,11 @@ import { AuthService } from '../../core/auth/auth.service';
       @if (showQuickView()) {
         <button type="button" class="bp-qv-link mt-2" (click)="onQuickView($event)">Quick view</button>
       }
-      @if (canManage()) {
+      @if (canManage() && !quickViewOnly()) {
         <!-- pV2-STORE-01 — owner (or a platform admin on the org's Shop tab, via
-             adminEditOrgId) manages the item: Edit, Duplicate, Show/Hide, Trash. -->
+             adminEditOrgId) manages the item: Edit, Duplicate, Show/Hide, Trash.
+             quickViewOnly (marketplace/shopfront browse) suppresses ALL manage
+             affordances — those surfaces are view-only; edit lives in the Shop. -->
         <div class="mt-3 flex items-center gap-2">
           <!-- Build from components (itemize) — owner-only composition. -->
           @if (item().ownedByActiveOrg) {

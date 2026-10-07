@@ -77,6 +77,10 @@ export interface ItemsQuery {
    *  caller owns `supplier`. status = approval_status; active = publish state. */
   status?: string | null;
   active?: string | null;
+  /** Shopfront (public brand page): forces the PUBLIC item set — approved +
+   *  active — for every viewer, overriding owner/admin scope so a supplier or
+   *  ballpark admin previewing the Shopfront sees exactly what a customer sees. */
+  scope?: 'public' | null;
   /** Free-text tag filter (items.tags) — e.g. the shopfront "What's Hot" menu. */
   tag?: string | null;
   offset?: number;

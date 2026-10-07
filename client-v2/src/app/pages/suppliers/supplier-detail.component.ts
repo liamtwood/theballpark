@@ -405,6 +405,13 @@ export class SupplierDetailComponent {
    *  that has hot items (Liam: "when you go into a store it defaults to What's Hot").
    *  One-shot per storefront entry; re-armed by setTab so returning re-defaults, but
    *  an explicit pick (All items / a category) sticks. */
+  /** Shopfront is the public brand page: it shows the PUBLIC item set (approved
+   *  + active) for EVERY viewer, so an owner/admin preview matches what a
+   *  customer sees. The Shop (management) tab keeps the viewer-scoped set. */
+  private readonly publicViewEffect = effect(() => {
+    this.store.publicView.set(this.tab() === 'storefront');
+  });
+
   private hotDefaultArmed = true;
   private readonly hotDefaultEffect = effect(() => {
     const sup = this.detail.value();

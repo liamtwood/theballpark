@@ -341,19 +341,27 @@ router.get('/items', async (req, res, next) => {
     // ADMIN (admin.cross_org_view) — moderation sees any supplier's items
     // cross-org. Everyone else (incl. an owner browsing another store) gets the
     // public marketplace filter: active + approved only.
-    const ownerScope = !!supplier && supplier === req.user.org_id;
-    const adminScope = req.user.role === 'ballpark_admin';
-    if (ownerScope || adminScope) {
+    // scope=public — the Shopfront (public brand page) forces the public item set
+    // (approved + active) for EVERY viewer, so an owner or ballpark admin previewing
+    // the Shopfront sees exactly what a customer sees. Overrides owner/admin scope.
+    const publicScope = req.query.scope === 'public';
+    const ownerScope = !publicScope && !!supplier && supplier === req.user.org_id;
+    const adminScope = !publicScope && req.user.role === 'ballpark_admin';
+    // A MANAGEMENT context — a pinned supplier store (owner/admin managing it) OR an
+    // explicit status/active filter (e.g. the Approvals nav → /marketplace?status=pending).
+    // ONLY there do owner/admin see non-public items. The plain global /marketplace
+    // browse is the live catalogue for EVERYONE — admin included (same view for all
+    // users); moderation lives in Approvals (explicit ?status) and the supplier Shop.
+    const managementContext = (ownerScope || adminScope) && (!!supplier || !!status || !!active);
+    if (managementContext) {
       if (status && status !== 'all') {
         vals.push(status); where.push(`i.approval_status = $${vals.length}`);
       } else if (adminScope && !status && !active) {
-        // FR-00215 visibility rule — admin default (no explicit status/publish
-        // filter): live OR awaiting review OR APPROVED-not-yet-active (so an item
-        // approved but not published still shows and can be activated — otherwise
-        // it falls into a gap: neither active nor pending). Excludes rejected +
-        // drafts. Explicit ?status=all skips this (the whole catalogue);
-        // ?status=pending narrows to the approval queue. Owner default (no
-        // adminScope) still falls through to the whole catalogue.
+        // FR-00215 visibility rule — admin default in a management context (no explicit
+        // status/publish filter): live OR awaiting review OR APPROVED-not-yet-active (so
+        // an item approved but not published still shows and can be activated). Excludes
+        // rejected + drafts. ?status=all skips this (whole catalogue); ?status=pending
+        // narrows to the approval queue. Owner default falls through to whole catalogue.
         where.push(`(i.is_active OR i.approval_status IN ('pending', 'approved'))`);
       }
       if (active === 'active') where.push(`i.is_active`);
@@ -383,7 +391,9 @@ router.get('/items', async (req, res, next) => {
     if (tier) { vals.push(tier); where.push(`i.tier = $${vals.length}`); }
     if (supplier) { vals.push(supplier); where.push(`i.org_id = $${vals.length}`); }
     // pV2-STORE-WHATS-HOT-01 — tag filter (e.g. the shopfront "What's Hot" menu).
-    if (tag) { vals.push(tag); where.push(`$${vals.length} = ANY(i.tags)`); }
+    // v2dev: items.tags was dropped (item tags = the parked junction sub-slice), so
+    // no item is tagged → a tag filter matches nothing. TODO: wire supplier_item_tag.
+    if (tag) { where.push('false'); }
     if (q) {
       vals.push(`%${q.replace(/[%_\\]/g, '\\$&')}%`);
       where.push(`(i.name ILIKE $${vals.length} OR i.description ILIKE $${vals.length})`);
@@ -393,7 +403,9 @@ router.get('/items', async (req, res, next) => {
       `SELECT i.id, i.name, i.description, i.install_description, i.base_price, i.unit, i.image_url,
               i.attributes,
               i.category_id, i.subcategory_id, i.approval_status, i.is_active,
-              i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
+              -- v2dev: city/country moved to the address satellite (not on orgs/orgs_public);
+              -- nulled here to keep the response shape. TODO: join primary_address for location.
+              i.org_id AS supplier_id, o.name AS supplier_name, NULL::text AS supplier_city,
               c.name AS category_name, sc.name AS subcategory_name,
               (i.org_id = $1) AS owned_by_active_org,
               COUNT(*) OVER() AS total

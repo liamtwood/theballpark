@@ -78,7 +78,7 @@ router.get('/suppliers', async (req, res, next) => {
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     vals.push(PAGE_SIZE, offset);
     const r = await pool.query(
-      `SELECT o.id, o.name, o.city, o.description, o.logo_url, o.cover_image_url, o.image_display,
+      `SELECT o.id, o.name, o.description, o.logo_url, o.cover_image_url, o.image_display,
               COUNT(i.id) AS item_count,
               COUNT(*) OVER() AS total
          FROM orgs_public o
@@ -86,8 +86,9 @@ router.get('/suppliers', async (req, res, next) => {
               AND i.is_active AND i.approval_status = 'approved' ${catClause}
         ${whereSql}
         -- BE-00129 — group every selected orgs_public column (it's a VIEW, no PK
-        -- functional dependency; see /suppliers/options above).
-        GROUP BY o.id, o.name, o.city, o.description, o.logo_url, o.cover_image_url, o.image_display
+        -- functional dependency; see /suppliers/options above). v2dev: city dropped
+        -- (address satellite).
+        GROUP BY o.id, o.name, o.description, o.logo_url, o.cover_image_url, o.image_display
         ORDER BY o.name ASC
         LIMIT $${vals.length - 1} OFFSET $${vals.length}`,
       vals
@@ -96,7 +97,7 @@ router.get('/suppliers', async (req, res, next) => {
     const items = r.rows.map((row) => ({
       id: row.id,
       name: row.name,
-      city: row.city,
+      city: null, // v2dev: city on the address satellite, not orgs_public
       description: row.description,
       logoUrl: row.logo_url,
       coverUrl: row.cover_image_url,
@@ -121,7 +122,7 @@ router.get('/suppliers/:id', async (req, res, next) => {
     // (contact runs through the platform inbox); those are nulled below so the
     // response shape is unchanged for any client that reads the keys.
     const r = await pool.query(
-      `SELECT id, name, city, country, description, logo_url, cover_image_url, images
+      `SELECT id, name, description, logo_url, cover_image_url, images
          FROM orgs_public
         WHERE id = $1`,
       [id.data]
@@ -150,24 +151,17 @@ router.get('/suppliers/:id', async (req, res, next) => {
         ORDER BY (c.id IS NULL), c.name ASC`,
       [id.data]
     );
-    // pV2-STORE-WHATS-HOT-01 — does this store have any "What's Hot" items in scope?
-    // Drives the shopfront's What's Hot menu link + default landing. Same visibility
-    // scope as the category counts (owner/admin see drafts; public sees live+approved).
-    const hot = await pool.query(
-      `SELECT COUNT(i.id) AS n
-         FROM items i
-        WHERE i.org_id = $1 AND i.deleted_at IS NULL
-          AND i.kind IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL
-          AND 'What''s Hot' = ANY(i.tags) ${liveFilter}`,
-      [id.data]
-    );
+    // pV2-STORE-WHATS-HOT-01 — "What's Hot" count drives the shopfront menu link.
+    // v2dev: items.tags was dropped (item tags = the parked junction sub-slice), so
+    // nothing is tagged → always 0. TODO: wire supplier_item_tag when it lands.
+    const hotCount = 0;
     const row = r.rows[0];
     res.json({
       id: row.id,
       name: row.name,
-      city: row.city,
-      country: row.country,
-      hotCount: Number(hot.rows[0]?.n ?? 0),
+      city: null, // v2dev: city/country on the address satellite, not orgs_public
+      country: null,
+      hotCount,
       // Not public on the shopfront (BE-00115) — kept in the shape as null.
       address: null,
       phone: null,
