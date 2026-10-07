@@ -36,6 +36,10 @@ const StoreItemCreateSchema = z
     // ISO-4217 (defaults to the supplier's org currency server-side if omitted).
     currency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
     unit: z.string().trim().max(40).nullable().optional(),
+    // v0.2.0 unit-driven fields (item_unit.meta.needs): serves = platter pack
+    // size; time_unit = the time granularity for time-priced items.
+    serves: z.coerce.number().int().min(1).max(100_000).nullable().optional(),
+    time_unit: z.string().trim().max(40).nullable().optional(),
     lead_time_days: z.coerce.number().int().min(0).max(3650).nullable().optional(),
     image_url: z.string().trim().max(1000).nullable().optional(),
     images: z.array(GalleryImageSchema).max(20).optional(),

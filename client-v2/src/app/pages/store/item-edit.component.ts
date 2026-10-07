@@ -32,7 +32,8 @@ interface ItemForm {
   name: string;
   category_id: string;
   subcategory_id: string;      // the DEEPEST chosen node (subcat or sub-subcat)
-  unit: string;                // item_unit code (per head / day / each…)
+  unit: string;                // item_unit code (each / per_guest / platter / time / size)
+  serves: string;              // v0.2.0 unit-driven: pack size when unit = platter
   base_price: string;          // "Ballpark cost"
   install_cost: string;        // installation cost (separate line)
   install_unit: string;        // how install_cost applies (per_item/order/percentage)
@@ -106,6 +107,10 @@ const WHATS_HOT = "What's Hot";
                   <div class="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <app-edit-field [label]="'Ballpark Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
                     <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="editing()" [value]="form().unit" (valueChange)="patch({ unit: $event })" />
+                    @if (form().unit === 'platter') {
+                      <!-- v0.2.0 unit-driven: platter reveals the serves field (guests per unit). -->
+                      <app-edit-field label="Serves (guests per unit)" type="number" density="page" [editing]="editing()" [value]="form().serves" (valueChange)="patch({ serves: $event })" />
+                    }
                   </div>
                 </div>
               </div>
@@ -492,7 +497,7 @@ export class ItemEditComponent {
   protected readonly deleting = signal(false);
 
   protected readonly form = signal<ItemForm>({
-    name: '', category_id: '', subcategory_id: '', unit: '', base_price: '', install_cost: '', install_unit: '',
+    name: '', category_id: '', subcategory_id: '', unit: '', serves: '', base_price: '', install_cost: '', install_unit: '',
     install_description: '', location_coverage: '', lead_time_days: '', description: '', tier: '', tags: [],
   });
   protected readonly imageUrl = signal<string | null>(null);
@@ -762,6 +767,7 @@ export class ItemEditComponent {
         category_id: item.category_id ?? '',
         subcategory_id: item.subcategory_id ?? '',
         unit: item.unit ?? '',
+        serves: item.serves != null ? String(item.serves) : '',
         base_price: base != null ? String(base) : '',
         install_cost: install != null ? String(install) : '',
         install_unit: item.install_unit ?? '',
@@ -894,6 +900,7 @@ export class ItemEditComponent {
       category_id: f.category_id,
       subcategory_id: f.subcategory_id || null,
       unit: f.unit || null,
+      serves: f.unit === 'platter' && f.serves !== '' ? Number(f.serves) : null,
       description: f.description.trim() || null,
       base_price: f.base_price === '' ? null : Number(f.base_price),
       install_cost: f.install_cost === '' ? null : Number(f.install_cost),

@@ -25,6 +25,8 @@ export interface StoreItem {
   /** ISO-4217 — defaults to the supplier's org currency. */
   currency: string | null;
   unit: string | null;
+  /** v0.2.0 unit-driven: platter pack size (how many guests one unit serves). */
+  serves: number | null;
   lead_time_days: number | null;
   image_url: string | null;
   images: GalleryImage[];
@@ -63,6 +65,7 @@ export interface StoreItemWrite {
   /** ISO-4217 — server defaults to the supplier's org currency if omitted. */
   currency?: string | null;
   unit?: string | null;
+  serves?: number | null;
   lead_time_days?: number | null;
   image_url?: string | null;
   images?: GalleryImage[];
