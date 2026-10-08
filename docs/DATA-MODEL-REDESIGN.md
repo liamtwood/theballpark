@@ -156,9 +156,19 @@ face editor reusing the existing `image-picker` component.
 Org-owned (`org_id NOT NULL`). Universal core + unit-driven fields + `attributes` jsonb (5 describe-groups)
 + variants + `kind`. Per the v0.2.0 locked spec — apply the base contract, drop cruft.
 
-### `addresses` — DRAFT (global table)
-`id`, `org_id` (owner), `kind` (registered/store/shipping/billing), `label`, `line1/2`, `city`, `region`,
-`postcode`, `country`, `lat`/`lng`?, + audit. Entities hold `*_address_id`. Multi-owner link deferred.
+### `addresses` — LOCKED (2026-10-08; built) — global table, object-lite
+`id`, `ref` (null in practice), `name`, `org_id` (owner), `type` (registered/store/shipping/billing/venue),
+`line1`, `line2`, `city`, `region`, `postcode`, `country`, `latitude`, `longitude`, + audit. Entities hold
+`*_address_id`. Multi-owner link deferred.
+- **Naming correction (2026-10-08):** the earlier draft said `kind`/`label` — **mistake, overruled by the
+  implementation + the model's own conventions.** `type` (not `kind`) matches every other table
+  (`orgs.type`, `org_favourites.type`, `reference_codelists.type`, `project_documents.type`); `kind` appears
+  nowhere else. `name` + `ref` (not `label`) follow the **object base contract** — an address is a global
+  object referenced by many `*_address_id` FKs with a geo future, so it carries the standard header. `name`
+  IS the label ("Head Office", "London Warehouse").
+- **Object-lite:** keeps `id/ref/name/org_id` + audit from the contract, but **drops `description`/`status`**
+  (an address needs neither; removal = `deleted_at` soft-delete). `ref` stays null (addresses aren't
+  handle-addressable); the column exists only for header uniformity.
 
 ### `tags` / `supplier_item_tag` — keep (the m2m tagging layer).
 
@@ -561,6 +571,65 @@ When a question lands on something already built, the reasoning goes here.
 - **Read-views / write-tables (ADR-0002).** Reads via `security_invoker` views (curated order + overlay/joins),
   writes to base tables via services, no `INSTEAD OF` triggers. Column order is cosmetic (reference by name);
   the view layer earns its place on security + contract + computed logic.
+
+## Access & security model — LOCKED (2026-10-08 walkthrough)
+
+The enforcement floor is **tier-5 RLS keyed off the per-request org context** (JWT → `app.current_org_id`
+GUC; the `web_app_user` role is RLS-subject, owner bypasses for migrations). Identity re-derived per request
+(`requireActiveMembership`). pV2-SECURITY-RLS-01 shipped the plumbing; this locks the **access rule**:
+
+- **The one rule: WRITE requires `org_id = app_current_org()`.** You can only author content for the org you
+  are *acting as*. A **grant (an active `user_orgs` membership) is what lets you switch your active org to it**;
+  editing happens when it IS your current org. So a user gets edit rights **only** by (a) **creating** the org
+  (admin onboarding — the creator is granted a seat) or (b) the **owner granting** access via Team. This is
+  the literal "a user must have a grant to an org to permit edit."
+- **Admin is NOT a content-write bypass.** `ballpark_admin`'s matrix is `cross_org_view` (read any org) +
+  `manage_billing` — nothing else. The shipped RLS put `OR app_is_admin()` in the *write* `WITH CHECK` of the
+  content tables (`orgs`, `items`, `addresses`) — **that is FR-00215, the hole, and it's being closed**:
+  - **Read (USING):** keep `… OR app_is_admin()` → admin `cross_org_view` works (sees every org).
+  - **Write (WITH CHECK):** drop `app_is_admin()` → `org_id = app_current_org()` only. Split each `ALL`
+    policy into read + write (+ for `orgs`, an INSERT escape so admin onboarding can create — then the create
+    flow **inserts a `user_orgs` seat** for the admin so they can manage what they onboarded).
+  - **Shared-reference tables** (`categories`, `reference_codelists/_values/_consumers`) keep `app_is_admin()`
+    write — **correct by design**: Ballpark-owned platform vocabulary, admin is the owner-curator.
+  - **`user_orgs`** keeps `app_is_org_admin(org_id)` write — **the grant mechanism** (owner/admin invites),
+    with `WITH CHECK user_id <> self` (no self-escalation). ✅ already in place.
+- **Moderation = a separate admin route, not a role capability.** Cross-org admin writes that genuinely need
+  no membership — **approve/reject an item** (`items.approval_status`), **suspend/approve an org**
+  (`orgs.status`) — run their *specific* write via the owner pool (or a scoped `app.svc_moderate` GUC + a
+  surgical policy branch), gated to `admin.cross_org_view`. **No approvals ledger, no new tables.**
+  - **Two distinct "approvals" — keep them separate (do not conflate):** (1) **marketplace go-live
+    moderation** = `items.approval_status` (draft/pending/approved/rejected), a COLUMN, actor = ballpark
+    admin, the catalogue status-axis. (2) **negotiation/document approval** = FR-00228, a `message_event`
+    (no column/table), actor = the agency/supplier parties. Different actors, lifecycle, storage.
+  - **Moderation audit (open — Liam's call):** marketplace moderation (approve item / suspend org) has only
+    last-writer audit pairs — no history of who moderated what/when (the dropped ledger would have given this
+    free). Decision pending: accept last-writer, or add a lightweight moderation log.
+  - **FR-00214** (end-state approvals ledger) is **SUPERSEDED** by "no ledger / column + message_events" —
+    mark it superseded in the tracker, not silently dropped.
+- **Interim app-layer gates removed.** The ad-hoc `profile-edit.service.canEdit` special-case + the
+  `requireOrgEditSeat` server gate were tape over the DB hole — deleted once the RLS close lands, since the DB
+  now enforces "edit = current-org" and `canEdit` reduces to "do I hold the edit role in my current org."
+- **Admin onboarding → ownership → handoff (FR-00236, Liam 2026-10-08).** When an admin creates an org for
+  onboarding, they are granted an **`owner`** seat (so they can fully set it up). The lifecycle: the admin later
+  **hands off ownership** to the real owner (the supplier's user), and that owner then chooses to **keep,
+  reduce (owner→admin→member), or remove** the admin's support access — all via **Team** (`user_orgs` role
+  changes / removal, which already exist). The one small follow-on is an explicit **owner-transfer** action
+  (Team today toggles admin/member, not owner). No new tables.
+- **Build scoping (two-stage close):** this slice closes the **UPDATE** hole (orgs/items/addresses write =
+  current-org; moderation via scoped `app.svc_moderate` GUC). The **INSERT** escape stays (admin onboarding +
+  the catalogue-extract concierge import both INSERT) and is closed **in the items-rebuild slice**, where the
+  extract switches to `app.current_org_id = the target org` (admin holding the onboarding seat). Acceptance
+  test is two-stage: assert **UPDATE-denied** for a non-member admin now; add **INSERT-denied** when the items
+  slice closes INSERT. (Audited + agreed with the designer, 2026-10-08.)
+
+### `ref` population (EP-00021) — two layers
+`ref` = the stable public handle (URLs/references use it, never the raw UUID `id`).
+- **Layer 1 — generate the values** (folded into the rebuild seeds + create services): `orgs`→handle slug,
+  `categories`→slug (seeded ✓), `items`→slug+short-id, `projects`→`ref_prefix`+`ref_counter` (`PRJ-00123`);
+  `addresses`/child tables stay null. Every new object gets a `ref` at create — no null-ref backfill debt.
+- **Layer 2 — use it in URLs** (translate `ref ↔ id` at the route boundary + back-compat rewrite). Its own
+  focused slice, after foundation + security are solid.
 
 ## Where we are
 
