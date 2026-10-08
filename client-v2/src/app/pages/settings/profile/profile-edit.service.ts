@@ -75,14 +75,18 @@ export class ProfileEditService {
   readonly fetching = signal(false);
   readonly flagged = signal<Set<string>>(new Set());
 
-  /** Editable by org admins (mirrors the server PUT gate, org.manage_billing);
-   *  AND by a platform admin when targeting another org (admin cross-org edit —
-   *  the server admin.cross_org_view gate authorises the write). Non-admins see
-   *  the fields read-only. */
-  readonly canEdit = computed(
-    () => can(this.auth.role(), 'org.manage_billing')
-      || (!!this.targetOrgId() && this.auth.user()?.activeOrgType === 'ballpark'),
-  );
+  /** Editable only by someone acting AS a member of the org being edited
+   *  (org.manage_billing on the active org). FR-00215 support model: a platform
+   *  admin can VIEW any org's profile but NOT edit one they don't belong to —
+   *  editing requires membership the org granted (Team). So a target org is
+   *  editable only when it IS the viewer's active org; otherwise read-only. The
+   *  server PUT /api/admin/orgs/:id enforces the same membership gate. */
+  readonly canEdit = computed(() => {
+    const target = this.targetOrgId();
+    if (!target) return can(this.auth.role(), 'org.manage_billing'); // own-org editor
+    return this.auth.user()?.activeOrgId === target
+      && can(this.auth.role(), 'org.manage_billing');
+  });
 
   /** Route saves to the admin endpoint when targeting another org, else self. */
   private save(patch: OrgProfileUpdate) {

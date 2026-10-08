@@ -13,6 +13,9 @@ const { OrganisationUpdateSchema } = require('../schemas/organisation.schema');
 const { StoreItemCreateSchema, StoreItemUpdateSchema } = require('../schemas/store-item.schema');
 const { ORG_PROFILE_SELECT, toProfile } = require('../services/org-profile.util');
 const { updateOrgProfile } = require('../services/org-profile.service');
+const { withModeration } = require('../lib/moderation');
+
+const BALLPARK_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
 const CreateBody = z
   .object({
@@ -33,6 +36,12 @@ const CreateBody = z
     cover_image_url: z.string().trim().optional(),
   })
   .strip(); // drop unknown keys — org.service only writes the columns it names
+
+// FR-00215: authoring an org (profile/catalogue) is enforced at the DB — RLS write
+// = current-org only. A ballpark admin VIEWs any org (cross_org_view) and MODERATEs
+// via the scoped escape, but EDITs an org only when it's their active org (a seat it
+// holds). The old requireOrgEditSeat app-gate was interim tape — removed; the DB is
+// the enforcement now (acceptance: db/rebuild/tests/fr00215_write_close.test.js).
 
 // GET /api/admin/orgs — every org (incl. suspended), newest first.
 router.get('/', async (_req, res, next) => {
@@ -73,7 +82,21 @@ router.post('/', async (req, res, next) => {
   if (!parsed.success) {
     return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
   }
-  try { res.status(201).json(await OrgService.create(parsed.data)); } catch (err) { next(err); }
+  try {
+    const org = await OrgService.create(parsed.data);
+    // FR-00236 — admin onboarding grants the creating admin an OWNER seat, so they
+    // can set the org up (and later hand off ownership to the real owner, who then
+    // keeps/reduces/removes this support access via Team). This is HOW the admin
+    // gets edit rights now that RLS requires a seat. Admin GUC authorises this
+    // user_orgs insert (self-seat allowed only via app_is_admin).
+    await pool.query(
+      `INSERT INTO user_orgs (user_id, org_id, role, status, joined_at, created_by)
+       VALUES ($1, $2, 'owner', 'active', NOW(), $1)
+       ON CONFLICT (user_id, org_id) DO NOTHING`,
+      [req.user.id, org.id]
+    );
+    res.status(201).json(org);
+  } catch (err) { next(err); }
 });
 
 // PATCH /api/admin/orgs/:id/active { active } — approve (activate) / suspend
@@ -83,7 +106,9 @@ router.patch('/:id/active', async (req, res, next) => {
   const parsed = ActiveBody.safeParse(req.body || {});
   if (!parsed.success) return res.status(400).json({ error: 'active (boolean) is required' });
   try {
-    const org = await OrgService.setActive(req.params.id, parsed.data.active);
+    // FR-00215 — cross-org moderation: suspend/approve writes orgs.status for an org
+    // the admin holds no seat in, via the scoped app.svc_moderate escape (status only).
+    const org = await withModeration(() => OrgService.setActive(req.params.id, parsed.data.active));
     if (!org) return res.status(404).json({ error: 'Not found' });
     res.json(org);
   } catch (err) { next(err); }

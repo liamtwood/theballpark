@@ -13,6 +13,13 @@
 const pool = require('../db/owner-pool');
 const { effectiveRole, normalizeOrgType } = require('./permissions.service');
 
+// v2dev identity layer: every user is OWNED by the Ballpark platform org
+// (users.org_id NOT NULL = instance ownership, not authority), and self-signups
+// are stamped created_by the System user (no human creator). Both are the
+// bootstrap singletons seeded first (DATA-MODEL-REDESIGN — "Ballpark = org #1").
+const BALLPARK_ORG_ID = '00000000-0000-0000-0000-000000000001';
+const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
+
 /**
  * Upsert a user from a Google OAuth profile.
  *  1. by google_sub → refresh display fields.
@@ -74,11 +81,15 @@ async function upsertUserFromGoogle(profile) {
   // would silently re-grant the legacy authority this prompt removes. On the
   // owner pool (BE-00115) — a single INSERT, no cross-table txn needed.
   // v2dev: no users.role column (authority lives in user_orgs.role); OIDC
-  // subject column is `sub`. Org + membership still land at onboarding.
+  // subject column is `sub`. users.org_id is NOT NULL — it's INSTANCE OWNERSHIP
+  // (every user is owned by the Ballpark platform org), NOT authority: the user
+  // still has no working-org membership until onboarding writes user_orgs.
+  // created_by is stamped to the System user (self-signup has no human creator),
+  // matching the seeded rows. Org + membership still land at onboarding.
   const user = await pool.query(
-    `INSERT INTO users (name, display_name, email, sub, avatar_url)
-     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-    [displayName, displayName, email, sub, avatarUrl]
+    `INSERT INTO users (name, display_name, email, sub, avatar_url, org_id, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+    [displayName, displayName, email, sub, avatarUrl, BALLPARK_ORG_ID, SYSTEM_USER_ID]
   );
   return { userId: user.rows[0].id };
 }

@@ -13,6 +13,7 @@
 const router = require('express').Router();
 const { z } = require('zod');
 const ItemService = require('../services/item.service');
+const { withModeration } = require('../lib/moderation');
 
 const DecisionSchema = z.object({ decision: z.enum(['approve', 'reject']) }).strip();
 
@@ -36,10 +37,13 @@ router.put('/items/:id/approval', async (req, res, next) => {
     // Approval does NOT publish — it sets the status to approved and leaves the
     // item INACTIVE. The supplier then chooses to activate it (make it available
     // for purchase) via the store. Reject also stays inactive.
-    const item = await ItemService.update(req.params.id, {
+    // FR-00215 — cross-org moderation write: admin holds no seat in the item's org,
+    // so the write runs under the scoped app.svc_moderate escape (only approval_status
+    // + is_active are touched; RLS keeps everything else current-org-only).
+    const item = await withModeration(() => ItemService.update(req.params.id, {
       approval_status: approve ? 'approved' : 'rejected',
       is_active: false,
-    });
+    }));
     res.json(item);
   } catch (err) { next(err); }
 });

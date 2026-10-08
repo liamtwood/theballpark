@@ -56,14 +56,20 @@ router.post('/create-org', authWriteLimit, authenticate, async (req, res, next) 
     const client = await ownerPool.connect();
     try {
       await client.query('BEGIN');
+      // v2dev: orgs hang under the Ballpark root (parent_id) and stamp the
+      // creator (created_by/updated_by NOT NULL) — the onboarding user themselves.
       const org = await client.query(
-        `INSERT INTO orgs (name, type) VALUES ($1, $2) RETURNING id`,
-        [name, orgType]
+        `INSERT INTO orgs (name, type, parent_id, created_by, updated_by)
+         VALUES ($1, $2, '00000000-0000-0000-0000-000000000001', $3, $3) RETURNING id`,
+        [name, orgType, req.user.id]
       );
       const orgId = org.rows[0].id;
+      // v2dev: user_orgs authority is `role` (member/admin/owner), not is_admin;
+      // the onboarding user is the OWNER of the org they just created. created_by
+      // is NOT NULL (the user themselves).
       await client.query(
-        `INSERT INTO user_orgs (user_id, org_id, is_admin, status, joined_at)
-         VALUES ($1, $2, true, 'active', NOW())`,
+        `INSERT INTO user_orgs (user_id, org_id, role, status, joined_at, created_by)
+         VALUES ($1, $2, 'owner', 'active', NOW(), $1)`,
         [req.user.id, orgId]
       );
       await client.query(

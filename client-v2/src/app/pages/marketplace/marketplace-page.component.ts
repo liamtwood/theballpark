@@ -97,7 +97,7 @@ import { MarketplaceWorkspaceComponent } from './marketplace-workspace.component
             [quoteDraftIds]="favs.quoteDraft()"
             [showQuickView]="true"
             [dense]="true"
-            [quickViewOnly]="true"
+            [quickViewOnly]="!store.statusFilter()"
             (quickView)="openQuickView($event)"
             (entitySelected)="openQuickView($event)"
             (favouriteToggled)="favs.toggle('item', $event)"
