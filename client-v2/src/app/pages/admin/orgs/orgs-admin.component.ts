@@ -192,12 +192,6 @@ const emptyForm = (): CreateOrgInput => ({
                         </span>
                       </span>
                       <div class="flex justify-end gap-2">
-                        @if (canSwitch(o)) {
-                          <!-- FR-00215/FR-00236 — enter this org's context (you hold a seat):
-                               manage it as its owner/admin. Session-only; "Return home" in the banner. -->
-                          <button type="button" class="bp-orgact bp-orgact--switch" [disabled]="busyId() === o.id"
-                            title="Act as this organisation" (click)="switchTo(o); $event.stopPropagation()">Switch to</button>
-                        }
                         @if (o.is_active) {
                           <button type="button" class="bp-orgact bp-orgact--suspend" [disabled]="busyId() === o.id"
                             (click)="suspend(o); $event.stopPropagation()">Suspend</button>
@@ -324,8 +318,10 @@ export class OrgsAdminComponent {
   }
 
   protected openOrg(o: AdminOrg): void {
-    // Suppliers open the role-adapted storefront/management page
-    // (supplier-detail → /suppliers/:id).
+    // Click an org you OWN (hold a seat, not already in it) → SET CONTEXT: act as
+    // it and land on the editable 4-tab page (Profile/Shopfront/Shop + AI Assist
+    // for staff). Otherwise just open the admin view of the supplier page.
+    if (this.canSwitch(o)) { void this.switchTo(o); return; }
     if (this.isSupplier(o)) void this.router.navigate(['/suppliers', o.id]);
   }
 

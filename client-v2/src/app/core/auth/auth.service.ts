@@ -31,6 +31,9 @@ export interface SessionUser {
   /** The user's HOME org (default). Equals activeOrgId normally; differs only
    *  while session-switched into another org — the "Return home" target. */
   homeOrgId: string | null;
+  /** Type of the HOME org — 'ballpark' ⇒ platform staff, independent of whichever
+   *  org they're currently acting as. Gates the acting-as AI Assist tab. */
+  homeOrgType: OrgType | null;
 }
 
 /** One of the user's active memberships — the org switcher's rows. */
@@ -76,6 +79,10 @@ export class AuthService {
     const u = this._user();
     return !!u?.activeOrgId && !!u?.homeOrgId && u.activeOrgId !== u.homeOrgId;
   });
+  /** Platform staff — their HOME org is Ballpark, regardless of the org they're
+   *  currently acting as. Gates admin-only affordances that survive a context
+   *  switch (e.g. the AI Assist extractor while acting-as an org to onboard it). */
+  readonly isPlatformStaff = computed(() => this._user()?.homeOrgType === 'ballpark');
 
   /** Hydrate the session from the cookie (called at bootstrap + callback).
    *  Never throws — a 401 just means signed out; anything else still resolves

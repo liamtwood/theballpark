@@ -195,50 +195,9 @@ export class AdminOrgService {
     return this.api.post<OrgImportPreview>('/api/v2/org-import/preview', { url });
   }
 
-  /** ANALYSE — a section/product URL returns a report synchronously; a HOMEPAGE
-   *  (whole-site) URL returns { jobId, async:true } as a background fan-out job to
-   *  poll via extractJob (crawls every section with its own budget). */
-  extractAnalyse(orgId: string, url: string): Observable<ExtractReport | AnalyseJobStart> {
-    return this.api.post<ExtractReport | AnalyseJobStart>(`/api/admin/orgs/${orgId}/extract/analyse`, { url });
-  }
-
-  /** PREPARE — for the selected groups, get a Ballpark cat/subcat suggestion each
-   *  + the taxonomy tree for the dropdowns (only AIs the groups you'll load). */
-  extractPrepare(orgId: string, groups: Array<{ key: string; sample?: string }>): Observable<PrepareResult> {
-    return this.api.post<PrepareResult>(`/api/admin/orgs/${orgId}/extract/prepare`, { groups });
-  }
-
-  /** CATEGORIES-ONLY — create the new subcats/sub-subcats the mapping needs, without
-   *  pulling items (shape the taxonomy up front; load items later). Idempotent. */
-  extractApplyMapping(orgId: string, mapping: Record<string, MappingRow>): Observable<{ created: number; groups: Array<{ key: string; status: string }> }> {
-    return this.api.post<{ created: number; groups: Array<{ key: string; status: string }> }>(`/api/admin/orgs/${orgId}/extract/prepare/apply`, { mapping });
-  }
-
-  /** PULL — START a background job that creates pending items from these product
-   *  URLs. Returns the job id at once (a whole catalogue takes minutes); poll with
-   *  extractJob. mode 'review' = lean vetting set; 'full' = everything mappable.
-   *  mapping = confirmed cat/subcat per group key (authoritative; skips the AI). */
-  extractPull(
-    orgId: string, urls: string[], mode: 'review' | 'full' = 'full',
-    mapping?: Record<string, MappingRow>,
-  ): Observable<PullStart> {
-    return this.api.post<PullStart>(`/api/admin/orgs/${orgId}/extract/pull`, { urls, mode, mapping });
-  }
-
-  /** Poll one pull job's live status/progress/results. */
-  extractJob(orgId: string, jobId: string): Observable<PullJob> {
-    return this.api.get<PullJob>(`/api/admin/orgs/${orgId}/extract/job/${jobId}`);
-  }
-
-  /** The org's active (running) pull job, or null — for re-attaching on return. */
-  extractActiveJob(orgId: string): Observable<PullJob | null> {
-    return this.api.get<PullJob | null>(`/api/admin/orgs/${orgId}/extract/job`);
-  }
-
-  /** Request cancel — the runner stops before the next item; created items stay. */
-  extractCancel(orgId: string, jobId: string): Observable<{ cancelling: boolean }> {
-    return this.api.post<{ cancelling: boolean }>(`/api/admin/orgs/${orgId}/extract/job/${jobId}/cancel`, {});
-  }
+  // pV2-STORE-EXTRACT-01 — the extractor's HTTP calls moved to CatalogueExtractClient
+  // (base-keyed) so the admin cross-org mount and the self-serve own-org mount share
+  // one client. website-import-panel builds the base and calls that.
 
   /** Admin soft-delete of an item on another org (cascades to its option children
    *  server-side). DELETE /api/admin/orgs/:orgId/items/:itemId (exists). */

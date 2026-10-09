@@ -110,6 +110,12 @@ async function buildSession(userId, targetOrgId = null) {
                      (SELECT uo2.org_id FROM user_orgs uo2
                         WHERE uo2.user_id = u.id AND uo2.status = 'active' AND uo2.deleted_at IS NULL
                         ORDER BY uo2.joined_at ASC NULLS LAST LIMIT 1)) AS home_org_id,
+            -- home org TYPE — lets the client tell platform staff (home = ballpark)
+            -- from a real supplier owner, independently of the switched-into org.
+            (SELECT ho.type FROM orgs ho WHERE ho.id = COALESCE(u.default_org_id,
+                     (SELECT uo3.org_id FROM user_orgs uo3
+                        WHERE uo3.user_id = u.id AND uo3.status = 'active' AND uo3.deleted_at IS NULL
+                        ORDER BY uo3.joined_at ASC NULLS LAST LIMIT 1))) AS home_org_type,
             o.id AS org_id, o.name AS org_name, o.type AS org_type,
             (uo.role IN ('admin','owner')) AS is_admin   -- v2dev: derive org-admin from role enum
        FROM users u
@@ -144,6 +150,7 @@ async function buildSession(userId, targetOrgId = null) {
       isAdmin: false,
       role: null,
       homeOrgId: null,
+      homeOrgType: null,
     };
   }
   const row = r.rows[0];
@@ -160,6 +167,8 @@ async function buildSession(userId, targetOrgId = null) {
     // Home = the user's default (or earliest membership). Equals activeOrgId
     // normally; differs only while session-switched (the "Return home" target).
     homeOrgId: row.home_org_id,
+    // Home org type — ballpark ⇒ platform staff (gates acting-as AI Assist).
+    homeOrgType: normalizeOrgType(row.home_org_type),
   };
 }
 

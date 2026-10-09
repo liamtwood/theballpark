@@ -182,10 +182,11 @@ const WHATS_HOT = "What's Hot";
           <!-- AI Assist — admin-only catalogue extractor (Analyse → Prepare → Load).
                Items land pending → Approvals. Its own tab (was an inline block on the
                Shop tab) so the wizard + background-job progress have room to breathe. -->
-          @if (isPlatformAdmin() && store.pinnedSupplierId(); as orgId) {
+          @if (canAiAssist() && store.pinnedSupplierId(); as orgId) {
             <div class="bp-gutter px-6">
               <div class="mx-auto w-full max-w-[var(--workspace-max)]">
-                <app-website-import-panel [orgId]="orgId" (pulled)="store.reloadItems()" />
+                <!-- selfServe when acting-as (no cross_org_view) → own-org extract mount. -->
+                <app-website-import-panel [orgId]="orgId" [selfServe]="!isPlatformAdmin()" (pulled)="store.reloadItems()" />
               </div>
             </div>
           }
@@ -263,15 +264,23 @@ export class SupplierDetailComponent {
   protected readonly tabs = computed<TabBandTab[]>(() => {
     const items: TabBandTab = { key: 'store', label: this.isOwner() ? 'My Shop' : 'Shop' };
     const shopfront: TabBandTab = { key: 'storefront', label: 'Shopfront' };
-    // AI Assist — the catalogue extractor. Platform-admin ONLY (cross-org tooling);
-    // a supplier viewing their own page never sees it.
+    // AI Assist — the catalogue extractor. Platform admin (cross-org), OR platform
+    // STAFF acting AS this org (own-org self-serve, for onboarding). A real supplier
+    // owner doesn't see it yet (option ii — supplier self-onboarding comes later).
+    const ai: TabBandTab[] = this.canAiAssist() ? [{ key: 'ai', label: 'AI Assist' }] : [];
     if (this.isPlatformAdmin()) {
-      return [{ key: 'profile', label: 'Profile' }, shopfront, items, { key: 'ai', label: 'AI Assist' }];
+      return [{ key: 'profile', label: 'Profile' }, shopfront, items, ...ai];
     }
     return this.isOwner()
-      ? [{ key: 'profile', label: 'Profile' }, shopfront, items]
+      ? [{ key: 'profile', label: 'Profile' }, shopfront, items, ...ai]
       : [shopfront, items];
   });
+
+  /** Platform staff — home org is Ballpark, survives a context switch. */
+  protected readonly isPlatformStaff = computed(() => this.auth.isPlatformStaff());
+  /** Who gets AI Assist: platform admin (cross-org), or platform staff acting AS
+   *  this org (self-serve own-org). Drives the tab + its selfServe wiring. */
+  protected readonly canAiAssist = computed(() => this.isPlatformAdmin() || (this.isOwner() && this.isPlatformStaff()));
 
   private readonly query = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
@@ -286,7 +295,7 @@ export class SupplierDetailComponent {
     const canProfile = this.isOwner() || this.isPlatformAdmin();
     const q = this.query().get('tab');
     if (q === 'store' || q === 'storefront') return q;
-    if (q === 'ai') return this.isPlatformAdmin() ? 'ai' : 'storefront';
+    if (q === 'ai') return this.canAiAssist() ? 'ai' : 'storefront';
     if (q === 'profile') return canProfile ? 'profile' : 'storefront';
     // Default landing: owner → My Shop (store); admin → Profile; agent/public → Shopfront.
     if (this.isOwner()) return 'store';

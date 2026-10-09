@@ -57,4 +57,14 @@ router.post('/import-preview', requireActiveMembership('org.manage_billing'), as
   try { res.json(await extractOrg(parsed.data.url)); } catch (err) { next(err); }
 });
 
+// pV2-STORE-EXTRACT-01 (self-serve) — the full catalogue extractor (Analyse →
+// Prepare → Pull), scoped to the CALLER'S OWN active org. Same handlers as the
+// admin cross-org mount (/api/admin/orgs/:orgId/extract/*); here the org is
+// req.user.org_id, never a URL/body param, so it can only ever touch your own
+// org. Owner-gated (org.manage_billing). Items still land PENDING → Approvals,
+// so this grants no new moderation power. Currently surfaced only to platform
+// staff acting-as an org (supplier self-onboarding comes later).
+const { makeExtractRouter } = require('./extract-routes');
+router.use('/extract', requireActiveMembership('org.manage_billing'), makeExtractRouter((req) => req.user.org_id));
+
 module.exports = router;

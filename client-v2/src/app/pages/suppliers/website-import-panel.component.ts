@@ -2,6 +2,9 @@ import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { AdminOrgService, CatNode, ExtractReport, MappingRow, PrepareResult, PullResult, PullJob, AnalyseJobStart } from '../../core/admin-org.service';
+import { OrganisationService } from '../../core/organisation.service';
+import { CatalogueExtractClient } from '../../core/catalogue-extract.client';
+import { Observable } from 'rxjs';
 import { ImportTreeNodeComponent, TreeNode } from './import-tree-node.component';
 
 /** One editable cat/subcat mapping row in the Prepare step. `subChoice` is a
@@ -266,11 +269,22 @@ interface EditRow {
 })
 export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
   private readonly admin = inject(AdminOrgService);
+  private readonly org = inject(OrganisationService);
+  private readonly ex = inject(CatalogueExtractClient);
 
   /** The org (supplier) to import into. */
   readonly orgId = input.required<string>();
+  /** Self-serve mode — call the OWN-org extract mount (/api/organisation/extract,
+   *  active org) instead of the admin cross-org mount. Set when a platform-staff
+   *  user is acting AS this org (no admin.cross_org_view on that session). */
+  readonly selfServe = input(false);
   /** Emitted after a successful pull so the parent can reload its item grid. */
   readonly pulled = output<PullResult>();
+
+  /** The extractor base path — own-org when acting-as, else the admin cross-org
+   *  route keyed by :orgId. The one knob that switches every extract call. */
+  protected readonly base = computed(() =>
+    this.selfServe() ? '/api/organisation/extract' : `/api/admin/orgs/${this.orgId()}/extract`);
 
   protected readonly url = signal('');
   protected readonly analyzing = signal(false);
@@ -289,7 +303,7 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
 
   /** Re-attach to a pull that's still running (started before we navigated away). */
   ngOnInit(): void {
-    this.admin.extractActiveJob(this.orgId()).subscribe({
+    this.ex.activeJob(this.base()).subscribe({
       next: (j) => {
         if (j && (j.status === 'running' || j.status === 'cancelling')) {
           this.job.set(j);
@@ -300,8 +314,11 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
       error: () => { /* no active job / not reachable — nothing to re-attach */ },
     });
     // Default the URL to this org's own website (from its profile) — one less paste.
-    // Only when the field is still empty, so it never clobbers a typed URL.
-    this.admin.get(this.orgId()).subscribe({
+    // Only when the field is still empty, so it never clobbers a typed URL. Own-org
+    // profile when acting-as (admin endpoint would 403), else the admin read.
+    const profile$: Observable<{ website?: string | null }> =
+      this.selfServe() ? this.org.get() : this.admin.get(this.orgId());
+    profile$.subscribe({
       next: (org) => {
         const w = (org?.website || '').trim();
         if (w && !this.url().trim()) this.url.set(/^https?:\/\//i.test(w) ? w : `https://${w}`);
@@ -317,7 +334,7 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
   private startPolling(jobId: string): void {
     this.stopPolling();
     this.pollTimer = setInterval(() => {
-      this.admin.extractJob(this.orgId(), jobId).subscribe({
+      this.ex.job(this.base(), jobId).subscribe({
         next: (j) => {
           this.job.set(j);
           if (j.status === 'done' || j.status === 'cancelled' || j.status === 'error') {
@@ -359,7 +376,7 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
   protected cancel(): void {
     const j = this.job();
     if (!j) return;
-    this.admin.extractCancel(this.orgId(), j.jobId).subscribe({
+    this.ex.cancel(this.base(), j.jobId).subscribe({
       next: () => this.job.update((cur) => (cur ? { ...cur, status: 'cancelling' } : cur)),
       error: (e) => this.error.set(this.msg(e)),
     });
@@ -519,7 +536,7 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
     this.result.set(null);
     this.job.set(null);
     this.analyzing.set(true);
-    this.admin.extractAnalyse(this.orgId(), url).subscribe({
+    this.ex.analyse(this.base(), url).subscribe({
       next: (r) => {
         if ((r as AnalyseJobStart).async) {
           // Whole-site fan-out — runs as a background job; seed a running job so the
@@ -566,7 +583,7 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
     if (!groups.length) return;
     this.error.set(null);
     this.preparing.set(true);
-    this.admin.extractPrepare(this.orgId(), groups).subscribe({
+    this.ex.prepare(this.base(), groups).subscribe({
       next: (res) => {
         this.prepared.set(res);
         this.rows.set(res.groups.map((gr) => ({
@@ -634,7 +651,7 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
     this.pulling.set(true);
     // Start the background job — returns a job id at once; we poll it (and it
     // survives leaving the page). Seed a running job so the progress bar shows now.
-    this.admin.extractPull(this.orgId(), urls, mode, this.buildMapping()).subscribe({
+    this.ex.pull(this.base(), urls, mode, this.buildMapping()).subscribe({
       next: (s) => {
         this.job.set({
           jobId: s.jobId, status: 'running', mode,
@@ -653,7 +670,7 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
     this.error.set(null);
     this.applied.set(null);
     this.pulling.set(true);
-    this.admin.extractApplyMapping(this.orgId(), this.buildMapping()).subscribe({
+    this.ex.applyMapping(this.base(), this.buildMapping()).subscribe({
       next: (s) => {
         this.applied.set({ created: s.created, groups: s.groups.length });
         this.pulling.set(false);
