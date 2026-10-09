@@ -153,12 +153,83 @@ icon_color, tagline, + audit`. `categories` adds `ref/org_id/status`; `feedback_
 **Gap (FR-00233):** no admin UI to set a category's `icon_name`/`icon_color` (only 15/209 have an icon) — add a
 face editor reusing the existing `image-picker` component.
 
-### `items` — PARTLY BUILT in v2dev (reconcile + complete — see "Items slice" below)
-Org-owned (`org_id NOT NULL`). Universal core + unit-driven fields + `attributes` jsonb (5 describe-groups)
-+ variants + `kind`. Per the v0.2.0 locked spec — apply the base contract, drop cruft.
-The table + RLS already exist (migrations `0010`/`0011`/`0013`/`0014`); the **Items slice** (below) reconciles
-it to the locked decisions (`status` axis, `subcategory_id`, `ref` slug) and builds the still-missing
-`tags`/`item_tag` layer. See the decision-log "Items" entry for the locked shape.
+### `items` — Class A object — LOCKING (walk 2026-10-09; drop `0010`, rebuild fresh)
+
+v2dev's `0010` items was built during a context-compaction gap and **drifted** from the plan; it holds only 5
+throwaway rows and nothing FKs to it → **dropped and rebuilt fresh** from the standards (greenfield, like org),
+NOT migrated. Target = a clean `0015_items_rebuild` superseding `0010`/`0011`. Walking the column spec group by
+group below; each locks as Liam confirms it. Class A = full object contract (COLUMN-STANDARDS §A).
+
+**Group 1 — base contract — LOCKED (2026-10-09):**
+- Header per Class A, in order: `id · ref · name · description · status · type · org_id · … · 3 audit pairs`.
+- **`is_active` → `status`** — drop the boolean; `status` = `item_status` (`new / active / retired`).
+  **SYSTEM codelist** (designer ruling 2026-10-09): the row lives in `reference_codelists` with `type='system'`
+  (like `item_approval_status`), split by concern — **code owns the value SET** (a typed constant SSOT + DB
+  `CHECK`/FK to the seeded values + a **contract test binding the enum ↔ seeded rows** so they can't drift,
+  hygiene Rule 7; not admin-editable), **admin owns presentation** (label/colour/order/icon on the
+  `reference_codelist_values` rows). **Independent of `approval_status`** (`draft/pending/approved/rejected`) —
+  BOTH axes kept. Marketplace "live" = `status='active' AND approval_status='approved'`.
+  - *Flag:* `item_unit` is code-governed too (the pricing formula branches on the 5 values via `meta.needs`) but
+    is currently `type='ballpark'` — should be `system`. `tier` the designer also called system, but the locked
+    COLUMN-STANDARDS put `tier` in **bucket 3 (admin-editable `ballpark`)** — **conflict for Liam to rule.**
+
+**Group 2 — classification — LOCKED (2026-10-09):**
+- `category_id` — **one** home node at **any depth**; `subcategory_id` **dropped**; levels + breadcrumb derive by
+  walking `categories.parent_id` (not stored columns). `NO ACTION` on delete (soft-delete handles removal).
+- `item_tag` — **Class D junction** (`item_id, tag_id` composite PK, `created_at/by` + `deleted_at` soft-unlink;
+  no header). Unstubs What's-Hot + the marketplace tag filter.
+- `tags` vocabulary — **build minimal now** (`category_id, dimension, label` + base contract), flesh out as it
+  makes sense. *Naming parked:* keep `categories` / `tags` (vs COLUMN-STANDARDS' `taxonomy_` prefix) — Liam to confirm.
+- **`mood` = a FACETED TAG, not a column (LOCKED 2026-10-09):** a mood is a `tags` row with `dimension='mood'`
+  (e.g. Rustic, Elegant); an item "has" moods via `item_tag` (multi-valued, admin-extensible). The matcher filters
+  `tags WHERE dimension='mood'`. Same facet machinery serves other cross-cutting vocab later. Contrast `tier` —
+  single-valued + **ordered** (range-matched) → stays its own column, not a tag.
+
+**Group 3 — pricing & commerce — LOCKED (2026-10-09):**
+- `base_price`, `install_cost` — `numeric`, add `CHECK (… >= 0)` (mandatory money guard).
+- `currency` — nullable → falls back to org `default_currency` (codelist `currency`).
+- `install_unit` (`per_item / per_order / percentage`) — **bucket-1 hard `CHECK`** (the install formula branches on it).
+- `install_description`, `tier` (codelist; see the parked system/ballpark `tier` conflict).
+- Volume `price_tiers` is **not a column** — it lives in `attributes` (group 5).
+
+**Group 4 — unit-driven — LOCKED (2026-10-09):** `unit` (codelist `item_unit`, → `system`) + the ONE `meta.needs`
+field: `serves` (platter, `CHECK > 0`), `time_unit` (time, codelist), `size` (descriptive → `attributes`);
+`lead_time_days` (`CHECK ≥ 0`). **`location_coverage` dropped** (per the locked `coverage_area` cull).
+
+**Group 5 — attributes & configure — LOCKED (2026-10-09):** `attributes` jsonb = the 5 describe-groups
+(Specifications / Features / Style / Measurements / Materials) + **`variants`** (dimensions × values; per-value
+free-pick / upcharge / absolute — `options` RETIRED) + `price_tiers` (volume guide) + **`_source`** (sku/product_id,
+extract dedup). `kind` → **`type`** (bucket-1 `CHECK`: variant/addon/component; dormant). `parent_item_id` /
+`derived_from_id` dormant (`NO ACTION`, `CHECK id <> self`). **Carry `external_url`** (extract identity; `0010`
+had dropped it). NO `item_type`, NO profiles (unit-driven only).
+
+**Group 6 — media — LOCKED (2026-10-09):** `images` jsonb `[{url, sort_order, is_hero}]`; `image_display`
+(`CHECK cover|contain`). **Drop the legacy `image_url` cache** — the hero derives from `images`.
+
+**Group 7 — lifecycle & RLS — LOCKED (2026-10-09):** two axes — `status` (new/active/retired) + `approval_status`
+(draft/pending/approved/rejected). RLS **read** = public (`status='active' AND approval_status='approved'`) OR
+own-org OR admin; **write** = own-org (admin override on UPDATE/DELETE = moderation). **INSERT closed (FR-00215):**
+drop the blanket `app_is_admin()` INSERT branch — admin cross-org extract writes via **act-as current-org** (the
+self-serve path we built); add the INSERT-denied RLS test. Soft-delete = parent-only rule; `ref`/`name`
+partial-unique `WHERE deleted_at IS NULL`.
+
+**Item-domain table scope — COMPLETE SET (2026-10-09, so testing never waits on a new table):**
+`items` (rebuilt in `0015`) · `tags` (new, minimal) · `item_tag` (new junction) · `catalogue_extract_job`
+(exists, `0014`). **No other item tables** — variants / attribute groups / volume tiers / media / buildup all
+live as `attributes`/`images` jsonb or dormant columns on `items`. One `0015` pass covers the domain.
+
+**Pending (designer drift-check 2026-10-09 — raise at the named group, don't let the gap reintroduce drift):**
+- **G5 `attributes.options` is RETIRED — CONFIRMED (Liam, 2026-10-09).** Options and variants overlapped and
+  confused, so **variants is the single mechanism**; "options" was just a **one-dimension variant**.
+  `attributes.variants` = dimensions × values, each value priced **free-pick / upcharge (+£) / absolute**; a
+  dimension keying the combos = PRICING, a declared dimension not in combos = PICKER-ONLY (e.g. paper type).
+  Import emits variants and strips any legacy `options` key on save. `0015` rebuilds on variants, **NOT** an
+  options array.
+- **G3/G5 must-carry:** `external_url` + `attributes._source` (sku / product_id) = extract **identity + dedup keys**
+  (`0010` dropped `external_url` — revisit); component dormancy (`kind`/`parent_item_id` kept, marketplace filters
+  `kind <> 'component' AND parent_item_id IS NULL`); **NO `item_type`, NO profiles** (unit-driven only).
+- `ref` — nullable slug, `UNIQUE (…) WHERE deleted_at IS NULL`; **populate** where user-facing (EP-00021).
+- `kind` → **`type`** (rule 3 retires `kind`) — bucket-1 hard `CHECK` (variant/addon/component); detail in group 5.
 
 ### `addresses` — DRAFT (global table)
 `id`, `org_id` (owner), `kind` (registered/store/shipping/billing), `label`, `line1/2`, `city`, `region`,
