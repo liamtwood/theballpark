@@ -582,10 +582,13 @@ above + the v0.2.0 item model (`pV2-STORE-IMPORT-01`); same bar (consistent · s
 - `catalogue_extract_job` (`0014`) + the self-serve + admin extract mounts (AI Assist).
 
 **Delta to the locked model — DECISIONS for Liam:**
-1. **`subcategory_id` — the doc says DROP** (store one home `category_id` at *any depth*, derive the breadcrumb
-   from the recursive `categories` tree); v2dev **kept it**, and the marketplace drill-down (supplier-detail +
-   marketplace rails) reads it as an explicit 2nd/3rd axis. Honoring the drop = rework the drill to derive levels
-   from the tree. **Open: honor the drop, or keep the explicit pair and amend the lock?**
+1. **`subcategory_id` — DROP it. DECIDED (Liam, 2026-10-09):** an item is classified to **ONE category, at any
+   level** of the recursive tree — `items.category_id` is its single home node; there is no second axis. The
+   breadcrumb and every drill level **derive from `categories.parent_id` recursion** (ancestors up, children
+   down), not from stored columns. Work: drop `subcategory_id` + its index; the classifier/extractor writes one
+   `category_id` at any depth; rework the marketplace drill (supplier-detail + marketplace rails) to walk the
+   tree instead of reading the fixed category/subcategory/sub-subcategory columns. (Matches the single-parent
+   taxonomy principle — one owner, tags carry the weak m2m.)
 2. **`is_active` → `status`** (new/active/retired codelist, per the object base contract). v2dev has the boolean.
    Additive codelist + backfill + read-view maps it.
 3. **`ref` slug** — items carry a nullable `ref`; populate the user-facing slug (no raw PKs in URLs, EP-00021).
@@ -599,7 +602,8 @@ above + the v0.2.0 item model (`pV2-STORE-IMPORT-01`); same bar (consistent · s
 **Worklist** (each sub-slice = DB → service → route → client → QC):
 - `tags` + `item_tag` (+ RLS with the table) → unstub What's-Hot + tag filter in `marketplace.js`/`marketplace-suppliers.js`.
 - `status` axis: codelist + `items.status`, backfill from `is_active`, map in the read-view; retire the boolean.
-- `subcategory_id` decision → (drop) derive-breadcrumb rework, or (keep) record the amendment here.
+- `subcategory_id` **drop** (DECIDED): remove the column + index; rework the drill (supplier-detail + marketplace
+  rails) to derive levels from the recursive `categories` tree; classifier/extractor writes one `category_id`.
 - Close the items INSERT escape + INSERT-denied RLS test (completes FR-00215 on items).
 - `ref` populate + translate at the URL boundary (EP-00021).
 - `items_public` read-view (ADR-0002 `security_invoker`) mirroring `orgs_public`; one write path (no SQL in
