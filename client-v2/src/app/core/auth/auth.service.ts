@@ -28,6 +28,18 @@ export interface SessionUser {
   activeOrgType: OrgType | null;
   isAdmin: boolean;
   role: Role | null;
+  /** The user's HOME org (default). Equals activeOrgId normally; differs only
+   *  while session-switched into another org — the "Return home" target. */
+  homeOrgId: string | null;
+}
+
+/** One of the user's active memberships — the org switcher's rows. */
+export interface UserOrg {
+  orgId: string;
+  orgName: string;
+  orgType: OrgType;
+  role: Role;
+  isHome: boolean;
 }
 
 /** 401 from /auth/me just means "signed out" — the designed no-session
@@ -58,6 +70,12 @@ export class AuthService {
   /** True when the session user belongs to an active org — orgless users
    *  (signed in, pre-onboarding) are routed to /onboarding instead. */
   readonly hasActiveOrg = computed(() => !!this._user()?.activeOrgId);
+  /** True while session-switched into a non-home org — drives the "Acting as…
+   *  / Return home" banner. */
+  readonly isAwayFromHome = computed(() => {
+    const u = this._user();
+    return !!u?.activeOrgId && !!u?.homeOrgId && u.activeOrgId !== u.homeOrgId;
+  });
 
   /** Hydrate the session from the cookie (called at bootstrap + callback).
    *  Never throws — a 401 just means signed out; anything else still resolves
@@ -87,6 +105,21 @@ export class AuthService {
       this._user.set(null);
       void this.router.navigate(['/login']);
     }
+  }
+
+  /** The current user's active memberships — feeds the org switcher. */
+  listOrgs(): Promise<UserOrg[]> {
+    return firstValueFrom(this.api.get<UserOrg[]>('/auth/orgs'));
+  }
+
+  /** Switch active org (SEAT-GATED + session-only, server-enforced), then hard
+   *  reload to `redirectTo` so the whole app re-bootstraps as that org — guards,
+   *  stores, persona and permissions all re-derive cleanly from the fresh session.
+   *  Used for "Switch to context" (lands on the org's page) and "Return to
+   *  Ballpark" (back to admin → orgs, where you came from). */
+  async switchOrg(orgId: string, redirectTo = '/home'): Promise<void> {
+    await firstValueFrom(this.api.post('/auth/switch-org', { orgId }));
+    window.location.href = redirectTo;
   }
 
   /** Dev-only — cookie-login as a seeded user, then hard reload so the whole

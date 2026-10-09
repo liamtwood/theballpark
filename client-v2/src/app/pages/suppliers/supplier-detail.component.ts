@@ -83,10 +83,11 @@ const WHATS_HOT = "What's Hot";
           </div>
         </app-page-hero>
 
-        <!-- Storefront / Store toggle — centred (pV2-MEDIA-01e QC). The OWNER's shop
-             is items-only (pV2-STORE-01): their shopfront now lives on
-             /settings/profile, so the toggle hides and Store shows. -->
-        @if (!isOwner()) {
+        <!-- Tab band — the unified org-management surface. Shown for anyone with
+             more than one tab: the OWNER (acting as this org via the switcher) gets
+             Profile · Shopfront · My Shop and manages it in place; the platform admin
+             adds AI Assist; agents/public get Shopfront · Shop. -->
+        @if (tabs().length > 1) {
           <div class="flex justify-center px-6 pt-4 pb-1">
             <app-tab-band [tabs]="tabs()" [active]="tab()" (activeChange)="setTab($event)" />
           </div>
@@ -276,11 +277,14 @@ export class SupplierDetailComponent {
    *  non-admins who have no editable surface); default landing = profile for a
    *  platform admin, else the public storefront (pV2-SUPPLIER-TABS-3-01). */
   protected readonly tab = computed(() => {
-    if (this.isOwner()) return 'store';
+    // Who has which tab: Profile = owner (acting-as) or platform admin; AI = admin only.
+    const canProfile = this.isOwner() || this.isPlatformAdmin();
     const q = this.query().get('tab');
     if (q === 'store' || q === 'storefront') return q;
     if (q === 'ai') return this.isPlatformAdmin() ? 'ai' : 'storefront';
-    if (q === 'profile') return this.isPlatformAdmin() ? 'profile' : 'storefront';
+    if (q === 'profile') return canProfile ? 'profile' : 'storefront';
+    // Default landing: owner → My Shop (store); admin → Profile; agent/public → Shopfront.
+    if (this.isOwner()) return 'store';
     return this.isPlatformAdmin() ? 'profile' : 'storefront';
   });
 

@@ -9,8 +9,23 @@ async function getAll() {
  *  re-activate), excluding only hard-removed (deleted_at). v2dev: `status`
  *  replaced v1's is_active — expose a computed is_active for client compat. */
 async function getAllForAdmin() {
+  // Include the org's OWNER(s) + member count so the admin list can show ownership
+  // at a glance (and surface orphans — orgs with no owner). Owner = user_orgs
+  // role='owner'; the admin GUC lets these cross-org user_orgs/users reads through.
   const result = await pool.query(
-    `SELECT *, (status = 'active') AS is_active FROM orgs WHERE deleted_at IS NULL ORDER BY created_at DESC`
+    `SELECT o.*, (o.status = 'active') AS is_active,
+            -- exclude the internal System user (bootstrap) — not a real owner/member to surface
+            (SELECT string_agg(u.email, ', ' ORDER BY uo.joined_at NULLS LAST)
+               FROM user_orgs uo JOIN users u ON u.id = uo.user_id
+              WHERE uo.org_id = o.id AND uo.role = 'owner'
+                AND uo.status = 'active' AND uo.deleted_at IS NULL
+                AND u.id <> '00000000-0000-0000-0000-000000000000') AS owner_emails,
+            (SELECT count(*)::int FROM user_orgs uo
+              WHERE uo.org_id = o.id AND uo.status = 'active' AND uo.deleted_at IS NULL
+                AND uo.user_id <> '00000000-0000-0000-0000-000000000000') AS member_count
+       FROM orgs o
+      WHERE o.deleted_at IS NULL
+      ORDER BY o.created_at DESC`
   );
   return result.rows;
 }

@@ -100,18 +100,29 @@ async function upsertUserFromGoogle(profile) {
  * Orgless users (signed in, pre-onboarding) get the user shape with all org
  * fields null — pV2-02b. Returns null only for unknown/deleted users.
  */
-async function buildSession(userId) {
+async function buildSession(userId, targetOrgId = null) {
   const r = await pool.query(
     `SELECT u.id, u.email, COALESCE(u.display_name, u.name) AS display_name, u.avatar_url,
+            -- home = default_org_id, else the user's earliest active membership.
+            -- Computed INDEPENDENTLY of the active/switched org so "Return home"
+            -- always points at home, never the org you switched into.
+            COALESCE(u.default_org_id,
+                     (SELECT uo2.org_id FROM user_orgs uo2
+                        WHERE uo2.user_id = u.id AND uo2.status = 'active' AND uo2.deleted_at IS NULL
+                        ORDER BY uo2.joined_at ASC NULLS LAST LIMIT 1)) AS home_org_id,
             o.id AS org_id, o.name AS org_name, o.type AS org_type,
             (uo.role IN ('admin','owner')) AS is_admin   -- v2dev: derive org-admin from role enum
        FROM users u
        JOIN user_orgs uo ON uo.user_id = u.id AND uo.status = 'active' AND uo.deleted_at IS NULL
        JOIN orgs o ON o.id = uo.org_id
       WHERE u.id = $1 AND u.deleted_at IS NULL
-      ORDER BY (o.id = u.default_org_id) DESC NULLS LAST, uo.joined_at ASC NULLS LAST
+      -- $2 (session-only switch target) sorts first when it's one of THIS user's
+      -- active memberships; otherwise fall back to home (default_org_id), then join
+      -- order. Membership is the join itself, so a non-member target is ignored.
+      ORDER BY ($2::uuid IS NOT NULL AND o.id = $2) DESC,
+               (o.id = u.default_org_id) DESC NULLS LAST, uo.joined_at ASC NULLS LAST
       LIMIT 1`,
-    [userId]
+    [userId, targetOrgId]
   );
   if (!r.rows.length) {
     // No active membership — orgless authenticated user (needs onboarding).
@@ -132,6 +143,7 @@ async function buildSession(userId) {
       activeOrgType: null,
       isAdmin: false,
       role: null,
+      homeOrgId: null,
     };
   }
   const row = r.rows[0];
@@ -145,7 +157,46 @@ async function buildSession(userId) {
     activeOrgType: normalizeOrgType(row.org_type),
     isAdmin: row.is_admin,
     role: effectiveRole(row.org_type, row.is_admin),
+    // Home = the user's default (or earliest membership). Equals activeOrgId
+    // normally; differs only while session-switched (the "Return home" target).
+    homeOrgId: row.home_org_id,
   };
 }
 
-module.exports = { upsertUserFromGoogle, buildSession };
+/** The current user's active memberships — feeds the org switcher. Each row says
+ *  whether it's the user's home org (default). */
+async function listUserOrgs(userId) {
+  const r = await pool.query(
+    `SELECT o.id, o.name, o.type, uo.role, (o.id = u.default_org_id) AS is_home
+       FROM user_orgs uo
+       JOIN orgs o  ON o.id = uo.org_id
+       JOIN users u ON u.id = uo.user_id
+      WHERE uo.user_id = $1 AND uo.status = 'active' AND uo.deleted_at IS NULL
+        AND uo.role IN ('admin','owner','member') AND u.deleted_at IS NULL
+      ORDER BY (o.id = u.default_org_id) DESC NULLS LAST, uo.joined_at ASC NULLS LAST`,
+    [userId]
+  );
+  return r.rows.map((row) => ({
+    orgId: row.id,
+    orgName: row.name,
+    orgType: normalizeOrgType(row.type),
+    role: effectiveRole(row.type, row.role === 'admin' || row.role === 'owner'),
+    isHome: !!row.is_home,
+  }));
+}
+
+/** Switch the ACTIVE org for THIS SESSION only (no default_org_id write, so next
+ *  login still starts home). Membership is proven by buildSession's join — a
+ *  non-member target silently falls back to home, so we verify first and 404
+ *  otherwise (also avoids revealing whether the org exists). */
+async function switchActiveOrg(userId, orgId) {
+  const member = await pool.query(
+    `SELECT 1 FROM user_orgs
+      WHERE user_id = $1 AND org_id = $2 AND status = 'active' AND deleted_at IS NULL LIMIT 1`,
+    [userId, orgId]
+  );
+  if (!member.rows.length) return null;
+  return buildSession(userId, orgId); // session-only target override
+}
+
+module.exports = { upsertUserFromGoogle, buildSession, listUserOrgs, switchActiveOrg };

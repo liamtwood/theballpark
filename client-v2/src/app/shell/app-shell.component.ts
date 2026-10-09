@@ -26,9 +26,21 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
         <!-- Wordmark routes to /home (pV2-02b): the root is the public landing
              page; authenticated users clicking the logo belong on home. -->
         <app-wordmark link="/home" />
-        @if (auth.isLoggedIn()) {
-          <app-user-menu />
-        }
+        <div class="flex items-center gap-3">
+          <!-- FR-00215/FR-00236 — org context: you've switched into an org you hold a
+               seat in and are acting AS it (session-only). Clear top-right indicator +
+               one click back to where you switched from (admin → orgs). -->
+          @if (auth.isAwayFromHome()) {
+            <span class="flex items-center gap-2 rounded-full border border-hairline bg-fill px-3 py-1 text-sm">
+              <span class="text-secondary">Acting as</span>
+              <strong class="font-medium text-accent">{{ auth.user()?.activeOrgName }}</strong>
+              <button type="button" class="font-medium text-accent underline-offset-2 hover:underline" (click)="returnHome()">Return to Ballpark</button>
+            </span>
+          }
+          @if (auth.isLoggedIn()) {
+            <app-user-menu />
+          }
+        </div>
       </div>
 
       @if (auth.isLoggedIn()) {
@@ -69,6 +81,13 @@ export class AppShellComponent {
     if (t === 'supplier') return SUPPLIER_NAV;
     return AGENCY_NAV;
   });
+
+  /** Switch back to the user's home org and land on admin → orgs (where the
+   *  switch was initiated — the only UI entry point). */
+  protected async returnHome(): Promise<void> {
+    const home = this.auth.user()?.homeOrgId;
+    if (home) await this.auth.switchOrg(home, '/admin/orgs');
+  }
 }
 
 interface NavItem {

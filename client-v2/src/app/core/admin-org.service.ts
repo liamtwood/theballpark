@@ -21,6 +21,10 @@ export interface AdminOrg {
   cover_image_url?: string | null;
   is_active: boolean;
   created_at: string;
+  /** The org's owner(s) — comma-joined emails of user_orgs role='owner'; null =
+   *  no owner (an orphan the admin should adopt/clean up). */
+  owner_emails?: string | null;
+  member_count?: number;
 }
 
 /** Create payload — the fields the admin create form (and website import) fill. */

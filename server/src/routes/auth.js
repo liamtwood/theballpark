@@ -17,10 +17,11 @@ const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
 // BE-00115 — the dev-login impersonation lookup is a PRE-auth identity read (no
 // JWT/tenancy yet), so under web_app_user RLS it would be denied. Owner pool.
 const ownerPool = require('../db/owner-pool');
-const { upsertUserFromGoogle, buildSession } = require('../services/auth.service');
+const { upsertUserFromGoogle, buildSession, listUserOrgs, switchActiveOrg } = require('../services/auth.service');
 const { authenticate, COOKIE_NAME } = require('../middleware/authenticate');
 const { sessionCookieOptions, signSessionCookie } = require('../services/auth-cookie.service');
 const { authWriteLimit, authReadLimit, oauthLimit } = require('../middleware/rate-limits');
+const { SwitchOrgSchema } = require('../schemas/switch-org.schema');
 
 const WEB = () => process.env.WEB_BASE_URL || 'http://localhost:4201';
 const IS_PROD = () => process.env.NODE_ENV === 'production';
@@ -77,8 +78,35 @@ router.get('/me', authReadLimit, authenticate, async (req, res, next) => {
   try {
     // Orgless users get a 200 with org fields null (they're signed in, they
     // just need onboarding); 401 only when the user row itself is gone.
-    const session = await buildSession(req.user.id);
+    // Honour the cookie's active org (req.user.org_id) so a session-only org
+    // switch STICKS across reloads — buildSession would otherwise re-derive from
+    // default_org_id (home) and silently revert the switch. A stale/non-member
+    // target falls back to home inside buildSession (safe).
+    const session = await buildSession(req.user.id, req.user.org_id);
     if (!session) return res.status(401).json({ error: 'Unknown user' });
+    res.json(session);
+  } catch (err) { next(err); }
+});
+
+// The current user's active memberships — feeds the org switcher (admin → orgs
+// "Switch to context" + the "Acting as … / Return home" banner).
+router.get('/orgs', authReadLimit, authenticate, async (req, res, next) => {
+  try {
+    res.json(await listUserOrgs(req.user.id));
+  } catch (err) { next(err); }
+});
+
+// Switch the ACTIVE org for THIS session (seat-gated, session-only — no
+// default_org_id write, so next login starts home). The service proves active
+// membership; 404 otherwise (also hides whether the org exists). This ACTIVATES
+// a seat the user already holds — it never grants cross-org power.
+router.post('/switch-org', authWriteLimit, authenticate, async (req, res, next) => {
+  try {
+    const parsed = SwitchOrgSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid body', details: parsed.error.flatten() });
+    const session = await switchActiveOrg(req.user.id, parsed.data.orgId);
+    if (!session) return res.status(404).json({ error: 'No such membership' });
+    signSessionCookie(res, session);
     res.json(session);
   } catch (err) { next(err); }
 });

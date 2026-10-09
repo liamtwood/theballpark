@@ -11,6 +11,7 @@ import { SelectComponent, SelectOption } from '../../../shared/select/select.com
 import { CatalogueSearchComponent } from '../../../shared/catalogue/catalogue-search.component';
 import { ConfirmService } from '../../../shared/confirm/confirm.service';
 import { AdminOrgService, AdminOrg, CreateOrgInput } from '../../../core/admin-org.service';
+import { AuthService } from '../../../core/auth/auth.service';
 import { OrgTypeStripComponent, OrgTypeBucket } from './org-type-strip.component';
 
 const TYPE_OPTIONS: SelectOption[] = [
@@ -161,17 +162,17 @@ const emptyForm = (): CreateOrgInput => ({
               <p class="bp-body-small text-warn">Couldn't load organisations.</p>
             } @else {
               <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-hairline">
-                <div class="grid shrink-0 grid-cols-[1fr_100px_120px_100px_120px] items-center gap-x-3 border-b border-hairline bg-fill px-4 py-2">
+                <div class="grid shrink-0 grid-cols-[1fr_90px_1fr_90px_150px] items-center gap-x-3 border-b border-hairline bg-fill px-4 py-2">
                   <span class="bp-table-column-header">Name</span>
                   <span class="bp-table-column-header">Type</span>
-                  <span class="bp-table-column-header">City</span>
+                  <span class="bp-table-column-header">Owner</span>
                   <span class="bp-table-column-header">Status</span>
                   <span class="bp-table-column-header text-right">Action</span>
                 </div>
                 <!-- The scroll area — only this scrolls. -->
                 <div class="min-h-0 flex-1 overflow-y-auto">
                   @for (o of filtered(); track o.id) {
-                    <div class="grid grid-cols-[1fr_100px_120px_100px_120px] items-center gap-x-3 border-b border-hairline px-4 py-2"
+                    <div class="grid grid-cols-[1fr_90px_1fr_90px_150px] items-center gap-x-3 border-b border-hairline px-4 py-2"
                       [class.bp-orgrow--clickable]="isSupplier(o)"
                       [attr.role]="isSupplier(o) ? 'button' : null" [attr.tabindex]="isSupplier(o) ? 0 : null"
                       (click)="openOrg(o)" (keydown.enter)="openOrg(o)">
@@ -180,13 +181,23 @@ const emptyForm = (): CreateOrgInput => ({
                         @if (o.website) { <div class="bp-caption truncate text-secondary">{{ o.website }}</div> }
                       </div>
                       <span class="bp-body-small capitalize">{{ typeLabel(o.type) }}</span>
-                      <span class="bp-body-small truncate">{{ o.city || '—' }}</span>
+                      @if (o.owner_emails) {
+                        <span class="bp-body-small truncate" [title]="o.owner_emails">{{ o.owner_emails }}</span>
+                      } @else {
+                        <span class="bp-body-small truncate text-warn" title="No owner — orphan org">No owner</span>
+                      }
                       <span>
                         <span class="bp-orgpill" [class.bp-orgpill--active]="o.is_active" [class.bp-orgpill--suspended]="!o.is_active">
                           {{ o.is_active ? 'Active' : 'Suspended' }}
                         </span>
                       </span>
-                      <div class="flex justify-end">
+                      <div class="flex justify-end gap-2">
+                        @if (canSwitch(o)) {
+                          <!-- FR-00215/FR-00236 — enter this org's context (you hold a seat):
+                               manage it as its owner/admin. Session-only; "Return home" in the banner. -->
+                          <button type="button" class="bp-orgact bp-orgact--switch" [disabled]="busyId() === o.id"
+                            title="Act as this organisation" (click)="switchTo(o); $event.stopPropagation()">Switch to</button>
+                        }
                         @if (o.is_active) {
                           <button type="button" class="bp-orgact bp-orgact--suspend" [disabled]="busyId() === o.id"
                             (click)="suspend(o); $event.stopPropagation()">Suspend</button>
@@ -220,6 +231,7 @@ const emptyForm = (): CreateOrgInput => ({
     .bp-orgact:disabled { opacity: 0.5; cursor: default; }
     .bp-orgact--suspend { background: var(--color-danger-soft); color: var(--color-danger); }
     .bp-orgact--activate { background: var(--color-success-soft); color: var(--color-success); }
+    .bp-orgact--switch { background: var(--color-accent-soft); color: var(--color-accent); }
     .bp-row--selected { background: var(--color-fill); }
     .bp-orgrow--clickable { cursor: pointer; }
     .bp-orgrow--clickable:hover { background: var(--color-fill); }
@@ -230,6 +242,27 @@ export class OrgsAdminComponent {
   private readonly toast = inject(MessageService);
   private readonly confirm = inject(ConfirmService);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
+
+  /** Org ids the admin holds an active seat in — only these can be switched INTO
+   *  (seat-gated; FR-00215). Loaded from /auth/orgs. */
+  protected readonly memberOrgIds = signal<Set<string>>(new Set());
+  protected readonly activeOrgId = computed(() => this.auth.user()?.activeOrgId ?? null);
+  /** Refresh the set of orgs the admin holds a seat in (e.g. after creating one,
+   *  which grants an owner seat — so "Switch to" appears without a reload). */
+  private async refreshMemberships(): Promise<void> {
+    try { this.memberOrgIds.set(new Set((await this.auth.listOrgs()).map((m) => m.orgId))); } catch { /* keep prior */ }
+  }
+  /** Can the admin switch to this org's context? Holds a seat + not already there. */
+  protected canSwitch(o: AdminOrg): boolean {
+    return this.memberOrgIds().has(o.id) && o.id !== this.activeOrgId();
+  }
+  protected async switchTo(o: AdminOrg): Promise<void> {
+    this.busyId.set(o.id);
+    // Land on the org's management page (the 4-tab supplier-detail) as its owner.
+    try { await this.auth.switchOrg(o.id, `/suppliers/${o.id}`); }
+    catch { this.toast.add({ severity: 'error', summary: `Couldn't switch to ${o.name}`, life: 3000 }); this.busyId.set(null); }
+  }
 
   protected readonly typeOptions = TYPE_OPTIONS;
   protected readonly statusOptions = STATUS_OPTIONS;
@@ -271,12 +304,13 @@ export class OrgsAdminComponent {
       if (s === 'active' && !o.is_active) return false;
       if (s === 'suspended' && o.is_active) return false;
       if (!q) return true;
-      return [o.name, o.city, o.email].some((v) => (v || '').toLowerCase().includes(q));
+      return [o.name, o.email, o.owner_emails].some((v) => (v || '').toLowerCase().includes(q));
     });
   });
 
   constructor() {
     void this.load();
+    void this.refreshMemberships();
   }
 
   protected typeLabel(t: string): string {
@@ -357,6 +391,7 @@ export class OrgsAdminComponent {
     try {
       const created = await firstValueFrom(this.svc.create(this.cleaned()));
       this.orgs.update((list) => [created, ...list]);
+      void this.refreshMemberships(); // creator now holds an owner seat → "Switch to" appears
       this.toast.add({ severity: 'success', summary: `${created.name} created` });
       this.form = emptyForm();
       this.flagged.set(new Set());
