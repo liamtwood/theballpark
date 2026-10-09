@@ -153,9 +153,12 @@ icon_color, tagline, + audit`. `categories` adds `ref/org_id/status`; `feedback_
 **Gap (FR-00233):** no admin UI to set a category's `icon_name`/`icon_color` (only 15/209 have an icon) — add a
 face editor reusing the existing `image-picker` component.
 
-### `items` — DRAFT (uses the locked item model)
+### `items` — PARTLY BUILT in v2dev (reconcile + complete — see "Items slice" below)
 Org-owned (`org_id NOT NULL`). Universal core + unit-driven fields + `attributes` jsonb (5 describe-groups)
 + variants + `kind`. Per the v0.2.0 locked spec — apply the base contract, drop cruft.
+The table + RLS already exist (migrations `0010`/`0011`/`0013`/`0014`); the **Items slice** (below) reconciles
+it to the locked decisions (`status` axis, `subcategory_id`, `ref` slug) and builds the still-missing
+`tags`/`item_tag` layer. See the decision-log "Items" entry for the locked shape.
 
 ### `addresses` — DRAFT (global table)
 `id`, `org_id` (owner), `kind` (registered/store/shipping/billing), `label`, `line1/2`, `city`, `region`,
@@ -562,6 +565,52 @@ When a question lands on something already built, the reasoning goes here.
 - **Read-views / write-tables (ADR-0002).** Reads via `security_invoker` views (curated order + overlay/joins),
   writes to base tables via services, no `INSTEAD OF` triggers. Column order is cosmetic (reference by name);
   the view layer earns its place on security + contract + computed logic.
+
+## Items slice — build plan (track, 2026-10-09)
+
+Second vertical slice after **Org** (slice order: org/team ✅ → codelists ✅ → addresses → **items** → projects).
+Unlike Org, the `items` table was built **ahead of the full model lock**, so this slice is **reconcile +
+complete**, not greenfield. Template = `ORG-SLICE-BUILD-PLAN.md`; locked shape = the decision-log "Items" entry
+above + the v0.2.0 item model (`pV2-STORE-IMPORT-01`); same bar (consistent · secure · navigable · tight · annotated).
+
+**Already built in v2dev** (migrations `0010`/`0011`/`0013`/`0014`):
+- `items` — universal core + unit-driven fields + `attributes` jsonb (5 describe-groups + Options + variant-matrix)
+  + `kind` + `parent_item_id`/`derived_from_id` lineage; two lifecycle axes (`approval_status` + `is_active`);
+  per-supplier name dedupe; live-marketplace partial index; soft-delete; RLS (read: public approved+active / own /
+  admin · write **split per-command** in `0013`).
+- `item_unit` codelist groomed to the locked 5 (each / per_guest / platter / time / size).
+- `catalogue_extract_job` (`0014`) + the self-serve + admin extract mounts (AI Assist).
+
+**Delta to the locked model — DECISIONS for Liam:**
+1. **`subcategory_id` — the doc says DROP** (store one home `category_id` at *any depth*, derive the breadcrumb
+   from the recursive `categories` tree); v2dev **kept it**, and the marketplace drill-down (supplier-detail +
+   marketplace rails) reads it as an explicit 2nd/3rd axis. Honoring the drop = rework the drill to derive levels
+   from the tree. **Open: honor the drop, or keep the explicit pair and amend the lock?**
+2. **`is_active` → `status`** (new/active/retired codelist, per the object base contract). v2dev has the boolean.
+   Additive codelist + backfill + read-view maps it.
+3. **`ref` slug** — items carry a nullable `ref`; populate the user-facing slug (no raw PKs in URLs, EP-00021).
+4. **`tags` + `item_tag` — NOT built** (confirmed absent in v2dev). Locked `item_tag` = `item_id, tag_id` junction
+   (no object header); depends on a `tags` vocabulary table (also unbuilt). What's-Hot + the tag filter are both
+   **stubbed to `false`** in the v2dev marketplace until this lands.
+5. **INSERT escape** — `items_insert` still carries the `app_is_admin()` branch (FR-00215: "escape closes in items
+   slice"). Now that self-serve extract writes own-org, decide: admin cross-org extract **acts-as** (current-org)
+   vs a **scoped insert GUC**; then close it + add the INSERT-denied RLS assertion the FR-00215 test left as TODO.
+
+**Worklist** (each sub-slice = DB → service → route → client → QC):
+- `tags` + `item_tag` (+ RLS with the table) → unstub What's-Hot + tag filter in `marketplace.js`/`marketplace-suppliers.js`.
+- `status` axis: codelist + `items.status`, backfill from `is_active`, map in the read-view; retire the boolean.
+- `subcategory_id` decision → (drop) derive-breadcrumb rework, or (keep) record the amendment here.
+- Close the items INSERT escape + INSERT-denied RLS test (completes FR-00215 on items).
+- `ref` populate + translate at the URL boundary (EP-00021).
+- `items_public` read-view (ADR-0002 `security_invoker`) mirroring `orgs_public`; one write path (no SQL in
+  `admin-items`/`marketplace` routes); confirm the line-pricing SSOT (`line-pricing.js`) is wired in v2dev.
+
+**Build order:** `tags`/`item_tag` → `status` axis → `subcategory_id` decision → INSERT close + test → `ref`/URLs
+→ write-path + `items_public` view cleanup.
+
+**Acceptance:** RLS coverage (public sees approved+active only · own any-state · admin · **INSERT denied cross-org
+without a grant**) · What's-Hot + tag filter live · soft-delete cascade (item → option/variant children) · every
+file within caps · no SQL in routes · one write path per table · QC on `:4202`.
 
 ## Where we are
 
