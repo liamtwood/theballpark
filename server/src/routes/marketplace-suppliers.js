@@ -139,16 +139,26 @@ router.get('/suppliers/:id', async (req, res, next) => {
     // classification) are NEVER dropped — they surface under an 'uncategorised'
     // bucket the admin can browse + classify (pV2-STORE-EXTRACT-01). Excludes
     // child options/components (parity with the /items grid).
+    // v2dev (0015): items carry ONE category_id at ANY depth, so the MACRO rail must
+    // roll each item up to its TOP-LEVEL ancestor (walk parent_id to the root) and
+    // count there — else a deep classification shows as if it were a top category.
+    // Drilling a macro then uses /suppliers/:id/subcategories for the deeper nodes.
     const cats = await pool.query(
-      `SELECT COALESCE(c.id::text, 'uncategorised') AS id,
-              COALESCE(c.name, 'Uncategorised')     AS name,
-              COUNT(i.id) AS item_count
+      `SELECT COALESCE(top.id::text, 'uncategorised') AS id,
+              COALESCE(top.name, 'Uncategorised')     AS name,
+              COUNT(*) AS item_count
          FROM items i
-         LEFT JOIN categories c ON c.id = i.category_id
+         LEFT JOIN LATERAL (
+           WITH RECURSIVE up AS (
+             SELECT id, parent_id, name FROM categories WHERE id = i.category_id
+             UNION ALL
+             SELECT c.id, c.parent_id, c.name FROM categories c JOIN up ON c.id = up.parent_id
+           ) SELECT id, name FROM up WHERE parent_id IS NULL LIMIT 1
+         ) top ON true
         WHERE i.org_id = $1 AND i.deleted_at IS NULL
           AND i.type IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL ${liveFilter}
-        GROUP BY c.id, c.name
-        ORDER BY (c.id IS NULL), c.name ASC`,
+        GROUP BY top.id, top.name
+        ORDER BY (top.id IS NULL), top.name ASC`,
       [id.data]
     );
     // pV2-STORE-WHATS-HOT-01 — "What's Hot" count drives the shopfront menu link.
