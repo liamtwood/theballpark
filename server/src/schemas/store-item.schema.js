@@ -17,6 +17,10 @@ const GalleryImageSchema = z.object({
     })
     .nullable()
     .optional(),
+  // items.images contract (0015): the hero flag + display order — carried so a
+  // non-first hero / reorder round-trips instead of being stripped on save (audit M1).
+  is_hero: z.boolean().optional(),
+  sort_order: z.coerce.number().int().min(0).max(100).optional(),
 });
 
 const StoreItemCreateSchema = z

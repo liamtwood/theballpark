@@ -37,6 +37,10 @@ export interface GalleryImage {
   focalX: number;
   focalY: number;
   attribution?: { photographerName: string; photoUrl: string };
+  /** Item images (0015) — the hero flag + display order; carried through the write
+   *  contract so a non-first hero / reorder round-trips (audit M1). */
+  is_hero?: boolean;
+  sort_order?: number;
 }
 
 /** Unsplash proxy result row (GET /api/unsplash/search). */

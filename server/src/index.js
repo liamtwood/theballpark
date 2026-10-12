@@ -345,9 +345,12 @@ app.get('/api/unsplash/search', async (req, res) => {
   v2.use('/media', require('./routes/media')); // pV2-MEDIA-01 — gated image upload
   // pV2-STORE-01 — supplier item editor (create/update own items, draft→submit).
   v2.use('/store/items', require('./routes/store-items'));
-  // BE-00099 — taxonomy classifier/tags. Now inside the v2 gate (authenticate +
-  // requireActiveMembership); item-mutating routes add ownership scoping + item.create.
-  v2.use('/taxonomy', require('./routes/taxonomy'));
+  // BE-00099 — taxonomy classifier/tags. DISABLED in v2dev (audit H2, 2026-10-12):
+  // taxonomy.service queries tables/columns 0015 dropped (tag/supplier_item_tag/
+  // subcategory_id/pending_classification/is_active/namespace), so match-items,
+  // add-match, request-quotes etc. 500 against the live schema — a live landmine.
+  // Re-enable, rebuilt against the new model, in the projects/inbox slice.
+  // v2.use('/taxonomy', require('./routes/taxonomy'));
   // pV2-INBOX-01 — gated inbox façade over v1's message data (RP-INB1).
   v2.use('/inbox', require('./routes/inbox'));
   // pV2-IMPORT-ORG-01 (BE-00127) — deterministic org extraction from a vendor
