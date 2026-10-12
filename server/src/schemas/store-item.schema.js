@@ -22,17 +22,16 @@ const GalleryImageSchema = z.object({
 const StoreItemCreateSchema = z
   .object({
     name: z.string().trim().min(1).max(200),
+    // ONE home category at any depth (no subcategory axis — v2dev 0015).
     category_id: z.string().uuid(),
-    subcategory_id: z.string().uuid().nullable().optional(),
     description: z.string().trim().max(5000).nullable().optional(),
     base_price: z.coerce.number().min(0).max(100_000_000).nullable().optional(),
     // pV2-STORE-01 (data model) — the installation cost (separate line).
     install_cost: z.coerce.number().min(0).max(100_000_000).nullable().optional(),
     // pV2-CART-01 — how install_cost applies (null = per_item).
     install_unit: z.enum(['per_order', 'per_item', 'percentage']).nullable().optional(),
-    // "Included Services" blurb + free-text location coverage.
+    // "Included Services" blurb.
     install_description: z.string().trim().max(5000).nullable().optional(),
-    location_coverage: z.string().trim().max(2000).nullable().optional(),
     // ISO-4217 (defaults to the supplier's org currency server-side if omitted).
     currency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
     unit: z.string().trim().max(40).nullable().optional(),
@@ -41,8 +40,11 @@ const StoreItemCreateSchema = z
     serves: z.coerce.number().int().min(1).max(100_000).nullable().optional(),
     time_unit: z.string().trim().max(40).nullable().optional(),
     lead_time_days: z.coerce.number().int().min(0).max(3650).nullable().optional(),
-    image_url: z.string().trim().max(1000).nullable().optional(),
     images: z.array(GalleryImageSchema).max(20).optional(),
+    // Extract identity (sku/product_id dedup key; pairs with attributes._source).
+    external_url: z.string().trim().max(2000).nullable().optional(),
+    // tags[] is accepted but ignored here — tag links are written via item_tag
+    // (tags sub-slice). Kept optional so the editor round-trip doesn't 400.
     tags: z.array(z.string().trim().max(60)).max(30).optional(),
     // pV2-STORE-WHATS-HOT-01 — item quality/merchandising tier (item_tier codelist:
     // budget…luxury + bronze/silver/gold). Free string here; the editor offers the
@@ -71,8 +73,8 @@ const StoreItemCreateSchema = z
       .passthrough()
       .optional(),
     // A supplier may only set draft (save) or pending (submit). approved/
-    // rejected are reserved for the ballpark admin route; is_active stays
-    // server-controlled (false until approval).
+    // rejected are reserved for the ballpark admin route; status stays
+    // server-controlled ('new' until approval + activation).
     approval_status: z.enum(['draft', 'pending']).optional(),
   })
   .strip();

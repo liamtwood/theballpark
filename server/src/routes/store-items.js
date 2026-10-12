@@ -125,8 +125,9 @@ async function ownItemOr(res, id, orgId) {
   return item;
 }
 
-// PATCH /api/store/items/:id/active — publish/hide toggle (is_active only;
-// approval_status untouched, unlike the edit PUT which re-enters review).
+// PATCH /api/store/items/:id/active — publish/hide toggle. Maps to the `status`
+// axis (active ⇄ retired); approval_status untouched, unlike the edit PUT which
+// re-enters review. Request body stays { is_active: boolean } (client contract).
 router.patch('/:id/active', async (req, res, next) => {
   try {
     if (typeof req.body?.is_active !== 'boolean') {
@@ -139,7 +140,7 @@ router.patch('/:id/active', async (req, res, next) => {
     if (req.body.is_active === true && existing.approval_status !== 'approved') {
       return res.status(409).json({ error: 'Only approved items can be activated' });
     }
-    const item = await ItemService.update(req.params.id, { is_active: req.body.is_active });
+    const item = await ItemService.update(req.params.id, { status: req.body.is_active ? 'active' : 'retired' });
     res.json(item);
   } catch (err) { next(err); }
 });

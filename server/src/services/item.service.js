@@ -1,202 +1,194 @@
 const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
 
-async function getAll(orgId, categoryId, tag, subcategoryId) {
-  // v1.41: items.category_id is ALWAYS a parent now (migration ran in
-  // v1.41) so the legacy OR-clause is a no-op for fresh data — kept
-  // for safety in case any historical row hasn't migrated. The new
-  // subcategory_id filter is a direct equality on the child FK.
-  // v2dev: orgs.city moved to the addresses satellite; tags[] column dropped +
-  // the supplier_item_tag junction isn't in the rebuild yet (tags sub-slice) —
-  // tag_ids returns empty for now.
+// v2dev item model (0015): ONE category_id at any depth (no subcategory_id);
+// two lifecycle axes — status (new/active/retired) + approval_status; `type`
+// (was `kind`) variant/addon/component dormant; media = images jsonb (the legacy
+// image_url column is GONE → derived from the hero image on read). Public-live =
+// status='active' AND approval_status='approved' (RLS enforces it too).
+
+/** First entry with is_hero, else images[0]; null when empty. The read paths
+ *  attach this as `image_url` so existing card/detail surfaces keep rendering
+ *  the primary image without the dropped column. */
+function heroFromImages(images) {
+  if (!Array.isArray(images) || images.length === 0) return null;
+  const hero = images.find((i) => i && i.is_hero);
+  const pick = hero || images[0];
+  return pick && pick.url ? pick.url : null;
+}
+
+/** Attach the derived `image_url` (hero) so rows read like the old shape. */
+function withHero(row) {
+  if (!row) return row;
+  row.image_url = heroFromImages(row.images);
+  return row;
+}
+
+async function getAll(orgId, categoryId, _tag) {
+  // Public marketplace browse. One home category_id at any depth: selecting a
+  // category shows items classified AT it OR at any DESCENDANT (recursive tree) —
+  // this replaces the old category_id/subcategory_id two-column filter. RLS gates
+  // visibility; the explicit status/approval filter keeps the browse to live items.
   let query = `
     SELECT i.*,
-      c.name  AS category_name,
-      sc.name AS subcategory_name,
-      o.name  AS supplier_name,
+      c.name AS category_name,
+      o.name AS supplier_name,
       o.cover_image_url AS supplier_cover_url,
       o.image_display   AS supplier_image_display,
       '{}'::uuid[] AS tag_ids
     FROM items i
-    LEFT JOIN categories c  ON i.category_id    = c.id
-    LEFT JOIN categories sc ON i.subcategory_id = sc.id
+    LEFT JOIN categories c ON i.category_id = c.id
     LEFT JOIN orgs o ON i.org_id = o.id
-    WHERE i.is_active = true AND i.deleted_at IS NULL
-      AND i.kind IS DISTINCT FROM 'component'
+    WHERE i.status = 'active' AND i.approval_status = 'approved' AND i.deleted_at IS NULL
+      AND i.type IS DISTINCT FROM 'component'
       AND i.parent_item_id IS NULL
   `;
   const params = [];
   if (orgId) { params.push(orgId); query += ` AND i.org_id = $${params.length}`; }
   if (categoryId) {
     params.push(categoryId);
-    query += ` AND (i.category_id = $${params.length} OR i.category_id IN (SELECT id FROM categories WHERE parent_id = $${params.length}))`;
-  }
-  if (subcategoryId) {
-    // Tree-aware: include items classified to any descendant of the chosen
-    // subcategory (parity with the marketplace /items browse).
-    params.push(subcategoryId);
-    query += ` AND i.subcategory_id IN (
-      WITH RECURSIVE sub_tree AS (
+    query += ` AND i.category_id IN (
+      WITH RECURSIVE cat_tree AS (
         SELECT id FROM categories WHERE id = $${params.length}
         UNION ALL
-        SELECT c2.id FROM categories c2 JOIN sub_tree ON c2.parent_id = sub_tree.id
-      ) SELECT id FROM sub_tree)`;
+        SELECT c2.id FROM categories c2 JOIN cat_tree ON c2.parent_id = cat_tree.id
+      ) SELECT id FROM cat_tree)`;
   }
-  // (tag filter dropped — tags[] column removed; junction-based filtering returns
-  // with the tags sub-slice. `tag` arg is currently a no-op.)
+  // (tag filter returns with the tags sub-slice — item_tag junction now exists but
+  // tag discovery/filtering is wired in Stage 'tags'. `_tag` is a no-op for now.)
   query += ' ORDER BY i.created_at DESC';
   const result = await pool.query(query, params);
-  return result.rows;
+  return result.rows.map(withHero);
 }
 
 async function countsByCategory() {
+  // Count live items per home category, then roll each count up through EVERY
+  // ancestor (one category_id at any depth → a deep item contributes to all of
+  // its ancestors, derived from the tree, not a single parent hop).
   const result = await pool.query(
-    `SELECT i.category_id, c.parent_id, COUNT(*) AS count
-     FROM items i
-     LEFT JOIN categories c ON i.category_id = c.id
-     WHERE i.is_active = true AND i.deleted_at IS NULL AND i.category_id IS NOT NULL
-       AND i.kind IS DISTINCT FROM 'component'
-       AND i.parent_item_id IS NULL
-     GROUP BY i.category_id, c.parent_id`
+    `WITH live AS (
+       SELECT category_id, COUNT(*)::int AS count
+       FROM items
+       WHERE status = 'active' AND approval_status = 'approved' AND deleted_at IS NULL
+         AND category_id IS NOT NULL
+         AND type IS DISTINCT FROM 'component'
+         AND parent_item_id IS NULL
+       GROUP BY category_id
+     ),
+     rollup AS (
+       SELECT l.count, a.id AS ancestor_id
+       FROM live l
+       CROSS JOIN LATERAL (
+         WITH RECURSIVE up AS (
+           SELECT id, parent_id FROM categories WHERE id = l.category_id
+           UNION ALL
+           SELECT c.id, c.parent_id FROM categories c JOIN up ON c.id = up.parent_id
+         ) SELECT id FROM up
+       ) a
+     )
+     SELECT ancestor_id AS category_id, SUM(count)::int AS count
+     FROM rollup GROUP BY ancestor_id`
   );
   const map = {};
   let total = 0;
-  for (const r of result.rows) {
-    const cnt = parseInt(r.count, 10);
-    map[r.category_id] = (map[r.category_id] || 0) + cnt;
-    // Roll up to parent
-    if (r.parent_id) {
-      map[r.parent_id] = (map[r.parent_id] || 0) + cnt;
-    }
-    total += cnt;
-  }
+  const liveTotal = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM items
+      WHERE status = 'active' AND approval_status = 'approved' AND deleted_at IS NULL
+        AND category_id IS NOT NULL AND type IS DISTINCT FROM 'component' AND parent_item_id IS NULL`
+  );
+  total = liveTotal.rows[0]?.n ?? 0;
+  for (const r of result.rows) map[r.category_id] = r.count;
   return { counts: map, total };
 }
 
 async function getTagsByCategory(_categoryId) {
-  // v2dev: the tags[] column is dropped; tag discovery returns with the tags
-  // sub-slice (supplier_item_tag junction). Empty for now.
+  // Tag discovery returns with the tags sub-slice (item_tag + tags now exist in
+  // 0015; the read/aggregate wiring lands in that stage). Empty for now.
   return [];
 }
 
 async function getById(id) {
   const result = await pool.query(
     `SELECT i.*,
-      c.name  AS category_name,
-      sc.name AS subcategory_name,
-      o.name  AS supplier_name,
+      c.name AS category_name,
+      o.name AS supplier_name,
       o.cover_image_url AS supplier_cover_url,
       o.image_display   AS supplier_image_display
      FROM items i
-     LEFT JOIN categories c  ON i.category_id    = c.id
-     LEFT JOIN categories sc ON i.subcategory_id = sc.id
+     LEFT JOIN categories c ON i.category_id = c.id
      LEFT JOIN orgs o ON i.org_id = o.id
      WHERE i.id = $1`,
     [id]
   );
-  const item = result.rows[0] || null;
+  const item = withHero(result.rows[0] || null);
   if (!item) return null;
-  // v2dev: structured tags (supplier_item_tag junction) return with the tags
-  // sub-slice; empty for now.
+  // Structured tags return with the tags sub-slice; empty for now.
   item.item_tags = [];
   return item;
 }
 
-// v1.17: derive the legacy single-image column from the new images[] array.
-// First entry with is_hero=true wins; otherwise images[0]; null when empty.
-// Keeps every existing card / detail surface working until they migrate to
-// reading images[].
-function heroFromImages(images) {
-  if (!Array.isArray(images) || images.length === 0) return null;
-  const hero = images.find(i => i && i.is_hero);
-  const pick = hero || images[0];
-  return pick && pick.url ? pick.url : null;
-}
-
+// Columns a create accepts. `size` is descriptive → lands in attributes, not a column.
 async function create(data) {
   const {
-    org_id, category_id, subcategory_id, name, description,
+    org_id, category_id, name, description,
     unit, serves, time_unit, base_price, install_cost,
     lead_time_days, tier,
-    image_url, image_display,
+    image_display,
     derived_from_id, parent_item_id, attributes, images,
-    // pV2-STORE-01 — supplier draft/submit flow sets these; defaults otherwise.
-    approval_status, is_active,
-    // install_description = Included Services; location_coverage = free text;
-    // currency defaults to the supplier's org currency (COALESCE below).
-    install_description, location_coverage, currency, install_unit,
-    // item kind — 'variant'/'addon'/'component' for child rows; null for normal.
-    kind,
+    // two lifecycle axes; create defaults status='new' (not live until approved + activated).
+    approval_status, status,
+    install_description, currency, install_unit,
+    external_url,
+    // item type — 'variant'/'addon'/'component' for child rows; null for normal.
+    type,
   } = data;
-  // v2dev: dropped coverage_area / external_url / tags[]. serves (platter) added.
-  // Keep image_url synced with the hero image for card surfaces.
-  const heroUrl = heroFromImages(images);
-  const finalImageUrl = heroUrl != null ? heroUrl : (image_url ?? null);
   const result = await pool.query(
     `INSERT INTO items
-      (org_id, category_id, subcategory_id, name, description,
+      (org_id, category_id, name, description,
        unit, serves, time_unit, base_price, install_cost,
        lead_time_days, tier,
-       image_url, image_display,
+       image_display,
        derived_from_id, parent_item_id, attributes, images,
-       approval_status, is_active,
-       install_description, location_coverage, install_unit, kind, currency)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
-       COALESCE($25, (SELECT default_currency FROM orgs WHERE id = $1)))
+       approval_status, status,
+       install_description, install_unit, type, external_url, currency)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,
+       COALESCE($23, (SELECT default_currency FROM orgs WHERE id = $1)))
      RETURNING *`,
-    [org_id, category_id, subcategory_id || null, name, description,
+    [org_id, category_id || null, name, description,
      unit, serves ?? null, time_unit || null, base_price, install_cost ?? null,
      lead_time_days ?? null, tier ?? null,
-     finalImageUrl, image_display || 'cover',
+     image_display || 'cover',
      derived_from_id || null, parent_item_id || null, attributes || {},
      JSON.stringify(images || []),
-     approval_status ?? 'approved', is_active ?? true,
-     install_description ?? null, location_coverage ?? null, install_unit ?? null, kind ?? null,
+     approval_status ?? 'approved', status ?? 'new',
+     install_description ?? null, install_unit ?? null, type ?? null, external_url ?? null,
      currency ?? null]
   );
-  return result.rows[0];
+  return withHero(result.rows[0]);
 }
 
-// Columns the caller is allowed to update through this endpoint.
-// Order does not matter; this is just the whitelist.
-// v1.41: subcategory_id added so the item drawer can set/clear the
-// optional child-category FK. The DB trigger validates that the new
-// subcategory's parent_id matches the row's category_id.
+// Whitelist of caller-updatable columns (order irrelevant). `null` is meaningful
+// (clears an optional FK); an omitted key leaves the column alone.
 const UPDATABLE_COLS = [
-  'org_id', 'category_id', 'subcategory_id', 'name', 'description',
+  'org_id', 'category_id', 'name', 'description',
   'unit', 'serves', 'time_unit', 'base_price', 'install_cost',
   'lead_time_days', 'tier',
-  'image_url', 'image_display',
+  'image_display',
   'derived_from_id', 'parent_item_id', 'attributes', 'images',
-  // install cost / included services / coverage area / currency.
-  'install_description', 'location_coverage', 'currency', 'install_unit',
-  // is_active — publish/hide toggle (distinct from deleted_at soft-delete).
-  'is_active',
+  'install_description', 'currency', 'install_unit', 'external_url',
+  // status — new/active/retired (publish/hide lifecycle, distinct from deleted_at).
+  'status',
   // draft/submit/approve flow (callers gate which values they allow).
   'approval_status',
 ];
 
 async function update(id, data) {
-  // Dynamic SET — only touch columns the caller actually sent. This means
-  // `null` *is* a meaningful value (used by the drawer to clear an optional
-  // FK like derived_from_id) while an omitted key leaves the column alone.
-  //
-  // v1.17 backward-compat: when the caller sends `images` (new array shape),
-  // we also write image_url from the hero entry so existing card/detail
-  // surfaces stay rendering the same primary image. The caller may also
-  // explicitly send image_url to override — explicit always wins.
   const payload = { ...data };
-  if (Object.prototype.hasOwnProperty.call(payload, 'images')
-      && !Object.prototype.hasOwnProperty.call(payload, 'image_url')) {
-    payload.image_url = heroFromImages(payload.images);
-  }
-
   const sets = [];
   const params = [];
   for (const col of UPDATABLE_COLS) {
     if (Object.prototype.hasOwnProperty.call(payload, col)) {
-      // JSONB columns need a JSON string when passed via pg's parameter
-      // binding — pg won't stringify arrays/objects for us.
+      // JSONB columns need a JSON string through pg's parameter binding.
       const value = (col === 'images' || col === 'attributes')
         ? (payload[col] != null ? JSON.stringify(payload[col]) : payload[col])
         : payload[col];
@@ -204,91 +196,72 @@ async function update(id, data) {
       sets.push(`${col} = $${params.length}`);
     }
   }
-  if (sets.length === 0) {
-    // No updatable keys — return the existing row so callers get a sensible
-    // result instead of NULL.
-    return getById(id);
-  }
+  if (sets.length === 0) return getById(id);
   sets.push('updated_at = NOW()');
   params.push(id);
   const result = await pool.query(
     `UPDATE items SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *`,
     params
   );
-  return result.rows[0] || null;
+  return withHero(result.rows[0] || null);
 }
 
-// v1.68b — items converged to the deleted_at soft-delete pattern (was the
-// legacy is_active=false). deleted_at REMOVES the item; is_active is now an
-// independent publish/hide toggle. The BEFORE-DELETE hard-delete guard and
-// the audit stamp trigger (deleted_by from app.current_user_id, set per
-// request in pool.js) are already installed on items (Item 1, v1.66e6).
+// Soft-delete: parent-only; cascade to this item's child rows (type='component'/
+// variant, parent_item_id = this item). Library copies (parent_item_id NULL) untouched.
 async function softDelete(id) {
   const result = await pool.query(
     'UPDATE items SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING *', [id]
   );
-  // Cascade to the item's child rows (kind='option'/'component', parent_item_id
-  // = this item — e.g. extract-created options) so they don't orphan when the
-  // parent is deleted. Library copies (parent_item_id IS NULL) are untouched.
   if (result.rows[0]) {
     await pool.query(
       'UPDATE items SET deleted_at = NOW() WHERE parent_item_id = $1 AND deleted_at IS NULL', [id]
     );
   }
-  return result.rows[0] || null;
+  return withHero(result.rows[0] || null);
 }
 
-// v1.68b — duplicate an item: clones the items row (the images[] gallery is a
-// JSONB column, so it copies inline) + the supplier_item_tag taxonomy rows, in
-// one transaction. The copy lands is_active=false (hidden) so the owner reviews
-// before publishing. AUD-02: via the shared withTransaction (RLS pool) so it sets
-// all three GUCs from ALS — the owner INSERTs their own copy (org_id from the
-// source row = the caller's org) and its tags, which items_insert / supplier_item_tag
-// policies allow under RLS. (Was a raw pool.connect that set only current_user_id,
-// so post-flip the INSERT would have been denied for a missing org GUC.)
+// Duplicate an item: clones the row (images[] is jsonb, copies inline). The copy
+// lands status='new' (hidden) + approval_status='draft' so the owner reviews before
+// publishing. Via withTransaction (RLS pool) so the owner INSERTs their own copy.
 async function duplicate(id) {
   return withTransaction(async (client) => {
     const ins = await client.query(
       `INSERT INTO items
-         (org_id, category_id, subcategory_id, name, description,
+         (org_id, category_id, name, description,
           unit, serves, time_unit, base_price, install_cost,
           lead_time_days, tier,
-          image_url, image_display,
-          derived_from_id, parent_item_id, attributes, images, is_active,
+          image_display,
+          derived_from_id, parent_item_id, attributes, images, status,
           approval_status,
-          install_description, location_coverage, install_unit, kind, currency)
+          install_description, install_unit, type, external_url, currency)
        SELECT
-          org_id, category_id, subcategory_id, name || ' (copy)', description,
+          org_id, category_id, name || ' (copy)', description,
           unit, serves, time_unit, base_price, install_cost,
           lead_time_days, tier,
-          image_url, image_display,
-          derived_from_id, parent_item_id, attributes, images, false,
+          image_display,
+          derived_from_id, parent_item_id, attributes, images, 'new',
           'draft',
-          install_description, location_coverage, install_unit, kind, currency
+          install_description, install_unit, type, external_url, currency
        FROM items
        WHERE id = $1 AND deleted_at IS NULL
        RETURNING *`,
       [id]
     );
-    const copy = ins.rows[0];
+    const copy = withHero(ins.rows[0]);
     if (!copy) return null;
-    // (supplier_item_tag copy returns with the tags sub-slice — junction not in v2dev yet.)
+    // (item_tag copy returns with the tags sub-slice.)
     return copy;
   });
 }
 
-// ── pV2-BUILDUP-03 — item composition (options / components) ──────────────────
-// An item's buildup is CHILD items (parent_item_id = this item, kind='component').
-// Reuses the exact Customize UI on the catalogue side: same response shape as the
-// project variant, but quantity/selection are per-PROJECT (set when the item is
-// added), so here they default (quantity 1, selection 'selected').
+// ── pV2-BUILDUP-03 — item composition (SHELVED; columns dormant) ──────────────
+// An item's buildup is CHILD items (parent_item_id = this item, type='component').
 const toItemComponent = (c) => ({
   id: c.id, name: c.name, base_price: c.base_price, unit: c.unit,
-  quantity: 1, category_id: c.category_id, kind: c.kind,
-  selection_type: 'selected', description: c.description, image_url: c.image_url,
+  quantity: 1, category_id: c.category_id, kind: c.type,
+  selection_type: 'selected', description: c.description, image_url: heroFromImages(c.images),
 });
 
-/** The item's children + its own name/description/services (org-scoped). */
 async function listComponents(orgId, itemId) {
   const own = await pool.query(
     `SELECT name, description, install_description FROM items
@@ -297,7 +270,7 @@ async function listComponents(orgId, itemId) {
   );
   if (!own.rows.length) return null;
   const r = await pool.query(
-    `SELECT id, name, base_price, unit, category_id, kind, description, image_url
+    `SELECT id, name, base_price, unit, category_id, type, description, images
        FROM items WHERE parent_item_id = $1 AND deleted_at IS NULL ORDER BY created_at`,
     [itemId]
   );
@@ -311,9 +284,6 @@ async function listComponents(orgId, itemId) {
   };
 }
 
-/** Reconcile the item's children (add/update/soft-delete), clone-up new ones to
- *  the reusable library (kind='component', parent_item_id NULL, deduped by name),
- *  and persist the parent item's name/description/services. */
 async function saveComponents(orgId, itemId, components, parentName, parentDescription, parentServices) {
   const list = Array.isArray(components) ? components : [];
   return withTransaction(async (client) => {
@@ -332,29 +302,30 @@ async function saveComponents(orgId, itemId, components, parentName, parentDescr
       const nm = String(c.name || '').trim();
       if (!nm) continue;
       const cost = c.cost == null ? null : Number(c.cost);
+      const img = c.image ? JSON.stringify([{ url: c.image, is_hero: true, sort_order: 0 }]) : '[]';
       if (c.id && keep.has(c.id)) {
         await client.query(
-          `UPDATE items SET name=$2, base_price=$3, unit=$4, category_id=$5, kind=$6, description=$7, image_url=$8
+          `UPDATE items SET name=$2, base_price=$3, unit=$4, category_id=$5, type=$6, description=$7, images=$8::jsonb
             WHERE id=$1 AND parent_item_id=$9`,
-          [c.id, nm, cost, c.unit || null, c.categoryId || null, c.kind || 'component', c.description || null, c.image || null, itemId]
+          [c.id, nm, cost, c.unit || null, c.categoryId || null, c.kind || 'component', c.description || null, img, itemId]
         );
       } else {
         await client.query(
-          `INSERT INTO items (org_id, parent_item_id, category_id, name, description, unit, base_price, kind, image_url, is_active, approval_status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, 'component', $8, true, 'approved')`,
-          [orgId, itemId, c.categoryId || null, nm, c.description || null, c.unit || null, cost, c.image || null]
+          `INSERT INTO items (org_id, parent_item_id, category_id, name, description, unit, base_price, type, images, status, approval_status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'component', $8::jsonb, 'active', 'approved')`,
+          [orgId, itemId, c.categoryId || null, nm, c.description || null, c.unit || null, cost, img]
         );
       }
       // Clone-up to the library (INSERT-ONLY, deduped by name).
       const exists = await client.query(
-        `SELECT 1 FROM items WHERE org_id=$1 AND kind='component' AND parent_item_id IS NULL AND deleted_at IS NULL AND lower(name)=lower($2) LIMIT 1`,
+        `SELECT 1 FROM items WHERE org_id=$1 AND type='component' AND parent_item_id IS NULL AND deleted_at IS NULL AND lower(name)=lower($2) LIMIT 1`,
         [orgId, nm]
       );
       if (!exists.rows.length) {
         await client.query(
-          `INSERT INTO items (org_id, category_id, name, description, unit, base_price, kind, image_url, is_active, approval_status)
-           VALUES ($1, $2, $3, $4, $5, $6, 'component', $7, true, 'approved')`,
-          [orgId, c.categoryId || null, nm, c.description || null, c.unit || null, cost, c.image || null]
+          `INSERT INTO items (org_id, category_id, name, description, unit, base_price, type, images, status, approval_status)
+           VALUES ($1, $2, $3, $4, $5, $6, 'component', $7::jsonb, 'active', 'approved')`,
+          [orgId, c.categoryId || null, nm, c.description || null, c.unit || null, cost, img]
         );
       }
     }
@@ -365,39 +336,35 @@ async function saveComponents(orgId, itemId, components, parentName, parentDescr
     if (parentServices !== undefined)
       await client.query(`UPDATE items SET install_description=$2 WHERE id=$1 AND org_id=$3`, [itemId, parentServices || null, orgId]);
     const rows = await client.query(
-      `SELECT id, name, base_price, unit, category_id, kind, description, image_url
+      `SELECT id, name, base_price, unit, category_id, type, description, images
          FROM items WHERE parent_item_id=$1 AND deleted_at IS NULL ORDER BY created_at`, [itemId]
     );
     return rows.rows.map(toItemComponent);
   });
 }
 
-/** An item's options (child items), PUBLIC read — for the Final Quote picker
- *  (the agent isn't the item's owner, so this isn't org-scoped). */
 async function listOptions(itemId) {
   const r = await pool.query(
-    `SELECT id, name, base_price, unit, category_id, kind, description, image_url
+    `SELECT id, name, base_price, unit, category_id, type, description, images
        FROM items WHERE parent_item_id = $1 AND deleted_at IS NULL ORDER BY created_at`,
     [itemId]
   );
   return r.rows.map(toItemComponent);
 }
 
-/** Status rollup for ONE org's own items (supplier home "Next steps"): drafts
- *  to submit, rejected to fix, approved-but-inactive ready to promote, plus the
- *  live + total. Non-deleted only; org scoped by the caller (never the body). */
+/** Status rollup for ONE org's own items (supplier home "Next steps"). */
 async function statusCountsForOrg(orgId) {
   const r = await pool.query(
     `SELECT
-       COUNT(*) FILTER (WHERE approval_status = 'draft')                          AS draft,
-       COUNT(*) FILTER (WHERE approval_status = 'pending')                        AS pending,
-       COUNT(*) FILTER (WHERE approval_status = 'rejected')                       AS rejected,
-       COUNT(*) FILTER (WHERE approval_status = 'approved' AND is_active = false) AS ready_to_promote,
-       COUNT(*) FILTER (WHERE approval_status = 'approved' AND is_active = true)  AS live,
-       COUNT(*)                                                                   AS total
+       COUNT(*) FILTER (WHERE approval_status = 'draft')                             AS draft,
+       COUNT(*) FILTER (WHERE approval_status = 'pending')                           AS pending,
+       COUNT(*) FILTER (WHERE approval_status = 'rejected')                          AS rejected,
+       COUNT(*) FILTER (WHERE approval_status = 'approved' AND status <> 'active')   AS ready_to_promote,
+       COUNT(*) FILTER (WHERE approval_status = 'approved' AND status = 'active')    AS live,
+       COUNT(*)                                                                       AS total
      FROM items
      WHERE org_id = $1 AND deleted_at IS NULL
-       AND kind IS DISTINCT FROM 'component'
+       AND type IS DISTINCT FROM 'component'
        AND parent_item_id IS NULL`,
     [orgId]
   );
@@ -413,27 +380,16 @@ async function statusCountsForOrg(orgId) {
 }
 
 // ── Shared item WRITE-POLICY (one definition) ────────────────────────────────
-// The status/is_active rules for creating + editing an item live HERE so the
-// session-scoped store route and the admin org-scoped route can't drift. The
-// routes keep their own trust boundary (org source, schema parse, ownership 404);
-// only the policy + the auto-classify side-effect move in. Callers pass their two
-// knobs: the org id and the default approval_status.
-
 /** Create an item for `orgId`. approval_status defaults to `defaultStatus`
- *  (store: 'draft'; admin: 'pending'); is_active is forced false (an item only
- *  goes live when a ballpark admin approves it). Fires the lazy auto-classify. */
+ *  (store: 'draft'; admin: 'pending'); status forced 'new' (only goes 'active'
+ *  when a ballpark admin approves + it's activated). Fires the lazy auto-classify. */
 async function createForOrg({ data, orgId, defaultStatus, skipClassify = false }) {
   const item = await create({
     ...data,
     org_id: orgId, // sacred — from the caller (session or :orgId), never the body
     approval_status: data.approval_status || defaultStatus,
-    is_active: false,
+    status: 'new',
   });
-  // pV2-STORE-IMPORT — lazy auto-classify: derive subcat + tags once on create.
-  // Lazy require avoids any require cycle; fire-and-forget + error-swallowed so a
-  // classifier hiccup (missing key / AI error) never breaks item create.
-  // skipClassify: the caller already set an authoritative category + subcategory
-  // (e.g. the extract Prepare step's group mapping) — don't let the guesser override.
   if (!skipClassify) {
     require('./taxonomy.service').classifyAndApply(item.id).catch((e) =>
       console.warn('[auto-classify] item', item.id, 'failed:', e.message)
@@ -442,23 +398,21 @@ async function createForOrg({ data, orgId, defaultStatus, skipClassify = false }
   return item;
 }
 
-/** Edit an already-resolved, caller-owned item (`existing`; the route did the
- *  404/ownership check). Approved items: fields editable but photos + status
+/** Edit a caller-owned item. Approved items: fields editable but photos + status
  *  LOCKED (no re-review, stays live). Non-approved: editing re-enters the
- *  draft/pending flow and the item goes offline until re-approved. */
+ *  draft/pending flow and the item goes offline (status='new') until re-approved. */
 async function applyEdit(existing, data, { defaultStatus }) {
   if (existing.approval_status === 'approved') {
     const fields = { ...data };
-    delete fields.image_url;
     delete fields.images;
     delete fields.approval_status;
-    delete fields.is_active;
+    delete fields.status;
     return update(existing.id, fields);
   }
   return update(existing.id, {
     ...data,
     approval_status: data.approval_status || defaultStatus,
-    is_active: false,
+    status: 'new',
   });
 }
 

@@ -39,10 +39,10 @@ router.put('/items/:id/approval', async (req, res, next) => {
     // for purchase) via the store. Reject also stays inactive.
     // FR-00215 — cross-org moderation write: admin holds no seat in the item's org,
     // so the write runs under the scoped app.svc_moderate escape (only approval_status
-    // + is_active are touched; RLS keeps everything else current-org-only).
+    // is touched; RLS keeps everything else current-org-only). status stays 'new'
+    // from create — the supplier activates (status→'active') to make it live.
     const item = await withModeration(() => ItemService.update(req.params.id, {
       approval_status: approve ? 'approved' : 'rejected',
-      is_active: false,
     }));
     res.json(item);
   } catch (err) { next(err); }
