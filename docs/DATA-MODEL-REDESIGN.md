@@ -153,12 +153,23 @@ icon_color, tagline, + audit`. `categories` adds `ref/org_id/status`; `feedback_
 **Gap (FR-00233):** no admin UI to set a category's `icon_name`/`icon_color` (only 15/209 have an icon) — add a
 face editor reusing the existing `image-picker` component.
 
-### `items` — Class A object — LOCKING (walk 2026-10-09; drop `0010`, rebuild fresh)
+### `items` — Class A object — LOCKED (walk 2026-10-09; built `0015`+`0017`; rulings 2026-10-12)
 
-v2dev's `0010` items was built during a context-compaction gap and **drifted** from the plan; it holds only 5
+v2dev's `0010` items was built during a context-compaction gap and **drifted** from the plan; it held only 5
 throwaway rows and nothing FKs to it → **dropped and rebuilt fresh** from the standards (greenfield, like org),
-NOT migrated. Target = a clean `0015_items_rebuild` superseding `0010`/`0011`. Walking the column spec group by
-group below; each locks as Liam confirms it. Class A = full object contract (COLUMN-STANDARDS §A).
+NOT migrated. **Built as `0015_items_rebuild`** (superseding `0010`/`0011`) + `0017` moderation guard; all seven
+groups locked in the 2026-10-09 walk, Liam's residual rulings recorded 2026-10-12 (below). Verified by the
+spec-conformance + code audits, `docs/audits/2026-10-12-items-slice-audit.md`. Class A = full object contract
+(COLUMN-STANDARDS §A).
+
+**Rulings — Liam, 2026-10-12 (all "as recommended"):**
+- **R1 — `tier` = `ballpark` (bucket-3, admin-editable).** Resolves the designer-vs-COLUMN-STANDARDS conflict in
+  favour of the standards: `tier` is admin-curated vocabulary, validated at write (no hard `CHECK`).
+- **R2 — `item_unit` → `type='system'`: TRACKED follow-up (not items-slice).** The pricing formula branches on
+  its 5 values via `meta.needs`, so it is code-governed like `item_status`; the flip from its current
+  `type='ballpark'` is a `0007`/`0011` codelist-grooming fix, done in a later codelist pass.
+- **R3 — keep `categories` / `tags` / `item_tags` names** (no `taxonomy_` prefix).
+- **M2 column-guard trigger KEPT** (designer steer) — see Group 7.
 
 **Group 1 — base contract — LOCKED (2026-10-09):**
 - Header per Class A, in order: `id · ref · name · description · status · type · org_id · … · 3 audit pairs`.
@@ -169,9 +180,8 @@ group below; each locks as Liam confirms it. Class A = full object contract (COL
   hygiene Rule 7; not admin-editable), **admin owns presentation** (label/colour/order/icon on the
   `reference_codelist_values` rows). **Independent of `approval_status`** (`draft/pending/approved/rejected`) —
   BOTH axes kept. Marketplace "live" = `status='active' AND approval_status='approved'`.
-  - *Flag:* `item_unit` is code-governed too (the pricing formula branches on the 5 values via `meta.needs`) but
-    is currently `type='ballpark'` — should be `system`. `tier` the designer also called system, but the locked
-    COLUMN-STANDARDS put `tier` in **bucket 3 (admin-editable `ballpark`)** — **conflict for Liam to rule.**
+  - *Resolved (Liam 2026-10-12):* `tier` = `ballpark` (R1); `item_unit` → `system` as a tracked codelist-grooming
+    follow-up (R2); `item_status` is `system` as built in `0015`.
 
 **Group 2 — classification — LOCKED (2026-10-09):**
 - `category_id` — **one** home node at **any depth**; `subcategory_id` **dropped**; levels + breadcrumb derive by
@@ -179,7 +189,8 @@ group below; each locks as Liam confirms it. Class A = full object contract (COL
 - `item_tags` — **Class D junction** (`item_id, tag_id` composite PK, `created_at/by` + `deleted_at` soft-unlink;
   no header). Unstubs What's-Hot + the marketplace tag filter.
 - `tags` vocabulary — **build minimal now** (`category_id, dimension, label` + base contract), flesh out as it
-  makes sense. *Naming parked:* keep `categories` / `tags` (vs COLUMN-STANDARDS' `taxonomy_` prefix) — Liam to confirm.
+  makes sense. *Naming CONFIRMED (Liam 2026-10-12, R3):* keep `categories` / `tags` / `item_tags` (no
+  `taxonomy_` prefix).
 - **`mood` = a FACETED TAG, not a column (LOCKED 2026-10-09):** a mood is a `tags` row with `dimension='mood'`
   (e.g. Rustic, Elegant); an item "has" moods via `item_tags` (multi-valued, admin-extensible). The matcher filters
   `tags WHERE dimension='mood'`. Same facet machinery serves other cross-cutting vocab later. Contrast `tier` —
@@ -206,11 +217,19 @@ had dropped it). NO `item_type`, NO profiles (unit-driven only).
 **Group 6 — media — LOCKED (2026-10-09):** `images` jsonb `[{url, sort_order, is_hero}]`; `image_display`
 (`CHECK cover|contain`). **Drop the legacy `image_url` cache** — the hero derives from `images`.
 
-**Group 7 — lifecycle & RLS — LOCKED (2026-10-09):** two axes — `status` (new/active/retired) + `approval_status`
-(draft/pending/approved/rejected). RLS **read** = public (`status='active' AND approval_status='approved'`) OR
-own-org OR admin; **write** = own-org (admin override on UPDATE/DELETE = moderation). **INSERT closed (FR-00215):**
-drop the blanket `app_is_admin()` INSERT branch — admin cross-org extract writes via **act-as current-org** (the
-self-serve path we built); add the INSERT-denied RLS test. Soft-delete = parent-only rule; `ref`/`name`
+**Group 7 — lifecycle & RLS — LOCKED (2026-10-09; built `0015`/`0017`, verified 2026-10-12):** two axes —
+`status` (new/active/retired) + `approval_status` (draft/pending/approved/rejected). RLS **read** = public
+(`status='active' AND approval_status='approved'`) OR own-org OR admin; **write** = own-org. **INSERT closed
+(FR-00215):** no `app_is_admin()` INSERT branch — admin cross-org extract writes via **act-as current-org**
+(`withAdminContext`/`createForOrg` set `app.current_org_id` = the target org). **Moderation = a scoped
+`app_svc_moderate()` GUC**, not a role bypass: the only cross-org writes are approve/reject (`approval_status`)
+and takedown (soft-delete `deleted_at`). **M2 — a BEFORE-UPDATE column-guard trigger (`0017`
+`items_svc_moderate_guard`, whole-row probe) enforces that** — under svc_moderate on a cross-org row, only
+`approval_status`/`deleted_at` + the audit stamps may change — **Liam KEPT it (2026-10-12).** **L1 —
+`items_delete` uses the same `svc_moderate` gate** (admin reject = moderation), not the bare `app_is_admin()`
+escape. The **FR-00215 acceptance test** (`fr00215_write_close.test.js`) passes a–f as `web_app_user` —
+including non-member-admin INSERT **denied** and a cross-org name-change **denied** — and FAILS if
+`app_is_admin()` is ever put back into the INSERT/UPDATE path. Soft-delete = parent-only rule; `ref`/`name`
 partial-unique `WHERE deleted_at IS NULL`.
 
 **Item-domain table scope — COMPLETE SET (2026-10-09, so testing never waits on a new table):**
@@ -218,7 +237,7 @@ partial-unique `WHERE deleted_at IS NULL`.
 (exists, `0014`). **No other item tables** — variants / attribute groups / volume tiers / media / buildup all
 live as `attributes`/`images` jsonb or dormant columns on `items`. One `0015` pass covers the domain.
 
-**Pending (designer drift-check 2026-10-09 — raise at the named group, don't let the gap reintroduce drift):**
+**Drift-check — RESOLVED (designer 2026-10-09→12; all carried into `0015`/`0017` and confirmed by the audit `docs/audits/2026-10-12-items-slice-audit.md`):**
 - **G5 `attributes.options` is RETIRED — CONFIRMED (Liam, 2026-10-09).** Options and variants overlapped and
   confused, so **variants is the single mechanism**; "options" was just a **one-dimension variant**.
   `attributes.variants` = dimensions × values, each value priced **free-pick / upcharge (+£) / absolute**; a
@@ -231,9 +250,22 @@ live as `attributes`/`images` jsonb or dormant columns on `items`. One `0015` pa
 - `ref` — nullable slug, `UNIQUE (…) WHERE deleted_at IS NULL`; **populate** where user-facing (EP-00021).
 - `kind` → **`type`** (rule 3 retires `kind`) — bucket-1 hard `CHECK` (variant/addon/component); detail in group 5.
 
-### `addresses` — DRAFT (global table)
-`id`, `org_id` (owner), `kind` (registered/store/shipping/billing), `label`, `line1/2`, `city`, `region`,
-`postcode`, `country`, `lat`/`lng`?, + audit. Entities hold `*_address_id`. Multi-owner link deferred.
+### `addresses` — LOCKED (2026-10-08; built) — global table, object-lite
+`id`, `ref` (null in practice), `name`, `org_id` (owner), `type` (registered/store/shipping/billing/venue),
+`line1`, `line2`, `city`, `region`, `postcode`, `country`, `latitude`, `longitude`, + audit. Entities hold
+`*_address_id`. Multi-owner link deferred.
+- **Naming correction (2026-10-08):** the earlier draft said `kind`/`label` — **mistake, overruled by the
+  implementation + the model's own conventions.** `type` (not `kind`) matches every other table
+  (`orgs.type`, `org_favourites.type`, `reference_codelists.type`, `project_documents.type`); `kind` appears
+  nowhere else. `name` + `ref` (not `label`) follow the **object base contract** — an address is a global
+  object referenced by many `*_address_id` FKs with a geo future, so it carries the standard header. `name`
+  IS the label ("Head Office", "London Warehouse").
+- **Object-lite:** keeps `id/ref/name/org_id` + audit from the contract, but **drops `description`/`status`**
+  (an address needs neither; removal = `deleted_at` soft-delete). `ref` stays null (addresses aren't
+  handle-addressable); the column exists only for header uniformity.
+- **Reconciled (2026-10-12):** this copy was behind `dev`'s (it still showed the `kind`/`label` DRAFT); brought
+  to the LOCKED type/name/ref shape to match `dev` + the built table. `dev` and `rebuild/org-slice` never merge
+  (v2 vs v2dev), so the two doc copies stay separate by design — each must be internally complete.
 
 ### `tags` / `supplier_item_tag` — keep (the m2m tagging layer).
 
