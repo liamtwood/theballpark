@@ -843,8 +843,7 @@ async function processWooUrl(ctx, url) {
         description: htmlToMarkdown(p.short_description || p.description || '') || null,
         unit: 'each',
         external_url: permalink,
-        category_id: categoryId,
-        subcategory_id: subcategoryId,
+        category_id: subcategoryId || categoryId, // one home node = deepest chosen (no subcategory axis)
         attributes,
         images: ctx.review ? images.slice(0, 1) : images,
       },
@@ -897,8 +896,7 @@ async function processWordpressUrl(ctx, url) {
         description: p.description,
         unit: 'each',
         external_url: permalink,
-        category_id: categoryId,
-        subcategory_id: subcategoryId,
+        category_id: subcategoryId || categoryId, // one home node = deepest chosen (no subcategory axis)
         attributes,
         images: ctx.review ? images.slice(0, 1) : images,
       },
@@ -1055,8 +1053,7 @@ async function processUrl(ctx, url) {
         install_cost: ctx.review ? null : toNumber(p.install_cost),
         lead_time_days: ctx.review ? null : toNumber(p.lead_time_days),
         external_url: finalUrl, // PRIMARY source URL — dedup/delta key
-        category_id: categoryId,
-        subcategory_id: subcategoryId,
+        category_id: subcategoryId || categoryId, // one home node = deepest chosen (no subcategory axis)
         attributes: ctx.review ? reviewAttrs : attributes,
         images: ctx.review ? images.slice(0, 1) : images,
       },

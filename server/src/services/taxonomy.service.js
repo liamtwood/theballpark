@@ -518,26 +518,14 @@ async function applyClassification(itemId, edited) {
  * classifier does NOT set tier (stays the item's default). Best-effort — the
  * caller swallows errors so a classifier hiccup never breaks item create.
  */
-async function classifyAndApply(itemId) {
-  const suggestion = await classifyItem(itemId);
-  await applyClassification(itemId, {
-    category_id: suggestion.category_id,
-    subcategory_id: suggestion.subcategory_id,
-    tag_ids: (suggestion.tags || []).map((t) => t.tag_id),
-  });
-  // pV2-STORE-EXTRACT-01 (Liam: 100s of items, NO per-item manual work) — the
-  // item is now FULLY assigned (cat + best-fit subcat, always) and stays visible.
-  // pending_classification is a SOFT marker only: re-flag the UNCERTAIN ones (a
-  // fallback/default subcat, or low AI confidence) so they can be BULK-reviewed
-  // later — it never blocks. applyClassification cleared it, so re-set for those.
-  const uncertain = suggestion.subcategory_fallback || (suggestion.confidence || 0) < 0.5;
-  if (uncertain) {
-    await ownerPool.query(
-      'UPDATE items SET pending_classification = $1, updated_at = NOW() WHERE id = $2',
-      [JSON.stringify({ ...suggestion, soft_review: true }), itemId]
-    );
-  }
-  return suggestion;
+async function classifyAndApply(_itemId) {
+  // DEFERRED for the v2dev items slice. The old auto-classifier wrote
+  // subcategory_id, pending_classification, and the legacy `tag`/supplier_item_tag
+  // junction — ALL removed in 0015 (single category_id at any depth; tags via the
+  // new item_tag junction). Re-enable against the new model in the classifier/tags
+  // sub-slice. No-op for now so item create never writes a dropped column; the item
+  // keeps the category_id the supplier (or the extract Prepare mapping) chose.
+  return null;
 }
 
 /**
