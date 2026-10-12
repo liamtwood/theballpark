@@ -23,6 +23,14 @@ const { requireActiveMembership } = require('../middleware/require-active-member
 const { CategoryUpdateSchema, CategoryCreateSchema } = require('../schemas/category-admin.schema');
 const { ItemsQuerySchema, PAGE_SIZE } = require('../schemas/marketplace-query.schema');
 
+/** Hero image URL from the images[] jsonb (the legacy image_url column was dropped
+ *  in 0015). First is_hero, else images[0]; null when empty. */
+function heroUrl(images) {
+  if (!Array.isArray(images) || images.length === 0) return null;
+  const pick = images.find((i) => i && i.is_hero) || images[0];
+  return pick && pick.url ? pick.url : null;
+}
+
 /** Top-level catalogue categories + live item counts. Counts must match what
  *  the browse grid actually lists (active + APPROVED, top-level items only —
  *  no components/children), and must equal the sum of the subcategory counts
@@ -274,14 +282,10 @@ router.patch(
       }
       await withTransaction(async (client) => {
         await client.query(`UPDATE categories SET parent_id=$2, updated_at=NOW() WHERE id=$1`, [id.data, parentId]);
-        // Keep items' top-level category_id valid when the top ancestor changed
-        // (items table may be empty until the items slice loads data).
-        await client.query(
-          `UPDATE items SET category_id=$2
-            WHERE deleted_at IS NULL AND (category_id = ANY($1::uuid[]) OR subcategory_id = ANY($1::uuid[]))`,
-          [subIds, newTop]
-        );
+        // No item repoint needed: items carry ONE category_id at any depth, so a
+        // moved node keeps its items — their category_id still points at it (0015).
       });
+      void newTop; void subIds;
       res.json({ moved: true, level: newBase });
     } catch (err) { next(err); }
   }
@@ -334,7 +338,7 @@ router.get('/items', async (req, res, next) => {
     // (pV2-BUILDUP-02). parent_item_id IS NOT NULL rows are an item's child
     // options/components (pV2-BUILDUP-03) — they belong to their parent, never
     // browsable on their own.
-    const where = [`i.deleted_at IS NULL`, `i.kind IS DISTINCT FROM 'component'`, `i.parent_item_id IS NULL`];
+    const where = [`i.deleted_at IS NULL`, `i.type IS DISTINCT FROM 'component'`, `i.parent_item_id IS NULL`];
     // pV2-STORE-01 — non-public visibility. The `status`/`active` filters are
     // honoured for two callers only: (1) the OWNER of the pinned supplier org
     // — a supplier sees their own draft/pending/inactive items; (2) a BALLPARK
@@ -362,29 +366,29 @@ router.get('/items', async (req, res, next) => {
         // an item approved but not published still shows and can be activated). Excludes
         // rejected + drafts. ?status=all skips this (whole catalogue); ?status=pending
         // narrows to the approval queue. Owner default falls through to whole catalogue.
-        where.push(`(i.is_active OR i.approval_status IN ('pending', 'approved'))`);
+        where.push(`(i.status = 'active' OR i.approval_status IN ('pending', 'approved'))`);
       }
-      if (active === 'active') where.push(`i.is_active`);
-      else if (active === 'inactive') where.push(`NOT i.is_active`);
+      if (active === 'active') where.push(`i.status = 'active'`);
+      else if (active === 'inactive') where.push(`i.status <> 'active'`);
       // active 'all' / unset → both (the supplier sees their whole catalogue)
     } else {
-      where.push(`i.is_active`, `i.approval_status = 'approved'`);
+      where.push(`i.status = 'active'`, `i.approval_status = 'approved'`);
     }
+    // ONE category axis at ANY depth (0015): selecting a node shows items classified
+    // AT it OR at any DESCENDANT (recursive tree), so a deeper classification never
+    // hides an item from a parent-level browse. `sub` is gone (merged into `cat`).
     // 'uncategorised' → the null-category bucket (pulled items awaiting review);
     // must stay browsable so an unclassified item is never invisible.
+    const node = cat === 'uncategorised' ? null : (sub || cat); // sub (deeper pick) wins when present
     if (cat === 'uncategorised') { where.push(`i.category_id IS NULL`); }
-    else if (cat) { vals.push(cat); where.push(`i.category_id = $${vals.length}`); }
-    // Tree-aware: filtering a subcategory includes items classified to ANY of its
-    // descendants (sub-subcategories…), so a deeper classification never hides an
-    // item from its parent-level browse. Matches the node itself + all descendants.
-    if (sub) {
-      vals.push(sub);
-      where.push(`i.subcategory_id IN (
-        WITH RECURSIVE sub_tree AS (
+    else if (node) {
+      vals.push(node);
+      where.push(`i.category_id IN (
+        WITH RECURSIVE cat_tree AS (
           SELECT id FROM categories WHERE id = $${vals.length}
           UNION ALL
-          SELECT c2.id FROM categories c2 JOIN sub_tree ON c2.parent_id = sub_tree.id
-        ) SELECT id FROM sub_tree)`);
+          SELECT c2.id FROM categories c2 JOIN cat_tree ON c2.parent_id = cat_tree.id
+        ) SELECT id FROM cat_tree)`);
     }
     if (priceMin !== undefined) { vals.push(priceMin); where.push(`i.base_price >= $${vals.length}`); }
     if (priceMax !== undefined) { vals.push(priceMax); where.push(`i.base_price <= $${vals.length}`); }
@@ -400,13 +404,13 @@ router.get('/items', async (req, res, next) => {
     }
     vals.push(PAGE_SIZE, offset);
     const r = await pool.query(
-      `SELECT i.id, i.name, i.description, i.install_description, i.base_price, i.unit, i.image_url,
+      `SELECT i.id, i.name, i.description, i.install_description, i.base_price, i.unit, i.images,
               i.attributes,
-              i.category_id, i.subcategory_id, i.approval_status, i.is_active,
+              i.category_id, i.approval_status, i.status,
               -- v2dev: city/country moved to the address satellite (not on orgs/orgs_public);
               -- nulled here to keep the response shape. TODO: join primary_address for location.
               i.org_id AS supplier_id, o.name AS supplier_name, NULL::text AS supplier_city,
-              c.name AS category_name, sc.name AS subcategory_name,
+              c.name AS category_name,
               (i.org_id = $1) AS owned_by_active_org,
               COUNT(*) OVER() AS total
          FROM items i
@@ -416,7 +420,6 @@ router.get('/items', async (req, res, next) => {
          -- all belong to such orgs, and an owner's own org qualifies too.
          JOIN orgs_public o ON o.id = i.org_id
          LEFT JOIN categories c ON c.id = i.category_id
-         LEFT JOIN categories sc ON sc.id = i.subcategory_id
         WHERE ${where.join(' AND ')}
         ORDER BY i.name ASC
         LIMIT $${vals.length - 1} OFFSET $${vals.length}`,
@@ -430,20 +433,19 @@ router.get('/items', async (req, res, next) => {
       installDescription: row.install_description,
       basePrice: row.base_price === null ? null : Number(row.base_price),
       unit: row.unit,
-      coverUrl: row.image_url,
+      coverUrl: heroUrl(row.images),
       // pV2-STORE-ATTRIBUTE-GROUPS-01 — the grouped attributes power the quick-view
-      // spec cards + options picklist (rendered from the already-loaded list row).
+      // spec cards + variants picker (rendered from the already-loaded list row).
       attributes: row.attributes ?? null,
       categoryId: row.category_id,
-      subcategoryId: row.subcategory_id,
       supplierId: row.supplier_id,
       supplierName: row.supplier_name,
       supplierCity: row.supplier_city,
       categoryName: row.category_name,
-      subcategoryName: row.subcategory_name,
       ownedByActiveOrg: !!row.owned_by_active_org,
       approvalStatus: row.approval_status,
-      isActive: !!row.is_active,
+      status: row.status,
+      isActive: row.status === 'active',
     }));
     res.json({ items, total, hasMore: offset + items.length < total });
   } catch (err) { next(err); }
@@ -461,14 +463,16 @@ router.get('/items/:id', async (req, res, next) => {
          FROM items i
          LEFT JOIN categories c ON c.id = i.category_id
         WHERE i.id = $1 AND i.deleted_at IS NULL
-          AND i.is_active AND i.approval_status = 'approved'
+          AND i.status = 'active' AND i.approval_status = 'approved'
           -- Components + child options are never marketplace-visible, even by
           -- direct link (pV2-BUILDUP-03).
-          AND i.kind IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL`,
+          AND i.type IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL`,
       [req.params.id]
     );
     if (!r.rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(r.rows[0]);
+    const row = r.rows[0];
+    row.image_url = heroUrl(row.images); // derived (image_url column dropped in 0015)
+    res.json(row);
   } catch (err) { next(err); }
 });
 
@@ -477,14 +481,14 @@ router.get('/items/:id', async (req, res, next) => {
 router.get('/items/:id/options', async (req, res, next) => {
   try {
     const r = await pool.query(
-      `SELECT id, name, base_price, unit, category_id, kind, description, image_url
+      `SELECT id, name, base_price, unit, category_id, type, description, images
          FROM items WHERE parent_item_id = $1 AND deleted_at IS NULL ORDER BY created_at`,
       [req.params.id]
     );
     res.json(r.rows.map((c) => ({
       id: c.id, name: c.name, base_price: c.base_price, unit: c.unit, quantity: 1,
-      category_id: c.category_id, kind: c.kind, selection_type: 'selected',
-      description: c.description, image_url: c.image_url,
+      category_id: c.category_id, kind: c.type, selection_type: 'selected',
+      description: c.description, image_url: heroUrl(c.images),
     })));
   } catch (err) { next(err); }
 });

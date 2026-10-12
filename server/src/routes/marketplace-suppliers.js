@@ -26,7 +26,7 @@ function ownerVisibleFilter(req, orgId, alias = 'i') {
   const isAdmin = req.user?.role === 'ballpark_admin';
   return (isOwner || isAdmin)
     ? ''
-    : `AND ${alias}.is_active AND ${alias}.approval_status = 'approved'`;
+    : `AND ${alias}.status = 'active' AND ${alias}.approval_status = 'approved'`;
 }
 
 /** GET /api/marketplace/suppliers/options — lightweight supplier list for
@@ -40,7 +40,7 @@ router.get('/suppliers/options', async (req, res, next) => {
       `SELECT o.id, o.name, COUNT(i.id) AS item_count
          FROM orgs_public o
          JOIN items i ON i.org_id = o.id
-        WHERE i.deleted_at IS NULL AND i.is_active AND i.approval_status = 'approved'
+        WHERE i.deleted_at IS NULL AND i.status = 'active' AND i.approval_status = 'approved'
         -- BE-00129 — orgs_public is a VIEW (no PK), so Postgres can't infer the
         -- o.id → o.name functional dependency; every selected non-aggregate must
         -- be grouped (a base-table GROUP BY o.id would have sufficed).
@@ -83,7 +83,7 @@ router.get('/suppliers', async (req, res, next) => {
               COUNT(*) OVER() AS total
          FROM orgs_public o
          JOIN items i ON i.org_id = o.id AND i.deleted_at IS NULL
-              AND i.is_active AND i.approval_status = 'approved' ${catClause}
+              AND i.status = 'active' AND i.approval_status = 'approved' ${catClause}
         ${whereSql}
         -- BE-00129 — group every selected orgs_public column (it's a VIEW, no PK
         -- functional dependency; see /suppliers/options above). v2dev: city dropped
@@ -146,7 +146,7 @@ router.get('/suppliers/:id', async (req, res, next) => {
          FROM items i
          LEFT JOIN categories c ON c.id = i.category_id
         WHERE i.org_id = $1 AND i.deleted_at IS NULL
-          AND i.kind IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL ${liveFilter}
+          AND i.type IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL ${liveFilter}
         GROUP BY c.id, c.name
         ORDER BY (c.id IS NULL), c.name ASC`,
       [id.data]
@@ -200,48 +200,47 @@ router.get('/suppliers/:id/subcategories', async (req, res, next) => {
     // uncategorised (subcategory_id IS NULL) items to their macro.
     const liveOuter = ownerVisibleFilter(req, id.data, 'i');
     const liveCover = ownerVisibleFilter(req, id.data, 'i2');
+    // v2dev (0015): ONE category_id at any depth — the chain is derived by walking
+    // UP from i.category_id, emitting every ancestor that is NOT the top-level macro
+    // (so a deep item contributes an L2 chip AND its L3 chip). An item classified
+    // DIRECTLY at a top macro has no subcat → it rolls up as that macro's catch-all.
+    // Cover = the first item's first image (image_url column dropped → images[0].url).
     const r = await pool.query(
       `SELECT sc.id, sc.name, sc.parent_id, sc.tagline, sc.sort_order, false AS is_catch_all,
               COUNT(i.id) AS item_count,
-              (SELECT i2.image_url FROM items i2
+              (SELECT (i2.images -> 0 ->> 'url') FROM items i2
                 WHERE i2.org_id = $1
-                  AND i2.subcategory_id IN (
+                  AND i2.category_id IN (
                     WITH RECURSIVE st AS (
                       SELECT sc.id AS id
                       UNION ALL
                       SELECT c2.id FROM categories c2 JOIN st ON c2.parent_id = st.id
                     ) SELECT id FROM st)
-                  AND i2.deleted_at IS NULL ${liveCover} AND i2.image_url IS NOT NULL
+                  AND i2.deleted_at IS NULL ${liveCover} AND jsonb_array_length(i2.images) > 0
                 ORDER BY i2.name ASC LIMIT 1) AS cover_url
          FROM items i
-         -- Emit EVERY subcategory in the item's chain from its leaf up to the direct
-         -- child of the category (its L2). A 3rd-level item (leaf "Chiavari Chair"
-         -- under "Seating") contributes to BOTH "Chiavari Chair" and "Seating", so
-         -- the rail can show the L2 chip under the macro AND drill to the L3 chip.
-         -- 2-level items contribute a single node (themselves).
          JOIN LATERAL (
            WITH RECURSIVE up AS (
-             SELECT id, parent_id FROM categories WHERE id = i.subcategory_id
+             SELECT id, parent_id FROM categories WHERE id = i.category_id
              UNION ALL
              SELECT c.id, c.parent_id FROM categories c JOIN up ON c.id = up.parent_id
-              WHERE up.parent_id <> i.category_id
-           ) SELECT id FROM up
+           ) SELECT id FROM up WHERE parent_id IS NOT NULL  -- exclude the top-level macro
          ) AS node ON true
          JOIN categories sc ON sc.id = node.id
-        WHERE i.org_id = $1 AND i.deleted_at IS NULL ${liveOuter}
+        WHERE i.org_id = $1 AND i.deleted_at IS NULL
+          AND i.type IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL ${liveOuter}
         GROUP BY sc.id, sc.name, sc.parent_id, sc.tagline, sc.sort_order
        UNION ALL
        SELECT c.id, c.name, c.id AS parent_id, c.tagline, c.sort_order, true AS is_catch_all,
               COUNT(i.id) AS item_count,
-              (SELECT i2.image_url FROM items i2
+              (SELECT (i2.images -> 0 ->> 'url') FROM items i2
                 WHERE i2.org_id = $1 AND i2.category_id = c.id
-                  AND i2.subcategory_id IS NULL
-                  AND i2.deleted_at IS NULL ${liveCover} AND i2.image_url IS NOT NULL
+                  AND i2.deleted_at IS NULL ${liveCover} AND jsonb_array_length(i2.images) > 0
                 ORDER BY i2.name ASC LIMIT 1) AS cover_url
          FROM items i
-         JOIN categories c ON c.id = i.category_id
-        WHERE i.org_id = $1 AND i.subcategory_id IS NULL
-          AND i.deleted_at IS NULL ${liveOuter}
+         JOIN categories c ON c.id = i.category_id AND c.parent_id IS NULL  -- classified at a top macro
+        WHERE i.org_id = $1 AND i.deleted_at IS NULL
+          AND i.type IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL ${liveOuter}
         GROUP BY c.id, c.name, c.tagline, c.sort_order
         ORDER BY sort_order ASC NULLS LAST, name ASC`,
       [id.data]
