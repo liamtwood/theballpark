@@ -52,7 +52,7 @@ domain columns · `+ full audit`. **No `ref`/`name`/`description` header.**
 ### D — Junction m2m (links two parents)
 `(<a>_id, <b>_id)  composite pk` · link attributes · `created_at/by` **+ `deleted_at` for soft-unlink**
 (re-add preserves). **No `id`, no header, no `updated_*`** (you add/remove a link, never edit it).
-**Members:** `user_orgs` (`+role, status, job_title, invite fields`), `item_tag`, `message_reads` (`+read_at`).
+**Members:** `user_orgs` (`+role, status, job_title, invite fields`), `item_tags`, `message_reads` (`+read_at`).
 
 ### E — Append-only (immutable journal)
 `id  uuid pk` · parent FK(s) · event columns · **`created_at, created_by` ONLY** (no `updated_*`/`deleted_*` —
@@ -99,7 +99,7 @@ is a false contract (and a silent place to violate an append-only invariant) —
 | `org_favourites` | C |
 | `item_extract_jobs` | C |
 | `user_orgs` | D |
-| `item_tag` | D |
+| `item_tags` | D |
 | `message_reads` | D |
 | `message_events` | E |
 | `message_relations` | E |

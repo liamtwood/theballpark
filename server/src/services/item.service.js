@@ -54,7 +54,7 @@ async function getAll(orgId, categoryId, _tag) {
         SELECT c2.id FROM categories c2 JOIN cat_tree ON c2.parent_id = cat_tree.id
       ) SELECT id FROM cat_tree)`;
   }
-  // (tag filter returns with the tags sub-slice — item_tag junction now exists but
+  // (tag filter returns with the tags sub-slice — item_tags junction now exists but
   // tag discovery/filtering is wired in Stage 'tags'. `_tag` is a no-op for now.)
   query += ' ORDER BY i.created_at DESC';
   const result = await pool.query(query, params);
@@ -102,7 +102,7 @@ async function countsByCategory() {
 }
 
 async function getTagsByCategory(_categoryId) {
-  // Tag discovery returns with the tags sub-slice (item_tag + tags now exist in
+  // Tag discovery returns with the tags sub-slice (item_tags + tags now exist in
   // 0015; the read/aggregate wiring lands in that stage). Empty for now.
   return [];
 }
@@ -249,7 +249,7 @@ async function duplicate(id) {
     );
     const copy = withHero(ins.rows[0]);
     if (!copy) return null;
-    // (item_tag copy returns with the tags sub-slice.)
+    // (item_tags copy returns with the tags sub-slice.)
     return copy;
   });
 }

@@ -1,10 +1,10 @@
--- Rebuild migration 0015 — ITEMS rebuilt fresh + tags + item_tag.
+-- Rebuild migration 0015 — ITEMS rebuilt fresh + tags + item_tags.
 -- SUPERSEDES 0010 (items) and 0011 (item_unit groom stays valid). 0010's items
 -- drifted from the locked model during a compaction gap; it held only throwaway
 -- rows and nothing FKs to it, so we DROP + rebuild from the locked column spec
 -- (DATA-MODEL-REDESIGN "items", groups 1-7, 2026-10-09) rather than migrate.
 --
--- Item domain = items + tags + item_tag (+ catalogue_extract_job from 0014). No
+-- Item domain = items + tags + item_tags (+ catalogue_extract_job from 0014). No
 -- other tables: variants / attribute-groups / volume tiers / media / buildup all
 -- live as attributes/images jsonb or dormant columns on items.
 --
@@ -150,28 +150,28 @@ create policy items_delete on public.items for delete
 grant select, insert, update, delete on public.items to web_app_user;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- item_tag — Class D junction (item ↔ tag). Soft-unlink; no header, no updated_*.
+-- item_tags — Class D junction (item ↔ tag). Soft-unlink; no header, no updated_*.
 -- ─────────────────────────────────────────────────────────────────────────────
-create table if not exists public.item_tag (
+create table if not exists public.item_tags (
   item_id uuid not null references public.items(id),
   tag_id  uuid not null references public.tags(id),
   created_at timestamptz not null default now(), created_by uuid references public.users(id),
   deleted_at timestamptz,
   primary key (item_id, tag_id)
 );
-create index item_tag_tag_idx on public.item_tag (tag_id) where deleted_at is null;
+create index item_tags_tag_idx on public.item_tags (tag_id) where deleted_at is null;
 
-alter table public.item_tag enable row level security;
-alter table public.item_tag force row level security;
+alter table public.item_tags enable row level security;
+alter table public.item_tags force row level security;
 -- Visible / writable iff the ITEM is (link rides the item's visibility + ownership).
-create policy item_tag_read on public.item_tag for select using (
+create policy item_tags_read on public.item_tags for select using (
   exists (select 1 from public.items i where i.id = item_id
             and ((i.status='active' and i.approval_status='approved' and i.deleted_at is null)
                  or i.org_id = public.app_current_org() or public.app_is_admin()))
 );
-create policy item_tag_write on public.item_tag for all
+create policy item_tags_write on public.item_tags for all
   using      (exists (select 1 from public.items i where i.id = item_id
                         and (i.org_id = public.app_current_org() or public.app_is_admin())))
   with check (exists (select 1 from public.items i where i.id = item_id
                         and (i.org_id = public.app_current_org() or public.app_is_admin())));
-grant select, insert, update, delete on public.item_tag to web_app_user;
+grant select, insert, update, delete on public.item_tags to web_app_user;

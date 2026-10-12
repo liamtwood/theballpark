@@ -43,7 +43,7 @@ const StoreItemCreateSchema = z
     images: z.array(GalleryImageSchema).max(20).optional(),
     // Extract identity (sku/product_id dedup key; pairs with attributes._source).
     external_url: z.string().trim().max(2000).nullable().optional(),
-    // tags[] is accepted but ignored here — tag links are written via item_tag
+    // tags[] is accepted but ignored here — tag links are written via item_tags
     // (tags sub-slice). Kept optional so the editor round-trip doesn't 400.
     tags: z.array(z.string().trim().max(60)).max(30).optional(),
     // pV2-STORE-WHATS-HOT-01 — item quality/merchandising tier (item_tier codelist:

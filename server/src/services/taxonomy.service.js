@@ -522,7 +522,7 @@ async function classifyAndApply(_itemId) {
   // DEFERRED for the v2dev items slice. The old auto-classifier wrote
   // subcategory_id, pending_classification, and the legacy `tag`/supplier_item_tag
   // junction — ALL removed in 0015 (single category_id at any depth; tags via the
-  // new item_tag junction). Re-enable against the new model in the classifier/tags
+  // new item_tags junction). Re-enable against the new model in the classifier/tags
   // sub-slice. No-op for now so item create never writes a dropped column; the item
   // keeps the category_id the supplier (or the extract Prepare mapping) chose.
   return null;

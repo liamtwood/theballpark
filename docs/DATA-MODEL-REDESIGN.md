@@ -14,7 +14,7 @@ the 2026-10-01 walkthrough. Status per table: **LOCKED** / **DRAFT** / **TODO**.
   - **`ref` = nullable on ALL objects** (uniform header), **populated where user-facing** (slug / handle /
     doc-number) and null otherwise — e.g. `project_items` (addressed via its project) carries a null `ref`.
     It's a generated public handle with a UNIQUE constraint; nulls are allowed.
-  - **Contract columns are OMITTED entirely on NON-objects** — the three classes: **junctions** (`item_tag`,
+  - **Contract columns are OMITTED entirely on NON-objects** — the three classes: **junctions** (`item_tags`,
     `user_orgs`, `message_reads` — composite PK), **satellites** keyed to a parent (`project_settings`,
     `project_item_matches`), **append-only** (`message_events`, `message_relations`). These carry no `ref`/
     `name`/`description` header; audit is minimal (often `created_at`/`by` only).
@@ -176,12 +176,12 @@ group below; each locks as Liam confirms it. Class A = full object contract (COL
 **Group 2 — classification — LOCKED (2026-10-09):**
 - `category_id` — **one** home node at **any depth**; `subcategory_id` **dropped**; levels + breadcrumb derive by
   walking `categories.parent_id` (not stored columns). `NO ACTION` on delete (soft-delete handles removal).
-- `item_tag` — **Class D junction** (`item_id, tag_id` composite PK, `created_at/by` + `deleted_at` soft-unlink;
+- `item_tags` — **Class D junction** (`item_id, tag_id` composite PK, `created_at/by` + `deleted_at` soft-unlink;
   no header). Unstubs What's-Hot + the marketplace tag filter.
 - `tags` vocabulary — **build minimal now** (`category_id, dimension, label` + base contract), flesh out as it
   makes sense. *Naming parked:* keep `categories` / `tags` (vs COLUMN-STANDARDS' `taxonomy_` prefix) — Liam to confirm.
 - **`mood` = a FACETED TAG, not a column (LOCKED 2026-10-09):** a mood is a `tags` row with `dimension='mood'`
-  (e.g. Rustic, Elegant); an item "has" moods via `item_tag` (multi-valued, admin-extensible). The matcher filters
+  (e.g. Rustic, Elegant); an item "has" moods via `item_tags` (multi-valued, admin-extensible). The matcher filters
   `tags WHERE dimension='mood'`. Same facet machinery serves other cross-cutting vocab later. Contrast `tier` —
   single-valued + **ordered** (range-matched) → stays its own column, not a tag.
 
@@ -214,7 +214,7 @@ self-serve path we built); add the INSERT-denied RLS test. Soft-delete = parent-
 partial-unique `WHERE deleted_at IS NULL`.
 
 **Item-domain table scope — COMPLETE SET (2026-10-09, so testing never waits on a new table):**
-`items` (rebuilt in `0015`) · `tags` (new, minimal) · `item_tag` (new junction) · `catalogue_extract_job`
+`items` (rebuilt in `0015`) · `tags` (new, minimal) · `item_tags` (new junction) · `catalogue_extract_job`
 (exists, `0014`). **No other item tables** — variants / attribute groups / volume tiers / media / buildup all
 live as `attributes`/`images` jsonb or dormant columns on `items`. One `0015` pass covers the domain.
 
@@ -510,7 +510,7 @@ All 27 base tables + 1 view, grouped by main object. ✅ locked · 🟡 review �
 | **Taxonomy** | `categories` | ✅ locked (marketplace-only; evict 17 residue rows) |
 | | `tag` → **`tags`** | ✅ keep — faceted tag vocabulary (`category_id`, `dimension`, `label`) |
 | **Item** | `items` | ✅ reviewed |
-| | `supplier_item_tag` → **`item_tag`** | ✅ keep + rename — pure item↔tag junction (no `supplier_org_id`) |
+| | `supplier_item_tag` → **`item_tags`** | ✅ keep + rename — pure item↔tag junction (no `supplier_org_id`) |
 | | `catalogue_extract_job` → **`item_extract_jobs`** | ✅ keep + rename — the extractor job ledger |
 | | `ai_search_hints` | ➖ cull (empty) |
 | **Project** (core) | `projects`, `project_categories` | ✅ locked |
@@ -590,8 +590,10 @@ When a question lands on something already built, the reasoning goes here.
 - **Config table split.** `org_type_config` = per-org-type **page config + labels** (jsonb `payload`:
   `creditLabel`, event/client labels, hero config). `bp_brand_config` = **visual theme** only (font/gradient/
   colour). Two different concerns, not merged.
-- **`supplier_item_tag` → `item_tag`, under Item.** It's `item_id, tag_id` only (802 rows) — a pure item↔tag
-  junction, no `supplier_org_id`, so the `supplier_` prefix was misleading. The `tag` vocabulary
+- **`supplier_item_tag` → `item_tags`, under Item.** It's `item_id, tag_id` only (802 rows) — a pure item↔tag
+  junction, no `supplier_org_id`, so the `supplier_` prefix was misleading. **Plural `item_tags` (Liam, 2026-10-12)** —
+  the earlier plan wrote singular `item_tag` but the other junctions are plural (`user_orgs`, `message_reads`), so it was
+  renamed for consistency (DB + `0015` + code comments). The `tag` vocabulary
   (`category_id`, `dimension`, `label`; → `tags`) stays under Taxonomy as the weak-classification layer.
 - **`favourites` → `org_favourites`.** It's org transactional data (`org_id, type, ref_id` saved-list), not
   config — moved under Org and renamed to the owner-prefix convention. Spelling parked to FR-00229.
@@ -663,7 +665,7 @@ above + the v0.2.0 item model (`pV2-STORE-IMPORT-01`); same bar (consistent · s
 2. **`is_active` → `status`** (new/active/retired codelist, per the object base contract). v2dev has the boolean.
    Additive codelist + backfill + read-view maps it.
 3. **`ref` slug** — items carry a nullable `ref`; populate the user-facing slug (no raw PKs in URLs, EP-00021).
-4. **`tags` + `item_tag` — NOT built** (confirmed absent in v2dev). Locked `item_tag` = `item_id, tag_id` junction
+4. **`tags` + `item_tags` — NOT built** (confirmed absent in v2dev). Locked `item_tags` = `item_id, tag_id` junction
    (no object header); depends on a `tags` vocabulary table (also unbuilt). What's-Hot + the tag filter are both
    **stubbed to `false`** in the v2dev marketplace until this lands.
 5. **INSERT escape** — `items_insert` still carries the `app_is_admin()` branch (FR-00215: "escape closes in items
@@ -671,7 +673,7 @@ above + the v0.2.0 item model (`pV2-STORE-IMPORT-01`); same bar (consistent · s
    vs a **scoped insert GUC**; then close it + add the INSERT-denied RLS assertion the FR-00215 test left as TODO.
 
 **Worklist** (each sub-slice = DB → service → route → client → QC):
-- `tags` + `item_tag` (+ RLS with the table) → unstub What's-Hot + tag filter in `marketplace.js`/`marketplace-suppliers.js`.
+- `tags` + `item_tags` (+ RLS with the table) → unstub What's-Hot + tag filter in `marketplace.js`/`marketplace-suppliers.js`.
 - `status` axis: codelist + `items.status`, backfill from `is_active`, map in the read-view; retire the boolean.
 - `subcategory_id` **drop** (DECIDED): remove the column + index; rework the drill (supplier-detail + marketplace
   rails) to derive levels from the recursive `categories` tree; classifier/extractor writes one `category_id`.
@@ -680,7 +682,7 @@ above + the v0.2.0 item model (`pV2-STORE-IMPORT-01`); same bar (consistent · s
 - `items_public` read-view (ADR-0002 `security_invoker`) mirroring `orgs_public`; one write path (no SQL in
   `admin-items`/`marketplace` routes); confirm the line-pricing SSOT (`line-pricing.js`) is wired in v2dev.
 
-**Build order:** `tags`/`item_tag` → `status` axis → `subcategory_id` decision → INSERT close + test → `ref`/URLs
+**Build order:** `tags`/`item_tags` → `status` axis → `subcategory_id` decision → INSERT close + test → `ref`/URLs
 → write-path + `items_public` view cleanup.
 
 **Acceptance:** RLS coverage (public sees approved+active only · own any-state · admin · **INSERT denied cross-org
