@@ -42,8 +42,12 @@ import { AuthService } from '../../core/auth/auth.service';
         decoding="async"
       />
     } @else {
-      <div class="bp-item-card__img bp-item-card__img--empty">
-        <lucide-icon name="store" [size]="22" [strokeWidth]="1.5" />
+      <!-- Generic "Image coming soon" placeholder — shown when the item has no
+           cover (incl. extracts where only the supplier's generic placeholder was
+           found, which we drop on pull). Deliberate > a wrong/placeholder photo. -->
+      <div class="bp-item-card__img bp-item-card__img--empty flex flex-col items-center justify-center gap-1.5 text-secondary">
+        <lucide-icon name="image" [size]="24" [strokeWidth]="1.5" />
+        <span class="bp-caption">Image coming soon</span>
       </div>
     }
     @if (!item().isActive) {

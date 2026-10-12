@@ -147,8 +147,11 @@ function collectImageUrls(html, baseUrl, cap = 40) {
   return imgs;
 }
 
-/** Skip logos/icons/sprites/placeholders when picking a fallback product photo. */
-const isProductImage = (u) => !/(logo|icon|sprite|favicon|placeholder|\.svg(\?|$))/i.test(u);
+/** Skip logos/icons/sprites/placeholders when picking a product photo. `product.webp`
+ *  / `product.jpg|png` (a bare, generic filename) is a stock "no image yet" placeholder
+ *  reused across products (e.g. Yahire) — never a real per-product photo, so drop it. */
+const isProductImage = (u) =>
+  !/(logo|icon|sprite|favicon|placeholder|banner|com+ing[-_. ]?soon|\/product\.(webp|png|jpe?g)(\?|$)|\.svg(\?|$))/i.test(u);
 
 function absolutize(u, base) {
   try { return new URL(u, base).toString(); } catch { return null; }
@@ -1014,16 +1017,30 @@ async function processUrl(ctx, url) {
     if (supplierRef && !idRows.some((r) => r.value === supplierRef)) idRows.push({ label: 'Supplier Ref', value: supplierRef });
     if (idRows.length) attributes.ids = idRows;
 
-    let images = (Array.isArray(p.images) ? p.images : [])
-      .map((u) => absolutize(u, finalUrl)).filter(Boolean)
-      .map((u, i) => ({ url: u, is_hero: i === 0 }));
-    // Image extraction is non-deterministic — when the AI returned none, fall
-    // back to the first product-looking image on the page so the item lands
-    // with a photo instead of the placeholder (Liam, v2.531).
-    if (!images.length) {
-      const cand = collectImageUrls(html, finalUrl).filter(isProductImage);
-      if (cand.length) images = [{ url: cand[0], is_hero: true }];
+    // Image selection (generic): filter out logos/banners/placeholders; when the AI
+    // returned nothing usable, fall back to the page's product images. Then PREFER an
+    // image whose URL contains the product handle (the real per-product photo is almost
+    // always named/pathed by the slug, e.g. …/10-piece-modular-mirror-bar-silver.webp) —
+    // a universal signal that beats a generic reused placeholder. When nothing qualifies
+    // the item lands with NO image → the UI shows the "Image coming soon" tile (Liam:
+    // better a deliberate placeholder than a wrong/placeholder photo).
+    const handle = (String(finalUrl).split('?')[0].split('/').filter(Boolean).pop() || '').toLowerCase();
+    // "Clearly this product" = URL carries the product handle OR sits under a
+    // product-images path — a per-product photo, not a generic category banner.
+    const looksProduct = (u) => isProductImage(u)
+      && ((handle && u.toLowerCase().includes(handle)) || /\/product[-_]images/i.test(u));
+    // 1) AI-returned images are authoritative when present (filtered for placeholders).
+    let urls = (Array.isArray(p.images) ? p.images : [])
+      .map((u) => absolutize(u, finalUrl)).filter(Boolean).filter(isProductImage);
+    // 2) Fallback: only CLEARLY-this-product page images — never a generic banner/
+    //    placeholder. When none qualify the item lands with no image → the UI shows
+    //    the "Image coming soon" tile (better than a wrong photo; Liam 2026-10-12).
+    if (!urls.length) urls = collectImageUrls(html, finalUrl).filter(looksProduct);
+    if (handle) {
+      const hit = urls.find((u) => u.toLowerCase().includes(handle));
+      if (hit) urls = [hit, ...urls.filter((u) => u !== hit)];
     }
+    let images = urls.map((u, i) => ({ url: u, is_hero: i === 0 }));
 
     // Review mode: keep the lean vetting set only. attributes narrows to the
     // internal _source block (so re-run dedup still works); images to the hero;
