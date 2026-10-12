@@ -124,9 +124,8 @@ const WHATS_HOT = "What's Hot";
               <lucide-icon [name]="sectionOpen('details') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
             </button>
             @if (sectionOpen('details')) {
-              <!-- Location + Lead Time (moved here from Cost, Liam). -->
+              <!-- Lead Time (location_coverage dropped in 0015). -->
               <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <app-edit-field label="Location" density="page" [editing]="editing()" [value]="form().location_coverage" (valueChange)="patch({ location_coverage: $event })" placeholder="e.g. London &amp; South East" />
                 <app-edit-field label="Lead Time (days)" type="number" density="page" [editing]="editing()" [value]="form().lead_time_days" (valueChange)="patch({ lead_time_days: $event })" />
               </div>
               @if (editing()) {
@@ -764,21 +763,23 @@ export class ItemEditComponent {
       const install = item.install_cost != null ? Number(item.install_cost) : null;
       this.form.set({
         name: item.name ?? '',
+        // ONE category_id at any depth — preserved as-is; the cascade starts empty
+        // and a re-pick overrides it on save (buildBody: deepest wins).
         category_id: item.category_id ?? '',
-        subcategory_id: item.subcategory_id ?? '',
+        subcategory_id: '',
         unit: item.unit ?? '',
         serves: item.serves != null ? String(item.serves) : '',
         base_price: base != null ? String(base) : '',
         install_cost: install != null ? String(install) : '',
         install_unit: item.install_unit ?? '',
         install_description: item.install_description ?? '',
-        location_coverage: item.location_coverage ?? '',
+        location_coverage: '',
         lead_time_days: item.lead_time_days != null ? String(item.lead_time_days) : '',
         description: item.description ?? '',
         tier: item.tier ?? '',
         tags: Array.isArray(item.tags) ? [...item.tags] : [],
       });
-      await this.initCascade(item.category_id ?? '', item.subcategory_id ?? '');
+      await this.initCascade(item.category_id ?? '', '');
       this.imageUrl.set(item.image_url ?? null);
       this.images.set(item.images ?? []);
       // pV2-STORE-ITEM-MEASURE-VOLUME-01 — hydrate the attributes editors.
@@ -897,8 +898,9 @@ export class ItemEditComponent {
     const f = this.form();
     return {
       name: f.name.trim(),
-      category_id: f.category_id,
-      subcategory_id: f.subcategory_id || null,
+      // ONE home category at any depth (0015): the DEEPEST pick wins; when the
+      // cascade is untouched this falls back to the item's preserved category_id.
+      category_id: f.subcategory_id || f.category_id,
       unit: f.unit || null,
       serves: f.unit === 'platter' && f.serves !== '' ? Number(f.serves) : null,
       description: f.description.trim() || null,
@@ -906,7 +908,6 @@ export class ItemEditComponent {
       install_cost: f.install_cost === '' ? null : Number(f.install_cost),
       install_unit: f.install_unit || null,
       install_description: f.install_description.trim() || null,
-      location_coverage: f.location_coverage.trim() || null,
       lead_time_days: f.lead_time_days === '' ? null : Number(f.lead_time_days),
       tier: f.tier || null,
       tags: f.tags,

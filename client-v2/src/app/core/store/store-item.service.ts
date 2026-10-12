@@ -9,8 +9,10 @@ import { ComponentsResponse, ComponentInput, ComponentRow } from '../projects/pr
 export interface StoreItem {
   id: string;
   org_id: string;
+  /** ONE home category at any depth (0015 — no subcategory axis). */
   category_id: string;
-  subcategory_id: string | null;
+  /** Legacy — the axis was dropped; kept optional for back-compat reads. */
+  subcategory_id?: string | null;
   name: string;
   description: string | null;
   base_price: number | string | null;
@@ -20,21 +22,28 @@ export interface StoreItem {
   install_description: string | null;
   /** How install_cost applies: per_order | per_item | percentage (null = per_item). */
   install_unit: string | null;
-  /** Free-text location coverage. */
-  location_coverage: string | null;
+  /** Legacy free-text coverage — dropped in 0015; optional for back-compat. */
+  location_coverage?: string | null;
   /** ISO-4217 — defaults to the supplier's org currency. */
   currency: string | null;
   unit: string | null;
   /** v0.2.0 unit-driven: platter pack size (how many guests one unit serves). */
   serves: number | null;
   lead_time_days: number | null;
+  /** Derived hero (image_url column dropped — server computes from images[hero]). */
   image_url: string | null;
   images: GalleryImage[];
   tags: string[];
+  /** Extract identity (sku/product_id dedup; pairs with attributes._source). */
+  external_url?: string | null;
   /** Item quality/merchandising tier (item_tier codelist code) — nullable. */
   tier: string | null;
+  /** item type (variant/addon/component) — dormant; null for a normal item. */
+  type?: string | null;
   approval_status: string;
-  is_active: boolean;
+  /** Visibility lifecycle — new/active/retired (0015). isActive = status==='active'. */
+  status?: string;
+  is_active?: boolean;
   created_at?: string;
   updated_at?: string;
   // pV2-STORE-ITEM-INDEX-VIEW-01 — read-only classification (getById returns

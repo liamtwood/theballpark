@@ -37,22 +37,23 @@ export interface CatalogueItem {
    *  marketplace list projection carries it. */
   attributes?: Record<string, unknown> | null;
   categoryId: string;
-  subcategoryId: string | null;
   supplierId: string;
   supplierName: string;
   /** Supplier's city — the item card's pin row (pV2-CARDS-01, image 2). */
   supplierCity: string | null;
-  /** Category display name — chip fallback when the item has no subcat. */
+  /** The item's category name — one home node at any depth (0015); this is the
+   *  card's tag chip. (`subcategory*` are legacy-optional — the axis was dropped;
+   *  the server no longer sends them, consumers fall back to categoryName.) */
   categoryName: string | null;
-  /** Subcategory display name — the item card's tag chip (QC: subcat, not
-   *  top-level cat — "Save the Date", not "Graphics & Signage"). */
-  subcategoryName: string | null;
+  subcategoryId?: string | null;
+  subcategoryName?: string | null;
   /** Server-derived ownership flag (MARKETPLACE.md model) — unlocks
    *  edit/delete affordances in later arcs. Never computed client-side. */
   ownedByActiveOrg: boolean;
-  /** pV2-STORE-01 — moderation surfacing: the approval_status code (for the
-   *  status pill) and the publish flag. Inactive items show a status pill. */
+  /** pV2-STORE-01 — moderation surfacing: the approval_status code (status pill).
+   *  `status` = new/active/retired (visibility); isActive = status==='active'. */
   approvalStatus: string;
+  status?: string;
   isActive: boolean;
 }
 
