@@ -1349,7 +1349,13 @@ async function startAnalyseJob(orgId, url) {
     [orgId, JSON.stringify(plan)],
   );
   const jobId = r.rows[0].id;
-  runAnalyseJob(jobId, orgId, plan.home).catch((e) => {
+  // Run under an admin GUC context (like the pull runner, startPull) so the DETACHED
+  // runner's catalogue_extract_job writes pass RLS. Without it they run context-less
+  // (web_app_user, no org GUC) → the policy (org_id = app_current_org() OR app_is_admin())
+  // matches 0 rows → every progress/result/'done' write silently no-ops and the job
+  // freezes at 'running' with no error. (The error-UPDATE below is context-less too, same
+  // as the pull path; a real throw's status write may not land — failStaleJobs ages it out.)
+  withAdminContext({ orgId, userId: null }, () => runAnalyseJob(jobId, orgId, plan.home)).catch((e) => {
     pool.query(`UPDATE catalogue_extract_job SET status='error', error=$2, updated_at=now() WHERE id=$1`, [jobId, String(e && e.message || e)]).catch(() => {});
   });
   return { jobId, kind: 'analyse', async: true };
