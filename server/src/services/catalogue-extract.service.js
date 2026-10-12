@@ -303,7 +303,7 @@ function routeAttributes(aiAttrs) {
 async function topLevelCategoryNames() {
   const r = await pool.query(
     `SELECT name FROM categories
-      WHERE namespace = 'catalogue' AND parent_id IS NULL AND deleted_at IS NULL
+      WHERE parent_id IS NULL AND deleted_at IS NULL
         AND name NOT LIKE 'rlstxn%' ORDER BY name`
   );
   return r.rows.map((x) => x.name);
@@ -314,7 +314,7 @@ async function topLevelCategoryNames() {
  *  Prefers an 'Other' catalogue category; null only if the taxonomy lacks one. */
 async function defaultCategoryId() {
   const r = await pool.query(
-    `SELECT id FROM categories WHERE namespace = 'catalogue' AND parent_id IS NULL
+    `SELECT id FROM categories WHERE parent_id IS NULL
        AND deleted_at IS NULL AND lower(name) = 'other' LIMIT 1`
   );
   return r.rows[0]?.id || null;
@@ -327,13 +327,13 @@ async function matchCategoryId(name) {
   if (!name || !String(name).trim()) return null;
   const q = String(name).trim();
   const top = await pool.query(
-    `SELECT id FROM categories WHERE namespace = 'catalogue' AND parent_id IS NULL
+    `SELECT id FROM categories WHERE parent_id IS NULL
        AND deleted_at IS NULL AND lower(name) = lower($1) LIMIT 1`,
     [q]
   );
   if (top.rows[0]) return top.rows[0].id;
   const child = await pool.query(
-    `SELECT parent_id FROM categories WHERE namespace = 'catalogue' AND parent_id IS NOT NULL
+    `SELECT parent_id FROM categories WHERE parent_id IS NOT NULL
        AND deleted_at IS NULL AND lower(name) = lower($1) AND parent_id IS NOT NULL LIMIT 1`,
     [q]
   );
@@ -347,7 +347,7 @@ async function marketplaceCategoryTree() {
   const r = await pool.query(
     `SELECT id, name, parent_id, NULLIF(TRIM(COALESCE(description,'')),'') AS description
        FROM categories
-      WHERE namespace = 'catalogue' AND deleted_at IS NULL AND name NOT LIKE 'rlstxn%'
+      WHERE deleted_at IS NULL AND name NOT LIKE 'rlstxn%'
       ORDER BY sort_order ASC, name ASC`
   );
   const tops = r.rows.filter((c) => !c.parent_id);
@@ -515,10 +515,15 @@ async function resolveMappingRow(row, cache) {
           subcategoryId = parentId;
         } else {
           didCreate = true;
+          // v2dev streamlined categories: org_id = Ballpark root (shared taxonomy),
+          // status enum (not is_active/enabled), no namespace/model, level derived (the
+          // cap above uses it but it is NOT stored). created/updated_by from the GUC
+          // (the runner's withAdminContext sets it). RLS admin branch permits the insert.
           const ins = await pool.query(
-            `INSERT INTO categories (name, parent_id, namespace, model, level, is_active, enabled, sort_order)
-               VALUES ($1, $2, 'catalogue', 'A', $3, false, true, 999) RETURNING id`,
-            [row.subcategoryName, parentId, level]);
+            `INSERT INTO categories (name, parent_id, org_id, status, sort_order, created_by, updated_by)
+               VALUES ($1, $2, '00000000-0000-0000-0000-000000000001', 'active', 999,
+                       app_current_user_id(), app_current_user_id()) RETURNING id`,
+            [row.subcategoryName, parentId]);
           subcategoryId = ins.rows[0].id;
         }
       }
