@@ -32,34 +32,12 @@ router.get('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/', async (req, res, next) => {
-  try { res.status(201).json(await ItemService.create(req.body)); } catch (err) { next(err); }
-});
-
-// v1.68b — duplicate an item (row + gallery + taxonomy tags). The copy lands
-// is_active=false (hidden) so the owner reviews before publishing.
-router.post('/:id/duplicate', async (req, res, next) => {
-  try {
-    const item = await ItemService.duplicate(req.params.id);
-    if (!item) return res.status(404).json({ error: 'Not found' });
-    res.status(201).json(item);
-  } catch (err) { next(err); }
-});
-
-router.put('/:id', async (req, res, next) => {
-  try {
-    const item = await ItemService.update(req.params.id, req.body);
-    if (!item) return res.status(404).json({ error: 'Not found' });
-    res.json(item);
-  } catch (err) { next(err); }
-});
-
-router.delete('/:id', async (req, res, next) => {
-  try {
-    const item = await ItemService.softDelete(req.params.id);
-    if (!item) return res.status(404).json({ error: 'Not found' });
-    res.json(item);
-  } catch (err) { next(err); }
-});
+// WRITE routes RETIRED (audit H1, 2026-10-12). This v1 legacy surface called
+// ItemService.create/update/duplicate/softDelete DIRECTLY — no Zod, no item.create
+// permission, no createForOrg/applyEdit policy — and create() defaulted
+// approval_status='approved', so an authenticated supplier could POST /api/items to
+// self-approve an item in their own org, bypassing the ballpark-admin moderation gate
+// (FR-00215). The v2 write surface is /api/store/items (owner) + /api/admin/items
+// (moderation). Reads above stay for any v1 consumer until the full v1 retirement.
 
 module.exports = router;

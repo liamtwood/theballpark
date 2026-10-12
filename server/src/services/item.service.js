@@ -160,7 +160,7 @@ async function create(data) {
      image_display || 'cover',
      derived_from_id || null, parent_item_id || null, attributes || {},
      JSON.stringify(images || []),
-     approval_status ?? 'approved', status ?? 'new',
+     approval_status ?? 'draft', status ?? 'new',
      install_description ?? null, install_unit ?? null, type ?? null, external_url ?? null,
      currency ?? null]
   );

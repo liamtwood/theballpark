@@ -7,9 +7,11 @@
  * FAILS if app_is_admin() is ever put back into the orgs/items UPDATE policy (a/b
  * would then update rows). Run: NODE_PATH=<main>/node_modules node <thisfile>
  *
- * TWO-STAGE (per DATA-MODEL-REDESIGN): this asserts UPDATE-denied now; the
- * INSERT-denied assertion (marked TODO below) lands in the items-rebuild slice when
- * the INSERT escape closes + extract switches to current-org.
+ * FULLY CLOSED (items slice, 0015/0017): UPDATE-denied (a/b), INSERT-denied (e),
+ * self-grant denied (d), moderation scoped to approval_status (c allowed; f — a
+ * cross-org name change under svc_moderate — DENIED by the column-guard trigger).
+ * The drift-guard now watches INSERT too: FAILS if app_is_admin() is ever put back
+ * into the items UPDATE *or* INSERT policy.
  */
 const fs = require('fs');
 const path = require('path');
@@ -21,7 +23,7 @@ if (!DATABASE_URL) { console.error('No DATABASE_URL in', envPath); process.exit(
 
 const BALLPARK = '00000000-0000-0000-0000-000000000001'; // the admin's own (current) org
 const ADMIN    = '00000000-0000-0000-0000-000000000000'; // System admin — member of Ballpark only
-const YAHIRE   = 'deadd8bc-9ab1-464e-9524-004505492b01'; // a supplier the admin has NO seat in
+const YAHIRE   = 'c5ad93e1-f391-4caa-8e22-dc985a5ead51'; // a supplier the admin has NO seat in (has items)
 
 (async () => {
   const c = new Client({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
@@ -49,17 +51,42 @@ const YAHIRE   = 'deadd8bc-9ab1-464e-9524-004505492b01'; // a supplier the admin
     ok('c  moderation (svc_moderate) UPDATE approval = ALLOWED', r.rows[0].n > 0, `rows=${r.rows[0].n}, expect >0`);
     await c.query("SELECT set_config('app.svc_moderate','f',false)");
 
+    // A probe that EXPECTS a rejection aborts the txn — run each inside a savepoint so
+    // the catch can ROLLBACK TO it and the suite continues. Returns true when DENIED.
+    const deniedProbe = async (sql, params) => {
+      await c.query('SAVEPOINT sp');
+      try {
+        const rr = await c.query(sql, params);
+        // No throw → check it actually wrote nothing (RLS can filter to 0 rows w/o error).
+        const n = rr.rows && rr.rows[0] && 'n' in rr.rows[0] ? rr.rows[0].n : rr.rowCount;
+        await c.query('RELEASE SAVEPOINT sp');
+        return n === 0;
+      } catch (_e) {
+        await c.query('ROLLBACK TO SAVEPOINT sp');
+        return true; // RLS WITH CHECK / trigger rejection
+      }
+    };
+
     // (d) self-grant: a non-admin user inserting their own membership = DENIED
     await c.query("SELECT set_config('app.is_admin','f',false)");
-    let denied = false;
-    try {
-      r = await c.query("INSERT INTO user_orgs(user_id,org_id,role,status,created_by) VALUES ($1,$2,'owner','active',$1) RETURNING 1", [ADMIN, YAHIRE]);
-      denied = r.rowCount === 0;
-    } catch (_e) { denied = true; } // RLS WITH CHECK rejection
-    ok('d  non-admin self-grant membership = DENIED', denied);
+    ok('d  non-admin self-grant membership = DENIED',
+      await deniedProbe("INSERT INTO user_orgs(user_id,org_id,role,status,created_by) VALUES ($1,$2,'owner','active',$1) RETURNING 1", [ADMIN, YAHIRE]));
 
-    // TODO(items-slice): e  non-member admin INSERT supplier item = DENIED
-    //   (INSERT escape is intentionally OPEN this slice — assert once it closes.)
+    // (e) non-member admin INSERT supplier item = DENIED (FR-00215 INSERT close, 0015).
+    // items_insert WITH CHECK is org_id = app_current_org() with NO admin escape, so an
+    // admin acting as Ballpark cannot mint a row in Yahire. Drift-guard: this FAILS if
+    // app_is_admin() is ever re-added to the items INSERT policy.
+    await c.query("SELECT set_config('app.is_admin','t',false), set_config('app.svc_moderate','f',false)");
+    ok('e  non-member admin INSERT supplier item = DENIED',
+      await deniedProbe("INSERT INTO items(org_id,name,status,approval_status) VALUES($1,'rls-insert-probe','new','approved') RETURNING 1", [YAHIRE]));
+
+    // (f) moderation is COLUMN-scoped: under svc_moderate only approval_status (+ deleted_at)
+    // may change on a cross-org item — a name change is DENIED by the items_svc_moderate_guard
+    // trigger (0017). Proves the svc_moderate escape can't be used to edit another org's content.
+    await c.query("SELECT set_config('app.is_admin','f',false), set_config('app.svc_moderate','t',false)");
+    ok('f  svc_moderate name change cross-org = DENIED (column-guard)',
+      await deniedProbe("WITH u AS (UPDATE items SET name = name || ' x' WHERE org_id=$1 AND deleted_at IS NULL RETURNING 1) SELECT count(*)::int n FROM u", [YAHIRE]));
+    await c.query("SELECT set_config('app.svc_moderate','f',false)");
   } finally {
     await c.query('ROLLBACK').catch(() => {});
     await c.end();

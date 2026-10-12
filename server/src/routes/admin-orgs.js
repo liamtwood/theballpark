@@ -190,11 +190,14 @@ router.patch('/:orgId/items/:itemId/active', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// DELETE /api/admin/orgs/:orgId/items/:itemId — soft delete.
+// DELETE /api/admin/orgs/:orgId/items/:itemId — soft delete (moderation takedown).
+// Cross-org: the admin holds no seat in the item's org, so the soft-delete UPDATE
+// (deleted_at) runs under the scoped app.svc_moderate escape — items_update + the
+// column guard permit deleted_at under moderation. Without this it silently no-ops.
 router.delete('/:orgId/items/:itemId', async (req, res, next) => {
   try {
     if (!(await orgItemOr(res, req.params.itemId, req.params.orgId))) return;
-    await ItemService.softDelete(req.params.itemId);
+    await withModeration(() => ItemService.softDelete(req.params.itemId));
     res.status(204).end();
   } catch (err) { next(err); }
 });
