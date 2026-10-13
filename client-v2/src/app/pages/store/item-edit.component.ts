@@ -889,9 +889,13 @@ export class ItemEditComponent {
     this.promoteHero(img);
     this.scheduleSave();
   }
-  /** Gallery images changed — persist (save-on-blur). */
+  /** Gallery images changed (add / remove / drag-reorder) — persist. The item
+   *  cover is the FIRST image (0015): keep is_hero + the Main Image banner synced
+   *  to position 0, so dragging an image to the front makes it the cover. */
   protected onImagesChange(imgs: GalleryImage[]): void {
-    this.images.set(imgs);
+    const next = imgs.map((img, idx) => ({ ...img, is_hero: idx === 0 }));
+    this.images.set(next);
+    this.imageUrl.set(next[0]?.url ?? null);
     this.scheduleSave();
   }
 

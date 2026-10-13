@@ -10,7 +10,6 @@ import {
 import {
   CdkDrag,
   CdkDragDrop,
-  CdkDragHandle,
   CdkDropList,
   moveItemInArray,
 } from '@angular/cdk/drag-drop';
@@ -35,7 +34,7 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
   selector: 'app-image-gallery',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
-  imports: [CdkDropList, CdkDrag, CdkDragHandle, LucideAngularModule, DrawerComponent, ImagePickerComponent],
+  imports: [CdkDropList, CdkDrag, LucideAngularModule, DrawerComponent, ImagePickerComponent],
   template: `
     <div
       class="grid"
@@ -45,7 +44,7 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
       (cdkDropListDropped)="onDrop($event)"
     >
       @for (img of slots(); track img.url; let i = $index) {
-        <div class="tile" [style.aspect-ratio]="tileAspect()" cdkDrag [cdkDragDisabled]="!editable()">
+        <div class="tile" [class.tile--draggable]="editable()" [style.aspect-ratio]="tileAspect()" cdkDrag [cdkDragDisabled]="!editable()">
           <img
             class="thumb"
             [src]="img.url"
@@ -57,9 +56,6 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
           }
           @if (editable()) {
           <div class="actions">
-            <button type="button" class="act" cdkDragHandle aria-label="Drag to reorder" title="Drag to reorder">
-              <lucide-icon name="grip-vertical" [size]="15" />
-            </button>
             <button
               type="button"
               class="act"
@@ -117,6 +113,9 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
       border: 1px solid var(--color-border-hairline);
       background: var(--color-surface);
     }
+    /* Whole tile is the drag source (grab the image — no separate handle). */
+    .tile--draggable { cursor: grab; }
+    .tile--draggable:active { cursor: grabbing; }
     .thumb {
       width: 100%;
       height: 100%;
