@@ -393,17 +393,21 @@ const WHATS_HOT = "What's Hot";
     </div>
 
     <app-drawer [(open)]="imageDrawer" title="Main image">
-      <app-image-picker
-        entityType="item"
-        [enabledTabs]="imageTabs"
-        [focalStep]="false"
-        [searchSeed]="form().name"
-        [currentImageUrl]="imageUrl()"
-        previewAspect="4/3"
-        (chosen)="onPickImage($event)"
-        (removed)="onRemoveImage()"
-        (cancelled)="imageDrawer.set(false)"
-      />
+      <!-- Mount a fresh picker per open (projected content survives drawer close
+           otherwise, so it would reopen on its last stage/pick). -->
+      @if (imageDrawer()) {
+        <app-image-picker
+          entityType="item"
+          [enabledTabs]="imageTabs"
+          [focalStep]="false"
+          [searchSeed]="form().name"
+          [currentImageUrl]="imageUrl()"
+          previewAspect="4/3"
+          (chosen)="onPickImage($event)"
+          (removed)="onRemoveImage()"
+          (cancelled)="imageDrawer.set(false)"
+        />
+      }
     </app-drawer>
 
     <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — Volume pricing add/edit (Ballpark dialog,

@@ -87,14 +87,20 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
     </div>
 
     <app-drawer [(open)]="pickerOpen" title="Add to gallery">
-      <app-image-picker
-        [entityType]="entityType()"
-        [enabledTabs]="photoTabs"
-        [searchSeed]="searchSeed()"
-        previewAspect="4/3"
-        (chosen)="onPick($event)"
-        (cancelled)="pickerOpen.set(false)"
-      />
+      <!-- Render only while open so each open mounts a FRESH picker — the picker
+           is projected content (lives in THIS view, not p-drawer's), so without
+           this guard it retains its last stage/pending image across opens and
+           reopens showing the previous pick instead of the My File / Find tabs. -->
+      @if (pickerOpen()) {
+        <app-image-picker
+          [entityType]="entityType()"
+          [enabledTabs]="photoTabs"
+          [searchSeed]="searchSeed()"
+          previewAspect="4/3"
+          (chosen)="onPick($event)"
+          (cancelled)="pickerOpen.set(false)"
+        />
+      }
     </app-drawer>
   `,
   styles: `
