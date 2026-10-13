@@ -368,6 +368,7 @@ const WHATS_HOT = "What's Hot";
                   entityType="item"
                   [images]="images()"
                   [primaryUrl]="imageUrl()"
+                  [showSetCover]="false"
                   [searchSeed]="form().name"
                   [editable]="canEditPhotos()"
                   [columns]="4"

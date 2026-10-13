@@ -56,16 +56,18 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
           }
           @if (editable()) {
           <div class="actions">
-            <button
-              type="button"
-              class="act"
-              [disabled]="isPrimary(img)"
-              (click)="makePrimary(img)"
-              aria-label="Set as cover"
-              title="Set as cover"
-            >
-              <lucide-icon name="star" [size]="15" />
-            </button>
+            @if (showSetCover()) {
+              <button
+                type="button"
+                class="act"
+                [disabled]="isPrimary(img)"
+                (click)="makePrimary(img)"
+                aria-label="Set as cover"
+                title="Set as cover"
+              >
+                <lucide-icon name="star" [size]="15" />
+              </button>
+            }
             <button type="button" class="act" (click)="remove(i)" aria-label="Remove image" title="Remove">
               <lucide-icon name="trash-2" [size]="15" />
             </button>
@@ -204,6 +206,10 @@ export class ImageGalleryComponent {
   readonly editable = input<boolean>(true);
   /** Tile shape (CSS aspect-ratio). Default 4/3; item edit uses '1 / 1' squares. */
   readonly tileAspect = input<string>('4 / 3');
+  /** Show the "set as cover" (★) action. Default true (project/supplier/profile
+   *  galleries whose cover is a stored column independent of order). Items set
+   *  this false — their cover is simply the first image, chosen by drag. */
+  readonly showSetCover = input<boolean>(true);
   /** Fixed column count. 0 = responsive auto-fill (default); >0 = exactly N cols
    *  (item edit uses 2 for a 2-up square grid). */
   readonly columns = input<number>(0);
