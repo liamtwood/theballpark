@@ -672,32 +672,34 @@ export class ItemEditComponent {
       return kids.map((c) => ({ label: c.name, value: c.id }));
     } catch { return []; }
   }
-  /** Seed the cascade from a saved classification: fill L2 options for the category,
-   *  pre-select L2 (+ load its L3 options) only when subId is a DIRECT child — a
-   *  deeper saved value is preserved on the form and shown in the "Currently" line. */
-  private async initCascade(categoryId: string, subId: string): Promise<void> {
+  /** Rebuild the Category ▸ Subcategory ▸ Sub-subcategory cascade from the single
+   *  saved category_id at any depth (0015). Fetches the node's ancestor path
+   *  (root→leaf) and sets the top Category + each cascade level so the saved
+   *  classification shows on reopen — without this a deep node loaded BLANK because
+   *  the top dropdown only lists top-level nodes (a sub-level id matched nothing).
+   *  form.category_id = top-level ancestor; form.subcategory_id = the deepest node. */
+  private async initCascadeFromLeaf(leafId: string): Promise<void> {
     this.subL2.set(''); this.subL3.set(''); this.subL2Options.set([]); this.subL3Options.set([]);
-    if (!categoryId) return;
-    const l2 = await this.childOptions(categoryId);
-    this.subL2Options.set(l2);
-    if (!subId) return;
-    // Direct child (L2 leaf): select it, load its children for the L3 dropdown.
-    if (l2.some((o) => o.value === subId)) {
-      this.subL2.set(subId);
-      this.subL3Options.set(await this.childOptions(subId));
+    if (!leafId) { this.patch({ category_id: '', subcategory_id: '' }); return; }
+    let path: CategoryInfo[] = [];
+    try {
+      path = await firstValueFrom(this.api.get<CategoryInfo[]>(`/api/marketplace/categories/${leafId}/path`));
+    } catch { path = []; }
+    if (!path.length) {
+      // Path unavailable → treat the saved id as a top-level pick (best effort).
+      this.patch({ category_id: leafId, subcategory_id: '' });
+      this.subL2Options.set(await this.childOptions(leafId));
       return;
     }
-    // A 3rd-level (L3) saved value: find its parent among the L2 children so both
-    // dropdowns reflect the saved classification on reopen (else it looks unsaved).
-    for (const node of l2) {
-      const kids = await this.childOptions(node.value);
-      if (kids.some((k) => k.value === subId)) {
-        this.subL2.set(node.value);
-        this.subL3Options.set(kids);
-        this.subL3.set(subId);
-        return;
-      }
+    const top = path[0];
+    const leaf = path[path.length - 1];
+    this.patch({ category_id: top.id, subcategory_id: path.length > 1 ? leaf.id : '' });
+    this.subL2Options.set(await this.childOptions(top.id));
+    if (path.length > 1) {
+      this.subL2.set(path[1].id);
+      this.subL3Options.set(await this.childOptions(path[1].id));
     }
+    if (path.length > 2) this.subL3.set(path[2].id);
   }
   /** Category changed (top field): reset the cascade + reload its subcategories. */
   protected async onCategory(categoryId: string): Promise<void> {
@@ -780,9 +782,9 @@ export class ItemEditComponent {
       const install = item.install_cost != null ? Number(item.install_cost) : null;
       this.form.set({
         name: item.name ?? '',
-        // ONE category_id at any depth — preserved as-is; the cascade starts empty
-        // and a re-pick overrides it on save (buildBody: deepest wins).
-        category_id: item.category_id ?? '',
+        // ONE category_id at any depth — the cascade is rebuilt from the saved node's
+        // ancestor path by initCascadeFromLeaf() below (which patches these two).
+        category_id: '',
         subcategory_id: '',
         unit: item.unit ?? '',
         serves: item.serves != null ? String(item.serves) : '',
@@ -796,7 +798,7 @@ export class ItemEditComponent {
         tier: item.tier ?? '',
         tags: Array.isArray(item.tags) ? [...item.tags] : [],
       });
-      await this.initCascade(item.category_id ?? '', '');
+      await this.initCascadeFromLeaf(item.category_id ?? '');
       this.imageUrl.set(item.image_url ?? null);
       this.images.set(item.images ?? []);
       // pV2-STORE-ITEM-MEASURE-VOLUME-01 — hydrate the attributes editors.

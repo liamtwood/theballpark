@@ -324,6 +324,30 @@ router.get('/categories/:id/subcategories', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+/** GET /api/marketplace/categories/:id/path — the ancestor chain ROOT→leaf for a
+ *  category node, as [{ id, name }] (top-level first). Lets the item editor rebuild
+ *  the Category ▸ Subcategory ▸ Sub-subcategory cascade from the single saved
+ *  category_id at any depth (0015) — without it a deep node loads blank. */
+router.get('/categories/:id/path', async (req, res, next) => {
+  try {
+    const id = z.uuid().safeParse(req.params.id);
+    if (!id.success) return res.status(400).json({ error: 'Invalid id' });
+    const r = await pool.query(
+      `WITH RECURSIVE up AS (
+         SELECT id, name, parent_id, 0 AS depth
+           FROM categories WHERE id = $1 AND deleted_at IS NULL
+         UNION ALL
+         SELECT c.id, c.name, c.parent_id, up.depth + 1
+           FROM categories c JOIN up ON c.id = up.parent_id
+          WHERE c.deleted_at IS NULL
+       )
+       SELECT id, name FROM up ORDER BY depth DESC`,
+      [id.data]
+    );
+    res.json(r.rows); // root → leaf
+  } catch (err) { next(err); }
+});
+
 // ── Items (pV2-06a) ─────────────────────────────────────────────────────────
 
 /** GET /api/marketplace/items?cat&sub&q&offset — the browse grid. Born
