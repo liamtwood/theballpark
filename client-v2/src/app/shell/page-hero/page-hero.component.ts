@@ -143,11 +143,14 @@ import { LucideAngularModule } from 'lucide-angular';
         text-align: left;
       }
       /* Block mode drops the grid, so sit the back in the SAME centred column as
-         the title (its arrow+label left edge lines up with the heading). */
+         the title and left-justify its content with the heading. Width is set
+         explicitly (not left to flex fill) so a global .bp-page-back display/width
+         can't shrink the box and let margin-inline:auto centre it. */
       :host(.bp-page-hero--align-block) .bp-page-hero__back {
         display: flex;
-        max-width: var(--workspace-max);
+        width: min(100%, var(--workspace-max));
         margin-inline: auto;
+        justify-content: flex-start;
         margin-bottom: 6px;
       }
       :host(.bp-page-hero--align-block) .bp-page-hero__actions {
