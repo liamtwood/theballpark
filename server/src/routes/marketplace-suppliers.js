@@ -162,9 +162,20 @@ router.get('/suppliers/:id', async (req, res, next) => {
       [id.data]
     );
     // pV2-STORE-WHATS-HOT-01 — "What's Hot" count drives the shopfront menu link.
-    // v2dev: items.tags was dropped (item tags = the parked junction sub-slice), so
-    // nothing is tagged → always 0. TODO: wire supplier_item_tag when it lands.
-    const hotCount = 0;
+    // v2dev: item tags live in item_tags → tags vocab (matched by name). Count the
+    // store's in-scope items linked to the "What's Hot" vocab tag (liveFilter keeps
+    // this == the item grid's scope for this viewer).
+    const hotR = await pool.query(
+      `SELECT COUNT(DISTINCT i.id)::int AS n
+         FROM items i
+         JOIN item_tags it ON it.item_id = i.id AND it.deleted_at IS NULL
+         JOIN tags t ON t.id = it.tag_id AND t.deleted_at IS NULL
+        WHERE i.org_id = $1 AND i.deleted_at IS NULL
+          AND i.type IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL ${liveFilter}
+          AND lower(t.name) = lower($2)`,
+      [id.data, "What's Hot"]
+    );
+    const hotCount = hotR.rows[0]?.n ?? 0;
     const row = r.rows[0];
     res.json({
       id: row.id,

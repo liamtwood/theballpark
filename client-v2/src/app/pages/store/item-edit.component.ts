@@ -274,8 +274,10 @@ const WHATS_HOT = "What's Hot";
                 }
               </div>
 
-              <!-- Tags (items.tags) — editable chips + a one-click What's Hot toggle
-                   (pV2-STORE-WHATS-HOT-01). The shopfront features "What's Hot" items. -->
+              <!-- Tags (item_tags → vocab) — v2dev supports ONE tag for now: a
+                   one-click What's Hot toggle (pV2-STORE-WHATS-HOT-01). The shopfront
+                   features "What's Hot" items. Free-text tags return with the full
+                   tags sub-slice. -->
               <div class="mt-4">
                 <div class="bp-field-label">Tags</div>
                 @if (editing()) {
@@ -283,22 +285,8 @@ const WHATS_HOT = "What's Hot";
                     [class.bp-btn-grad]="hasWhatsHot()" (click)="toggleWhatsHot()">
                     <lucide-icon name="flame" [size]="14" /> {{ hasWhatsHot() ? "What's Hot ✓" : "Mark What's Hot" }}
                   </button>
-                  @if (form().tags.length) {
-                    <div class="mt-2 flex flex-wrap gap-1.5">
-                      @for (t of form().tags; track t) {
-                        <span class="bp-tag-chip inline-flex items-center gap-1">{{ t }}
-                          <button type="button" class="text-muted hover:text-text" (click)="removeTag(t)" aria-label="Remove tag"><lucide-icon name="x" [size]="12" /></button>
-                        </span>
-                      }
-                    </div>
-                  }
-                  <input class="bp-input-field mt-2 w-full" placeholder="Add a tag and press Enter"
-                    [ngModel]="tagInput()" (ngModelChange)="tagInput.set($event)"
-                    (keydown.enter)="$event.preventDefault(); addTag(tagInput())" (blur)="addTag(tagInput())" />
-                } @else if (form().tags.length) {
-                  <div class="mt-1 flex flex-wrap gap-1.5">
-                    @for (t of form().tags; track t) { <span class="bp-tag-chip">{{ t }}</span> }
-                  </div>
+                } @else if (hasWhatsHot()) {
+                  <div class="mt-1"><span class="bp-tag-chip inline-flex items-center gap-1"><lucide-icon name="flame" [size]="12" /> What's Hot</span></div>
                 } @else {
                   <div class="bp-body-small text-muted">No tags</div>
                 }

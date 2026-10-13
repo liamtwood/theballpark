@@ -429,9 +429,15 @@ router.get('/items', async (req, res, next) => {
     if (tier) { vals.push(tier); where.push(`i.tier = $${vals.length}`); }
     if (supplier) { vals.push(supplier); where.push(`i.org_id = $${vals.length}`); }
     // pV2-STORE-WHATS-HOT-01 — tag filter (e.g. the shopfront "What's Hot" menu).
-    // v2dev: items.tags was dropped (item tags = the parked junction sub-slice), so
-    // no item is tagged → a tag filter matches nothing. TODO: wire supplier_item_tag.
-    if (tag) { where.push('false'); }
+    // v2dev: item tags live in the item_tags junction → tags vocab (matched by name,
+    // the client passes the tag label). An item matches when it has a live link to a
+    // vocab tag of that name.
+    if (tag) {
+      vals.push(tag);
+      where.push(`EXISTS (SELECT 1 FROM item_tags it JOIN tags t ON t.id = it.tag_id
+        WHERE it.item_id = i.id AND it.deleted_at IS NULL AND t.deleted_at IS NULL
+          AND lower(t.name) = lower($${vals.length}))`);
+    }
     if (q) {
       vals.push(`%${q.replace(/[%_\\]/g, '\\$&')}%`);
       where.push(`(i.name ILIKE $${vals.length} OR i.description ILIKE $${vals.length})`);

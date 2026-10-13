@@ -122,9 +122,59 @@ async function getById(id) {
   );
   const item = withHero(result.rows[0] || null);
   if (!item) return null;
-  // Structured tags return with the tags sub-slice; empty for now.
-  item.item_tags = [];
+  // Item tags (item_tags → tags vocab). `tags` is the name list the editor binds;
+  // `item_tags` carries id/dimension for richer display.
+  const tagRows = await pool.query(
+    `SELECT t.id AS tag_id, t.name, t.dimension
+       FROM public.item_tags it JOIN public.tags t ON t.id = it.tag_id
+      WHERE it.item_id = $1 AND it.deleted_at IS NULL AND t.deleted_at IS NULL
+      ORDER BY t.name`,
+    [id]
+  );
+  item.tags = tagRows.rows.map((r) => r.name);
+  item.item_tags = tagRows.rows.map((r) => ({ tag_id: r.tag_id, dimension: r.dimension, label: r.name }));
   return item;
+}
+
+/** Reconcile an item's tag links to the submitted tag NAMES. Tags are an
+ *  admin-curated vocabulary (suppliers can't create them — RLS), so each name is
+ *  resolved to an EXISTING vocab tag; unknown names are ignored. Missing links are
+ *  inserted (reviving a soft-deleted row), removed ones soft-deleted. Returns the
+ *  resolved tag names now on the item; `undefined` input leaves links untouched. */
+async function syncItemTags(itemId, tagNames) {
+  if (tagNames === undefined) return undefined;
+  const names = [...new Set((Array.isArray(tagNames) ? tagNames : [])
+    .map((s) => String(s).trim()).filter(Boolean))];
+  const vocab = names.length
+    ? (await pool.query(
+        `SELECT id, name FROM public.tags WHERE deleted_at IS NULL AND lower(name) = ANY($1)`,
+        [names.map((n) => n.toLowerCase())])).rows
+    : [];
+  const wantIds = vocab.map((v) => v.id);
+  const wantSet = new Set(wantIds);
+  const cur = (await pool.query(
+    `SELECT tag_id FROM public.item_tags WHERE item_id = $1 AND deleted_at IS NULL`,
+    [itemId])).rows.map((r) => r.tag_id);
+  const curSet = new Set(cur);
+  for (const tagId of wantIds) {
+    if (!curSet.has(tagId)) {
+      await pool.query(
+        `INSERT INTO public.item_tags (item_id, tag_id) VALUES ($1, $2)
+         ON CONFLICT (item_id, tag_id) DO UPDATE SET deleted_at = NULL`,
+        [itemId, tagId]
+      );
+    }
+  }
+  for (const tagId of cur) {
+    if (!wantSet.has(tagId)) {
+      await pool.query(
+        `UPDATE public.item_tags SET deleted_at = NOW()
+          WHERE item_id = $1 AND tag_id = $2 AND deleted_at IS NULL`,
+        [itemId, tagId]
+      );
+    }
+  }
+  return vocab.map((v) => v.name);
 }
 
 // Columns a create accepts. `size` is descriptive → lands in attributes, not a column.
@@ -390,6 +440,8 @@ async function createForOrg({ data, orgId, defaultStatus, skipClassify = false }
     approval_status: data.approval_status || defaultStatus,
     status: 'new',
   });
+  const tagNames = await syncItemTags(item.id, data.tags);
+  if (tagNames !== undefined) item.tags = tagNames;
   if (!skipClassify) {
     require('./taxonomy.service').classifyAndApply(item.id).catch((e) =>
       console.warn('[auto-classify] item', item.id, 'failed:', e.message)
@@ -402,18 +454,25 @@ async function createForOrg({ data, orgId, defaultStatus, skipClassify = false }
  *  LOCKED (no re-review, stays live). Non-approved: editing re-enters the
  *  draft/pending flow and the item goes offline (status='new') until re-approved. */
 async function applyEdit(existing, data, { defaultStatus }) {
+  let result;
   if (existing.approval_status === 'approved') {
     const fields = { ...data };
     delete fields.images;
     delete fields.approval_status;
     delete fields.status;
-    return update(existing.id, fields);
+    result = await update(existing.id, fields);
+  } else {
+    result = await update(existing.id, {
+      ...data,
+      approval_status: data.approval_status || defaultStatus,
+      status: 'new',
+    });
   }
-  return update(existing.id, {
-    ...data,
-    approval_status: data.approval_status || defaultStatus,
-    status: 'new',
-  });
+  // Tags are merchandising links, not an items column — synced here for both
+  // branches (a What's Hot toggle on an approved item stays live, no re-review).
+  const tagNames = await syncItemTags(existing.id, data.tags);
+  if (tagNames !== undefined && result) result.tags = tagNames;
+  return result;
 }
 
 module.exports = { getAll, getById, getTagsByCategory, countsByCategory, create, update, softDelete, duplicate, listComponents, saveComponents, listOptions, statusCountsForOrg, createForOrg, applyEdit };

@@ -59,6 +59,12 @@ create policy tags_write on public.tags for all
   using (public.app_is_admin()) with check (public.app_is_admin());   -- Ballpark curates the vocabulary
 grant select, insert, update, delete on public.tags to web_app_user;
 
+-- Seed the one merchandising tag v2dev supports today: "What's Hot" (the shopfront
+-- feature). Ballpark-owned (default org #1), global (category_id null). Idempotent.
+insert into public.tags (ref, name, dimension, status)
+select 'whats-hot', 'What''s Hot', 'merchandising', 'active'
+where not exists (select 1 from public.tags where lower(name) = 'what''s hot' and deleted_at is null);
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- items — rebuilt to the locked spec. Column order per COLUMN-STANDARDS:
 -- id · ref · name · description · status · type · org_id · [class/price/unit/media/attrs/lineage] · audit.
