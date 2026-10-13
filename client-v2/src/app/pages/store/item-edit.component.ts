@@ -716,9 +716,9 @@ export class ItemEditComponent {
   private readonly unitsRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/item_unit/values');
   protected readonly unitOptions = computed<EditFieldOption[]>(() => (this.unitsRes.value() ?? []).map((u) => ({ label: u.label, value: u.code })));
 
-  // pV2-STORE-WHATS-HOT-01 — item quality/merchandising tier (item_tier codelist:
+  // pV2-STORE-WHATS-HOT-01 — item quality/merchandising tier (tier codelist:
   // budget…luxury + bronze/silver/gold). '—' clears it (tier is optional).
-  private readonly tiersRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/item_tier/values');
+  private readonly tiersRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/tier/values');
   protected readonly tierOptions = computed<EditFieldOption[]>(() => [
     { label: '—', value: '' },
     ...(this.tiersRes.value() ?? []).map((t) => ({ label: t.label, value: t.code })),
