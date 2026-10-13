@@ -282,11 +282,14 @@ export class QuickViewDialogComponent {
   protected readonly chosenCombo = signal<{ values: Record<string, string>; price: number } | null>(null);
 
   // ── Cover carousel (pV2-STORE-IMAGE-VARIANTS-01) ──────────────────────────────
-  /** The item cover + each variant option's image, deduped — what the arrows page. */
+  /** The item's full gallery (cover first) + each variant option's image, deduped —
+   *  what the arrows page. Falls back to [coverUrl] when a projection didn't send
+   *  the gallery array. */
   protected readonly imageList = computed(() => {
-    const cover = this.item()?.coverUrl ?? null;
-    const m = normalizeVariants((this.item()?.attributes as Record<string, unknown> | null)?.['variants']);
-    const imgs = [cover, ...allVariantImages(m)].filter((u): u is string => !!u);
+    const it = this.item();
+    const gallery = it?.images?.length ? it.images : (it?.coverUrl ? [it.coverUrl] : []);
+    const m = normalizeVariants((it?.attributes as Record<string, unknown> | null)?.['variants']);
+    const imgs = [...gallery, ...allVariantImages(m)].filter((u): u is string => !!u);
     return [...new Set(imgs)];
   });
   protected readonly imgIndex = signal(0);

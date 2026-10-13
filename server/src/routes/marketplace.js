@@ -31,6 +31,16 @@ function heroUrl(images) {
   return pick && pick.url ? pick.url : null;
 }
 
+/** All image URLs in DISPLAY order (cover/hero first, then the rest), deduped —
+ *  feeds the Quick View carousel so it can page the whole gallery, not just the
+ *  cover. Empty array when there are none. */
+function imageUrls(images) {
+  if (!Array.isArray(images)) return [];
+  const hero = images.find((i) => i && i.is_hero);
+  const ordered = hero ? [hero, ...images.filter((i) => i !== hero)] : images;
+  return [...new Set(ordered.map((i) => i && i.url).filter(Boolean))];
+}
+
 /** Top-level catalogue categories + live item counts. Counts must match what
  *  the browse grid actually lists (active + APPROVED, top-level items only —
  *  no components/children), and must equal the sum of the subcategory counts
@@ -434,6 +444,8 @@ router.get('/items', async (req, res, next) => {
       basePrice: row.base_price === null ? null : Number(row.base_price),
       unit: row.unit,
       coverUrl: heroUrl(row.images),
+      // Full gallery in display order (cover first) — the Quick View carousel.
+      images: imageUrls(row.images),
       // pV2-STORE-ATTRIBUTE-GROUPS-01 — the grouped attributes power the quick-view
       // spec cards + variants picker (rendered from the already-loaded list row).
       attributes: row.attributes ?? null,

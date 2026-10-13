@@ -32,6 +32,10 @@ export interface CatalogueItem {
   basePrice: number | null;
   unit: string | null;
   coverUrl: string | null;
+  /** All gallery image URLs in display order (cover first) — powers the Quick
+   *  View carousel. Optional: only the marketplace list projection carries it;
+   *  consumers fall back to [coverUrl]. */
+  images?: string[];
   /** pV2-STORE-ATTRIBUTE-GROUPS-01 — the item's grouped attributes (groups +
    *  price_tiers + options), for the quick-view spec cards. Optional: only the
    *  marketplace list projection carries it. */
