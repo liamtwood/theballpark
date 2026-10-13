@@ -851,18 +851,38 @@ export class ItemEditComponent {
     this.volumeDraft.update((d) => d.map((r, x) => (x === i ? { ...r, [key]: val } : r)));
   }
 
+  /** Make `url` the cover: mark it is_hero, move it to the FRONT, and clear the
+   *  flag on the rest. images[] is the ONLY persisted store (0015 dropped the
+   *  image_url column — the cover rides as is_hero, else images[0], derived
+   *  server-side). A url not already in the gallery (picked via the Main Image
+   *  drawer) is prepended; focal/attribution are preserved when supplied. */
+  private promoteHero(img: Partial<GalleryImage> & { url: string }): void {
+    const rest = this.images().filter((i) => i.url !== img.url).map((i) => ({ ...i, is_hero: false }));
+    const existing = this.images().find((i) => i.url === img.url);
+    const hero: GalleryImage = existing
+      ? { ...existing, is_hero: true }
+      : { url: img.url, focalX: img.focalX ?? 50, focalY: img.focalY ?? 50, attribution: img.attribution, is_hero: true };
+    this.images.set([hero, ...rest]);
+    this.imageUrl.set(img.url);
+  }
+
   protected onPickImage(r: PickerResult): void {
-    if (r.type === 'image') this.imageUrl.set(r.url);
+    if (r.type === 'image') this.promoteHero(r);
     this.imageDrawer.set(false);
     this.scheduleSave();
   }
   protected onRemoveImage(): void {
-    this.imageUrl.set(null);
+    // Drop the current cover from the gallery; the next image (if any) becomes
+    // the cover (is_hero on the new first entry).
+    const url = this.imageUrl();
+    const rest = this.images().filter((i) => i.url !== url).map((i, idx) => ({ ...i, is_hero: idx === 0 }));
+    this.images.set(rest);
+    this.imageUrl.set(rest.length ? rest[0].url : null);
     this.imageDrawer.set(false);
     this.scheduleSave();
   }
   protected onSetPrimary(img: GalleryImage): void {
-    this.imageUrl.set(img.url);
+    this.promoteHero(img);
     this.scheduleSave();
   }
   /** Gallery images changed — persist (save-on-blur). */
