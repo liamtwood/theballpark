@@ -372,7 +372,7 @@ const WHATS_HOT = "What's Hot";
                   [editable]="canEditPhotos()"
                   [columns]="4"
                   [tileAspect]="'1 / 1'"
-                  [maxSlots]="4"
+                  [maxSlots]="maxImages()"
                   (imagesChange)="onImagesChange($event)"
                   (primarySet)="onSetPrimary($event)"
                 />
@@ -722,6 +722,16 @@ export class ItemEditComponent {
     { label: '—', value: '' },
     ...(this.tiersRes.value() ?? []).map((t) => ({ label: t.label, value: t.code })),
   ]);
+
+  /** Max gallery images per item (incl. the cover) — admin-editable via the
+   *  item_media_limits reference codelist (value code='max_images'; its label is
+   *  the number). Clamped to the server contract (≤20); falls back to 8. The
+   *  gallery reveals rows of 4, so 8 = two lines. */
+  private readonly mediaLimitsRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/item_media_limits/values');
+  protected readonly maxImages = computed<number>(() => {
+    const n = parseInt((this.mediaLimitsRes.value() ?? []).find((v) => v.code === 'max_images')?.label ?? '', 10);
+    return Number.isFinite(n) && n > 0 ? Math.min(n, 20) : 8;
+  });
 
   /** Free-text tag editor state (items.tags). The "What's Hot" quick toggle + the
    *  add-input write here; save persists via buildBody. */

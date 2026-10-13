@@ -486,3 +486,12 @@ insert into public.reference_codelist_values (codelist_id, code, label, symbol, 
   ((select id from public.reference_codelists where name='install_unit'), 'per_hour', 'Per hour', null, 2, true),
   ((select id from public.reference_codelists where name='install_unit'), 'per_day', 'Per day', null, 3, true);
 
+-- item_media_limits (ballpark, family=media) — scalar config list: one value per
+-- limit, the NUMBER lives in `label` so an admin edits it in /settings/codelists
+-- (label is editable for ballpark lists; code/meta are not). max_images = the max
+-- gallery images per item INCLUDING the cover; the item editor reads this (clamped
+-- ≤20, fallback 8) and the gallery shows rows of 4 → 8 = two lines.
+insert into public.reference_codelists (name, type, family, default_code) values ('item_media_limits', 'ballpark', 'media', 'max_images');
+insert into public.reference_codelist_values (codelist_id, code, label, symbol, sort_order, is_active) values
+  ((select id from public.reference_codelists where name='item_media_limits'), 'max_images', '8', null, 0, true);
+

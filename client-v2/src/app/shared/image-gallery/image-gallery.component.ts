@@ -223,9 +223,19 @@ export class ImageGalleryComponent {
    *  column) so the primitive never crashes the host view. */
   protected readonly slots = linkedSignal(() => this.images() ?? []);
 
-  protected readonly emptySlots = computed(() =>
-    Array.from({ length: Math.max(0, this.maxSlots() - this.slots().length) })
-  );
+  /** Empty "+" slots. With a fixed column count (e.g. item edit = 4), reveal the
+   *  grid one ROW at a time: show only enough empties to finish the current row,
+   *  and open the next row once this one fills — so a 2nd line appears only after
+   *  the 4th image, never 8 empty tiles upfront. Responsive galleries (columns=0)
+   *  fill straight to maxSlots as before. */
+  protected readonly emptySlots = computed(() => {
+    const filled = this.slots().length;
+    const max = this.maxSlots();
+    if (filled >= max) return [];
+    const cols = this.columns();
+    const target = cols > 0 ? Math.min(max, Math.ceil((filled + 1) / cols) * cols) : max;
+    return Array.from({ length: Math.max(0, target - filled) });
+  });
 
   /** Grid columns: fixed N when `columns` > 0, else responsive auto-fill. */
   protected readonly gridCols = computed(() =>
