@@ -68,7 +68,7 @@ const WHATS_HOT = "What's Hot";
     <!-- align="block" + bp-page-body--workspace put the hero, the section header,
          and the form on the SAME --workspace-max column / left edge (project_workspace
          _layout_reference); the old max-w-4xl body used a different width → misaligned. -->
-    <app-page-hero align="block" [back]="heroBack()" [title]="heroTitle()" [subtitle]="heroSubtitle()" />
+    <app-page-hero align="block" [showBack]="true" [back]="heroBack()" [title]="heroTitle()" [subtitle]="heroSubtitle()" />
 
     <div class="bp-page-body bp-page-body--workspace">
       @if (loading()) {
@@ -626,12 +626,14 @@ export class ItemEditComponent {
     : this.isEdit ? 'Update your product details.'
     : 'Add a product to your store.'
   );
-  /** Moderators + viewers came from the marketplace; suppliers from their store. */
-  protected readonly heroBack = computed(() =>
-    this.isModerator() || this.isViewer()
-      ? { label: 'Back to marketplace', href: '/marketplace' }
-      : { label: 'Back to store', href: '/store' }
-  );
+  /** Standard back: reads "Back" + sticky history-back (returns to wherever they
+   *  came from), with a sensible fallback href when there's no history to pop —
+   *  marketplace for moderators/viewers, the store for suppliers. */
+  protected readonly heroBack = computed(() => ({
+    label: 'Back',
+    href: this.isModerator() || this.isViewer() ? '/marketplace' : '/store',
+    history: true,
+  }));
 
   /** Currency suffix for the cost labels — the item's currency (defaults to the
    *  supplier's org currency server-side; GBP until a saved value loads). */

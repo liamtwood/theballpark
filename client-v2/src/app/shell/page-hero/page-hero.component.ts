@@ -22,7 +22,7 @@ import { LucideAngularModule } from 'lucide-angular';
     '[class.bp-page-hero--dense]': 'dense()',
   },
   template: `
-    @if (showBack && back(); as b) {
+    @if (showBack() && back(); as b) {
       @if (b.history) {
         <!-- History-back: returns to the exact previous URL + its state
              (e.g. the project supplier fan-out with its category selected),
@@ -142,6 +142,14 @@ import { LucideAngularModule } from 'lucide-angular';
         margin-inline: auto;
         text-align: left;
       }
+      /* Block mode drops the grid, so sit the back in the SAME centred column as
+         the title (its arrow+label left edge lines up with the heading). */
+      :host(.bp-page-hero--align-block) .bp-page-hero__back {
+        display: flex;
+        max-width: var(--workspace-max);
+        margin-inline: auto;
+        margin-bottom: 6px;
+      }
       :host(.bp-page-hero--align-block) .bp-page-hero__actions {
         position: absolute;
         top: 28px;
@@ -217,10 +225,10 @@ export class PageHeroComponent {
    *  page + its URL state) instead of routing to `href`. */
   readonly back = input<{ label: string; href: string; history?: boolean } | null>(null);
 
-  /** Global kill-switch: back links are hidden across every page for now
-   *  (Liam, 2026-09-09 — "get rid of the back buttons across the board").
-   *  Flip to true to restore per-route back links. */
-  protected readonly showBack: boolean = false;
+  /** Per-page opt-in for the back link. Default false keeps back links OFF across
+   *  the board (Liam, 2026-09-09 — "get rid of the back buttons across the board");
+   *  a page that wants one passes [showBack]="true" (e.g. the item editor). */
+  readonly showBack = input<boolean>(false);
 
   /** History-aware back: pop to the previous entry when one exists, else
    *  route to the supplied fallback. */
