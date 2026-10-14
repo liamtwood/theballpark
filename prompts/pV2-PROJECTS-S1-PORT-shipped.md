@@ -154,6 +154,33 @@ Commit `7f8a0898`.
 Verified: schema test green (5/5); backend reboots clean; client recompiles clean; `project_type`
 labels resolve. Net: eyebrow shows the client ("MONZO"), configurable in /settings/pages.
 
+## Iteration — v2.755 / v2.756 (2026-10-14) — re-QC bugs + project nav
+**Bug 1 (event type not a dropdown)** — `2047df8a` (v2.755). A draft's tabs are only
+Ballpark Cost + Marketplace (Details hidden), so the field Liam saw is in
+`event-details-edit.component` (mounted on the Ballpark Cost tab), which rendered Event type as a
+free-text input. Converted it to an `app-select` on the `project_type` codelist (leading blank
+clears to null). NB the parent later found Liam's original flag was a stale pre-v2.754 bundle — but
+the Ballpark-tab field genuinely WAS free text, so this fix is a real consistency improvement
+(kept, not reverted).
+
+**Bug 2 (project marketplace shows 0 items)** — ROOT-CAUSED, **not applied** (flagged to the
+parent — it's an acquisition-grade `orgs` RLS change outside the projects slice, owned by the
+addresses-slice session, and it affects the GLOBAL marketplace too). Cause: the marketplace items
+query `JOIN orgs_public` (for supplier name/city); `orgs_public` is `security_invoker=true`, and
+`orgs_select` RLS is own-org only (`id = app_current_org() OR app_is_admin()`) — no public/supplier
+read path. So an agent reading the "public" view sees only their own org → the inner join drops
+every other supplier's items → 0. Proposed one-clause fix on `orgs_select`:
+`OR (type = 'supplier' AND status = 'active' AND deleted_at IS NULL)`. Awaiting the parent's
+decision on who applies it.
+
+**Project nav — compact 2-way dark-pill switch** — `b756cf34` (v2.756). Replaced the full-width
+tab band with a centered dark-pill switch: **Ballpark cost · Edit in marketplace** (dark track =
+fixed `--color-text`; selected = white check + label at full opacity, unselected muted; tokens
+only). Ballpark cost → the `final`/estimate view (event Details fold in via `event-details-edit`);
+Edit in marketplace → the catalogue browse. Inbox (S3) / Final-SOW (S4) / Reports / standalone
+Details deferred from the nav (their `@case` bodies + routes stay, deep-linkable). Default =
+Ballpark cost. Removed the unused `TabBand` import + `tabs()` computed.
+
 ## QC notes
 (Liam fills this in)
 
