@@ -57,10 +57,6 @@ import { LucideAngularModule } from 'lucide-angular';
       }
       .bp-launcher-tile__title {
         display: block;
-        /* Jack mockup: slightly smaller + bold. SCOPED here (not on the shared
-           .bp-card-title, which 28 other components use) so only home tiles change. */
-        font-size: var(--text-xl);
-        font-weight: 600;
       }
       .bp-launcher-tile__subtitle {
         display: block;
