@@ -45,7 +45,9 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
               </div>
             </div>
 
-            <div class="min-h-0 min-w-0 flex-1 overflow-y-auto">
+            <!-- p-4 breathing room so the cards' (bigger) shadow/halo isn't
+                 clipped into a hard rectangle by this scroll container's edges. -->
+            <div class="min-h-0 min-w-0 flex-1 overflow-y-auto p-4">
               <ng-content />
             </div>
           </div>
