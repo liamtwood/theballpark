@@ -48,10 +48,12 @@ import { LucideAngularModule } from 'lucide-angular';
       }
       /* Type comes from .bp-card-title / .bp-card-subtitle (pV2-TYPE-01);
          these structural classes keep only layout. */
-      /* Bare icon — no container wash/box, just the accent-stroked glyph. */
+      /* Bare icon — no container wash/box, just the stroked glyph. Softer pink
+         than --theme-accent (Jack mockup): the strong accent mixed toward white
+         reads as a gentler rose on the white tile. */
       .bp-launcher-tile__icon {
         display: inline-flex;
-        color: var(--theme-accent);
+        color: color-mix(in srgb, var(--theme-accent) 58%, #fff);
       }
       .bp-launcher-tile__title {
         display: block;

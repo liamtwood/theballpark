@@ -27,6 +27,7 @@ import {
   Image,
   FolderKanban,
   FolderOpen,
+  FolderClock,
   FolderPlus,
   Percent,
   Inbox,
@@ -166,7 +167,7 @@ export const appConfig: ApplicationConfig = {
         // Shell + sandbox
         ChevronLeft, Rocket, Trash2,
         // pV2-04b home: cog, drawer close, launcher tiles, Back link
-        Settings, X, FolderPlus, FolderOpen, FolderKanban, Percent, Inbox, Store, CircleUser, ArrowLeft,
+        Settings, X, FolderPlus, FolderOpen, FolderClock, FolderKanban, Percent, Inbox, Store, CircleUser, ArrowLeft,
         // pV2 agent home — circle-plus tile icon + Next-steps card
         CirclePlus, ArrowUpRight,
         // pV2 inbox — header kebab menu
