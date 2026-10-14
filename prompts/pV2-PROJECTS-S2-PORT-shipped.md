@@ -1,8 +1,8 @@
 # pV2-PROJECTS-S2 — Estimate line layer PORT onto freeze + overlay (v2dev rebuild)
 
-**Shipped:** 2026-10-14, chip `[Dev v2] v2.750` (auto-bumped by the post-commit hook)
+**Shipped:** 2026-10-14, chip `[Dev v2] v2.764` (auto-bumped by the post-commit hook)
 **Branch:** rebuild/org-slice
-**Commits:** `<sha>` (server: project-line.service + routes + schema)
+**Commits:** `1330c57a` (server: project-line.service + schema + routes + ship report)
 
 ## What landed
 - **New `server/src/services/project-line.service.js`** — the S2 line layer on the
