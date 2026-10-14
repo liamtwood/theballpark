@@ -104,6 +104,30 @@ throw if ever called. Left as-is (dormant, re-ported in S2).
 ### venue_address_id not wired
 `venueAddress` returns null (FR-00239, deferred — ties to the addresses slice). **Severity:** LOW.
 
+## Iteration — v2.751 (2026-10-14)
+**Triggered by QC** (Liam, Monzo launch brief). Four create-flow/detail fixes:
+- **#1 client_name NULL** — the AI folds the client into the project *name*, so
+  `client_name` was never set (empty FR-00240 eyebrow). `projects-new` now falls back to the
+  parser's dedicated `client` field for the post-create `clientName` PATCH.
+  Commit `21c587b7`.
+- **#2 event_type showed the raw code** ("launch") — the detail hero's event-summary subtitle now
+  resolves the code → `project_type` codelist LABEL ("Product launch"). Commit `21c587b7`.
+- **#3 event_type codelist name** — v2dev has no `event_type` list; the codelist is `project_type`.
+  Pointed both the create + detail-edit `app-select`s (and the hero resolver) at `project_type` —
+  the dropdown now populates + the AI value pre-selects. Commit `21c587b7`.
+- **#4 "Couldn't load the quote" error on the detail page** — the estimate/marketplace surfaces
+  auto-load `GET /:id/items` + `/:id/estimate`; with the S2 routes removed they 404'd. Re-added
+  both as **benign S1 stubs** (items → `[]`, estimate → zeroed `emptyEstimate()` via the canonical
+  cascade), ownership-gated through `getDetail`. Surfaces now show their existing empty state / £0
+  instead of erroring. Commit `93100aab`. **Note (deviation from original scope):** this re-wires
+  two GET routes the initial port had removed — chosen over a client placeholder because it
+  degrades *every* estimate/items consumer quietly and reuses the built empty states; marked
+  TODO(S2) to swap in the real `listItems`/`getEstimate`. Flag if a pure client placeholder is
+  preferred instead.
+
+Verified: `project_type` codelist exists in v2dev (launch→"Product launch", …); backend reboots
+clean; stub routes mounted (401 gated, not 404); client recompiles clean.
+
 ## QC notes
 (Liam fills this in)
 
