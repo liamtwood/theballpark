@@ -22,6 +22,13 @@ const { SuppliersQuerySchema } = require('../schemas/marketplace-suppliers.schem
  *  (no user input — orgId is the validated URL param, alias is a literal), or ''
  *  for owner/admin. Keeps rail counts == the /items grid for the same scope. */
 function ownerVisibleFilter(req, orgId, alias = 'i') {
+  // ?scope=public (the Shopfront preview) forces the PUBLIC item set for EVERY
+  // viewer — so an owner/admin previewing the Shopfront sees only the categories/
+  // subcats a customer would (those with active+approved items), not ones holding
+  // only drafts/pending. Mirrors the /items grid's scope=public override.
+  if (req.query.scope === 'public') {
+    return `AND ${alias}.status = 'active' AND ${alias}.approval_status = 'approved'`;
+  }
   const isOwner = req.user?.org_id === orgId;
   const isAdmin = req.user?.role === 'ballpark_admin';
   return (isOwner || isAdmin)

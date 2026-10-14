@@ -101,18 +101,19 @@ export class CatalogueService {
     return this.cached(url, () => this.api.get<Paginated<CatalogueSupplier>>(url));
   }
 
-  /** The storefront projection (pV2-06d). */
-  supplierDetail(id: string): Promise<SupplierDetail> {
-    return this.cached(`/api/marketplace/suppliers/${id}`, () =>
-      this.api.get<SupplierDetail>(`/api/marketplace/suppliers/${id}`)
-    );
+  /** The storefront projection (pV2-06d). `scope='public'` forces the public
+   *  item set for the counts/hotCount (the Shopfront preview — every viewer sees
+   *  only categories with active+approved items). Cached per (id, scope). */
+  supplierDetail(id: string, scope?: 'public' | null): Promise<SupplierDetail> {
+    const url = `/api/marketplace/suppliers/${id}${scope === 'public' ? '?scope=public' : ''}`;
+    return this.cached(url, () => this.api.get<SupplierDetail>(url));
   }
 
-  /** The storefront's subcat-card grid rows (pV2-CARDS-01 QC #5). */
-  supplierSubcategories(id: string): Promise<SupplierSubcategory[]> {
-    return this.cached(`/api/marketplace/suppliers/${id}/subcategories`, () =>
-      this.api.get<SupplierSubcategory[]>(`/api/marketplace/suppliers/${id}/subcategories`)
-    );
+  /** The storefront's subcat-card grid rows (pV2-CARDS-01 QC #5). `scope='public'`
+   *  forces public counts so empty (pending-only) subcats don't show on the Shopfront. */
+  supplierSubcategories(id: string, scope?: 'public' | null): Promise<SupplierSubcategory[]> {
+    const url = `/api/marketplace/suppliers/${id}/subcategories${scope === 'public' ? '?scope=public' : ''}`;
+    return this.cached(url, () => this.api.get<SupplierSubcategory[]>(url));
   }
 
   /** The active org's favourite ids. UNCACHED — toggles must read fresh. */

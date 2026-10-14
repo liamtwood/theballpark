@@ -317,8 +317,11 @@ export class SupplierDetailComponent {
 
   /** Skips entirely until :id resolves — no empty-id fetch (audit C1). */
   protected readonly detail = resource({
-    params: () => this.store.pinnedSupplierId() ?? undefined,
-    loader: ({ params }) => this.catalogue.supplierDetail(params),
+    params: () => {
+      const id = this.store.pinnedSupplierId();
+      return id ? { id, scope: this.tab() === 'storefront' ? ('public' as const) : null } : undefined;
+    },
+    loader: ({ params }) => this.catalogue.supplierDetail(params.id, params.scope),
   });
 
   /** Owner mode (pV2-STORE-01) — the viewer's own-org storefront. Unlocks
@@ -354,8 +357,11 @@ export class SupplierDetailComponent {
 
   /** The storefront's subcat-card grid rows (pV2-CARDS-01 QC #5). */
   protected readonly subcats = resource({
-    params: () => this.store.pinnedSupplierId() ?? undefined,
-    loader: ({ params }) => this.catalogue.supplierSubcategories(params),
+    params: () => {
+      const id = this.store.pinnedSupplierId();
+      return id ? { id, scope: this.tab() === 'storefront' ? ('public' as const) : null } : undefined;
+    },
+    loader: ({ params }) => this.catalogue.supplierSubcategories(params.id, params.scope),
   });
 
   protected setTab(tab: string): void {
