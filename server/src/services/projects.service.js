@@ -1,14 +1,17 @@
 // pV2-PROJECTS-01 — projects domain service (route handlers stay thin;
-// SQL + the status dual-model live here). The v2 surface is org-scoped:
-// callers ALWAYS pass req.user.org_id (never client-supplied).
+// SQL lives here). The v2 surface is org-scoped: callers ALWAYS pass
+// req.user.org_id (never client-supplied).
 //
-// STATUS DUAL-MODEL (Liam, option d): projects carries both the new
-// `status` codelist code (v2 reads it; <app-status-pill list="project_status">)
-// AND the legacy `status_id` FK to public.statuses (v1 on :4200 reads it).
-// Writers MUST set both — resolveStatus() returns the matching status_id
-// for a code so create/update can dual-write. statuses.name for
-// entity_type='project' is draft/active/completed/archived, 1:1 with the
-// codelist, so the mapping is exact.
+// REBUILD (projects slice S1): status is now a plain TEXT column governed
+// by the `project_status` codelist (draft/active/completed/archived),
+// validated app-side. The v1 `statuses` table + `status_id` dual-write is
+// GONE (no `statuses` table on the rebuilt schema) — writers set `status`
+// text directly. buyer/cover fold into the `client` / `cover` jsonb bags;
+// budget + rate overrides live on the `project_settings` satellite
+// (NULL = inherit the org default). Line cluster (project_items /
+// project_item_quotes), messaging and project_documents/_media are S2–S4,
+// so the quote/estimate/item functions below are DORMANT (their routes are
+// unwired) and read null/[] defaults until their tables land.
 
 const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
@@ -19,124 +22,57 @@ const { lineTotalSql, isDeclinedSql, notDeclinedSql } = require('./line-total.ut
 /** The project_status codelist default — used when a code is unknown/absent. */
 const DEFAULT_STATUS = 'draft';
 
-/** code → statuses.id (entity_type='project'), memoised per process. The
- *  statuses rows are seed data — stable within a deploy. */
-let statusIdCache = null;
-
-async function statusMap() {
-  if (statusIdCache) return statusIdCache;
-  const r = await pool.query(
-    `SELECT id, name FROM statuses WHERE entity_type = 'project' AND is_active`
-  );
-  statusIdCache = new Map(r.rows.map((row) => [row.name, row.id]));
-  return statusIdCache;
-}
-
-/** Resolve a project_status code to { status, statusId } for dual-write.
- *  Unknown codes fall back to the codelist default. Returns statusId=null
- *  if even the default has no statuses row (degraded, but never throws —
- *  the v2 `status` column is the source of truth; status_id is v1 compat). */
+/** DORMANT SHIM (rebuild): the v1 `statuses`/`status_id` dual-model is retired —
+ *  status is a TEXT codelist code now. This no-DB shim preserves the export so
+ *  the still-dormant S3 inbox.service require-surface stays intact until that
+ *  slice is ported; it never touches a `statuses` table (there isn't one).
+ *  statusId is always null (the column is gone). */
 async function resolveStatus(code) {
-  const map = await statusMap();
-  const status = map.has(code) ? code : DEFAULT_STATUS;
-  return { status, statusId: map.get(status) ?? null };
+  return { status: code || DEFAULT_STATUS, statusId: null };
 }
 
-/** Card-shaped projection for the v2 list (PROJECTS-01). org-scoped;
- *  excludes soft-deleted. Suppliers count = distinct supplier orgs across
- *  the project's quote items (correlated subquery — fine for an org's
- *  project count). */
-// Per-line total honouring the install basis (pV2-CART-01) — the estimate binds
-// the ONE shared formula (pV2-UNIFY-01) to the line's CURRENT price:
-// price_current once negotiated, else the original base_price. The inbox binds
-// the same formula to price_ref (Original) / price_current (Revised), and
-// price_ref = base_price at send — so a negotiated line reads identically on the
-// Final Quote and the inbox. Cart / Quote / Final / Inbox can't drift. Aliases:
-// pi (project_items) + i (items).
+// DORMANT (S2): per-line total SQL — still referenced by the dormant
+// getEstimate below. Inert until project_items lands.
 const LINE_TOTAL_SQL = lineTotalSql({ current: 'pi.price_current', base: 'pi.base_price', flat: true });
 
+/** Card-shaped projection for the v2 list (PROJECTS-01). org-scoped; excludes
+ *  soft-deleted. REBUILD: cover/client fields read from the `cover`/`client`
+ *  jsonb bags; `ballparkCost`/`supplierCount` are S2 (project_items) → null/0
+ *  until that slice lands. client_name is the queried column (no clients join). */
 const LIST_SELECT = `
-  SELECT p.id, p.name, p.event_name, p.ref, p.status,
-         p.cover_image_url, p.client_logo_url,
-         p.cover_focal_x, p.cover_focal_y, p.icon_name, p.icon_color,
-         p.unsplash_photographer_name, p.unsplash_photo_url,
-         p.currency, p.default_contingency_pct, p.default_insurance_pct, p.default_margin_pct, p.default_vat_pct,
-         p.venue_name, p.venue_city, p.guest_count,
-         p.created_at, p.updated_at,
-         COALESCE(p.client_name, c.name) AS client_name,
-         (SELECT COUNT(DISTINCT i.org_id)
-            FROM project_items pi
-            JOIN items i ON i.id = pi.item_id
-           WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS supplier_count,
-         -- Live quote subtotal — qty × (base + install). "Assume installed":
-         -- an item's install cost is included by default when the catalogue
-         -- item has one (the Estimate tab lets the agent opt a line out; the
-         -- card shows the default all-installed Ballpark). Run through the
-         -- cascade below → matches getEstimate + the Estimate tab.
-         sub.hard_subtotal, sub.fees_subtotal
+  SELECT p.id, p.name, p.ref, p.status,
+         p.cover, p.icon_name, p.icon_color,
+         p.client_name, p.client,
+         p.currency, p.venue_name, p.guest_count,
+         p.created_at, p.updated_at
     FROM projects p
-    LEFT JOIN clients c ON c.id = p.client_id,
-    LATERAL (
-      -- pV2-BUILDUP-04: split hard costs (categorised) vs fees (uncategorised)
-      -- so the card total uses the same SOW cascade as the Estimate tab.
-      SELECT COALESCE(SUM(lt) FILTER (WHERE cat_id IS NOT NULL), 0) AS hard_subtotal,
-             COALESCE(SUM(lt) FILTER (WHERE cat_id IS NULL), 0)     AS fees_subtotal
-        FROM (
-          SELECT DISTINCT ON (pi.logical_line_id) (${LINE_TOTAL_SQL}) AS lt, pi.category_id AS cat_id
-            FROM project_items pi
-            LEFT JOIN items i ON i.id = pi.item_id
-           WHERE pi.project_id = p.id AND pi.deleted_at IS NULL
-             AND pi.parent_id IS NULL AND ${notDeclinedSql()}
-           ORDER BY pi.logical_line_id,
-                    (pi.status IN ('accepted','booked')) DESC NULLS LAST,
-                    pi.created_at ASC, pi.id
-        ) x
-    ) sub
    WHERE p.org_id = $1 AND p.deleted_at IS NULL
    ORDER BY p.created_at DESC`;
 
-/** The card's headline Ballpark = the live quote's client total, via the ONE
- *  cascade (services/estimate.js) the Estimate tab also uses — so the two can
- *  never drift. null when unquoted so the card reads "£0" rather than a fake
- *  figure (computeEstimate would return 0). */
-function cardBallpark(row) {
-  const hard = Number(row.hard_subtotal ?? 0);
-  const fees = Number(row.fees_subtotal ?? 0);
-  if (hard <= 0 && fees <= 0) return null;
-  return computeEstimate(hard, {
-    feesSubtotal: fees,
-    contingencyPct: row.default_contingency_pct,
-    insurancePct: row.default_insurance_pct,
-    marginPct: row.default_margin_pct,
-  }).projectTotal;
-}
-
 function toCard(row) {
+  const cover = row.cover || {};
+  const client = row.client || {};
   return {
     id: row.id,
-    // v1 card title = event_name with a name fallback.
-    name: row.event_name || row.name,
+    name: row.name, // event_name dropped in the rebuild — name is the title
     ref: row.ref,
     status: row.status ?? DEFAULT_STATUS,
-    coverUrl: row.cover_image_url,
-    coverFocalX: row.cover_focal_x ?? 50,
-    coverFocalY: row.cover_focal_y ?? 50,
+    coverUrl: cover.imageUrl ?? null,
+    coverFocalX: cover.focalX ?? 50,
+    coverFocalY: cover.focalY ?? 50,
     iconName: row.icon_name ?? null,
     iconColor: row.icon_color ?? null,
-    unsplashPhotographerName: row.unsplash_photographer_name ?? null,
-    unsplashPhotoUrl: row.unsplash_photo_url ?? null,
+    unsplashPhotographerName: cover.unsplashPhotographerName ?? null,
+    unsplashPhotoUrl: cover.unsplashPhotoUrl ?? null,
     clientName: row.client_name ?? null,
-    clientLogoUrl: row.client_logo_url ?? null,
-    // The headline "Ballpark" total — the live quote's client total (same
-    // cascade as the Estimate tab: subtotal → +contingency → +margin →
-    // +VAT). null when nothing's quoted yet.
-    ballparkCost: cardBallpark(row),
+    clientLogoUrl: client.logoUrl ?? null,
+    // S2 (project_items): the live quote total + supplier fan-out don't exist
+    // yet — null reads as "no estimate", 0 as "no suppliers".
+    ballparkCost: null,
     currency: row.currency ?? 'GBP',
-    supplierCount: Number(row.supplier_count ?? 0),
-    // Plain-card meta (pV2 2026-09-09): venue + head count.
-    location: row.venue_name || row.venue_city || null,
+    supplierCount: 0,
+    location: row.venue_name ?? null, // venue_city dropped in the rebuild
     guestCount: row.guest_count ?? null,
-    // v1 card relative-time is off updated_at (created_at fallback).
     updatedAt: row.updated_at ?? row.created_at,
   };
 }
@@ -161,7 +97,17 @@ async function listClientNames(orgId) {
 }
 
 /** The full editable detail projection (PROJECTS-02 — Project Details tab). */
+// REBUILD: buyer folds into the `client` jsonb (companyNumber/logoUrl/address),
+// cover into the `cover` jsonb (imageUrl/focalX/focalY/unsplash*), budget + rate
+// overrides come from the `project_settings` LEFT JOIN (null = inherit org
+// default). quote_*/sow_*/images belong to project_documents/project_media
+// (S4/not-built) → steady DEFAULTS here, no column reads. totalBallparkCost is
+// computed from the line cluster (S2) → null for now. The API field names are
+// unchanged so the client types/consumers port without edits.
 function toDetail(row) {
+  const cover = row.cover || {};
+  const client = row.client || {};
+  const num = (v) => (v == null ? null : Number(v));
   return {
     id: row.id,
     ref: row.ref,
@@ -171,211 +117,281 @@ function toDetail(row) {
     eventType: row.event_type,
     eventDate: row.event_date,
     venueName: row.venue_name,
-    venueCity: row.venue_city,
-    venueAddress: row.venue_address,
+    venueCity: null, // dropped in the rebuild (kept null for client back-compat)
+    venueAddress: null, // venue_address_id → addresses wiring is FR-00239 (deferred)
     guestCount: row.guest_count,
     durationDays: row.duration_days,
-    projectBudget: row.project_budget === null ? null : Number(row.project_budget),
+    // project_settings (null = inherit org default via COALESCE at read-time; S2).
+    projectBudget: num(row.project_budget),
     currency: row.currency ?? 'GBP',
     tier: row.tier,
-    // Financial defaults for the Estimate tab breakdown (v1 formula).
-    defaultMarginPct: row.default_margin_pct === null ? null : Number(row.default_margin_pct),
-    defaultContingencyPct: row.default_contingency_pct === null ? null : Number(row.default_contingency_pct),
-    defaultInsurancePct: row.default_insurance_pct == null ? null : Number(row.default_insurance_pct),
-    defaultVatPct: row.default_vat_pct === null ? null : Number(row.default_vat_pct),
-    // Quote document options (per project).
-    quoteThemeMode: row.quote_theme_mode ?? null,
-    quoteThemeColor: row.quote_theme_color ?? null,
-    quoteFooter: row.quote_footer ?? null,
-    quoteShowCreated: row.quote_show_created ?? false,
-    // Show/hide toggles — default ON, except page numbers (OFF).
-    quoteShowVatNote: row.quote_show_vat_note ?? true,
-    quoteShowPageNumbers: row.quote_show_page_numbers ?? false,
-    quoteShowItemDesc: row.quote_show_item_desc ?? true,
-    quoteShowOverview: row.quote_show_overview ?? true,
-    quoteShowSummary: row.quote_show_summary ?? true,
-    quoteShowRef: row.quote_show_ref ?? true,
-    quoteShowAddress: row.quote_show_address ?? true,
-    eventName: row.event_name,
+    defaultMarginPct: num(row.margin_pct),
+    defaultContingencyPct: num(row.contingency_pct),
+    defaultInsurancePct: num(row.insurance_pct),
+    defaultVatPct: num(row.vat_pct),
+    // Quote document options → project_documents (S4, not built) — defaults.
+    quoteThemeMode: null,
+    quoteThemeColor: null,
+    quoteFooter: null,
+    quoteShowCreated: false,
+    quoteShowVatNote: true,
+    quoteShowPageNumbers: false,
+    quoteShowItemDesc: true,
+    quoteShowOverview: true,
+    quoteShowSummary: true,
+    quoteShowRef: true,
+    quoteShowAddress: true,
+    eventName: row.name, // event_name dropped → mirror name (client back-compat)
     clientName: row.client_name ?? null,
-    // pV2-BUILDUP-04 — client (Buyer) details for the SOW.
-    clientCompanyNumber: row.client_company_number ?? null,
-    clientAddress: row.client_address ?? null,
-    // pV2-BUILDUP-04 — SOW content sections.
-    sowTimeline: row.sow_timeline ?? null,
-    sowPaymentTerms: row.sow_payment_terms ?? null,
-    sowSpecialTerms: row.sow_special_terms ?? null,
-    coverUrl: row.cover_image_url,
-    // Media (pV2-MEDIA-01b): cover focal point + icon fallback + Unsplash attribution.
-    coverFocalX: row.cover_focal_x ?? 50,
-    coverFocalY: row.cover_focal_y ?? 50,
-    clientLogoUrl: row.client_logo_url ?? null,
-    cardColor: row.card_color ?? null,
+    clientCompanyNumber: client.companyNumber ?? null,
+    clientAddress: client.address ?? null,
+    // SOW content → project_documents (S4, not built) — defaults.
+    sowTimeline: null,
+    sowPaymentTerms: null,
+    sowSpecialTerms: null,
+    coverUrl: cover.imageUrl ?? null,
+    coverFocalX: cover.focalX ?? 50,
+    coverFocalY: cover.focalY ?? 50,
+    clientLogoUrl: client.logoUrl ?? null,
+    cardColor: null, // dropped in the rebuild
     iconName: row.icon_name ?? null,
     iconColor: row.icon_color ?? null,
-    unsplashPhotographerName: row.unsplash_photographer_name ?? null,
-    unsplashPhotoUrl: row.unsplash_photo_url ?? null,
-    // Gallery strip (pV2-MEDIA-01c). jsonb → already a JS array out of pg.
-    images: Array.isArray(row.images) ? row.images : [],
-    totalBallparkCost: row.total_ballpark_cost === null ? null : Number(row.total_ballpark_cost),
+    unsplashPhotographerName: cover.unsplashPhotographerName ?? null,
+    unsplashPhotoUrl: cover.unsplashPhotoUrl ?? null,
+    images: [], // gallery → project_media (not built)
+    totalBallparkCost: null, // computed from the line cluster (S2)
     createdAt: row.created_at,
   };
 }
 
 /** One project by id, scoped to the org (JWT). Null when not found / not
- *  this org / soft-deleted — the route turns that into a 404. Joins the
- *  client name (read-only display in the Details tab). */
+ *  this org / soft-deleted — the route turns that into a 404. REBUILD:
+ *  client_name is a plain column (clients table retired); budget + rate
+ *  overrides come from the project_settings 1:1 satellite. */
 async function getDetail(orgId, id) {
   const r = await pool.query(
-    `SELECT p.*, COALESCE(p.client_name, c.name) AS client_name
+    `SELECT p.*,
+            ps.project_budget, ps.margin_pct, ps.contingency_pct,
+            ps.vat_pct, ps.insurance_pct
        FROM projects p
-       LEFT JOIN clients c ON c.id = p.client_id
+       LEFT JOIN project_settings ps ON ps.project_id = p.id
       WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
     [id, orgId]
   );
   return r.rows.length ? toDetail(r.rows[0]) : null;
 }
 
-/** Editable columns the Project Details tab can PUT — code↔column map kept
- *  explicit so a stray body key can never reach SQL. */
-const EDITABLE = {
+// Editable PUT maps — code↔column kept explicit so a stray body key can never
+// reach SQL. REBUILD splits the writes by their destination: plain `projects`
+// columns, the `cover`/`client` jsonb bags, and the `project_settings`
+// satellite. Keys no longer backed by a column (venueCity, cardColor, images,
+// venueAddress, quote_*, sow_*) are intentionally absent → silently ignored
+// (their tables/columns are S4/not-built; the client may still send them).
+const PROJECT_COLS = {
   name: 'name',
   description: 'description',
   eventType: 'event_type',
   eventDate: 'event_date',
   venueName: 'venue_name',
-  venueCity: 'venue_city',
-  venueAddress: 'venue_address',
   guestCount: 'guest_count',
   durationDays: 'duration_days',
   clientName: 'client_name',
-  clientCompanyNumber: 'client_company_number',
-  clientAddress: 'client_address',
-  sowTimeline: 'sow_timeline',
-  sowPaymentTerms: 'sow_payment_terms',
-  sowSpecialTerms: 'sow_special_terms',
-  projectBudget: 'project_budget',
   currency: 'currency',
   tier: 'tier',
-  defaultMarginPct: 'default_margin_pct',
-  defaultContingencyPct: 'default_contingency_pct',
-  defaultInsurancePct: 'default_insurance_pct',
-  defaultVatPct: 'default_vat_pct',
-  // Quote document options (per project).
-  quoteThemeMode: 'quote_theme_mode',
-  quoteThemeColor: 'quote_theme_color',
-  quoteFooter: 'quote_footer',
-  quoteShowCreated: 'quote_show_created',
-  quoteShowVatNote: 'quote_show_vat_note',
-  quoteShowPageNumbers: 'quote_show_page_numbers',
-  quoteShowItemDesc: 'quote_show_item_desc',
-  quoteShowOverview: 'quote_show_overview',
-  quoteShowSummary: 'quote_show_summary',
-  quoteShowRef: 'quote_show_ref',
-  quoteShowAddress: 'quote_show_address',
-  // Media (pV2-MEDIA-01b) — the picker result maps here.
-  coverImageUrl: 'cover_image_url',
-  clientLogoUrl: 'client_logo_url',
-  cardColor: 'card_color',
+  status: 'status',
   iconName: 'icon_name',
   iconColor: 'icon_color',
-  coverFocalX: 'cover_focal_x',
-  coverFocalY: 'cover_focal_y',
-  unsplashPhotographerName: 'unsplash_photographer_name',
-  unsplashPhotoUrl: 'unsplash_photo_url',
-  images: 'images',
+};
+// patch key → key inside the `cover` jsonb bag.
+const COVER_KEYS = {
+  coverImageUrl: 'imageUrl',
+  coverFocalX: 'focalX',
+  coverFocalY: 'focalY',
+  unsplashPhotographerName: 'unsplashPhotographerName',
+  unsplashPhotoUrl: 'unsplashPhotoUrl',
+};
+// patch key → key inside the `client` jsonb bag.
+const CLIENT_KEYS = {
+  clientLogoUrl: 'logoUrl',
+  clientCompanyNumber: 'companyNumber',
+  clientAddress: 'address',
+};
+// patch key → project_settings column (null = inherit the org default).
+const SETTINGS_COLS = {
+  projectBudget: 'project_budget',
+  defaultMarginPct: 'margin_pct',
+  defaultContingencyPct: 'contingency_pct',
+  defaultInsurancePct: 'insurance_pct',
+  defaultVatPct: 'vat_pct',
 };
 
-/** Partial update, org-scoped. Status is dual-written (code + status_id)
- *  when `status` is supplied. Returns the fresh detail, or null if the
- *  row isn't this org's. */
+/** Partial update, org-scoped. REBUILD: status is a TEXT codelist code (no
+ *  dual-write). The projects columns, the cover/client jsonb merges, and the
+ *  project_settings upsert are ONE transaction (Rule 1 — multi-write). Returns
+ *  the fresh detail, or null if the row isn't this org's. */
 async function updateDetail(orgId, id, patch) {
-  const sets = [];
-  const vals = [];
-  for (const [key, col] of Object.entries(EDITABLE)) {
-    if (patch[key] !== undefined) {
-      if (key === 'images') {
-        // jsonb column — serialize the array + cast (pg would otherwise try to
-        // bind a JS array as a Postgres ARRAY, not jsonb).
-        vals.push(JSON.stringify(patch.images ?? []));
-        sets.push(`${col} = $${vals.length}::jsonb`);
-      } else {
-        vals.push(patch[key]);
+  const found = await withTransaction(async (client) => {
+    // Lock the row + read the current jsonb bags to merge into (ownership gate).
+    const cur = await client.query(
+      `SELECT cover, client FROM projects
+        WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL
+        FOR UPDATE`,
+      [id, orgId]
+    );
+    if (!cur.rows.length) return false;
+    const cover = { ...(cur.rows[0].cover || {}) };
+    const clientBag = { ...(cur.rows[0].client || {}) };
+
+    const sets = [];
+    const vals = [];
+    for (const [key, col] of Object.entries(PROJECT_COLS)) {
+      if (patch[key] !== undefined) {
+        vals.push(key === 'status' ? (patch.status || DEFAULT_STATUS) : patch[key]);
         sets.push(`${col} = $${vals.length}`);
       }
     }
-  }
-  if (patch.status !== undefined) {
-    const { status, statusId } = await resolveStatus(patch.status);
-    vals.push(status);
-    sets.push(`status = $${vals.length}`);
-    vals.push(statusId);
-    sets.push(`status_id = $${vals.length}`);
-  }
-  if (!sets.length) return getDetail(orgId, id);
-  vals.push(id);
-  vals.push(orgId);
-  const r = await pool.query(
-    `UPDATE projects SET ${sets.join(', ')}, updated_at = NOW()
-      WHERE id = $${vals.length - 1} AND org_id = $${vals.length} AND deleted_at IS NULL
-      RETURNING id`,
-    vals
-  );
-  // Re-fetch through getDetail so the returned projection carries the
-  // joined client name (RETURNING * wouldn't have it).
-  return r.rows.length ? getDetail(orgId, id) : null;
+    let coverTouched = false;
+    for (const [key, ck] of Object.entries(COVER_KEYS)) {
+      if (patch[key] !== undefined) { cover[ck] = patch[key]; coverTouched = true; }
+    }
+    if (coverTouched) { vals.push(JSON.stringify(cover)); sets.push(`cover = $${vals.length}::jsonb`); }
+    let clientTouched = false;
+    for (const [key, ck] of Object.entries(CLIENT_KEYS)) {
+      if (patch[key] !== undefined) { clientBag[ck] = patch[key]; clientTouched = true; }
+    }
+    if (clientTouched) { vals.push(JSON.stringify(clientBag)); sets.push(`client = $${vals.length}::jsonb`); }
+
+    if (sets.length) {
+      vals.push(id);
+      vals.push(orgId);
+      await client.query(
+        `UPDATE projects SET ${sets.join(', ')}, updated_at = NOW()
+          WHERE id = $${vals.length - 1} AND org_id = $${vals.length} AND deleted_at IS NULL`,
+        vals
+      );
+    }
+
+    // project_settings upsert — only when a settings field is in the patch.
+    const sCols = [];
+    const sVals = [id];
+    for (const [key, col] of Object.entries(SETTINGS_COLS)) {
+      if (patch[key] !== undefined) { sVals.push(patch[key]); sCols.push(col); }
+    }
+    if (sCols.length) {
+      const insCols = sCols.join(', ');
+      const insPlace = sCols.map((_, i) => `$${i + 2}`).join(', ');
+      const upd = sCols.map((c) => `${c} = EXCLUDED.${c}`).join(', ');
+      await client.query(
+        `INSERT INTO project_settings (project_id, ${insCols})
+         VALUES ($1, ${insPlace})
+         ON CONFLICT (project_id) DO UPDATE SET ${upd}, updated_at = NOW()`,
+        sVals
+      );
+    }
+    return true;
+  });
+  // Re-fetch AFTER commit so the projection reflects the jsonb merge + settings.
+  return found ? getDetail(orgId, id) : null;
 }
 
-/** Create a project from an AI-parsed brief (pV2-PROJECTS-03 scoped — no
- *  items/categories). orgId is the JWT org (never client). Atomic
- *  (Rule 1): the ref-counter bump + the insert are one transaction.
- *  Dual-writes status (codelist code) AND status_id (legacy FK) so v1
- *  stays consistent. Returns the new project's list-card shape. */
+/** AI_TO_DB maps the parser's category slugs → catalogue category NAMES.
+ *  Shared by the create-from-brief scaffold and the dormant recommend() below.
+ *  Defined here so create() can reference it; recommend() reuses the same map. */
+const AI_TO_DB = {
+  'set-build': 'Stand Structure',
+  print: 'Graphics & Signage',
+  av: 'AV & Technology',
+  floral: 'Florals',
+  venues: 'Venue',
+  catering: 'Catering',
+  photography: 'Photography',
+  staffing: 'Staffing',
+  'h-and-s': 'Health & Safety',
+  furniture: 'Furniture & Fixtures',
+  logistics: 'Logistics & Transport',
+  entertainment: 'Entertainment',
+  lighting: 'Lighting',
+};
+
+/** Scaffold the per-category buckets from the AI-parsed brief (REBUILD: the
+ *  spine of the create flow). Each parsed category → one project_categories row:
+ *  category_id resolved via AI_TO_DB (null = custom/uncategorised bucket),
+ *  requirement_brief seeded from the AI oneLiner (the SSOT per-category brief),
+ *  the raw AI payload archived in match_result_json. Runs inside create()'s
+ *  transaction (the same `client`). ON CONFLICT no-ops a repeat (project,
+ *  category) — NULL category_ids are distinct so multiple custom buckets are
+ *  allowed. */
+async function scaffoldCategories(client, projectId, parsedBrief) {
+  const cats = Array.isArray(parsedBrief?.categories) ? parsedBrief.categories : [];
+  let sort = 0;
+  for (const c of cats) {
+    if (!c || typeof c !== 'object') continue;
+    const dbName = AI_TO_DB[c.categoryId];
+    let categoryId = null;
+    if (dbName) {
+      // REBUILD: categories are catalogue-only now (the `namespace` column was
+      // dropped) — a top-level category is simply parent_id IS NULL.
+      const catRow = await client.query(
+        `SELECT id FROM categories
+          WHERE name = $1 AND parent_id IS NULL AND deleted_at IS NULL
+          LIMIT 1`,
+        [dbName]
+      );
+      categoryId = catRow.rows[0]?.id ?? null;
+    }
+    const brief = (c.oneLiner || c.categoryLabel || dbName || '').toString().trim() || null;
+    await client.query(
+      `INSERT INTO project_categories
+         (project_id, category_id, requirement_brief, match_result_json, sort_order, status)
+       VALUES ($1, $2, $3, $4::jsonb, $5, 'draft')
+       ON CONFLICT (project_id, category_id) WHERE deleted_at IS NULL DO NOTHING`,
+      [projectId, categoryId, brief, JSON.stringify(c), sort]
+    );
+    sort += 1;
+  }
+}
+
+/** Create a project from an AI-parsed brief. orgId is the JWT org (never
+ *  client). Atomic (Rule 1): the org ref-counter bump, the project insert, the
+ *  project_settings row, and the project_categories scaffold are ONE
+ *  transaction. REBUILD: status is TEXT ('draft'); rate overrides are NOT copied
+ *  at create — project_settings starts all-NULL (null = inherit the org default
+ *  via COALESCE at read-time). Returns the new project's list-card shape. */
 async function create(orgId, data) {
-  const { status, statusId } = await resolveStatus(DEFAULT_STATUS);
   const name = (data.name && data.name.trim()) || 'Untitled project';
 
   return withTransaction(async (client) => {
-    // Atomic ref allocation — UPDATE…RETURNING ticks the org counter and
-    // hands back the prefix in one statement (no two-create race).
+    // Atomic ref allocation — UPDATE…RETURNING ticks the org counter and hands
+    // back the prefix (+ the org's default currency) in one statement.
     const counter = await client.query(
       `UPDATE orgs SET ref_counter = COALESCE(ref_counter, 0) + 1
         WHERE id = $1
-        RETURNING ref_prefix, ref_counter, name,
-                  default_margin_pct, default_contingency_pct, default_vat_pct`,
+        RETURNING ref_prefix, ref_counter, name, default_currency`,
       [orgId]
     );
     let ref = null;
-    // Each project carries its own financial defaults, seeded from the org's
-    // (Profile → Financial defaults). Falls back to the v1 house rates when
-    // the org hasn't set one. Stored on the project so it can be overridden
-    // per-project later without disturbing the org default or other projects.
-    let marginPct = 20;
-    let contingencyPct = 10;
-    let vatPct = 20;
+    let orgCurrency = null;
     if (counter.rows.length) {
       const row = counter.rows[0];
       const prefix =
         (row.ref_prefix || '').trim() ||
         ((row.name || 'BP').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'BP').toUpperCase();
       ref = `${prefix.toUpperCase()}-${String(row.ref_counter).padStart(3, '0')}`;
-      if (row.default_margin_pct !== null) marginPct = Number(row.default_margin_pct);
-      if (row.default_contingency_pct !== null) contingencyPct = Number(row.default_contingency_pct);
-      if (row.default_vat_pct !== null) vatPct = Number(row.default_vat_pct);
+      orgCurrency = row.default_currency || null;
     }
     // A caller-supplied ref wins over the auto-assigned one; blank → automagic.
     // (The counter still ticks so the auto sequence stays gap-tolerant/unique.)
     const customRef = data.ref && String(data.ref).trim();
     if (customRef) ref = customRef;
+    const currency = data.currency || orgCurrency || 'GBP';
 
     const r = await client.query(
       `INSERT INTO projects (
          org_id, name, description, event_type, event_date,
-         venue_name, venue_city, guest_count, duration_days,
+         venue_name, guest_count, duration_days,
          tier, currency, raw_brief_text, parsed_brief_json,
-         status, status_id, ref,
-         default_margin_pct, default_contingency_pct, default_vat_pct
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+         status, ref
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        RETURNING *`,
       [
         orgId,
@@ -384,22 +400,28 @@ async function create(orgId, data) {
         data.eventType ?? null,
         data.eventDate ?? null,
         data.venueName ?? null,
-        data.venueCity ?? null,
         data.guestCount ?? null,
         data.durationDays ?? null,
         data.tier ?? null,
-        data.currency ?? 'GBP',
+        currency,
         data.rawBriefText ?? null,
         data.parsedBrief ? JSON.stringify(data.parsedBrief) : null,
-        status,
-        statusId,
+        DEFAULT_STATUS,
         ref,
-        marginPct,
-        contingencyPct,
-        vatPct,
       ]
     );
-    return toCard(r.rows[0]);
+    const project = r.rows[0];
+
+    // 1:1 settings satellite — all-NULL rates (null = inherit the org default).
+    await client.query(
+      `INSERT INTO project_settings (project_id) VALUES ($1)`,
+      [project.id]
+    );
+
+    // Per-category brief buckets from the parsed brief (the structured brief).
+    await scaffoldCategories(client, project.id, data.parsedBrief);
+
+    return toCard(project);
   });
 }
 
@@ -1253,26 +1275,12 @@ async function removeItem(orgId, projectId, lineId) {
   return r.rows.length > 0;
 }
 
-// ── pV2-RECOMMEND: brief → recommended items (ported from v1) ─────────────
+// ── pV2-RECOMMEND: brief → recommended items (ported from v1) — DORMANT (S2) ──
 // The AI parse-brief returns category slugs; map them to the DB catalogue
-// category NAMES (v1's AI_TO_DB), then run the v1 matchItems matcher per
-// category and add its picks to the project's quote. The Estimate tab then
-// displays them grouped by category — no separate "ballpark" screen needed.
-const AI_TO_DB = {
-  'set-build': 'Stand Structure',
-  print: 'Graphics & Signage',
-  av: 'AV & Technology',
-  floral: 'Florals',
-  venues: 'Venue',
-  catering: 'Catering',
-  photography: 'Photography',
-  staffing: 'Staffing',
-  'h-and-s': 'Health & Safety',
-  furniture: 'Furniture & Fixtures',
-  logistics: 'Logistics & Transport',
-  entertainment: 'Entertainment',
-  lighting: 'Lighting',
-};
+// category NAMES (AI_TO_DB, now defined near create() + shared with the
+// scaffold), then run the matchItems matcher per category and add its picks to
+// the project's quote. Dormant until project_items lands (S2); its route is
+// unwired. The Estimate tab then displays them grouped by category.
 
 /** A starting set, not the whole catalogue — the human curates on the
  *  Estimate/Marketplace. Top N matched items (score-sorted) per category. */
