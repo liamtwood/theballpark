@@ -16,7 +16,7 @@ import { LucideAngularModule } from 'lucide-angular';
   template: `
     <a [routerLink]="href()" [queryParams]="query()" class="bp-launcher-tile__link" [attr.aria-label]="label()">
       <span class="bp-launcher-tile__icon">
-        <lucide-icon [name]="icon()" [size]="22" [strokeWidth]="1.5" />
+        <lucide-icon [name]="icon()" [size]="20" [strokeWidth]="1.5" />
       </span>
       <span class="min-w-0">
         <span class="bp-card-title bp-launcher-tile__title">{{ label() }}</span>
@@ -57,6 +57,10 @@ import { LucideAngularModule } from 'lucide-angular';
       }
       .bp-launcher-tile__title {
         display: block;
+        /* Jack mockup: slightly smaller + bold. SCOPED here (not on the shared
+           .bp-card-title, which 28 other components use) so only home tiles change. */
+        font-size: var(--text-xl);
+        font-weight: 600;
       }
       .bp-launcher-tile__subtitle {
         display: block;
