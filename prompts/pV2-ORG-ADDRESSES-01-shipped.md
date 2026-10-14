@@ -82,6 +82,27 @@ widened it. Not extracted now because the standalone component is explicitly def
 **Suggested fix:** extract the standalone address-editor under FR-00239 when multi-address ships.
 **Severity:** LOW
 
+## Iteration — v2.743 (2026-10-14)
+**Triggered by designer review (via parent):** on a single primary address a type
+picker is friction for no value; and the type default disagreed (DDL 'site' vs
+writer 'registered').
+**Commit:** `6ba7ab48`
+**Changes:**
+- Removed the Address type `<app-select>` from BOTH editor blocks (owner + admin).
+  Fields kept: line1/line2/city/postcode/region/country.
+- `upsertPrimaryForOrg` now defaults the primary to `'site'` (matches the DDL;
+  locality the marketplace shows). Existing v2dev primary rows re-set to `'site'`.
+- `addressType` stays in the server schema (optional) for FR-00239; client no
+  longer surfaces or sends it. Removed the now-dead client form plumbing
+  (ProfileForm/toForm/payload/addressTypeOptions); `OrgProfile.addressType` kept
+  as a read-only contract field.
+- Re-confirmed the single write path: `PUT /api/organisation` (self, JWT org_id)
+  and `PUT /api/admin/orgs/:id` (admin, URL id) both → `org-profile.service
+  .updateOrgProfile` → `address.service.upsertPrimaryForOrg`. No parallel path.
+Backend rebooted clean on :3002; Angular HMR recompiled clean (:4202).
+This supersedes the type-picker line in "What landed" §3 and resolves Concern #1's
+UI portion (no picker now; server still follows the items.tier non-assert pattern).
+
 ## QC notes
 (Liam fills this in)
 
