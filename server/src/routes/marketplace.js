@@ -447,18 +447,20 @@ router.get('/items', async (req, res, next) => {
       `SELECT i.id, i.name, i.description, i.install_description, i.base_price, i.unit, i.images,
               i.attributes,
               i.category_id, i.approval_status, i.status,
-              -- v2dev: city lives in the address satellite, surfaced on orgs_public via
-              -- the address_locality definer (supplier + active only; city/country only).
+              -- v2dev: city lives in the address satellite, surfaced on supplier_directory
+              -- via the address_locality definer (city/country only).
               i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
               c.name AS category_name,
               (i.org_id = $1) AS owned_by_active_org,
               COUNT(*) OVER() AS total
          FROM items i
-         -- BE-00115 — cross-org: the supplier name/city come from the orgs_public
-         -- VIEW (base orgs is RLS-hidden cross-org, which emptied the marketplace).
-         -- The view is supplier + active + not-deleted; approved cross-org items
-         -- all belong to such orgs, and an owner's own org qualifies too.
-         JOIN orgs_public o ON o.id = i.org_id
+         -- Cross-org: the supplier name/city come from supplier_directory — the owner-run
+         -- (NOT security_invoker) public directory view that bypasses orgs RLS and scopes
+         -- to ACTIVE SUPPLIERS. orgs_public is security_invoker (own-org) and emptied the
+         -- cross-org marketplace via the INNER JOIN; the base orgs row stays RLS-private.
+         -- The directory is supplier + active + not-deleted; every approved cross-org item
+         -- belongs to such an org, and an owner's own org qualifies too.
+         JOIN supplier_directory o ON o.id = i.org_id
          LEFT JOIN categories c ON c.id = i.category_id
         WHERE ${where.join(' AND ')}
         ORDER BY i.name ASC

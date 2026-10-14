@@ -41,11 +41,12 @@ function ownerVisibleFilter(req, orgId, alias = 'i') {
 router.get('/suppliers/options', async (req, res, next) => {
   try {
     const r = await pool.query(
-      // BE-00115 — cross-org supplier read: use the orgs_public VIEW (bypasses
-      // orgs_self RLS, which would hide every other supplier's row and empty the
-      // marketplace). The view already filters supplier + active + not-deleted.
+      // Cross-org supplier read: use supplier_directory — the owner-run public
+      // directory view that bypasses orgs RLS (which would hide every other
+      // supplier's row and empty the marketplace) and scopes to supplier + active
+      // + not-deleted. orgs_public is security_invoker (own-org) and can't do this.
       `SELECT o.id, o.name, COUNT(i.id) AS item_count
-         FROM orgs_public o
+         FROM supplier_directory o
          JOIN items i ON i.org_id = o.id
         WHERE i.deleted_at IS NULL AND i.status = 'active' AND i.approval_status = 'approved'
         -- BE-00129 — orgs_public is a VIEW (no PK), so Postgres can't infer the
@@ -88,7 +89,7 @@ router.get('/suppliers', async (req, res, next) => {
       `SELECT o.id, o.name, o.description, o.logo_url, o.cover_image_url, o.image_display, o.city,
               COUNT(i.id) AS item_count,
               COUNT(*) OVER() AS total
-         FROM orgs_public o
+         FROM supplier_directory o
          JOIN items i ON i.org_id = o.id AND i.deleted_at IS NULL
               AND i.status = 'active' AND i.approval_status = 'approved' ${catClause}
         ${whereSql}
@@ -123,14 +124,15 @@ router.get('/suppliers/:id', async (req, res, next) => {
   try {
     const id = z.uuid().safeParse(req.params.id);
     if (!id.success) return res.status(400).json({ error: 'Invalid id' });
-    // BE-00115 — cross-org shopfront read via the orgs_public VIEW (RLS hides the
-    // base orgs row cross-org). The view exposes only safe columns — supplier
-    // contact PII (line1/postcode/phone/email/website) is deliberately NOT public
-    // (contact runs through the platform inbox); those are nulled below. city/country
-    // ARE public locality (orgs_public via the address_locality definer — supplier only).
+    // Cross-org shopfront read via supplier_directory (owner-run; bypasses orgs RLS,
+    // which hides the base orgs row cross-org). The directory exposes only the
+    // marketplace-card columns — supplier contact PII (line1/postcode/phone/email/
+    // website) is NOT in it at all (contact runs through the platform inbox); those
+    // are nulled below. city/country ARE public locality (via the address_locality
+    // definer — supplier only).
     const r = await pool.query(
       `SELECT id, name, description, logo_url, cover_image_url, images, city, country
-         FROM orgs_public
+         FROM supplier_directory
         WHERE id = $1`,
       [id.data]
     );
