@@ -35,7 +35,11 @@ export class PageConfigService {
 
   readonly heroTitleMode = computed(() => this._config()?.heroTitleMode ?? CONFIG_DEFAULTS.heroTitleMode);
   readonly heroTitleFixed = computed(() => this._config()?.heroTitleFixed ?? '');
-  readonly heroSubtitle = computed(() => this._config()?.heroSubtitle ?? CONFIG_DEFAULTS.heroSubtitle);
+  // Tokenised like the eyebrow/title so {orgName}/{email}/{firstName}/… resolve
+  // on the home hero subtitle; tidySeparators drops any empty ' · ' segment.
+  readonly heroSubtitle = computed(() =>
+    this.tidySeparators(this.applyTokens(this._config()?.heroSubtitle ?? CONFIG_DEFAULTS.heroSubtitle))
+  );
   readonly heroAlign = computed(() => this._config()?.heroAlign ?? CONFIG_DEFAULTS.heroAlign);
   readonly creditLabel = computed(() => this._config()?.creditLabel ?? CONFIG_DEFAULTS.creditLabel);
   readonly eventLabel = computed(() => this._config()?.eventLabel ?? CONFIG_DEFAULTS.eventLabel);
