@@ -826,6 +826,11 @@ body {
 }
 .bp-projnav-opt:hover { opacity: 0.85; }
 .bp-projnav-opt--active { opacity: 1; }
+/* Selection is shown by opacity + tick, so the click-focus ring just reads as an
+   unwanted border on the selected pill — drop it for pointer focus, keep a
+   keyboard focus-visible ring for a11y. */
+.bp-projnav-opt:focus { outline: none; }
+.bp-projnav-opt:focus-visible { outline: 2px solid var(--color-surface); outline-offset: -3px; }
 
 /* Left category rail rows. */
 .bp-catstrip-row {
