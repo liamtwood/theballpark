@@ -149,6 +149,10 @@
   --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
   --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
   --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.12);
+  /* Standard card shadow (Liam 2026-10-14): a darker drop + a slight halo glow,
+     so cards read lifted/highlighted. Used by .bp-card, --selected and --lifted. */
+  --shadow-card: 0 6px 18px rgba(15, 23, 42, 0.16), 0 0 10px 1px rgba(15, 23, 42, 0.06);
+  --shadow-card-hover: 0 12px 30px rgba(15, 23, 42, 0.20), 0 0 14px 1px rgba(15, 23, 42, 0.07);
 
   /* ── Project "workspace" surface (pV2-BUILDUP-04) — the pale warm-pink
      ground the project detail page sits on, the soft-white card treatment,
@@ -1264,15 +1268,14 @@ body {
   background: var(--color-surface);
   border: 1px solid var(--color-border-hairline);
   border-radius: var(--radius-card);
-  /* Standard card shadow = the lifted/highlight card's look (Liam 2026-10-14):
-     md at rest, lg on hover, app-wide. .bp-card--lifted keeps only the larger
-     radius + the -3px hover lift on top of this. */
-  box-shadow: var(--shadow-md);
+  /* Standard card shadow (Liam 2026-10-14): darker drop + a slight halo, app-wide.
+     --lifted adds only the larger radius + the -3px hover lift on top. */
+  box-shadow: var(--shadow-card);
   overflow: hidden;
   transition: box-shadow 0.12s ease, transform 0.12s ease;
 }
 .bp-card:hover {
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-card-hover);
   transform: translateY(-2px);
 }
 .bp-card:focus-visible {
@@ -1281,7 +1284,7 @@ body {
 }
 .bp-card--selected {
   border-color: var(--theme-accent);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-card);
 }
 /* Image zoom on hover (item / supplier / project / storefront cells). */
 .bp-card--zoom img {
@@ -1293,12 +1296,12 @@ body {
 /* Lifted rest state — the launcher tile's Figma look (pV2-04b2: md at
    rest, lg + -3px on hover so the lift stays visible). */
 .bp-card--lifted {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-card);
   /* Lifted cards carry the larger workspace radius (one reference). */
   border-radius: var(--radius-lg);
 }
 .bp-card--lifted:hover {
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-card-hover);
   transform: translateY(-3px);
 }
 
