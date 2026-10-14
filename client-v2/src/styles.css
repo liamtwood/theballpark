@@ -1264,12 +1264,15 @@ body {
   background: var(--color-surface);
   border: 1px solid var(--color-border-hairline);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-xs);
+  /* Standard card shadow = the lifted/highlight card's look (Liam 2026-10-14):
+     md at rest, lg on hover, app-wide. .bp-card--lifted keeps only the larger
+     radius + the -3px hover lift on top of this. */
+  box-shadow: var(--shadow-md);
   overflow: hidden;
   transition: box-shadow 0.12s ease, transform 0.12s ease;
 }
 .bp-card:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
 }
 .bp-card:focus-visible {
