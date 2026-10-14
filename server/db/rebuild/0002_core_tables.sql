@@ -71,7 +71,7 @@ create table public.addresses (
   ref         text,
   name        text,                                 -- optional label
   org_id      uuid not null,                        -- FK added after bootstrap
-  type        text not null default 'registered' check (type in ('registered','site','billing')),
+  type        text not null default 'site',          -- governed by the address_type codelist (0007), validated app-side (not a DB CHECK — "register, don't FK-enforce")
   line1       text,
   line2       text,
   city        text,

@@ -495,3 +495,16 @@ insert into public.reference_codelists (name, type, family, default_code) values
 insert into public.reference_codelist_values (codelist_id, code, label, symbol, sort_order, is_active) values
   ((select id from public.reference_codelists where name='item_media_limits'), 'max_images', '8', null, 0, true);
 
+-- address_type (ballpark) — governs addresses.type (replaces the old DB CHECK;
+-- 0002 drops the constraint). Admin-editable so a new type (e.g. warehouse) needs
+-- no migration. Registered as a consumer so the deactivation gate counts usage.
+insert into public.reference_codelists (name, type, family, default_code) values ('address_type', 'ballpark', null, 'site');
+insert into public.reference_codelist_values (codelist_id, code, label, symbol, sort_order, is_active) values
+  ((select id from public.reference_codelists where name='address_type'), 'registered', 'Registered office', null, 1, true),
+  ((select id from public.reference_codelists where name='address_type'), 'billing', 'Billing', null, 2, true),
+  ((select id from public.reference_codelists where name='address_type'), 'site', 'Site', null, 3, true),
+  ((select id from public.reference_codelists where name='address_type'), 'shipping', 'Shipping', null, 4, true),
+  ((select id from public.reference_codelists where name='address_type'), 'venue', 'Venue', null, 5, true);
+insert into public.reference_codelist_consumers (codelist_id, consumer_table, consumer_column)
+  values ((select id from public.reference_codelists where name='address_type'), 'addresses', 'type');
+

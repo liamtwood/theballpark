@@ -28,6 +28,7 @@ const CONSUMER_WHITELIST = new Set([
   'user_orgs.status',
   'orgs.country',
   'orgs.default_currency',
+  'addresses.type',
 ]);
 
 module.exports = { isSafeIdentifier, CONSUMER_WHITELIST };
