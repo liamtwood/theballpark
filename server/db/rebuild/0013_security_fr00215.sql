@@ -15,7 +15,10 @@
 -- ── GUC helper: scoped moderation flag (mirrors app_is_admin; PUBLIC-executable) ──
 create or replace function public.app_svc_moderate() returns boolean
   language sql stable set search_path = pg_catalog
-  as $$ select coalesce(current_setting('app.svc_moderate', true), 'f')::boolean $$;
+  -- NULLIF handles the empty-string GUC a pooled connection can carry (coalesce
+  -- only catches NULL, so a leftover app.svc_moderate='' hit ''::boolean and threw
+  -- on the owner path after a prior moderation request). Mirrors app_is_admin.
+  as $$ select coalesce(nullif(current_setting('app.svc_moderate', true), ''), 'f')::boolean $$;
 
 -- ── orgs: read keeps admin (cross_org_view); UPDATE member-only + moderation(status);
 --    INSERT keeps admin (onboarding); DELETE keeps admin ─────────────────────────────
