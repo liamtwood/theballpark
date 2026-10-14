@@ -152,7 +152,7 @@
   /* Standard card shadow (Liam 2026-10-14): a darker drop + a slight halo glow,
      so cards read lifted/highlighted. Used by .bp-card, --selected and --lifted. */
   --shadow-card: 0 6px 18px rgba(15, 23, 42, 0.16), 0 0 10px 1px rgba(15, 23, 42, 0.06);
-  --shadow-card-hover: 0 12px 30px rgba(15, 23, 42, 0.20), 0 0 14px 1px rgba(15, 23, 42, 0.07);
+  --shadow-card-hover: 0 20px 44px rgba(15, 23, 42, 0.30), 0 0 20px 2px rgba(15, 23, 42, 0.12);
 
   /* ── Project "workspace" surface (pV2-BUILDUP-04) — the pale warm-pink
      ground the project detail page sits on, the soft-white card treatment,
