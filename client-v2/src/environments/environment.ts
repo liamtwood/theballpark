@@ -4,8 +4,8 @@ export const environment = {
   // per-commit counter (bump every commit); `release` is the client-facing
   // version (dev has none). `versionChip` is the derived label the chip shows.
   release: 'dev',
-  build: 'v2.749',
-  versionChip: 'Dev v2.749',
+  build: 'v2.750',
+  versionChip: 'Dev v2.750',
   // Cloudflare Turnstile site key for the public /welcome signup form
   // (public — safe to commit). Ported from v1.
   turnstileSiteKey: '0x4AAAAAADdwdzIjm6NbpAXD',

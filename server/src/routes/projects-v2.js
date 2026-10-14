@@ -103,4 +103,34 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
+// ── S1 benign stubs: the line cluster (project_items) is S2 ──────────────
+// The detail page's estimate/marketplace tab surfaces auto-load items + the
+// estimate on mount. Until S2 is ported there are no project_items, so these
+// return the honest S1 answer — [] and a zeroed estimate — so those surfaces
+// degrade QUIETLY (empty state / £0) instead of 404-ing with a user-facing
+// error. Ownership is gated via getDetail (null → 404). TODO(S2): replace with
+// the real projects.listItems / projects.getEstimate.
+
+// GET /:id/items — S1: always empty (no line cluster yet).
+router.get('/:id/items', async (req, res, next) => {
+  try {
+    const detail = await projects.getDetail(req.user.org_id, req.params.id);
+    if (!detail) return res.status(404).json({ error: 'Project not found' });
+    res.json([]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /:id/estimate — S1: a zeroed breakdown (no items → £0), correct shape.
+router.get('/:id/estimate', async (req, res, next) => {
+  try {
+    const detail = await projects.getDetail(req.user.org_id, req.params.id);
+    if (!detail) return res.status(404).json({ error: 'Project not found' });
+    res.json(projects.emptyEstimate());
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

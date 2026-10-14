@@ -444,6 +444,20 @@ async function previewNextRef(orgId) {
   return `${prefix.toUpperCase()}-${String(next).padStart(3, '0')}`;
 }
 
+/** S1 STUB: the zeroed estimate breakdown for a project with no line cluster
+ *  (project_items is S2). Runs the canonical cascade on a £0 subtotal so the
+ *  shape matches the real getEstimate exactly — the estimate/marketplace
+ *  surfaces degrade quietly to £0 instead of 404-ing. TODO(S2): replace the
+ *  stub route with the real getEstimate once the line cluster lands. */
+function emptyEstimate() {
+  return computeEstimate(0, {
+    feesSubtotal: 0,
+    contingencyPct: null,
+    insurancePct: null,
+    marginPct: null,
+  });
+}
+
 // ── Project Quote (PROJECTS-02 slice 2) ──────────────────────────────────
 // Minimal add/remove against project_items (the full QuoteService — totals,
 // pricing, checkout — lands in 06f). Every op is org-scoped via a join to
@@ -1367,5 +1381,5 @@ async function recommend(orgId, projectId) {
 module.exports = {
   listForOrg, listClientNames, getDetail, updateDetail, create, previewNextRef,
   listItems, getEstimate, addItem, addCustomItem, saveComponents, listComponents, listComponentsForAgency, addQuestion, listMyComponents, removeItem, updateItem, updateLineDetails, setQuoteDescription, recommend,
-  resolveStatus, DEFAULT_STATUS, toCard, linesByIds,
+  resolveStatus, DEFAULT_STATUS, toCard, linesByIds, emptyEstimate,
 };
