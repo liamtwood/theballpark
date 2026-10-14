@@ -128,6 +128,32 @@ throw if ever called. Left as-is (dormant, re-ported in S2).
 Verified: `project_type` codelist exists in v2dev (launch→"Product launch", …); backend reboots
 clean; stub routes mounted (401 gated, not 404); client recompiles clean.
 
+## Iteration — v2.753 (2026-10-14)
+**Triggered by QC** (Liam, items 5/6): drive the project detail hero through the
+page-settings/token system (not hardcoded), and lock the FR-00240 subtitle as the event summary.
+Commit `7f8a0898`.
+- **New `project` page key** in the page-config (`PageKey` + `PAGE_HERO_DEFAULTS` + `PAGE_META` +
+  the server `PageConfigSchema` `pages.project`). Registered in `/settings/pages` — the admin table
+  is `PAGE_META`-driven, so the Project (detail) eyebrow/title/subtitle rows appear automatically.
+- **Project-scoped tokens**: `pageHero(page, project?)` + `applyTokens` now resolve `{clientName}`
+  `{projectName}` `{eventType}` `{location}` `{venueName}` `{eventDate}` `{guestCount}` from a
+  per-render `ProjectTokenContext` (passed by the detail component — no global mutable state).
+  Unknown tokens still pass through untouched. `tidySeparators()` drops empty `' · '` segments so a
+  partial project reads clean. `{eventType}` is the resolved project_type LABEL (the component
+  resolves code→label); `{guestCount}` carries its own "guests" word; `{location}` = venue_name
+  for now (venue city once FR-00239 wires `venue_address_id`).
+- **Defaults**: eyebrow `{clientName}` (the generic "PROJECT" eyebrow is gone), title
+  `{projectName}`, subtitle `{eventType} · {location} · {eventDate} · {guestCount}` →
+  e.g. "Product launch · Shoreditch · 14 March 2026 · 150 guests".
+- **Design note (context injection):** used a functional `pageHero(page, ctx)` overload (the
+  component passes an already-resolved `projectTokens()` computed) rather than a stateful
+  `setProjectContext()` — no mutable service signal, no effect, no destroy cleanup, fully reactive.
+  Within the parent's "project-aware hero resolve" latitude.
+- Supersedes the hardcoded-eyebrow part of QC #1; `client_name` is still wired to the DB.
+
+Verified: schema test green (5/5); backend reboots clean; client recompiles clean; `project_type`
+labels resolve. Net: eyebrow shows the client ("MONZO"), configurable in /settings/pages.
+
 ## QC notes
 (Liam fills this in)
 
