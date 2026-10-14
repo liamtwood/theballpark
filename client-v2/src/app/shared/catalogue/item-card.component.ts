@@ -5,6 +5,7 @@ import { firstValueFrom, Observable } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { TooltipModule } from 'primeng/tooltip';
 import { CatalogueItem, sizedImage } from './catalogue.types';
+import { itemEditLink } from './item-edit-link';
 import { StatusPillComponent } from '../status-pill/status-pill.component';
 import { StoreItemService } from '../../core/store/store-item.service';
 import { ConfirmService } from '../confirm/confirm.service';
@@ -152,6 +153,28 @@ import { AuthService } from '../../core/auth/auth.service';
           </button>
         </div>
       }
+      @if (showModeration()) {
+        <!-- pV2-STORE-APPROVALS-01 — the moderation queue (ballpark admin on the
+             /marketplace?status=pending screen, where the owner manage row doesn't
+             apply). Approve/Reject only while pending; Edit (org-scoped editor)
+             any status. Client gate only — the server enforces moderator authority
+             on PUT /api/admin/items/:id/approval. -->
+        <div class="mt-3 flex items-center gap-2">
+          @if (item().approvalStatus === 'pending') {
+            <button type="button" class="bp-item-card__act bp-item-card__act--approve" [disabled]="busy()" title="Approve" aria-label="Approve" (click)="onApprove($event)">
+              <lucide-icon name="check" [size]="15" />
+            </button>
+            <button type="button" class="bp-item-card__act bp-item-card__act--reject" [disabled]="busy()" title="Reject" aria-label="Reject" (click)="onReject($event)">
+              <lucide-icon name="octagon-x" [size]="15" />
+            </button>
+          }
+          @if (moderateEditLink(); as link) {
+            <a [routerLink]="link" class="bp-item-card__act" title="Edit" aria-label="Edit" (click)="onEditClick($event)">
+              <lucide-icon name="square-pen" [size]="15" />
+            </a>
+          }
+        </div>
+      }
     </div>
   `,
   styles: `
@@ -174,6 +197,23 @@ import { AuthService } from '../../core/auth/auth.service';
       background: var(--color-danger-soft, var(--color-fill));
       color: var(--color-danger, var(--color-text));
       border-color: var(--color-danger, var(--color-border-hairline));
+    }
+    /* Moderation actions — standard soft fills (feedback: Approve=green, Reject=red). */
+    .bp-item-card__act--approve {
+      background: var(--color-success-soft);
+      color: var(--color-success);
+      border-color: color-mix(in srgb, var(--color-success) 25%, transparent);
+    }
+    .bp-item-card__act--approve:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--color-success-soft) 82%, var(--color-success));
+    }
+    .bp-item-card__act--reject {
+      background: var(--color-danger-soft);
+      color: var(--color-danger);
+      border-color: color-mix(in srgb, var(--color-danger) 25%, transparent);
+    }
+    .bp-item-card__act--reject:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--color-danger-soft) 82%, var(--color-danger));
     }
     .bp-qv-link {
       display: inline-block;
@@ -209,6 +249,18 @@ export class ItemCardComponent {
       ? ['/admin/orgs', org, 'items', this.item().id]
       : ['/store/items', this.item().id];
   });
+
+  // ── Moderation (pV2-STORE-APPROVALS-01) ───────────────────────────────────
+  /** The moderation action row shows for a ballpark admin on a surface where the
+   *  owner manage row doesn't apply (the global /marketplace?status=pending queue):
+   *  NOT the owner's / admin-shop manage context (canManage), and NOT a browse-only
+   *  surface (quickViewOnly). Approve/Reject are further gated to pending inside. */
+  protected readonly showModeration = computed(
+    () => this.isAdmin() && !this.canManage() && !this.quickViewOnly()
+  );
+  /** Edit destination for the moderating admin — the shared gate (owner → store
+   *  editor; ballpark admin → the org-scoped editor/approve page). */
+  protected readonly moderateEditLink = computed(() => itemEditLink(this.auth.user(), this.item()));
 
   /** Card meta: the supplier name, with the city appended when both exist
    *  ("Rocket Food · London") — falls back to whichever is present. */
@@ -398,6 +450,19 @@ export class ItemCardComponent {
     this.run(adminOrg && !this.item().ownedByActiveOrg
       ? this.store.removeForOrg(adminOrg, this.item().id)
       : this.store.remove(this.item().id));
+  }
+
+  // ── Moderation decisions (pV2-STORE-APPROVALS-01) ─────────────────────────
+  /** Approve / reject the pending item inline. `decide` pipes bust() (grid reloads
+   *  via rev) and `run` emits `changed` so the host refetches — the item then drops
+   *  off the pending queue. Server enforces moderator authority; this is UX gating. */
+  protected onApprove(e: Event): void {
+    e.stopPropagation();
+    this.run(this.store.decide(this.item().id, 'approve'));
+  }
+  protected onReject(e: Event): void {
+    e.stopPropagation();
+    this.run(this.store.decide(this.item().id, 'reject'));
   }
 
   private run(op: Observable<unknown>): void {

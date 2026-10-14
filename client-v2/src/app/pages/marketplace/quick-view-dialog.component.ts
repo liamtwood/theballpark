@@ -1,11 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
+import { StoreItemService } from '../../core/store/store-item.service';
 import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { LucideAngularModule } from 'lucide-angular';
 import { DialogModule } from 'primeng/dialog';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
+import { itemEditLink } from '../../shared/catalogue/item-edit-link';
 import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribute-cards.component';
 import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-picker.component';
 import { normalizeVariants, allVariantImages } from '../../shared/catalogue/variants.util';
@@ -138,6 +141,16 @@ export interface QuickAddEvent {
               <lucide-icon name="square-pen" [size]="15" /> Edit
             </a>
           }
+          @if (canDecide()) {
+            <!-- pV2-STORE-APPROVALS-01 — moderator approve/reject (parity with the
+                 card queue). Soft green / red (feedback). Server enforces authority. -->
+            <button type="button" class="bp-act bp-act--green" [disabled]="busy()" (click)="decide('approve')">
+              <lucide-icon name="check" [size]="15" /> Approve
+            </button>
+            <button type="button" class="bp-act bp-act--red" [disabled]="busy()" (click)="decide('reject')">
+              <lucide-icon name="octagon-x" [size]="15" /> Reject
+            </button>
+          }
           @if (showAdd()) {
             <!-- Quantity — enter it here rather than nudging the card stepper (Liam). -->
             <div class="mr-auto flex items-center gap-1.5">
@@ -258,18 +271,33 @@ export class QuickViewDialogComponent {
   }
 
   private readonly auth = inject(AuthService);
+  private readonly store = inject(StoreItemService);
 
   /** Edit destination for viewers with rights (owner → their editor; platform admin →
-   *  the org-scoped editor/approve page); null otherwise (no pencil). */
-  protected readonly editLink = computed<unknown[] | null>(() => {
+   *  the org-scoped editor/approve page); null otherwise (no pencil). Shared with the
+   *  item card's moderation row (extract-before-duplicate). */
+  protected readonly editLink = computed<string[] | null>(() => itemEditLink(this.auth.user(), this.item()));
+
+  // ── Moderation (pV2-STORE-APPROVALS-01) ───────────────────────────────────
+  /** Approve/Reject show for a ballpark admin on a PENDING item — parity with the
+   *  card's inline moderation. A supplier (owner) sees only Edit; client gate only,
+   *  the server enforces moderator authority. */
+  protected readonly canDecide = computed(
+    () => this.auth.user()?.activeOrgType === 'ballpark' && this.item()?.approvalStatus === 'pending'
+  );
+  protected readonly busy = signal(false);
+
+  /** Approve/reject, then close — the grid reloads via bust() (rev bump), so the
+   *  item leaves the pending queue behind the closing dialog. */
+  protected decide(decision: 'approve' | 'reject'): void {
     const it = this.item();
-    const u = this.auth.user();
-    if (!it || !u) return null;
-    const owned = u.activeOrgId === it.supplierId;
-    if (u.activeOrgType === 'ballpark' && !owned) return ['/admin/orgs', it.supplierId, 'items', it.id];
-    if (owned) return ['/store/items', it.id];
-    return null;
-  });
+    if (!it || this.busy()) return;
+    this.busy.set(true);
+    firstValueFrom(this.store.decide(it.id, decision))
+      .then(() => this.close.emit())
+      .catch(() => { /* host keeps the dialog open; a toast lands with the dialog work */ })
+      .finally(() => this.busy.set(false));
+  }
 
   /** Volume price tiers (guide pricing) — KEY data shown up top. */
   protected readonly tiers = computed(() => {
