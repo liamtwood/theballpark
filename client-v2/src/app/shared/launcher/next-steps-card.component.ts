@@ -103,6 +103,8 @@ export interface NextStep {
       }
       .bp-next-steps__link lucide-icon {
         margin-top: 1px;
+        /* Softer pink icons, matching the launcher tile glyphs (home consistency). */
+        color: color-mix(in srgb, var(--theme-accent) 58%, #fff);
       }
       .ns-text {
         display: flex;
