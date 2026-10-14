@@ -38,6 +38,10 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
             </span>
           }
           @if (auth.isLoggedIn()) {
+            <!-- Visible Sign Out mirroring the public header's Sign In button
+                 (same bp-btn-grad), on every page; the three-dots menu (which
+                 also holds sign-out) stays put to its right. -->
+            <button type="button" class="bp-btn-grad" (click)="signOut()">Sign Out</button>
             <app-user-menu />
           }
         </div>
@@ -87,6 +91,11 @@ export class AppShellComponent {
   protected async returnHome(): Promise<void> {
     const home = this.auth.user()?.homeOrgId;
     if (home) await this.auth.switchOrg(home, '/admin/orgs');
+  }
+
+  /** Sign out from the header button (mirrors the user-menu's sign-out). */
+  protected signOut(): void {
+    void this.auth.logout();
   }
 }
 
