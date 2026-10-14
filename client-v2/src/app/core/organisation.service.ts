@@ -21,7 +21,8 @@ export interface OrgProfile {
   region: string | null;
   postcode: string | null;
   /** Primary address codelist type (address_type): registered/billing/site/
-   *  shipping/venue. NOT NULL server-side — defaults to 'registered' on first save. */
+   *  shipping/venue. NOT NULL server-side — the primary defaults to 'site'. Read
+   *  only for now; the type PICKER is deferred to the multi-address work (FR-00239). */
   addressType: string | null;
   /** ISO 3166-1 alpha-2 — fed by the `country` codelist (pV2-CODELISTS-02). */
   country: string | null;

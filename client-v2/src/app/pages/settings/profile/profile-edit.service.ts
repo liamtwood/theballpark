@@ -24,7 +24,6 @@ export interface ProfileForm {
   line2: string;
   region: string;
   postcode: string;
-  addressType: string;
   companyNumber: string;
   email: string;
   phone: string;
@@ -101,17 +100,11 @@ export class ProfileEditService {
   // ── Codelist-fed selects (RP-04: no inline arrays) ────────────────────────
   private readonly countryRes = resource({ loader: () => this.codelists.list('country') });
   private readonly currencyRes = resource({ loader: () => this.codelists.list('currency') });
-  // Primary-address type picker (address_type codelist — registered/billing/site/
-  // shipping/venue). No blank clear option: addresses.type is NOT NULL.
-  private readonly addressTypeRes = resource({ loader: () => this.codelists.list('address_type') });
   readonly countryOptions = computed<EditFieldOption[]>(
     () => this.countryRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
   );
   readonly currencyOptions = computed<EditFieldOption[]>(
     () => this.currencyRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
-  );
-  readonly addressTypeOptions = computed<EditFieldOption[]>(
-    () => this.addressTypeRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
   );
 
   /** Weighted profile completeness — each unmet item deep-links to its editor. */
@@ -150,7 +143,6 @@ export class ProfileEditService {
             region: f.region,
             postcode: f.postcode,
             country: f.country,
-            addressType: f.addressType,
             companyNumber: f.companyNumber.trim(),
             email: f.email,
             phone: f.phone,
@@ -311,8 +303,6 @@ export function toForm(org: OrgProfile | null): ProfileForm {
     line2: org?.line2 ?? '',
     region: org?.region ?? '',
     postcode: org?.postcode ?? '',
-    // An org's primary address defaults to its registered office until picked.
-    addressType: org?.addressType ?? 'registered',
     companyNumber: org?.companyNumber ?? '',
     email: org?.email ?? '',
     phone: org?.phone ?? '',

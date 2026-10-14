@@ -19,9 +19,10 @@ const OrganisationUpdateSchema = z
     region: z.string().trim().max(120).optional(),
     postcode: z.string().trim().max(20).optional(),
     // addressType — the primary address's codelist type (address_type). item_tier
-    // pattern: a trimmed free string, codelist-GOVERNED (the UI offers the values);
-    // shape-validated here, the value space lives in the codelist. Never cleared to
-    // NULL (addresses.type is NOT NULL) — upsert defaults it when absent.
+    // pattern: a trimmed free string, codelist-governed, shape-validated here only.
+    // The profile UI does NOT surface a picker (the primary stays 'site'); this
+    // field is kept for the deferred multi-address work (FR-00239). Never cleared
+    // to NULL (addresses.type is NOT NULL) — upsert defaults it to 'site' when absent.
     addressType: z.string().trim().max(40).optional(),
     email: z.string().trim().email().max(120).optional().or(z.literal('')),
     phone: z.string().trim().max(40).optional(),

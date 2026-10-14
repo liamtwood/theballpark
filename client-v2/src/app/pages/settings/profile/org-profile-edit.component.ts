@@ -101,9 +101,8 @@ import { ProfileEditService } from './profile-edit.service';
               <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().name" (ngModelChange)="store.patch({ name: $event })" (blur)="store.saveSection('org')" /></label>
             <label class="block"><span class="ed-label mb-1.5 block">Company number</span>
               <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().companyNumber" (ngModelChange)="store.patch({ companyNumber: $event })" (blur)="store.saveSection('org')" /></label>
-            <!-- Primary address (addresses satellite). Type → address_type codelist. -->
-            <label class="block sm:col-span-2"><span class="ed-label mb-1.5 block">Address type</span>
-              <app-select ariaLabel="Address type" [disabled]="!store.canEdit()" [options]="store.addressTypeOptions()" [value]="store.form().addressType" (changed)="store.patch({ addressType: $event }); store.saveSection('org')" /></label>
+            <!-- Primary address (addresses satellite). Type stays 'site' (the primary);
+                 the type picker belongs to the deferred multi-address work (FR-00239). -->
             <label class="block sm:col-span-2"><span class="ed-label mb-1.5 block">Address line 1</span>
               <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().address" (ngModelChange)="store.patch({ address: $event })" (blur)="store.saveSection('org')" /></label>
             <label class="block sm:col-span-2"><span class="ed-label mb-1.5 block">Address line 2</span>

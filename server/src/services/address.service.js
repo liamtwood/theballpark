@@ -50,10 +50,13 @@ async function upsertPrimaryForOrg(client, orgId, cols) {
     return primaryId;
   }
 
-  // First write: ensure the NOT-NULL `type` is set. Honour a picked type (already
-  // in cols), else default to 'registered' (an org's primary = its registered
-  // address). The spread puts cols.type last so a picked value wins.
-  const insertCols = { type: 'registered', ...cols };
+  // First write: ensure the NOT-NULL `type` is set. Default to 'site' (where the
+  // supplier operates — the locality the marketplace shows; matches the addresses
+  // DDL default). 'registered' is a legal-office concept that becomes a SECOND
+  // typed address under the deferred multi-address work (FR-00239), not the
+  // primary. A caller-supplied type (future multi-address API) still wins — the
+  // spread puts cols.type last.
+  const insertCols = { type: 'site', ...cols };
   const insertEntries = Object.entries(insertCols);
   const colNames = insertEntries.map(([c]) => c);
   const placeholders = insertEntries.map((_, i) => `$${i + 2}`);
