@@ -154,7 +154,7 @@ export class ProjectsNewComponent {
   /** Event type is a curated LOV (admins own it) — same list the project
    *  detail's Event type dropdown reads. */
   private readonly eventTypeRes = resource({
-    loader: () => this.codelists.list('event_type'),
+    loader: () => this.codelists.list('project_type'),
   });
   protected readonly eventTypeOptions = computed(
     () => this.eventTypeRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
@@ -250,7 +250,12 @@ export class ProjectsNewComponent {
       projectId = card.id;
 
       const detailPatch: { clientName?: string; projectBudget?: number } = {};
-      if (this.client().trim()) detailPatch.clientName = this.client().trim();
+      // The create schema doesn't take clientName; PATCH it in. The AI often
+      // folds the client into the project NAME, so fall back to the parser's
+      // dedicated `client` field when the form field is empty (FR-00240 hero
+      // eyebrow reads client_name).
+      const clientName = this.client().trim() || (parsed.client ?? '').trim();
+      if (clientName) detailPatch.clientName = clientName;
       if (this.budget().trim()) detailPatch.projectBudget = Number(this.budget());
       if (Object.keys(detailPatch).length) {
         try {

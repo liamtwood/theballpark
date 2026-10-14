@@ -401,8 +401,13 @@ export class ProjectDetailComponent {
   protected readonly eventSummary = computed(() => {
     const p = this.detail.value();
     if (!p) return '';
+    // Resolve the event_type CODE → its project_type codelist LABEL (e.g.
+    // "launch" → "Product launch"); fall back to the raw value if unresolved.
+    const typeLabel = p.eventType
+      ? (this.eventTypeOptions().find((o) => o.value === p.eventType)?.label ?? p.eventType)
+      : null;
     const parts = [
-      p.eventType,
+      typeLabel,
       p.venueName,
       p.guestCount ? `${p.guestCount} guests` : null,
       p.eventDate,
@@ -481,7 +486,7 @@ export class ProjectDetailComponent {
   // Status shows as a pill (hero + Event details, v1 parity); transitions
   // get a dedicated allowed_next_codes control later, not a free dropdown.
   private readonly eventTypeRes = resource({
-    loader: () => this.codelists.list('event_type'),
+    loader: () => this.codelists.list('project_type'),
   });
   protected readonly eventTypeOptions = computed<EditFieldOption[]>(
     () => this.eventTypeRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
