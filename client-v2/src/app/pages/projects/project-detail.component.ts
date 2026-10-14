@@ -101,13 +101,14 @@ interface DetailForm {
   template: `
     @if (detail.value(); as p) {
       @if (isDraft()) {
-        <!-- FR-00240 — client eyebrow / project title / event-summary subtitle.
-             Back reads "Back" + history-aware (standard), top-left above the
-             title. The right-hand Ballpark meta returns in S2 (it needs the
-             line cluster for the running total). -->
-        <app-page-hero [eyebrow]="p.clientName || 'Project'" [dense]="true" [contained]="true"
+        <!-- FR-00240 — client eyebrow / project title / event-summary subtitle,
+             all page-config-driven + token-resolved (configurable in
+             /settings/pages; default eyebrow {clientName}). Back reads "Back" +
+             history-aware (standard), top-left above the title. The right-hand
+             Ballpark meta returns in S2 (needs the line cluster for the total). -->
+        <app-page-hero [eyebrow]="projectHero().eyebrow" [dense]="true" [contained]="true"
                        [back]="{ label: 'Back', href: '/projects', history: true }"
-                       [title]="p.name" [subtitle]="eventSummary()" />
+                       [title]="projectHero().title" [subtitle]="projectHero().subtitle" />
       } @else {
         <!-- Live project: cover hero + negotiation tiles, in the workspace column.
              bp-gutter reserves the scrollbar gutter so it lines up with the body. -->
@@ -395,25 +396,29 @@ export class ProjectDetailComponent {
    *  Marketplace — About Project (event details already live on Ballpark Cost),
    *  Reports and Inbox unlock once it goes Active (sent to suppliers). */
   protected readonly isDraft = computed(() => (this.detail.value()?.status ?? 'draft') === 'draft');
-  /** FR-00240 — the draft hero's subtitle: a compact event summary built from
-   *  the planning facts (event type · venue · guests · date). Falls back to the
-   *  ref when nothing's filled in yet. */
-  protected readonly eventSummary = computed(() => {
+  /** FR-00240 — the project token context fed to the page-config hero resolver.
+   *  eventType is resolved CODE → project_type LABEL here (the service only
+   *  substitutes). The hero (eyebrow {clientName} / title {projectName} /
+   *  subtitle event-summary) is page-config-driven + configurable in
+   *  /settings/pages; empty segments drop from the ' · ' join. */
+  private readonly projectTokens = computed(() => {
     const p = this.detail.value();
-    if (!p) return '';
-    // Resolve the event_type CODE → its project_type codelist LABEL (e.g.
-    // "launch" → "Product launch"); fall back to the raw value if unresolved.
+    if (!p) return null;
     const typeLabel = p.eventType
       ? (this.eventTypeOptions().find((o) => o.value === p.eventType)?.label ?? p.eventType)
       : null;
-    const parts = [
-      typeLabel,
-      p.venueName,
-      p.guestCount ? `${p.guestCount} guests` : null,
-      p.eventDate,
-    ].filter((x): x is string => !!x && String(x).trim().length > 0);
-    return parts.length ? parts.join(' · ') : (p.ref ?? '');
+    return {
+      clientName: p.clientName,
+      projectName: p.name,
+      eventType: typeLabel,
+      location: p.venueName, // venue CITY once venue_address_id is wired (FR-00239)
+      eventDate: p.eventDate,
+      guestCount: p.guestCount,
+    };
   });
+  protected readonly projectHero = computed(() =>
+    this.pageConfig.pageHero('project', this.projectTokens())
+  );
   protected readonly tabs = computed<TabBandTab[]>(() => {
     const draft = this.isDraft();
     const t: TabBandTab[] = [];

@@ -8,6 +8,7 @@ import {
   PageConfigPayload,
   PageHeroOverride,
   PageKey,
+  ProjectTokenContext,
   mergeConfig,
 } from './page-config.types';
 
@@ -48,26 +49,48 @@ export class PageConfigService {
   /** Resolve a feature page's hero (eyebrow / title / subtitle): the role's
    *  admin overrides win over PAGE_HERO_DEFAULTS, then {tokens} substitute.
    *  Reactive — reads the config + session signals, so wrap the call in a
-   *  component computed(). */
-  pageHero(page: PageKey): ResolvedHero {
+   *  component computed(). Pass `project` on a PROJECT page so {clientName}
+   *  /{projectName}/{eventType}/{location}/{eventDate}/{guestCount} resolve
+   *  from the current project; segments left empty drop from the ' · ' join. */
+  pageHero(page: PageKey, project?: ProjectTokenContext | null): ResolvedHero {
     const ov: PageHeroOverride = this._config()?.pages?.[page] ?? {};
     const def = PAGE_HERO_DEFAULTS[page];
     return {
-      eyebrow: this.applyTokens(ov.eyebrow || def.eyebrow),
-      title: this.applyTokens(ov.title || def.title),
-      subtitle: this.applyTokens(ov.subtitle || def.subtitle),
+      eyebrow: this.tidySeparators(this.applyTokens(ov.eyebrow || def.eyebrow, project)),
+      title: this.tidySeparators(this.applyTokens(ov.title || def.title, project)),
+      subtitle: this.tidySeparators(this.applyTokens(ov.subtitle || def.subtitle, project)),
     };
   }
 
   /** Substitute the small whitelist of runtime tokens. Unknown tokens are
-   *  left literal (never blanked). */
-  private applyTokens(s: string): string {
+   *  left literal (never blanked). Project tokens resolve from `project` (empty
+   *  when absent — a non-project page passes none, so they render ''). */
+  private applyTokens(s: string, project?: ProjectTokenContext | null): string {
     const u = this.auth.user();
+    const p = project ?? null;
+    // {guestCount} carries its own "guests" word so the whole segment drops
+    // cleanly when there's no count.
+    const guests = p?.guestCount != null && Number(p.guestCount) > 0 ? `${p.guestCount} guests` : '';
+    const location = p?.location ?? '';
     return s
       .replace(/\{email\}/g, u?.email ?? '')
       .replace(/\{orgName\}/g, u?.activeOrgName ?? '')
       .replace(/\{orgType\}/g, u?.activeOrgType ?? '')
-      .replace(/\{eventLabel\}/g, this.eventLabel());
+      .replace(/\{eventLabel\}/g, this.eventLabel())
+      .replace(/\{clientName\}/g, p?.clientName ?? '')
+      .replace(/\{projectName\}/g, p?.projectName ?? '')
+      .replace(/\{eventType\}/g, p?.eventType ?? '')
+      .replace(/\{location\}/g, location)
+      .replace(/\{venueName\}/g, location)
+      .replace(/\{eventDate\}/g, p?.eventDate ?? '')
+      .replace(/\{guestCount\}/g, guests);
+  }
+
+  /** Drop ' · '-joined segments left empty by absent tokens (no leading /
+   *  trailing / doubled separators), so a project missing a field still reads
+   *  clean. Only removes empty segments — non-empty copy is untouched. */
+  private tidySeparators(s: string): string {
+    return s.split(' · ').map((seg) => seg.trim()).filter(Boolean).join(' · ');
   }
 
   /** Load the org_type's config. Called from the bootstrap initializer chain

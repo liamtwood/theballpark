@@ -23,7 +23,23 @@ export interface PageConfigPayload {
 
 /** The feature pages whose hero (eyebrow / title / subtitle) is admin-driven
  *  from /settings/pages. Home is separate (its title has modes). */
-export type PageKey = 'newProject' | 'projects' | 'marketplace' | 'profile';
+export type PageKey = 'newProject' | 'projects' | 'marketplace' | 'profile' | 'project';
+
+/** Per-project token values fed into the resolver when rendering a PROJECT
+ *  page (the project detail hero). The component resolves these from the loaded
+ *  project (eventType already mapped to its project_type LABEL, not the code)
+ *  and passes them to pageHero('project', ctx). All optional — an absent field
+ *  resolves to an empty token and its subtitle segment is dropped. */
+export interface ProjectTokenContext {
+  clientName?: string | null;
+  projectName?: string | null;
+  /** The project_type LABEL (e.g. "Product launch"), not the code. */
+  eventType?: string | null;
+  /** venue_name for now; the venue CITY once venue_address_id is wired (FR-00239). */
+  location?: string | null;
+  eventDate?: string | null;
+  guestCount?: number | null;
+}
 
 /** A page's configurable hero (defaults apply when unset). Strings may embed
  *  {tokens} — see TOKEN help in the service. */
@@ -45,7 +61,10 @@ export const CONFIG_DEFAULTS = {
 } as const;
 
 /** Baseline per-page hero copy (overridable per role in /settings/pages).
- *  Subtitles may embed {tokens}: {email} {orgName} {orgType} {eventLabel}. */
+ *  Subtitles may embed {tokens}: {email} {orgName} {orgType} {eventLabel}; the
+ *  PROJECT page also has {clientName} {projectName} {eventType} {location}
+ *  {venueName} {eventDate} {guestCount} (resolved from the current project —
+ *  empty segments drop from the ' · '-joined subtitle). */
 export const PAGE_HERO_DEFAULTS: Record<PageKey, Required<PageHeroOverride>> = {
   newProject: {
     eyebrow: 'New project',
@@ -69,12 +88,20 @@ export const PAGE_HERO_DEFAULTS: Record<PageKey, Required<PageHeroOverride>> = {
     title: 'Your details',
     subtitle: 'Signed in as {email} · {orgType} account',
   },
+  // The project DETAIL hero (FR-00240): client name eyebrow / project name /
+  // event-summary subtitle. Empty token segments drop from the ' · ' join.
+  project: {
+    eyebrow: '{clientName}',
+    title: '{projectName}',
+    subtitle: '{eventType} · {location} · {eventDate} · {guestCount}',
+  },
 };
 
 /** Admin table metadata: the pages whose hero is editable, in display order. */
 export const PAGE_META: readonly { key: PageKey; label: string }[] = [
   { key: 'newProject', label: 'New project' },
   { key: 'projects', label: 'Past projects' },
+  { key: 'project', label: 'Project (detail)' },
   { key: 'marketplace', label: 'Marketplace' },
   { key: 'profile', label: 'Profile' },
 ];

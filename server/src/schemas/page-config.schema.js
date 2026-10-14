@@ -38,6 +38,7 @@ const PageConfigSchema = z
       .object({
         newProject: PageHeroOverrideSchema.optional(),
         projects: PageHeroOverrideSchema.optional(),
+        project: PageHeroOverrideSchema.optional(),
         profile: PageHeroOverrideSchema.optional(),
         marketplace: PageHeroOverrideSchema.optional(),
       })
