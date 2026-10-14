@@ -1,11 +1,13 @@
-import { ChangeDetectionStrategy, Component, inject, input, linkedSignal, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, resource, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { ProjectDetail, ProjectUpdate } from '../../core/projects/project.types';
+import { CodelistService } from '../../core/codelists/codelist.service';
 import { withCommas, natoDate } from '../../shared/details-format';
 import { SaveStatePillComponent, SaveState } from '../../shared/save-state-pill/save-state-pill.component';
+import { SelectComponent, SelectOption } from '../../shared/select/select.component';
 
 /** pV2-BUILDUP-04 — the editable "Event details" card at the top of the
  *  Cart/Final, replacing the read-only summary tiles. Each field saves on blur
@@ -15,7 +17,7 @@ import { SaveStatePillComponent, SaveState } from '../../shared/save-state-pill/
 @Component({
   selector: 'app-event-details-edit',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, LucideAngularModule, SaveStatePillComponent],
+  imports: [FormsModule, LucideAngularModule, SaveStatePillComponent, SelectComponent],
   host: { class: 'block' },
   styles: [`
     /* pV2-BUILDUP-04 workspace card — soft white on the pink ground. */
@@ -76,8 +78,8 @@ import { SaveStatePillComponent, SaveState } from '../../shared/save-state-pill/
 
         <label class="block">
           <span class="ed-label mb-1.5 block">Event type</span>
-          <input class="ed-input" type="text" placeholder="e.g. Product launch party"
-                 [ngModel]="dEventType()" (ngModelChange)="dEventType.set($event)" (blur)="saveEventType()" />
+          <app-select ariaLabel="Event type" [options]="eventTypeOptions()"
+                      [value]="dEventType()" (changed)="dEventType.set($event); saveEventType()" />
         </label>
 
         <label class="block">
@@ -127,6 +129,18 @@ import { SaveStatePillComponent, SaveState } from '../../shared/save-state-pill/
 })
 export class EventDetailsEditComponent {
   private readonly projects = inject(ProjectService);
+  private readonly codelists = inject(CodelistService);
+
+  /** Event type is the project_type codelist (same list the detail Event
+   *  Logistics card + create flow use) — a dropdown, not free text. Leading
+   *  blank clears it back to null. */
+  private readonly eventTypeRes = resource({
+    loader: () => this.codelists.list('project_type'),
+  });
+  protected readonly eventTypeOptions = computed<SelectOption[]>(() => [
+    { value: '', label: '—' },
+    ...(this.eventTypeRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []),
+  ]);
 
   readonly project = input.required<ProjectDetail>();
   readonly projectId = input.required<string>();
