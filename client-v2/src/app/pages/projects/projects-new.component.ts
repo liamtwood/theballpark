@@ -40,25 +40,13 @@ import { SelectComponent } from '../../shared/select/select.component';
       <!-- Own the overflow so the body scrolls, not the whole page. -->
       <div class="min-h-0 flex-1 overflow-y-auto">
       @if (busy()) {
-        <!-- Recommend progress (mockup 160953) — steps advance as the brief is
-             parsed, items matched, and the ballpark cost is built. -->
-        <div class="mx-auto max-w-xl py-4 text-center">
-          <h2 class="bp-page-title">Building your {{ label().toLowerCase() }}…</h2>
-          <p class="bp-body-small mt-2 text-secondary">We're reading your brief, pulling out key details, matching marketplace suppliers and estimating the project cost.</p>
-          <div class="mt-6 flex flex-col gap-2.5 text-left">
-            @for (s of steps; track s.label; let i = $index) {
-              <div class="bp-card flex items-center gap-3 p-3.5" [class.opacity-40]="i > step()">
-                <span class="bp-icon-block h-9 w-9 shrink-0">
-                  @if (i < step()) {
-                    <lucide-icon name="check" [size]="16" />
-                  } @else {
-                    <lucide-icon [name]="s.icon" [size]="16" [class.animate-pulse]="i === step()" />
-                  }
-                </span>
-                <span class="bp-body">{{ s.label }}</span>
-              </div>
-            }
-          </div>
+        <!-- Simple loading state (S1): read the brief → set up the project. The
+             4-step "building your project" deck (deck slide 3) is dropped — its
+             item-match / ballpark steps are S2. -->
+        <div class="mx-auto flex max-w-xl flex-col items-center gap-3 py-16 text-center">
+          <span class="bp-icon-block h-11 w-11"><lucide-icon name="sparkles" [size]="20" class="animate-pulse text-accent" /></span>
+          <h2 class="bp-page-title">Creating your {{ label().toLowerCase() }}…</h2>
+          <p class="bp-body-small text-secondary">Reading your brief and setting up the project.</p>
         </div>
       } @else {
         <div class="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
@@ -204,15 +192,6 @@ export class ProjectsNewComponent {
   protected readonly MIN_BRIEF = 40;
   protected readonly briefLen = computed(() => this.briefText().trim().length);
 
-  /** Recommend progress steps (mockup 160953). `step()` is the active index. */
-  protected readonly steps = [
-    { icon: 'file-text', label: 'Reading brief' },
-    { icon: 'calendar', label: 'Finding dates and deliverables' },
-    { icon: 'store', label: 'Matching marketplace items' },
-    { icon: 'wallet', label: 'Building ballpark cost' },
-  ];
-  protected readonly step = signal(0);
-
   protected readonly canSubmit = computed(
     () => !this.busy() && (this.briefLen() >= this.MIN_BRIEF || !!this.file())
   );
@@ -241,17 +220,15 @@ export class ProjectsNewComponent {
   protected async submit(): Promise<void> {
     if (!this.canSubmit()) return;
     this.busy.set(true);
-    this.step.set(0);
     let projectId: string | null = null;
     try {
-      // Step 0 — read the brief (extract text for uploads, then parse).
+      // Read the brief (extract text for uploads, then parse).
       let text = this.briefText().trim();
       const f = this.file();
       if (f && !text) {
         text = (await firstValueFrom(this.ai.extractText(f))).text;
       }
       const parsed = await firstValueFrom(this.ai.parseBrief(text));
-      this.step.set(1); // finding dates & deliverables
 
       // Manual detail fields win over the parsed brief (both map to existing
       // project attributes). Client + Budget aren't on the create schema, so
@@ -266,6 +243,9 @@ export class ProjectsNewComponent {
         venueName: this.location().trim() || base.venueName,
         guestCount: this.guests().trim() ? Number(this.guests()) : base.guestCount,
       };
+      // create() also seeds project_settings (null rates) + scaffolds the
+      // project_categories brief buckets from the parsed brief, server-side in
+      // one transaction. Item matching (recommend) is S2 — not called here.
       const card = await firstValueFrom(this.projects.create(payload));
       projectId = card.id;
 
@@ -280,28 +260,15 @@ export class ProjectsNewComponent {
         }
       }
 
-      // Step 2 — match marketplace items (v1 recommender, per category). A
-      // failure here shouldn't lose the created project: warn and still land
-      // them on the (empty) estimate to add items manually.
-      this.step.set(2);
-      try {
-        await firstValueFrom(this.projects.recommend(card.id));
-      } catch (recErr) {
-        console.warn('[ProjectsNew] recommend failed', recErr);
-        this.toast.add({
-          severity: 'warn',
-          summary: 'Created — but auto-recommend didn’t run. Add items from the marketplace.',
-          detail: errorDetail(recErr),
-          life: 6000,
-        });
-      }
-      this.step.set(3); // building ballpark cost
-      await this.router.navigate(['/projects', card.id], { queryParams: { tab: 'estimate' } });
+      // Land on the project detail (default tab). The tab bodies (Ballpark
+      // Cost / Marketplace) depend on the line cluster (S2) — until that's
+      // ported the hero is what renders; the project itself is saved.
+      await this.router.navigate(['/projects', card.id]);
     } catch (err) {
       console.warn('[ProjectsNew] brief → create failed', err);
       if (projectId) {
         // Created, but a post-create step threw — take them into the project.
-        await this.router.navigate(['/projects', projectId], { queryParams: { tab: 'estimate' } });
+        await this.router.navigate(['/projects', projectId]);
         return;
       }
       this.toast.add({

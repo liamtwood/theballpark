@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -74,7 +73,6 @@ interface DetailForm {
   selector: 'app-project-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CurrencyPipe,
     ToastModule,
     LucideAngularModule,
     CoachmarkComponent,
@@ -103,11 +101,13 @@ interface DetailForm {
   template: `
     @if (detail.value(); as p) {
       @if (isDraft()) {
-        <app-page-hero eyebrow="Project" [dense]="true" [contained]="true" [back]="{ label: 'Past projects', href: '/projects' }"
-                       [title]="p.name" [subtitle]="p.ref ?? ''"
-                       rightEyebrow="Ballpark"
-                       [rightTitle]="(estimate.value()?.projectTotal | currency: (p.currency || 'GBP') : 'symbol' : '1.0-0') ?? '—'"
-                       rightSubtitle="Exc. VAT" />
+        <!-- FR-00240 — client eyebrow / project title / event-summary subtitle.
+             Back reads "Back" + history-aware (standard), top-left above the
+             title. The right-hand Ballpark meta returns in S2 (it needs the
+             line cluster for the running total). -->
+        <app-page-hero [eyebrow]="p.clientName || 'Project'" [dense]="true" [contained]="true"
+                       [back]="{ label: 'Back', href: '/projects', history: true }"
+                       [title]="p.name" [subtitle]="eventSummary()" />
       } @else {
         <!-- Live project: cover hero + negotiation tiles, in the workspace column.
              bp-gutter reserves the scrollbar gutter so it lines up with the body. -->
@@ -395,6 +395,20 @@ export class ProjectDetailComponent {
    *  Marketplace — About Project (event details already live on Ballpark Cost),
    *  Reports and Inbox unlock once it goes Active (sent to suppliers). */
   protected readonly isDraft = computed(() => (this.detail.value()?.status ?? 'draft') === 'draft');
+  /** FR-00240 — the draft hero's subtitle: a compact event summary built from
+   *  the planning facts (event type · venue · guests · date). Falls back to the
+   *  ref when nothing's filled in yet. */
+  protected readonly eventSummary = computed(() => {
+    const p = this.detail.value();
+    if (!p) return '';
+    const parts = [
+      p.eventType,
+      p.venueName,
+      p.guestCount ? `${p.guestCount} guests` : null,
+      p.eventDate,
+    ].filter((x): x is string => !!x && String(x).trim().length > 0);
+    return parts.length ? parts.join(' · ') : (p.ref ?? '');
+  });
   protected readonly tabs = computed<TabBandTab[]>(() => {
     const draft = this.isDraft();
     const t: TabBandTab[] = [];
