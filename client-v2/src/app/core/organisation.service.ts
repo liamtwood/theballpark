@@ -12,8 +12,17 @@ export interface OrgProfile {
   description: string | null;
   /** The org's own website — the Fetch anchor on the Profile editor. */
   website: string | null;
+  /** Org primary address (addresses satellite). `address` = line1. Only
+   *  city/country are ever exposed publicly (address_locality); the rest stay
+   *  owner/admin-private. */
   address: string | null;
+  line2: string | null;
   city: string | null;
+  region: string | null;
+  postcode: string | null;
+  /** Primary address codelist type (address_type): registered/billing/site/
+   *  shipping/venue. NOT NULL server-side — defaults to 'registered' on first save. */
+  addressType: string | null;
   /** ISO 3166-1 alpha-2 — fed by the `country` codelist (pV2-CODELISTS-02). */
   country: string | null;
   email: string | null;

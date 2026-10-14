@@ -5,16 +5,26 @@
 // (from withTransaction) so the orgs update + the address write are atomic and
 // share the request's RLS/GUC context.
 
-// Profile form field -> addresses column. The editor's single "Address" line
-// maps to line1; postcode/region aren't in the form yet (satellite supports them).
-const FIELD_TO_COLUMN = { address: 'line1', city: 'city', country: 'country' };
+// Profile form field -> addresses column. The editor's "Address" line maps to
+// line1; line2/region/postcode are the fuller capture. latitude/longitude are
+// satellite-supported but kept out of the profile UI for now.
+const FIELD_TO_COLUMN = {
+  address: 'line1', line2: 'line2', city: 'city',
+  region: 'region', postcode: 'postcode', country: 'country',
+};
 
-/** The address columns present in a parsed profile patch ('' clears → null).
- *  Returns {} when the patch carries no address fields. */
+/** The address columns present in a parsed profile patch ('' clears a free-text
+ *  line → null). `addressType` is handled apart from the free-text lines: it maps
+ *  to the NOT-NULL `type` column, so an empty/absent value is skipped (never
+ *  nulled) and the upsert default covers a first write. Returns {} when the patch
+ *  carries no address fields. */
 function addressColumnsFrom(parsed) {
   const cols = {};
   for (const [field, column] of Object.entries(FIELD_TO_COLUMN)) {
     if (parsed[field] !== undefined) cols[column] = parsed[field] === '' ? null : parsed[field];
+  }
+  if (typeof parsed.addressType === 'string' && parsed.addressType.trim() !== '') {
+    cols.type = parsed.addressType.trim();
   }
   return cols;
 }
@@ -40,13 +50,18 @@ async function upsertPrimaryForOrg(client, orgId, cols) {
     return primaryId;
   }
 
-  const colNames = entries.map(([c]) => c);
-  const placeholders = entries.map((_, i) => `$${i + 2}`);
+  // First write: ensure the NOT-NULL `type` is set. Honour a picked type (already
+  // in cols), else default to 'registered' (an org's primary = its registered
+  // address). The spread puts cols.type last so a picked value wins.
+  const insertCols = { type: 'registered', ...cols };
+  const insertEntries = Object.entries(insertCols);
+  const colNames = insertEntries.map(([c]) => c);
+  const placeholders = insertEntries.map((_, i) => `$${i + 2}`);
   const inserted = await client.query(
-    `INSERT INTO addresses (org_id, type, ${colNames.join(', ')}, created_by, updated_by)
-     VALUES ($1, 'registered', ${placeholders.join(', ')}, app_current_user_id(), app_current_user_id())
+    `INSERT INTO addresses (org_id, ${colNames.join(', ')}, created_by, updated_by)
+     VALUES ($1, ${placeholders.join(', ')}, app_current_user_id(), app_current_user_id())
      RETURNING id`,
-    [orgId, ...entries.map(([, v]) => v)]
+    [orgId, ...insertEntries.map(([, v]) => v)]
   );
   const newId = inserted.rows[0].id;
   await client.query('UPDATE orgs SET primary_address_id = $2, updated_at = NOW() WHERE id = $1', [orgId, newId]);

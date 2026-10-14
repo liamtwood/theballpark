@@ -10,8 +10,19 @@ const OrganisationUpdateSchema = z
     // pV2-STORE-01 — the "About Us" blurb (also rendered on the shopfront).
     // Nullable to clear; trimmed empty string also clears (handled in route).
     description: z.string().trim().max(5000).nullable().optional(),
+    // Address satellite (org primary address). address = line1; '' clears a line
+    // to NULL (handled in address.service.addressColumnsFrom). No format regex —
+    // addresses are free text (international). Only city/country are ever public.
     address: z.string().trim().max(200).optional(),
+    line2: z.string().trim().max(200).optional(),
     city: z.string().trim().max(80).optional(),
+    region: z.string().trim().max(120).optional(),
+    postcode: z.string().trim().max(20).optional(),
+    // addressType — the primary address's codelist type (address_type). item_tier
+    // pattern: a trimmed free string, codelist-GOVERNED (the UI offers the values);
+    // shape-validated here, the value space lives in the codelist. Never cleared to
+    // NULL (addresses.type is NOT NULL) — upsert defaults it when absent.
+    addressType: z.string().trim().max(40).optional(),
     email: z.string().trim().email().max(120).optional().or(z.literal('')),
     phone: z.string().trim().max(40).optional(),
     refPrefix: z

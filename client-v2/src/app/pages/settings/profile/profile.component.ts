@@ -174,12 +174,21 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                     <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().name" (ngModelChange)="store.patch({ name: $event })" (blur)="store.saveSection('org')" /></label>
                   <label class="block"><span class="ed-label mb-1.5 block">Company number</span>
                     <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().companyNumber" (ngModelChange)="store.patch({ companyNumber: $event })" (blur)="store.saveSection('org')" /></label>
+                  <!-- Primary address (addresses satellite). Type → address_type codelist. -->
+                  <label class="block sm:col-span-2"><span class="ed-label mb-1.5 block">Address type</span>
+                    <app-select ariaLabel="Address type" [disabled]="!store.canEdit()" [options]="store.addressTypeOptions()" [value]="store.form().addressType" (changed)="store.patch({ addressType: $event }); store.saveSection('org')" /></label>
+                  <label class="block sm:col-span-2"><span class="ed-label mb-1.5 block">Address line 1</span>
+                    <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().address" (ngModelChange)="store.patch({ address: $event })" (blur)="store.saveSection('org')" /></label>
+                  <label class="block sm:col-span-2"><span class="ed-label mb-1.5 block">Address line 2</span>
+                    <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().line2" (ngModelChange)="store.patch({ line2: $event })" (blur)="store.saveSection('org')" /></label>
                   <label class="block"><span class="ed-label mb-1.5 block">City</span>
                     <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().city" (ngModelChange)="store.patch({ city: $event })" (blur)="store.saveSection('org')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Postcode</span>
+                    <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().postcode" (ngModelChange)="store.patch({ postcode: $event })" (blur)="store.saveSection('org')" /></label>
+                  <label class="block"><span class="ed-label mb-1.5 block">Region / county</span>
+                    <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().region" (ngModelChange)="store.patch({ region: $event })" (blur)="store.saveSection('org')" /></label>
                   <label class="block"><span class="ed-label mb-1.5 block">Country</span>
                     <app-select ariaLabel="Country" [filter]="true" [disabled]="!store.canEdit()" [options]="countrySelectOptions()" [value]="store.form().country" (changed)="store.patch({ country: $event }); store.saveSection('org')" /></label>
-                  <label class="block sm:col-span-2"><span class="ed-label mb-1.5 block">Address</span>
-                    <input class="ed-input" [disabled]="!store.canEdit()" [ngModel]="store.form().address" (ngModelChange)="store.patch({ address: $event })" (blur)="store.saveSection('org')" /></label>
                   <label class="block"><span class="ed-label mb-1.5 block">Email</span>
                     <input class="ed-input" type="email" [disabled]="!store.canEdit()" [ngModel]="store.form().email" (ngModelChange)="store.patch({ email: $event })" (blur)="store.saveSection('org')" /></label>
                   <label class="block"><span class="ed-label mb-1.5 block">Phone</span>
