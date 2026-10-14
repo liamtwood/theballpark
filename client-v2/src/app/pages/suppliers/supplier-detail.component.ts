@@ -372,11 +372,17 @@ export class SupplierDetailComponent {
     // Re-arm the What's Hot default so re-entering the Shopfront lands on it again.
     this.hotDefaultArmed = true;
     // Explicit key for all three surfaces (profile / storefront / store) so deep
-    // links are unambiguous; clear the store's cat/sub/tag/item drill on tab switch.
+    // links are unambiguous; CLEAR the whole browse state on tab switch so a
+    // filter set in My Shop (search / price / tier / status / active / drill) never
+    // leaks into the public Shopfront query and empties it — each tab starts clean.
     this.router
       .navigate([], {
         relativeTo: this.route,
-        queryParams: { tab, cat: null, sub: null, tag: null, item: null },
+        queryParams: {
+          tab,
+          cat: null, sub: null, sub2: null, tag: null, item: null,
+          q: null, price: null, tier: null, status: null, active: null,
+        },
         queryParamsHandling: 'merge',
       })
       .catch((err) => console.warn('[SupplierDetail] navigation failed', err));
