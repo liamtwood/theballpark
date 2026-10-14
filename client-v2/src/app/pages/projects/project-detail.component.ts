@@ -102,11 +102,13 @@ interface DetailForm {
         <!-- FR-00240 — client eyebrow / project title / event-summary subtitle,
              all page-config-driven + token-resolved (configurable in
              /settings/pages; default eyebrow {clientName}). Back reads "Back" +
-             history-aware (standard), top-left above the title. The right-hand
-             Ballpark meta returns in S2 (needs the line cluster for the total). -->
+             history-aware (standard), top-left above the title. Right-hand
+             Ballpark meta (BALLPARK / total / Exc. VAT) mirrors the live hero's
+             working total — wired in S2 now the line cluster feeds the estimate. -->
         <app-page-hero [eyebrow]="projectHero().eyebrow" [dense]="true" [contained]="true"
                        [back]="{ label: 'Back', href: '/projects', history: true }"
-                       [title]="projectHero().title" [subtitle]="projectHero().subtitle" />
+                       [title]="projectHero().title" [subtitle]="projectHero().subtitle"
+                       rightEyebrow="Ballpark" [rightTitle]="ballparkTotalStr()" rightSubtitle="Exc. VAT" />
       } @else {
         <!-- Live project: cover hero + negotiation tiles, in the workspace column.
              bp-gutter reserves the scrollbar gutter so it lines up with the body. -->
@@ -474,6 +476,17 @@ export class ProjectDetailComponent {
   protected readonly detailState = signal<'idle' | 'saving' | 'saved' | 'error'>('idle');
   /** The project's currency (for the Budget field symbol). */
   protected readonly cur = computed(() => this.detail.value()?.currency || 'GBP');
+  /** The draft hero's right-hand Ballpark total — the running estimate
+   *  (projectTotal, exc. VAT) in the project currency, no decimals (mirrors the
+   *  live hero's `workingTotal | currency:…:'1.0-0'`). Shows £0 until lines are
+   *  added — the running ballpark starts at zero. */
+  protected readonly ballparkTotalStr = computed(() =>
+    new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: this.cur(),
+      maximumFractionDigits: 0,
+    }).format(this.estimate.value()?.projectTotal ?? 0)
+  );
   /** Image-picker drawer (pV2-MEDIA-01b). */
   protected readonly imgDrawer = signal(false);
   /** pV2-BUILDUP-04 — Final Quote → client-facing document overlays. */

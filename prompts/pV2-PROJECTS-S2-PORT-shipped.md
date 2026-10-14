@@ -197,6 +197,12 @@ slices, NOT the line layer: `/api/brand` (`bp_brand_config` table absent → sel
 service still queries `FROM favourites`; the rebuild renamed it `org_favourites`). Flagged to
 the orchestrator as separate follow-ups.
 
+## Iteration — draft-hero Ballpark total (parent session)
+**Triggered by QC:** Liam — "the ballpark cost is missing from the top-right of the working area on projects."
+**Cause:** S1 deferred the draft hero's right-hand Ballpark meta to S2 (`project-detail.component.ts` ~line 106: *"returns in S2 — needs the line cluster for the total"*). The live-project hero binds `workingTotal` to the estimate, but the DRAFT hero (`app-page-hero`, the surface Liam QCs on fresh projects) never got the right-hand meta wired once S2 landed.
+**Fix:** bound `rightEyebrow="Ballpark"` / `[rightTitle]="ballparkTotalStr()"` / `rightSubtitle="Exc. VAT"` on the draft `app-page-hero` (`app-page-hero` already supports the right meta). New `ballparkTotalStr` computed formats `estimate.value()?.projectTotal` in the project currency, `1.0-0`, mirroring the live hero. Shows £0 until lines are added.
+**Files:** `client-v2/src/app/pages/projects/project-detail.component.ts`.
+
 ## QC notes
 (Liam fills this in)
 
