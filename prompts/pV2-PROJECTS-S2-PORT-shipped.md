@@ -174,6 +174,29 @@ GUCs are set (withTransaction), so a future trigger would attribute correctly wi
 service change.
 **Severity:** LOW.
 
+## Iteration — v2.768 (2026-10-14)
+**Triggered by QC (Liam):**
+1. Estimate lines grouped under the leaf **subcategory**, not the highest-level category.
+2. The marketplace card **+** toggled an already-added line back OUT on a second click.
+
+**Commit:** `142dbb32`
+**Fixes:**
+1. `project-line.service.js` `resolveProjectCategory` — walks the categories tree to the
+   ROOT (`parent_id IS NULL`) before find-or-creating the `project_categories` bucket, so
+   lines group under the top-level category (matching the AI create-flow buckets). Verified:
+   "Trestle Tables" (leaf) → **Furniture & Fixtures** (root). NOTE: lines added *before* this
+   fix keep their old subcat bucket until re-added.
+2. `project-marketplace.component.ts` `onQuoteToggle` — now **add-only** (no-op + "already in
+   the ballpark" toast, matching Quick View's onQuickAdd); removal is via the cart / Ballpark
+   Cost ✕, not the card +.
+
+**QC result:** items 2–12 pass (add / total / grouping / remove / qty / installed / details /
+quote-description / custom line all ✓). Console 500s seen during QC are UNRELATED un-ported
+slices, NOT the line layer: `/api/brand` (`bp_brand_config` table absent → self-heals to CSS),
+`/api/coachmarks/resolve` (`coachmarks` table absent), `/api/marketplace/favourites` (favourites
+service still queries `FROM favourites`; the rebuild renamed it `org_favourites`). Flagged to
+the orchestrator as separate follow-ups.
+
 ## QC notes
 (Liam fills this in)
 
