@@ -447,9 +447,9 @@ router.get('/items', async (req, res, next) => {
       `SELECT i.id, i.name, i.description, i.install_description, i.base_price, i.unit, i.images,
               i.attributes,
               i.category_id, i.approval_status, i.status,
-              -- v2dev: city/country moved to the address satellite (not on orgs/orgs_public);
-              -- nulled here to keep the response shape. TODO: join primary_address for location.
-              i.org_id AS supplier_id, o.name AS supplier_name, NULL::text AS supplier_city,
+              -- v2dev: city lives in the address satellite, surfaced on orgs_public via
+              -- the address_locality definer (supplier + active only; city/country only).
+              i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
               c.name AS category_name,
               (i.org_id = $1) AS owned_by_active_org,
               COUNT(*) OVER() AS total

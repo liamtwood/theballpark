@@ -85,7 +85,7 @@ router.get('/suppliers', async (req, res, next) => {
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     vals.push(PAGE_SIZE, offset);
     const r = await pool.query(
-      `SELECT o.id, o.name, o.description, o.logo_url, o.cover_image_url, o.image_display,
+      `SELECT o.id, o.name, o.description, o.logo_url, o.cover_image_url, o.image_display, o.city,
               COUNT(i.id) AS item_count,
               COUNT(*) OVER() AS total
          FROM orgs_public o
@@ -93,9 +93,9 @@ router.get('/suppliers', async (req, res, next) => {
               AND i.status = 'active' AND i.approval_status = 'approved' ${catClause}
         ${whereSql}
         -- BE-00129 — group every selected orgs_public column (it's a VIEW, no PK
-        -- functional dependency; see /suppliers/options above). v2dev: city dropped
-        -- (address satellite).
-        GROUP BY o.id, o.name, o.description, o.logo_url, o.cover_image_url, o.image_display
+        -- functional dependency; see /suppliers/options above). v2dev: city is the
+        -- public locality from orgs_public (address_locality definer — supplier only).
+        GROUP BY o.id, o.name, o.description, o.logo_url, o.cover_image_url, o.image_display, o.city
         ORDER BY o.name ASC
         LIMIT $${vals.length - 1} OFFSET $${vals.length}`,
       vals
@@ -104,7 +104,7 @@ router.get('/suppliers', async (req, res, next) => {
     const items = r.rows.map((row) => ({
       id: row.id,
       name: row.name,
-      city: null, // v2dev: city on the address satellite, not orgs_public
+      city: row.city ?? null, // v2dev: public locality via orgs_public (address_locality)
       description: row.description,
       logoUrl: row.logo_url,
       coverUrl: row.cover_image_url,
@@ -125,11 +125,11 @@ router.get('/suppliers/:id', async (req, res, next) => {
     if (!id.success) return res.status(400).json({ error: 'Invalid id' });
     // BE-00115 — cross-org shopfront read via the orgs_public VIEW (RLS hides the
     // base orgs row cross-org). The view exposes only safe columns — supplier
-    // contact PII (address/phone/email/website) is deliberately NOT public
-    // (contact runs through the platform inbox); those are nulled below so the
-    // response shape is unchanged for any client that reads the keys.
+    // contact PII (line1/postcode/phone/email/website) is deliberately NOT public
+    // (contact runs through the platform inbox); those are nulled below. city/country
+    // ARE public locality (orgs_public via the address_locality definer — supplier only).
     const r = await pool.query(
-      `SELECT id, name, description, logo_url, cover_image_url, images
+      `SELECT id, name, description, logo_url, cover_image_url, images, city, country
          FROM orgs_public
         WHERE id = $1`,
       [id.data]
@@ -187,10 +187,10 @@ router.get('/suppliers/:id', async (req, res, next) => {
     res.json({
       id: row.id,
       name: row.name,
-      city: null, // v2dev: city/country on the address satellite, not orgs_public
-      country: null,
+      city: row.city ?? null, // v2dev: public locality via orgs_public (address_locality)
+      country: row.country ?? null,
       hotCount,
-      // Not public on the shopfront (BE-00115) — kept in the shape as null.
+      // Full street address is NOT public (BE-00115) — only city/country above.
       address: null,
       phone: null,
       email: null,
