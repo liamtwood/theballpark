@@ -272,10 +272,24 @@ async function upsertSelfQuote(client, projectItemId, orgId, fields) {
  *  Runs on a transaction client. Null categoryId → null (uncategorised = a fee). */
 async function resolveProjectCategory(client, projectId, categoryId) {
   if (!categoryId) return null;
+  // Group under the HIGHEST-LEVEL (root) category, not the leaf subcategory —
+  // matches the AI create-flow buckets (scaffoldCategories' AI_TO_DB maps to
+  // top-level names, parent_id IS NULL). Walk the categories tree up to the root.
+  const root = await client.query(
+    `WITH RECURSIVE up AS (
+       SELECT id, parent_id FROM categories WHERE id = $1 AND deleted_at IS NULL
+       UNION ALL
+       SELECT c.id, c.parent_id FROM categories c
+         JOIN up ON c.id = up.parent_id WHERE c.deleted_at IS NULL
+     )
+     SELECT id FROM up WHERE parent_id IS NULL LIMIT 1`,
+    [categoryId]
+  );
+  const topId = root.rows[0]?.id ?? categoryId; // fallback: the category itself
   const found = await client.query(
     `SELECT id FROM project_categories
       WHERE project_id = $1 AND category_id = $2 AND deleted_at IS NULL LIMIT 1`,
-    [projectId, categoryId]
+    [projectId, topId]
   );
   if (found.rows.length) return found.rows[0].id;
   const ins = await client.query(
@@ -285,14 +299,14 @@ async function resolveProjectCategory(client, projectId, categoryId) {
                   WHERE project_id = $1 AND deleted_at IS NULL), 0))
      ON CONFLICT (project_id, category_id) WHERE deleted_at IS NULL DO NOTHING
      RETURNING id`,
-    [projectId, categoryId]
+    [projectId, topId]
   );
   if (ins.rows.length) return ins.rows[0].id;
   // lost the ON CONFLICT race — re-read the row the other writer created.
   const re = await client.query(
     `SELECT id FROM project_categories
       WHERE project_id = $1 AND category_id = $2 AND deleted_at IS NULL LIMIT 1`,
-    [projectId, categoryId]
+    [projectId, topId]
   );
   return re.rows[0]?.id ?? null;
 }

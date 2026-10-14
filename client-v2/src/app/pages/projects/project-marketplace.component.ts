@@ -228,23 +228,22 @@ export class ProjectMarketplaceComponent {
     loader: ({ params }) => firstValueFrom(this.projects.estimate(params, 'all')),
   });
 
-  /** + on a marketplace CARD — toggles the catalogue item in this project's
-   *  quote (optimistic, revert on failure). The card works in catalogue-item
-   *  space (quoteIds is a Set of item_ids); ADD is by item_id, but REMOVE must
-   *  resolve to the project_items ROW id — the one key every per-line mutation
-   *  uses (pV2-PRICING-SSOT-01 Part E). */
+  /** + on a marketplace CARD — ADD the catalogue item to this project's quote
+   *  (optimistic, revert on failure). Add-only: a second click on an already-
+   *  added card is a no-op with a toast (matches Quick View's onQuickAdd) —
+   *  removal is via the cart / Ballpark Cost list ✕, not the card + (Liam QC
+   *  2026-10-14; the + used to toggle the line back OUT). The card works in
+   *  catalogue-item space (quoteIds is a Set of item_ids). */
   protected async onQuoteToggle(itemId: string, variant: QuickAddEvent['variant'] = null, quantity?: number): Promise<void> {
     const id = this.projectId();
+    if (this.quoteIds().has(itemId)) {
+      this.toast.add({ severity: 'info', summary: 'Already in the ballpark.', life: 3000 });
+      return;
+    }
     const before = this.quoteLines();
-    const existing = this.quoteLines().find((l) => l.itemId === itemId);
     try {
-      if (existing) {
-        this.quoteLines.update((ls) => ls.filter((l) => l.id !== existing.id));
-        await firstValueFrom(this.projects.removeQuoteItem(id, existing.id)); // ROW id
-      } else {
-        const line = await firstValueFrom(this.projects.addQuoteItem(id, itemId, variant, quantity));
-        this.quoteLines.update((ls) => [...ls, line]);
-      }
+      const line = await firstValueFrom(this.projects.addQuoteItem(id, itemId, variant, quantity));
+      this.quoteLines.update((ls) => [...ls, line]);
       this.est.reload();
     } catch (err) {
       this.quoteLines.set(before);
