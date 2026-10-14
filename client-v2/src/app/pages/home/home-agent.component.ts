@@ -54,7 +54,12 @@ export class HomeAgentComponent {
   protected readonly config = inject(PageConfigService);
 
   protected readonly title = computed(() =>
-    heroTitle(this.config.heroTitleMode(), this.auth.user(), this.config.heroTitleFixed())
+    // Resolve {tokens} so a Fixed-mode title like "Hello, {firstName}" renders
+    // "Hello, Liam" (greeting/username/orgName modes inline the name already,
+    // so this is a no-op on them).
+    this.config.resolveTokens(
+      heroTitle(this.config.heroTitleMode(), this.auth.user(), this.config.heroTitleFixed())
+    )
   );
 
   /** Home eyebrow (admin-driven; default resolves to "<ORG TYPE> WORKSPACE").

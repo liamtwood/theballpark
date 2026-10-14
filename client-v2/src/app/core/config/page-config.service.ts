@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../api.service';
 import { AuthService } from '../auth/auth.service';
+import { firstName } from '../../pages/home/hero-title';
 import {
   CONFIG_DEFAULTS,
   PAGE_HERO_DEFAULTS,
@@ -62,6 +63,13 @@ export class PageConfigService {
     };
   }
 
+  /** Resolve the runtime {tokens} in an arbitrary string (e.g. the home hero
+   *  title, which composes its own text outside pageHero). Public wrapper over
+   *  the shared resolver; unknown tokens pass through untouched. */
+  resolveTokens(s: string): string {
+    return this.applyTokens(s);
+  }
+
   /** Substitute the small whitelist of runtime tokens. Unknown tokens are
    *  left literal (never blanked). Project tokens resolve from `project` (empty
    *  when absent — a non-project page passes none, so they render ''). */
@@ -77,6 +85,11 @@ export class PageConfigService {
       .replace(/\{orgName\}/g, u?.activeOrgName ?? '')
       .replace(/\{orgType\}/g, u?.activeOrgType ?? '')
       .replace(/\{eventLabel\}/g, this.eventLabel())
+      // User-name tokens (home greeting, composable titles). {username} is an
+      // alias of {firstName}. firstName() is the shared tested helper.
+      .replace(/\{firstName\}/g, firstName(u))
+      .replace(/\{username\}/g, firstName(u))
+      .replace(/\{fullName\}/g, u?.displayName ?? u?.email ?? '')
       .replace(/\{clientName\}/g, p?.clientName ?? '')
       .replace(/\{projectName\}/g, p?.projectName ?? '')
       .replace(/\{eventType\}/g, p?.eventType ?? '')

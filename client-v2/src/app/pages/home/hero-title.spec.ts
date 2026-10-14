@@ -19,7 +19,7 @@ describe('firstName', () => {
 
 describe('heroTitle', () => {
   it('greeting mode', () => {
-    expect(heroTitle('greeting', liam, '')).toBe('Welcome back, Liam');
+    expect(heroTitle('greeting', liam, '')).toBe('Hello, Liam');
   });
 
   it('username mode (email fallback)', () => {
@@ -29,15 +29,15 @@ describe('heroTitle', () => {
 
   it('orgName mode (greeting fallback when orgless)', () => {
     expect(heroTitle('orgName', liam, '')).toBe("Liam's Agency");
-    expect(heroTitle('orgName', { ...liam, activeOrgName: null }, '')).toBe('Welcome back, Liam');
+    expect(heroTitle('orgName', { ...liam, activeOrgName: null }, '')).toBe('Hello, Liam');
   });
 
   it('fixed mode uses the configured text, falling back to the greeting when empty', () => {
     expect(heroTitle('fixed', liam, 'Mission Control')).toBe('Mission Control');
-    expect(heroTitle('fixed', liam, '   ')).toBe('Welcome back, Liam');
+    expect(heroTitle('fixed', liam, '   ')).toBe('Hello, Liam');
   });
 
   it('survives a signed-out edge (guards prevent it; function tolerates it)', () => {
-    expect(heroTitle('greeting', null, '')).toBe('Welcome back, there');
+    expect(heroTitle('greeting', null, '')).toBe('Hello, there');
   });
 });

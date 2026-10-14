@@ -11,7 +11,7 @@ export function firstName(user: Pick<SessionUser, 'displayName' | 'email'> | nul
 }
 
 /** The configured launcher title (p0023's modes, v2 shape). Pure — tested.
- *  - greeting → "Welcome back, {firstName}"
+ *  - greeting → "Hello, {firstName}"
  *  - username → full display name (email fallback)
  *  - orgName  → active org name (greeting fallback when somehow absent)
  *  - fixed    → the configured text (greeting fallback when empty) */
@@ -24,10 +24,10 @@ export function heroTitle(
     case 'username':
       return user?.displayName ?? user?.email ?? 'there';
     case 'orgName':
-      return user?.activeOrgName ?? `Welcome back, ${firstName(user)}`;
+      return user?.activeOrgName ?? `Hello, ${firstName(user)}`;
     case 'fixed':
-      return fixedText.trim() || `Welcome back, ${firstName(user)}`;
+      return fixedText.trim() || `Hello, ${firstName(user)}`;
     case 'greeting':
-      return `Welcome back, ${firstName(user)}`;
+      return `Hello, ${firstName(user)}`;
   }
 }
