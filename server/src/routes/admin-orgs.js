@@ -186,7 +186,10 @@ router.patch('/:orgId/items/:itemId/active', async (req, res, next) => {
     if (req.body.is_active === true && existing.approval_status !== 'approved') {
       return res.status(409).json({ error: 'Only approved items can be activated' });
     }
-    res.json(await ItemService.update(req.params.itemId, { is_active: req.body.is_active }));
+    // is_active is a DERIVED flag, not a column — map it to the status lifecycle
+    // (new/active/retired), same as the owner route. Passing { is_active } made
+    // update() a no-op (not in UPDATABLE_COLS), so the item never went live.
+    res.json(await ItemService.update(req.params.itemId, { status: req.body.is_active ? 'active' : 'retired' }));
   } catch (err) { next(err); }
 });
 
