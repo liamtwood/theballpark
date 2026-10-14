@@ -69,14 +69,43 @@ create policy org_favourites_all on public.org_favourites for all
   with check (org_id = public.app_current_org() or public.app_is_admin());
 grant select, insert, update, delete on public.org_favourites to web_app_user;
 
--- ===== orgs_public — read view (security_invoker: RLS still applies), audit-by hidden
-create view public.orgs_public with (security_invoker = true) as
-  select id, ref, name, description, status, type, parent_id, primary_address_id,
-         email, phone, website, company_number, vat_number, vat_registered,
-         logo_url, cover_image_url, image_display, images, terms_pdf_url,
-         default_currency, default_margin_pct, default_contingency_pct, default_vat_pct,
-         default_insurance_pct, auto_publish_items, ref_prefix, ref_counter,
-         created_at, updated_at
-    from public.orgs
-   where deleted_at is null;
+-- ===== address_locality — PUBLIC locality lookup for the orgs_public view.
+-- orgs_public is security_invoker, but addresses RLS is owner/admin-only, so a plain
+-- JOIN from the view returns NULL for every OTHER org's address. This SECURITY DEFINER
+-- function is the narrow, audited bypass: it exposes ONLY city + country (never
+-- line1/line2/postcode/region — those stay owner-private) and ONLY for a publicly
+-- visible supplier (type='supplier' AND status='active'). The "who is public" test
+-- lives INSIDE the definer so the caller can't widen it. search_path is PINNED
+-- (mandatory for a definer that bypasses RLS — stops search_path hijacking).
+create or replace function public.address_locality(addr_id uuid)
+  returns table(city text, country text)
+  language sql stable security definer
+  set search_path = public, pg_temp
+  as $$
+    select a.city, a.country
+      from public.addresses a
+      join public.orgs o on o.id = a.org_id
+     where a.id = addr_id
+       and a.deleted_at is null and o.deleted_at is null
+       and o.type = 'supplier' and o.status = 'active'
+  $$;
+-- Lock it down: a definer defaults to EXECUTE for PUBLIC — revoke, then grant only
+-- the runtime role (it's still RLS-subject everywhere else; this is the one bypass).
+revoke all on function public.address_locality(uuid) from public;
+grant execute on function public.address_locality(uuid) to web_app_user;
+
+-- ===== orgs_public — read view (security_invoker: RLS still applies), audit-by hidden.
+-- city/country are joined via address_locality (the definer above) so a supplier's
+-- PUBLIC locality survives the addresses RLS; all other address fields stay private.
+create or replace view public.orgs_public with (security_invoker = true) as
+  select o.id, o.ref, o.name, o.description, o.status, o.type, o.parent_id, o.primary_address_id,
+         o.email, o.phone, o.website, o.company_number, o.vat_number, o.vat_registered,
+         o.logo_url, o.cover_image_url, o.image_display, o.images, o.terms_pdf_url,
+         o.default_currency, o.default_margin_pct, o.default_contingency_pct, o.default_vat_pct,
+         o.default_insurance_pct, o.auto_publish_items, o.ref_prefix, o.ref_counter,
+         o.created_at, o.updated_at,
+         loc.city, loc.country
+    from public.orgs o
+    left join lateral public.address_locality(o.primary_address_id) loc on true
+   where o.deleted_at is null;
 grant select on public.orgs_public to web_app_user;
