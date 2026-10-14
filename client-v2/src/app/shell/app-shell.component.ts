@@ -38,14 +38,20 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
             </span>
           }
           @if (auth.isLoggedIn()) {
-            <!-- Visible Sign Out mirroring the public header's Sign In button
-                 (same bp-btn-grad), on every page; the three-dots menu (which
-                 also holds sign-out) stays put to its right. -->
-            <button type="button" class="bp-btn-grad" (click)="signOut()">Sign Out</button>
             <app-user-menu />
           }
         </div>
       </div>
+
+      @if (auth.isLoggedIn()) {
+        <!-- Sign Out pinned to the window's very top-right (24px edge, h-14
+             centered) — the exact spot the public header's Sign In sits, so the
+             auth button is consistent across signed-out/in. The three-dots (which
+             also holds sign-out) stays in the inset cluster, to its left. -->
+        <div class="absolute right-6 top-0 z-10 flex h-14 items-center">
+          <button type="button" class="bp-btn-grad" (click)="signOut()">Sign Out</button>
+        </div>
+      }
 
       @if (auth.isLoggedIn()) {
         <nav class="bp-header-inset flex items-center gap-1 overflow-x-auto pb-2">
