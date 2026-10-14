@@ -16,7 +16,6 @@ import { EditFieldOption } from '../../shared/edit-field/edit-field.component';
 import { SelectComponent, SelectOption } from '../../shared/select/select.component';
 import { natoDate } from '../../shared/details-format';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
-import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
 import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.component';
@@ -78,7 +77,6 @@ interface DetailForm {
     CoachmarkComponent,
     PageHeroComponent,
     SelectComponent,
-    TabBandComponent,
     CompletenessCardComponent,
     DrawerComponent,
     ImagePickerComponent,
@@ -132,26 +130,34 @@ interface DetailForm {
            when they show/dismiss), tail pointing DOWN at the target tab. The
            x-offset aligns the tail with the target of the even-width tabs. -->
       <div class="relative shrink-0 pt-3">
-        @if (tab() === 'final') {
+        @if (projNavActive() === 'final') {
           <div class="pointer-events-none absolute bottom-full left-1/2 z-40 -translate-x-1/2 pb-2">
-            <div class="-translate-x-[150px]">
-              <app-coachmark page="ballpark-cost" name="intro" tail="down"
-                             defaultText="Here is your ballpark cost. Feel free to remove anything and add elements from the marketplace." />
-            </div>
+            <app-coachmark page="ballpark-cost" name="intro" tail="down"
+                           defaultText="Here is your ballpark cost. Feel free to remove anything and add elements from the marketplace." />
           </div>
         }
-        @if (tab() === 'marketplace') {
-          <!-- Marketplace is the centre tab (index 2 of 5) → no x-offset. -->
+        @if (projNavActive() === 'marketplace') {
           <div class="pointer-events-none absolute bottom-full left-1/2 z-40 -translate-x-1/2 pb-2">
             <app-coachmark page="marketplace" name="intro" tail="down"
                            defaultText="Here is the marketplace. Keep track of your running estimate by going back to the Ballpark tab." />
           </div>
         }
-        <!-- Fill the working column + reserve the scrollbar gutter so the tab
-             band lines up with the hero above and the content below. -->
-        <div class="bp-gutter px-6">
-          <div class="mx-auto w-full max-w-[var(--workspace-max)]">
-            <app-tab-band [tabs]="tabs()" [active]="tab()" [fill]="true" (activeChange)="setTab($event)" />
+        <!-- pV2 project nav (Liam): a compact, centered 2-way dark-pill switch
+             (Ballpark cost / Edit in marketplace) in place of the full tab band.
+             The Details/Event-Logistics content folds into Ballpark cost (it
+             already lives there). Inbox (S3) / Final-SOW (S4) / Reports are
+             deferred — their @case code + routes stay, just not in the nav. -->
+        <div class="flex justify-center px-6">
+          <div class="bp-projnav" role="tablist" aria-label="Project view">
+            @for (opt of projNav; track opt.tab) {
+              <button type="button" role="tab" class="bp-projnav-opt"
+                      [class.bp-projnav-opt--active]="projNavActive() === opt.tab"
+                      [attr.aria-selected]="projNavActive() === opt.tab"
+                      (click)="setTab(opt.tab)">
+                @if (projNavActive() === opt.tab) { <lucide-icon name="check" [size]="15" /> }
+                <span>{{ opt.label }}</span>
+              </button>
+            }
           </div>
         </div>
       </div>
@@ -419,21 +425,19 @@ export class ProjectDetailComponent {
   protected readonly projectHero = computed(() =>
     this.pageConfig.pageHero('project', this.projectTokens())
   );
-  protected readonly tabs = computed<TabBandTab[]>(() => {
-    const draft = this.isDraft();
-    const t: TabBandTab[] = [];
-    if (!draft) {
-      t.push({ key: 'details', label: 'About ' + this.label() });
-      // Inbox sits right after About; its badge lights when there are open
-      // threads (e.g. straight after messaging suppliers) — read from the
-      // already-fetched project overview, no extra request.
-      t.push({ key: 'inbox', label: 'Inbox', badge: this.overview.value()?.openThreads || undefined });
-    }
-    t.push({ key: 'final', label: 'Ballpark Cost' });
-    t.push({ key: 'marketplace', label: 'Marketplace' });
-    if (!draft) t.push({ key: 'reports', label: 'Reports' });
-    return t;
-  });
+  /** The compact 2-way project nav (Liam's v2 design). Ballpark cost = the
+   *  estimate/running-ballpark view ('final'; event details fold in here);
+   *  Edit in marketplace = the catalogue browse. Inbox/Final-SOW/Reports are
+   *  deferred until their stage lands (their @case + routes stay). */
+  protected readonly projNav: readonly { tab: Tab; label: string }[] = [
+    { tab: 'final', label: 'Ballpark cost' },
+    { tab: 'marketplace', label: 'Edit in marketplace' },
+  ];
+  /** Which switch option reads as selected — marketplace when on it, else the
+   *  Ballpark cost side (covers the deferred/redirected tabs too). */
+  protected readonly projNavActive = computed<Tab>(() =>
+    this.tab() === 'marketplace' ? 'marketplace' : 'final'
+  );
 
   protected readonly detail = resource<ProjectDetail, string>({
     params: () => this.id(),

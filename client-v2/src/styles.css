@@ -796,6 +796,37 @@ body {
   color: var(--color-text);
 }
 
+/* pV2 project detail — compact, centered 2-way dark-pill nav (Ballpark cost /
+   Edit in marketplace). The track is the fixed dark neutral (black in light
+   mode); the selected option shows a white tick + label at full opacity, the
+   unselected option is muted. Tokens only. */
+.bp-projnav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--radius-pill, 9999px);
+  background: var(--color-text);
+}
+.bp-projnav-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border: none;
+  border-radius: var(--radius-pill, 9999px);
+  background: transparent;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1;
+  color: var(--color-surface);
+  opacity: 0.55;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.bp-projnav-opt:hover { opacity: 0.85; }
+.bp-projnav-opt--active { opacity: 1; }
+
 /* Left category rail rows. */
 .bp-catstrip-row {
   display: flex;
