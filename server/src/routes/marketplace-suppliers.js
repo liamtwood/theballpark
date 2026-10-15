@@ -125,13 +125,14 @@ router.get('/suppliers/:id', async (req, res, next) => {
     const id = z.uuid().safeParse(req.params.id);
     if (!id.success) return res.status(400).json({ error: 'Invalid id' });
     // Cross-org shopfront read via supplier_directory (owner-run; bypasses orgs RLS,
-    // which hides the base orgs row cross-org). The directory exposes only the
-    // marketplace-card columns — supplier contact PII (line1/postcode/phone/email/
-    // website) is NOT in it at all (contact runs through the platform inbox); those
-    // are nulled below. city/country ARE public locality (via the address_locality
-    // definer — supplier only).
+    // which hides the base orgs row cross-org). The directory exposes the marketplace-
+    // card columns + `website` (0021 — public supplier info, surfaced on the Quick View
+    // supplier-profile pane, pV2-STORE-QUICKVIEW-SUPPLIER-01). Other contact PII
+    // (line1/postcode/phone/email) is NOT in the view (contact runs through the
+    // platform inbox) and is nulled below. city/country ARE public locality (via the
+    // address_locality definer — supplier only).
     const r = await pool.query(
-      `SELECT id, name, description, logo_url, cover_image_url, images, city, country
+      `SELECT id, name, description, website, logo_url, cover_image_url, images, city, country
          FROM supplier_directory
         WHERE id = $1`,
       [id.data]
@@ -196,7 +197,9 @@ router.get('/suppliers/:id', async (req, res, next) => {
       address: null,
       phone: null,
       email: null,
-      website: null,
+      // website IS public (0021) — the supplier's own stated URL, shown as a link
+      // pill on the Quick View supplier-profile pane (opens in a new tab).
+      website: row.website ?? null,
       description: row.description,
       logoUrl: row.logo_url,
       coverUrl: row.cover_image_url,

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, input, output, signal, viewChild } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -11,7 +11,9 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { itemEditLink } from '../../shared/catalogue/item-edit-link';
 import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribute-cards.component';
 import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-picker.component';
+import { ImageCarouselComponent } from '../../shared/catalogue/image-carousel.component';
 import { normalizeVariants, allVariantImages } from '../../shared/catalogue/variants.util';
+import { SupplierProfilePaneComponent } from './supplier-profile-pane.component';
 
 /** Add-to-ballpark payload — the item + the chosen variant (pV2-STORE-VARIANTS-
  *  UPCHARGE-01). `variant` is null when the item has no variants / nothing picked. */
@@ -22,17 +24,34 @@ export interface QuickAddEvent {
   quantity: number;
 }
 
-/** pV2 marketplace-redesign — the item Quick View dialog (replaces the right
- *  rail preview). Renders from the already-loaded CatalogueItem: name,
- *  description, cover, category/supplier/location, indicative price, and the
- *  spec sections. Fields not on the marketplace list projection show
- *  "Coming soon" (Liam: attributes should map, any that don't say coming
- *  soon). The supplier-profile swipe/carousel + coachmark are a later pass —
- *  for now a "View supplier profile" link. "Add to ballpark" emits `add`. */
+type Pane = 'item' | 'supplier';
+
+/** pV2-STORE-QUICKVIEW-SUPPLIER-01 — the marketplace Quick View, now a TWO-PAGE
+ *  overlay: "Item details" and "Supplier profile", switchable by a labelled segmented
+ *  control (reusing the `.bp-projnav` pattern — white track / dark selected) AND a
+ *  horizontal swipe on touch. The two panes live in a 200%-wide track that
+ *  translateX-es between 0 and -50%; both inputs drive one `pane` signal; opening a
+ *  new item resets to Item. Page 1 refines the existing item view (eyebrow → title →
+ *  description → image carousel → supplier+location → price → variants → spec groups →
+ *  Add to ballpark); the item image is plain object-contain on neutral (DECISION 2).
+ *  Page 2 is `app-supplier-profile-pane` (cover+logo, name+location, website, markdown
+ *  description, "Past projects" gallery). No "Source" field (display-only removal), no
+ *  "approved" badge, no store navigation (deferred) — the switcher never routes, so
+ *  Marketplace stays mounted behind and closing restores search/filters/scroll. */
 @Component({
   selector: 'app-quick-view-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, RouterLink, LucideAngularModule, DialogModule, ItemAttributeCardsComponent, ItemVariantPickerComponent, MarkdownPipe],
+  imports: [
+    CurrencyPipe,
+    RouterLink,
+    LucideAngularModule,
+    DialogModule,
+    ItemAttributeCardsComponent,
+    ItemVariantPickerComponent,
+    ImageCarouselComponent,
+    SupplierProfilePaneComponent,
+    MarkdownPipe,
+  ],
   template: `
     <p-dialog
       [visible]="!!item()"
@@ -46,90 +65,124 @@ export interface QuickAddEvent {
     >
       <!-- Templates stay UNCONDITIONAL so PrimeNG's ContentChildren registers
            them (an outer @if hid them → empty dialog); guard inside instead. -->
+      <!-- The page switcher lives in the header (never scrolls) — a labelled
+           segmented control + roving tabindex; arrow keys move between panes. -->
       <ng-template pTemplate="header">
-        @if (item(); as it) {
-          <div class="min-w-0">
-            <h2 class="bp-card-title">{{ it.name }}</h2>
-            @if (it.description) {
-              <div class="bp-md bp-body mt-1 text-secondary bp-qv-desc" [class.bp-qv-desc--clamp]="descLong() && !descOpen()" [innerHTML]="it.description | md"></div>
-              @if (descLong()) {
-                <button type="button" class="bp-qv-morebtn" (click)="descOpen.set(!descOpen())">{{ descOpen() ? 'Show less' : 'Show more' }}</button>
-              }
-            }
+        @if (item()) {
+          <div class="bp-projnav" role="tablist" aria-label="Quick view pages"
+               (keydown.arrowright)="setPane('supplier', true)"
+               (keydown.arrowleft)="setPane('item', true)">
+            <button type="button" role="tab" id="qv-tab-item" class="bp-projnav-opt"
+                    [class.bp-projnav-opt--active]="pane() === 'item'"
+                    [attr.aria-selected]="pane() === 'item'"
+                    [attr.tabindex]="pane() === 'item' ? 0 : -1"
+                    aria-controls="qv-pane-item"
+                    (click)="setPane('item')">
+              @if (pane() === 'item') { <lucide-icon name="check" [size]="15" /> }
+              Item details
+            </button>
+            <button type="button" role="tab" id="qv-tab-supplier" class="bp-projnav-opt"
+                    [class.bp-projnav-opt--active]="pane() === 'supplier'"
+                    [attr.aria-selected]="pane() === 'supplier'"
+                    [attr.tabindex]="pane() === 'supplier' ? 0 : -1"
+                    aria-controls="qv-pane-supplier"
+                    (click)="setPane('supplier')">
+              @if (pane() === 'supplier') { <lucide-icon name="check" [size]="15" /> }
+              Supplier profile
+            </button>
           </div>
         }
       </ng-template>
 
       @if (item(); as it) {
-        <div class="flex flex-col gap-4">
-          <!-- Supplier profile (swipe carousel is a later pass). -->
-          <a [routerLink]="['/suppliers', it.supplierId]" [queryParams]="{ view: 1 }" class="bp-qv-supplier self-start">
-            <span>View supplier profile</span>
-            <lucide-icon name="chevron-right" [size]="15" />
-          </a>
+        <div class="bp-qv-viewport"
+             (touchstart)="onTouchStart($event)"
+             (touchmove)="onTouchMove($event)"
+             (touchend)="onTouchEnd()"
+             (touchcancel)="onTouchEnd()">
+          <div class="bp-qv-track" [class.bp-qv-track--drag]="dragging()"
+               [style.transform]="trackTransform()"
+               [style.height]="trackH() ? trackH() + 'px' : null">
+            <!-- PAGE 1 — Item details. -->
+            <section #itemPane class="bp-qv-pane bp-qv-pane--item" role="tabpanel"
+                     id="qv-pane-item" aria-labelledby="qv-tab-item"
+                     [attr.aria-hidden]="pane() !== 'item' ? 'true' : null"
+                     [attr.inert]="pane() !== 'item' ? '' : null">
+              <div class="flex flex-col gap-4">
+                <div class="min-w-0">
+                  <span class="bp-qv-eyebrow">Quick view</span>
+                  <h2 class="bp-card-title mt-0.5">{{ it.name }}</h2>
+                  @if (it.description) {
+                    <div class="bp-md bp-body mt-1 text-secondary bp-qv-desc" [class.bp-qv-desc--clamp]="descLong() && !descOpen()" [innerHTML]="it.description | md"></div>
+                    @if (descLong()) {
+                      <button type="button" class="bp-qv-morebtn" (click)="descOpen.set(!descOpen())">{{ descOpen() ? 'Show less' : 'Show more' }}</button>
+                    }
+                  }
+                </div>
 
-          <!-- Cover carousel (pV2-STORE-IMAGE-VARIANTS-01): arrows page through the item
-               cover + each variant option's image; picking an option jumps to its image
-               (does nothing if that option has none). -->
-          <div class="bp-qv-imgwrap">
-            @if (currentImage(); as cover) {
-              <img class="bp-qv-img" [src]="cover" [alt]="it.name" loading="eager" />
-            } @else {
-              <div class="bp-qv-img bp-qv-img--empty"><lucide-icon name="store" [size]="26" [strokeWidth]="1.5" /></div>
-            }
-            @if (imageList().length > 1) {
-              <button type="button" class="bp-qv-arrow bp-qv-arrow--l" (click)="prevImage()" aria-label="Previous image"><lucide-icon name="chevron-left" [size]="20" /></button>
-              <button type="button" class="bp-qv-arrow bp-qv-arrow--r" (click)="nextImage()" aria-label="Next image"><lucide-icon name="chevron-right" [size]="20" /></button>
-            }
-          </div>
+                <!-- Item image(s): the cover + each variant option's image, paged by the
+                     shared carousel. Plain object-contain on neutral (DECISION 2) — the
+                     whole product, no crop, matching the plain card the user clicked.
+                     Picking a variant option jumps to its image (via jumpTo). -->
+                <app-image-carousel [images]="imageList()" [alt]="it.name" fit="contain" emptyIcon="store" [jumpTo]="variantImg()" />
 
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex min-w-0 items-center gap-2">
-              @if (it.subcategoryName || it.categoryName; as chip) {
-                <span class="bp-tag-chip">{{ chip }}</span>
-              }
-              <span class="bp-meta truncate">{{ it.supplierName }}{{ it.supplierCity ? ' · ' + it.supplierCity : '' }}</span>
-            </div>
-            @if (it.basePrice !== null && !hasVariants()) {
-              <span class="bp-price-large shrink-0">From {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-2' }}</span>
-            }
-          </div>
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex min-w-0 items-center gap-2">
+                    @if (it.subcategoryName || it.categoryName; as chip) {
+                      <span class="bp-tag-chip">{{ chip }}</span>
+                    }
+                    <span class="bp-meta truncate">{{ it.supplierName }}{{ it.supplierCity ? ' · ' + it.supplierCity : '' }}</span>
+                  </div>
+                  @if (it.basePrice !== null && !hasVariants()) {
+                    <span class="bp-price-large shrink-0">From {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-2' }}</span>
+                  }
+                </div>
 
-          <!-- Variant configurator (pV2-STORE-VARIANTS-01) — owns the price when the
-               item is a variable product; renders nothing otherwise. The chosen combo
-               drives the "Add to ballpark" value below. -->
-          <app-item-variant-picker [attributes]="it.attributes ?? null" [basePrice]="it.basePrice" (selectionChange)="chosenCombo.set($event)" (imageChange)="onVariantImage($event)" />
+                <!-- Variant configurator (pV2-STORE-VARIANTS-01) — owns the price when the
+                     item is a variable product; renders nothing otherwise. The chosen combo
+                     drives the "Add to ballpark" value below. -->
+                <app-item-variant-picker [attributes]="it.attributes ?? null" [basePrice]="it.basePrice" (selectionChange)="chosenCombo.set($event)" (imageChange)="onVariantImage($event)" />
 
-          <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — KEY: Volume pricing (guide tiers);
-               then the shared Options picklist + Show-more spec-group cards. Only
-               renders what's present — no "Coming soon" placeholders. -->
-          @if (tiers().length) {
-            <div class="bp-qv-spec">
-              <span class="bp-qv-spec__label"><lucide-icon name="tags" [size]="13" /> Volume pricing</span>
-              <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1.5">
-                @for (t of tiers(); track $index) {
-                  <dt class="bp-body-small text-secondary">{{ t.min }}@if (t.max != null) {–{{ t.max }}} @else {+}</dt>
-                  <dd class="bp-body-small text-text">£{{ t.price }}</dd>
+                <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — KEY: Volume pricing (guide tiers);
+                     then the shared Options picklist + Show-more spec-group cards. Only
+                     renders what's present — no "Coming soon" placeholders. -->
+                @if (tiers().length) {
+                  <div class="bp-qv-spec">
+                    <span class="bp-qv-spec__label"><lucide-icon name="tags" [size]="13" /> Volume pricing</span>
+                    <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1.5">
+                      @for (t of tiers(); track $index) {
+                        <dt class="bp-body-small text-secondary">{{ t.min }}@if (t.max != null) {–{{ t.max }}} @else {+}</dt>
+                        <dd class="bp-body-small text-text">£{{ t.price }}</dd>
+                      }
+                    </dl>
+                  </div>
                 }
-              </dl>
-            </div>
-          }
-          @if (it.installDescription) {
-            <div class="bp-qv-spec">
-              <span class="bp-qv-spec__label"><lucide-icon name="wrench" [size]="13" /> Included services</span>
-              <p class="bp-qv-spec__val">{{ it.installDescription }}</p>
-            </div>
-          }
+                @if (it.installDescription) {
+                  <div class="bp-qv-spec">
+                    <span class="bp-qv-spec__label"><lucide-icon name="wrench" [size]="13" /> Included services</span>
+                    <p class="bp-qv-spec__val">{{ it.installDescription }}</p>
+                  </div>
+                }
 
-          <app-item-attribute-cards [attributes]="it.attributes ?? null" />
+                <app-item-attribute-cards [attributes]="it.attributes ?? null" />
 
-          <p class="bp-caption text-secondary">
-            Specs are indicative and confirmed by the supplier when you message them. Ballpark estimates
-            are indicative and subject to supplier confirmation, final scope, availability, delivery
-            requirements and VAT.
-          </p>
+                <p class="bp-caption text-secondary">
+                  Specs are indicative and confirmed by the supplier when you message them. Ballpark estimates
+                  are indicative and subject to supplier confirmation, final scope, availability, delivery
+                  requirements and VAT.
+                </p>
+              </div>
+            </section>
+
+            <!-- PAGE 2 — Supplier profile (reads GET /api/marketplace/suppliers/:id). -->
+            <section #supplierPane class="bp-qv-pane bp-qv-pane--supplier" role="tabpanel"
+                     id="qv-pane-supplier" aria-labelledby="qv-tab-supplier"
+                     [attr.aria-hidden]="pane() !== 'supplier' ? 'true' : null"
+                     [attr.inert]="pane() !== 'supplier' ? '' : null">
+              <app-supplier-profile-pane [supplierId]="it.supplierId" />
+            </section>
+          </div>
         </div>
-
       }
 
       <ng-template pTemplate="footer">
@@ -178,54 +231,39 @@ export interface QuickAddEvent {
   `,
   styles: [
     `
-      .bp-qv-supplier {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 7px 14px;
-        border: 1px solid var(--color-border-hairline);
-        border-radius: var(--radius-pill);
-        background: var(--color-surface);
-        color: var(--color-text);
-        text-decoration: none;
-        font-family: var(--font-body);
-        font-size: var(--text-sm);
-        box-shadow: var(--shadow-md);
+      /* Two-page switcher (pV2-STORE-QUICKVIEW-SUPPLIER-01). The viewport clips the
+         200%-wide track horizontally; touch-action pan-y lets the dialog body scroll
+         vertically while we own horizontal swipes. */
+      .bp-qv-viewport { overflow: hidden; width: 100%; touch-action: pan-y; }
+      .bp-qv-track {
+        position: relative;
+        width: 200%;
+        min-height: 160px;
+        transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), height 0.24s ease;
+        will-change: transform;
       }
-      .bp-qv-imgwrap { position: relative; }
-      .bp-qv-img {
-        width: 100%;
-        aspect-ratio: 16 / 10;
-        object-fit: cover;
-        border-radius: var(--radius-lg);
+      /* Follow the finger with no animation during an active drag. */
+      .bp-qv-track--drag { transition: none; }
+      /* Each pane = one viewport width (50% of the 200% track); absolute so the
+         inactive (offscreen) pane never adds to the measured height — the track
+         height is driven to the ACTIVE pane's height in TS (ResizeObserver). */
+      .bp-qv-pane { position: absolute; top: 0; width: 50%; }
+      .bp-qv-pane--item { left: 0; }
+      .bp-qv-pane--supplier { left: 50%; }
+      @media (prefers-reduced-motion: reduce) {
+        .bp-qv-track { transition: none; }
       }
-      .bp-qv-arrow {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 34px;
-        height: 34px;
-        border-radius: var(--radius-pill);
-        background: color-mix(in srgb, var(--color-surface) 88%, transparent);
-        color: var(--color-text);
-        border: 1px solid var(--color-border-hairline);
-        box-shadow: var(--shadow-md);
-        cursor: pointer;
-      }
-      .bp-qv-arrow:hover { background: var(--color-surface); border-color: var(--theme-accent); }
-      .bp-qv-arrow--l { left: 10px; }
-      .bp-qv-arrow--r { right: 10px; }
-      .bp-qv-img--empty {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--color-fill);
+
+      .bp-qv-eyebrow {
+        font-size: var(--text-xs);
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
         color: var(--color-text-secondary);
       }
-      /* .bp-qv-spec* now live in global styles.css (shared with the item view). */
+      /* .bp-qv-spec* now live in global styles.css (shared with the item view).
+         The image carousel chrome moved to app-image-carousel (extract-before-
+         duplicate — shared with the supplier "Past projects" gallery). */
       /* Block-level markdown (paragraphs, lists) can't clamp with -webkit-line-clamp,
          so cap the height instead — a soft fade would need a mask; a hard cut + Show
          more reads fine for a Quick View header. */
@@ -309,10 +347,10 @@ export class QuickViewDialogComponent {
    *  drives the "Add to ballpark" value. */
   protected readonly chosenCombo = signal<{ values: Record<string, string>; price: number } | null>(null);
 
-  // ── Cover carousel (pV2-STORE-IMAGE-VARIANTS-01) ──────────────────────────────
+  // ── Item image carousel (pV2-STORE-IMAGE-VARIANTS-01) ─────────────────────────
   /** The item's full gallery (cover first) + each variant option's image, deduped —
-   *  what the arrows page. Falls back to [coverUrl] when a projection didn't send
-   *  the gallery array. */
+   *  what the shared carousel pages. Falls back to [coverUrl] when a projection didn't
+   *  send the gallery array. */
   protected readonly imageList = computed(() => {
     const it = this.item();
     const gallery = it?.images?.length ? it.images : (it?.coverUrl ? [it.coverUrl] : []);
@@ -320,20 +358,124 @@ export class QuickViewDialogComponent {
     const imgs = [...gallery, ...allVariantImages(m)].filter((u): u is string => !!u);
     return [...new Set(imgs)];
   });
-  protected readonly imgIndex = signal(0);
-  protected readonly currentImage = computed(() => this.imageList()[this.imgIndex()] ?? null);
-  protected prevImage(): void { const n = this.imageList().length; if (n) this.imgIndex.set((this.imgIndex() - 1 + n) % n); }
-  protected nextImage(): void { const n = this.imageList().length; if (n) this.imgIndex.set((this.imgIndex() + 1) % n); }
+  /** The variant option's image to jump the carousel to (null = no jump). */
+  protected readonly variantImg = signal<string | null>(null);
   /** Picking an option jumps to its image; if it has none, stay put (Liam). */
   protected onVariantImage(img: string | null): void {
-    if (!img) return;
-    const i = this.imageList().indexOf(img);
-    if (i >= 0) this.imgIndex.set(i);
+    if (img) this.variantImg.set(img);
+  }
+
+  // ── Two-page switcher (pV2-STORE-QUICKVIEW-SUPPLIER-01) ────────────────────────
+  protected readonly pane = signal<Pane>('item');
+  /** Horizontal drag offset in px during a touch swipe (0 at rest). */
+  protected readonly dragDx = signal(0);
+  protected readonly dragging = signal(false);
+
+  private readonly itemPane = viewChild<ElementRef<HTMLElement>>('itemPane');
+  private readonly supplierPane = viewChild<ElementRef<HTMLElement>>('supplierPane');
+  private readonly itemH = signal(0);
+  private readonly supplierH = signal(0);
+  /** Track height follows the ACTIVE pane (so a short pane leaves no whitespace and a
+   *  tall one scrolls the dialog body); during a drag it's the taller of the two so the
+   *  incoming pane isn't clipped mid-slide. */
+  protected readonly trackH = computed(() =>
+    this.dragging() ? Math.max(this.itemH(), this.supplierH()) : (this.pane() === 'item' ? this.itemH() : this.supplierH())
+  );
+  protected readonly trackTransform = computed(() => {
+    const base = this.pane() === 'item' ? 0 : -50;
+    return `translateX(calc(${base}% + ${this.dragDx()}px))`;
+  });
+
+  /** Select a pane (click/swipe/arrows). `focusTab` moves focus to the tab (keyboard). */
+  protected setPane(p: Pane, focusTab = false): void {
+    this.pane.set(p);
+    if (focusTab && typeof document !== 'undefined') {
+      queueMicrotask(() => document.getElementById('qv-tab-' + p)?.focus());
+    }
+  }
+
+  // Swipe mechanics: axis-lock on gesture start so a horizontal pane-swipe doesn't
+  // fight the dialog body's vertical scroll; commit on ~45% width OR a velocity flick,
+  // else snap back. Touch-only — desktop uses the control + arrow keys.
+  private sx = 0;
+  private sy = 0;
+  private st = 0;
+  private axis: 'none' | 'h' | 'v' = 'none';
+  private vw = 1;
+
+  protected onTouchStart(e: TouchEvent): void {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    this.sx = t.clientX;
+    this.sy = t.clientY;
+    this.st = performance.now();
+    this.axis = 'none';
+    this.dragDx.set(0);
+    this.vw = (e.currentTarget as HTMLElement).clientWidth || 1;
+  }
+
+  protected onTouchMove(e: TouchEvent): void {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const dx = t.clientX - this.sx;
+    const dy = t.clientY - this.sy;
+    if (this.axis === 'none') {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      this.axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+      if (this.axis === 'h') this.dragging.set(true);
+    }
+    if (this.axis !== 'h') return;
+    e.preventDefault(); // owns the horizontal gesture → stop the body scrolling sideways
+    // Rubber-band to the one reachable direction: Item can only swipe left, Supplier right.
+    let d = this.pane() === 'item' ? Math.min(0, dx) : Math.max(0, dx);
+    d = Math.max(-this.vw, Math.min(this.vw, d));
+    this.dragDx.set(d);
+  }
+
+  protected onTouchEnd(): void {
+    if (this.axis === 'h') {
+      const d = this.dragDx();
+      const dt = performance.now() - this.st;
+      const vel = Math.abs(d) / Math.max(dt, 1); // px/ms
+      const commit = Math.abs(d) > this.vw * 0.45 || vel > 0.5;
+      if (commit) {
+        if (this.pane() === 'item' && d < 0) this.pane.set('supplier');
+        else if (this.pane() === 'supplier' && d > 0) this.pane.set('item');
+      }
+    }
+    this.dragging.set(false);
+    this.dragDx.set(0);
+    this.axis = 'none';
   }
 
   constructor() {
-    // Reset the carousel to the cover whenever the dialog opens on a new item.
-    effect(() => { this.item(); this.imgIndex.set(0); });
+    // Opening the dialog on a new item resets to the Item pane + the per-item UI state.
+    effect(() => {
+      this.item();
+      this.pane.set('item');
+      this.descOpen.set(false);
+      this.variantImg.set(null);
+      this.qty.set(1);
+    });
+
+    // Track the active pane's height (ResizeObserver → auto-height the sliding track).
+    // Re-runs as the pane elements mount/unmount with the dialog.
+    effect((onCleanup) => {
+      if (typeof ResizeObserver === 'undefined') return;
+      const pairs: readonly [HTMLElement | undefined, (n: number) => void][] = [
+        [this.itemPane()?.nativeElement, (n) => this.itemH.set(n)],
+        [this.supplierPane()?.nativeElement, (n) => this.supplierH.set(n)],
+      ];
+      const observers: ResizeObserver[] = [];
+      for (const [el, set] of pairs) {
+        if (!el) continue;
+        const ro = new ResizeObserver(() => set(el.offsetHeight));
+        ro.observe(el);
+        set(el.offsetHeight);
+        observers.push(ro);
+      }
+      onCleanup(() => observers.forEach((o) => o.disconnect()));
+    });
   }
 
   /** Quantity to add (pV2-STORE-VARIANTS-UPCHARGE-01 / Liam) — enterable in the
