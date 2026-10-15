@@ -1396,12 +1396,11 @@ body {
   color: var(--theme-accent);
 }
 .bp-fav-btn--on {
-  /* Active = the brand gradient fills the circle, icon goes light
-     (Liam, 2026-06-12). background-image longhand — the shorthand-over-
-     gradient trap is documented at .bp-btn-grad--added. */
-  background-image: var(--bp-gradient);
+  /* Active = a clean solid accent fill, light icon (Liam 2026-10-15 — dropped
+     the pink→green brand gradient). */
+  background: var(--theme-accent);
   border-color: transparent;
-  color: var(--bp-text-on-gradient);
+  color: var(--theme-accent-contrast, #fff);
 }
 .bp-fav-btn--on:hover {
   color: var(--bp-text-on-gradient);
