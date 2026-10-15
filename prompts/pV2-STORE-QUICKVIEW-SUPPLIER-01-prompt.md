@@ -86,6 +86,67 @@ v2 component standards (docs/CLAUDE.md): standalone / OnPush / signals / `@if`-`
 / `inject()`; tokens-only colours (no raw hex / Tailwind colour utils); lucide via `.pick`. Extract-before-
 duplicate (reuse the image-carousel + segmented-control patterns rather than re-building them).
 
+## Chat design review (2026-10-15) — refinements + calls
+
+**Decision 1 (switcher) — ENDORSE: segmented control (`.bp-projnav`) + swipe, NO dots.** Labelled
+tabs are a *product requirement* (the deck says "clearly-labelled Item details / Supplier profile
+tabs so people can also click between them"), so a dot-pager alone fails the ask. A segmented
+control already shows position → dots are redundant (drop them, don't double up). Reusing
+`.bp-projnav` = consistency + extract-before-duplicate. For a binary "two views of one thing," a
+segmented track reads better than separate pills. (Still Liam's to confirm.)
+
+**Decision 2 (item image) — ENDORSE: plain object-contain on neutral.** Match the card the user
+just clicked (continuity — a plain card shouldn't open to a blurred QV); show the WHOLE product
+without an arty crop (honesty — a buyer needs to see the item); and FR-00243 is the per-image
+opt-in path for cover/blur later, so don't bake a QV-wide one-off. (Still Liam's to confirm.)
+
+**Decision 3 (NEW — surface to Liam): "View full store" target.** The spec navigates to
+`/suppliers/:id` (LEAVES Marketplace). The deck's stated preference (slide 7) was to *"filter
+Marketplace to that supplier's full range, keeping the running ballpark total visible"* — i.e.
+stay in Marketplace. Tension: nav-to-store (spec; simple, route exists) vs an **in-place supplier
+filter** (deck's ideal; keeps the running total + the "never auto-leave Marketplace" ethos). My
+lean = the in-place filter if Marketplace supports a supplier filter, else nav-to-store as the
+fallback. Liam to decide.
+
+**Empty states (conditional-everywhere — QC a SPARSE supplier, not just Yahire):** no cover → a
+neutral token placeholder band (the logo still needs something to overlap); no logo → a monogram/
+initial avatar in the circular slot; no gallery → **hide "Past projects" entirely** (no empty
+carousel); no description → hide the block; no website → hide the pill; no city → hide the line.
+Never render an empty label or placeholder.
+
+**Cover + logo overlap:** circular logo ~64–72px with a white ring (so it reads on any cover),
+overlapping the cover's bottom-left at a fixed offset; the content below starts clear of the logo
+overflow; on the no-cover placeholder the logo sits on the band. Don't let the overlap clip on
+short/mobile viewports.
+
+**Swipe mechanics:** touch-only (desktop uses the control + arrow keys — no mouse-drag);
+**axis-lock on gesture start** so a horizontal pane-swipe doesn't fight the dialog body's vertical
+scroll; commit on ~40–50% width OR a velocity flick, else snap back; `transition` on the
+`translateX`, disabled during the active drag (follow the finger) and re-enabled on release;
+respect `prefers-reduced-motion` (reduce/disable the slide).
+
+**Mobile vs desktop:** desktop = segmented control primary, swipe optional, bounded `bp-modal`;
+mobile = swipe primary + the control at the top (thumb-reachable) — reuse the dialog's existing
+responsive/full-bleed behaviour; cover + carousels scale to width.
+
+**Long description:** the Yahire write-up is long — **clamp it with a show-more** (reuse the
+item-view show-more) so the website pill + "Past projects" gallery aren't buried under a wall of
+text. Keep name/badge/location/website ABOVE the description.
+
+**Supplier pane order (recommended):** cover+logo → name + "Approved" badge + location → website
+pill → description (clamped) → "Past projects" gallery → "View full store" (bottom).
+
+**Accessibility:** proper tablist semantics (`role="tablist"/"tab"/"tabpanel"`, `aria-selected`,
+`aria-controls`); focus the dialog on open + manage focus on pane switch; reduced-motion honoured.
+
+**Badge honesty (minor):** "Approved Ballpark supplier" derived from being active in
+`supplier_directory` means EVERY shown supplier gets it — fine IF active == vetted/approved.
+Confirm that's the real bar; if an "active-but-unvetted" state ever exists, the badge needs its
+own flag (don't let it overclaim).
+
+**"Source" removal is DISPLAY-only:** delete it from the item VIEW, but KEEP `attributes._source`
+in the data — it's the extract dedup/identity key, not a user field.
+
 ## Acceptance
 - Quick View opens on **Item details**; switching to **Supplier profile** works by BOTH the labelled control
   and swipe; closing returns to the same Marketplace search/filters/scroll.
@@ -101,5 +162,6 @@ duplicate (reuse the image-carousel + segmented-control patterns rather than re-
 - The duplicate suspended Yahire org cleanup.
 
 ## Decisions for Liam (lock before build)
-1. **Switcher:** labelled segmented tabs **+** swipe (recommended), or keep the mockup's pills/dots too?
-2. **Quick-View item image:** plain (recommended) or blurred-fill?
+1. **Switcher:** labelled segmented tabs **+** swipe (recommended + chat-endorsed), or keep the mockup's pills/dots too?
+2. **Quick-View item image:** plain (recommended + chat-endorsed) or blurred-fill?
+3. **"View full store":** navigate to `/suppliers/:id` (spec), or filter Marketplace to that supplier in-place (deck slide-7 preference, keeps the running ballpark total)? (chat flag)
