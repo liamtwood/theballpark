@@ -57,8 +57,8 @@ New pane (inline or a small `app-supplier-profile-pane`), data from `GET /api/ma
   URL).
 - **"Past projects"** = the supplier's **gallery images** in a carousel (reuse the item image-carousel
   pattern). Label it per our copy; it's not engagement data (real project history is future / S3).
-- **"View full store"** button → navigates to `/suppliers/:id` (the full item grid). The ONLY navigation,
-  user-initiated, and it closes the dialog.
+- **"View full store" — DEFERRED (Liam, 2026-10-15), NOT in this build.** No store navigation in this
+  pass; the supplier pane has no "View full store" button. (Optional future step.)
 
 ### Marketplace-behind + close-restores
 Keep it a dialog overlay (no routing while switching panes), so the Marketplace component is never
@@ -134,7 +134,7 @@ item-view show-more) so the website pill + "Past projects" gallery aren't buried
 text. Keep name/location/website ABOVE the description.
 
 **Supplier pane order (recommended):** cover+logo → name + location → website
-pill → description (clamped) → "Past projects" gallery → "View full store" (bottom).
+pill → description (clamped) → "Past projects" gallery. (No "View full store" — deferred.)
 
 **Accessibility:** proper tablist semantics (`role="tablist"/"tab"/"tabpanel"`, `aria-selected`,
 `aria-controls`); focus the dialog on open + manage focus on pane switch; reduced-motion honoured.
@@ -151,7 +151,7 @@ in the data — it's the extract dedup/identity key, not a user field.
 - No "Source" field anywhere in the item view.
 - Supplier pane shows Yahire's cover + logo + name + Hornsey + the full
   markdown description + website link + the 4 gallery images as "Past projects".
-- "View full store" is a button (optional), never automatic.
+- No store navigation in this build (View full store deferred); switching panes never routes.
 - `supplier_directory` exposes `website`; the profile reads it.
 
 ## Out of scope / deferred
@@ -159,7 +159,8 @@ in the data — it's the extract dedup/identity key, not a user field.
 - Real past-projects / engagement data (future; "Past projects" = gallery images for now, per Liam).
 - The duplicate suspended Yahire org cleanup.
 
-## Decisions for Liam (lock before build)
-1. **Switcher:** labelled segmented tabs **+** swipe (recommended + chat-endorsed), or keep the mockup's pills/dots too?
-2. **Quick-View item image:** plain (recommended + chat-endorsed) or blurred-fill?
-3. **"View full store":** navigate to `/suppliers/:id` (spec), or filter Marketplace to that supplier in-place (deck slide-7 preference, keeps the running ballpark total)? (chat flag)
+## Decisions — LOCKED (Liam, 2026-10-15)
+1. **Switcher:** labelled segmented tabs ("Item details" / "Supplier profile", reusing `.bp-projnav`) **+** swipe. NO dots. ✅
+2. **Quick-View item image:** plain object-contain on neutral (no blur). ✅
+3. **"View full store": DEFERRED — NOT in this build** ("nothing we need to do"). The supplier pane has no store button / no navigation; this pass is purely the item ↔ supplier-profile switch. Optional future step.
+4. **No "approved/verified" badge** — every supplier is approved by default.
