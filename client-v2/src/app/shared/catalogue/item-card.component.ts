@@ -35,16 +35,18 @@ import { AuthService } from '../../core/auth/auth.service';
       <!-- First row eager (LCP); the rest lazy. NOTE: hidden tabs defer
            lazy images entirely (Chrome) — looks broken in headless
            previews, fine in real browsers. -->
-      <!-- Blurred-fill cover: the full product shows (contain) over a blurred,
-           zoomed copy of itself (cover), so odd aspect ratios / non-white photo
-           backgrounds fill the 4:3 frame with the photo's own colours instead of
-           being cropped or letterboxed. Same src → one fetch, reused twice. -->
-      <div class="bp-item-card__cover">
-        <img class="bp-item-card__cover-bg" [src]="cardSrc()" alt="" aria-hidden="true"
-             [attr.loading]="eager() ? 'eager' : 'lazy'" decoding="async" />
-        <img class="bp-item-card__cover-fg" [src]="cardSrc()" [alt]="item().name"
-             [attr.loading]="eager() ? 'eager' : 'lazy'" decoding="async" />
-      </div>
+      <!-- First row eager (LCP); the rest lazy. NOTE: hidden tabs defer
+           lazy images entirely (Chrome) — looks broken in headless
+           previews, fine in real browsers. Default display = plain object-cover;
+           cover "treatments" (blurred-fill / adaptive background) are a planned
+           per-image supplier option (FR), not applied by default. -->
+      <img
+        class="bp-item-card__img"
+        [src]="cardSrc()"
+        [alt]="item().name"
+        [attr.loading]="eager() ? 'eager' : 'lazy'"
+        decoding="async"
+      />
     } @else {
       <!-- Generic "Image coming soon" placeholder — shown when the item has no
            cover (incl. extracts where only the supplier's generic placeholder was
