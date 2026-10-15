@@ -225,7 +225,7 @@ hero but never fed the list cards.
 listBallparkTotals / estimateFromRow), `server/src/services/projects.service.js` (listForOrg),
 `server/src/services/project-line.ballpark.test.js` (new).
 
-## Iteration — estimate line table + supplier name (v2.XXX)
+## Iteration — estimate line table + supplier name (v2.791)
 **Triggered by QC (Liam, via orchestrator):** (a) restyle the Ballpark-cost line items into a
 labeled table; (b) the supplier heading rendered the literal "Supplier".
 **Fixes:**
