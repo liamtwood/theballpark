@@ -89,6 +89,11 @@ import { LauncherTile } from './launcher-tile.types';
       }
       .bp-home-launcher__subtitle {
         margin: 0;
+        /* Match the eyebrow's refined small label (text-sm + letter-spacing,
+           secondary) but MIXED CASE — no uppercase (Jack mockup). Component-scoped
+           so it overrides the global .bp-home-subtitle only on the home launcher. */
+        font-size: var(--text-sm);
+        letter-spacing: 0.08em;
       }
       /* Columns/gap/width/breakpoints live in the shared .bp-workspace-grid
          (styles.css) so home + past projects stay in lockstep. Only the
