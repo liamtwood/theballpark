@@ -810,29 +810,28 @@ body {
   gap: 2px;
   padding: 4px;
   border-radius: var(--radius-pill, 9999px);
-  background: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-hairline);
 }
 .bp-projnav-opt {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 7px 16px;
-  /* Transparent border reserves the space so the selected pill's white border
-     adds no size shift (the pills read as physical buttons when selected). */
-  border: 1px solid transparent;
+  border: none;
   border-radius: var(--radius-pill, 9999px);
   background: transparent;
   font-size: var(--text-sm);
   font-weight: 500;
   line-height: 1;
-  color: var(--color-surface);
+  color: var(--color-text);
   opacity: 0.55;
   cursor: pointer;
-  transition: opacity 0.15s ease, border-color 0.15s ease;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 .bp-projnav-opt:hover { opacity: 0.85; }
-/* Selected pill = a physical button: full opacity + a white border. */
-.bp-projnav-opt--active { opacity: 1; border-color: var(--color-surface); }
+/* White track + the selected option as a solid black pill (white label + tick). */
+.bp-projnav-opt--active { opacity: 1; background: var(--color-text); color: var(--color-surface); }
 /* Selection is shown by opacity + tick, so any focus ring just reads as an
    unwanted border on the selected pill — Chrome flags the clicked pill as
    focus-visible, so drop the ring entirely (outline + box-shadow, all states). */
