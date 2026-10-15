@@ -331,14 +331,34 @@ router.get('/categories/:id/subcategories', async (req, res, next) => {
   try {
     const id = z.uuid().safeParse(req.params.id);
     if (!id.success) return res.status(400).json({ error: 'Invalid id' });
-    // Count is tree-aware: a subcategory's count includes items classified to any
-    // of its descendants (so the rail count matches the tree-aware browse grid).
-    // v2dev: streamlined shape — status (not is_active), no namespace; item
-    // counts are 0 until the items slice lands (tree-aware count returns with it).
+    // Count is tree-aware: each child's count includes items classified to any of
+    // ITS descendants (so the rail count matches the tree-aware browse grid, and
+    // the rail — which hides count=0 nodes — only shows drillable paths that lead
+    // to items). Same public-browse filters + supplier_directory as the top rail.
     const r = await pool.query(
-      `SELECT c.id, c.name, c.tagline, c.icon_name, (c.status = 'active') AS is_active, c.sort_order,
-              0 AS item_count
+      `WITH RECURSIVE sub AS (
+         SELECT id AS child_id, id AS node_id FROM categories
+          WHERE parent_id = $1 AND deleted_at IS NULL
+         UNION ALL
+         SELECT s.child_id, c.id FROM categories c JOIN sub s ON c.parent_id = s.node_id
+          WHERE c.deleted_at IS NULL
+       ),
+       cnt AS (
+         SELECT s.child_id, count(*)::int AS n
+           FROM items i
+           JOIN sub s ON s.node_id = i.category_id
+           JOIN supplier_directory sd ON sd.id = i.org_id
+          WHERE i.deleted_at IS NULL
+            AND i.type IS DISTINCT FROM 'component'
+            AND i.parent_item_id IS NULL
+            AND i.status = 'active'
+            AND i.approval_status = 'approved'
+          GROUP BY s.child_id
+       )
+       SELECT c.id, c.name, c.tagline, c.icon_name, (c.status = 'active') AS is_active, c.sort_order,
+              COALESCE(cnt.n, 0) AS item_count
          FROM categories c
+         LEFT JOIN cnt ON cnt.child_id = c.id
         WHERE c.deleted_at IS NULL AND c.parent_id = $1 AND c.status = 'active'
         ORDER BY c.sort_order ASC NULLS LAST, c.name ASC`,
       [id.data]
