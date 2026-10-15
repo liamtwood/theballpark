@@ -30,13 +30,13 @@ export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
         <span class="bp-pill bp-pill--danger bp-body-small">Couldn't save</span>
       }
       @case ('saved') {
-        <span class="bp-pill bp-pill--success bp-body-small inline-flex items-center gap-1.5">
+        <span class="bp-pill bp-pill--outline bp-body-small inline-flex items-center gap-1.5">
           <lucide-icon name="check" [size]="14" [strokeWidth]="2" /> {{ label() }}
         </span>
       }
       @default {
         @if (idleShowsSaved()) {
-          <span class="bp-pill bp-pill--success bp-body-small inline-flex items-center gap-1.5">
+          <span class="bp-pill bp-pill--outline bp-body-small inline-flex items-center gap-1.5">
             <lucide-icon name="check" [size]="14" [strokeWidth]="2" /> {{ label() }}
           </span>
         }
