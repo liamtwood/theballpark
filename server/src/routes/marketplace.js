@@ -49,11 +49,34 @@ function imageUrls(images) {
  *  subcategory_id is a separate axis. */
 // v2dev (rebuild): streamlined categories — `status` (not is_active), no
 // `namespace` (catalogue is the only tree here; feedback has its own table).
-// Item counts are 0 until the items slice lands (no `items` table yet).
+// Item counts roll each item's category UP to its top-level root (v2dev items
+// classify at mixed depths), then count the public browse set — the SAME filters
+// the grid uses (active + approved, not deleted, not a component/child) joined to
+// supplier_directory (the owner-run active-supplier view; orgs is own-org under
+// RLS, so a direct join would zero out cross-org — same trap as the item list).
 const SELECT_CATEGORIES = `
+  WITH RECURSIVE cat_root AS (
+    SELECT id, id AS root_id FROM categories WHERE parent_id IS NULL AND deleted_at IS NULL
+    UNION ALL
+    SELECT c.id, cr.root_id FROM categories c JOIN cat_root cr ON c.parent_id = cr.id
+     WHERE c.deleted_at IS NULL
+  ),
+  cat_counts AS (
+    SELECT cr.root_id, count(*)::int AS n
+      FROM items i
+      JOIN cat_root cr ON cr.id = i.category_id
+      JOIN supplier_directory sd ON sd.id = i.org_id
+     WHERE i.deleted_at IS NULL
+       AND i.type IS DISTINCT FROM 'component'
+       AND i.parent_item_id IS NULL
+       AND i.status = 'active'
+       AND i.approval_status = 'approved'
+     GROUP BY cr.root_id
+  )
   SELECT c.id, c.name, c.tagline, c.icon_name, (c.status = 'active') AS is_active, c.sort_order,
-         0 AS item_count
+         COALESCE(cc.n, 0) AS item_count
     FROM categories c
+    LEFT JOIN cat_counts cc ON cc.root_id = c.id
    WHERE c.deleted_at IS NULL
      AND c.parent_id IS NULL
      %ACTIVE%
