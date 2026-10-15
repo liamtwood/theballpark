@@ -498,7 +498,7 @@
 .bp-scroll-peek-down:hover { background: var(--color-fill); color: var(--color-text); }
 
 /* Hero — home */
-.bp-home-title    { font-family: var(--bp-font); font-size: var(--text-greeting); font-weight: 400; line-height: var(--leading-tight); color: var(--color-text); letter-spacing: -0.01em; }
+.bp-home-title    { font-family: var(--bp-font); font-size: var(--text-greeting); font-weight: 700; line-height: var(--leading-tight); color: var(--color-text); letter-spacing: -0.01em; }
 .bp-home-subtitle { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
 
 /* Hero — page */
