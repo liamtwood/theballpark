@@ -85,6 +85,11 @@ export class PageConfigService {
     const guests = p?.guestCount != null && Number(p.guestCount) > 0 ? `${p.guestCount} guests` : '';
     const location = p?.location ?? '';
     return s
+      // {dot} = the canonical middot spacer. tidySeparators (subtitle/pageHero)
+      // then normalises the spacing and drops the segment when a neighbour is
+      // empty, so "{orgName} {dot} {email}" reads "Acme · you@acme.com" and
+      // collapses cleanly if one side is blank — no stray dot.
+      .replace(/\{dot\}/g, ' · ')
       .replace(/\{email\}/g, u?.email ?? '')
       .replace(/\{orgName\}/g, u?.activeOrgName ?? '')
       .replace(/\{orgType\}/g, u?.activeOrgType ?? '')
