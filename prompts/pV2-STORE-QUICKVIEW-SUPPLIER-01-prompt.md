@@ -49,8 +49,8 @@ Refine the existing `quick-view-dialog`:
 New pane (inline or a small `app-supplier-profile-pane`), data from `GET /api/marketplace/suppliers/:id`:
 - Eyebrow "Quick view" → **supplier name** → optional "Supplier profile for X" subtitle.
 - **Cover image** (full-width, our card radius) with the **circular logo** overlapping bottom-left.
-- Supplier name + **"Approved Ballpark supplier"** badge (derive from being an active supplier — any org in
-  `supplier_directory` qualifies) + **location** (city).
+- Supplier name + **location** (city). NO "approved/verified" badge — every marketplace supplier is
+  approved by default, so it conveys nothing (Liam, 2026-10-15; was a mockup artifact).
 - **Description** rendered via the markdown pipe (bold + bullets). It can be LONG (the Yahire profile is a
   full multi-section write-up) — the dialog body already scrolls; make sure the long body reads cleanly.
 - **Website** link pill → opens the supplier's site in a new tab (external link; the supplier's own stated
@@ -131,18 +131,16 @@ responsive/full-bleed behaviour; cover + carousels scale to width.
 
 **Long description:** the Yahire write-up is long — **clamp it with a show-more** (reuse the
 item-view show-more) so the website pill + "Past projects" gallery aren't buried under a wall of
-text. Keep name/badge/location/website ABOVE the description.
+text. Keep name/location/website ABOVE the description.
 
-**Supplier pane order (recommended):** cover+logo → name + "Approved" badge + location → website
+**Supplier pane order (recommended):** cover+logo → name + location → website
 pill → description (clamped) → "Past projects" gallery → "View full store" (bottom).
 
 **Accessibility:** proper tablist semantics (`role="tablist"/"tab"/"tabpanel"`, `aria-selected`,
 `aria-controls`); focus the dialog on open + manage focus on pane switch; reduced-motion honoured.
 
-**Badge honesty (minor):** "Approved Ballpark supplier" derived from being active in
-`supplier_directory` means EVERY shown supplier gets it — fine IF active == vetted/approved.
-Confirm that's the real bar; if an "active-but-unvetted" state ever exists, the badge needs its
-own flag (don't let it overclaim).
+**No "approved/verified" badge** (Liam, 2026-10-15): every marketplace supplier is approved by
+default, so a badge announcing it is noise — dropped. (It was a Loveable-mockup artifact, not an ask.)
 
 **"Source" removal is DISPLAY-only:** delete it from the item VIEW, but KEEP `attributes._source`
 in the data — it's the extract dedup/identity key, not a user field.
@@ -151,7 +149,7 @@ in the data — it's the extract dedup/identity key, not a user field.
 - Quick View opens on **Item details**; switching to **Supplier profile** works by BOTH the labelled control
   and swipe; closing returns to the same Marketplace search/filters/scroll.
 - No "Source" field anywhere in the item view.
-- Supplier pane shows Yahire's cover + logo + name + "Approved Ballpark supplier" + Hornsey + the full
+- Supplier pane shows Yahire's cover + logo + name + Hornsey + the full
   markdown description + website link + the 4 gallery images as "Past projects".
 - "View full store" is a button (optional), never automatic.
 - `supplier_directory` exposes `website`; the profile reads it.
