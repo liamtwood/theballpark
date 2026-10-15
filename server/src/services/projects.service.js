@@ -16,6 +16,7 @@
 const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
 const taxonomy = require('./taxonomy.service');
+const projectLines = require('./project-line.service'); // S2 line layer (no back-require → no cycle)
 const { computeEstimate } = require('./estimate');
 const { lineTotalSql, isDeclinedSql, notDeclinedSql } = require('./line-total.util');
 
@@ -77,10 +78,21 @@ function toCard(row) {
   };
 }
 
-/** Every non-deleted project for the org, newest first, as list cards. */
+/** Every non-deleted project for the org, newest first, as list cards. The
+ *  card's `ballparkCost` = the project's estimate `projectTotal` (S2), batched in
+ *  ONE query (project-line.service.listBallparkTotals — no N+1) and REUSING the
+ *  estimate cascade, so a card equals its detail hero exactly; NULL (no lines)
+ *  renders as "—". */
 async function listForOrg(orgId) {
-  const r = await pool.query(LIST_SELECT, [orgId]);
-  return r.rows.map(toCard);
+  const [r, totals] = await Promise.all([
+    pool.query(LIST_SELECT, [orgId]),
+    projectLines.listBallparkTotals(orgId),
+  ]);
+  return r.rows.map((row) => {
+    const card = toCard(row);
+    if (totals.has(row.id)) card.ballparkCost = totals.get(row.id);
+    return card;
+  });
 }
 
 /** Distinct client names this org has used across its projects — feeds the

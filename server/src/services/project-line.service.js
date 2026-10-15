@@ -121,22 +121,28 @@ const RESOLVED_COLS = `
 // the volume tiers + install fallback — exactly the relations lineTotalSql reads.
 const ESTIMATE_LINE_SQL = lineTotalSql({ current: 'pi.price_current', base: 'pi.base_price', flat: true });
 
-// The project estimate cascade. hard_subtotal = Σ the categorised (bucketed)
-// lines, raw; fees_subtotal = Σ the uncategorised agent lines. Margin marks up
-// hard costs only (services/estimate.js). Rates resolve from project_settings
-// COALESCE the org defaults (null = inherit); budget stays agency-private.
-const ESTIMATE_SQL = `
-  SELECT
+// The project estimate cascade — ONE definition, shared by the single-project
+// read (getEstimate, the detail hero) and the per-org batch (listBallparkTotals,
+// the list cards) so a card's total can never drift from its hero. hard_subtotal
+// = Σ the categorised (bucketed) lines, raw; fees_subtotal = Σ the uncategorised
+// agent lines; line_count = how many lines (0 → the card shows "—"). Margin marks
+// up hard costs only (services/estimate.js). Rates resolve from project_settings
+// COALESCE the org defaults (null = inherit); budget stays agency-private. `where`
+// is the only thing that differs (one project vs the org's projects).
+function cascadeSql(where) {
+  return `
+  SELECT p.id AS project_id,
     COALESCE(ps.margin_pct,      o.default_margin_pct)      AS margin_pct,
     COALESCE(ps.contingency_pct, o.default_contingency_pct) AS contingency_pct,
     COALESCE(ps.insurance_pct,   o.default_insurance_pct)   AS insurance_pct,
-    sub.hard_subtotal, sub.fees_subtotal
+    sub.hard_subtotal, sub.fees_subtotal, sub.line_count
   FROM projects p
   JOIN orgs o ON o.id = p.org_id
   LEFT JOIN project_settings ps ON ps.project_id = p.id,
   LATERAL (
     SELECT COALESCE(SUM(lt) FILTER (WHERE cat_id IS NOT NULL), 0) AS hard_subtotal,
-           COALESCE(SUM(lt) FILTER (WHERE cat_id IS NULL),     0) AS fees_subtotal
+           COALESCE(SUM(lt) FILTER (WHERE cat_id IS NULL),     0) AS fees_subtotal,
+           COUNT(*) AS line_count
       FROM (
         SELECT (${ESTIMATE_LINE_SQL}) AS lt, pi.project_category_id AS cat_id
           FROM ( SELECT ${RESOLVED_COLS}
@@ -147,7 +153,10 @@ const ESTIMATE_SQL = `
           LEFT JOIN items i ON i.id = pi.item_id        -- live tiers + install fallback
       ) x
   ) sub
-  WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`;
+  ${where}`;
+}
+const ESTIMATE_SQL = cascadeSql('WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL');
+const ORG_ESTIMATE_SQL = cascadeSql('WHERE p.org_id = $1 AND p.deleted_at IS NULL');
 
 // The QuoteLine projection. Category NAME/visuals live-join from categories via
 // the project_categories bucket (project_category_id → pc → c) so a category
@@ -336,13 +345,32 @@ async function listItems(orgId, projectId) {
 async function getEstimate(orgId, projectId) {
   const r = await pool.query(ESTIMATE_SQL, [projectId, orgId]);
   if (!r.rows.length) return null;
-  const row = r.rows[0];
+  return estimateFromRow(r.rows[0]);
+}
+
+/** Run one cascade row through the SOW formula (the SAME call getEstimate and
+ *  listBallparkTotals both use → card total == hero total by construction). */
+function estimateFromRow(row) {
   return computeEstimate(row.hard_subtotal, {
     feesSubtotal: row.fees_subtotal,
     contingencyPct: row.contingency_pct,
     insurancePct: row.insurance_pct,
     marginPct: row.margin_pct,
   });
+}
+
+/** Every project in the org → its ballpark total, in ONE query (no N+1
+ *  getEstimate). The value = the project's `projectTotal` (the full cascade, so
+ *  it equals the detail hero exactly), or NULL when the project has no lines (the
+ *  card renders "—"). Returns Map<projectId, number|null>. Consumed by
+ *  projects.service `listForOrg` for the list cards. */
+async function listBallparkTotals(orgId) {
+  const r = await pool.query(ORG_ESTIMATE_SQL, [orgId]);
+  const map = new Map();
+  for (const row of r.rows) {
+    map.set(row.project_id, Number(row.line_count) === 0 ? null : estimateFromRow(row).projectTotal);
+  }
+  return map;
 }
 
 // ── writes ─────────────────────────────────────────────────────────────────
@@ -595,7 +623,7 @@ async function removeItem(orgId, projectId, lineId) {
 }
 
 module.exports = {
-  listItems, getEstimate, addItem, addCustomItem,
+  listItems, getEstimate, listBallparkTotals, addItem, addCustomItem,
   updateItem, updateLineDetails, setQuoteDescription, removeItem,
   lineById, toQuoteLine,
 };

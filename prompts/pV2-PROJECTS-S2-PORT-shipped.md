@@ -203,6 +203,28 @@ the orchestrator as separate follow-ups.
 **Fix:** bound `rightEyebrow="Ballpark"` / `[rightTitle]="ballparkTotalStr()"` / `rightSubtitle="Exc. VAT"` on the draft `app-page-hero` (`app-page-hero` already supports the right meta). New `ballparkTotalStr` computed formats `estimate.value()?.projectTotal` in the project currency, `1.0-0`, mirroring the live hero. Shows £0 until lines are added.
 **Files:** `client-v2/src/app/pages/projects/project-detail.component.ts`.
 
+## Iteration — list-card Ballpark total (v2.XXX)
+**Triggered by QC (Liam, via orchestrator):** project LIST cards showed "—" — `toCard`
+still hardcoded `ballparkCost: null` (the S1 stub); getEstimate was wired for the detail
+hero but never fed the list cards.
+**Fix:** `listForOrg` now attaches each card's `ballparkCost` = the project's estimate
+`projectTotal`, REUSING the estimate cascade so a card equals its detail hero exactly.
+- New `project-line.service.listBallparkTotals(orgId)` — ONE batched query (per-org variant
+  of the cascade, `ORG_ESTIMATE_SQL`), no N+1 getEstimate. Returns `Map<projectId,
+  number|null>`: `projectTotal` when the project has lines, **null** (→ "—") when it has none
+  (`line_count = 0`).
+- The single-project (`ESTIMATE_SQL`) and per-org (`ORG_ESTIMATE_SQL`) queries are now built
+  from ONE `cascadeSql(where)` + run through the SAME `estimateFromRow` → card and hero can't
+  drift.
+- `projects.service.listForOrg` requires `project-line.service` (no back-require → no cycle)
+  and batches the two reads with `Promise.all`.
+- **New test** `project-line.ballpark.test.js` (DB-gated, like the golden): asserts card
+  total == `getEstimate().projectTotal` for a lined project, and null for a no-line project.
+  Both pass; golden test stays green (25/25).
+**Files:** `server/src/services/project-line.service.js` (cascadeSql / ORG_ESTIMATE_SQL /
+listBallparkTotals / estimateFromRow), `server/src/services/projects.service.js` (listForOrg),
+`server/src/services/project-line.ballpark.test.js` (new).
+
 ## QC notes
 (Liam fills this in)
 
