@@ -203,7 +203,7 @@ the orchestrator as separate follow-ups.
 **Fix:** bound `rightEyebrow="Ballpark"` / `[rightTitle]="ballparkTotalStr()"` / `rightSubtitle="Exc. VAT"` on the draft `app-page-hero` (`app-page-hero` already supports the right meta). New `ballparkTotalStr` computed formats `estimate.value()?.projectTotal` in the project currency, `1.0-0`, mirroring the live hero. Shows £0 until lines are added.
 **Files:** `client-v2/src/app/pages/projects/project-detail.component.ts`.
 
-## Iteration — list-card Ballpark total (v2.XXX)
+## Iteration — list-card Ballpark total (v2.786)
 **Triggered by QC (Liam, via orchestrator):** project LIST cards showed "—" — `toCard`
 still hardcoded `ballparkCost: null` (the S1 stub); getEstimate was wired for the detail
 hero but never fed the list cards.
