@@ -936,6 +936,35 @@ body {
   color: var(--color-text-muted);
   background: var(--theme-soft);
 }
+/* Blurred-fill cover (Liam 2026-10-15) — the full product shows (contain) over a
+   blurred, zoomed copy of itself (cover), so odd aspect ratios / non-white photo
+   backgrounds fill the 4:3 frame with the photo's own colours instead of being
+   cropped or letterboxed. Background-agnostic; no per-image data. */
+.bp-item-card__cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--color-fill);
+}
+.bp-item-card__cover-bg,
+.bp-item-card__cover-fg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.bp-item-card__cover-bg {
+  object-fit: cover;
+  filter: blur(16px) saturate(1.08);
+  transform: scale(1.12);
+}
+.bp-item-card__cover-fg {
+  object-fit: contain;
+}
+/* Keep the blurred backdrop steady while the foreground zooms on hover
+   (.bp-card--zoom:hover img would otherwise reset the backdrop's scale). */
+.bp-card--zoom:hover .bp-item-card__cover-bg { transform: scale(1.12); }
 .bp-itemprev-img {
   display: block;
   width: 100%;
