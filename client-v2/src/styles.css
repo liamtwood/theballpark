@@ -2110,6 +2110,34 @@ body {
 .bp-pill--danger { background: var(--color-danger-soft); color: var(--color-danger); }
 .bp-pill--info { background: var(--color-info-soft); color: var(--color-info); }
 .bp-pill--outline { background: transparent; color: var(--color-text-secondary); border: 1px solid var(--color-border-hairline); }
+/* pV2-PROJECTS-S2 — a soft-accent clickable pill (the estimate "Quick view"). */
+.bp-pill--accent {
+  background: color-mix(in srgb, var(--theme-accent) 12%, var(--color-surface));
+  color: var(--theme-accent);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.bp-pill--accent:hover { background: color-mix(in srgb, var(--theme-accent) 20%, var(--color-surface)); }
+
+/* pV2-PROJECTS-S2 — the estimate line "table": ONE grid template shared by the
+   column-header row (project-estimate) and each estimate-item-row, so the
+   columns line up. Separate grid containers don't share auto tracks, so the
+   non-ITEM columns are fixed-width. Columns: ITEM | QTY | COSTED BY | QUICK VIEW
+   | BALLPARK | trash. */
+.bp-estimate-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px 148px 104px 92px 34px;
+  align-items: center;
+  gap: 0.75rem;
+}
+/* The small uppercase muted column labels above the estimate rows. */
+.bp-estimate-th {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
 
 /* "Glisten" — a slow theme-coloured sheen sweeping across a card to flag that
    it needs attention (e.g. an inbox supplier with an action required). A faint

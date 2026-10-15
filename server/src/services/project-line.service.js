@@ -172,13 +172,18 @@ const QUOTE_LINE_JOIN = `
          i.attributes -> 'price_tiers' AS price_tiers,
          i.install_cost AS i_install_cost, i.install_description AS i_install_description,
          i.install_unit AS i_install_unit,
-         i.org_id AS supplier_id, o.name AS supplier_name, o.default_currency AS supplier_currency,
+         i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
          EXISTS (SELECT 1 FROM items ci WHERE ci.parent_item_id = pi0.item_id AND ci.deleted_at IS NULL) AS has_options
     FROM ${RESOLVED_FROM}
     LEFT JOIN project_categories pc ON pc.id = pi0.project_category_id
     LEFT JOIN categories c ON c.id = pc.category_id
     LEFT JOIN items i ON i.id = pi0.item_id
-    LEFT JOIN orgs o ON o.id = i.org_id`;
+    -- Supplier (catalogue owner) read CROSS-ORG via the sanctioned public
+    -- directory, NOT orgs (orgs_self RLS is own-org-only, so a direct join
+    -- returns NULL for another org's supplier → the UI showed "Supplier"). The
+    -- directory is owner-run + security_barrier and exposes only marketplace-card
+    -- columns for ACTIVE suppliers (0019).
+    LEFT JOIN supplier_directory o ON o.id = i.org_id`;
 
 function toQuoteLine(row) {
   // The resolved per-unit "now": the negotiated overlay rate wins, else the
@@ -214,9 +219,9 @@ function toQuoteLine(row) {
     categoryIconName: row.category_icon_name || null,
     categoryCoverUrl: null, // v2dev categories carry no cover image → icon fallback
     supplierId: row.supplier_id ?? null, // the catalogue owner; engagement is S3
-    supplierName: row.supplier_name ?? null,
-    supplierCity: null, // orgs.city moved to the addresses slice (locality)
-    supplierCurrency: row.supplier_currency ?? null,
+    supplierName: row.supplier_name ?? null, // from supplier_directory (cross-org)
+    supplierCity: row.supplier_city ?? null, // locality via the directory
+    supplierCurrency: row.currency ?? null, // the frozen line currency (travels with price)
     // S2: every line is still in the cart. The real send-state (out_for_quote /
     // quoted / booked / declined) is DERIVED from engagement + events in S3.
     status: 'to_send',

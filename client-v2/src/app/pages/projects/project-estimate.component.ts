@@ -164,13 +164,22 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
               </button>
 
               @if (isOpen(g.id)) {
-                <div class="flex flex-col gap-2 p-2">
+                <div class="bg-surface">
                   <!-- Hard-cost lines display the marked-up price (margin baked
                        in); Fees are shown raw. -->
                   @let mk = g.isProject ? 1 : marginMarkup();
+                  <!-- Column headers — aligned to every row via .bp-estimate-grid. -->
+                  <div class="bp-estimate-grid border-b border-hairline px-3 py-2">
+                    <span class="bp-estimate-th">Item</span>
+                    <span class="bp-estimate-th">Qty</span>
+                    <span class="bp-estimate-th">Costed by</span>
+                    <span class="bp-estimate-th">Quick view</span>
+                    <span class="bp-estimate-th text-right">Ballpark</span>
+                    <span></span>
+                  </div>
                   @for (sg of g.supplierGroups; track sg.supplierId) {
                     <!-- Thin supplier label grouping this category's items. -->
-                    <div class="flex items-center gap-2 px-1 pt-1">
+                    <div class="flex items-center gap-2 px-3 pb-1 pt-2.5">
                       <lucide-icon name="store" [size]="13" class="shrink-0 text-muted" />
                       <span class="bp-meta truncate font-medium text-text">{{ sg.supplierName || 'Supplier' }}@if (sg.supplierCity) { · {{ sg.supplierCity }} }</span>
                     </div>

@@ -225,6 +225,33 @@ hero but never fed the list cards.
 listBallparkTotals / estimateFromRow), `server/src/services/projects.service.js` (listForOrg),
 `server/src/services/project-line.ballpark.test.js` (new).
 
+## Iteration — estimate line table + supplier name (v2.XXX)
+**Triggered by QC (Liam, via orchestrator):** (a) restyle the Ballpark-cost line items into a
+labeled table; (b) the supplier heading rendered the literal "Supplier".
+**Fixes:**
+1. **Supplier name (server).** `supplierName` was null because the line query joined `orgs`
+   directly, and `orgs_self` RLS is own-org-only → a supplier org isn't readable cross-org. The
+   query now joins the sanctioned `supplier_directory` (owner-run + security_barrier, exposes
+   only marketplace-card columns for active suppliers — 0019). Also populates `supplierCity`
+   (via the directory's locality) and sets `supplierCurrency` from the frozen line currency
+   (the dead `orgs.default_currency` cross-org read is gone). Verified: Monzo lines now read
+   "Yahire Funiture · Hornsey"; the group heading + the new COSTED BY column both show it.
+2. **Line table (client).** One shared `.bp-estimate-grid` template drives a column-HEADER row
+   (ITEM · QTY · COSTED BY · QUICK VIEW · BALLPARK) and every `estimate-item-row`, so columns
+   align (fixed widths — separate grid containers don't share auto tracks). Row columns: ITEM
+   (thumb + name + "£X per unit" subtitle + install toggle), QTY (stepper), COSTED BY (supplier
+   name), QUICK VIEW (soft-accent pink pill → opens the item preview), BALLPARK (line total) +
+   trash. Rows are now full-width with a BOTTOM hairline divider only — no side border, no
+   per-row card; the open category body is `bg-surface` so it reads as a table. Selected line =
+   a left accent bar. Install toggle / read-only-after-sent / declined-dim preserved.
+**v2 standards:** standalone/OnPush/signals/@if-@for kept; colours are tokens only
+(`--theme-accent`, `color-mix`, role classes) — no raw hex/Tailwind colour utils. `ng build`
+clean; golden + ballpark tests green.
+**Files:** `server/src/services/project-line.service.js` (supplier_directory join + toQuoteLine),
+`client-v2/src/styles.css` (`.bp-estimate-grid` / `.bp-estimate-th` / `.bp-pill--accent`),
+`client-v2/src/app/pages/projects/estimate-item-row.component.ts` (grid row),
+`client-v2/src/app/pages/projects/project-estimate.component.ts` (header row + bg-surface body).
+
 ## QC notes
 (Liam fills this in)
 
