@@ -1,8 +1,8 @@
 # pV2-PROJECTS-S3 — Inbox / messaging / negotiation PORT onto the 0022 cluster
 
-**Shipped:** 2026-10-19, chip `[Dev v2] v2.807`
+**Shipped:** 2026-10-19, chip `[Dev v2] v2.808`
 **Branch:** rebuild/org-slice
-**Commits:** `<sha>` (server: inbox + message-event services, route, line send-state, 0023 RLS), `<sha>` (client: Inbox nav unlock + chip)
+**Commits:** `ef41fdde` (server: inbox + message-event services, route, line send-state, 0023 RLS, ship report), `88119233` (client: Inbox nav unlock + chip)
 
 ## What landed
 - **New `server/src/services/message-event.service.js`** — the append-only EVENT layer + the pure negotiation reducer. `deriveLineState(events)` replays the (per provider × item) event journal into the exact client DTO vocabulary (`brief_sent` / `adjusted_by_{agent,supplier}` / `accepted` / `declined_by_{…}` + `buyerAccepted`/`sellerAccepted`/`*AcceptedAt`). Re-approval is DERIVED (FR-00228): a material event after an accept clears it — proven by 7 unit scenarios incl. "both accept → supplier re-raises → agency must re-approve". `writeEvent` (append-only) + `upsertOverlay` (the per-provider current form, per-unit/flat XOR enforced).
