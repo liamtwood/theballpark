@@ -392,9 +392,11 @@ export class InboxProjectComponent {
         o = {
           id: key,
           label: (this.isAgency() ? t.supplierName : t.agencyName) ?? (this.isAgency() ? 'Supplier' : 'Agency'),
-          // Always a Ballpark glyph in the rail (no supplier/agency logo image):
-          // store for the agency view, building for the supplier view.
-          iconName: this.isAgency() ? 'store' : 'building-2',
+          // Always a Ballpark glyph in the rail (no supplier/agency logo image).
+          // building-2 (Lucide's two-tower complex) for both directions — Liam
+          // 2026-10-19 (asked for "building-complex"; building-2 is the nearest
+          // real Lucide glyph, we don't mix icon sets).
+          iconName: 'building-2',
           total: 0,
           cats: [],
         };
