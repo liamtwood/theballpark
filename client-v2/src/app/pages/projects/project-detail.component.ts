@@ -151,7 +151,7 @@ interface DetailForm {
              deferred — their @case code + routes stay, just not in the nav. -->
         <div class="flex justify-center px-6">
           <div class="bp-projnav" role="tablist" aria-label="Project view">
-            @for (opt of projNav; track opt.tab) {
+            @for (opt of projNav(); track opt.tab) {
               <button type="button" role="tab" class="bp-projnav-opt"
                       [class.bp-projnav-opt--active]="projNavActive() === opt.tab"
                       [attr.aria-selected]="projNavActive() === opt.tab"
@@ -431,15 +431,24 @@ export class ProjectDetailComponent {
    *  estimate/running-ballpark view ('final'; event details fold in here);
    *  Edit in marketplace = the catalogue browse. Inbox/Final-SOW/Reports are
    *  deferred until their stage lands (their @case + routes stay). */
-  protected readonly projNav: readonly { tab: Tab; label: string }[] = [
-    { tab: 'final', label: 'Ballpark cost' },
-    { tab: 'marketplace', label: 'Edit in marketplace' },
-  ];
-  /** Which switch option reads as selected — marketplace when on it, else the
-   *  Ballpark cost side (covers the deferred/redirected tabs too). */
-  protected readonly projNavActive = computed<Tab>(() =>
-    this.tab() === 'marketplace' ? 'marketplace' : 'final'
-  );
+  protected readonly projNav = computed<readonly { tab: Tab; label: string }[]>(() => {
+    const nav: { tab: Tab; label: string }[] = [
+      { tab: 'final', label: 'Ballpark cost' },
+      { tab: 'marketplace', label: 'Edit in marketplace' },
+    ];
+    // pV2-PROJECTS-S3: once the project is Active (sent to suppliers) the Inbox
+    // unlocks — its @case already renders <app-inbox-project>. Draft hides it.
+    if (!this.isDraft()) nav.push({ tab: 'inbox', label: 'Inbox' });
+    return nav;
+  });
+  /** Which switch option reads as selected — marketplace / inbox when on them,
+   *  else the Ballpark cost side (covers the deferred/redirected tabs too). */
+  protected readonly projNavActive = computed<Tab>(() => {
+    const t = this.tab();
+    if (t === 'marketplace') return 'marketplace';
+    if (t === 'inbox') return 'inbox';
+    return 'final';
+  });
 
   protected readonly detail = resource<ProjectDetail, string>({
     params: () => this.id(),
