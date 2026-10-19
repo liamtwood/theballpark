@@ -37,9 +37,23 @@ function ownerVisibleFilter(req, orgId, alias = 'i') {
 }
 
 /** GET /api/marketplace/suppliers/options — lightweight supplier list for
- *  the filter dropdown (id, name, active-item count). */
+ *  the filter dropdown (id, name, item count).
+ *
+ *  Scope is viewer-aware (mirrors ownerVisibleFilter): an AGENT browsing sees
+ *  only suppliers with a live, approved item (there's nothing to browse at a
+ *  supplier with no public catalogue). A BALLPARK ADMIN working the Approvals
+ *  grid must ALSO see suppliers whose only items are pending/draft — a brand-new
+ *  supplier's first submission has no approved item yet, so an approved-only list
+ *  would hide that supplier from the Approvals supplier filter and the admin could
+ *  never narrow the grid to find its pending item (pV2-STORE-APPROVALS-SUPPLIER-01).
+ *  The admin filter matches the approvals grid's base scope (non-deleted,
+ *  top-level, non-component) so the dropdown and the grid agree. */
 router.get('/suppliers/options', async (req, res, next) => {
   try {
+    const isAdmin = req.user?.role === 'ballpark_admin';
+    const itemFilter = isAdmin
+      ? `i.deleted_at IS NULL AND i.type IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL`
+      : `i.deleted_at IS NULL AND i.status = 'active' AND i.approval_status = 'approved'`;
     const r = await pool.query(
       // Cross-org supplier read: use supplier_directory — the owner-run public
       // directory view that bypasses orgs RLS (which would hide every other
@@ -48,7 +62,7 @@ router.get('/suppliers/options', async (req, res, next) => {
       `SELECT o.id, o.name, COUNT(i.id) AS item_count
          FROM supplier_directory o
          JOIN items i ON i.org_id = o.id
-        WHERE i.deleted_at IS NULL AND i.status = 'active' AND i.approval_status = 'approved'
+        WHERE ${itemFilter}
         -- BE-00129 — orgs_public is a VIEW (no PK), so Postgres can't infer the
         -- o.id → o.name functional dependency; every selected non-aggregate must
         -- be grouped (a base-table GROUP BY o.id would have sufficed).
