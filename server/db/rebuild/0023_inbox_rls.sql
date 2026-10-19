@@ -21,7 +21,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 create policy projects_provider_read on public.projects for select
   using (exists (select 1 from public.project_providers pp
-                  where pp.project_id = id
+                  where pp.project_id = projects.id
                     and pp.provider_org_id = public.app_current_org()
                     and pp.deleted_at is null));
 
@@ -31,7 +31,7 @@ create policy projects_provider_read on public.projects for select
 -- ═══════════════════════════════════════════════════════════════════════════
 create policy project_categories_provider_read on public.project_categories for select
   using (exists (select 1 from public.project_providers pp
-                  where pp.project_id = project_id
+                  where pp.project_id = project_categories.project_id
                     and pp.provider_org_id = public.app_current_org()
                     and pp.deleted_at is null));
 
@@ -44,7 +44,7 @@ create policy project_categories_provider_read on public.project_categories for 
 create policy project_items_provider_read on public.project_items for select
   using (exists (select 1 from public.message_relations mr
                    join public.messages m on m.id = mr.message_id and m.deleted_at is null
-                  where mr.project_item_id = id
+                  where mr.project_item_id = project_items.id
                     and public.app_current_org() in (m.from_org_id, m.to_org_id)));
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -56,11 +56,11 @@ create policy project_items_provider_read on public.project_items for select
 -- ═══════════════════════════════════════════════════════════════════════════
 create policy project_item_quotes_provider on public.project_item_quotes for all
   using      (exists (select 1 from public.project_providers pp
-                        where pp.id = project_provider_id
+                        where pp.id = project_item_quotes.project_provider_id
                           and pp.provider_org_id = public.app_current_org()
                           and pp.deleted_at is null))
   with check (exists (select 1 from public.project_providers pp
-                        where pp.id = project_provider_id
+                        where pp.id = project_item_quotes.project_provider_id
                           and pp.provider_org_id = public.app_current_org()
                           and pp.deleted_at is null));
 
