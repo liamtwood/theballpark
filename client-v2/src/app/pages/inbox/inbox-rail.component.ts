@@ -47,27 +47,19 @@ export interface RailOuter {
       <div class="bp-card shrink-0 overflow-hidden" [class.bp-glisten]="!isExpanded(o.id) && c.action > 0">
         <!-- min-h keeps every collapsed supplier card the same height. -->
         <div class="flex min-h-[64px] w-full items-center gap-3 p-3">
-          <button type="button" class="flex min-w-0 flex-1 items-center gap-3 text-left" (click)="toggle(o.id)">
-            <!-- Always the pink Ballpark glyph — the supplier's own logo is NOT
-                 shown here (Liam 2026-10-19): a consistent icon reads cleaner than
+          <button type="button" class="flex min-w-0 flex-1 flex-col items-start gap-1 text-left" (click)="toggle(o.id)">
+            <!-- Icon sits inline with the supplier name, sized to the title line
+                 (Liam 2026-10-19). Always the pink Ballpark glyph — the supplier's
+                 own logo is NOT shown here: a consistent icon reads cleaner than
                  mixed-quality supplier images in the dense rail. -->
-            <lucide-icon [name]="o.iconName || 'store'" [size]="26" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
-            <span class="min-w-0 flex-1">
-              <span class="bp-list-title block truncate">{{ o.label }}</span>
-              <!-- Compact stats: items · accepted · action-required (icons keep it
-                   on one line in the narrow rail; full words on hover). -->
-              <span class="bp-body-small mt-1.5 flex items-center gap-3.5">
-                <span class="inline-flex items-center gap-1.5" [title]="c.items + ' items'">
-                  <lucide-icon name="package" [size]="16" class="text-muted" />{{ c.items }}
-                </span>
-                <span class="inline-flex items-center gap-1.5" [title]="c.accepted + ' accepted'">
-                  <lucide-icon name="circle-check" [size]="16" class="text-muted" />{{ c.accepted }}
-                </span>
-                <span class="inline-flex items-center gap-1.5" [title]="c.action + ' action required'"
-                      [style.color]="c.action > 0 ? 'var(--theme-accent)' : null" [class.font-semibold]="c.action > 0">
-                  <lucide-icon name="circle-alert" [size]="16" />{{ c.action }}
-                </span>
-              </span>
+            <span class="flex w-full min-w-0 items-center gap-2">
+              <lucide-icon [name]="o.iconName || 'building-2'" [size]="18" [strokeWidth]="1.75" class="shrink-0 text-[var(--theme-accent)]" />
+              <span class="bp-list-title min-w-0 truncate">{{ o.label }}</span>
+            </span>
+            <!-- Line count · how many are accepted by BOTH sides. Action-required
+                 is signalled by the card glisten, so it isn't repeated here. -->
+            <span class="bp-body-small text-muted">
+              {{ c.items }} {{ c.items === 1 ? 'item' : 'items' }} · {{ c.accepted }} accepted
             </span>
           </button>
           <button type="button" class="shrink-0 rounded-md p-0.5 text-muted transition-colors hover:text-text"
