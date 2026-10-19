@@ -57,8 +57,11 @@ export interface RailOuter {
               <span class="bp-list-title min-w-0 truncate">{{ o.label }}</span>
             </span>
             <!-- Line count · how many are accepted by BOTH sides. Action-required
-                 is signalled by the card glisten, so it isn't repeated here. -->
-            <span class="bp-body-small text-muted">
+                 is signalled by the card glisten, so it isn't repeated here.
+                 pl-[26px] = icon width (18) + gap-2 (8) so it left-aligns under the
+                 supplier name, not the icon. bp-caption = the light "ballpark cost"
+                 weight (Liam 2026-10-19). -->
+            <span class="bp-caption pl-[26px]">
               {{ c.items }} {{ c.items === 1 ? 'item' : 'items' }} · {{ c.accepted }} accepted
             </span>
           </button>
