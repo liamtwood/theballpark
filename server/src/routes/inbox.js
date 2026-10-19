@@ -100,7 +100,11 @@ const ReplySchema = z
         z.object({
           itemId: z.string().uuid(),
           action: z.enum(['accept', 'adjust', 'decline']),
+          // Adjust: new per-unit rate, a per-line install cost, or a FLAT line
+          // total (overrides per-unit × qty; clears price_current server-side).
           price: z.number().nonnegative().optional(),
+          installCost: z.number().nonnegative().optional(),
+          flatTotal: z.number().nonnegative().optional(),
           note: z.string().max(1000).optional(),
         })
       )

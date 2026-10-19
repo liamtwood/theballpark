@@ -82,12 +82,21 @@ function defaultQuantity(unit, serves, project) {
 // quote rows exist for pricing, so every COALESCE falls through to the frozen
 // project_items values (a self-quote row only ever holds the agent's
 // quote_description / details text). S3 widens this to per-provider overlays.
-const RESOLVED_FROM = `
+//
+// The overlay join is parametrised by its predicate so the estimate path keeps
+// the agent self-quote (IS NULL — untouched, golden test unaffected) while the
+// inbox can resolve a specific PROVIDER's overlay (project_provider_id = …) via
+// resolvedFrom()/quoteLineJoin() + lineByIdForProvider() (pV2-PROJECTS-S3).
+function resolvedFrom(overlayPredicate) {
+  return `
   project_items pi0
   LEFT JOIN project_item_quotes q
     ON q.project_item_id = pi0.id
-   AND q.project_provider_id IS NULL
+   AND ${overlayPredicate}
    AND q.deleted_at IS NULL`;
+}
+const SELF_QUOTE_PRED = 'q.project_provider_id IS NULL';
+const RESOLVED_FROM = resolvedFrom(SELF_QUOTE_PRED);
 
 // The resolved column set. Exposes every field lineTotalSql reads off `pi`
 // (quantity / variant / installed / install_cost / install_unit / flat_total /
@@ -163,7 +172,8 @@ const ORG_ESTIMATE_SQL = cascadeSql('WHERE p.org_id = $1 AND p.deleted_at IS NUL
 // rename propagates; the bucket id is the stable grouping key the client sends
 // back on a custom add. The ORIGINAL library item (item_id) supplies the inbox
 // brief's lib_* (S3) + the live volume tiers the pricing module needs.
-const QUOTE_LINE_JOIN = `
+function quoteLineJoin(overlayFrom) {
+  return `
   SELECT ${RESOLVED_COLS},
          c.name AS category_name, c.icon_name AS category_icon_name,
          i.description AS i_description,
@@ -173,8 +183,15 @@ const QUOTE_LINE_JOIN = `
          i.install_cost AS i_install_cost, i.install_description AS i_install_description,
          i.install_unit AS i_install_unit,
          i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
-         EXISTS (SELECT 1 FROM items ci WHERE ci.parent_item_id = pi0.item_id AND ci.deleted_at IS NULL) AS has_options
-    FROM ${RESOLVED_FROM}
+         EXISTS (SELECT 1 FROM items ci WHERE ci.parent_item_id = pi0.item_id AND ci.deleted_at IS NULL) AS has_options,
+         -- pV2-PROJECTS-S3: real send-state. A line is OUT FOR QUOTE once it's
+         -- briefed (a message_relation exists on any project message about it);
+         -- else it's still in the editable cart (to_send). This moves sent lines
+         -- out of the estimate cart + into the Final view's read-only slice.
+         EXISTS (SELECT 1 FROM message_relations mr
+                   JOIN messages m ON m.id = mr.message_id AND m.deleted_at IS NULL
+                  WHERE mr.project_item_id = pi0.id) AS sent
+    FROM ${overlayFrom}
     LEFT JOIN project_categories pc ON pc.id = pi0.project_category_id
     LEFT JOIN categories c ON c.id = pc.category_id
     LEFT JOIN items i ON i.id = pi0.item_id
@@ -184,6 +201,8 @@ const QUOTE_LINE_JOIN = `
     -- directory is owner-run + security_barrier and exposes only marketplace-card
     -- columns for ACTIVE suppliers (0019).
     LEFT JOIN supplier_directory o ON o.id = i.org_id`;
+}
+const QUOTE_LINE_JOIN = quoteLineJoin(RESOLVED_FROM);
 
 function toQuoteLine(row) {
   // The resolved per-unit "now": the negotiated overlay rate wins, else the
@@ -222,9 +241,10 @@ function toQuoteLine(row) {
     supplierName: row.supplier_name ?? null, // from supplier_directory (cross-org)
     supplierCity: row.supplier_city ?? null, // locality via the directory
     supplierCurrency: row.currency ?? null, // the frozen line currency (travels with price)
-    // S2: every line is still in the cart. The real send-state (out_for_quote /
-    // quoted / booked / declined) is DERIVED from engagement + events in S3.
-    status: 'to_send',
+    // pV2-PROJECTS-S3: derived send-state. Briefed → out_for_quote (read-only in
+    // the estimate, managed in the inbox); unbriefed → to_send (editable cart).
+    // The nuanced per-provider negotiation status lives on the inbox thread item.
+    status: row.sent ? 'out_for_quote' : 'to_send',
     libName: row.lib_name ?? null,
     libDescription: row.lib_description ?? null,
     libBasePrice: row.lib_base_price == null ? null : Number(row.lib_base_price),
@@ -244,6 +264,17 @@ function toQuoteLine(row) {
  *  transaction client (add/patch responses reuse the add's txn client). */
 async function lineById(db, id) {
   const r = await db.query(`${QUOTE_LINE_JOIN} WHERE pi0.id = $1`, [id]);
+  return r.rows.length ? toQuoteLine(r.rows[0]) : null;
+}
+
+/** pV2-PROJECTS-S3 — one resolved quote line against a SPECIFIC provider's
+ *  overlay (project_provider_id = providerId), so the inbox line-preview shows
+ *  that provider's negotiated form (name/price/install), not the agent
+ *  self-quote. Same projection/mapping as lineById — only the overlay predicate
+ *  differs. Null if the line doesn't exist / isn't readable under RLS. */
+async function lineByIdForProvider(db, id, providerId) {
+  const from = resolvedFrom('q.project_provider_id = $2');
+  const r = await db.query(`${quoteLineJoin(from)} WHERE pi0.id = $1`, [id, providerId]);
   return r.rows.length ? toQuoteLine(r.rows[0]) : null;
 }
 
@@ -630,5 +661,5 @@ async function removeItem(orgId, projectId, lineId) {
 module.exports = {
   listItems, getEstimate, listBallparkTotals, addItem, addCustomItem,
   updateItem, updateLineDetails, setQuoteDescription, removeItem,
-  lineById, toQuoteLine,
+  lineById, lineByIdForProvider, toQuoteLine,
 };

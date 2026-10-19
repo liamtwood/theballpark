@@ -1,24 +1,39 @@
-// pV2-INBOX-01 — gated v2 inbox façade service.
+// pV2-PROJECTS-S3 (rebuild) — the inbox / messaging / negotiation READ+WRITE
+// layer on the 0022 messaging cluster. Supersedes the UNIFY-01 inbox.service
+// that read the single merged line-state table (message_items + project_items
+// price/status columns + message_item_decisions — all culled in the rebuild).
 //
-// Threads are stored in v1's exact (project_id, supplier_org_id,
-// category_id) shape (messages + message_items + decisions + events) —
-// no migration, no schema change. This service is the v2 read path over
-// that data; identity is ALWAYS the caller's org (RP-INB1): every query
-// filters by the org_id the route reads from the JWT, never a
-// client-supplied id, and there is NO ballpark cross-org override.
+// The locked model (DATA-MODEL-REDESIGN §"Messaging / engagement cluster" +
+// §"Line cluster" + §"Approvals FR-00228"):
+//   • project_providers   — the engagement SPINE (one row per supplier engaged
+//                           on a project; UNIQUE(project, provider), revived on
+//                           re-engagement). Backs the inbox home.
+//   • messages            — party-anchored (from_org / to_org); body NULL = an
+//                           action (a bare Accept), not a chat bubble.
+//   • message_relations   — what a message is ABOUT (→ project_item).
+//   • message_events      — APPEND-ONLY journal (accept/decline/suggest →
+//                           resulting status + price + changes).
+//   • project_item_quotes — the per-provider OVERLAY: the current agreed form
+//                           (NULL = inherit from the frozen project_items ask).
+// The "thread" is DERIVED (no table): grouped by (provider × project_category);
+// threadId = the earliest (brief) message in that group. Per-line approval state
+// (brief_sent / adjusted_by_{agent,supplier} / accepted / declined + buyer/
+// sellerAccepted) is DERIVED from event ordering (message-event.service
+// deriveLineState) — NOT stored — reproducing the exact client DTO vocabulary so
+// the ported inbox UI consumes it unchanged. Single-write-path invariant: every
+// state change writes BOTH an event (journal) and the overlay (current form).
 //
-// Slice 1 (supplier entry): the projects an agency has reached out to
-// THIS supplier about, shaped as the existing ProjectCard so the
-// /projects?bucket=quoting screen renders them with the agency
-// project-card grid (Defer 1 — a bespoke supplier card comes later).
+// SECURITY: org_id is ALWAYS the JWT caller's (routes pass req.user.org_id); the
+// per-request pinned client carries the org GUC, so RLS scopes every read/write
+// to the caller. Cross-org reads use the sanctioned directories: supplier_directory
+// (agency→supplier display) and org_contact() (supplier→agency display, 0023).
 
 const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
-const { lineTotalSql, isDeclined } = require('./line-total.util');
-const TaxonomyService = require('./taxonomy.service');
-const messageService = require('./message.service');
-const projectsService = require('./projects.service');
-const { getByMessage, getByMessages, aggregateStatus, transitionItem, recordDecision } = require('./message-item.service');
+const { lineTotal } = require('./line-pricing');
+const { isDeclined } = require('./line-total.util');
+const projectLine = require('./project-line.service');
+const mev = require('./message-event.service');
 
 function httpErr(message, status) {
   const e = new Error(message);
@@ -26,786 +41,746 @@ function httpErr(message, status) {
   return e;
 }
 
-/** Map a supplier-projects row to the ProjectCard contract
- *  (client-v2 core/projects/project.types.ts). The reaching-out agency
- *  is the supplier's counterparty, so it lands where the agency card
- *  shows the client; the headline total is the supplier's running quote
- *  value for the project. */
-function toSupplierProjectCard(row) {
-  return {
-    id: row.id,
-    // v1 card title = event_name with a name fallback.
-    name: row.event_name || row.name,
-    ref: row.ref,
-    status: row.status ?? 'active',
-    coverUrl: row.cover_image_url,
-    coverFocalX: row.cover_focal_x ?? 50,
-    coverFocalY: row.cover_focal_y ?? 50,
-    iconName: row.icon_name ?? null,
-    iconColor: row.icon_color ?? null,
-    unsplashPhotographerName: row.unsplash_photographer_name ?? null,
-    unsplashPhotoUrl: row.unsplash_photo_url ?? null,
-    // The agency that reached out → the cover chip (who's asking).
-    clientName: row.agency_name ?? null,
-    clientLogoUrl: row.agency_logo_url ?? null,
-    // Supplier headline = their running quote total for this project.
-    ballparkCost: row.quote_total == null ? null : Number(row.quote_total),
-    currency: row.currency ?? 'GBP',
-    // NOTE(pV2-INBOX-01 QC): the agency card renders this as "{n}
-    // suppliers". For the supplier view it carries the count of THEIR
-    // quoted items in the project — the label wants parameterising (or a
-    // bespoke supplier card, Defer 1). Flagged for Liam.
-    supplierCount: Number(row.item_count ?? 0),
-    updatedAt: row.updated_at ?? row.created_at,
-  };
+// ── cross-org counterparty display ───────────────────────────────────────────
+// Agency viewer → the engaged SUPPLIER's card (supplier_directory, owner-run).
+// Supplier viewer → the AGENCY's card (org_contact — a SECURITY DEFINER gated to
+// a shared engagement; 0023). orgs RLS is own-org-only, so neither side can read
+// the other's orgs row directly — these are the audited bypasses.
+async function fetchOrgDisplay(viewer, orgIds) {
+  const ids = [...new Set((orgIds || []).filter(Boolean))];
+  const map = new Map();
+  if (!ids.length) return map;
+  const sql =
+    viewer === 'agency'
+      ? `SELECT id, name, logo_url, city FROM supplier_directory WHERE id = ANY($1::uuid[])`
+      : `SELECT o.id, c.name, c.logo_url, c.city
+           FROM unnest($1::uuid[]) o(id)
+           LEFT JOIN LATERAL public.org_contact(o.id) c ON true`;
+  const r = await pool.query(sql, [ids]);
+  for (const row of r.rows) map.set(row.id, { name: row.name, logoUrl: row.logo_url, city: row.city });
+  return map;
 }
 
-/** Every project the caller-supplier has been messaged about, newest
- *  activity first. One row per project: the reaching-out agency, the
- *  count of the supplier's quoted items, and their running quote total.
- *  Items hang off the brief message; replies only transition them, so
- *  SUM/COUNT across the project's messages is the project total. */
-async function listSupplierProjects(supplierOrgId) {
-  // pV2-UNIFY-01: the supplier's projects + running quote value come straight
-  // off project_items now (the line-state table). Their lines are the ones
-  // they own (items.org_id) that have been briefed (status not null); the
-  // running total is the SUM of revised line-totals via the ONE formula.
+// ── thread assembly (shared by agency + supplier views) ──────────────────────
+
+/** Totals for one resolved line via the pricing SSOT MODULE (single-line path —
+ *  WORKING_STANDARDS: the module for single lines, lineTotalSql for set-based).
+ *  Original = the frozen ask (base guide + tiers + frozen install); Revised =
+ *  the provider overlay (negotiated per-unit / flat override + resolved qty/
+ *  install). Golden-test-backed parity with the estimate cascade. */
+function lineTotals(row) {
+  const tiers = Array.isArray(row.price_tiers) ? row.price_tiers : null;
+  const upcharge = row.f_variant && row.f_variant.upcharge ? Number(row.f_variant.upcharge) : 0;
+  const original = lineTotal({
+    basePrice: row.f_base, priceTiers: tiers, quantity: row.f_qty,
+    installed: row.installed, installCost: row.f_ic ?? row.i_ic, installUnit: row.f_iu ?? row.i_iu,
+    variantUpcharge: upcharge, honourFlat: false,
+  });
+  const revised = lineTotal({
+    priceCurrent: row.q_current, basePrice: row.f_base, priceTiers: tiers, quantity: row.r_qty,
+    installed: row.installed, installCost: row.r_ic ?? row.i_ic, installUnit: row.r_iu ?? row.i_iu,
+    variantUpcharge: upcharge, flatTotal: row.q_override, honourFlat: true,
+  });
+  return { original, revised };
+}
+
+/** Resolve a set of project_items against ONE provider's overlay, with the raw
+ *  columns lineTotals() needs. Frozen (f_*) + resolved (r_*) + overlay quote
+ *  (q_*) + live item (i_*) side by side. */
+async function resolvedLines(projectItemIds, providerId) {
+  if (!projectItemIds.length) return new Map();
   const r = await pool.query(
-    `SELECT p.id, p.name, p.event_name, p.ref, p.status,
-            p.cover_image_url, p.cover_focal_x, p.cover_focal_y,
-            p.icon_name, p.icon_color,
-            p.unsplash_photographer_name, p.unsplash_photo_url,
-            p.currency, p.created_at,
-            ao.name      AS agency_name,
-            ao.logo_url  AS agency_logo_url,
-            MAX(pi.updated_at)  AS updated_at,
-            COUNT(*)            AS item_count,
-            COALESCE(SUM(${lineTotalSql({ current: 'pi.price_current', ref: 'pi.price_ref', flat: true })}), 0) AS quote_total
-       FROM project_items pi
-       LEFT JOIN items i ON i.id  = pi.item_id
-       JOIN projects p   ON p.id  = pi.project_id
-       LEFT JOIN orgs ao ON ao.id = p.org_id
-      WHERE pi.supplier_org_id = $1
-        AND pi.status IS NOT NULL
-        AND pi.deleted_at IS NULL
-        AND p.deleted_at IS NULL
-      GROUP BY p.id, ao.name, ao.logo_url
-      ORDER BY MAX(pi.updated_at) DESC NULLS LAST`,
-    [supplierOrgId]
+    `SELECT pi0.id, pi0.item_id, pi0.project_category_id, pi0.parent_id,
+            pi0.base_price AS f_base, pi0.quantity AS f_qty, pi0.variant AS f_variant,
+            pi0.installed AS installed, pi0.install_cost AS f_ic, pi0.install_unit AS f_iu,
+            COALESCE(q.name, pi0.name)               AS name,
+            COALESCE(q.description, pi0.description)  AS description,
+            COALESCE(q.image_url, pi0.image_url)      AS image_url,
+            COALESCE(q.unit, pi0.unit)                AS unit,
+            COALESCE(q.quantity, pi0.quantity)        AS r_qty,
+            COALESCE(q.variant, pi0.variant)          AS r_variant,
+            COALESCE(q.install_cost, pi0.install_cost) AS r_ic,
+            COALESCE(q.install_unit, pi0.install_unit) AS r_iu,
+            q.price_current AS q_current, q.price_override AS q_override,
+            i.install_cost AS i_ic, i.install_unit AS i_iu,
+            i.attributes -> 'price_tiers' AS price_tiers
+       FROM project_items pi0
+       LEFT JOIN project_item_quotes q
+         ON q.project_item_id = pi0.id AND q.project_provider_id = $2 AND q.deleted_at IS NULL
+       LEFT JOIN items i ON i.id = pi0.item_id
+      WHERE pi0.id = ANY($1::uuid[]) AND pi0.deleted_at IS NULL`,
+    [projectItemIds, providerId]
   );
-  return r.rows.map(toSupplierProjectCard);
+  const map = new Map();
+  for (const row of r.rows) map.set(row.id, row);
+  return map;
 }
 
-/** Resolve (or lazily create) the project_categories row for a project's
- *  catalogue category — messages.category_id FKs to project_categories(id),
- *  so the thread keys per (project, supplier, category). v2 quote items
- *  normally already carry a project_categories row (recommend creates it);
- *  the INSERT is the rare fallback. */
-async function resolveProjectCategoryId(executor, projectId, categoryId) {
-  const found = await executor.query(
-    `SELECT id FROM project_categories
-      WHERE project_id = $1 AND category_id = $2 AND is_active = true
-      ORDER BY created_at ASC LIMIT 1`,
-    [projectId, categoryId]
-  );
-  if (found.rows.length) return found.rows[0].id;
-  const ins = await executor.query(
-    `INSERT INTO project_categories (project_id, category_id, status_code)
-     VALUES ($1, $2, 'draft') RETURNING id`,
-    [projectId, categoryId]
-  );
-  return ins.rows[0].id;
-}
-
-/** pV2-INBOX-02 — fan a project's quote out to the agent-picked suppliers.
- *
- *  The agency org is the JWT caller (RP-INB1): we verify it owns the project
- *  before any write. For each (category → supplierIds) in the roster we build
- *  the requirements from the project's quote items in that category, then
- *  reuse the v1 `requestQuotes` writes (one outbound thread per supplier,
- *  seeded `brief_sent` message_items + events + quote_requests + the outreach
- *  email) with `skip_balls` — v2 has no Balls economy yet. */
-async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
-  const proj = await pool.query(
-    `SELECT org_id, status FROM projects WHERE id = $1 AND deleted_at IS NULL`,
-    [projectId]
-  );
-  if (!proj.rows.length) throw httpErr('Project not found', 404);
-  // Participation: only the owning agency may fan its own project out.
-  if (proj.rows[0].org_id !== agencyOrgId) throw httpErr('Project not found', 404);
-  const wasDraft = (proj.rows[0].status ?? 'draft') === 'draft';
-
-  // pV2-CUSTOMS-01: fan out per LINE, not per item_id — the cart's still-to-send
-  // canonical rows grouped by their own category_id (project_items.category_id,
-  // set for catalogue AND custom lines). Custom lines (item_id NULL) ride along
-  // with catalogue lines in the same category. Send-state is the line's status
-  // (pV2-UNIFY-01): NULL = to_send.
-  const linesRes = await pool.query(
-    `SELECT pi.category_id, pi.id AS project_item_id, pi.item_id,
-            pi.name, pi.description, pi.base_price
-       FROM project_items pi
-      WHERE pi.project_id = $1 AND pi.deleted_at IS NULL
-        AND pi.status IS NULL
-        -- Only TOP-LEVEL lines fan out. A component child is part of its parent's
-        -- private cost buildup — it must NEVER be briefed independently (which would
-        -- re-own it to whichever supplier holds that category — INBOX integrity bug).
-        AND pi.parent_id IS NULL`,
-    [projectId]
-  );
-  const linesByCat = new Map();
-  for (const r of linesRes.rows) {
-    const arr = linesByCat.get(r.category_id) ?? [];
-    arr.push(r);
-    linesByCat.set(r.category_id, arr);
-  }
-
-  const results = [];
-  for (const entry of roster) {
-    const categoryId = entry.categoryId;
-    const supplierIds = [...new Set((entry.supplierIds || []).filter(Boolean))];
-    const lines = linesByCat.get(categoryId) || [];
-    // Nothing to ask, or no one to ask — skip (e.g. a stale roster category).
-    if (!supplierIds.length || !lines.length) continue;
-
-    const projectCategoryId = await resolveProjectCategoryId(pool, projectId, categoryId);
-    const res = await TaxonomyService.requestQuotes({
-      project_id: projectId,
-      category_id: categoryId,
-      project_category_id: projectCategoryId,
-      requirements: lines.map((l) => ({
-        project_item_id: l.project_item_id,
-        item_id: l.item_id,
-        name: l.name,
-        description: l.description,
-        price: l.base_price,
-      })),
-      supplier_ids: supplierIds,
-      user_id: userId,
-      skip_balls: true,
-    });
-    results.push({ categoryId, refCode: res.ref_code, suppliers: res.suppliers, requirements: res.requirements });
-  }
-
-  // First successful outreach takes the project Draft → Active (Live): the
-  // Reports + Inbox tabs unlock. Dual-write status + legacy status_id (v1
-  // compat), same as ProjectsService. Non-fatal — the briefs already sent.
-  if (wasDraft && results.length) {
-    try {
-      const { status, statusId } = await projectsService.resolveStatus('active');
-      await pool.query(
-        `UPDATE projects SET status = $2, status_id = $3, updated_at = NOW() WHERE id = $1`,
-        [projectId, status, statusId]
-      );
-    } catch (err) {
-      console.warn('[inbox] draft→active status flip failed', err);
-    }
-  }
-
+/** The InboxThreadItem (client contract). Prices = the pricing module; approval
+ *  state = deriveLineState over the (provider × item) events; `line` = the SAME
+ *  QuoteLine the Final Quote renders, resolved against the provider overlay. */
+function toThreadItem(raw, state, line) {
+  const { original, revised } = lineTotals(raw);
   return {
-    categories: results.length,
-    threads: results.reduce((n, r) => n + (r.suppliers || 0), 0),
-    results,
+    id: raw.id,
+    itemId: raw.item_id ?? raw.id,
+    name: raw.name,
+    description: raw.description || null,
+    status: state.status,
+    priceRef: original == null ? null : Number(original),
+    priceCurrent: revised == null ? null : Number(revised),
+    unitPriceRef: raw.f_base == null ? null : Number(raw.f_base),
+    unitPriceCurrent: raw.q_current == null ? null : Number(raw.q_current),
+    flatTotal: raw.q_override == null ? null : Number(raw.q_override),
+    hasOpenQuestion: false, // buildup/question children shelved (project_buildup_shelved)
+    quantity: raw.r_qty == null ? null : Number(raw.r_qty),
+    unit: raw.unit ?? null,
+    installed: raw.installed ?? null,
+    installCost: raw.r_ic != null ? Number(raw.r_ic) : (raw.i_ic == null ? null : Number(raw.i_ic)),
+    installUnit: raw.r_iu ?? raw.i_iu ?? null,
+    imageUrl: raw.image_url ?? null,
+    buyerAccepted: state.buyerAccepted,
+    sellerAccepted: state.sellerAccepted,
+    buyerAcceptedAt: state.buyerAcceptedAt,
+    sellerAcceptedAt: state.sellerAcceptedAt,
+    line: line ?? null,
   };
 }
 
-/** Map a message row to a conversation bubble from the VIEWER's point of
- *  view. Supplier: their inbound replies are "mine"; the agency's outbound
- *  brief is incoming. Agency: the reverse. The counterparty name labels the
- *  incoming bubbles. */
-function toBubble(m, viewer, counterpartyName, taggedItemIds) {
-  const mine = viewer === 'supplier' ? m.direction === 'inbound' : m.direction === 'outbound';
+/** One conversation bubble from the VIEWER's point of view. mine = the caller's
+ *  org sent it. taggedItemIds = the catalogue item_ids (or custom project_items
+ *  id) this message is about — the thread item filter key. */
+function toBubble(m, viewer, myOrgId, counterpartyName, taggedItemIds) {
+  const mine = m.from_org_id === myOrgId;
   return {
     id: m.id,
     mine,
     author: mine ? 'You' : counterpartyName || (viewer === 'supplier' ? 'Agency' : 'Supplier'),
     body: m.body || '',
     createdAt: m.created_at,
-    // catalogue item_ids this message is tagged to (empty = thread-level
-    // broadcast). The brief carries all its items, so it shows in every
-    // item filter (pV2-INBOX-04).
     taggedItemIds: taggedItemIds ?? [],
   };
 }
 
-/** Per-message tags: the filter key each message carries a message_items row
- *  for. pV2-CUSTOMS-01: key on COALESCE(item_id, project_item_id) so custom
- *  lines (item_id NULL) still get a stable tag — matching toThreadItem's itemId
- *  — instead of falling through as an untagged "General" broadcast. */
-async function fetchTags(messageIds) {
-  if (!messageIds.length) return new Map();
-  const r = await pool.query(
-    `SELECT mtag.message_id, COALESCE(pi.item_id, pi.id) AS tag_key
-       FROM message_items mtag
-       JOIN project_items pi ON pi.id = mtag.project_item_id
-      WHERE mtag.message_id = ANY($1::uuid[])`,
-    [messageIds]
+/**
+ * Assemble the project's threads from the VIEWER's perspective. RLS already
+ * limits `messages` to the caller's pairs (an agency sees every provider; a
+ * supplier sees only their own), so the same query serves both — the viewer only
+ * changes display + the "mine" flag. Returns { project, threads, agencyOrgId }.
+ */
+async function assembleThreads(viewer, callerOrgId, projectId) {
+  // The agency owns the project; derive it so we can tell the two sides apart
+  // (sender === agency ⇒ buyer). Agency viewer: the caller IS the agency.
+  const projRow = await pool.query(
+    `SELECT id, org_id, name, description, event_date, venue_name, client_name, currency
+       FROM projects WHERE id = $1 AND deleted_at IS NULL`,
+    [projectId]
   );
-  const map = new Map();
-  for (const row of r.rows) {
-    const arr = map.get(row.message_id) ?? [];
-    arr.push(row.tag_key);
-    map.set(row.message_id, arr);
-  }
-  return map;
-}
+  if (!projRow.rows.length) throw httpErr('Project not found', 404);
+  const project = projRow.rows[0];
+  const agencyOrgId = project.org_id;
+  if (viewer === 'agency' && agencyOrgId !== callerOrgId) throw httpErr('Project not found', 404);
 
-function toThreadItem(it, line) {
-  return {
-    // pV2-UNIFY-01: the line's own id is the project_items.id now (what the
-    // client sends back in item actions).
-    id: it.id,
-    // The message-filter key: the catalogue item_id, or the project_items row
-    // id for a custom line (item_id NULL) so its tag still matches (CUSTOMS-01).
-    itemId: it.item_id ?? it.id,
-    name: it.name,
-    description: it.description || null,
-    status: it.status,
-    // pV2-UNIFY-01: priceRef / priceCurrent now carry the LINE totals
-    // (per-unit × qty + install) via the one shared formula — so the inbox
-    // renders £105 × 150 + install = £17,325, matching the Final Quote,
-    // with no client change. The raw per-unit prices ride along for callers
-    // that want the rate.
-    priceRef: it.original_total == null ? null : Number(it.original_total),
-    priceCurrent: it.revised_total == null ? null : Number(it.revised_total),
-    unitPriceRef: it.price_ref == null ? null : Number(it.price_ref),
-    unitPriceCurrent: it.price_current == null ? null : Number(it.price_current),
-    // pV2-INTENT-01: a negotiated FLAT line total (overrides per-unit × qty).
-    // When set, unitPriceCurrent is null — the Assistant reopens with a blank
-    // New cost + this flat Total.
-    flatTotal: it.flat_total == null ? null : Number(it.flat_total),
-    // pV2-INTENT-02: the line has an unpriced agent QUESTION child awaiting the
-    // supplier — drives the "Question" pill (deterministic, no AI).
-    hasOpenQuestion: !!it.has_open_question,
-    quantity: it.quantity == null ? null : Number(it.quantity),
-    // The install basis, so the negotiation card can show the full breakdown
-    // (Cost · Unit · Install · Total) and recompute the total from a new rate.
-    unit: it.unit ?? null,
-    installed: it.installed,
-    installCost: it.install_cost == null ? null : Number(it.install_cost),
-    installUnit: it.install_unit ?? null,
-    imageUrl: it.item_image_url ?? null,
-    // Latest decision per side (from message_item_decisions) — drives the
-    // YOU / THEY / BOTH accepted pill (buyer = agency, seller = supplier).
-    buyerAccepted: it.buyer_status === 'accepted',
-    sellerAccepted: it.seller_status === 'accepted',
-    // When each side accepted (for "accepted N mins ago" in the Assistant).
-    buyerAcceptedAt: it.buyer_status === 'accepted' ? it.buyer_at : null,
-    sellerAcceptedAt: it.seller_status === 'accepted' ? it.seller_at : null,
-    // pV2-INBOX-05: the SAME QuoteLine the Final Quote renders (keyed on this
-    // row's project_items.id) — the inbox mounts the identical item-preview
-    // card under the message rather than a bespoke copy. null if not found.
-    line: line ?? null,
-  };
-}
+  const msgs = await pool.query(
+    `SELECT id, from_org_id, to_org_id, user_id, subject, body, created_at
+       FROM messages WHERE project_id = $1 AND deleted_at IS NULL
+      ORDER BY created_at ASC`,
+    [projectId]
+  );
+  const messages = msgs.rows;
+  const messageIds = messages.map((m) => m.id);
 
-/** pV2-INBOX-01 — the caller-supplier's inbox for one project: a project
- *  summary card (client · event date · location · agency · original/revised
- *  totals) plus the per-category conversation threads (items + bubbles).
- *  org from JWT only (RP-INB1): we read the supplier's own feed and never
- *  trust a client id. */
-async function getSupplierThreads(supplierOrgId, projectId) {
-  const all = await messageService.getAllForSupplier(supplierOrgId);
-  const scoped = all.filter((m) => m.project_id === projectId);
-
-  // Group by category (rows arrive created_at ASC, so the first seen per
-  // category is the lead brief — its message_items are the thread's items).
-  const groups = new Map();
-  for (const m of scoped) {
-    const key = m.category_id ?? '';
-    let g = groups.get(key);
-    if (!g) {
-      g = { categoryId: m.category_id, lead: m, messages: [] };
-      groups.set(key, g);
+  // Relations (message → item) + each item's category + the filter key.
+  const relsByMessage = new Map();  // message_id → [{ projectItemId, catId, tagKey }]
+  const itemCat = new Map();        // project_item_id → catId
+  if (messageIds.length) {
+    const rel = await pool.query(
+      `SELECT mr.message_id, mr.project_item_id, pi.project_category_id,
+              pi.parent_id, COALESCE(pi.item_id, pi.id) AS tag_key
+         FROM message_relations mr
+         JOIN project_items pi ON pi.id = mr.project_item_id AND pi.deleted_at IS NULL
+        WHERE mr.message_id = ANY($1::uuid[]) AND pi.parent_id IS NULL`,
+      [messageIds]
+    );
+    for (const row of rel.rows) {
+      const arr = relsByMessage.get(row.message_id) ?? [];
+      arr.push({ projectItemId: row.project_item_id, catId: row.project_category_id, tagKey: row.tag_key });
+      relsByMessage.set(row.message_id, arr);
+      itemCat.set(row.project_item_id, row.project_category_id);
     }
-    g.messages.push(m);
   }
 
-  const tags = await fetchTags(scoped.map((m) => m.id));
+  // Events, grouped by (providerOrg × project_item_id). The provider of an event
+  // = the non-agency party of its message; the actor side = sender vs agency.
+  const eventsByKey = new Map(); // `${providerOrg}|${itemId}` → [{status, side, createdAt, note, ...}]
+  if (messageIds.length) {
+    const ev = await pool.query(
+      `SELECT mr.project_item_id, m.from_org_id, m.to_org_id,
+              me.status, me.price_current, me.price_override, me.note, me.created_at
+         FROM message_events me
+         JOIN message_relations mr ON mr.id = me.message_relation_id
+         JOIN messages m ON m.id = me.message_id
+        WHERE me.message_id = ANY($1::uuid[])
+        ORDER BY me.created_at ASC`,
+      [messageIds]
+    );
+    for (const row of ev.rows) {
+      const providerOrg = row.from_org_id === agencyOrgId ? row.to_org_id : row.from_org_id;
+      const side = row.from_org_id === agencyOrgId ? 'buyer' : 'seller';
+      const key = `${providerOrg}|${row.project_item_id}`;
+      const arr = eventsByKey.get(key) ?? [];
+      arr.push({ status: row.status, side, createdAt: row.created_at, note: row.note,
+                 priceCurrent: row.price_current, priceOverride: row.price_override });
+      eventsByKey.set(key, arr);
+    }
+  }
+
+  // Category display (name + icon) for the project's buckets.
+  const catDisplay = new Map();
+  const cats = await pool.query(
+    `SELECT pc.id, c.name, c.icon_name
+       FROM project_categories pc LEFT JOIN categories c ON c.id = pc.category_id
+      WHERE pc.project_id = $1 AND pc.deleted_at IS NULL`,
+    [projectId]
+  );
+  for (const row of cats.rows) catDisplay.set(row.id, { name: row.name, icon: row.icon_name });
+
+  // Group messages → providers → categories. provider = the non-agency party.
+  const providerOrgIds = new Set();
+  const byProvider = new Map(); // providerOrg → { messages: [], cats: Map(catId → { items:Set, messages:[] }) }
+  for (const m of messages) {
+    const providerOrg = m.from_org_id === agencyOrgId ? m.to_org_id : m.from_org_id;
+    providerOrgIds.add(providerOrg);
+    let p = byProvider.get(providerOrg);
+    if (!p) { p = { messages: [], cats: new Map() }; byProvider.set(providerOrg, p); }
+    p.messages.push(m);
+    const rels = relsByMessage.get(m.id) ?? [];
+    const catIds = [...new Set(rels.map((r) => r.catId))];
+    // A message with no item relations (a general note) still belongs to the
+    // provider; bucket it under each category it touches (none → skip in threads).
+    for (const catId of catIds) {
+      let c = p.cats.get(catId);
+      if (!c) { c = { items: new Set(), messages: [] }; p.cats.set(catId, c); }
+      c.messages.push(m);
+      for (const r of rels) if (r.catId === catId) c.items.add(r.projectItemId);
+    }
+  }
+
+  // Provider engagement ids (for the per-provider overlay resolution) + display.
+  const engRows = await pool.query(
+    `SELECT id, provider_org_id FROM project_providers
+      WHERE project_id = $1 AND deleted_at IS NULL`,
+    [projectId]
+  );
+  const providerIdByOrg = new Map();
+  for (const row of engRows.rows) providerIdByOrg.set(row.provider_org_id, row.id);
+
+  const supplierDisplay = await fetchOrgDisplay('agency', [...providerOrgIds]); // suppliers
+  const agencyDisplay = viewer === 'supplier' ? await fetchOrgDisplay('supplier', [agencyOrgId]) : null;
+  const agencyCard = agencyDisplay ? agencyDisplay.get(agencyOrgId) : null;
+
   const threads = [];
-  for (const g of groups.values()) {
-    // Items across ALL briefs in the category, not just the lead — items added
-    // to an existing category ride a later brief message (INBOX late-add fix).
-    const items = await getByMessages(g.messages.map((m) => m.id), { sentOnly: true });
-    const lines = await projectsService.linesByIds(pool, items.map((i) => i.id));
-    threads.push(makeThread(g.lead, g.messages, items, 'supplier', tags, lines));
+  for (const [providerOrg, p] of byProvider.entries()) {
+    const providerId = providerIdByOrg.get(providerOrg) ?? null;
+    const sd = supplierDisplay.get(providerOrg) || {};
+    // Resolve every item this provider is briefed on (one batched query).
+    const allItemIds = [];
+    for (const c of p.cats.values()) for (const id of c.items) allItemIds.push(id);
+    const resolved = providerId ? await resolvedLines(allItemIds, providerId) : new Map();
+
+    for (const [catId, c] of p.cats.entries()) {
+      if (!c.items.size) continue;
+      const lead = c.messages[0]; // earliest (messages are created_at ASC)
+      if (!lead) continue;
+      const cat = catDisplay.get(catId) || {};
+      const items = [];
+      for (const itemId of c.items) {
+        const raw = resolved.get(itemId);
+        if (!raw) continue;
+        const evs = eventsByKey.get(`${providerOrg}|${itemId}`) ?? [];
+        const state = mev.deriveLineState(evs, { briefed: true });
+        const line = providerId ? await projectLine.lineByIdForProvider(pool, itemId, providerId) : null;
+        items.push(toThreadItem(raw, state, line));
+      }
+      if (!items.length) continue;
+
+      const counterpartyName = viewer === 'agency' ? (sd.name ?? null) : (agencyCard?.name ?? null);
+      const originalTotal = items.reduce((s, it) => s + (isDeclined(it.status) ? 0 : (it.priceRef ?? 0)), 0);
+      const revisedTotal = items.reduce((s, it) => s + (isDeclined(it.status) ? 0 : (it.priceCurrent ?? it.priceRef ?? 0)), 0);
+      threads.push({
+        id: lead.id,
+        categoryId: catId ?? null,
+        categoryName: cat.name ?? null,
+        categoryIconName: cat.icon ?? null,
+        agencyOrgId,
+        agencyName: agencyCard?.name ?? null,
+        agencyLogoUrl: agencyCard?.logoUrl ?? null,
+        supplierOrgId: providerOrg,
+        supplierName: sd.name ?? null,
+        supplierLogoUrl: sd.logoUrl ?? null,
+        projectId,
+        projectName: project.name ?? null,
+        refCode: null,
+        status: '', // thread-level aggregate not needed by the ported UI (per-item pills drive it)
+        total: revisedTotal,
+        originalTotal,
+        revisedTotal,
+        items,
+        messages: p.cats.get(catId).messages
+          .filter((m) => (m.body || '').trim())
+          .map((m) => toBubble(m, viewer, callerOrgId, counterpartyName,
+            (relsByMessage.get(m.id) ?? []).map((r) => r.tagKey))),
+      });
+    }
   }
-  sortThreads(threads);
-  const project = await getProjectSummary(projectId, threads);
-  return { project, threads };
-}
 
-/** Build one thread object from the VIEWER's perspective. Carries both the
- *  agency and supplier identities (the client picks the counterparty); the
- *  bubbles + aggregate status are mapped for the viewer. */
-function makeThread(lead, msgs, items, viewer, tagsByMessage, linesById) {
-  const counterpartyName = viewer === 'supplier' ? lead.agency_name : lead.supplier_name;
-  return {
-    id: lead.id,
-    categoryId: lead.category_id ?? null,
-    categoryName: lead.category_name || null,
-    agencyOrgId: lead.agency_org_id ?? null,
-    agencyName: lead.agency_name ?? null,
-    agencyLogoUrl: lead.agency_logo_url ?? null,
-    supplierOrgId: lead.supplier_org_id ?? null,
-    supplierName: lead.supplier_name ?? null,
-    supplierLogoUrl: lead.supplier_logo_url ?? null,
-    projectId: lead.project_id,
-    projectName: lead.project_name ?? null,
-    refCode: lead.ref_code ?? null,
-    status: aggregateStatus(items, viewer === 'supplier' ? 'supplier' : 'agent'),
-    // pV2-UNIFY-01: thread totals are sums of LINE totals now (qty + install
-    // honoured), not per-unit prices.
-    total: items.reduce((s, it) => s + Number(it.revised_total ?? it.original_total ?? 0), 0),
-    originalTotal: items.reduce((s, it) => s + Number(it.original_total ?? 0), 0),
-    revisedTotal: items.reduce((s, it) => s + Number(it.revised_total ?? it.original_total ?? 0), 0),
-    items: items.map((it) => toThreadItem(it, linesById?.get(it.id))),
-    // Empty-body rows carry no conversation (e.g. an action-only reply) —
-    // never render a blank bubble.
-    messages: msgs
-      .filter((m) => (m.body || '').trim())
-      .map((m) => toBubble(m, viewer, counterpartyName, tagsByMessage?.get(m.id))),
-  };
-}
-
-/** Newest-active thread first. */
-function sortThreads(threads) {
+  // Newest-active thread first.
   threads.sort((a, b) => {
     const am = a.messages[a.messages.length - 1]?.createdAt ?? 0;
     const bm = b.messages[b.messages.length - 1]?.createdAt ?? 0;
     return new Date(bm) - new Date(am);
   });
+
+  const allItems = threads.flatMap((t) => t.items);
+  const summary = {
+    id: projectId,
+    name: project.name ?? null,
+    clientName: project.client_name ?? null,
+    eventDate: project.event_date ?? null,
+    location: project.venue_name ?? null,
+    agencyName: viewer === 'supplier' ? (agencyCard?.name ?? null) : null,
+    agencyLogoUrl: viewer === 'supplier' ? (agencyCard?.logoUrl ?? null) : null,
+    itemCount: allItems.length,
+    currency: project.currency ?? 'GBP',
+    originalTotal: allItems.reduce((s, it) => s + (isDeclined(it.status) ? 0 : (it.priceRef ?? 0)), 0),
+    revisedTotal: allItems.reduce((s, it) => s + (isDeclined(it.status) ? 0 : (it.priceCurrent ?? it.priceRef ?? 0)), 0),
+  };
+
+  return { project: summary, threads, agencyOrgId };
 }
 
-/** The project summary card (client · event date · location · agency ·
- *  original/revised totals across the supplier's items). */
-async function getProjectSummary(projectId, threads) {
-  const allItems = threads.flatMap((t) => t.items);
-  const ctx = await pool.query(
-    `SELECT COALESCE(p.event_name, p.name) AS project_name,
-            p.event_date, p.venue_city, p.venue_name,
-            -- v2 sets projects.client_name (free text); the legacy clients FK is
-            -- never written, so a bare cl.name is always NULL on v2 projects and
-            -- the supplier's card showed no client at all. Same COALESCE as
-            -- LIST_SELECT / getDetail (audit 2026-07-17 S2).
-            COALESCE(p.client_name, cl.name) AS client_name,
-            p.currency,
-            ag.name AS agency_name, ag.logo_url AS agency_logo_url
-       FROM projects p
-       LEFT JOIN clients cl ON cl.id = p.client_id
-       LEFT JOIN orgs    ag ON ag.id = p.org_id
-      WHERE p.id = $1`,
-    [projectId]
-  );
-  const row = ctx.rows[0] || {};
-  return {
-    id: projectId,
-    name: row.project_name ?? threads[0]?.projectName ?? null,
-    clientName: row.client_name ?? null,
-    eventDate: row.event_date ?? null,
-    location: row.venue_city || row.venue_name || null,
-    agencyName: row.agency_name ?? threads[0]?.agencyName ?? null,
-    agencyLogoUrl: row.agency_logo_url ?? null,
-    itemCount: allItems.length,
-    currency: row.currency ?? 'GBP',
-    originalTotal: allItems.reduce((s, it) => s + Number(it.priceRef ?? 0), 0),
-    revisedTotal: allItems.reduce((s, it) => s + Number(it.priceCurrent ?? it.priceRef ?? 0), 0),
-  };
-}
+// ── reads (route-facing) ─────────────────────────────────────────────────────
 
 /** pV2-INBOX-03 — the agent inbox for one project: every supplier thread
- *  (per supplier × category), agent perspective. org from JWT — we verify
- *  the caller's agency owns the project (RP-INB1). */
+ *  (per supplier × category), agency perspective. org from JWT. */
 async function getAgentThreads(agencyOrgId, projectId) {
-  const proj = await pool.query(
-    `SELECT org_id FROM projects WHERE id = $1 AND deleted_at IS NULL`,
-    [projectId]
-  );
-  if (!proj.rows.length || proj.rows[0].org_id !== agencyOrgId) throw httpErr('Project not found', 404);
-
-  const all = await messageService.getAll(projectId);
-  const groups = new Map();
-  for (const m of all) {
-    const key = `${m.supplier_org_id ?? ''}|${m.category_id ?? ''}`;
-    let g = groups.get(key);
-    if (!g) {
-      g = { lead: m, messages: [] };
-      groups.set(key, g);
-    }
-    g.messages.push(m);
-  }
-
-  const tags = await fetchTags(all.map((m) => m.id));
-  const threads = [];
-  for (const g of groups.values()) {
-    // Union across every brief in the (supplier × category) group so items added
-    // after the first outreach (a later brief message) still appear.
-    const items = await getByMessages(g.messages.map((m) => m.id), { sentOnly: true });
-    const lines = await projectsService.linesByIds(pool, items.map((i) => i.id));
-    threads.push(makeThread(g.lead, g.messages, items, 'agency', tags, lines));
-  }
-  sortThreads(threads);
-  const project = await getProjectSummary(projectId, threads);
+  const { project, threads } = await assembleThreads('agency', agencyOrgId, projectId);
   return { project, threads };
 }
 
-/** Whose turn is it on one message_item (agent perspective)? Coarse + simple
- *  for the Messages landing rollup — 'agent' | 'supplier' | null (settled).
- *  Reads the raw message_item status + the latest per-side decisions. */
+/** pV2-INBOX-01 — the caller-supplier's inbox for one project: their own
+ *  threads (per category) + the project summary. org from JWT (RLS scopes the
+ *  messages to their pair). Requires the engaged-provider read widenings (0023). */
+async function getSupplierThreads(supplierOrgId, projectId) {
+  const { project, threads } = await assembleThreads('supplier', supplierOrgId, projectId);
+  return { project, threads };
+}
+
+/** Map an engaged project (supplier view) to the ProjectCard contract — the
+ *  reaching-out agency lands on the cover chip; the headline = the supplier's
+ *  running quote value (their overlay revised totals). */
+function toSupplierProjectCard(row, agencyCard, quoteTotal) {
+  const cover = row.cover || {};
+  return {
+    id: row.id,
+    name: row.name,
+    ref: row.ref,
+    status: row.status ?? 'active',
+    coverUrl: cover.imageUrl ?? null,
+    coverFocalX: cover.focalX ?? 50,
+    coverFocalY: cover.focalY ?? 50,
+    iconName: row.icon_name ?? null,
+    iconColor: row.icon_color ?? null,
+    unsplashPhotographerName: cover.unsplashPhotographerName ?? null,
+    unsplashPhotoUrl: cover.unsplashPhotoUrl ?? null,
+    clientName: agencyCard?.name ?? null,      // who's asking = the agency
+    clientLogoUrl: agencyCard?.logoUrl ?? null,
+    ballparkCost: quoteTotal == null ? null : Number(quoteTotal),
+    currency: row.currency ?? 'GBP',
+    supplierCount: 0, // NOTE: the agency card labels this "{n} suppliers"; the
+                      // supplier card wants its own label (Defer 1, as in UNIFY-01).
+    updatedAt: row.updated_at ?? row.created_at,
+  };
+}
+
+/** pV2-INBOX-01 — every project the caller-supplier has been engaged on, newest
+ *  first, shaped as ProjectCard[] for /projects?bucket=quoting. The running
+ *  quote value = the SUM of their revised line totals across the project.
+ *  org from JWT. Requires the engaged-provider read widenings (0023). */
+async function listSupplierProjects(supplierOrgId) {
+  const engs = await pool.query(
+    `SELECT pp.id AS provider_id, pp.project_id, p.org_id AS agency_org_id,
+            p.ref, p.name, p.status, p.currency, p.cover, p.icon_name, p.icon_color,
+            p.created_at, pp.updated_at
+       FROM project_providers pp
+       JOIN projects p ON p.id = pp.project_id AND p.deleted_at IS NULL
+      WHERE pp.provider_org_id = $1 AND pp.deleted_at IS NULL
+      ORDER BY pp.updated_at DESC NULLS LAST`,
+    [supplierOrgId]
+  );
+  if (!engs.rows.length) return [];
+  const agencyDisplay = await fetchOrgDisplay('supplier', engs.rows.map((r) => r.agency_org_id));
+  const out = [];
+  for (const row of engs.rows) {
+    // Briefed items for this engagement = the project_items referenced by a
+    // message relation on the (agency ↔ this supplier) pair.
+    const itemsRes = await pool.query(
+      `SELECT DISTINCT mr.project_item_id
+         FROM message_relations mr
+         JOIN messages m ON m.id = mr.message_id AND m.deleted_at IS NULL
+        WHERE m.project_id = $1
+          AND $2 IN (m.from_org_id, m.to_org_id)
+          AND mr.project_item_id IS NOT NULL`,
+      [row.project_id, supplierOrgId]
+    );
+    const ids = itemsRes.rows.map((r) => r.project_item_id);
+    const resolved = await resolvedLines(ids, row.provider_id);
+    let total = 0;
+    for (const raw of resolved.values()) {
+      const { revised } = lineTotals(raw);
+      total += Number(revised || 0);
+    }
+    out.push(toSupplierProjectCard(row, agencyDisplay.get(row.agency_org_id), ids.length ? total : null));
+  }
+  return out;
+}
+
+/** Whose move is one line from the AGENT's perspective: 'agent' | 'supplier' |
+ *  null (settled). Mirrors the client inbox-status itemAction for the agency. */
 function itemWaitingOn(it) {
-  const s = it.status;
-  const buyerAccepted = it.buyer_status === 'accepted';
-  const sellerAccepted = it.seller_status === 'accepted';
-  // Settled — nobody owes an action: booked, both accepted, or declined by
-  // either side (a cancelled/declined line is done).
-  if (s === 'booked' || (buyerAccepted && sellerAccepted)) return null;
-  if (isDeclined(s)) return null;
-  // On the agent: the supplier has come back (quote / adjustment / accept)
-  // and it's the agency's move.
-  if (sellerAccepted && !buyerAccepted) return 'agent';
-  if (s === 'quoted' || s === 'adjusted_by_supplier') return 'agent';
-  // On the supplier: an open agent question, the agent's counter, or a brief
-  // still out for quote.
+  if (it.status === 'booked' || (it.buyerAccepted && it.sellerAccepted)) return null;
+  if (isDeclined(it.status)) return null;
+  if (it.sellerAccepted && !it.buyerAccepted) return 'agent';
+  if (it.status === 'adjusted_by_supplier') return 'agent';
+  if (it.status === 'brief_sent' || it.status === 'adjusted_by_agent') return 'supplier';
   return 'supplier';
 }
 
+function truncate(s, max) {
+  if (!s) return null;
+  return s.length > max ? s.slice(0, max - 1).trimEnd() + '…' : s;
+}
+
 /** pV2-INBOX (Messages landing) — one rollup row per ACTIVE agency project the
- *  agency has messaged: project name/client, the supplier names on it, and how
- *  many line items are waiting on the agent vs the supplier. `actionRequired`
- *  = the agent has at least one item to respond to. org from JWT (RP-INB1). */
+ *  agency has messaged: project name/client, the suppliers on it, and how many
+ *  line items are waiting on the agent vs the supplier. org from JWT. */
 async function getAgentInboxSummary(agencyOrgId) {
   const projs = await pool.query(
-    `SELECT p.id, COALESCE(p.event_name, p.name) AS name,
-            COALESCE(p.client_name, cl.name) AS client_name, p.updated_at
-       FROM projects p
-       LEFT JOIN clients cl ON cl.id = p.client_id
+    `SELECT p.id FROM projects p
       WHERE p.org_id = $1 AND p.deleted_at IS NULL
         AND COALESCE(p.status, 'draft') NOT IN ('completed', 'archived')
+        AND EXISTS (SELECT 1 FROM project_providers pp
+                     WHERE pp.project_id = p.id AND pp.deleted_at IS NULL)
       ORDER BY p.updated_at DESC`,
     [agencyOrgId]
   );
 
   const out = [];
   for (const p of projs.rows) {
-    const all = await messageService.getAll(p.id);
-    if (!all.length) continue; // no outreach yet → not in the Messages list
+    const { project, threads } = await assembleThreads('agency', agencyOrgId, p.id);
+    if (!threads.length) continue;
 
-    // Group the project's messages by supplier, then roll up each supplier's
-    // items (deduped by line id across their category threads). `all` is
-    // created_at ASC, so the last bodied message we see is the latest — track
-    // it per supplier + overall for the "last message" hover.
+    // Roll up per supplier (a supplier can span multiple category threads).
     const bySupplier = new Map();
-    for (const m of all) {
-      if (!m.supplier_org_id) continue;
-      let g = bySupplier.get(m.supplier_org_id);
-      if (!g) {
-        g = { name: m.supplier_name, messageIds: [], lastMessage: null, lastMessageAt: null };
-        bySupplier.set(m.supplier_org_id, g);
-      }
-      g.messageIds.push(m.id);
-      const body = (m.body || '').trim();
-      if (body) {
-        // `all` is created_at ASC → the last bodied message we see is latest.
-        g.lastMessage = body;
-        g.lastMessageAt = m.created_at ?? null;
+    for (const t of threads) {
+      let g = bySupplier.get(t.supplierOrgId);
+      if (!g) { g = { name: t.supplierName, items: [], lastMessage: null, lastMessageAt: null }; bySupplier.set(t.supplierOrgId, g); }
+      g.items.push(...t.items);
+      const last = t.messages[t.messages.length - 1];
+      if (last && (!g.lastMessageAt || new Date(last.createdAt) > new Date(g.lastMessageAt))) {
+        g.lastMessage = last.body; g.lastMessageAt = last.createdAt;
       }
     }
 
     const suppliers = [];
-    let waitingAgent = 0;
-    let waitingSupplier = 0;
-    let itemCount = 0;
+    let waitingAgent = 0, waitingSupplier = 0, itemCount = 0;
     for (const g of bySupplier.values()) {
-      const items = await getByMessages(g.messageIds, { sentOnly: true });
       const seen = new Set();
-      let wa = 0;
-      let ws = 0;
-      let n = 0;
-      let actionItemId = null; // first line needing the agent — deep-link target
-      for (const it of items) {
-        if (seen.has(it.id)) continue; // same line can tag multiple briefs
+      let wa = 0, ws = 0, n = 0, actionItemId = null;
+      for (const it of g.items) {
+        if (seen.has(it.id)) continue;
         seen.add(it.id);
-        // Cancelled/declined lines are done — don't count them at all.
         if (isDeclined(it.status)) continue;
         n++;
         const w = itemWaitingOn(it);
-        if (w === 'agent') {
-          wa++;
-          if (!actionItemId) actionItemId = it.id;
-        } else if (w === 'supplier') ws++;
+        if (w === 'agent') { wa++; if (!actionItemId) actionItemId = it.id; }
+        else if (w === 'supplier') ws++;
       }
       suppliers.push({
-        name: g.name,
-        itemCount: n,
-        waitingAgent: wa,
-        waitingSupplier: ws,
-        actionRequired: wa > 0,
-        actionItemId,
-        lastMessage: truncate(g.lastMessage, 240),
-        lastMessageAt: g.lastMessageAt,
+        name: g.name, itemCount: n, waitingAgent: wa, waitingSupplier: ws,
+        actionRequired: wa > 0, actionItemId,
+        lastMessage: truncate(g.lastMessage, 240), lastMessageAt: g.lastMessageAt,
       });
-      waitingAgent += wa;
-      waitingSupplier += ws;
-      itemCount += n;
+      waitingAgent += wa; waitingSupplier += ws; itemCount += n;
     }
 
     out.push({
-      id: p.id,
-      name: p.name,
-      clientName: p.client_name ?? null,
-      suppliers,
-      itemCount,
-      waitingAgent,
-      waitingSupplier,
-      actionRequired: waitingAgent > 0,
+      id: p.id, name: project.name, clientName: project.clientName ?? null,
+      suppliers, itemCount, waitingAgent, waitingSupplier, actionRequired: waitingAgent > 0,
     });
   }
   return out;
 }
 
-/** Trim a string to `max` chars with an ellipsis (null-safe). */
-function truncate(s, max) {
-  if (!s) return null;
-  return s.length > max ? s.slice(0, max - 1).trimEnd() + '…' : s;
-}
-
 /** Live-project overview metrics (agency): value of both-sides-agreed items,
  *  agreed vs total item counts, and how many supplier threads still have an
- *  open item. Cancelled/declined lines are excluded. Working total comes from
- *  the estimate cascade (client already has it). org from JWT (RP-INB1). */
+ *  open item. Cancelled/declined lines excluded. org from JWT. */
 async function getProjectOverview(agencyOrgId, projectId) {
-  const proj = await pool.query(
-    `SELECT org_id FROM projects WHERE id = $1 AND deleted_at IS NULL`,
-    [projectId]
-  );
-  if (!proj.rows.length || proj.rows[0].org_id !== agencyOrgId) throw httpErr('Project not found', 404);
-
-  const all = await messageService.getAll(projectId);
-  const groups = new Map();
-  for (const m of all) {
-    const key = `${m.supplier_org_id ?? ''}|${m.category_id ?? ''}`;
-    let g = groups.get(key);
-    if (!g) { g = []; groups.set(key, g); }
-    g.push(m.id);
-  }
-
-  let confirmedTotal = 0;
-  let agreedItems = 0;
-  let totalItems = 0;
-  let openThreads = 0;
+  const { threads } = await assembleThreads('agency', agencyOrgId, projectId);
+  let confirmedTotal = 0, agreedItems = 0, totalItems = 0, openThreads = 0;
   const seen = new Set();
-  for (const messageIds of groups.values()) {
-    const items = await getByMessages(messageIds, { sentOnly: true });
+  for (const t of threads) {
     let threadOpen = false;
-    for (const it of items) {
+    for (const it of t.items) {
       if (seen.has(it.id)) continue;
       seen.add(it.id);
-      const s = it.status;
-      if (isDeclined(s)) continue; // excluded
+      if (isDeclined(it.status)) continue;
       totalItems++;
-      const agreed = s === 'booked' || (it.buyer_status === 'accepted' && it.seller_status === 'accepted');
-      if (agreed) {
-        agreedItems++;
-        confirmedTotal += Number(it.revised_total ?? it.original_total ?? 0);
-      } else {
-        threadOpen = true;
-      }
+      const agreed = it.status === 'booked' || (it.buyerAccepted && it.sellerAccepted);
+      if (agreed) { agreedItems++; confirmedTotal += Number(it.priceCurrent ?? it.priceRef ?? 0); }
+      else threadOpen = true;
     }
     if (threadOpen) openThreads++;
   }
-
   return { confirmedTotal, agreedItems, totalItems, openThreads };
 }
 
-/** pV2-INBOX-01 — the caller-supplier replies in a thread: a chat message
- *  and/or per-item actions (Accept / Propose-new-price / Decline). Identity
- *  is the JWT caller; we verify the thread (its lead brief) belongs to this
- *  supplier (RP-INB1). Reuses message-item.service transitions + decisions;
- *  one transaction (Hygiene Rule 1). Item state lives on the lead's
- *  message_items — the reply row is just the bubble (v1 model). */
+// ── writes (route-facing) ────────────────────────────────────────────────────
+
+/** Ensure a project_providers engagement (revive a soft-deleted row on
+ *  re-engagement — UNIQUE(project, provider)). Runs on a txn client. org_id =
+ *  the agency (sacred). Returns the engagement id. */
+async function ensureProvider(client, { agencyOrgId, projectId, providerOrgId }) {
+  const existing = await client.query(
+    `SELECT id, deleted_at FROM project_providers
+      WHERE project_id = $1 AND provider_org_id = $2 FOR UPDATE`,
+    [projectId, providerOrgId]
+  );
+  const live = existing.rows.find((r) => r.deleted_at === null);
+  if (live) return live.id;
+  const dead = existing.rows.find((r) => r.deleted_at !== null);
+  if (dead) {
+    await client.query(
+      `UPDATE project_providers
+          SET deleted_at = NULL, deleted_by = NULL, status = 'pending', updated_at = NOW()
+        WHERE id = $1`,
+      [dead.id]
+    );
+    return dead.id;
+  }
+  const ins = await client.query(
+    `INSERT INTO project_providers (org_id, project_id, provider_org_id, status)
+     VALUES ($1, $2, $3, 'pending') RETURNING id`,
+    [agencyOrgId, projectId, providerOrgId]
+  );
+  return ins.rows[0].id;
+}
+
+/** pV2-INBOX-02 — fan a project's quote out to the picked suppliers. For each
+ *  (category bucket → supplierIds) in the roster: ensure the engagement spine,
+ *  then a brief message (agency → supplier) + a message_relations row per
+ *  not-yet-briefed item in that category. No events (baseline = brief_sent) and
+ *  no overlay rows yet (pending until a side quotes). First successful send
+ *  flips the project Draft → Active. Atomic (Rule 1). org from JWT. */
+async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
+  const proj = await pool.query(
+    `SELECT org_id, status FROM projects WHERE id = $1 AND deleted_at IS NULL`,
+    [projectId]
+  );
+  if (!proj.rows.length) throw httpErr('Project not found', 404);
+  if (proj.rows[0].org_id !== agencyOrgId) throw httpErr('Project not found', 404);
+  const wasDraft = (proj.rows[0].status ?? 'draft') === 'draft';
+
+  const results = [];
+  let threadCount = 0;
+  await withTransaction(async (client) => {
+    for (const entry of roster) {
+      const categoryId = entry.categoryId; // a project_categories bucket id
+      const supplierIds = [...new Set((entry.supplierIds || []).filter(Boolean))];
+      if (!supplierIds.length) continue;
+
+      // The bucket's category name → the brief subject.
+      const catRow = await client.query(
+        `SELECT c.name FROM project_categories pc LEFT JOIN categories c ON c.id = pc.category_id
+          WHERE pc.id = $1 AND pc.project_id = $2 AND pc.deleted_at IS NULL`,
+        [categoryId, projectId]
+      );
+      const catName = catRow.rows[0]?.name ?? 'your project';
+      let suppliersBriefed = 0;
+
+      for (const supplierId of supplierIds) {
+        // Items in the bucket NOT yet briefed to THIS supplier (idempotent
+        // re-send: a later add is briefed; already-sent items are not re-sent).
+        const items = await client.query(
+          `SELECT pi.id FROM project_items pi
+            WHERE pi.project_id = $1 AND pi.project_category_id = $2
+              AND pi.parent_id IS NULL AND pi.deleted_at IS NULL
+              AND NOT EXISTS (
+                SELECT 1 FROM message_relations mr
+                  JOIN messages m ON m.id = mr.message_id AND m.deleted_at IS NULL
+                 WHERE mr.project_item_id = pi.id
+                   AND m.from_org_id = $3 AND m.to_org_id = $4)`,
+          [projectId, categoryId, agencyOrgId, supplierId]
+        );
+        if (!items.rows.length) continue;
+
+        await ensureProvider(client, { agencyOrgId, projectId, providerOrgId: supplierId });
+        const msg = await client.query(
+          `INSERT INTO messages
+             (from_org_id, to_org_id, user_id, project_id, subject, body, status, next_action_by)
+           VALUES ($1, $2, $3, $4, $5, $6, 'sent', $2) RETURNING id`,
+          [agencyOrgId, supplierId, userId || null, projectId,
+           `Quote request: ${catName}`, `We'd like your quote for ${catName}.`]
+        );
+        const messageId = msg.rows[0].id;
+        for (const it of items.rows) {
+          await client.query(
+            `INSERT INTO message_relations (message_id, project_item_id) VALUES ($1, $2)`,
+            [messageId, it.id]
+          );
+        }
+        suppliersBriefed++;
+        threadCount++;
+      }
+      if (suppliersBriefed) results.push({ categoryId, suppliers: suppliersBriefed });
+    }
+
+    // First outreach takes the project Draft → Active (unlocks Inbox/Reports).
+    if (wasDraft && threadCount) {
+      await client.query(
+        `UPDATE projects SET status = 'active', updated_at = NOW()
+          WHERE id = $1 AND org_id = $2 AND COALESCE(status, 'draft') = 'draft'`,
+        [projectId, agencyOrgId]
+      );
+    }
+  });
+
+  return { categories: results.length, threads: threadCount, results };
+}
+
+/** The resulting status + the event/overlay field payload for one action. */
+function actionPayload(action, side, { price, installCost, flatTotal, note }) {
+  const status = mev.statusFor(action, side);
+  if (action === 'accept') {
+    return { status, event: {}, overlay: { status } };
+  }
+  if (action === 'decline') {
+    return { status, event: { note }, overlay: { status, declineReason: note ?? null } };
+  }
+  // adjust — per-unit XOR flat; install cost rides in `changes` + the overlay.
+  const priceCurrent = flatTotal != null ? null : (price != null ? price : null);
+  const priceOverride = flatTotal != null ? flatTotal : null;
+  const changes = {};
+  if (installCost != null) changes.install_cost = installCost;
+  return {
+    status,
+    event: { priceCurrent, priceOverride, changes: Object.keys(changes).length ? changes : null, note },
+    overlay: {
+      status,
+      priceCurrent, priceOverride,
+      installCost: installCost != null ? installCost : undefined,
+    },
+  };
+}
+
+/** pV2-INBOX-01/03 — reply in a thread: a chat message and/or per-item actions
+ *  (Accept / Suggest-new-price / Decline). Every state change writes BOTH a
+ *  message_event (append-only journal) AND the provider overlay (current form) —
+ *  the single-write-path invariant. A bodyless reply is an action, not a bubble.
+ *  Authority: the caller must be a party (agency = project owner; supplier =
+ *  engaged provider). One transaction (Rule 1). org from JWT. */
 async function reply({ viewer, orgId, userId, threadId, text, itemActions, taggedItemId }) {
   const isSupplier = viewer !== 'agency';
-  const lead = await pool.query(
-    `SELECT id, project_id, supplier_org_id, category_id, category_name,
-            supplier_name, subject, ref_code
-       FROM messages WHERE id = $1 AND deleted_at IS NULL`,
+  const anchor = await pool.query(
+    `SELECT m.id, m.project_id, m.from_org_id, m.to_org_id, p.org_id AS agency_org_id
+       FROM messages m JOIN projects p ON p.id = m.project_id
+      WHERE m.id = $1 AND m.deleted_at IS NULL`,
     [threadId]
   );
-  if (!lead.rows.length) throw httpErr('Thread not found', 404);
-  const lm = lead.rows[0];
-  // Participation (RP-INB1): supplier owns the thread; agency owns the
-  // project. Not-found and not-yours are the same 404 (no disclosure).
+  if (!anchor.rows.length) throw httpErr('Thread not found', 404);
+  const a = anchor.rows[0];
+  const agencyOrgId = a.agency_org_id;
+  const providerOrg = a.from_org_id === agencyOrgId ? a.to_org_id : a.from_org_id;
+
+  // Participation (same 404 for not-found / not-yours — no disclosure).
   if (isSupplier) {
-    if (lm.supplier_org_id !== orgId) throw httpErr('Thread not found', 404);
-  } else {
-    const proj = await pool.query(`SELECT org_id FROM projects WHERE id = $1 AND deleted_at IS NULL`, [lm.project_id]);
-    if (!proj.rows.length || proj.rows[0].org_id !== orgId) throw httpErr('Thread not found', 404);
+    if (orgId !== providerOrg) throw httpErr('Thread not found', 404);
+  } else if (orgId !== agencyOrgId) {
+    throw httpErr('Thread not found', 404);
   }
+  const counterparty = isSupplier ? agencyOrgId : providerOrg;
 
   const actions = Array.isArray(itemActions) ? itemActions : [];
   const hasText = !!(text && String(text).trim());
   if (!hasText && !actions.length) throw httpErr('reply needs text or item actions', 400);
 
-  // Viewer-specific shaping (mirrors v1's /:id/reply): supplier replies are
-  // inbound + unread; agency replies are outbound + sent. Item transitions
-  // record the actor's side; an adjust clears the OTHER side's prior accept.
-  const direction = isSupplier ? 'inbound' : 'outbound';
-  const msgStatus = isSupplier ? 'unread' : 'sent';
-  const readFlag = isSupplier ? false : true;
-  const actorType = isSupplier ? 'supplier' : 'agent';
-  const mySide = isSupplier ? 'seller' : 'buyer';
-  const otherSide = isSupplier ? 'buyer' : 'seller';
-  const adjustStatus = isSupplier ? 'adjusted_by_supplier' : 'adjusted_by_agent';
-  const declineStatus = isSupplier ? 'declined_by_supplier' : 'declined_by_agent';
+  const side = isSupplier ? 'seller' : 'buyer';
 
   return withTransaction(async (db) => {
-    // Only a message with real text becomes a bubble — an action-only reply
-    // does its item transitions without leaving a blank bubble.
-    let replyId = null;
-    if (hasText) {
-      const ins = await db.query(
-        `INSERT INTO messages
-           (project_id, user_id, supplier_org_id, category_id, category_name,
-            supplier_name, subject, body, direction, msg_status, read, next_action_by, ref_code)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NULL, $12)
-         RETURNING id`,
-        [lm.project_id, userId || null, lm.supplier_org_id, lm.category_id,
-         lm.category_name, lm.supplier_name,
-         `Re: ${lm.subject || lm.ref_code || ''}`,
-         text, direction, msgStatus, readFlag, lm.ref_code]
-      );
-      replyId = ins.rows[0].id;
-    }
+    // The engagement spine for the provider (overlay writes key on it). The
+    // agency briefed it on send; a supplier replying always has one.
+    const eng = await db.query(
+      `SELECT id FROM project_providers
+        WHERE project_id = $1 AND provider_org_id = $2 AND deleted_at IS NULL`,
+      [a.project_id, providerOrg]
+    );
+    const providerId = eng.rows[0]?.id ?? null;
 
-    // Items this reply is tagged to → a pure message_items row per item
-    // (item_id only; INBOX.md #10, no schema change). Actions tag their
-    // item; an item-selected chat tags via taggedItemId. catalogue item_id
-    // → display name.
-    // pV2-UNIFY-01: reply tags reference project_items now — collect the
-    // project_item ids this reply touches to tag its bubble.
-    const tagPiIds = new Set();
+    // One reply message carries the whole action set (body NULL ⇒ an action).
+    const ins = await db.query(
+      `INSERT INTO messages
+         (from_org_id, to_org_id, user_id, project_id, subject, body, status, next_action_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $2) RETURNING id`,
+      [orgId, counterparty, userId || null, a.project_id,
+       `Re: project`, hasText ? text : null, isSupplier ? 'unread' : 'sent']
+    );
+    const replyId = ins.rows[0].id;
 
     const changes = [];
-    for (const a of actions) {
-      const { itemId, action, price, installCost, flatTotal, note } = a || {};
-      if (!itemId || !action) continue;
-      // BE-00114 — itemId (a project_items.id) must belong to THIS thread. A
-      // thread is (project, supplier, category); its items ride ANY brief in that
-      // category, not just the lead (INBOX late-add — getSupplierThreads reads
-      // getByMessages across every message in the group). The old check matched
-      // only the LEAD message id, so an item added on a LATER brief (an RFQ /
-      // quote-request line — "Scenic Totem", "Tunnel") was tagged to that later
-      // message, failed this lookup, and was SILENTLY skipped (continue) → the
-      // supplier's accept/propose/decline did nothing. Match the item to any
-      // message in the same thread instead (same ownership scope: the thread was
-      // already verified to be the caller's above).
-      const before = await db.query(
-        `SELECT pi.name, pi.price_current, pi.status
-           FROM project_items pi
-           JOIN message_items mtag ON mtag.project_item_id = pi.id AND mtag.deleted_at IS NULL
-           JOIN messages m2 ON m2.id = mtag.message_id AND m2.deleted_at IS NULL
-          WHERE pi.id = $1 AND pi.deleted_at IS NULL
-            AND m2.project_id = $2
-            AND m2.supplier_org_id IS NOT DISTINCT FROM $3
-            AND m2.category_id IS NOT DISTINCT FROM $4
-          LIMIT 1`,
-        [itemId, lm.project_id, lm.supplier_org_id, lm.category_id]
+    const tagged = new Set();
+    for (const act of actions) {
+      const { itemId, action } = act || {};
+      if (!itemId || !mev.ACTIONS.has(action)) continue;
+      // The item must belong to this project (RLS already scopes it to the pair).
+      const chk = await db.query(
+        `SELECT name FROM project_items
+          WHERE id = $1 AND project_id = $2 AND deleted_at IS NULL`,
+        [itemId, a.project_id]
       );
-      if (!before.rows.length) {
-        // Genuinely not in this thread — keep the scope guard, but no longer
-        // silent: surface it so a future mismatch is visible (BE-00114).
-        console.warn(`[inbox] reply action skipped: item ${itemId} not in thread ${lm.id} (project ${lm.project_id}, cat ${lm.category_id})`);
+      if (!chk.rows.length) {
+        console.warn(`[inbox] reply action skipped: item ${itemId} not in project ${a.project_id}`);
         continue;
       }
-      const b = before.rows[0];
-      tagPiIds.add(itemId);
-
-      let toStatus = null;
-      let extra = null;
-      switch (action) {
-        case 'accept':  toStatus = 'accepted'; break;
-        case 'adjust':  toStatus = adjustStatus; extra = { price, installCost, flatTotal }; break;
-        case 'decline': toStatus = declineStatus; break;
-        default: continue;
-      }
-
-      const result = await transitionItem({
-        itemId,
-        toStatus,
-        actor: { type: actorType, id: userId || null },
-        note: note || null,
-        priceBefore: b.price_current,
-        priceAfter: action === 'adjust' && price != null ? price : null,
-        extra,
-        executor: db,
-      });
-
-      if (action === 'accept' || action === 'decline') {
-        await recordDecision({
-          messageItemId: itemId,
-          side: mySide,
-          decision: action === 'accept' ? 'accepted' : 'declined',
-          userId: userId || null,
-          note: note || null,
-          executor: db,
-        });
-      } else if (action === 'adjust') {
-        // Proposing a new cost IS accepting it — record the proposer's side
-        // as accepted (Liam 2026-06-29). The OTHER side's prior accept is
-        // cleared; they must accept the new cost (then it's BOTH ACCEPTED).
-        await recordDecision({
-          messageItemId: itemId,
-          side: mySide,
-          decision: 'accepted',
-          userId: userId || null,
-          note: 'auto-accepted own proposed cost',
-          executor: db,
-        });
-        await recordDecision({
-          messageItemId: itemId,
-          side: otherSide,
-          decision: 'cleared',
-          userId: userId || null,
-          note: `auto-cleared — ${actorType} edited`,
-          executor: db,
-        });
-      }
-      changes.push({ name: b.name, from: b.status, to: result.toStatus });
-    }
-
-    // A chat message composed with an item selected (no action) tags that
-    // line too. taggedItemId is the catalogue item_id → resolve to the
-    // thread's project_item (pV2-UNIFY-01).
-    if (taggedItemId) {
-      // taggedItemId is the filter key toThreadItem emits: the catalogue
-      // item_id, or the project_items row id for a custom line (CUSTOMS-01).
-      // Resolve to the thread's own TOP-LEVEL line by (project × category ×
-      // supplier) — NOT the lead brief's tags — so a line added to an existing
-      // category (which rides a LATER brief message) still tags correctly
-      // instead of falling through as an untagged "General" bubble (INBOX
-      // late-add fix, same class as v2.243).
-      // NB: do NOT scope by category — messages.category_id is a
-      // project_categories id while project_items.category_id is a catalogue
-      // category id (different id-spaces; comparing them never matches). The
-      // thread is (project × supplier); the item_id/id is specific within it.
-      const nm = await db.query(
-        `SELECT pi.id
-           FROM project_items pi
-          WHERE pi.project_id = $1
-            AND pi.supplier_org_id IS NOT DISTINCT FROM $2
-            AND (pi.item_id = $3 OR pi.id = $3)
-            AND pi.parent_id IS NULL AND pi.deleted_at IS NULL
-          LIMIT 1`,
-        [lm.project_id, lm.supplier_org_id, taggedItemId]
+      const { status, event, overlay } = actionPayload(action, side, act);
+      const rel = await db.query(
+        `INSERT INTO message_relations (message_id, project_item_id) VALUES ($1, $2) RETURNING id`,
+        [replyId, itemId]
       );
-      if (nm.rows.length) tagPiIds.add(nm.rows[0].id);
+      await mev.writeEvent(db, {
+        messageId: replyId, relationId: rel.rows[0].id, status,
+        priceCurrent: event.priceCurrent ?? null, priceOverride: event.priceOverride ?? null,
+        changes: event.changes ?? null, note: event.note ?? null, userId,
+      });
+      if (providerId) {
+        await mev.upsertOverlay(db, { projectItemId: itemId, providerId, orgId: agencyOrgId, fields: overlay });
+      }
+      tagged.add(itemId);
+      changes.push({ name: chk.rows[0].name, from: '', to: status });
     }
 
-    // Write the tag rows on the reply bubble (skip if no bubble was made).
-    if (replyId) {
-      for (const piId of tagPiIds) {
+    // A bodied message composed with an item selected tags that line too (so the
+    // bubble shows in the item filter) — resolve the filter key to a line.
+    if (taggedItemId && !tagged.has(taggedItemId)) {
+      const nm = await db.query(
+        `SELECT id FROM project_items
+          WHERE project_id = $1 AND (item_id = $2 OR id = $2)
+            AND parent_id IS NULL AND deleted_at IS NULL LIMIT 1`,
+        [a.project_id, taggedItemId]
+      );
+      if (nm.rows.length && !tagged.has(nm.rows[0].id)) {
         await db.query(
-          `INSERT INTO message_items (message_id, project_item_id) VALUES ($1, $2)`,
-          [replyId, piId]
+          `INSERT INTO message_relations (message_id, project_item_id) VALUES ($1, $2)`,
+          [replyId, nm.rows[0].id]
         );
       }
     }
@@ -814,34 +789,36 @@ async function reply({ viewer, orgId, userId, threadId, text, itemActions, tagge
   });
 }
 
-/** pV2-INTENT-02 #2 — the recent conversation on ONE line, for the Assistant's
- *  prompt so it can answer "what's the status / any questions?" truthfully and
- *  surface the counterparty's pending asks (instead of confabulating). ORG-SCOPED:
- *  the caller must be the line's supplier OR the project's owning agency, else null
- *  (never leak another org's thread into the prompt — RP-11 / Rule-10). Messages
- *  labelled by direction: outbound = Agent, inbound = Supplier. Oldest-first. */
+/** pV2-INTENT-02 — the recent conversation on ONE line, for the Assistant's
+ *  prompt. ORG-SCOPED: the caller must be the line's engaged provider OR the
+ *  project's owning agency, else null. Oldest-first. */
 async function getLineConversation(orgId, projectId, lineId, { limit = 14 } = {}) {
   const access = await pool.query(
     `SELECT 1 FROM project_items pi
       WHERE pi.id = $1 AND pi.project_id = $2 AND pi.deleted_at IS NULL
-        AND (pi.supplier_org_id = $3
-             OR EXISTS (SELECT 1 FROM projects p WHERE p.id = $2 AND p.org_id = $3 AND p.deleted_at IS NULL))
+        AND (EXISTS (SELECT 1 FROM projects p WHERE p.id = $2 AND p.org_id = $3 AND p.deleted_at IS NULL)
+             OR EXISTS (SELECT 1 FROM project_providers pp
+                         WHERE pp.project_id = $2 AND pp.provider_org_id = $3 AND pp.deleted_at IS NULL))
       LIMIT 1`,
     [lineId, projectId, orgId]
   );
   if (!access.rows.length) return null;
   const r = await pool.query(
-    `SELECT m.body, m.direction, m.created_at
+    `SELECT m.body, m.from_org_id, m.created_at, p.org_id AS agency_org_id
        FROM messages m
-       JOIN message_items mi ON mi.message_id = m.id AND mi.deleted_at IS NULL
-      WHERE mi.project_item_id = $1 AND m.deleted_at IS NULL AND COALESCE(m.body,'') <> ''
+       JOIN message_relations mr ON mr.message_id = m.id
+       JOIN projects p ON p.id = m.project_id
+      WHERE mr.project_item_id = $1 AND m.deleted_at IS NULL AND COALESCE(m.body, '') <> ''
       ORDER BY m.created_at DESC LIMIT $2`,
     [lineId, limit]
   );
   return r.rows.reverse().map((m) => ({
-    who: m.direction === 'outbound' ? 'Agent' : 'Supplier',
+    who: m.from_org_id === m.agency_org_id ? 'Agent' : 'Supplier',
     text: String(m.body).slice(0, 400),
   }));
 }
 
-module.exports = { listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads, getAgentInboxSummary, getProjectOverview, reply, getLineConversation };
+module.exports = {
+  listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads,
+  getAgentInboxSummary, getProjectOverview, reply, getLineConversation,
+};
