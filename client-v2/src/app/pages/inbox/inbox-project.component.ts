@@ -392,9 +392,8 @@ export class InboxProjectComponent {
         o = {
           id: key,
           label: (this.isAgency() ? t.supplierName : t.agencyName) ?? (this.isAgency() ? 'Supplier' : 'Agency'),
-          // Agency view = the supplier's logo (else a store glyph); supplier
-          // view = the agency's logo (else a building glyph).
-          iconUrl: (this.isAgency() ? t.supplierLogoUrl : t.agencyLogoUrl) ?? null,
+          // Always a Ballpark glyph in the rail (no supplier/agency logo image):
+          // store for the agency view, building for the supplier view.
           iconName: this.isAgency() ? 'store' : 'building-2',
           total: 0,
           cats: [],

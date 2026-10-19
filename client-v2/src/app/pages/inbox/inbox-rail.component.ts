@@ -19,7 +19,6 @@ export interface RailOuter {
   id: string;
   label: string;
   iconName: string | null;
-  iconUrl: string | null;
   total: number;
   cats: RailCat[];
 }
@@ -49,11 +48,10 @@ export interface RailOuter {
         <!-- min-h keeps every collapsed supplier card the same height. -->
         <div class="flex min-h-[64px] w-full items-center gap-3 p-3">
           <button type="button" class="flex min-w-0 flex-1 items-center gap-3 text-left" (click)="toggle(o.id)">
-            @if (o.iconUrl) {
-              <img [src]="o.iconUrl" alt="" class="h-9 w-9 shrink-0 rounded-[var(--radius-card)] object-cover" />
-            } @else {
-              <lucide-icon [name]="o.iconName || 'store'" [size]="26" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
-            }
+            <!-- Always the pink Ballpark glyph — the supplier's own logo is NOT
+                 shown here (Liam 2026-10-19): a consistent icon reads cleaner than
+                 mixed-quality supplier images in the dense rail. -->
+            <lucide-icon [name]="o.iconName || 'store'" [size]="26" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
             <span class="min-w-0 flex-1">
               <span class="bp-list-title block truncate">{{ o.label }}</span>
               <!-- Compact stats: items · accepted · action-required (icons keep it
