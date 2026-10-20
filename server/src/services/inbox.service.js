@@ -382,7 +382,11 @@ async function getSupplierThreads(supplierOrgId, projectId) {
 function toSupplierProjectCard(row, agencyCard, quoteTotal) {
   const cover = row.cover || {};
   return {
-    id: row.id,
+    // The card links to /inbox/:projectId (the project's conversation), and the
+    // listSupplierProjects query exposes the project id as project_id (pp.id is
+    // aliased to provider_id) — so the ProjectCard id is the PROJECT id, not a
+    // non-existent row.id (which produced /inbox/undefined).
+    id: row.project_id,
     name: row.name,
     ref: row.ref,
     status: row.status ?? 'active',
