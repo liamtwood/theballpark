@@ -31,7 +31,7 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
     <div class="flex min-w-0 items-start gap-3">
       @if (line().imageUrl) {
         <img [src]="line().imageUrl" alt="" role="button" tabindex="0" [attr.aria-label]="'View ' + line().name"
-             class="h-14 w-14 shrink-0 cursor-pointer rounded-[var(--radius-field)] object-cover"
+             class="h-14 w-14 shrink-0 cursor-pointer rounded-[var(--radius-card)] object-cover"
              (click)="select.emit()" (keydown.enter)="select.emit()" />
       } @else {
         <span class="bp-icon-block h-14 w-14 shrink-0 cursor-pointer" role="button" tabindex="0" [attr.aria-label]="'View ' + line().name"
