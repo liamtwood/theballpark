@@ -97,11 +97,11 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         <div class="bp-card bp-card--lifted mt-5 p-5">
         @if (isFinal()) {
           <button type="button" class="flex w-full items-center justify-between text-left" (click)="toggleBox(section.label)">
-            <h2 class="bp-card-title">{{ section.label }}</h2>
+            <h2 class="bp-card-title" [class.uppercase]="section.label === 'Ballpark quote'">{{ section.label }}</h2>
             <lucide-icon [name]="isBoxOpen(section.label) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
           </button>
         } @else {
-          <h2 class="bp-card-title">{{ section.label }}</h2>
+          <h2 class="bp-card-title" [class.uppercase]="section.label === 'Ballpark quote'">{{ section.label }}</h2>
         }
         @if (section.subtitle) {
           <p class="bp-card-subtitle mt-1">{{ section.subtitle }}</p>

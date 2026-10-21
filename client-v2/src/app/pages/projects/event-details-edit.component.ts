@@ -44,10 +44,11 @@ import { SelectComponent, SelectOption } from '../../shared/select/select.compon
       width: 100%; min-height: 84px;
       border-radius: 20px;
       /* "What Ballpark will read" reads as flowing text, not a boxed input —
-         borderless at rest, faint accent only on focus (Liam 2026-10-21). */
+         borderless + no horizontal indent so it sits flush with the heading,
+         faint accent only on focus (Liam 2026-10-21). */
       border: 1px solid transparent;
       background: var(--color-surface);
-      padding: 12px 16px;
+      padding: 8px 0;
       font-size: var(--text-md);
       font-family: var(--bp-font);
       line-height: var(--leading-normal, 1.5);
