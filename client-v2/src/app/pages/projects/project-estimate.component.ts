@@ -568,7 +568,7 @@ export class ProjectEstimateComponent {
       );
       return {
         ...g,
-        name: isProject ? 'Other' : g.name,
+        name: isProject ? 'Your own costs' : g.name,
         isProject,
         isCoverage: false,
         // Hard-cost categories show the marked-up total (margin baked in); the
@@ -585,7 +585,7 @@ export class ProjectEstimateComponent {
     // The Fees section is always present on the Final Quote — the home for the
     // agent's own costs (even before they've added any).
     if (this.isFinal() && !mapped.some((g) => g.isProject)) {
-      mapped.push({ id: '__none', name: 'Other', items: [], isProject: true,
+      mapped.push({ id: '__none', name: 'Your own costs', items: [], isProject: true,
         isCoverage: false, total: 0, iconName: 'wallet', supplierGroups: [] });
     }
     return mapped;
