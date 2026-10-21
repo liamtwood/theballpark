@@ -95,22 +95,29 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         <!-- Each section is ONE white container (matches Event Description);
              its category cards are light-gray, their items white. -->
         <div class="bp-card bp-card--lifted mt-5 p-5">
-        @if (isFinal()) {
-          <button type="button" class="flex w-full items-center justify-between text-left" (click)="toggleBox(section.label)">
-            <h2 class="bp-card-title" [class.uppercase]="section.label === 'Ballpark quote'">{{ section.label }}</h2>
-            <lucide-icon [name]="isBoxOpen(section.label) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
-          </button>
-        } @else {
-          <h2 class="bp-card-title" [class.uppercase]="section.label === 'Ballpark quote'">{{ section.label }}</h2>
-        }
-        @if (section.subtitle) {
-          <p class="bp-card-subtitle mt-1">{{ section.subtitle }}</p>
-        }
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            @if (isFinal()) {
+              <button type="button" class="flex items-center gap-2 text-left" (click)="toggleBox(section.label)">
+                <h2 class="bp-card-title" [class.uppercase]="section.label === 'Ballpark quote'">{{ section.label }}</h2>
+                <lucide-icon [name]="isBoxOpen(section.label) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
+              </button>
+            } @else {
+              <h2 class="bp-card-title" [class.uppercase]="section.label === 'Ballpark quote'">{{ section.label }}</h2>
+            }
+            @if (section.subtitle) {
+              <p class="bp-card-subtitle mt-1">{{ section.subtitle }}</p>
+            }
+          </div>
+          <!-- Single section-level add — on the right, opposite the header
+               (replaces the per-category buttons). -->
+          @if (section.label === 'Ballpark quote') {
+            <button type="button" class="bp-msg-btn shrink-0" (click)="openAdd()">
+              <lucide-icon name="plus" [size]="16" /> Add line
+            </button>
+          }
+        </div>
         @if (section.label === 'Ballpark quote') {
-          <!-- Single section-level add (replaces the per-category buttons). -->
-          <button type="button" class="bp-msg-btn mt-3" (click)="openAdd()">
-            <lucide-icon name="plus" [size]="16" /> Add line
-          </button>
           <div class="mt-4 border-t border-hairline"></div>
         }
         @if (!isFinal() || isBoxOpen(section.label)) {
