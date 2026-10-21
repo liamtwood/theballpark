@@ -103,6 +103,9 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         } @else {
           <h2 class="bp-card-title">{{ section.label }}</h2>
         }
+        @if (section.subtitle) {
+          <p class="bp-card-subtitle mt-1">{{ section.subtitle }}</p>
+        }
         @if (!isFinal() || isBoxOpen(section.label)) {
         <div class="mt-3 flex flex-col gap-2.5">
           @for (g of section.groups; track g.id) {
@@ -240,7 +243,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
               <p class="bp-amount-hero mt-0.5 text-text">{{ summaryAmount(section.label) | currency: cur() : 'symbol' : '1.0-0' }}</p>
               <p class="bp-caption mt-1 text-secondary">{{ summaryNote(section.label) }}</p>
             </div>
-            @if (section.label === 'Project Costs') {
+            @if (section.label === 'Ballpark quote') {
               <div class="flex flex-col items-end gap-1">
                 <button type="button" class="bp-msg-btn" [disabled]="sending()" (click)="messageSuppliers()">
                   <lucide-icon name="users" [size]="16" />
@@ -581,11 +584,13 @@ export class ProjectEstimateComponent {
     const all = this.groups();
     const costs = all.filter((g) => !g.isProject);
     const fees = all.filter((g) => g.isProject);
-    const out: { label: string; groups: typeof all }[] = [{ label: 'Project Costs', groups: costs }];
-    if (this.isFinal()) {
-      out.push({ label: 'Fees', groups: fees });
-      out.push({ label: 'Project Provisions', groups: [this.coverageGroup()] });
-    } else if (fees.length) {
+    const out: { label: string; subtitle?: string; groups: typeof all }[] = [
+      { label: 'Ballpark quote', subtitle: 'Scope of work and indicative costs', groups: costs },
+    ];
+    // Fees = the agency's own lines. Project Provisions (coverage) is HIDDEN from
+    // the estimate (Liam 2026-10-21) — its value still rolls into the grand total
+    // via the breakdown; it's just not shown as its own section.
+    if (this.isFinal() || fees.length) {
       out.push({ label: 'Fees', groups: fees });
     }
     return out.filter((s) => s.groups.length);

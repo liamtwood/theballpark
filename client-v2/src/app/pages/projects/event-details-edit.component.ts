@@ -43,7 +43,9 @@ import { SelectComponent, SelectOption } from '../../shared/select/select.compon
     .ed-textarea {
       width: 100%; min-height: 84px;
       border-radius: 20px;
-      border: 1px solid var(--card-border);
+      /* "What Ballpark will read" reads as flowing text, not a boxed input —
+         borderless at rest, faint accent only on focus (Liam 2026-10-21). */
+      border: 1px solid transparent;
       background: var(--color-surface);
       padding: 12px 16px;
       font-size: var(--text-md);
@@ -123,7 +125,7 @@ import { SelectComponent, SelectOption } from '../../shared/select/select.compon
 
     <div class="ed-card mt-4 p-6">
       <div class="flex items-center justify-between">
-        <h2 class="bp-card-title">Event Description</h2>
+        <h2 class="bp-card-title">What Ballpark will read</h2>
         <app-save-state-pill [state]="state()" [idleShowsSaved]="true" />
       </div>
       <textarea class="ed-textarea mt-4" rows="3"
