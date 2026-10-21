@@ -99,14 +99,14 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
           <div class="min-w-0">
             @if (isFinal()) {
               <button type="button" class="flex items-center gap-2 text-left" (click)="toggleBox(section.label)">
-                <h2 class="bp-card-title" [class.uppercase]="section.label === 'Ballpark quote'">{{ section.label }}</h2>
+                <h2 [class.bp-eyebrow]="section.label === 'Ballpark quote'" [class.bp-card-title]="section.label !== 'Ballpark quote'">{{ section.label }}</h2>
                 <lucide-icon [name]="isBoxOpen(section.label) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
               </button>
             } @else {
-              <h2 class="bp-card-title" [class.uppercase]="section.label === 'Ballpark quote'">{{ section.label }}</h2>
+              <h2 [class.bp-eyebrow]="section.label === 'Ballpark quote'" [class.bp-card-title]="section.label !== 'Ballpark quote'">{{ section.label }}</h2>
             }
             @if (section.subtitle) {
-              <p class="bp-card-subtitle mt-1">{{ section.subtitle }}</p>
+              <p class="bp-card-title mt-1">{{ section.subtitle }}</p>
             }
           </div>
           <!-- Single section-level add — on the right, opposite the header

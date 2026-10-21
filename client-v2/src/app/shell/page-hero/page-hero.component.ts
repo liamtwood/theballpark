@@ -41,7 +41,7 @@ import { LucideAngularModule } from 'lucide-angular';
 
     <div class="bp-page-hero__text">
       @if (eyebrow()) {
-        <p class="bp-page-hero__eyebrow">{{ eyebrow() }}</p>
+        <p class="bp-eyebrow bp-page-hero__eyebrow">{{ eyebrow() }}</p>
       }
       <h1 class="bp-page-title bp-page-hero__title">{{ title() }}</h1>
       @if (subtitle()) {
@@ -55,7 +55,7 @@ import { LucideAngularModule } from 'lucide-angular';
              aligned) — e.g. BALLPARK / £26,409 / Exc. VAT. -->
         <div class="bp-page-hero__meta-right">
           @if (rightEyebrow()) {
-            <p class="bp-page-hero__eyebrow">{{ rightEyebrow() }}</p>
+            <p class="bp-eyebrow bp-page-hero__eyebrow">{{ rightEyebrow() }}</p>
           }
           <p class="bp-page-title bp-page-hero__title">{{ rightTitle() }}</p>
           @if (rightSubtitle()) {
@@ -165,14 +165,9 @@ import { LucideAngularModule } from 'lucide-angular';
       /* Optional eyebrow (e.g. "PROJECT") above the title — small, tracked,
          uppercase, secondary. Renders only when set. */
       .bp-page-hero__eyebrow {
-        /* Extra breathing room above the eyebrow (Liam 2026-08-28). Sized a
-           touch smaller than before; tracked + uppercase; regular weight. */
+        /* Structural only — the eyebrow TYPE (size/tracking/uppercase/colour) now
+           lives in the shared global .bp-eyebrow token (Liam 2026-10-21). */
         margin: 10px 0 0;
-        font-size: var(--text-lg);
-        font-weight: 400;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--color-text-secondary);
       }
 
       /* Dense heroes (project workspace) shrink the ref a touch to match. */
