@@ -434,8 +434,10 @@ export class ProjectDetailComponent {
   protected readonly projNav = computed<readonly { tab: Tab; label: string }[]>(() => {
     const nav: { tab: Tab; label: string }[] = [
       { tab: 'final', label: 'Ballpark cost' },
-      { tab: 'marketplace', label: 'Edit in marketplace' },
     ];
+    // Details (event details + description + project settings) unlocks on Active.
+    if (!this.isDraft()) nav.push({ tab: 'details', label: 'Details' });
+    nav.push({ tab: 'marketplace', label: 'Edit in marketplace' });
     // pV2-PROJECTS-S3: once the project is Active (sent to suppliers) the Inbox
     // unlocks — its @case already renders <app-inbox-project>. Draft hides it.
     if (!this.isDraft()) nav.push({ tab: 'inbox', label: 'Inbox' });
@@ -446,6 +448,7 @@ export class ProjectDetailComponent {
   protected readonly projNavActive = computed<Tab>(() => {
     const t = this.tab();
     if (t === 'marketplace') return 'marketplace';
+    if (t === 'details') return 'details';
     if (t === 'inbox') return 'inbox';
     return 'final';
   });
