@@ -168,11 +168,10 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                 <span class="bp-body-small w-20 shrink-0 text-right tabular-nums">{{ showMargin() ? (bd().marginAmount | currency: cur() : 'symbol' : '1.0-0') : '••••' }}</span>
               </div>
             } @else {
-            <!-- Category card — bare icon (no block around it) + name, cat
-                 total right, a chevron that expands the items underneath. -->
-            <div class="overflow-hidden rounded-[var(--radius-card)] bg-fill">
+            <!-- Category card — name + cat total, a chevron that expands the
+                 items underneath (icon + fill removed, Liam 2026-10-21). -->
+            <div class="overflow-hidden rounded-[var(--radius-card)]">
               <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggle(g.id)">
-                <lucide-icon [name]="g.iconName || 'folder-open'" [size]="30" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
                 <span class="min-w-0 flex-1">
                   <span class="bp-list-title block truncate text-[length:var(--text-lg)]">{{ g.name }}</span>
                 </span>
