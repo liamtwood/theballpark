@@ -609,7 +609,7 @@ export class ProjectEstimateComponent {
     // clean, but adding a line makes Fees appear immediately (Liam 2026-10-21).
     const feesHasLines = fees.some((g) => g.items.length > 0);
     if (!this.isDraftProject() || feesHasLines) {
-      out.push({ label: 'Fees', groups: fees });
+      out.push({ label: 'Your own costs', groups: fees });
     }
     return out.filter((s) => s.groups.length);
   });
@@ -617,19 +617,19 @@ export class ProjectEstimateComponent {
   /** Per-section summary card content (Final view). Project Costs → its subtotal;
    *  Fees → fee lines; Project Cost Summary → the grand ballpark (ex-VAT). */
   protected summaryCaption(label: string): string {
-    return label === 'Fees'
-      ? 'Total fees, excluding VAT'
+    return label === 'Your own costs'
+      ? 'Your own costs, excluding VAT'
       : label === 'Project Provisions'
         ? 'Total provisions, excluding VAT'
         : 'Total ballpark, excluding VAT';
   }
   protected summaryAmount(label: string): number {
     const b = this.bd();
-    return label === 'Fees' ? b.fees : label === 'Project Provisions' ? b.coverage : b.projectCosts;
+    return label === 'Your own costs' ? b.fees : label === 'Project Provisions' ? b.coverage : b.projectCosts;
   }
   protected summaryNote(label: string): string {
-    return label === 'Fees'
-      ? 'Your agency fees — never marked up.'
+    return label === 'Your own costs'
+      ? 'Your own costs — never marked up.'
       : label === 'Project Provisions'
         ? 'Contingency + insurance on the project costs.'
         : 'Every costed line is backed by an approved supplier listing.';
