@@ -603,8 +603,12 @@ export class ProjectEstimateComponent {
     // Fees = the agency's own lines. Project Provisions (coverage) is HIDDEN from
     // the estimate (Liam 2026-10-21) — its value still rolls into the grand total
     // via the breakdown; it's just not shown as its own section.
-    // Fees hidden in DRAFT (returns as "Your own costs" once the project is Active).
-    if ((this.isFinal() || fees.length) && !this.isDraftProject()) {
+    // Fees is the always-present home for own costs on the active/Final view. In
+    // DRAFT it stays hidden until it actually HAS a line (the empty '__none' group
+    // is always built, so test items, not group count) — so an empty draft is
+    // clean, but adding a line makes Fees appear immediately (Liam 2026-10-21).
+    const feesHasLines = fees.some((g) => g.items.length > 0);
+    if (!this.isDraftProject() || feesHasLines) {
       out.push({ label: 'Fees', groups: fees });
     }
     return out.filter((s) => s.groups.length);
