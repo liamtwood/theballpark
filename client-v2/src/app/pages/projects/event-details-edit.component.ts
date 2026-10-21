@@ -65,6 +65,12 @@ import { SelectComponent, SelectOption } from '../../shared/select/select.compon
 
       <div class="mt-5 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
         <label class="block">
+          <span class="ed-label mb-1.5 block">Status</span>
+          <app-select ariaLabel="Project status" [options]="statusOptions"
+                      [value]="dStatus()" (changed)="dStatus.set($event); saveStatus()" />
+        </label>
+
+        <label class="block">
           <span class="ed-label mb-1.5 block">Project</span>
           <input class="ed-input" type="text" placeholder="Project name"
                  [ngModel]="dName()" (ngModelChange)="dName.set($event)" (blur)="saveName()" />
@@ -142,6 +148,12 @@ export class EventDetailsEditComponent {
     ...(this.eventTypeRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []),
   ]);
 
+  /** Project status — editable Draft ⇄ Active (the manual mode switch). */
+  protected readonly statusOptions: SelectOption[] = [
+    { value: 'draft', label: 'Draft' },
+    { value: 'active', label: 'Active' },
+  ];
+
   readonly project = input.required<ProjectDetail>();
   readonly projectId = input.required<string>();
   readonly currency = input.required<string>();
@@ -152,6 +164,7 @@ export class EventDetailsEditComponent {
   protected readonly state = signal<SaveState>('idle');
 
   // Drafts re-seed whenever the project reloads (linkedSignal tracks source).
+  protected readonly dStatus = linkedSignal(() => this.project().status ?? 'draft');
   protected readonly dName = linkedSignal(() => this.project().name ?? '');
   protected readonly dClient = linkedSignal(() => this.project().clientName ?? '');
   protected readonly dEventType = linkedSignal(() => this.project().eventType ?? '');
@@ -165,6 +178,12 @@ export class EventDetailsEditComponent {
 
   protected symbol(): string {
     return this.currency() === 'USD' ? '$' : this.currency() === 'EUR' ? '€' : '£';
+  }
+
+  protected saveStatus(): void {
+    const next = this.dStatus();
+    if (next === (this.project().status ?? 'draft')) return;
+    this.persist({ status: next as ProjectUpdate['status'] });
   }
 
   protected saveName(): void {
