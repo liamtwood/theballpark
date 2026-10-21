@@ -106,6 +106,13 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         @if (section.subtitle) {
           <p class="bp-card-subtitle mt-1">{{ section.subtitle }}</p>
         }
+        @if (section.label === 'Ballpark quote') {
+          <!-- Single section-level add (replaces the per-category buttons). -->
+          <button type="button" class="bp-msg-btn mt-3" (click)="openAdd()">
+            <lucide-icon name="plus" [size]="16" /> Add line
+          </button>
+          <div class="mt-4 border-t border-hairline"></div>
+        }
         @if (!isFinal() || isBoxOpen(section.label)) {
         <div class="mt-3 flex flex-col gap-2.5">
           @for (g of section.groups; track g.id) {
@@ -210,19 +217,8 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                     }
                   }
 
-                  <!-- Dashed add card at the bottom of the category's items.
-                       Available on BOTH the Cart and Final views (was Final-only)
-                       so the entry point never vanishes when a round-trip lands
-                       you on the Cart tab. Custom lines persist as real
-                       project_items (pV2-CUSTOMS-01) and render above with a
-                       "Custom" tag. -->
-                  @if (!g.isCoverage) {
-                    <div class="p-3">
-                      <button type="button" class="bp-msg-btn" (click)="openAdd(g)">
-                        <lucide-icon name="plus" [size]="16" /> Add Your Own Line Item
-                      </button>
-                    </div>
-                  }
+                  <!-- Per-category add removed (Liam 2026-10-21) — a single
+                       "Add line" now lives in the Ballpark quote section header. -->
                 </div>
               }
             </div>
@@ -628,10 +624,11 @@ export class ProjectEstimateComponent {
         : 'Every costed line is backed by an approved supplier listing.';
   }
 
-  /** The summary containers (Project Costs / Fees / Project Provisions / Project
-   *  Total) start MINIMIZED on the Final view — title + gray box only. Click a
-   *  title to show/hide its cards. Empty set = all collapsed. */
-  protected readonly boxOpen = signal<ReadonlySet<string>>(new Set());
+  /** The summary containers (Ballpark quote / Fees / Project Total) are
+   *  collapsible on the Final view — title + gray box only. Click a title to
+   *  show/hide its cards. Ballpark quote starts EXPANDED (Liam 2026-10-21);
+   *  the rest start collapsed. */
+  protected readonly boxOpen = signal<ReadonlySet<string>>(new Set(['Ballpark quote']));
   protected isBoxOpen(label: string): boolean {
     return this.boxOpen().has(label);
   }
