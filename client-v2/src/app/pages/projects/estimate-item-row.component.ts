@@ -82,7 +82,7 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
       <app-qty-input [value]="line().quantity" [label]="line().name ?? 'item'"
                      (click)="$event.stopPropagation()" (qtyCommit)="qtyChange.emit($event)" />
     } @else {
-      <span class="bp-body-small text-center text-secondary" title="Out for quote — change it in the inbox">× {{ line().quantity }}</span>
+      <span class="bp-body-small text-secondary" title="Out for quote — change it in the inbox">× {{ line().quantity }}</span>
     }
 
     <!-- COSTED BY — the supplier (catalogue owner); custom lines have none. -->
@@ -92,17 +92,17 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
     <button type="button" class="bp-pill bp-pill--accent justify-self-start" (click)="$event.stopPropagation(); select.emit()" [attr.aria-label]="'Quick view ' + line().name">Quick view</button>
 
     <!-- BALLPARK — the line total. -->
-    <span class="bp-body-small text-right tabular-nums text-secondary" [class.line-through]="isDeclined()" [class.text-muted]="isDeclined()"
+    <span class="bp-body-small tabular-nums text-secondary" [class.line-through]="isDeclined()" [class.text-muted]="isDeclined()"
           [title]="isDeclined() ? 'Declined — not included in the total' : ''">{{ displayCost() | currency: cur() : 'symbol' : '1.0-0' }}</span>
 
     <!-- trash / lock -->
     @if (canEdit()) {
-      <button type="button" class="justify-self-center rounded-md p-1 text-muted transition-colors hover:text-danger"
+      <button type="button" class="justify-self-start rounded-md p-1 text-muted transition-colors hover:text-danger"
               (click)="$event.stopPropagation(); remove.emit()" [attr.aria-label]="'Remove ' + line().name" title="Remove item">
         <lucide-icon name="trash-2" [size]="15" />
       </button>
     } @else {
-      <span class="justify-self-center p-1 text-muted" title="Out for quote — locked"><lucide-icon name="lock" [size]="14" /></span>
+      <span class="justify-self-start p-1 text-muted" title="Out for quote — locked"><lucide-icon name="lock" [size]="14" /></span>
     }
   `,
   styles: [

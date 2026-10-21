@@ -2128,7 +2128,7 @@ body {
    | BALLPARK | trash. */
 .bp-estimate-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 104px 148px 104px 92px 34px;
+  grid-template-columns: minmax(0, 1fr) 104px 148px 104px 92px 64px;
   align-items: center;
   gap: 0.75rem;
 }
