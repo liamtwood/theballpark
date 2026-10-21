@@ -603,7 +603,7 @@ export class ProjectEstimateComponent {
       ? 'Total fees, excluding VAT'
       : label === 'Project Provisions'
         ? 'Total provisions, excluding VAT'
-        : 'Project costs, excluding VAT';
+        : 'Total ballpark, excluding VAT';
   }
   protected summaryAmount(label: string): number {
     const b = this.bd();
