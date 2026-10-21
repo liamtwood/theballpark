@@ -257,6 +257,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         </div>
         }
 
+        @if (!isDraftProject()) {
         <!-- Project Total — the rollup (costs / fees / provisions + budget) in
              its own titled container; the gray grand-total box stays visible even
              when the rollup is minimized. -->
@@ -279,6 +280,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         </div>
 
         <p class="bp-caption mt-4">Indicative — based on marketplace base prices. Final supplier quotes and the priced rollup land with checkout.</p>
+        }
 
         <!-- Footer — cart only: Go with this Ballpark. "Edit in marketplace"
              was removed (v2.466): in the draft flow Marketplace is already a
@@ -294,6 +296,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         }
       }
 
+      @if (!isDraftProject()) {
       <!-- Assumptions + Risks (styling now; content wired later). -->
       <div class="mt-6 grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
         <div class="bp-card bp-card--lifted p-6">
@@ -305,12 +308,15 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
           <p class="bp-body-small mt-2 italic text-secondary">Coming soon</p>
         </div>
       </div>
+      }
 
       <div class="mt-6 flex items-start justify-between gap-4">
+        @if (!isDraftProject()) {
         <p class="bp-caption text-secondary">
           Ballpark estimates are indicative and subject to supplier confirmation, final scope,
           availability, delivery requirements and VAT.
         </p>
+        }
         <!-- Delete action wired later (Liam 2026-09-09). -->
         <button type="button" class="shrink-0 inline-flex items-center gap-1.5 bp-body-small text-danger transition-colors hover:underline" title="Delete project">
           <lucide-icon name="trash-2" [size]="14" /> Delete project
@@ -385,6 +391,10 @@ export class ProjectEstimateComponent {
   readonly detailsSaved = output<void>();
 
   protected readonly isFinal = computed(() => this.view() === 'final');
+  /** A DRAFT project reads as a clean scope + ballpark: the Fees / Project Total /
+   *  Assumptions / Risks / disclaimer blocks are hidden and return once the
+   *  project goes Active (Liam 2026-10-21). */
+  protected readonly isDraftProject = computed(() => (this.project().status ?? 'draft') === 'draft');
 
   // ── Right-rail item preview (the rail component owns the card + eye) ───
   /** The line the user last clicked — passed to the preview rail. */
@@ -590,7 +600,8 @@ export class ProjectEstimateComponent {
     // Fees = the agency's own lines. Project Provisions (coverage) is HIDDEN from
     // the estimate (Liam 2026-10-21) — its value still rolls into the grand total
     // via the breakdown; it's just not shown as its own section.
-    if (this.isFinal() || fees.length) {
+    // Fees hidden in DRAFT (returns as "Your own costs" once the project is Active).
+    if ((this.isFinal() || fees.length) && !this.isDraftProject()) {
       out.push({ label: 'Fees', groups: fees });
     }
     return out.filter((s) => s.groups.length);
