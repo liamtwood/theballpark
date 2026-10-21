@@ -5,6 +5,7 @@ import { MessageService } from 'primeng/api';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { EstimateBreakdown, ProjectDetail, ProjectUpdate, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
 import { editable, hasInstall, isDeclined, isInstalled, lineCost, quoteLineToCatalogueItem, unitPrice } from './quote-line.util';
@@ -379,6 +380,10 @@ export class ProjectEstimateComponent {
   private readonly inbox = inject(InboxService);
   private readonly router = inject(Router);
   private readonly catalogue = inject(CatalogueService);
+  private readonly auth = inject(AuthService);
+  /** The current org (agency) name — shown as the "supplier" (costed by) for the
+   *  agent's own-cost lines, which have no external supplier. */
+  protected readonly orgName = computed(() => this.auth.user()?.activeOrgName ?? 'Your agency');
   /** ALL top-level categories (not just those already in the quote) — the
    *  inline editor's category picker so a line can move to any category. */
   private readonly allCategories = resource({ loader: () => this.catalogue.categories() });
@@ -563,20 +568,24 @@ export class ProjectEstimateComponent {
       );
       return {
         ...g,
-        name: isProject ? 'Project' : g.name,
+        name: isProject ? 'Other' : g.name,
         isProject,
         isCoverage: false,
         // Hard-cost categories show the marked-up total (margin baked in); the
         // Fees section is never marked up.
         total: isProject ? linesTotal : linesTotal * this.marginMarkup(),
         iconName: isProject ? 'wallet' : (g.items[0]?.categoryIconName ?? null),
-        supplierGroups: bySupplier(g.items),
+        // Own-cost lines have no external supplier → show the current org (the
+        // agency) as "costed by".
+        supplierGroups: isProject
+          ? bySupplier(g.items).map((sg) => ({ ...sg, supplierName: this.orgName() }))
+          : bySupplier(g.items),
       };
     });
     // The Fees section is always present on the Final Quote — the home for the
     // agent's own costs (even before they've added any).
     if (this.isFinal() && !mapped.some((g) => g.isProject)) {
-      mapped.push({ id: '__none', name: 'Project', items: [], isProject: true,
+      mapped.push({ id: '__none', name: 'Other', items: [], isProject: true,
         isCoverage: false, total: 0, iconName: 'wallet', supplierGroups: [] });
     }
     return mapped;
@@ -595,21 +604,22 @@ export class ProjectEstimateComponent {
    *  Fees → Project Coverage. The Cart shows just the category list. */
   protected readonly sections = computed(() => {
     const all = this.groups();
-    const costs = all.filter((g) => !g.isProject);
-    const fees = all.filter((g) => g.isProject);
-    const out: { label: string; subtitle?: string; groups: typeof all }[] = [
-      { label: 'Ballpark quote', subtitle: 'Scope of work and indicative costs', groups: costs },
-    ];
-    // Fees = the agency's own lines. Project Provisions (coverage) is HIDDEN from
-    // the estimate (Liam 2026-10-21) — its value still rolls into the grand total
-    // via the breakdown; it's just not shown as its own section.
-    // Fees is the always-present home for own costs on the active/Final view. In
-    // DRAFT it stays hidden until it actually HAS a line (the empty '__none' group
-    // is always built, so test items, not group count) — so an empty draft is
-    // clean, but adding a line makes Fees appear immediately (Liam 2026-10-21).
-    const feesHasLines = fees.some((g) => g.items.length > 0);
-    if (!this.isDraftProject() || feesHasLines) {
-      out.push({ label: 'Your own costs', groups: fees });
+    const real = all.filter((g) => !g.isProject);
+    const own = all.filter((g) => g.isProject);          // the '__none' own-cost bucket
+    const ownHasLines = own.some((g) => g.items.length > 0);
+    const subtitle = 'Scope of work and indicative costs';
+    const out: { label: string; subtitle?: string; groups: typeof all }[] = [];
+    // DRAFT: own-cost lines FOLD INTO the Ballpark quote as the LAST category
+    // ("Other", grouped under the current org), only once they have a line — so an
+    // empty draft stays clean. ACTIVE/Final: own costs are their own "Your own
+    // costs" section (always present). Project Provisions (coverage) is hidden in
+    // both; its value still rolls into the grand total via the breakdown.
+    // (Liam 2026-10-21)
+    if (this.isDraftProject()) {
+      out.push({ label: 'Ballpark quote', subtitle, groups: ownHasLines ? [...real, ...own] : real });
+    } else {
+      out.push({ label: 'Ballpark quote', subtitle, groups: real });
+      out.push({ label: 'Your own costs', groups: own });
     }
     return out.filter((s) => s.groups.length);
   });
@@ -625,7 +635,11 @@ export class ProjectEstimateComponent {
   }
   protected summaryAmount(label: string): number {
     const b = this.bd();
-    return label === 'Your own costs' ? b.fees : label === 'Project Provisions' ? b.coverage : b.projectCosts;
+    if (label === 'Your own costs') return b.fees;
+    if (label === 'Project Provisions') return b.coverage;
+    // Ballpark quote: in DRAFT it also contains the own-cost lines (folded in as
+    // the "Other" category), so its total includes fees; active shows costs only.
+    return this.isDraftProject() ? b.projectCosts + b.fees : b.projectCosts;
   }
   protected summaryNote(label: string): string {
     return label === 'Your own costs'
