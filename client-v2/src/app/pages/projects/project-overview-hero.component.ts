@@ -51,26 +51,27 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
         </div>
       </div>
 
-      <!-- Negotiation stats — ONE container, inline (Liam 2026-10-22), not four
-           separate boxes. "Confirmed so far" only once ≥1 item is agreed. -->
-      <div class="ovh-tiles bp-card flex flex-wrap items-center gap-x-8 gap-y-2 p-4">
+      <!-- Negotiation stats — ONE rounded pill, inline: title-case gray label +
+           bold value (Liam 2026-10-22). "Confirmed so far" only once ≥1 agreed.
+           Inline radius beats the .bp-card radius cascade. -->
+      <div class="ovh-tiles bp-card flex flex-wrap items-center gap-x-8 gap-y-1.5 px-6 py-3" style="border-radius: 999px">
         <span class="flex items-baseline gap-2" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
-          <span class="bp-tile-title">Working ballpark</span>
-          <span class="bp-tile-value">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
+          <span class="bp-body-small text-secondary">Working ballpark</span>
+          <span class="bp-body-small font-semibold text-text">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
         </span>
         @if ((o()?.agreedItems ?? 0) > 0) {
           <span class="flex items-baseline gap-2" [title]="'Total value of items you and the supplier have both agreed.'">
-            <span class="bp-tile-title">Confirmed so far</span>
-            <span class="bp-tile-value">{{ (o()?.confirmedTotal ?? 0) | currency: currency() : 'symbol' : '1.0-0' }}</span>
+            <span class="bp-body-small text-secondary">Confirmed so far</span>
+            <span class="bp-body-small font-semibold text-text">{{ (o()?.confirmedTotal ?? 0) | currency: currency() : 'symbol' : '1.0-0' }}</span>
           </span>
         }
         <span class="flex items-baseline gap-2" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
-          <span class="bp-tile-title">Agreed items</span>
-          <span class="bp-tile-value">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
+          <span class="bp-body-small text-secondary">Agreed items</span>
+          <span class="bp-body-small font-semibold text-text">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
         </span>
         <span class="flex items-baseline gap-2" [title]="'Supplier conversations with at least one item still to agree.'">
-          <span class="bp-tile-title">Open threads</span>
-          <span class="bp-tile-value">{{ o()?.openThreads ?? 0 }}</span>
+          <span class="bp-body-small text-secondary">Open threads</span>
+          <span class="bp-body-small font-semibold text-text">{{ o()?.openThreads ?? 0 }}</span>
         </span>
       </div>
     </div>
@@ -111,26 +112,6 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
       cursor: pointer;
     }
     .bp-cover-btn:hover { background: var(--color-fill); }
-    /* Tile title — the standard title colour, small all-caps label. */
-    .bp-tile-title {
-      display: block;
-      font-family: var(--bp-font);
-      font-size: var(--text-md);
-      font-weight: 400;
-      line-height: var(--leading-snug);
-      color: var(--color-text-strong);
-      text-transform: uppercase;
-      letter-spacing: var(--tracking-wide);
-    }
-    /* Tile value — the prominent figure. */
-    .bp-tile-value {
-      display: block;
-      font-family: var(--bp-font);
-      font-size: var(--text-xl);
-      font-weight: 600;
-      line-height: var(--leading-snug);
-      color: var(--color-text);
-    }
   `],
 })
 export class ProjectOverviewHeroComponent {
