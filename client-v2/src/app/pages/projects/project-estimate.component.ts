@@ -198,16 +198,16 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                 <!-- Payment summary — appears once ≥1 item is accepted by both.
                      Money is placeholder (£0 Paid) until payments are wired; terms
                      default to Ballpark 50/50, balance day after delivery. -->
-                <div class="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-                  <div class="rounded-[var(--radius-card)] bg-fill px-4 py-3">
+                <div class="mt-3 grid grid-cols-1 gap-4 px-3 sm:grid-cols-3">
+                  <div class="rounded-[var(--radius-card)] px-5 py-3.5" style="background: color-mix(in srgb, var(--color-fill) 92%, var(--color-text))">
                     <div class="bp-caption text-secondary">Paid</div>
                     <div class="bp-amount text-text">{{ 0 | currency: cur() : 'symbol' : '1.0-0' }}</div>
                   </div>
-                  <div class="rounded-[var(--radius-card)] bg-fill px-4 py-3">
+                  <div class="rounded-[var(--radius-card)] px-5 py-3.5" style="background: color-mix(in srgb, var(--color-fill) 92%, var(--color-text))">
                     <div class="bp-caption text-secondary">Outstanding</div>
                     <div class="bp-amount text-text">{{ g.agreedTotal | currency: cur() : 'symbol' : '1.0-0' }}</div>
                   </div>
-                  <div class="rounded-[var(--radius-card)] bg-fill px-4 py-3">
+                  <div class="rounded-[var(--radius-card)] px-5 py-3.5" style="background: color-mix(in srgb, var(--color-fill) 92%, var(--color-text))">
                     <div class="bp-caption text-secondary">Final 50% due</div>
                     <div class="bp-list-title text-text">Day after delivery</div>
                   </div>
