@@ -54,24 +54,24 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
       <!-- Negotiation stats — ONE rounded pill, inline: title-case gray label +
            bold value (Liam 2026-10-22). "Confirmed so far" only once ≥1 agreed.
            Inline radius beats the .bp-card radius cascade. -->
-      <div class="ovh-tiles bp-card flex flex-wrap items-center gap-x-8 gap-y-1.5 px-6 py-3" style="border-radius: 999px">
-        <span class="flex items-baseline gap-2" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
+      <div class="ovh-tiles bp-card flex items-center gap-x-8 overflow-x-auto px-6 py-3" style="border-radius: 999px">
+        <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
           <span class="bp-body-small text-secondary">Working ballpark</span>
-          <span class="bp-body-small font-semibold text-text">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
+          <span class="bp-body-small font-bold text-text">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
         </span>
         @if ((o()?.agreedItems ?? 0) > 0) {
-          <span class="flex items-baseline gap-2" [title]="'Total value of items you and the supplier have both agreed.'">
+          <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Total value of items you and the supplier have both agreed.'">
             <span class="bp-body-small text-secondary">Confirmed so far</span>
-            <span class="bp-body-small font-semibold text-text">{{ (o()?.confirmedTotal ?? 0) | currency: currency() : 'symbol' : '1.0-0' }}</span>
+            <span class="bp-body-small font-bold text-text">{{ (o()?.confirmedTotal ?? 0) | currency: currency() : 'symbol' : '1.0-0' }}</span>
           </span>
         }
-        <span class="flex items-baseline gap-2" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
+        <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
           <span class="bp-body-small text-secondary">Agreed items</span>
-          <span class="bp-body-small font-semibold text-text">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
+          <span class="bp-body-small font-bold text-text">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
         </span>
-        <span class="flex items-baseline gap-2" [title]="'Supplier conversations with at least one item still to agree.'">
+        <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Supplier conversations with at least one item still to agree.'">
           <span class="bp-body-small text-secondary">Open threads</span>
-          <span class="bp-body-small font-semibold text-text">{{ o()?.openThreads ?? 0 }}</span>
+          <span class="bp-body-small font-bold text-text">{{ o()?.openThreads ?? 0 }}</span>
         </span>
       </div>
     </div>

@@ -274,9 +274,9 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                     <div class="grid grid-cols-[minmax(0,1fr)_auto_90px] items-center gap-3 border-b border-hairline px-3 py-3">
                       <span class="flex min-w-0 items-center gap-3">
                         @if (l.imageUrl) {
-                          <img [src]="l.imageUrl" alt="" role="button" tabindex="0" class="h-11 w-11 shrink-0 cursor-pointer rounded-[var(--radius-card)] object-cover" (click)="selectLine(l)" (keydown.enter)="selectLine(l)" />
+                          <img [src]="l.imageUrl" alt="" role="button" tabindex="0" class="h-14 w-14 shrink-0 cursor-pointer rounded-[var(--radius-card)] object-cover" (click)="selectLine(l)" (keydown.enter)="selectLine(l)" />
                         } @else {
-                          <span class="bp-icon-block h-11 w-11 shrink-0 cursor-pointer" role="button" tabindex="0" (click)="selectLine(l)" (keydown.enter)="selectLine(l)"><lucide-icon name="store" [size]="18" /></span>
+                          <span class="bp-icon-block h-14 w-14 shrink-0 cursor-pointer" role="button" tabindex="0" (click)="selectLine(l)" (keydown.enter)="selectLine(l)"><lucide-icon name="store" [size]="20" /></span>
                         }
                         <span class="bp-list-title min-w-0 cursor-pointer truncate hover:underline" role="button" tabindex="0" (click)="selectLine(l)" (keydown.enter)="selectLine(l)">{{ l.name }}</span>
                       </span>
