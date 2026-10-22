@@ -32,6 +32,7 @@ const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
 const { computeEstimate } = require('./estimate');
 const { lineTotalSql } = require('./line-total.util');
+const mev = require('./message-event.service'); // deriveLineState — per-line accepted state
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -372,7 +373,40 @@ async function listItems(orgId, projectId) {
       ORDER BY c.name NULLS LAST, pi0.created_at ASC`,
     [projectId]
   );
-  return r.rows.map(toQuoteLine);
+  const result = r.rows.map(toQuoteLine);
+  await attachAcceptance(orgId, result);
+  return result;
+}
+
+/** The "both accepted" state the inbox shows is DERIVED from the message-event
+ *  journal (not stored on the line). Derive it per line so the Running budget's
+ *  status matches the inbox: attach buyerAccepted / sellerAccepted / bothAccepted.
+ *  agencyOrgId = the project owner; from_org === it ⇒ the buyer (agency) side. */
+async function attachAcceptance(agencyOrgId, lines) {
+  const ids = lines.map((l) => l.id);
+  if (!ids.length) return;
+  const ev = await pool.query(
+    `SELECT mr.project_item_id, m.from_org_id, me.status, me.created_at
+       FROM message_events me
+       JOIN message_relations mr ON mr.id = me.message_relation_id
+       JOIN messages m ON m.id = me.message_id AND m.deleted_at IS NULL
+      WHERE mr.project_item_id = ANY($1::uuid[])
+      ORDER BY me.created_at ASC`,
+    [ids]
+  );
+  const byItem = new Map();
+  for (const row of ev.rows) {
+    const side = row.from_org_id === agencyOrgId ? 'buyer' : 'seller';
+    const arr = byItem.get(row.project_item_id) ?? [];
+    arr.push({ status: row.status, side, createdAt: row.created_at });
+    byItem.set(row.project_item_id, arr);
+  }
+  for (const l of lines) {
+    const state = mev.deriveLineState(byItem.get(l.id) ?? [], { briefed: true });
+    l.buyerAccepted = state.buyerAccepted;
+    l.sellerAccepted = state.sellerAccepted;
+    l.bothAccepted = state.buyerAccepted && state.sellerAccepted;
+  }
 }
 
 /** The project's estimate breakdown — the SINGLE server-computed cascade the
