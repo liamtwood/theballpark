@@ -307,6 +307,35 @@ interface DetailForm {
             </div>
           }
           @case ('final') {
+            @if (!isDraft()) {
+              <!-- Active "Running budget" summary bar — working total, confirmed
+                   (once ≥1 agreed), agreed-item count, open threads. -->
+              <div class="shrink-0 bp-gutter pt-3">
+                <div class="mx-auto w-full max-w-[var(--workspace-max)]">
+                  @let ov = overview.value();
+                  <div class="flex flex-wrap items-center gap-x-8 gap-y-2 rounded-[var(--radius-card)] border border-hairline bg-fill px-5 py-3">
+                    <span class="flex items-baseline gap-2">
+                      <span class="bp-caption text-secondary">Working ballpark</span>
+                      <span class="bp-amount text-text">{{ ballparkTotalStr() }}</span>
+                    </span>
+                    @if ((ov?.agreedItems ?? 0) > 0) {
+                      <span class="flex items-baseline gap-2">
+                        <span class="bp-caption text-secondary">Confirmed so far</span>
+                        <span class="bp-amount text-text">{{ confirmedStr() }}</span>
+                      </span>
+                    }
+                    <span class="flex items-baseline gap-2">
+                      <span class="bp-caption text-secondary">Agreed items</span>
+                      <span class="bp-amount text-text">{{ ov?.agreedItems ?? 0 }} of {{ ov?.totalItems ?? 0 }}</span>
+                    </span>
+                    <span class="flex items-baseline gap-2">
+                      <span class="bp-caption text-secondary">Open threads</span>
+                      <span class="bp-amount text-text">{{ ov?.openThreads ?? 0 }}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            }
             <div class="min-h-0 flex-1 bp-gutter">
               <app-project-estimate [projectId]="p.id" [project]="p" view="final" (detailsSaved)="detail.reload()" />
             </div>
@@ -433,7 +462,7 @@ export class ProjectDetailComponent {
    *  deferred until their stage lands (their @case + routes stay). */
   protected readonly projNav = computed<readonly { tab: Tab; label: string }[]>(() => {
     const nav: { tab: Tab; label: string }[] = [
-      { tab: 'final', label: 'Ballpark cost' },
+      { tab: 'final', label: this.isDraft() ? 'Ballpark cost' : 'Running budget' },
     ];
     // Details (event details + description + project settings) unlocks on Active.
     if (!this.isDraft()) nav.push({ tab: 'details', label: 'Details' });
@@ -498,6 +527,15 @@ export class ProjectDetailComponent {
       currency: this.cur(),
       maximumFractionDigits: 0,
     }).format(this.estimate.value()?.projectTotal ?? 0)
+  );
+  /** Confirmed-so-far (agreed line totals) for the active Running-budget summary
+   *  bar — same currency formatting as the working ballpark. */
+  protected readonly confirmedStr = computed(() =>
+    new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: this.cur(),
+      maximumFractionDigits: 0,
+    }).format(this.overview.value()?.confirmedTotal ?? 0)
   );
   /** Image-picker drawer (pV2-MEDIA-01b). */
   protected readonly imgDrawer = signal(false);
