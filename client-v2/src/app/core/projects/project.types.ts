@@ -91,6 +91,11 @@ export interface QuoteLine {
   /** Coarse send-state (pV2-CART-01): to_send (in cart) → out_for_quote →
    *  quoted → booked / declined. Cart shows to_send; Final shows all + badge. */
   status: QuoteLineStatus;
+  /** Derived per-line acceptance from the message-event journal (pV2-INBOX) —
+   *  surfaced on the estimate so the Running budget matches the inbox status. */
+  buyerAccepted?: boolean;
+  sellerAccepted?: boolean;
+  bothAccepted?: boolean;
   /** The ORIGINAL library item (the request) — the inbox brief renders this so
    *  it shows the library price/description, not the (revised) line. Null for
    *  custom lines (no catalogue backing). */

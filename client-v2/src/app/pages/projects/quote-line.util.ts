@@ -19,9 +19,15 @@ const STATUS_PILL: Record<QuoteLineStatus, string> = {
 };
 
 export function statusLabel(l: QuoteLine): string {
+  // Acceptance (derived from the event journal) wins over the coarse status so
+  // the Running budget reads the same as the inbox ("Both accepted", not "Booked").
+  if (l.bothAccepted) return 'Both accepted';
+  if (l.sellerAccepted && !l.buyerAccepted) return 'They accepted';
+  if (l.buyerAccepted && !l.sellerAccepted) return 'You accepted';
   return STATUS_LABELS[l.status] ?? '';
 }
 export function statusPill(l: QuoteLine): string {
+  if (l.buyerAccepted || l.sellerAccepted) return 'bp-pill bp-pill--success';
   return `bp-pill ${STATUS_PILL[l.status] ?? 'bp-pill--muted'}`;
 }
 
