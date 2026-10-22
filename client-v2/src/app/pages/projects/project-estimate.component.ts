@@ -95,7 +95,10 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         @for (section of sections(); track section.label; let first = $first) {
         <!-- Each section is ONE white container (matches Event Description);
              its category cards are light-gray, their items white. -->
-        <div class="bp-card bp-card--lifted mt-5 p-5">
+        <!-- Draft: ONE white section container holding category cards. Active:
+             no section wrapper — each supplier below is its own standalone card. -->
+        <div class="mt-5" [class.bp-card]="isDraftProject()" [class.bp-card--lifted]="isDraftProject()" [class.p-5]="isDraftProject()">
+        @if (isDraftProject()) {
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
             @if (isFinal()) {
@@ -121,7 +124,8 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         @if (section.label === 'Ballpark quote') {
           <div class="mt-4 border-t border-hairline"></div>
         }
-        @if (!isFinal() || isBoxOpen(section.label)) {
+        }
+        @if (!isFinal() || !isDraftProject() || isBoxOpen(section.label)) {
         <div class="mt-3 flex flex-col gap-2.5">
           @for (g of section.groups; track g.id) {
             @if (g.isCoverage) {
@@ -171,7 +175,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
             } @else {
             <!-- Category card — name + cat total, a chevron that expands the
                  items underneath (icon + fill removed, Liam 2026-10-21). -->
-            <div class="overflow-hidden rounded-[var(--radius-card)]">
+            <div class="overflow-hidden rounded-[var(--radius-card)]" [class.bp-card]="!isDraftProject()" [class.bp-card--lifted]="!isDraftProject()">
               <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggle(g.id)">
                 @if (!isDraftProject()) {
                   <!-- Active: supplier glyph + name + item count (the card is the supplier). -->
@@ -244,10 +248,10 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
           }
         </div>
         }
-        <!-- Every section shows a gray total box (always visible, even when the
-             cards are hidden); only Project Costs carries the Message Suppliers
-             CTA. The grand total's box lives in the Project Total container. -->
-        @if (isFinal()) {
+        <!-- Draft: each section shows a gray total box + Message Suppliers CTA.
+             Active hides it — the per-supplier subtotal + the top summary bar
+             cover it (Liam 2026-10-22). -->
+        @if (isFinal() && isDraftProject()) {
           <div class="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-card)] border p-5"
                [class.bg-fill]="section.label !== 'Project Fees'"
                [class.border-hairline]="section.label !== 'Project Fees'"
