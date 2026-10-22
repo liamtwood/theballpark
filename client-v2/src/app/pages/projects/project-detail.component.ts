@@ -28,6 +28,7 @@ import { ProjectEstimateComponent } from './project-estimate.component';
 import { QuoteDocumentComponent } from './quote-document.component';
 import { SowDocumentComponent } from './sow-document.component';
 import { InboxProjectComponent } from '../inbox/inbox-project.component';
+import { ProjectOverviewHeroComponent } from './project-overview-hero.component';
 import { InboxService } from '../../core/inbox/inbox.service';
 import { CoachmarkComponent } from '../../shared/coachmark/coachmark.component';
 
@@ -86,6 +87,7 @@ interface DetailForm {
     QuoteDocumentComponent,
     SowDocumentComponent,
     InboxProjectComponent,
+    ProjectOverviewHeroComponent,
     FormsModule,
     SaveStatePillComponent,
   ],
@@ -107,9 +109,23 @@ interface DetailForm {
                        [back]="{ label: 'Back', href: '/projects', history: true }"
                        [title]="projectHero().title" [subtitle]="projectHero().subtitle"
                        rightEyebrow="Ballpark" [rightTitle]="ballparkTotalStr()" rightSubtitle="Exc. VAT" />
+      } @else {
+        <!-- Active hero ABOVE the tabs: cover + name + the four negotiation tiles
+             (Working ballpark / Confirmed so far / Agreed items / Open threads). -->
+        <div class="shrink-0 bp-gutter px-6 pt-4">
+          <div class="mx-auto w-full max-w-[var(--workspace-max)]">
+            <app-project-overview-hero
+              [project]="p"
+              [collapsed]="heroCollapsed()"
+              [workingTotal]="estimate.value()?.projectTotal ?? 0"
+              [overview]="overview.value() ?? null"
+              [currency]="p.currency || 'GBP'"
+              [label]="label()"
+              (changeImage)="imgDrawer.set(true)"
+              (buildCover)="onBuildCover()" />
+          </div>
+        </div>
       }
-      <!-- Active has NO hero above the tabs — the Running-budget summary bar below
-           the tabs covers it (Liam 2026-10-22). -->
 
       <!-- Tabs sit just above the tab content (Liam 2026-08-28). Coachmarks
            overlay ABOVE the band in their own layer (absolute → no layout shift
@@ -291,35 +307,6 @@ interface DetailForm {
             </div>
           }
           @case ('final') {
-            @if (!isDraft()) {
-              <!-- Active "Running budget" summary bar — working total, confirmed
-                   (once ≥1 agreed), agreed-item count, open threads. -->
-              <div class="shrink-0 bp-gutter pt-3">
-                <div class="mx-auto w-full max-w-[var(--workspace-max)]">
-                  @let ov = overview.value();
-                  <div class="flex flex-wrap items-center gap-x-8 gap-y-2 rounded-[var(--radius-card)] border border-hairline bg-fill px-5 py-3">
-                    <span class="flex items-baseline gap-2">
-                      <span class="bp-caption text-secondary">Working ballpark</span>
-                      <span class="bp-amount text-text">{{ ballparkTotalStr() }}</span>
-                    </span>
-                    @if ((ov?.agreedItems ?? 0) > 0) {
-                      <span class="flex items-baseline gap-2">
-                        <span class="bp-caption text-secondary">Confirmed so far</span>
-                        <span class="bp-amount text-text">{{ confirmedStr() }}</span>
-                      </span>
-                    }
-                    <span class="flex items-baseline gap-2">
-                      <span class="bp-caption text-secondary">Agreed items</span>
-                      <span class="bp-amount text-text">{{ ov?.agreedItems ?? 0 }} of {{ ov?.totalItems ?? 0 }}</span>
-                    </span>
-                    <span class="flex items-baseline gap-2">
-                      <span class="bp-caption text-secondary">Open threads</span>
-                      <span class="bp-amount text-text">{{ ov?.openThreads ?? 0 }}</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-            }
             <div class="min-h-0 flex-1 bp-gutter">
               <app-project-estimate [projectId]="p.id" [project]="p" view="final" (detailsSaved)="detail.reload()" />
             </div>
@@ -447,13 +434,14 @@ export class ProjectDetailComponent {
   protected readonly projNav = computed<readonly { tab: Tab; label: string }[]>(() => {
     const nav: { tab: Tab; label: string }[] = [
       { tab: 'final', label: this.isDraft() ? 'Ballpark cost' : 'Running budget' },
+      { tab: 'marketplace', label: 'Edit in marketplace' },
     ];
-    // Details (event details + description + project settings) unlocks on Active.
-    if (!this.isDraft()) nav.push({ tab: 'details', label: 'Details' });
-    nav.push({ tab: 'marketplace', label: 'Edit in marketplace' });
-    // pV2-PROJECTS-S3: once the project is Active (sent to suppliers) the Inbox
-    // unlocks — its @case already renders <app-inbox-project>. Draft hides it.
-    if (!this.isDraft()) nav.push({ tab: 'inbox', label: 'Inbox' });
+    // Active order (Liam 2026-10-22): Running budget · Marketplace · Inbox · Details.
+    // (Inbox/Details unlock once the project is Active.)
+    if (!this.isDraft()) {
+      nav.push({ tab: 'inbox', label: 'Inbox' });
+      nav.push({ tab: 'details', label: 'Details' });
+    }
     return nav;
   });
   /** Which switch option reads as selected — marketplace / inbox when on them,
@@ -511,15 +499,6 @@ export class ProjectDetailComponent {
       currency: this.cur(),
       maximumFractionDigits: 0,
     }).format(this.estimate.value()?.projectTotal ?? 0)
-  );
-  /** Confirmed-so-far (agreed line totals) for the active Running-budget summary
-   *  bar — same currency formatting as the working ballpark. */
-  protected readonly confirmedStr = computed(() =>
-    new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: this.cur(),
-      maximumFractionDigits: 0,
-    }).format(this.overview.value()?.confirmedTotal ?? 0)
   );
   /** Image-picker drawer (pV2-MEDIA-01b). */
   protected readonly imgDrawer = signal(false);
