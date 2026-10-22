@@ -51,24 +51,27 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
         </div>
       </div>
 
-      <!-- Negotiation tiles -->
-      <div class="ovh-tiles grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div class="bp-card p-4" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
+      <!-- Negotiation stats — ONE container, inline (Liam 2026-10-22), not four
+           separate boxes. "Confirmed so far" only once ≥1 item is agreed. -->
+      <div class="ovh-tiles bp-card flex flex-wrap items-center gap-x-8 gap-y-2 p-4">
+        <span class="flex items-baseline gap-2" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
           <span class="bp-tile-title">Working ballpark</span>
-          <span class="bp-tile-value mt-1">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
-        </div>
-        <div class="bp-card p-4" [title]="'Total value of items you and the supplier have both agreed.'">
-          <span class="bp-tile-title">Confirmed so far</span>
-          <span class="bp-tile-value mt-1">{{ (o()?.confirmedTotal ?? 0) | currency: currency() : 'symbol' : '1.0-0' }}</span>
-        </div>
-        <div class="bp-card p-4" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
+          <span class="bp-tile-value">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
+        </span>
+        @if ((o()?.agreedItems ?? 0) > 0) {
+          <span class="flex items-baseline gap-2" [title]="'Total value of items you and the supplier have both agreed.'">
+            <span class="bp-tile-title">Confirmed so far</span>
+            <span class="bp-tile-value">{{ (o()?.confirmedTotal ?? 0) | currency: currency() : 'symbol' : '1.0-0' }}</span>
+          </span>
+        }
+        <span class="flex items-baseline gap-2" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
           <span class="bp-tile-title">Agreed items</span>
-          <span class="bp-tile-value mt-1">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
-        </div>
-        <div class="bp-card p-4" [title]="'Supplier conversations with at least one item still to agree.'">
+          <span class="bp-tile-value">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
+        </span>
+        <span class="flex items-baseline gap-2" [title]="'Supplier conversations with at least one item still to agree.'">
           <span class="bp-tile-title">Open threads</span>
-          <span class="bp-tile-value mt-1">{{ o()?.openThreads ?? 0 }}</span>
-        </div>
+          <span class="bp-tile-value">{{ o()?.openThreads ?? 0 }}</span>
+        </span>
       </div>
     </div>
   `,
