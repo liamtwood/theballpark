@@ -173,8 +173,15 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                  items underneath (icon + fill removed, Liam 2026-10-21). -->
             <div class="overflow-hidden rounded-[var(--radius-card)]">
               <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggle(g.id)">
+                @if (!isDraftProject()) {
+                  <!-- Active: supplier glyph + name + item count (the card is the supplier). -->
+                  <lucide-icon [name]="g.iconName || 'building-2'" [size]="22" [strokeWidth]="1.75" class="shrink-0 text-[var(--theme-accent)]" />
+                }
                 <span class="min-w-0 flex-1">
                   <span class="bp-list-title block truncate text-[length:var(--text-lg)]">{{ g.name }}</span>
+                  @if (!isDraftProject()) {
+                    <span class="bp-caption text-secondary">{{ g.count }} item{{ g.count === 1 ? '' : 's' }}</span>
+                  }
                 </span>
                 <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
                 <lucide-icon [name]="isOpen(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
@@ -186,11 +193,14 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                        in); Fees are shown raw. -->
                   @let mk = g.isProject ? 1 : marginMarkup();
                   @for (sg of g.supplierGroups; track sg.supplierId) {
-                    <!-- Supplier label — sits ABOVE its column headers. -->
+                    <!-- Supplier label — draft only (in active the card IS the
+                         supplier, so there's no sub-label). -->
+                    @if (isDraftProject()) {
                     <div class="flex items-center gap-2 px-3 pb-1 pt-2.5">
                       <lucide-icon name="store" [size]="13" class="shrink-0 text-muted" />
                       <span class="bp-meta truncate font-medium text-text">{{ sg.supplierName || 'Supplier' }}@if (sg.supplierCity) { · {{ sg.supplierCity }} }</span>
                     </div>
+                    }
                     <!-- Column headers (per supplier) — left-justified, aligned to
                          every row via .bp-estimate-grid. -->
                     <div class="bp-estimate-grid border-b border-hairline px-3 py-2">
@@ -554,6 +564,30 @@ export class ProjectEstimateComponent {
   protected readonly marginMarkup = computed(() => 1 + (this.bd().marginPct || 0) / 100);
 
   protected readonly groups = computed(() => {
+    // ACTIVE "Running budget": group by SUPPLIER (items ordered by category then
+    // cost), with a per-supplier subtotal + count. ONE supplierGroup per card so
+    // the existing row template renders unchanged — the supplier sub-label is just
+    // hidden in the active branch. Own-cost lines (no supplier) → isProject → the
+    // "Your own costs" section. (Liam 2026-10-22)
+    if (!this.isDraftProject()) {
+      return bySupplier(this.topRows()).map((sg) => {
+        const items = [...sg.items].sort((a, b) =>
+          (a.categoryName ?? '~').localeCompare(b.categoryName ?? '~') || (lineCost(b) - lineCost(a)));
+        const isProject = !sg.supplierId;
+        const linesTotal = items.reduce((s, l) => s + (isDeclined(l) ? 0 : lineCost(l)), 0);
+        return {
+          id: sg.supplierId || '__none',
+          items,
+          name: isProject ? 'Your own costs' : (sg.supplierName || 'Supplier'),
+          isProject,
+          isCoverage: false,
+          total: isProject ? linesTotal : linesTotal * this.marginMarkup(),
+          iconName: isProject ? 'wallet' : 'building-2',
+          count: items.filter((l) => !isDeclined(l)).length,
+          supplierGroups: [{ supplierId: sg.supplierId || '', supplierName: null, supplierCity: null, items }],
+        };
+      });
+    }
     const mapped = groupByCategory(this.topRows()).map((g) => {
       // '__none' = the uncategorised bucket → the "Fees" section (the agent's own
       // self-entered lines: fees, legal). Contingency + insurance live in the
@@ -575,6 +609,7 @@ export class ProjectEstimateComponent {
         // Fees section is never marked up.
         total: isProject ? linesTotal : linesTotal * this.marginMarkup(),
         iconName: isProject ? 'wallet' : (g.items[0]?.categoryIconName ?? null),
+        count: g.items.length,
         // Own-cost lines have no external supplier → show the current org (the
         // agency) as "costed by".
         supplierGroups: isProject
@@ -586,7 +621,7 @@ export class ProjectEstimateComponent {
     // agent's own costs (even before they've added any).
     if (this.isFinal() && !mapped.some((g) => g.isProject)) {
       mapped.push({ id: '__none', name: 'Your own costs', items: [], isProject: true,
-        isCoverage: false, total: 0, iconName: 'wallet', supplierGroups: [] });
+        isCoverage: false, total: 0, iconName: 'wallet', count: 0, supplierGroups: [] });
     }
     return mapped;
   });
