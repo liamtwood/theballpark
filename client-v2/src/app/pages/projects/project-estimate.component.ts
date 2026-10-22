@@ -192,6 +192,26 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                 <lucide-icon [name]="isOpen(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
               </button>
 
+              @if (g.hasAgreed) {
+                <!-- Payment summary — appears once ≥1 item is accepted by both.
+                     Money is placeholder (£0 Paid) until payments are wired; terms
+                     default to Ballpark 50/50, balance day after delivery. -->
+                <div class="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                  <div class="rounded-[var(--radius-card)] bg-fill px-4 py-3">
+                    <div class="bp-caption text-secondary">Paid</div>
+                    <div class="bp-amount text-text">{{ 0 | currency: cur() : 'symbol' : '1.0-0' }}</div>
+                  </div>
+                  <div class="rounded-[var(--radius-card)] bg-fill px-4 py-3">
+                    <div class="bp-caption text-secondary">Outstanding</div>
+                    <div class="bp-amount text-text">{{ g.agreedTotal | currency: cur() : 'symbol' : '1.0-0' }}</div>
+                  </div>
+                  <div class="rounded-[var(--radius-card)] bg-fill px-4 py-3">
+                    <div class="bp-caption text-secondary">Final 50% due</div>
+                    <div class="bp-list-title text-text">Day after delivery</div>
+                  </div>
+                </div>
+              }
+
               @if (isOpen(g.id)) {
                 <div class="bg-surface">
                   <!-- Hard-cost lines display the marked-up price (margin baked
@@ -589,6 +609,8 @@ export class ProjectEstimateComponent {
           total: isProject ? linesTotal : linesTotal * this.marginMarkup(),
           iconName: isProject ? 'wallet' : 'building-2',
           count: items.filter((l) => !isDeclined(l)).length,
+          hasAgreed: items.some((l) => l.bothAccepted),
+          agreedTotal: items.reduce((s, l) => s + (l.bothAccepted && !isDeclined(l) ? lineCost(l) : 0), 0) * (isProject ? 1 : this.marginMarkup()),
           supplierGroups: [{ supplierId: sg.supplierId || '', supplierName: null, supplierCity: null, items }],
         };
       });
@@ -615,6 +637,8 @@ export class ProjectEstimateComponent {
         total: isProject ? linesTotal : linesTotal * this.marginMarkup(),
         iconName: isProject ? 'wallet' : (g.items[0]?.categoryIconName ?? null),
         count: g.items.length,
+        hasAgreed: false,
+        agreedTotal: 0,
         // Own-cost lines have no external supplier → show the current org (the
         // agency) as "costed by".
         supplierGroups: isProject
@@ -626,7 +650,7 @@ export class ProjectEstimateComponent {
     // agent's own costs (even before they've added any).
     if (this.isFinal() && !mapped.some((g) => g.isProject)) {
       mapped.push({ id: '__none', name: 'Your own costs', items: [], isProject: true,
-        isCoverage: false, total: 0, iconName: 'wallet', count: 0, supplierGroups: [] });
+        isCoverage: false, total: 0, iconName: 'wallet', count: 0, hasAgreed: false, agreedTotal: 0, supplierGroups: [] });
     }
     return mapped;
   });
