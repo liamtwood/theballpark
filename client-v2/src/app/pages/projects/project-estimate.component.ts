@@ -188,7 +188,9 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                     <span class="bp-caption text-secondary">{{ g.count }} item{{ g.count === 1 ? '' : 's' }}</span>
                   }
                 </span>
-                <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                @if (isDraftProject()) {
+                  <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                }
                 <lucide-icon [name]="isOpen(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
               </button>
 
@@ -217,6 +219,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                   <!-- Hard-cost lines display the marked-up price (margin baked
                        in); Fees are shown raw. -->
                   @let mk = g.isProject ? 1 : marginMarkup();
+                  @if (isDraftProject()) {
                   @for (sg of g.supplierGroups; track sg.supplierId) {
                     <!-- Supplier label — draft only (in active the card IS the
                          supplier, so there's no sub-label). -->
@@ -258,6 +261,35 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                         </div>
                       }
                     }
+                  }
+                  } @else {
+                  <!-- ACTIVE supplier card: Item | Status | Cost (read-only budget
+                       view), then a Subtotal row below all the items. -->
+                  <div class="grid grid-cols-[minmax(0,1fr)_auto_90px] items-center gap-3 border-b border-hairline px-3 py-2">
+                    <span class="bp-estimate-th">Item</span>
+                    <span class="bp-estimate-th">Status</span>
+                    <span class="bp-estimate-th text-right">Cost</span>
+                  </div>
+                  @for (l of g.items; track l.id) {
+                    <div class="grid grid-cols-[minmax(0,1fr)_auto_90px] items-center gap-3 border-b border-hairline px-3 py-3">
+                      <span class="flex min-w-0 items-center gap-3">
+                        @if (l.imageUrl) {
+                          <img [src]="l.imageUrl" alt="" role="button" tabindex="0" class="h-11 w-11 shrink-0 cursor-pointer rounded-[var(--radius-card)] object-cover" (click)="selectLine(l)" (keydown.enter)="selectLine(l)" />
+                        } @else {
+                          <span class="bp-icon-block h-11 w-11 shrink-0 cursor-pointer" role="button" tabindex="0" (click)="selectLine(l)" (keydown.enter)="selectLine(l)"><lucide-icon name="store" [size]="18" /></span>
+                        }
+                        <span class="bp-list-title min-w-0 cursor-pointer truncate hover:underline" role="button" tabindex="0" (click)="selectLine(l)" (keydown.enter)="selectLine(l)">{{ l.name }}</span>
+                      </span>
+                      <span [class]="activeStatusPill(l)">{{ activeStatusLabel(l) }}</span>
+                      <span class="bp-body-small text-right tabular-nums text-secondary">{{ lineCostOf(l, mk) | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                    </div>
+                  }
+                  <!-- Subtotal — below all the items. -->
+                  <div class="grid grid-cols-[minmax(0,1fr)_auto_90px] items-center gap-3 px-3 py-3">
+                    <span class="bp-list-title">Subtotal</span>
+                    <span></span>
+                    <span class="bp-amount text-right text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                  </div>
                   }
 
                   <!-- Per-category add removed (Liam 2026-10-21) — a single
@@ -587,6 +619,23 @@ export class ProjectEstimateComponent {
   /** Display markup for hard-cost lines (1 + margin%) — margin silently marks up
    *  the client-facing Project Costs. Fees are never marked up. */
   protected readonly marginMarkup = computed(() => 1 + (this.bd().marginPct || 0) / 100);
+
+  /** Active Running-budget status for a line — negotiation vocabulary matching the
+   *  inbox: "Both accepted" / "You|They accepted" / "Declined" / "Agreeing cost". */
+  protected activeStatusLabel(l: QuoteLine): string {
+    if (l.bothAccepted) return 'Both accepted';
+    if (l.sellerAccepted && !l.buyerAccepted) return 'They accepted';
+    if (l.buyerAccepted && !l.sellerAccepted) return 'You accepted';
+    if (l.status === 'declined') return 'Declined';
+    return 'Agreeing cost';
+  }
+  protected activeStatusPill(l: QuoteLine): string {
+    if (l.buyerAccepted || l.sellerAccepted) return 'bp-pill bp-pill--success';
+    if (l.status === 'declined') return 'bp-pill bp-pill--danger';
+    return 'bp-pill bp-pill--muted';
+  }
+  /** Displayed line cost (hard costs marked up, own lines raw — via mk). */
+  protected lineCostOf(l: QuoteLine, mk: number): number { return lineCost(l) * mk; }
 
   protected readonly groups = computed(() => {
     // ACTIVE "Running budget": group by SUPPLIER (items ordered by category then
