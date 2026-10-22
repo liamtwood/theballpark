@@ -72,11 +72,12 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
       <div class="relative">
       <div class="mx-auto w-full max-w-[var(--workspace-max)]">
 
-      <!-- Editable event details: Date / Location / Duration / Guest count /
-           Budget. In-column so its edges line up with the cost cards. Each
-           field saves on blur; (saved) reloads the project. -->
-      <app-event-details-edit class="mt-4 block" [project]="project()" [projectId]="projectId()"
-                              [currency]="cur()" (saved)="detailsSaved.emit()" />
+      <!-- Editable event details — DRAFT only (in active they live on the Details
+           tab, not the Running budget). Each field saves on blur; (saved) reloads. -->
+      @if (isDraftProject()) {
+        <app-event-details-edit class="mt-4 block" [project]="project()" [projectId]="projectId()"
+                                [currency]="cur()" (saved)="detailsSaved.emit()" />
+      }
 
       <div class="mt-5"></div>
 

@@ -28,7 +28,6 @@ import { ProjectEstimateComponent } from './project-estimate.component';
 import { QuoteDocumentComponent } from './quote-document.component';
 import { SowDocumentComponent } from './sow-document.component';
 import { InboxProjectComponent } from '../inbox/inbox-project.component';
-import { ProjectOverviewHeroComponent } from './project-overview-hero.component';
 import { InboxService } from '../../core/inbox/inbox.service';
 import { CoachmarkComponent } from '../../shared/coachmark/coachmark.component';
 
@@ -87,7 +86,6 @@ interface DetailForm {
     QuoteDocumentComponent,
     SowDocumentComponent,
     InboxProjectComponent,
-    ProjectOverviewHeroComponent,
     FormsModule,
     SaveStatePillComponent,
   ],
@@ -109,23 +107,9 @@ interface DetailForm {
                        [back]="{ label: 'Back', href: '/projects', history: true }"
                        [title]="projectHero().title" [subtitle]="projectHero().subtitle"
                        rightEyebrow="Ballpark" [rightTitle]="ballparkTotalStr()" rightSubtitle="Exc. VAT" />
-      } @else {
-        <!-- Live project: cover hero + negotiation tiles, in the workspace column.
-             bp-gutter reserves the scrollbar gutter so it lines up with the body. -->
-        <div class="shrink-0 bp-gutter px-6 pt-4">
-          <div class="mx-auto w-full max-w-[var(--workspace-max)]">
-            <app-project-overview-hero
-              [project]="p"
-              [collapsed]="heroCollapsed()"
-              [workingTotal]="estimate.value()?.projectTotal ?? 0"
-              [overview]="overview.value() ?? null"
-              [currency]="p.currency || 'GBP'"
-              [label]="label()"
-              (changeImage)="imgDrawer.set(true)"
-              (buildCover)="onBuildCover()" />
-          </div>
-        </div>
       }
+      <!-- Active has NO hero above the tabs — the Running-budget summary bar below
+           the tabs covers it (Liam 2026-10-22). -->
 
       <!-- Tabs sit just above the tab content (Liam 2026-08-28). Coachmarks
            overlay ABOVE the band in their own layer (absolute → no layout shift
