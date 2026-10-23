@@ -42,6 +42,7 @@ type Section = 'event' | 'type' | 'logistics' | 'financials' | 'sow';
  *  and Client are read-only (rendered from the loaded detail, not here). */
 interface DetailForm {
   name: string;
+  status: string;
   description: string;
   clientName: string;
   clientCompanyNumber: string;
@@ -188,6 +189,10 @@ interface DetailForm {
                   <app-save-state-pill [state]="detailState()" />
                 </div>
                 <div class="mt-4 flex flex-col gap-4">
+                  <!-- Project status (Draft ⇄ Active) — the manual mode switch; sits first. -->
+                  <label class="block w-[calc(11ch+2.5rem)]"><span class="ed-label mb-1.5 block">Status</span>
+                    <app-select ariaLabel="Project status" [options]="statusSelectOptions" [value]="form().status" (changed)="patch({ status: $event }); saveSection('event')" />
+                  </label>
                   <!-- Ref + Event name + Company number + Client on one line;
                        Ref and Company number share a width. -->
                   <div class="flex flex-wrap items-start gap-x-5 gap-y-4">
@@ -516,6 +521,11 @@ export class ProjectDetailComponent {
     { value: '', label: '—' },
     ...this.tierOptions,
   ];
+  /** Project status — editable Draft ⇄ Active (the manual mode switch). */
+  protected readonly statusSelectOptions: SelectOption[] = [
+    { value: 'draft', label: 'Draft' },
+    { value: 'active', label: 'Active' },
+  ];
 
   // Status shows as a pill (hero + Event details, v1 parity); transitions
   // get a dedicated allowed_next_codes control later, not a free dropdown.
@@ -627,6 +637,7 @@ export class ProjectDetailComponent {
     return section === 'event'
       ? {
           name: f.name.trim() || undefined,
+          status: (f.status || 'draft') as ProjectUpdate['status'],
           description: nullable(f.description),
           clientName: nullable(f.clientName),
           clientCompanyNumber: nullable(f.clientCompanyNumber),
@@ -772,6 +783,7 @@ function asTier(v: string): ProjectUpdate['tier'] {
 function toForm(d: ProjectDetail | null): DetailForm {
   return {
     name: d?.name ?? '',
+    status: d?.status ?? 'draft',
     description: d?.description ?? '',
     clientName: d?.clientName ?? '',
     clientCompanyNumber: d?.clientCompanyNumber ?? '',
