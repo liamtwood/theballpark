@@ -643,13 +643,14 @@ export class ProjectEstimateComponent {
   protected readonly marginMarkup = computed(() => 1 + (this.bd().marginPct || 0) / 100);
 
   /** Active Running-budget status for a line — negotiation vocabulary matching the
-   *  inbox: "Both accepted" / "You|They accepted" / "Declined" / "Agreeing cost". */
+   *  inbox: "All confirmed" / "You|They accepted" / "Declined" / "To agree"
+   *  (the pre-agreement default, before either side has accepted a price). */
   protected activeStatusLabel(l: QuoteLine): string {
     if (l.bothAccepted) return 'All confirmed';
     if (l.sellerAccepted && !l.buyerAccepted) return 'They accepted';
     if (l.buyerAccepted && !l.sellerAccepted) return 'You accepted';
     if (l.status === 'declined') return 'Declined';
-    return 'Agreeing cost';
+    return 'To agree';
   }
   protected activeStatusPill(l: QuoteLine): string {
     if (l.buyerAccepted || l.sellerAccepted) return 'bp-pill bp-pill--success';
