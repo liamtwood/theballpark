@@ -176,10 +176,13 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
             } @else {
             <!-- Category card — name + cat total, a chevron that expands the
                  items underneath (icon + fill removed, Liam 2026-10-21). -->
-            <div class="overflow-hidden rounded-[var(--radius-card)]" [class.bp-card]="!isDraftProject()" [class.bp-card--lifted]="!isDraftProject()" [class.px-5]="!isDraftProject()">
+            <div class="overflow-hidden rounded-[var(--radius-card)]" [class.bp-card]="!isDraftProject()" [class.bp-card--lifted]="!isDraftProject()" [class.px-5]="!isDraftProject()" [class.py-2]="!isDraftProject()">
               <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggle(g.id)">
                 @if (!isDraftProject()) {
-                  <!-- Active: supplier glyph + name + item count (the card is the supplier). -->
+                  <!-- Active: number (suppliers only) + supplier glyph. -->
+                  @if (!g.isProject) {
+                    <span class="bp-list-title shrink-0 text-secondary">{{ $index + 1 }}.</span>
+                  }
                   <lucide-icon [name]="g.iconName || 'building-2'" [size]="22" [strokeWidth]="1.75" class="shrink-0 text-[var(--theme-accent)]" />
                 }
                 <span class="min-w-0 flex-1">
@@ -190,6 +193,10 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                 </span>
                 @if (isDraftProject()) {
                   <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                }
+                @if (!isDraftProject() && g.summaryLabel) {
+                  <!-- Summary status of all the supplier's items (Messages-tab logic). -->
+                  <span [class]="g.summaryClass" class="shrink-0">{{ g.summaryLabel }}</span>
                 }
                 <lucide-icon [name]="isOpen(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
               </button>
@@ -641,6 +648,26 @@ export class ProjectEstimateComponent {
   /** Displayed line cost (hard costs marked up, own lines raw — via mk). */
   protected lineCostOf(l: QuoteLine, mk: number): number { return lineCost(l) * mk; }
 
+  /** Per-supplier summary status for the active card header — SAME label/tone
+   *  rules as the Messages tab (inbox-landing pillLabel/pillClass): Action
+   *  Required (agent owes a move) → Awaiting supplier → All confirmed. "My move"
+   *  from the acceptance flags + coarse status (supplier accepted & I haven't, or
+   *  they've quoted). (Liam 2026-10-23) */
+  private activeSummary(items: QuoteLine[]): { label: string; cls: string } {
+    let action = 0, awaiting = 0, counted = 0;
+    for (const l of items) {
+      if (isDeclined(l)) continue;
+      counted++;
+      if (l.bothAccepted || l.status === 'booked') continue; // settled
+      if ((l.sellerAccepted && !l.buyerAccepted) || l.status === 'quoted') action++;
+      else awaiting++;
+    }
+    if (!counted) return { label: '', cls: '' };
+    if (action > 0) return { label: 'Action Required', cls: 'bp-pill bp-pill--danger' };
+    if (awaiting > 0) return { label: 'Awaiting supplier', cls: 'bp-pill bp-pill--outline' };
+    return { label: 'All confirmed', cls: 'bp-pill bp-pill--success' };
+  }
+
   protected readonly groups = computed(() => {
     // ACTIVE "Running budget": group by SUPPLIER (items ordered by category then
     // cost), with a per-supplier subtotal + count. ONE supplierGroup per card so
@@ -653,6 +680,7 @@ export class ProjectEstimateComponent {
           (a.categoryName ?? '~').localeCompare(b.categoryName ?? '~') || (lineCost(b) - lineCost(a)));
         const isProject = !sg.supplierId;
         const linesTotal = items.reduce((s, l) => s + (isDeclined(l) ? 0 : lineCost(l)), 0);
+        const summary = isProject ? { label: '', cls: '' } : this.activeSummary(items);
         return {
           id: sg.supplierId || '__none',
           items,
@@ -664,6 +692,8 @@ export class ProjectEstimateComponent {
           count: items.filter((l) => !isDeclined(l)).length,
           hasAgreed: items.some((l) => l.bothAccepted),
           agreedTotal: items.reduce((s, l) => s + (l.bothAccepted && !isDeclined(l) ? lineCost(l) : 0), 0) * (isProject ? 1 : this.marginMarkup()),
+          summaryLabel: summary.label,
+          summaryClass: summary.cls,
           supplierGroups: [{ supplierId: sg.supplierId || '', supplierName: null, supplierCity: null, items }],
         };
       });
@@ -692,6 +722,8 @@ export class ProjectEstimateComponent {
         count: g.items.length,
         hasAgreed: false,
         agreedTotal: 0,
+        summaryLabel: '',
+        summaryClass: '',
         // Own-cost lines have no external supplier → show the current org (the
         // agency) as "costed by".
         supplierGroups: isProject
@@ -703,7 +735,7 @@ export class ProjectEstimateComponent {
     // agent's own costs (even before they've added any).
     if (this.isFinal() && !mapped.some((g) => g.isProject)) {
       mapped.push({ id: '__none', name: 'Your own costs', items: [], isProject: true,
-        isCoverage: false, total: 0, iconName: 'wallet', count: 0, hasAgreed: false, agreedTotal: 0, supplierGroups: [] });
+        isCoverage: false, total: 0, iconName: 'wallet', count: 0, hasAgreed: false, agreedTotal: 0, summaryLabel: '', summaryClass: '', supplierGroups: [] });
     }
     return mapped;
   });
