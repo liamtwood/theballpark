@@ -187,9 +187,6 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                 }
                 <span class="min-w-0 flex-1">
                   <span class="bp-list-title block truncate text-[length:var(--text-lg)]">{{ g.name }}</span>
-                  @if (!isDraftProject()) {
-                    <span class="bp-caption text-secondary">{{ g.count }} item{{ g.count === 1 ? '' : 's' }}</span>
-                  }
                 </span>
                 @if (isDraftProject()) {
                   <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
