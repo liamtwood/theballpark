@@ -631,7 +631,7 @@ export class ProjectEstimateComponent {
   /** Active Running-budget status for a line — negotiation vocabulary matching the
    *  inbox: "Both accepted" / "You|They accepted" / "Declined" / "Agreeing cost". */
   protected activeStatusLabel(l: QuoteLine): string {
-    if (l.bothAccepted) return 'Both accepted';
+    if (l.bothAccepted) return 'All confirmed';
     if (l.sellerAccepted && !l.buyerAccepted) return 'They accepted';
     if (l.buyerAccepted && !l.sellerAccepted) return 'You accepted';
     if (l.status === 'declined') return 'Declined';
