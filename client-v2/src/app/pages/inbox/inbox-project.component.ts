@@ -366,6 +366,14 @@ export class InboxProjectComponent {
     { initialValue: this.route.snapshot.queryParamMap.get('item') }
   );
 
+  /** Deep-link: ?supplier=<orgId> opens that counterparty's thread on first
+   *  load (from the Running budget "Add item" action) — selects its first item
+   *  so you land in the conversation ready to add a requirement. Honoured once. */
+  private readonly wantSupplier = toSignal(
+    this.route.queryParamMap.pipe(map((p) => p.get('supplier'))),
+    { initialValue: this.route.snapshot.queryParamMap.get('supplier') }
+  );
+
   protected readonly threadsRes = resource({
     params: () => this.projectId() || undefined,
     loader: ({ params }) => firstValueFrom(this.inbox.projectInbox(params)),
@@ -429,6 +437,12 @@ export class InboxProjectComponent {
       if (!id) {
         const want = this.wantItem();
         if (want && ts.some((t) => t.items.some((i) => i.id === want))) return want;
+        // ?supplier= → first item of that counterparty's thread.
+        const wantSup = this.wantSupplier();
+        if (wantSup) {
+          const t = ts.find((x) => (this.isAgency() ? x.supplierOrgId : x.agencyOrgId) === wantSup && x.items.length);
+          if (t) return t.items[0].id;
+        }
       }
       if (id && ts.some((t) => t.items.some((i) => i.id === id))) return id;
       return ts.find((t) => t.items.length)?.items[0]?.id ?? null;

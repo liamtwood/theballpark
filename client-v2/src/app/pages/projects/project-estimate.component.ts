@@ -177,26 +177,40 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
             <!-- Category card — name + cat total, a chevron that expands the
                  items underneath (icon + fill removed, Liam 2026-10-21). -->
             <div class="overflow-hidden rounded-[var(--radius-card)]" [class.bp-card]="!isDraftProject()" [class.bp-card--lifted]="!isDraftProject()" [class.px-5]="!isDraftProject()" [class.py-2]="!isDraftProject()">
-              <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggle(g.id)">
+              <!-- Header is a flex ROW (not one big button) so the active supplier
+                   card can carry an "Add item" action without nesting <button>s.
+                   The name and the chevron each toggle the card; the summary
+                   status sits BELOW the supplier name (Liam 2026-10-23). -->
+              <div class="flex w-full items-start gap-3.5 p-3">
                 @if (!isDraftProject()) {
                   <!-- Active: number (suppliers only) + supplier glyph. -->
                   @if (!g.isProject) {
-                    <span class="bp-list-title shrink-0 text-secondary">{{ $index + 1 }}.</span>
+                    <span class="bp-list-title shrink-0 leading-7 text-secondary">{{ $index + 1 }}.</span>
                   }
-                  <lucide-icon [name]="g.iconName || 'building-2'" [size]="22" [strokeWidth]="1.75" class="shrink-0 text-[var(--theme-accent)]" />
+                  <lucide-icon [name]="g.iconName || 'building-2'" [size]="22" [strokeWidth]="1.75" class="mt-0.5 shrink-0 text-[var(--theme-accent)]" />
                 }
-                <span class="min-w-0 flex-1">
+                <button type="button" class="min-w-0 flex-1 text-left" (click)="toggle(g.id)">
                   <span class="bp-list-title block truncate text-[length:var(--text-lg)]">{{ g.name }}</span>
-                </span>
+                  @if (!isDraftProject() && g.summaryLabel) {
+                    <!-- Summary status of all the supplier's items (Messages-tab logic). -->
+                    <span [class]="g.summaryClass" class="mt-1 inline-block">{{ g.summaryLabel }}</span>
+                  }
+                </button>
                 @if (isDraftProject()) {
-                  <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                  <span class="bp-amount shrink-0 leading-7 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
                 }
-                @if (!isDraftProject() && g.summaryLabel) {
-                  <!-- Summary status of all the supplier's items (Messages-tab logic). -->
-                  <span [class]="g.summaryClass" class="shrink-0">{{ g.summaryLabel }}</span>
+                @if (!isDraftProject() && !g.isProject) {
+                  <!-- Opens this supplier's existing Inbox conversation, where further
+                       requirements can be discussed (deep-links tab=inbox&supplier). -->
+                  <button type="button" class="bp-msg-btn shrink-0" (click)="openSupplierInbox(g)">
+                    <lucide-icon name="plus" [size]="16" /> Add item
+                  </button>
                 }
-                <lucide-icon [name]="isOpen(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
-              </button>
+                <button type="button" class="shrink-0 self-center" (click)="toggle(g.id)"
+                        [attr.aria-label]="isOpen(g.id) ? 'Collapse' : 'Expand'">
+                  <lucide-icon [name]="isOpen(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="text-muted" />
+                </button>
+              </div>
 
               @if (g.hasAgreed) {
                 <!-- Payment summary — appears once ≥1 item is accepted by both.
@@ -915,6 +929,15 @@ export class ProjectEstimateComponent {
     this.pendingCategoryIcon.set(group?.iconName ?? null);
     this.pendingSuppliers.set([]);
     this.adding.set(true);
+  }
+
+  /** Active supplier card "Add item" → open that supplier's existing Inbox
+   *  conversation (tab=inbox&supplier=<orgId>), where further requirements are
+   *  discussed. g.id is the supplier org id (guarded to real suppliers). */
+  protected openSupplierInbox(g: { id: string }): void {
+    this.router.navigate(['/projects', this.projectId()], {
+      queryParams: { tab: 'inbox', supplier: g.id },
+    });
   }
 
   /** "Explore More" on a selected line's preview → the EXPLORE flow: browse
