@@ -15,6 +15,7 @@ import { EstimateItemRowComponent } from './estimate-item-row.component';
 import { RateInputComponent } from './rate-input.component';
 import { InboxService, OutreachRosterEntry } from '../../core/inbox/inbox.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
+import { CodelistService } from '../../core/codelists/codelist.service';
 import { MessageSuppliersDialogComponent, MsgSupplierCategory } from './message-suppliers-dialog.component';
 import { EventDetailsEditComponent } from './event-details-edit.component';
 import { EstimateBreakdownComponent } from './estimate-breakdown.component';
@@ -469,6 +470,7 @@ export class ProjectEstimateComponent {
   private readonly inbox = inject(InboxService);
   private readonly router = inject(Router);
   private readonly catalogue = inject(CatalogueService);
+  private readonly codelists = inject(CodelistService);
   private readonly auth = inject(AuthService);
   /** The current org (agency) name — shown as the "supplier" (costed by) for the
    *  agent's own-cost lines, which have no external supplier. */
@@ -642,15 +644,38 @@ export class ProjectEstimateComponent {
    *  the client-facing Project Costs. Fees are never marked up. */
   protected readonly marginMarkup = computed(() => 1 + (this.bd().marginPct || 0) / 100);
 
-  /** Active Running-budget status for a line — negotiation vocabulary matching the
-   *  inbox: "All confirmed" / "You|They accepted" / "Declined" / "To agree"
-   *  (the pre-agreement default, before either side has accepted a price). */
+  /** code→label for the Running-budget pill, from the `line_display_status`
+   *  codelist (ballpark → labels editable in /settings/codelists). The CODES are
+   *  fixed (we branch on them); only the labels are curatable. */
+  private readonly displayStatusRes = resource({
+    loader: () => this.codelists.list('line_display_status'),
+  });
+  private readonly displayStatusLabels = computed(() => {
+    const m = new Map<string, string>();
+    for (const v of this.displayStatusRes.value() ?? []) m.set(v.code, v.label);
+    return m;
+  });
+  /** Fallback labels if the codelist hasn't loaded (first paint / offline). */
+  private static readonly DISPLAY_STATUS_FALLBACK: Record<string, string> = {
+    to_agree: 'To agree', you_accepted: 'You accepted', they_accepted: 'They accepted',
+    all_confirmed: 'All confirmed', declined: 'Declined',
+  };
+
+  /** The DERIVED pill code for a line (from both parties' accept state). This is
+   *  the fixed key; the human label comes from the codelist. */
+  protected activeStatusCode(l: QuoteLine): string {
+    if (l.bothAccepted) return 'all_confirmed';
+    if (l.sellerAccepted && !l.buyerAccepted) return 'they_accepted';
+    if (l.buyerAccepted && !l.sellerAccepted) return 'you_accepted';
+    if (l.status === 'declined') return 'declined';
+    return 'to_agree';
+  }
+  /** Active Running-budget status label — codelist-driven (editable), with a
+   *  hardcoded fallback. "To agree" is the pre-agreement default. */
   protected activeStatusLabel(l: QuoteLine): string {
-    if (l.bothAccepted) return 'All confirmed';
-    if (l.sellerAccepted && !l.buyerAccepted) return 'They accepted';
-    if (l.buyerAccepted && !l.sellerAccepted) return 'You accepted';
-    if (l.status === 'declined') return 'Declined';
-    return 'To agree';
+    const code = this.activeStatusCode(l);
+    return this.displayStatusLabels().get(code)
+      ?? ProjectEstimateComponent.DISPLAY_STATUS_FALLBACK[code] ?? code;
   }
   protected activeStatusPill(l: QuoteLine): string {
     if (l.buyerAccepted || l.sellerAccepted) return 'bp-pill bp-pill--success';

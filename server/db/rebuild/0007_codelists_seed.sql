@@ -430,6 +430,18 @@ insert into public.reference_codelist_values (codelist_id, code, label, symbol, 
 insert into public.reference_codelist_consumers (codelist_id, consumer_table, consumer_column)
   values ((select id from public.reference_codelists where name='quote_status'), 'project_item_quotes', 'status');
 
+-- line_display_status (BALLPARK so labels are editable in /settings/codelists) — the
+-- Running-budget per-line status pill. NOT a stored column and NOT a consumer: the view
+-- DERIVES the code from message_events (both parties' accept state); this list only owns
+-- the editable display label. codes are fixed (app branches on them); labels curatable.
+insert into public.reference_codelists (name, type, family, default_code) values ('line_display_status', 'ballpark', 'status', 'to_agree');
+insert into public.reference_codelist_values (codelist_id, code, label, symbol, sort_order, is_active) values
+  ((select id from public.reference_codelists where name='line_display_status'), 'to_agree', 'To agree', null, 1, true),
+  ((select id from public.reference_codelists where name='line_display_status'), 'you_accepted', 'You accepted', null, 2, true),
+  ((select id from public.reference_codelists where name='line_display_status'), 'they_accepted', 'They accepted', null, 3, true),
+  ((select id from public.reference_codelists where name='line_display_status'), 'all_confirmed', 'All confirmed', null, 4, true),
+  ((select id from public.reference_codelists where name='line_display_status'), 'declined', 'Declined', null, 5, true);
+
 -- message_status (system, family=status) — 4 values
 insert into public.reference_codelists (name, type, family, default_code) values ('message_status', 'system', 'status', 'draft');
 insert into public.reference_codelist_values (codelist_id, code, label, symbol, sort_order, is_active) values
