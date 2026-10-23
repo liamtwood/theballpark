@@ -392,11 +392,10 @@ export class ProjectDetailComponent {
     return t;
   });
 
-  /** Work-dense tabs collapse the overview hero to a slim name band to reclaim
-   *  space (reverses automatically on the way back). Full hero stays on the
-   *  landing (Ballpark Cost) + About Project. Reusable — add tabs here. */
-  private readonly COLLAPSE_HERO_TABS = new Set<Tab>(['marketplace', 'reports', 'inbox']);
-  protected readonly heroCollapsed = computed(() => this.COLLAPSE_HERO_TABS.has(this.tab()));
+  /** The overview hero stays FULL (cover + stats pill) on every active tab
+   *  (Liam 2026-10-23) — no per-tab collapse, so it doesn't resize or hide the
+   *  stats when switching to Marketplace / Inbox. */
+  protected readonly heroCollapsed = computed(() => false);
 
   protected readonly label = computed(() => this.pageConfig.eventLabel());
   protected readonly labelPlural = computed(() => `${this.label()}s`);
