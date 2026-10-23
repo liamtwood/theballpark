@@ -508,3 +508,26 @@ insert into public.reference_codelist_values (codelist_id, code, label, symbol, 
 insert into public.reference_codelist_consumers (codelist_id, consumer_table, consumer_column)
   values ((select id from public.reference_codelists where name='address_type'), 'addresses', 'type');
 
+-- line_status (system, family=status) — the frozen requirement's LIFECYCLE, governs
+-- project_items.status. NOT the negotiation vocab (that is message_item_status, stored
+-- per-party on message_events); a line stays 'active' through the whole negotiation and
+-- only flips 'cancelled' when the requirement is dropped.
+insert into public.reference_codelists (name, type, family, default_code) values ('line_status', 'system', 'status', 'active');
+insert into public.reference_codelist_values (codelist_id, code, label, symbol, sort_order, is_active) values
+  ((select id from public.reference_codelists where name='line_status'), 'active', 'Active', null, 1, true),
+  ((select id from public.reference_codelists where name='line_status'), 'cancelled', 'Cancelled', null, 2, true);
+insert into public.reference_codelist_consumers (codelist_id, consumer_table, consumer_column)
+  values ((select id from public.reference_codelists where name='line_status'), 'project_items', 'status');
+
+-- provider_status (system, family=status) — a supplier's engagement on the whole
+-- project (wholesale), governs project_providers.status. One row per supplier, not per
+-- item. pending→booked once their lines are agreed, cancelled if dropped. Fine-grained
+-- negotiating/agreed states are DERIVED from message_events, not stored here.
+insert into public.reference_codelists (name, type, family, default_code) values ('provider_status', 'system', 'status', 'pending');
+insert into public.reference_codelist_values (codelist_id, code, label, symbol, sort_order, is_active) values
+  ((select id from public.reference_codelists where name='provider_status'), 'pending', 'Pending', null, 1, true),
+  ((select id from public.reference_codelists where name='provider_status'), 'booked', 'Booked', null, 2, true),
+  ((select id from public.reference_codelists where name='provider_status'), 'cancelled', 'Cancelled', null, 3, true);
+insert into public.reference_codelist_consumers (codelist_id, consumer_table, consumer_column)
+  values ((select id from public.reference_codelists where name='provider_status'), 'project_providers', 'status');
+
