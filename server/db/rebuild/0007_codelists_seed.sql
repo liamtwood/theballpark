@@ -412,6 +412,23 @@ insert into public.reference_codelist_values (codelist_id, code, label, symbol, 
   ((select id from public.reference_codelists where name='message_item_status'), 'booked', 'Booked', null, 7, true),
   ((select id from public.reference_codelists where name='message_item_status'), 'declined_by_supplier', 'Declined', null, 8, true),
   ((select id from public.reference_codelists where name='message_item_status'), 'declined_by_agent', 'Cancelled', null, 9, true);
+-- The per-party negotiation vocab, stored on message_events.status (direction from
+-- messages.from_org). THE single source of truth for a line's agreed/declined state;
+-- the UI derives buyerAccepted/sellerAccepted by replaying these events.
+insert into public.reference_codelist_consumers (codelist_id, consumer_table, consumer_column)
+  values ((select id from public.reference_codelists where name='message_item_status'), 'message_events', 'status');
+
+-- quote_status (system, family=status) — a supplier's offer (overlay) lifecycle, governs
+-- project_item_quotes.status. pending (briefed, no price) → quoted (price offered) →
+-- accepted / declined. Coarse; the per-move back-and-forth lives in message_events.
+insert into public.reference_codelists (name, type, family, default_code) values ('quote_status', 'system', 'status', 'pending');
+insert into public.reference_codelist_values (codelist_id, code, label, symbol, sort_order, is_active) values
+  ((select id from public.reference_codelists where name='quote_status'), 'pending', 'Pending', null, 1, true),
+  ((select id from public.reference_codelists where name='quote_status'), 'quoted', 'Quoted', null, 2, true),
+  ((select id from public.reference_codelists where name='quote_status'), 'accepted', 'Accepted', null, 3, true),
+  ((select id from public.reference_codelists where name='quote_status'), 'declined', 'Declined', null, 4, true);
+insert into public.reference_codelist_consumers (codelist_id, consumer_table, consumer_column)
+  values ((select id from public.reference_codelists where name='quote_status'), 'project_item_quotes', 'status');
 
 -- message_status (system, family=status) — 4 values
 insert into public.reference_codelists (name, type, family, default_code) values ('message_status', 'system', 'status', 'draft');
