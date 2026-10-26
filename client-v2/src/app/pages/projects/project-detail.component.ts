@@ -438,7 +438,7 @@ export class ProjectDetailComponent {
   protected readonly projNav = computed<readonly { tab: Tab; label: string }[]>(() => {
     const nav: { tab: Tab; label: string }[] = [
       { tab: 'final', label: this.isDraft() ? 'Ballpark cost' : 'Running budget' },
-      { tab: 'marketplace', label: 'Edit in marketplace' },
+      { tab: 'marketplace', label: this.isDraft() ? 'Edit in marketplace' : 'Marketplace' },
     ];
     // Active order (Liam 2026-10-22): Running budget · Marketplace · Inbox · Details.
     // (Inbox/Details unlock once the project is Active.)

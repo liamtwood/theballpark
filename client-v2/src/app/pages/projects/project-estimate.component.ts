@@ -284,7 +284,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                   } @else {
                   <!-- ACTIVE supplier card: Item | Qty | Quick view | Status | Cost
                        (read-only budget view), then a Subtotal row below the items. -->
-                  <div class="grid grid-cols-[minmax(0,1fr)_64px_110px_140px_90px] items-center gap-3 border-b border-hairline px-3 py-2">
+                  <div class="grid grid-cols-[minmax(0,1fr)_64px_110px_150px_90px] items-center gap-3 border-b border-hairline px-3 py-2">
                     <span class="bp-estimate-th">Item</span>
                     <span class="bp-estimate-th">Qty</span>
                     <span class="bp-estimate-th">Quick view</span>
@@ -292,7 +292,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                     <span class="bp-estimate-th text-right">Cost</span>
                   </div>
                   @for (l of g.items; track l.id) {
-                    <div class="grid grid-cols-[minmax(0,1fr)_64px_110px_140px_90px] items-center gap-3 border-b border-hairline px-3 py-3">
+                    <div class="grid grid-cols-[minmax(0,1fr)_64px_110px_150px_90px] items-center gap-3 border-b border-hairline px-3 py-3">
                       <span class="flex min-w-0 items-center gap-3">
                         @if (l.imageUrl) {
                           <img [src]="l.imageUrl" alt="" role="button" tabindex="0" class="h-14 w-14 shrink-0 cursor-pointer rounded-[var(--radius-card)] object-cover" (click)="selectLine(l)" (keydown.enter)="selectLine(l)" />
@@ -303,7 +303,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       </span>
                       <span class="bp-body-small text-secondary">× {{ l.quantity }}</span>
                       <button type="button" class="bp-pill bp-pill--accent justify-self-start" (click)="selectLine(l)" [attr.aria-label]="'Quick view ' + l.name">Quick view</button>
-                      <span [class]="activeStatusPill(l)">{{ activeStatusLabel(l) }}</span>
+                      <span [class]="activeStatusPill(l)" style="min-width: 20ch; justify-content: center; text-align: center">{{ activeStatusLabel(l) }}</span>
                       <span class="bp-body-small text-right tabular-nums text-secondary">{{ lineCostOf(l, mk) | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
                   }
