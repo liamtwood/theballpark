@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { ProjectDetail } from '../../core/projects/project.types';
@@ -57,24 +57,31 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
       <!-- .bp-card forces display:block + its own radius (cascade) — inline
            style beats it so the stats sit on ONE flex row in a pill. -->
       <div class="ovh-tiles bp-card px-6 py-3" style="border-radius: 999px; display: flex; flex-wrap: nowrap; align-items: center; column-gap: 2rem;">
-        <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
-          <span class="bp-body-small text-secondary">Working ballpark</span>
-          <span class="bp-body-small text-text" style="font-weight: 700">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
-        </span>
-        @if ((o()?.agreedItems ?? 0) > 0) {
-          <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Total value of items you and the supplier have both agreed.'">
-            <span class="bp-body-small text-secondary">Confirmed so far</span>
-            <span class="bp-body-small text-text" style="font-weight: 700">{{ (o()?.confirmedTotal ?? 0) | currency: currency() : 'symbol' : '1.0-0' }}</span>
+        @if (!statsCollapsed()) {
+          <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
+            <span class="bp-body-small text-secondary">Working ballpark</span>
+            <span class="bp-body-small text-text" style="font-weight: 700">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
           </span>
+          <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
+            <span class="bp-body-small text-secondary">Agreed items</span>
+            <span class="bp-body-small text-text" style="font-weight: 700">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
+          </span>
+          <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Supplier conversations with at least one item still to agree.'">
+            <span class="bp-body-small text-secondary">Open threads</span>
+            <span class="bp-body-small text-text" style="font-weight: 700">{{ o()?.openThreads ?? 0 }}</span>
+          </span>
+        } @else {
+          <!-- Minimised: the pill shows just the project name. -->
+          <span class="bp-body-small truncate text-text" style="font-weight: 700">{{ p.name }}</span>
         }
-        <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
-          <span class="bp-body-small text-secondary">Agreed items</span>
-          <span class="bp-body-small text-text" style="font-weight: 700">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
-        </span>
-        <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Supplier conversations with at least one item still to agree.'">
-          <span class="bp-body-small text-secondary">Open threads</span>
-          <span class="bp-body-small text-text" style="font-weight: 700">{{ o()?.openThreads ?? 0 }}</span>
-        </span>
+
+        <!-- Minimise / expand — collapses the stats to just the project name
+             (chevron up), or back to the stats (chevron down). (Liam 2026-10-26) -->
+        <button type="button" class="ml-auto shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
+                (click)="statsCollapsed.set(!statsCollapsed())"
+                [attr.aria-label]="statsCollapsed() ? 'Show project stats' : 'Minimise to project name'">
+          <lucide-icon [name]="statsCollapsed() ? 'chevron-down' : 'chevron-up'" [size]="16" />
+        </button>
       </div>
     </div>
   `,
@@ -127,6 +134,9 @@ export class ProjectOverviewHeroComponent {
 
   readonly changeImage = output<void>();
   readonly buildCover = output<void>();
+
+  /** Minimise the stats pill to just the project name (chevron). Session-only. */
+  protected readonly statsCollapsed = signal(false);
 
   protected readonly o = computed(() => this.overview());
   protected readonly subtitle = computed(() => {
