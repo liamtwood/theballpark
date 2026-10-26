@@ -101,8 +101,16 @@ function deriveLineState(events, { briefed = true } = {}) {
     if (!kind) continue;
     const side = e.side; // authoritative — derived from the message sender
     if (kind === 'accept') {
-      if (side === 'buyer') { buyer = 'accepted'; buyerAt = e.createdAt; }
-      else { seller = 'accepted'; sellerAt = e.createdAt; }
+      // A re-accept by the side whose standing accept was CLEARED resolves the
+      // invalidation → drop clearedBy, else a re-approval note lingers after the
+      // line is settled again (bothAccepted with a stale clearedBy). (audit LM1)
+      if (side === 'buyer') {
+        if (buyer === 'cleared') clearedBy = null;
+        buyer = 'accepted'; buyerAt = e.createdAt;
+      } else {
+        if (seller === 'cleared') clearedBy = null;
+        seller = 'accepted'; sellerAt = e.createdAt;
+      }
       status = LINE_STATUS.ACCEPTED;
     } else if (kind === 'decline') {
       if (side === 'buyer') buyer = 'declined'; else seller = 'declined';
