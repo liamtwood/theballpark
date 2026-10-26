@@ -178,40 +178,45 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
             <!-- Category card — name + cat total, a chevron that expands the
                  items underneath (icon + fill removed, Liam 2026-10-21). -->
             <div class="overflow-hidden rounded-[var(--radius-card)]" [class.bp-card]="!isDraftProject()" [class.bp-card--lifted]="!isDraftProject()" [class.px-5]="!isDraftProject()" [class.py-2]="!isDraftProject()">
-              <!-- Header is a flex ROW (not one big button) so the active supplier
-                   card can carry an "Add item" action without nesting <button>s.
-                   The name and the chevron each toggle the card; the summary
-                   status sits BELOW the supplier name (Liam 2026-10-23). -->
-              <div class="flex w-full items-start gap-3.5 p-3">
-                @if (!isDraftProject()) {
-                  <!-- Active: number (suppliers only) + supplier glyph. -->
-                  @if (!g.isProject) {
-                    <span class="bp-list-title shrink-0 leading-7 text-secondary">{{ $index + 1 }}.</span>
+              <!-- Header: a top ROW (number · icon · name … Add item · chevron),
+                   all vertically centered; then the supplier's summary status pill
+                   on its OWN row below, left-aligned under the number (Liam
+                   2026-10-26). Not one big <button> so the Add item action doesn't
+                   nest buttons; the name and chevron each toggle the card. -->
+              <div class="p-3">
+                <div class="flex w-full items-center gap-3.5">
+                  @if (!isDraftProject()) {
+                    <!-- Active: number (suppliers only) + supplier glyph. -->
+                    @if (!g.isProject) {
+                      <span class="bp-list-title shrink-0 text-secondary" style="font-size: var(--text-xl)">{{ $index + 1 }}.</span>
+                    }
+                    <lucide-icon [name]="g.iconName || 'building-2'" [size]="24" [strokeWidth]="1.75" class="shrink-0 text-[var(--theme-accent)]" />
                   }
-                  <lucide-icon [name]="g.iconName || 'building-2'" [size]="22" [strokeWidth]="1.75" class="mt-0.5 shrink-0 text-[var(--theme-accent)]" />
-                }
-                <button type="button" class="min-w-0 flex-1 text-left" (click)="toggle(g.id)">
-                  <span class="bp-list-title block truncate text-[length:var(--text-lg)]">{{ g.name }}</span>
-                  @if (!isDraftProject() && g.summaryLabel) {
-                    <!-- Summary status of all the supplier's items (Messages-tab logic).
-                         Same 16ch centered treatment as the per-line Status pill. -->
-                    <span [class]="g.summaryClass" class="mt-1 inline-flex" style="min-width: 16ch; justify-content: center; text-align: center">{{ g.summaryLabel }}</span>
-                  }
-                </button>
-                @if (isDraftProject()) {
-                  <span class="bp-amount shrink-0 leading-7 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
-                }
-                @if (!isDraftProject() && !g.isProject) {
-                  <!-- Opens this supplier's existing Inbox conversation, where further
-                       requirements can be discussed (deep-links tab=inbox&supplier). -->
-                  <button type="button" class="bp-msg-btn shrink-0" (click)="openSupplierInbox(g)">
-                    <lucide-icon name="plus" [size]="16" /> Add item
+                  <button type="button" class="min-w-0 flex-1 text-left" (click)="toggle(g.id)">
+                    <span class="bp-list-title block truncate"
+                          [style.font-size]="isDraftProject() ? 'var(--text-lg)' : 'var(--text-xl)'">{{ g.name }}</span>
                   </button>
+                  @if (isDraftProject()) {
+                    <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                  }
+                  @if (!isDraftProject() && !g.isProject) {
+                    <!-- Opens this supplier's existing Inbox conversation (deep-links
+                         tab=inbox&supplier) to discuss further requirements. -->
+                    <button type="button" class="bp-msg-btn shrink-0" (click)="openSupplierInbox(g)">
+                      <lucide-icon name="plus" [size]="16" /> Add item
+                    </button>
+                  }
+                  <button type="button" class="shrink-0" (click)="toggle(g.id)"
+                          [attr.aria-label]="isOpen(g.id) ? 'Collapse' : 'Expand'">
+                    <lucide-icon [name]="isOpen(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="text-muted" />
+                  </button>
+                </div>
+                @if (!isDraftProject() && g.summaryLabel) {
+                  <!-- Summary status of all the supplier's items (Messages-tab logic),
+                       on its own row under the number. SAME 16ch centered pill as the
+                       per-line Status. -->
+                  <span [class]="g.summaryClass" class="mt-2 inline-flex" style="min-width: 16ch; justify-content: center; text-align: center">{{ g.summaryLabel }}</span>
                 }
-                <button type="button" class="shrink-0 self-center" (click)="toggle(g.id)"
-                        [attr.aria-label]="isOpen(g.id) ? 'Collapse' : 'Expand'">
-                  <lucide-icon [name]="isOpen(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="text-muted" />
-                </button>
               </div>
 
               @if (g.hasAgreed) {
@@ -304,7 +309,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       </span>
                       <span class="bp-body-small text-secondary">× {{ l.quantity }}</span>
                       <button type="button" class="bp-pill bp-pill--accent justify-self-start" (click)="selectLine(l)" [attr.aria-label]="'Quick view ' + l.name">Quick view</button>
-                      <span [class]="activeStatusPill(l)" style="min-width: 16ch; justify-content: center; text-align: center">{{ activeStatusLabel(l) }}</span>
+                      <span [class]="activeStatusPill(l)" style="min-width: 16ch; justify-content: center; text-align: center; justify-self: center">{{ activeStatusLabel(l) }}</span>
                       <span class="bp-body-small text-right tabular-nums text-secondary">{{ lineCostOf(l, mk) | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
                   }
