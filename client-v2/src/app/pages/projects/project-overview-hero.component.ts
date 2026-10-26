@@ -19,7 +19,8 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
     <!-- collapsed → the cover shrinks to a slim name band + the tiles collapse
          away, both animated (see styles). Reverses automatically. -->
     <div class="ovh" [class.is-collapsed]="collapsed()">
-      <!-- Cover -->
+      <!-- Cover — hidden when the hero is minimised via the pill chevron. -->
+      @if (!minimised()) {
       <div class="ovh-cover relative overflow-hidden rounded-[var(--radius-lg)] border border-hairline shadow-md">
         @if (p.coverUrl) {
           <img [src]="p.coverUrl" alt=""
@@ -50,6 +51,7 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
           </button>
         </div>
       </div>
+      }
 
       <!-- Negotiation stats — ONE rounded pill, inline: title-case gray label +
            bold value (Liam 2026-10-22). "Confirmed so far" only once ≥1 agreed.
@@ -57,30 +59,30 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
       <!-- .bp-card forces display:block + its own radius (cascade) — inline
            style beats it so the stats sit on ONE flex row in a pill. -->
       <div class="ovh-tiles bp-card px-6 py-3" style="border-radius: 999px; display: flex; flex-wrap: nowrap; align-items: center; column-gap: 2rem;">
-        @if (!statsCollapsed()) {
-          <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
-            <span class="bp-body-small text-secondary">Working ballpark</span>
-            <span class="bp-body-small text-text" style="font-weight: 700">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
-          </span>
-          <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
-            <span class="bp-body-small text-secondary">Agreed items</span>
-            <span class="bp-body-small text-text" style="font-weight: 700">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
-          </span>
-          <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Supplier conversations with at least one item still to agree.'">
-            <span class="bp-body-small text-secondary">Open threads</span>
-            <span class="bp-body-small text-text" style="font-weight: 700">{{ o()?.openThreads ?? 0 }}</span>
-          </span>
-        } @else {
-          <!-- Minimised: the pill shows just the project name. -->
-          <span class="bp-body-small truncate text-text" style="font-weight: 700">{{ p.name }}</span>
+        @if (minimised()) {
+          <!-- Cover (which carries the project name) is hidden → surface the
+               name on the detail bar, alongside the stats. -->
+          <span class="bp-body-small shrink-0 truncate text-text" style="font-weight: 700; max-width: 24ch">{{ p.name }}</span>
         }
+        <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
+          <span class="bp-body-small text-secondary">Working ballpark</span>
+          <span class="bp-body-small text-text" style="font-weight: 700">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
+        </span>
+        <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
+          <span class="bp-body-small text-secondary">Agreed items</span>
+          <span class="bp-body-small text-text" style="font-weight: 700">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
+        </span>
+        <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Supplier conversations with at least one item still to agree.'">
+          <span class="bp-body-small text-secondary">Open threads</span>
+          <span class="bp-body-small text-text" style="font-weight: 700">{{ o()?.openThreads ?? 0 }}</span>
+        </span>
 
-        <!-- Minimise / expand — collapses the stats to just the project name
-             (chevron up), or back to the stats (chevron down). (Liam 2026-10-26) -->
+        <!-- Hide / show the hero cover — chevron up hides it (detail bar keeps
+             the stats + the project name), chevron down brings it back. (Liam 2026-10-26) -->
         <button type="button" class="ml-auto shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
-                (click)="statsCollapsed.set(!statsCollapsed())"
-                [attr.aria-label]="statsCollapsed() ? 'Show project stats' : 'Minimise to project name'">
-          <lucide-icon [name]="statsCollapsed() ? 'chevron-down' : 'chevron-up'" [size]="16" />
+                (click)="minimised.set(!minimised())"
+                [attr.aria-label]="minimised() ? 'Show the hero cover' : 'Hide the hero cover'">
+          <lucide-icon [name]="minimised() ? 'chevron-down' : 'chevron-up'" [size]="16" />
         </button>
       </div>
     </div>
@@ -136,7 +138,7 @@ export class ProjectOverviewHeroComponent {
   readonly buildCover = output<void>();
 
   /** Minimise the stats pill to just the project name (chevron). Session-only. */
-  protected readonly statsCollapsed = signal(false);
+  protected readonly minimised = signal(false);
 
   protected readonly o = computed(() => this.overview());
   protected readonly subtitle = computed(() => {
