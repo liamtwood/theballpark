@@ -73,7 +73,7 @@ export const PAGE_HERO_DEFAULTS: Record<PageKey, Required<PageHeroOverride>> = {
       'Drop in the brief and any details you already know. Ballpark drafts a costed estimate with its assumptions shown, and you edit every line.',
   },
   projects: {
-    eyebrow: 'Past projects',
+    eyebrow: 'Projects',
     title: 'Your project history',
     subtitle: "Every brief you've analysed, with the ballpark range and assumptions kept intact.",
   },
@@ -100,7 +100,7 @@ export const PAGE_HERO_DEFAULTS: Record<PageKey, Required<PageHeroOverride>> = {
 /** Admin table metadata: the pages whose hero is editable, in display order. */
 export const PAGE_META: readonly { key: PageKey; label: string }[] = [
   { key: 'newProject', label: 'New project' },
-  { key: 'projects', label: 'Past projects' },
+  { key: 'projects', label: 'Projects' },
   { key: 'project', label: 'Project (detail)' },
   { key: 'marketplace', label: 'Marketplace' },
   { key: 'profile', label: 'Profile' },

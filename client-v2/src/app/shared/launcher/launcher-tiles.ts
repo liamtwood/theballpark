@@ -19,7 +19,7 @@ export const AGENT_TILES: readonly LauncherTile[] = [
   },
   {
     icon: 'folder-clock',
-    label: 'Past projects',
+    label: 'Projects',
     subtitle: "Revisit every brief you've costed, with assumptions and line items intact.",
     href: '/projects',
   },

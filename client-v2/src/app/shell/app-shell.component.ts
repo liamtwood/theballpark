@@ -117,7 +117,7 @@ interface NavItem {
 const AGENCY_NAV: readonly NavItem[] = [
   { label: 'Home', path: '/home', icon: 'layout-grid', exact: true },
   { label: 'New project', path: '/projects/new', icon: 'folder-plus', exact: true },
-  { label: 'Past projects', path: '/projects', icon: 'folder-open', exact: true },
+  { label: 'Projects', path: '/projects', icon: 'folder-open', exact: true },
   { label: 'Messages', path: '/inbox', icon: 'message-square', exact: false },
   { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
   { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
