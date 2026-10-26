@@ -53,7 +53,22 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
       </div>
     </div>
 
-    <!-- Row 1: prominent full-width search + result count. -->
+    <!-- Filter (left) · View (right) — behind the options toggle, ABOVE the
+         search (Liam 2026-10-26). -->
+    @if (open()) {
+      <div class="mb-3 flex items-start justify-between gap-6">
+        <div>
+          <span class="bp-field-label mb-1.5 block font-bold text-text">Filter</span>
+          <app-marketplace-filters />
+        </div>
+        <div>
+          <span class="bp-field-label mb-1.5 block font-bold text-text">View</span>
+          <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
+        </div>
+      </div>
+    }
+
+    <!-- Prominent full-width search + result count. -->
     <div class="flex items-center gap-3">
       <div class="min-w-0 flex-1">
         <app-catalogue-search
@@ -65,21 +80,6 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
       </div>
       <span class="bp-caption shrink-0 text-secondary">{{ store.total() }} items</span>
     </div>
-
-    <!-- Row 2: Filter (left) · View (right) — behind the options toggle. Type
-         moved above the search (Liam 2026-10-26). -->
-    @if (open()) {
-      <div class="mt-3 flex items-start justify-between gap-6">
-        <div>
-          <span class="bp-field-label mb-1.5 block font-bold text-text">Filter</span>
-          <app-marketplace-filters />
-        </div>
-        <div>
-          <span class="bp-field-label mb-1.5 block font-bold text-text">View</span>
-          <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
-        </div>
-      </div>
-    }
   `,
 })
 export class MarketplaceControlsComponent {
