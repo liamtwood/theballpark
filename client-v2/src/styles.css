@@ -2121,16 +2121,20 @@ body {
 }
 .bp-pill--accent:hover { background: color-mix(in srgb, var(--theme-accent) 20%, var(--color-surface)); }
 
-/* Running-ballpark hero pill (project hero right-meta): a soft-pink container
-   with a dot + label + total, and a lighter inset aside for the item count +
-   "excl. VAT". Replaces the plain BALLPARK / total / Exc. VAT stack. */
+/* Running-ballpark hero pill (project hero right-meta): ONE container in the
+   same surface shade as the .ed-card "Event details" containers (hairline +
+   shadow), heavily rounded, with a dot + label + total and — past a vertical
+   separator (not a differently-coloured box) — the item count + "excl. VAT".
+   Replaces the plain BALLPARK / total / Exc. VAT stack. */
 .bp-run-pill {
   display: inline-flex;
   align-items: center;
   gap: 16px;
-  padding: 10px 10px 10px 16px;
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--theme-accent) 14%, var(--color-surface));
+  padding: 12px 20px;
+  border-radius: 26px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-hairline);
+  box-shadow: var(--shadow-md);
 }
 .bp-run-pill__dot {
   flex: none;
@@ -2148,11 +2152,13 @@ body {
   font-size: var(--text-2xl); font-weight: 700; color: var(--color-text);
   line-height: 1.05;
 }
+/* Vertical separator between the total and the item-count aside (same shade
+   container on both sides — just a hairline rule, not a second box). */
 .bp-run-pill__aside {
-  display: flex; flex-direction: column; align-items: flex-start;
-  padding: 8px 14px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  display: flex; flex-direction: column; justify-content: center;
+  align-self: stretch;
+  padding-left: 16px;
+  border-left: 1px solid var(--color-border-hairline);
   line-height: 1.25;
 }
 .bp-run-pill__count { font-size: var(--text-sm); font-weight: 600; color: var(--color-text); }
