@@ -17,16 +17,43 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
   imports: [LucideAngularModule, TooltipModule, CatalogueSearchComponent, ViewToggleComponent, TabBandComponent, MarketplaceFiltersComponent],
   host: { class: 'block' },
   template: `
-    <!-- Type (Items|Suppliers) — ALWAYS visible, ABOVE the search (moved out of
-         the filter toggle, Liam 2026-10-26). Hidden on a pinned single-supplier
-         store (supplier-detail's Store tab). -->
-    @if (!pinned()) {
-      <div class="mb-3 w-fit">
+    <!-- Row 0: Type (Items|Suppliers) on the left + the filter & cart toggles on
+         the right, all on one line above the search (Liam 2026-10-26). Type is
+         hidden on a pinned single-supplier store (supplier-detail's Store tab). -->
+    <div class="mb-3 flex items-center justify-between gap-3">
+      @if (!pinned()) {
         <app-tab-band [tabs]="modeTabs" [active]="store.mode()" [compact]="true" (activeChange)="store.setMode($event)" />
-      </div>
-    }
+      } @else {
+        <span></span>
+      }
+      <div class="flex items-center gap-2">
+        <!-- Options icon; opens the Filter / View row below. -->
+        <div class="inline-flex items-center rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
+          <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="open()"
+            pTooltip="Filter & view" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
+            aria-label="Filter and view options" (click)="open.set(!open())">
+            <lucide-icon name="sliders-horizontal" [size]="15" />
+          </button>
+        </div>
 
-    <!-- Row 1: prominent full-width search + count + the 3-icon cluster. -->
+        <!-- Project quote cart — toggles the right-side rail. Only shown inside a
+             project (showCart); the global marketplace never mounts it. -->
+        @if (showCart()) {
+          <div class="inline-flex items-center rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
+            <button type="button" class="bp-viewtoggle relative" [class.bp-viewtoggle--active]="cartOpen()"
+              pTooltip="Project costs" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
+              aria-label="Show project costs" (click)="cartToggled.emit()">
+              <lucide-icon name="shopping-cart" [size]="15" />
+              @if (cartCount() > 0) {
+                <span class="bp-count-badge absolute -right-1.5 -top-1.5">{{ cartCount() }}</span>
+              }
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Row 1: prominent full-width search + result count. -->
     <div class="flex items-center gap-3">
       <div class="min-w-0 flex-1">
         <app-catalogue-search
@@ -36,32 +63,7 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
           (valueChange)="store.setSearch($event)"
         />
       </div>
-
       <span class="bp-caption shrink-0 text-secondary">{{ store.total() }} items</span>
-
-      <!-- One options icon; opens the Type / Filter / View row below. -->
-      <div class="inline-flex items-center rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
-        <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="open()"
-          pTooltip="Type, filter & view" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
-          aria-label="Type, filter and view options" (click)="open.set(!open())">
-          <lucide-icon name="sliders-horizontal" [size]="15" />
-        </button>
-      </div>
-
-      <!-- Project quote cart — toggles the right-side rail. Only shown inside a
-           project (showCart); the global marketplace never mounts it. -->
-      @if (showCart()) {
-        <div class="inline-flex items-center rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
-          <button type="button" class="bp-viewtoggle relative" [class.bp-viewtoggle--active]="cartOpen()"
-            pTooltip="Project costs" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
-            aria-label="Show project costs" (click)="cartToggled.emit()">
-            <lucide-icon name="shopping-cart" [size]="15" />
-            @if (cartCount() > 0) {
-              <span class="bp-count-badge absolute -right-1.5 -top-1.5">{{ cartCount() }}</span>
-            }
-          </button>
-        </div>
-      }
     </div>
 
     <!-- Row 2: Filter (left) · View (right) — behind the options toggle. Type
