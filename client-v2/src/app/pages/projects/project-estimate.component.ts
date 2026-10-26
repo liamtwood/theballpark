@@ -210,14 +210,21 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       </button>
                     } @else if (!isDraftProject() && !g.isProject) {
                       <button type="button" class="shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
-                              (click)="openSupplierInbox(g)"
-                              [attr.aria-label]="'Add item with ' + g.name" title="Add item">
+                              (click)="openAddForSupplier(g)"
+                              [attr.aria-label]="'Add an item to ' + g.name" title="Add item">
                         <lucide-icon name="plus" [size]="16" />
                       </button>
                     }
                   </span>
                   @if (isDraftProject()) {
                     <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                  }
+                  @if (!isDraftProject() && !g.isProject) {
+                    <!-- Top-level "Add item" → this supplier's inbox conversation (the
+                         + beside the name adds a line directly via the dialog). -->
+                    <button type="button" class="bp-msg-btn shrink-0" (click)="openSupplierInbox(g)">
+                      <lucide-icon name="message-square" [size]="16" /> Add item
+                    </button>
                   }
                   <button type="button" class="shrink-0" (click)="toggle(g.id)"
                           [attr.aria-label]="isOpen(g.id) ? 'Collapse' : 'Expand'">
@@ -953,13 +960,35 @@ export class ProjectEstimateComponent {
     this.adding.set(true);
   }
 
-  /** Active supplier card "Add item" → open that supplier's existing Inbox
-   *  conversation (tab=inbox&supplier=<orgId>), where further requirements are
-   *  discussed. g.id is the supplier org id (guarded to real suppliers). */
+  /** Active supplier card "Add item" (top-level button) → open that supplier's
+   *  existing Inbox conversation (tab=inbox&supplier=<orgId>), where further
+   *  requirements are discussed. g.id is the supplier org id. */
   protected openSupplierInbox(g: { id: string }): void {
     this.router.navigate(['/projects', this.projectId()], {
       queryParams: { tab: 'inbox', supplier: g.id },
     });
+  }
+
+  /** Active supplier card "+" (beside the name) → add an item to THIS supplier
+   *  via the add dialog, like draft's per-category +. The explore flow (browse
+   *  the supplier's catalogue), supplier fixed, no category filter (its whole
+   *  catalogue). An active supplier's lines are sent/locked (not `editable`), so
+   *  pendingExisting is empty → this only ADDS fresh lines, never reconciles. */
+  protected openAddForSupplier(g: { id: string; name: string }): void {
+    this.dialogVariant.set('explore');
+    this.pendingCategoryId.set(null);
+    this.pendingCategoryName.set('');
+    this.pendingCategoryIcon.set(null);
+    this.pendingSuppliers.set([{ id: g.id, name: g.name }]);
+    this.pendingExisting.set(
+      this.rows()
+        .filter((q) => q.supplierId === g.id && !!q.itemId && editable(q))
+        .map((q) => ({
+          lineId: q.id, itemId: q.itemId, name: q.name ?? '', cost: q.basePrice,
+          quantity: q.quantity, categoryName: q.categoryName, subcategoryName: null,
+        }))
+    );
+    this.adding.set(true);
   }
 
   /** "Explore More" on a selected line's preview → the EXPLORE flow: browse
