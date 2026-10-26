@@ -531,7 +531,7 @@ async function getAgentInboxSummary(agencyOrgId) {
  *  open item. Cancelled/declined lines excluded. org from JWT. */
 async function getProjectOverview(agencyOrgId, projectId) {
   const { threads } = await assembleThreads('agency', agencyOrgId, projectId);
-  let confirmedTotal = 0, agreedItems = 0, totalItems = 0, openThreads = 0;
+  let agreedItems = 0, totalItems = 0, openThreads = 0;
   const seen = new Set();
   for (const t of threads) {
     let threadOpen = false;
@@ -541,12 +541,12 @@ async function getProjectOverview(agencyOrgId, projectId) {
       if (isDeclined(it.status)) continue;
       totalItems++;
       const agreed = it.status === 'booked' || (it.buyerAccepted && it.sellerAccepted);
-      if (agreed) { agreedItems++; confirmedTotal += Number(it.priceCurrent ?? it.priceRef ?? 0); }
+      if (agreed) agreedItems++;
       else threadOpen = true;
     }
     if (threadOpen) openThreads++;
   }
-  return { confirmedTotal, agreedItems, totalItems, openThreads };
+  return { agreedItems, totalItems, openThreads };
 }
 
 // ── writes (route-facing) ────────────────────────────────────────────────────

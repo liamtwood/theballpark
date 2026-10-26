@@ -48,7 +48,6 @@ export class InboxService {
 
 /** Live-project negotiation metrics for the overview hero tiles. */
 export interface ProjectOverview {
-  confirmedTotal: number;
   agreedItems: number;
   totalItems: number;
   openThreads: number;
