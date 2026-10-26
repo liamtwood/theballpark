@@ -173,7 +173,7 @@
      app-shell main paddings AND the .bp-vpfit height calc — change a
      value here and both stay in step (a banner/tray bumps --shell-pt
      once, every viewport-fit page follows). */
-  --shell-pt: 7rem; /* clears the two-row frosted app header (wordmark + nav) */
+  --shell-pt: 4.5rem; /* clears the single-row frosted app header (wordmark · nav · account) */
   --shell-pb: 0.5rem;
 
   /* ── PrimeNG bridge ───────────────────────────────────────────────────────

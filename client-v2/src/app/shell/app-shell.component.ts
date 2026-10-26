@@ -6,8 +6,8 @@ import { WordmarkComponent } from '../shared/wordmark/wordmark.component';
 import { UserMenuComponent } from './user-menu/user-menu.component';
 import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.component';
 
-/** Chrome around every authenticated route: a frosted, fixed two-row header
- *  (wordmark + account on row 1, primary nav on row 2) over the routed page.
+/** Chrome around every authenticated route: a frosted, fixed single-row header
+ *  (wordmark · primary nav · account + Sign Out) over the routed page.
  *  The primary nav (Overview / New project / Past projects / Messages /
  *  Marketplace / Profile) means you can jump anywhere without going Back. The
  *  project-detail route paints its <main> with the pink "workspace" ground.
@@ -22,14 +22,32 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
   host: { class: 'block min-h-screen' },
   template: `
     <header class="bp-app-header fixed inset-x-0 top-0 z-40">
-      <div class="bp-header-inset flex h-14 items-center justify-between">
-        <!-- Wordmark routes to /home (pV2-02b): the root is the public landing
-             page; authenticated users clicking the logo belong on home. -->
-        <app-wordmark link="/home" />
-        <div class="flex items-center gap-3">
+      <!-- ONE row (Liam 2026-10-26): wordmark on the left (mirroring Sign Out on
+           the right), the primary nav in the middle, the account cluster + Sign
+           Out on the right. -->
+      <div class="bp-header-inset flex h-14 items-center gap-4">
+        <!-- Wordmark routes to /home (pV2-02b): authenticated users clicking the
+             logo belong on home. -->
+        <app-wordmark link="/home" class="shrink-0" />
+
+        @if (auth.isLoggedIn()) {
+          <nav class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+            @for (item of navItems(); track item.path) {
+              <a [routerLink]="item.path" [queryParams]="item.query ?? null"
+                 routerLinkActive="bp-nav-link--active"
+                 [routerLinkActiveOptions]="{ exact: item.exact }" class="bp-nav-link">
+                <lucide-icon [name]="item.icon" [size]="16" [strokeWidth]="1.75" />{{ item.label }}
+              </a>
+            }
+          </nav>
+        } @else {
+          <span class="flex-1"></span>
+        }
+
+        <div class="flex shrink-0 items-center gap-3">
           <!-- FR-00215/FR-00236 — org context: you've switched into an org you hold a
-               seat in and are acting AS it (session-only). Clear top-right indicator +
-               one click back to where you switched from (admin → orgs). -->
+               seat in and are acting AS it (session-only). Clear indicator + one
+               click back to where you switched from (admin → orgs). -->
           @if (auth.isAwayFromHome()) {
             <span class="flex items-center gap-2 rounded-full border border-hairline bg-fill px-3 py-1 text-sm">
               <span class="text-secondary">Acting as</span>
@@ -39,31 +57,10 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
           }
           @if (auth.isLoggedIn()) {
             <app-user-menu />
+            <button type="button" class="bp-btn-grad" (click)="signOut()">Sign Out</button>
           }
         </div>
       </div>
-
-      @if (auth.isLoggedIn()) {
-        <!-- Sign Out pinned to the window's very top-right (24px edge, h-14
-             centered) — the exact spot the public header's Sign In sits, so the
-             auth button is consistent across signed-out/in. The three-dots (which
-             also holds sign-out) stays in the inset cluster, to its left. -->
-        <div class="absolute right-6 top-0 z-10 flex h-14 items-center">
-          <button type="button" class="bp-btn-grad" (click)="signOut()">Sign Out</button>
-        </div>
-      }
-
-      @if (auth.isLoggedIn()) {
-        <nav class="bp-header-inset flex items-center gap-1 overflow-x-auto pb-2">
-          @for (item of navItems(); track item.path) {
-            <a [routerLink]="item.path" [queryParams]="item.query ?? null"
-               routerLinkActive="bp-nav-link--active"
-               [routerLinkActiveOptions]="{ exact: item.exact }" class="bp-nav-link">
-              <lucide-icon [name]="item.icon" [size]="16" [strokeWidth]="1.75" />{{ item.label }}
-            </a>
-          }
-        </nav>
-      }
     </header>
 
     <!-- Vertical paddings ride the --shell-pt/--shell-pb tokens — the SAME pair
