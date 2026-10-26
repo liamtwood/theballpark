@@ -2132,9 +2132,8 @@ body {
   gap: 16px;
   padding: 12px 20px;
   border-radius: 26px;
-  background: var(--color-surface);
+  background: transparent;
   border: 1px solid var(--color-border-hairline);
-  box-shadow: var(--shadow-md);
 }
 .bp-run-pill__dot {
   flex: none;
