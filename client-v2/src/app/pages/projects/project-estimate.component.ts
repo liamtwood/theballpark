@@ -209,10 +209,17 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                         <lucide-icon name="plus" [size]="16" />
                       </button>
                     } @else if (!isDraftProject() && !g.isProject) {
+                      <!-- circle-+ : pick from this supplier's other catalogue items. -->
+                      <button type="button" class="shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
+                              (click)="openAddForSupplier(g)"
+                              [attr.aria-label]="'Pick another item from ' + g.name" title="Pick from this supplier's items">
+                        <lucide-icon name="circle-plus" [size]="16" />
+                      </button>
+                      <!-- plain + : the add-new-item dialog. -->
                       <button type="button" class="shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
                               (click)="openAdd()"
                               aria-label="Add a new item" title="Add new item">
-                        <lucide-icon name="circle-plus" [size]="16" />
+                        <lucide-icon name="plus" [size]="16" />
                       </button>
                     }
                   </span>
@@ -967,6 +974,27 @@ export class ProjectEstimateComponent {
     this.router.navigate(['/projects', this.projectId()], {
       queryParams: { tab: 'inbox', supplier: g.id },
     });
+  }
+
+  /** Active supplier card circle-"+" → pick from THIS supplier's OTHER catalogue
+   *  items (the explore flow, supplier fixed, whole catalogue). An active
+   *  supplier's lines are sent/locked (not `editable`), so pendingExisting is
+   *  empty → this only ADDS fresh lines, never reconciles. */
+  protected openAddForSupplier(g: { id: string; name: string }): void {
+    this.dialogVariant.set('explore');
+    this.pendingCategoryId.set(null);
+    this.pendingCategoryName.set('');
+    this.pendingCategoryIcon.set(null);
+    this.pendingSuppliers.set([{ id: g.id, name: g.name }]);
+    this.pendingExisting.set(
+      this.rows()
+        .filter((q) => q.supplierId === g.id && !!q.itemId && editable(q))
+        .map((q) => ({
+          lineId: q.id, itemId: q.itemId, name: q.name ?? '', cost: q.basePrice,
+          quantity: q.quantity, categoryName: q.categoryName, subcategoryName: null,
+        }))
+    );
+    this.adding.set(true);
   }
 
   /** "Explore More" on a selected line's preview → the EXPLORE flow: browse
