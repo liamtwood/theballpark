@@ -63,7 +63,7 @@ import { MarkdownPipe } from '../../shared/markdown.pipe';
 
           @if (gallery().length) {
             <div class="flex flex-col gap-2">
-              <span class="bp-qv-spec__label"><lucide-icon name="image" [size]="13" /> Past projects</span>
+              <span class="bp-qv-spec__label"><lucide-icon name="image" [size]="13" /> Projects</span>
               <app-image-carousel [images]="gallery()" [alt]="s.name + ' project'" fit="cover" />
             </div>
           }
