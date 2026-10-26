@@ -65,15 +65,15 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
           <span class="bp-body-small shrink-0 truncate text-text" style="font-weight: 700; max-width: 24ch">{{ p.name }}</span>
         }
         <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Your current estimated total — every line at its latest price (ex VAT).'">
-          <span class="bp-body-small text-secondary">Working ballpark</span>
+          <span class="bp-body-small text-muted">Working ballpark</span>
           <span class="bp-body-small text-text" style="font-weight: 700">{{ workingTotal() | currency: currency() : 'symbol' : '1.0-0' }}</span>
         </span>
         <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Line items both sides have accepted, out of the project total (excludes cancelled).'">
-          <span class="bp-body-small text-secondary">Agreed items</span>
+          <span class="bp-body-small text-muted">Agreed items</span>
           <span class="bp-body-small text-text" style="font-weight: 700">{{ o()?.agreedItems ?? 0 }} of {{ o()?.totalItems ?? 0 }}</span>
         </span>
         <span class="flex shrink-0 items-baseline gap-2 whitespace-nowrap" [title]="'Supplier conversations with at least one item still to agree.'">
-          <span class="bp-body-small text-secondary">Open threads</span>
+          <span class="bp-body-small text-muted">Open threads</span>
           <span class="bp-body-small text-text" style="font-weight: 700">{{ o()?.openThreads ?? 0 }}</span>
         </span>
 
