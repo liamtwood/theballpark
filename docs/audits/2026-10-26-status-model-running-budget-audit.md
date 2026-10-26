@@ -74,4 +74,16 @@ Designer closed its side: conformance strong; standing security/correctness find
 **Sweep applied 2026-10-26** (`97d80f4c` DB/RLS, `00e145ef` service): all four
 standing findings fixed — live on v2dev (`jwerngwvensmmhwrcgul`) and in the
 rebuild migrations (`0022`/`0023`). Backend restarted clean (health 200). Only
-L3/L4 remain, both NOTED/defer (no action). Slice is clear.
+L3/L4 remain, both NOTED/defer (no action).
+
+**VERIFIED 2026-10-26 (designer, security lane)** — all four fixes checked against
+the committed code; slice CLEAN, no residual findings:
+- M1: adversarial trace — a provider INSERT/UPDATE with `org_id`≠agency has no `pp`
+  row satisfying `pp.org_id=<forged> AND pp.provider_org_id=caller` → rejected by
+  WITH CHECK; only genuinely-engaged agencies pass. No orphaning / cross-tenant write.
+- L1: trigger raises on party change (incl. admin — correct); parties immutable.
+- L2: no provider DELETE; soft-delete via `_upd` only.
+- LM1: `clearedBy` dropped only when the CLEARED side re-accepts (not the other side).
+- Agency's `0020 _all` policy untouched (additive permissive OR) — access unaffected.
+
+**Slice fully audited, fixed, and verified. Nothing outstanding.**
