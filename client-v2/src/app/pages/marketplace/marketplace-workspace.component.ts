@@ -19,11 +19,13 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
     <!-- Row (relative anchor): the centred workspace container + (project only)
          the quote cart as a RIGHT-edge flyover overlay — Amazon-style, it sits
          on top of the right gutter and does NOT reflow the workspace. -->
-    <div class="relative flex min-h-0 flex-1">
+    <div class="relative flex min-h-0 flex-1" [class.ws-bare]="!framed()">
       <!-- Rounded white container, centred + gutter-reserved so its edges line up
-           with the header. Search fixed at the top; only the grid scrolls. -->
-      <div class="min-h-0 min-w-0 flex-1 bp-gutter px-6 pt-1">
-        <div class="mx-auto flex h-full min-h-0 w-full max-w-[var(--workspace-max)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-hairline bg-surface shadow-[var(--shadow-md)]">
+           with the header. Search fixed at the top; only the grid scrolls. The
+           'ws-bare' variant (project tab) drops the card so the grid's scrollbar
+           reaches the window edge like the other project tabs. -->
+      <div class="ws-frame min-h-0 min-w-0 flex-1 bp-gutter px-6 pt-1">
+        <div class="ws-card mx-auto flex h-full min-h-0 w-full max-w-[var(--workspace-max)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-hairline bg-surface shadow-[var(--shadow-md)]">
           <div class="shrink-0 p-4 pb-3">
             <app-marketplace-controls
               class="block"
@@ -34,7 +36,7 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
             />
           </div>
           <!-- Rails: cats fixed (no scrollbar — down-arrow peek) + grid scrolls. -->
-          <div class="flex min-h-0 flex-1 gap-6 px-4 pb-4">
+          <div class="ws-rails flex min-h-0 flex-1 gap-6 px-4 pb-4">
             <div class="hidden w-[210px] shrink-0 min-h-0 xl:block">
               <!-- Gray card for the categories. Plain card, not the bp-card class
                    (its display:block would beat the flex column). -->
@@ -47,7 +49,7 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
 
             <!-- p-4 breathing room so the cards' (bigger) shadow/halo isn't
                  clipped into a hard rectangle by this scroll container's edges. -->
-            <div class="min-h-0 min-w-0 flex-1 overflow-y-auto p-4">
+            <div class="ws-scroll min-h-0 min-w-0 flex-1 overflow-y-auto p-4">
               <ng-content />
             </div>
           </div>
@@ -64,8 +66,29 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
       }
     </div>
   `,
+  styles: [`
+    /* 'ws-bare' (project Marketplace tab): drop the bordered card so the grid
+       scrolls at the WINDOW EDGE like the other project tabs (Running budget /
+       Inbox / Details) — the global Marketplace page keeps the framed card. The
+       controls + category rail stay fixed; only the grid scrolls. */
+    .ws-bare .ws-frame { padding-inline: 0; }
+    .ws-bare .ws-card {
+      max-width: none;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      border-radius: 0;
+    }
+    .ws-bare .ws-rails { padding-right: 0; }
+    .ws-bare .ws-scroll { scrollbar-gutter: stable; }
+  `],
 })
 export class MarketplaceWorkspaceComponent {
+  /** Framed (default) = the bordered white workspace card (global Marketplace).
+   *  false = 'bare' — no card; the grid scrolls at the window edge to match the
+   *  other project tabs (used by the in-project Marketplace tab). */
+  readonly framed = input(true);
+
   /** Project-only quote cart: shows the toggle in the controls + the right-side
    *  `[cart]` slot. Off by default so the global marketplace is unchanged. */
   readonly showCart = input(false);
