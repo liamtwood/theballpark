@@ -17,6 +17,15 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
   imports: [LucideAngularModule, TooltipModule, CatalogueSearchComponent, ViewToggleComponent, TabBandComponent, MarketplaceFiltersComponent],
   host: { class: 'block' },
   template: `
+    <!-- Type (Items|Suppliers) — ALWAYS visible, ABOVE the search (moved out of
+         the filter toggle, Liam 2026-10-26). Hidden on a pinned single-supplier
+         store (supplier-detail's Store tab). -->
+    @if (!pinned()) {
+      <div class="mb-3 w-fit">
+        <app-tab-band [tabs]="modeTabs" [active]="store.mode()" [compact]="true" (activeChange)="store.setMode($event)" />
+      </div>
+    }
+
     <!-- Row 1: prominent full-width search + count + the 3-icon cluster. -->
     <div class="flex items-center gap-3">
       <div class="min-w-0 flex-1">
@@ -55,28 +64,17 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
       }
     </div>
 
-    <!-- Row 2: Type (left, cat-container width) · Filter (left-aligned with the
-         first item card) · View (right) — each titled, all the same 40px control
-         height. gap-6 matches the rails gap so Filter lines up over the grid. -->
+    <!-- Row 2: Filter (left) · View (right) — behind the options toggle. Type
+         moved above the search (Liam 2026-10-26). -->
     @if (open()) {
-      <div class="mt-3 flex items-start gap-6">
-        <!-- Type (Items|Suppliers) is meaningless on a pinned single-supplier
-             store (supplier-detail's Store tab) — hide it there. -->
-        @if (!pinned()) {
-          <div class="w-[210px] shrink-0">
-            <span class="bp-field-label mb-1.5 block font-bold text-text">Type</span>
-            <app-tab-band [tabs]="modeTabs" [active]="store.mode()" [fill]="true" [compact]="true" (activeChange)="store.setMode($event)" />
-          </div>
-        }
-        <div class="flex min-w-0 flex-1 items-start justify-between gap-4">
-          <div>
-            <span class="bp-field-label mb-1.5 block font-bold text-text">Filter</span>
-            <app-marketplace-filters />
-          </div>
-          <div>
-            <span class="bp-field-label mb-1.5 block font-bold text-text">View</span>
-            <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
-          </div>
+      <div class="mt-3 flex items-start justify-between gap-6">
+        <div>
+          <span class="bp-field-label mb-1.5 block font-bold text-text">Filter</span>
+          <app-marketplace-filters />
+        </div>
+        <div>
+          <span class="bp-field-label mb-1.5 block font-bold text-text">View</span>
+          <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
         </div>
       </div>
     }
