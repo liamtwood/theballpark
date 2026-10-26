@@ -415,7 +415,9 @@ async function attachAcceptance(agencyOrgId, lines) {
 async function getEstimate(orgId, projectId) {
   const r = await pool.query(ESTIMATE_SQL, [projectId, orgId]);
   if (!r.rows.length) return null;
-  return estimateFromRow(r.rows[0]);
+  // itemCount = the project's line count (the hero pill's "N items"); same
+  // aggregate row the cascade total comes from, so they can't drift.
+  return { ...estimateFromRow(r.rows[0]), itemCount: Number(r.rows[0].line_count) || 0 };
 }
 
 /** Run one cascade row through the SOW formula (the SAME call getEstimate and

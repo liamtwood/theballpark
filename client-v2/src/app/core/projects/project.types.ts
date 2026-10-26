@@ -154,6 +154,8 @@ export interface EstimateBreakdown {
   fees: number;
   /** projectCosts + coverage + fees (ex-VAT). */
   projectTotal: number;
+  /** How many lines the project has (the hero pill's "N items"). */
+  itemCount: number;
   // Back-compat aliases.
   subtotal: number;
   clientTotal: number;

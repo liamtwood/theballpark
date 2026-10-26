@@ -930,6 +930,7 @@ export class ProjectEstimateComponent {
       coverage: 0,
       fees: 0,
       projectTotal: 0,
+      itemCount: 0,
       subtotal: 0,
       clientTotal: 0,
     };

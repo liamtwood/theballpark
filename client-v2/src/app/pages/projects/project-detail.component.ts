@@ -108,8 +108,22 @@ interface DetailForm {
              working total — wired in S2 now the line cluster feeds the estimate. -->
         <app-page-hero [eyebrow]="projectHero().eyebrow" [dense]="true" [contained]="true"
                        [back]="{ label: 'Back', href: '/projects', history: true }"
-                       [title]="projectHero().title" [subtitle]="projectHero().subtitle"
-                       rightEyebrow="Ballpark" [rightTitle]="ballparkTotalStr()" rightSubtitle="Exc. VAT" />
+                       [title]="projectHero().title" [subtitle]="projectHero().subtitle">
+          <!-- Running-ballpark pill (replaces the old BALLPARK / total / Exc. VAT
+               meta, Liam 2026-10-26): dot + label + total on the left, item-count
+               aside on the right. -->
+          <div hero-actions class="bp-run-pill">
+            <span class="bp-run-pill__dot"></span>
+            <span class="bp-run-pill__main">
+              <span class="bp-run-pill__label">Running ballpark</span>
+              <span class="bp-run-pill__amount">{{ ballparkTotalStr() }}</span>
+            </span>
+            <span class="bp-run-pill__aside">
+              <span class="bp-run-pill__count">{{ ballparkItemCount() }} item{{ ballparkItemCount() === 1 ? '' : 's' }}</span>
+              <span class="bp-run-pill__vat">excl. VAT</span>
+            </span>
+          </div>
+        </app-page-hero>
       } @else {
         <!-- Active hero ABOVE the tabs: cover + name + the four negotiation tiles
              (Working ballpark / Confirmed so far / Agreed items / Open threads). -->
@@ -504,6 +518,8 @@ export class ProjectDetailComponent {
       maximumFractionDigits: 0,
     }).format(this.estimate.value()?.projectTotal ?? 0)
   );
+  /** Items added to the running ballpark — shown in the hero pill. */
+  protected readonly ballparkItemCount = computed(() => this.estimate.value()?.itemCount ?? 0);
   /** Image-picker drawer (pV2-MEDIA-01b). */
   protected readonly imgDrawer = signal(false);
   /** pV2-BUILDUP-04 — Final Quote → client-facing document overlays. */

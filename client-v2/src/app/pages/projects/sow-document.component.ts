@@ -301,5 +301,5 @@ export class SowDocumentComponent {
 const EMPTY_BD: EstimateBreakdown = {
   hardCosts: 0, marginPct: 0, marginAmount: 0, projectCosts: 0,
   contingencyPct: 0, contingency: 0, insurancePct: 0, insurance: 0,
-  coverage: 0, fees: 0, projectTotal: 0, subtotal: 0, clientTotal: 0,
+  coverage: 0, fees: 0, projectTotal: 0, itemCount: 0, subtotal: 0, clientTotal: 0,
 };

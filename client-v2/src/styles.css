@@ -2121,6 +2121,43 @@ body {
 }
 .bp-pill--accent:hover { background: color-mix(in srgb, var(--theme-accent) 20%, var(--color-surface)); }
 
+/* Running-ballpark hero pill (project hero right-meta): a soft-pink container
+   with a dot + label + total, and a lighter inset aside for the item count +
+   "excl. VAT". Replaces the plain BALLPARK / total / Exc. VAT stack. */
+.bp-run-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 10px 10px 16px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--theme-accent) 14%, var(--color-surface));
+}
+.bp-run-pill__dot {
+  flex: none;
+  width: 10px; height: 10px;
+  border-radius: 9999px;
+  background: var(--theme-accent);
+}
+.bp-run-pill__main { display: flex; flex-direction: column; line-height: 1.1; }
+.bp-run-pill__label {
+  font-size: var(--text-2xs); font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--color-text-secondary);
+}
+.bp-run-pill__amount {
+  margin-top: 3px;
+  font-size: var(--text-2xl); font-weight: 700; color: var(--color-text);
+  line-height: 1.05;
+}
+.bp-run-pill__aside {
+  display: flex; flex-direction: column; align-items: flex-start;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  line-height: 1.25;
+}
+.bp-run-pill__count { font-size: var(--text-sm); font-weight: 600; color: var(--color-text); }
+.bp-run-pill__vat { font-size: var(--text-2xs); color: var(--color-text-secondary); }
+
 /* pV2-PROJECTS-S2 — the estimate line "table": ONE grid template shared by the
    column-header row (project-estimate) and each estimate-item-row, so the
    columns line up. Separate grid containers don't share auto tracks, so the
