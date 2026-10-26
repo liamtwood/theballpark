@@ -192,35 +192,39 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                     }
                     <lucide-icon [name]="g.iconName || 'building-2'" [size]="24" [strokeWidth]="1.75" class="shrink-0 text-[var(--theme-accent)]" />
                   }
-                  <!-- name + a subtle inline "+" add, grouped on the left so the +
-                       sits next to the name. Draft: add a line to this category
-                       (the section-level "Add line" stays too). Active (supplier
-                       card): open the supplier's inbox to add a requirement.
-                       (Liam 2026-10-26) -->
+                  <!-- Card-level add (+ icons) is gated OFF for now (SHOW_CARD_ADD,
+                       Liam 2026-10-26): a custom line can't yet be attributed to a
+                       supplier in active (see docs/audits), and draft adds go via the
+                       section-level "Add line" → Your own costs. Code kept for when the
+                       model supports supplier attribution — flip SHOW_CARD_ADD to use it:
+                       draft = per-category +, active = circle-+ (pick from the supplier's
+                       catalogue) + plain + (add new item). -->
                   <span class="flex min-w-0 flex-1 items-center gap-1.5">
                     <button type="button" class="min-w-0 text-left" (click)="toggle(g.id)">
                       <span class="bp-list-title block truncate"
                             [style.font-size]="isDraftProject() ? 'var(--text-lg)' : 'var(--text-xl)'">{{ g.name }}</span>
                     </button>
-                    @if (isDraftProject() && !g.isProject) {
-                      <button type="button" class="shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
-                              (click)="openAdd({ id: g.id, name: g.name, iconName: g.iconName })"
-                              [attr.aria-label]="'Add line to ' + g.name" title="Add line">
-                        <lucide-icon name="plus" [size]="16" />
-                      </button>
-                    } @else if (!isDraftProject() && !g.isProject) {
-                      <!-- circle-+ : pick from this supplier's other catalogue items. -->
-                      <button type="button" class="shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
-                              (click)="openAddForSupplier(g)"
-                              [attr.aria-label]="'Pick another item from ' + g.name" title="Pick from this supplier's items">
-                        <lucide-icon name="circle-plus" [size]="16" />
-                      </button>
-                      <!-- plain + : the add-new-item dialog. -->
-                      <button type="button" class="shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
-                              (click)="openAdd()"
-                              aria-label="Add a new item" title="Add new item">
-                        <lucide-icon name="plus" [size]="16" />
-                      </button>
+                    @if (SHOW_CARD_ADD) {
+                      @if (isDraftProject() && !g.isProject) {
+                        <button type="button" class="shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
+                                (click)="openAdd({ id: g.id, name: g.name, iconName: g.iconName })"
+                                [attr.aria-label]="'Add line to ' + g.name" title="Add line">
+                          <lucide-icon name="plus" [size]="16" />
+                        </button>
+                      } @else if (!isDraftProject() && !g.isProject) {
+                        <!-- circle-+ : pick from this supplier's other catalogue items. -->
+                        <button type="button" class="shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
+                                (click)="openAddForSupplier(g)"
+                                [attr.aria-label]="'Pick another item from ' + g.name" title="Pick from this supplier's items">
+                          <lucide-icon name="circle-plus" [size]="16" />
+                        </button>
+                        <!-- plain + : the add-new-item dialog. -->
+                        <button type="button" class="shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
+                                (click)="openAdd()"
+                                aria-label="Add a new item" title="Add new item">
+                          <lucide-icon name="plus" [size]="16" />
+                        </button>
+                      }
                     }
                   </span>
                   @if (isDraftProject()) {
@@ -975,6 +979,12 @@ export class ProjectEstimateComponent {
       queryParams: { tab: 'inbox', supplier: g.id },
     });
   }
+
+  /** Feature flag — the per-card add "+" icons (draft per-category, active
+   *  circle-+ / plain +). OFF for now: a custom line can't be attributed to a
+   *  supplier in the current model (see the status/line audit). Flip to true
+   *  once supplier attribution lands. Markup + handlers are kept behind it. */
+  protected readonly SHOW_CARD_ADD = false;
 
   /** Active supplier card circle-"+" → pick from THIS supplier's OTHER catalogue
    *  items (the explore flow, supplier fixed, whole catalogue). An active
