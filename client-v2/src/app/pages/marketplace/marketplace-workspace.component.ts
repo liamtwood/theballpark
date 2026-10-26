@@ -78,7 +78,11 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
     :host(.ws-bare) .ws-root { display: block; }
     :host(.ws-bare) .ws-frame { overflow: visible; padding-top: 0; }
     :host(.ws-bare) .ws-card { height: auto; min-height: 0; overflow: visible; }
-    :host(.ws-bare) .ws-rails { min-height: 0; }
+    /* One shared top gap on the rails row + no extra top inset on the grid, so
+       the left rail (cat container) and the first row of item cards line up
+       vertically (the grid's p-4 top is only needed to stop shadow clipping in
+       the framed scroll container, which the bare variant doesn't have). */
+    :host(.ws-bare) .ws-rails { min-height: 0; padding-top: 8px; }
     :host(.ws-bare) .ws-rail-col {
       min-height: 0;
       position: sticky;
@@ -86,7 +90,7 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
       align-self: flex-start;
       max-height: calc(100vh - 11rem);
     }
-    :host(.ws-bare) .ws-scroll { overflow: visible; min-height: 0; }
+    :host(.ws-bare) .ws-scroll { overflow: visible; min-height: 0; padding-top: 0; }
   `],
 })
 export class MarketplaceWorkspaceComponent {
