@@ -193,8 +193,9 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                 <button type="button" class="min-w-0 flex-1 text-left" (click)="toggle(g.id)">
                   <span class="bp-list-title block truncate text-[length:var(--text-lg)]">{{ g.name }}</span>
                   @if (!isDraftProject() && g.summaryLabel) {
-                    <!-- Summary status of all the supplier's items (Messages-tab logic). -->
-                    <span [class]="g.summaryClass" class="mt-1 inline-block">{{ g.summaryLabel }}</span>
+                    <!-- Summary status of all the supplier's items (Messages-tab logic).
+                         Same 16ch centered treatment as the per-line Status pill. -->
+                    <span [class]="g.summaryClass" class="mt-1 inline-flex" style="min-width: 16ch; justify-content: center; text-align: center">{{ g.summaryLabel }}</span>
                   }
                 </button>
                 @if (isDraftProject()) {
@@ -303,7 +304,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       </span>
                       <span class="bp-body-small text-secondary">× {{ l.quantity }}</span>
                       <button type="button" class="bp-pill bp-pill--accent justify-self-start" (click)="selectLine(l)" [attr.aria-label]="'Quick view ' + l.name">Quick view</button>
-                      <span [class]="activeStatusPill(l)" style="min-width: 20ch; justify-content: center; text-align: center">{{ activeStatusLabel(l) }}</span>
+                      <span [class]="activeStatusPill(l)" style="min-width: 16ch; justify-content: center; text-align: center">{{ activeStatusLabel(l) }}</span>
                       <span class="bp-body-small text-right tabular-nums text-secondary">{{ lineCostOf(l, mk) | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
                   }
