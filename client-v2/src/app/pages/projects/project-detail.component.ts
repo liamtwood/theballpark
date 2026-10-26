@@ -358,7 +358,11 @@ interface DetailForm {
             <app-inbox-project [viewer]="'agency'" [projectId]="p.id" [embedded]="true" />
           }
           @default {
-            <app-project-marketplace [projectId]="p.id" />
+            <!-- Scrolls in the page's bp-gutter (window-edge scrollbar) like the
+                 other project tabs; the bare workspace flows inside it. -->
+            <div class="min-h-0 flex-1 bp-gutter">
+              <app-project-marketplace [projectId]="p.id" />
+            </div>
           }
         }
       </div>
