@@ -22,10 +22,11 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
   host: { class: 'block min-h-screen' },
   template: `
     <header class="bp-app-header fixed inset-x-0 top-0 z-40">
-      <!-- ONE row (Liam 2026-10-26): wordmark on the left (mirroring Sign Out on
-           the right), the primary nav in the middle, the account cluster + Sign
-           Out on the right. -->
-      <div class="bp-header-inset flex h-14 items-center gap-4">
+      <!-- ONE row (Liam 2026-10-26): wordmark HARD-PINNED to the left window edge
+           (px-6 = 24px), the primary nav in the middle, the account cluster + Sign
+           Out hard-pinned to the right edge. flex reserves space so nothing
+           overlaps; the nav scrolls on a narrow window. -->
+      <div class="flex h-14 items-center gap-4 px-6">
         <!-- Wordmark routes to /home (pV2-02b): authenticated users clicking the
              logo belong on home. -->
         <app-wordmark link="/home" class="shrink-0" />
