@@ -1,4 +1,5 @@
 import { InboxThreadItem } from '../../core/inbox/inbox.service';
+import { acceptanceCode, LINE_DISPLAY_FALLBACK } from '../../core/status/line-display-status';
 
 export type PillTone = 'green' | 'yellow' | 'gray' | 'red';
 export interface PillView {
@@ -38,11 +39,11 @@ const STATUS_VIEW_AGENCY: Record<string, PillView> = {
  *  from the viewer's label map. */
 export function statusPill(it: InboxThreadItem, isAgency: boolean): PillView {
   if (it.status === 'accepted') {
-    const mine = isAgency ? it.buyerAccepted : it.sellerAccepted;
-    const theirs = isAgency ? it.sellerAccepted : it.buyerAccepted;
-    if (mine && theirs) return { label: 'Both accepted', tone: 'green' };
-    if (mine) return { label: 'You accepted', tone: 'green' };
-    if (theirs) return { label: 'They accepted', tone: 'green' };
+    // ONE shared accept→code deriver (viewer-relative: agency=buyer); label from
+    // the line_display_status fallback so the inbox, Running budget and estimate
+    // rows all read alike ("All confirmed", not "Both accepted").
+    const code = acceptanceCode(it, isAgency ? 'buyer' : 'seller');
+    if (code) return { label: LINE_DISPLAY_FALLBACK[code], tone: 'green' };
     return { label: 'Accepted', tone: 'green' };
   }
   const map = isAgency ? STATUS_VIEW_AGENCY : STATUS_VIEW;

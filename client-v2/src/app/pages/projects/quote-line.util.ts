@@ -1,6 +1,7 @@
 import { QuoteLine, QuoteLineStatus } from '../../core/projects/project.types';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { effectiveUnitPrice, lineTotal, LinePricingInput } from '@ballpark/line-pricing';
+import { acceptanceCode, LINE_DISPLAY_FALLBACK } from '../../core/status/line-display-status';
 
 /** Per-item send-state badge labels + soft-token pill classes (Final view). */
 export const STATUS_LABELS: Record<QuoteLineStatus, string> = {
@@ -19,11 +20,11 @@ const STATUS_PILL: Record<QuoteLineStatus, string> = {
 };
 
 export function statusLabel(l: QuoteLine): string {
-  // Acceptance (derived from the event journal) wins over the coarse status so
-  // the Running budget reads the same as the inbox ("Both accepted", not "Booked").
-  if (l.bothAccepted) return 'Both accepted';
-  if (l.sellerAccepted && !l.buyerAccepted) return 'They accepted';
-  if (l.buyerAccepted && !l.sellerAccepted) return 'You accepted';
+  // Acceptance (derived from the event journal) wins over the coarse status.
+  // ONE shared deriver + label source (line_display_status fallback) so this
+  // reads the same as the inbox and the Running budget ("All confirmed").
+  const code = acceptanceCode(l, 'buyer');
+  if (code) return LINE_DISPLAY_FALLBACK[code];
   return STATUS_LABELS[l.status] ?? '';
 }
 export function statusPill(l: QuoteLine): string {
