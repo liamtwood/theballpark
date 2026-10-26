@@ -47,7 +47,7 @@ import { isDeclined } from './quote-line.util';
          rail + grid). Project-specific bits are the strip data, the card "+"
          (adds to THIS project's quote) and the quote cart rail on the right —
          toggled by the cart icon in the controls. -->
-    <app-marketplace-workspace [framed]="false" [showCart]="true" [cartCount]="visibleQuoteCount()" [(cartOpen)]="cartOpen">
+    <app-marketplace-workspace [showCart]="true" [cartCount]="visibleQuoteCount()" [(cartOpen)]="cartOpen">
       <app-category-strip
         strip
         mode="drilldown"
