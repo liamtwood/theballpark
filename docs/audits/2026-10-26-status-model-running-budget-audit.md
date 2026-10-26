@@ -62,11 +62,16 @@ Designer closed its side: conformance strong; standing security/correctness find
 
 | # | Sev | Owner | Status |
 |---|---|---|---|
-| M1 | MEDIUM | DB/RLS (`0023`) | OPEN — recommend before "done" |
+| M1 | MEDIUM | DB/RLS (`0023`) | **FIXED** `97d80f4c` (live + migration; org_id pinned) |
 | M2 | MEDIUM | client | **FIXED** `0b449da3` |
-| LM1 | LOW-MED | `message-event.service` | OPEN |
+| LM1 | LOW-MED | `message-event.service` | **FIXED** `00e145ef` |
 | LM2 | LOW-MED | — | RESOLVED (not a bug) |
-| L1 | LOW | DB/RLS (`0022`) | OPEN |
-| L2 | LOW | DB/RLS (`0023`) | OPEN |
+| L1 | LOW | DB/RLS (`0022`) | **FIXED** `97d80f4c` (party-immutability trigger) |
+| L2 | LOW | DB/RLS (`0023`) | **FIXED** `97d80f4c` (no provider DELETE) |
 | L3 | LOW | client | NOTED (defer) |
 | L4 | LOW | client | NOTED (acceptable) |
+
+**Sweep applied 2026-10-26** (`97d80f4c` DB/RLS, `00e145ef` service): all four
+standing findings fixed — live on v2dev (`jwerngwvensmmhwrcgul`) and in the
+rebuild migrations (`0022`/`0023`). Backend restarted clean (health 200). Only
+L3/L4 remain, both NOTED/defer (no action). Slice is clear.
