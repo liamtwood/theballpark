@@ -52,7 +52,9 @@ Status axes split correctly (`line_status`=lifecycle, `message_item_status`=sole
 
 **DB parity ✓ (code audit).** All 5 status codelists live in v2dev (`jwerngwvensmmhwrcgul`) match `0007_codelists_seed.sql` exactly (values, type, default, consumers); `line_display_status` correctly has no consumer (derived). A rebuild re-run reproduces what's live.
 
-**Verify-point (open; designer).** Confirm `agencyOrgId` in `inbox.service` is the PROJECT's org (`projects.org_id`), not the viewer's — the side derivation must be absolute, not perspective-dependent.
+**Verify-point CONFIRMED (designer).** `agencyOrgId = projects.org_id` (`inbox.service:181`) — the PROJECT's agency, absolute, not the viewer's (`:182` 404s a non-owner agency viewer). So the side derivation (`from_org===agency?buyer:seller`) is perspective-independent — a supplier viewer gets the same buyer/seller attribution. Sound.
+
+Designer closed its side: conformance strong; standing security/correctness findings = M1, LM1, L1, L2 (below). #3 withdrawn (resolution confirmed). The consolidation (M2) validated as a pure state→code→label mapper — `deriveLineState` stays the sole source of acceptance STATE.
 
 ---
 
