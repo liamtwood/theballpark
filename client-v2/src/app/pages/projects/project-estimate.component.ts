@@ -211,8 +211,8 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                     } @else if (!isDraftProject() && !g.isProject) {
                       <button type="button" class="shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
                               (click)="openAddForSupplier(g)"
-                              [attr.aria-label]="'Add an item to ' + g.name" title="Add item">
-                        <lucide-icon name="plus" [size]="16" />
+                              [attr.aria-label]="'Add an item to ' + g.name" title="Add item from marketplace">
+                        <lucide-icon name="circle-plus" [size]="16" />
                       </button>
                     }
                   </span>
