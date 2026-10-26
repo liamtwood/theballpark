@@ -210,8 +210,8 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       </button>
                     } @else if (!isDraftProject() && !g.isProject) {
                       <button type="button" class="shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
-                              (click)="openAddForSupplier(g)"
-                              [attr.aria-label]="'Add an item to ' + g.name" title="Add item from marketplace">
+                              (click)="openAdd()"
+                              aria-label="Add a new item" title="Add new item">
                         <lucide-icon name="circle-plus" [size]="16" />
                       </button>
                     }
@@ -967,28 +967,6 @@ export class ProjectEstimateComponent {
     this.router.navigate(['/projects', this.projectId()], {
       queryParams: { tab: 'inbox', supplier: g.id },
     });
-  }
-
-  /** Active supplier card "+" (beside the name) → add an item to THIS supplier
-   *  via the add dialog, like draft's per-category +. The explore flow (browse
-   *  the supplier's catalogue), supplier fixed, no category filter (its whole
-   *  catalogue). An active supplier's lines are sent/locked (not `editable`), so
-   *  pendingExisting is empty → this only ADDS fresh lines, never reconciles. */
-  protected openAddForSupplier(g: { id: string; name: string }): void {
-    this.dialogVariant.set('explore');
-    this.pendingCategoryId.set(null);
-    this.pendingCategoryName.set('');
-    this.pendingCategoryIcon.set(null);
-    this.pendingSuppliers.set([{ id: g.id, name: g.name }]);
-    this.pendingExisting.set(
-      this.rows()
-        .filter((q) => q.supplierId === g.id && !!q.itemId && editable(q))
-        .map((q) => ({
-          lineId: q.id, itemId: q.itemId, name: q.name ?? '', cost: q.basePrice,
-          quantity: q.quantity, categoryName: q.categoryName, subcategoryName: null,
-        }))
-    );
-    this.adding.set(true);
   }
 
   /** "Explore More" on a selected line's preview → the EXPLORE flow: browse
