@@ -178,11 +178,11 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
             <!-- Category card — name + cat total, a chevron that expands the
                  items underneath (icon + fill removed, Liam 2026-10-21). -->
             <div class="overflow-hidden rounded-[var(--radius-card)]" [class.bp-card]="!isDraftProject()" [class.bp-card--lifted]="!isDraftProject()" [class.px-5]="!isDraftProject()" [class.py-2]="!isDraftProject()">
-              <!-- Header: a top ROW (number · icon · name … Add item · chevron),
+              <!-- Header: a top ROW (number · icon · name · subtle "+" add · chevron),
                    all vertically centered; then the supplier's summary status pill
                    on its OWN row below, left-aligned under the number (Liam
-                   2026-10-26). Not one big <button> so the Add item action doesn't
-                   nest buttons; the name and chevron each toggle the card. -->
+                   2026-10-26). Not one big <button> so the + action doesn't nest
+                   buttons; the name and chevron each toggle the card. -->
               <div class="p-3">
                 <div class="flex w-full items-center gap-3.5">
                   @if (!isDraftProject()) {
@@ -192,19 +192,32 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                     }
                     <lucide-icon [name]="g.iconName || 'building-2'" [size]="24" [strokeWidth]="1.75" class="shrink-0 text-[var(--theme-accent)]" />
                   }
-                  <button type="button" class="min-w-0 flex-1 text-left" (click)="toggle(g.id)">
-                    <span class="bp-list-title block truncate"
-                          [style.font-size]="isDraftProject() ? 'var(--text-lg)' : 'var(--text-xl)'">{{ g.name }}</span>
-                  </button>
+                  <!-- name + a subtle inline "+" add, grouped on the left so the +
+                       sits next to the name. Draft: add a line to this category
+                       (the section-level "Add line" stays too). Active (supplier
+                       card): open the supplier's inbox to add a requirement.
+                       (Liam 2026-10-26) -->
+                  <span class="flex min-w-0 flex-1 items-center gap-1.5">
+                    <button type="button" class="min-w-0 text-left" (click)="toggle(g.id)">
+                      <span class="bp-list-title block truncate"
+                            [style.font-size]="isDraftProject() ? 'var(--text-lg)' : 'var(--text-xl)'">{{ g.name }}</span>
+                    </button>
+                    @if (isDraftProject() && !g.isProject) {
+                      <button type="button" class="shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
+                              (click)="openAdd({ id: g.id, name: g.name, iconName: g.iconName })"
+                              [attr.aria-label]="'Add line to ' + g.name" title="Add line">
+                        <lucide-icon name="plus" [size]="16" />
+                      </button>
+                    } @else if (!isDraftProject() && !g.isProject) {
+                      <button type="button" class="shrink-0 rounded p-0.5 text-muted transition-colors hover:text-[var(--theme-accent)]"
+                              (click)="openSupplierInbox(g)"
+                              [attr.aria-label]="'Add item with ' + g.name" title="Add item">
+                        <lucide-icon name="plus" [size]="16" />
+                      </button>
+                    }
+                  </span>
                   @if (isDraftProject()) {
                     <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
-                  }
-                  @if (!isDraftProject() && !g.isProject) {
-                    <!-- Opens this supplier's existing Inbox conversation (deep-links
-                         tab=inbox&supplier) to discuss further requirements. -->
-                    <button type="button" class="bp-msg-btn shrink-0" (click)="openSupplierInbox(g)">
-                      <lucide-icon name="plus" [size]="16" /> Add item
-                    </button>
                   }
                   <button type="button" class="shrink-0" (click)="toggle(g.id)"
                           [attr.aria-label]="isOpen(g.id) ? 'Collapse' : 'Expand'">
