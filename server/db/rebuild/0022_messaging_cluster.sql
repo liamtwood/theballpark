@@ -81,6 +81,23 @@ create policy messages_update on public.messages for update
 create policy messages_delete on public.messages for delete
   using (public.app_is_admin());                                           -- messages aren't user-deleted
 grant select, insert, update, delete on public.messages to web_app_user;
+-- The two parties are fixed at send. messages_update's WITH CHECK only requires
+-- the caller to STAY a party, so without this a party could reassign the OTHER
+-- side (e.g. agency repoints to_org_id to a different supplier). RLS can't compare
+-- old vs new, so a trigger pins both party columns immutable. (audit L1)
+create or replace function public.messages_pin_parties() returns trigger
+  language plpgsql as $$
+  begin
+    if new.from_org_id is distinct from old.from_org_id
+       or new.to_org_id is distinct from old.to_org_id then
+      raise exception 'messages.from_org_id / to_org_id are immutable';
+    end if;
+    return new;
+  end;
+  $$;
+drop trigger if exists messages_pin_parties_trg on public.messages;
+create trigger messages_pin_parties_trg before update on public.messages
+  for each row execute function public.messages_pin_parties();
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- message_reads — per-USER read (the inbox is org-shared, so read is per person).

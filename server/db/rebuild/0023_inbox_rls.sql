@@ -50,18 +50,40 @@ create policy project_items_provider_read on public.project_items for select
 -- ═══════════════════════════════════════════════════════════════════════════
 -- project_item_quotes — a provider may READ + WRITE its OWN overlay rows (the
 -- rows tied to its engagement). The agency keeps full access via the 0020 _all
--- policy; this ADDS the provider's self-service on its quote. org_id on the row
--- is still the agency (sacred) — this branch gates on project_provider_id, not
--- org_id, so a supplier insert with org_id = the agency passes.
+-- policy; this ADDS the provider's self-service on its quote.
+--
+-- org_id on the row is the agency (sacred). The engagement row (project_providers)
+-- carries BOTH the agency (pp.org_id) and the supplier (pp.provider_org_id), so we
+-- PIN project_item_quotes.org_id = pp.org_id in the predicate: the DB enforces that
+-- a supplier insert/update keeps org_id = the agency, rather than trusting the app
+-- (audit M1 — acquisition-grade "RLS pins org_id, not the app"). A forged org_id
+-- would otherwise orphan the row out of the agency's own 0020 _all policy.
+--
+-- Split from a single FOR ALL into SELECT/INSERT/UPDATE — no DELETE: quote overlays
+-- are soft-deleted (deleted_at), never hard-deleted by a provider (audit L2).
 -- ═══════════════════════════════════════════════════════════════════════════
-create policy project_item_quotes_provider on public.project_item_quotes for all
+create policy project_item_quotes_provider_read on public.project_item_quotes for select
+  using (exists (select 1 from public.project_providers pp
+                  where pp.id = project_item_quotes.project_provider_id
+                    and pp.provider_org_id = public.app_current_org()
+                    and pp.org_id = project_item_quotes.org_id
+                    and pp.deleted_at is null));
+create policy project_item_quotes_provider_ins on public.project_item_quotes for insert
+  with check (exists (select 1 from public.project_providers pp
+                       where pp.id = project_item_quotes.project_provider_id
+                         and pp.provider_org_id = public.app_current_org()
+                         and pp.org_id = project_item_quotes.org_id
+                         and pp.deleted_at is null));
+create policy project_item_quotes_provider_upd on public.project_item_quotes for update
   using      (exists (select 1 from public.project_providers pp
                         where pp.id = project_item_quotes.project_provider_id
                           and pp.provider_org_id = public.app_current_org()
+                          and pp.org_id = project_item_quotes.org_id
                           and pp.deleted_at is null))
   with check (exists (select 1 from public.project_providers pp
                         where pp.id = project_item_quotes.project_provider_id
                           and pp.provider_org_id = public.app_current_org()
+                          and pp.org_id = project_item_quotes.org_id
                           and pp.deleted_at is null));
 
 -- ═══════════════════════════════════════════════════════════════════════════
