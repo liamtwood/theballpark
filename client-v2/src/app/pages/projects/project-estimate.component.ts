@@ -251,6 +251,9 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
               </div>
 
               @if (g.hasAgreed) {
+                <!-- Thick, rounded separator between the header and the payment
+                     summary — in the tile fill colour (Liam 2026-10-26). -->
+                <div class="mx-3 mt-3 h-1.5 rounded-full bg-fill"></div>
                 <!-- Payment summary — appears once ≥1 item is accepted by both.
                      Money is placeholder (£0 Paid) until payments are wired; terms
                      default to Ballpark 50/50, balance day after delivery. -->
@@ -320,8 +323,9 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                   }
                   } @else {
                   <!-- ACTIVE supplier card: Item | Qty | Quick view | Status | Cost
-                       (read-only budget view), then a Subtotal row below the items. -->
-                  <div class="grid grid-cols-[minmax(0,1fr)_64px_110px_150px_90px] items-center gap-3 border-b border-hairline px-3 py-2">
+                       (read-only budget view), then a Subtotal row below the items.
+                       mt-4 gives vertical padding before the column headers. -->
+                  <div class="mt-4 grid grid-cols-[minmax(0,1fr)_64px_110px_150px_90px] items-center gap-3 border-b border-hairline px-3 py-2">
                     <span class="bp-estimate-th">Item</span>
                     <span class="bp-estimate-th">Qty</span>
                     <span class="bp-estimate-th">Quick view</span>
