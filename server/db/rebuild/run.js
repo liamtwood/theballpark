@@ -27,6 +27,7 @@
 //     node server/db/rebuild/run.js            # apply the pending gap
 //   node server/db/rebuild/run.js --dry-run    # list pending, apply nothing
 //   node server/db/rebuild/run.js --status     # print the ledger + pending, exit
+//   node server/db/rebuild/run.js --env-file=.env.preview   # load that env (per-env config)
 //
 // Safe to re-run: already-applied files are skipped.
 
@@ -37,21 +38,32 @@ const path = require('path');
 const crypto = require('crypto');
 const { Client } = require('pg');
 
-// Load a .env for convenience, but MIGRATION_DATABASE_URL must be set explicitly
-// (we never fall back to the app DATABASE_URL — wrong role, and it would mask a
-// misconfig by running DDL against the owner-less app connection).
+const argv = process.argv.slice(2);
+const DRY_RUN = argv.includes('--dry-run');
+const STATUS_ONLY = argv.includes('--status');
+
+// --env-file=<path> picks which env file to load (default: the worktree .env =
+// dev). Keep a file PER ENV (.env, .env.preview, .env.prod) so every run NAMES
+// its target — the explicit choice is the guard against migrating the wrong DB.
+const envFileArg = argv.find((a) => a.startsWith('--env-file='));
+const ENV_FILE = envFileArg
+  ? path.resolve(process.cwd(), envFileArg.slice('--env-file='.length))
+  : path.resolve(__dirname, '../../../.env');
+
+// Load the chosen env file for convenience, but MIGRATION_DATABASE_URL must be
+// set (we never fall back to the app DATABASE_URL — wrong role, and it would
+// mask a misconfig by running DDL against the owner-less app connection).
 try {
-  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+  require('dotenv').config({ path: ENV_FILE });
 } catch {
   // dotenv is optional here — the env var may be supplied by the shell/CI.
+}
+if (!STATUS_ONLY) {
+  try { console.log(`[run] env file: ${path.relative(process.cwd(), ENV_FILE)}`); } catch { /* best-effort */ }
 }
 
 const DIR = __dirname;
 const MIGRATION_RE = /^\d{4}_.*\.sql$/; // 0001_foo.sql .. 00NN_bar.sql (gaps fine)
-
-const argv = process.argv.slice(2);
-const DRY_RUN = argv.includes('--dry-run');
-const STATUS_ONLY = argv.includes('--status');
 
 function listMigrationFiles() {
   return fs
