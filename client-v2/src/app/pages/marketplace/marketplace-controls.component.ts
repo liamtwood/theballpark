@@ -26,7 +26,7 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
       } @else if (supplierName(); as name) {
         <!-- Pinned single-supplier store (My Shop): the Items|Suppliers toggle is
              pointless here, so show the supplier name instead of an empty gap. -->
-        <span class="bp-body min-w-0 truncate font-semibold text-text">{{ name }}</span>
+        <span class="bp-card-title min-w-0 truncate">{{ name }}</span>
       } @else {
         <span></span>
       }
