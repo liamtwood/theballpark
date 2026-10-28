@@ -124,11 +124,41 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
       justify-content: center;
       flex: none;
     }
+    /* Ballpark-themed multi-select checkbox: a soft rounded SQUARE (never a circle —
+       that reads as a radio / single-select), accent-pink fill + a white tick when
+       checked, hairline border when not. appearance:none for the custom box; accent-color
+       stays as the fallback. Shared by the card + list + table bulk checkboxes. */
     .bp-bulk-check input {
-      width: 16px;
-      height: 16px;
+      appearance: none;
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      position: relative;
+      flex: none;
       cursor: pointer;
+      border: 1px solid var(--color-border-hairline);
+      border-radius: 5px;
+      background: var(--color-surface);
       accent-color: var(--theme-accent);
+      transition: background 0.12s ease, border-color 0.12s ease;
+    }
+    .bp-bulk-check input:hover { border-color: var(--theme-accent); }
+    .bp-bulk-check input:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 1px; }
+    .bp-bulk-check input:checked {
+      background: var(--theme-accent);
+      border-color: var(--theme-accent);
+    }
+    .bp-bulk-check input:checked::after {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      width: 4px;
+      height: 8px;
+      border: solid var(--theme-accent-contrast);
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
     }
     /* Card overlay checkbox — the BARE checkbox, no container/box (Liam QC 2026-10-28).
        RIGHT side: the status pill owns the top-left, and the favourite/quote buttons
