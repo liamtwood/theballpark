@@ -22,17 +22,19 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
   host: { class: 'block min-h-screen' },
   template: `
     <header class="bp-app-header fixed inset-x-0 top-0 z-40">
-      <!-- ONE row (Liam 2026-10-26): wordmark HARD-PINNED to the left window edge
-           (px-6 = 24px), the primary nav in the middle, the account cluster + Sign
-           Out hard-pinned to the right edge. flex reserves space so nothing
-           overlaps; the nav scrolls on a narrow window. -->
-      <div class="flex h-14 items-center gap-4 px-6">
+      <!-- ONE row: wordmark HARD-PINNED to the left window edge and the account
+           cluster + Sign Out HARD-PINNED to the right edge (both absolute, px-6 =
+           24px — Liam 2026-10-26). The primary nav sits in the WORKSPACE COLUMN
+           (--workspace-max, centred) and is LEFT-justified within it, so the header
+           nav lines up with the page content below it (Liam 2026-10-28). The nav
+           scrolls on a narrow window. -->
+      <div class="relative flex h-14 items-center px-6">
         <!-- Wordmark routes to /home (pV2-02b): authenticated users clicking the
-             logo belong on home. -->
-        <app-wordmark link="/home" class="shrink-0" />
+             logo belong on home. Pinned to the left window edge. -->
+        <app-wordmark link="/home" class="absolute left-6 top-0 flex h-full shrink-0 items-center" />
 
         @if (auth.isLoggedIn()) {
-          <nav class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+          <nav class="mx-auto flex w-full min-w-0 max-w-[var(--workspace-max)] items-center gap-1 overflow-x-auto">
             @for (item of navItems(); track item.path) {
               <a [routerLink]="item.path" [queryParams]="item.query ?? null"
                  routerLinkActive="bp-nav-link--active"
@@ -41,11 +43,9 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
               </a>
             }
           </nav>
-        } @else {
-          <span class="flex-1"></span>
         }
 
-        <div class="flex shrink-0 items-center gap-3">
+        <div class="absolute right-6 top-0 flex h-full items-center gap-3">
           <!-- FR-00215/FR-00236 — org context: you've switched into an org you hold a
                seat in and are acting AS it (session-only). Clear indicator + one
                click back to where you switched from (admin → orgs). -->
