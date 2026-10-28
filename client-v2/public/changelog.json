@@ -2,6 +2,162 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.6.0",
+      "name": "Bulk item management",
+      "build": "v2.939",
+      "date": "2026-10-28",
+      "datetime": "2026-10-28",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Catalogue & My Shop",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Bulk item management — select several items at once (card, list or table view) and act on them in one pass: make active / inactive, submit for approval, approve / reject, reclassify, delete, or refresh their images. Available to suppliers on their own shop and to Ballpark admins across shops, each action gated to who may perform it."
+            },
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Image filter + Refresh Images — filter a shop by whether an item has a photo (Any / Yes / No), and re-pull images for the ones missing them straight from the source listing, fixing imageless items without a full re-import."
+            },
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Reclassify from the item — move an item (or a whole selection) into another category from one dialog that opens on its current home; the category rail refreshes on the spot when items are reclassified or added."
+            }
+          ]
+        },
+        {
+          "area": "Catalogue onboarding",
+          "items": [
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "Resume a website analysis — analysing a supplier's website now persists, so you can start it, step away, and come back to the results rather than re-running it. Image pulls prioritise a listing's own product photos within the fetch budget."
+            }
+          ]
+        },
+        {
+          "area": "Marketplace",
+          "items": [
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "Clearer filters — each marketplace filter now carries a label above it (Price / Tier / Status / Active / Images) in the same style as an editable form field, with plain Any / Yes / No choices where it fits."
+            }
+          ]
+        },
+        {
+          "area": "Workspace",
+          "items": [
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "One hero style everywhere — every page header now shares a single hero style (the home greeting face), so the title and its label read identically across Home, Projects, Marketplace, Profile and My Shop."
+            }
+          ]
+        },
+        {
+          "area": "Platform & security",
+          "items": [
+            {
+              "ref": "FR-00215",
+              "type": "improved",
+              "feature": "",
+              "text": "Cross-org write lockdown — a Ballpark admin can no longer edit another organisation's items simply by being an admin; admin reach is read-only except two narrow, column-scoped actions enforced at the database: moderation (approve / reject and soft-delete) and the image refresh (images only)."
+            }
+          ]
+        }
+      ],
+      "fixes": []
+    },
+    {
+      "version": "v0.5.0",
+      "name": "Rebuilt platform — first preview",
+      "build": "v2.896",
+      "date": "2026-10-27",
+      "datetime": "2026-10-27",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Platform",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Rebuilt platform & isolated environments — Ballpark rebuilt on a streamlined data model and promoted to its first fully-isolated preview: its own database, backend and frontend. Tenant isolation is enforced at the database (row-level security + a non-owner app role + per-request identity), hardened by a security audit."
+            }
+          ]
+        },
+        {
+          "area": "Projects & Running budget",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Project delivery workspace — a project has two views: a draft Ballpark quote (scope + indicative costs) and an active Running budget with supplier-first cards, item rows, and payment tiles once a line is agreed."
+            },
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Per-line negotiation status — agency ↔ supplier negotiation is tracked as a journal of events; each line's status reads \"To agree\" through \"All confirmed\", shown consistently in the inbox and the Running budget from one shared source."
+            }
+          ]
+        },
+        {
+          "area": "Project workspace",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Project hero — a running-ballpark pill shows the live total and item count; a chevron collapses the cover while the detail bar keeps the key stats and the project name."
+            }
+          ]
+        },
+        {
+          "area": "Marketplace",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "In-project marketplace — the marketplace tab scrolls at the window edge like the other tabs; Type (Items / Suppliers), filter and cart controls sit on one line above a full-width search, with the category rail aligned to the first row of cards."
+            }
+          ]
+        },
+        {
+          "area": "Workspace & settings",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Single-row header & Projects rename — a single-row app header (logo · navigation · account + Sign Out); \"Past projects\" is now simply Projects throughout."
+            },
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Editable status labels — the status-pill wording is now editable in Settings ▸ Codelists (line_display_status), with the line, provider and quote status lists seeded."
+            }
+          ]
+        }
+      ],
+      "fixes": []
+    },
+    {
       "version": "v0.4.1",
       "name": "Variant images",
       "build": "v2.655",
