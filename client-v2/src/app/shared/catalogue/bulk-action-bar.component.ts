@@ -173,7 +173,7 @@ export class BulkActionBarComponent {
   private static readonly OWNER: BulkButton[] = [
     { action: 'activate', label: 'Activate', icon: 'eye', tone: 'ok' },
     { action: 'deactivate', label: 'Deactivate', icon: 'eye-off', tone: 'neutral' },
-    { action: 'reclassify', label: 'Reclassify', icon: 'list-tree', tone: 'neutral' },
+    { action: 'reclassify', label: 'Reclassify', icon: 'folder-tree', tone: 'neutral' },
     { action: 'submit', label: 'Submit for review', icon: 'send', tone: 'neutral' },
     { action: 'refresh-images', label: 'Refresh images', icon: 'image', tone: 'neutral' },
     { action: 'delete', label: 'Delete', icon: 'trash-2', tone: 'danger' },
