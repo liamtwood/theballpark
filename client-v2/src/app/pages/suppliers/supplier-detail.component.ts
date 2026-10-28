@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, resource, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { LucideAngularModule } from 'lucide-angular';
@@ -230,6 +230,7 @@ const WHATS_HOT = "What's Hot";
                 [selectable]="store.showStatusFilters()"
                 [selectedForBulk]="selection.ids()"
                 (bulkToggle)="selection.toggle($event)"
+                (reclassify)="bulkBar()?.openReclassifyFor($event)"
                 (entitySelected)="openQuickView($event)"
                 (quickView)="openQuickView($event)"
                 (favouriteToggled)="favs.toggle('item', $event)"
@@ -271,6 +272,8 @@ export class SupplierDetailComponent {
   protected readonly store = inject(MarketplaceStore);
   /** Shared bulk multi-select (pV2-ITEM-BULK-ACTIONS-01) — the My Shop/Shop grid. */
   protected readonly selection = inject(ItemSelectionStore);
+  /** The shared bulk bar (hosts the single-item reclassify picker too). */
+  protected readonly bulkBar = viewChild(BulkActionBarComponent);
   /** Keep the selection ⊆ the loaded rows (filter change clears stale picks). */
   private readonly pruneSelection = effect(() => {
     this.selection.retainOnly(this.store.items().map((i) => i.id));

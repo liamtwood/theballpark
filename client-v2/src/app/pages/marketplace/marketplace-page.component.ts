@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { PageConfigService } from '../../core/config/page-config.service';
@@ -104,6 +104,7 @@ import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.c
             [selectable]="store.showStatusFilters()"
             [selectedForBulk]="selection.ids()"
             (bulkToggle)="selection.toggle($event)"
+            (reclassify)="bulkBar()?.openReclassifyFor($event)"
             (quickView)="openQuickView($event)"
             (entitySelected)="openQuickView($event)"
             (favouriteToggled)="favs.toggle('item', $event)"
@@ -146,6 +147,9 @@ export class MarketplacePageComponent {
   protected readonly store = inject(MarketplaceStore);
   protected readonly favs = inject(FavouritesStore);
   protected readonly selection = inject(ItemSelectionStore);
+  /** The shared bulk bar (always mounted with the grid) — also hosts the single-item
+   *  reclassify picker, so a card's Reclassify reuses the same dialog + service. */
+  protected readonly bulkBar = viewChild(BulkActionBarComponent);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(MessageService);
 

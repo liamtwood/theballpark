@@ -42,6 +42,7 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
                 (quickView)="quickView.emit($event)"
                 (changed)="changed.emit()"
                 (build)="build.emit($event)"
+                (reclassify)="reclassify.emit($event)"
               />
             </div>
           }
@@ -176,6 +177,8 @@ export class CatalogueGridComponent {
   readonly changed = output<void>();
   /** Owner clicked "Build from components" on a card — host opens the buildup. */
   readonly build = output<string>();
+  /** Owner clicked Reclassify on a card — host opens the shared reclassify picker. */
+  readonly reclassify = output<string>();
 
   protected thumb(url: string | null): string | null {
     return sizedImage(url, 160);

@@ -56,15 +56,18 @@ interface BulkButton {
           </button>
         </div>
       </div>
-
-      <app-reclassify-dialog
-        [open]="reclassifyOpen()"
-        [count]="selection.count()"
-        [seedCategoryId]="firstSelectedCategoryId()"
-        (close)="reclassifyOpen.set(false)"
-        (confirm)="onReclassify($event)"
-      />
     }
+
+    <!-- Reclassify picker — rendered OUTSIDE the selection gate so it serves BOTH the
+         bulk bar (reclassifyOpen) AND a single card's Reclassify (singleItemId, via the
+         public openReclassifyFor). ONE dialog + one service path, no duplication. -->
+    <app-reclassify-dialog
+      [open]="reclassifyOpen() || singleItemId() !== null"
+      [count]="singleItemId() ? 1 : selection.count()"
+      [seedCategoryId]="reclassifySeedId()"
+      (close)="closeReclassify()"
+      (confirm)="onReclassify($event)"
+    />
   `,
   styles: `
     .bp-bulk-btn {
@@ -127,6 +130,9 @@ export class BulkActionBarComponent {
   protected readonly busy = signal(false);
   protected readonly busyLabel = signal('Working…');
   protected readonly reclassifyOpen = signal(false);
+  /** Set (to an item id) when a SINGLE card's Reclassify opened the dialog, vs the
+   *  bulk-bar Reclassify (null → operate on the whole selection). */
+  protected readonly singleItemId = signal<string | null>(null);
 
   /** The first selected item's home category — seeds the reclassify dialog so it
    *  opens on the item's current classification (Liam 2026-10-28). */
@@ -135,6 +141,27 @@ export class BulkActionBarComponent {
     if (!first) return null;
     return this.store.items().find((i) => i.id === first)?.categoryId ?? null;
   });
+
+  /** Seed for the picker — the single item's home node (single mode) else the first
+   *  selected item's (bulk mode). */
+  protected readonly reclassifySeedId = computed<string | null>(() => {
+    const s = this.singleItemId();
+    if (s) return this.store.items().find((i) => i.id === s)?.categoryId ?? null;
+    return this.firstSelectedCategoryId();
+  });
+
+  /** Open the reclassify picker for ONE item (the per-item card button). Owner-only
+   *  (the card gates the button to ownedByActiveOrg). Reuses the same dialog + service
+   *  as the bulk path — no duplicate reclassify logic. */
+  openReclassifyFor(itemId: string): void {
+    if (this.busy()) return;
+    this.singleItemId.set(itemId);
+  }
+
+  protected closeReclassify(): void {
+    this.reclassifyOpen.set(false);
+    this.singleItemId.set(null);
+  }
 
   /** owner (own store) vs admin (cross-org moderation). null → no bar (host gates too). */
   protected readonly scope = computed<BulkScope | null>(() => {
@@ -203,15 +230,19 @@ export class BulkActionBarComponent {
   }
 
   protected onReclassify(categoryId: string): void {
-    const sc = this.scope();
-    this.reclassifyOpen.set(false);
-    if (sc !== 'owner' || this.busy()) return;
+    // Single-card reclassify (singleItemId) vs the whole selection. Reclassify is
+    // owner-only in both paths (the owner bulk set + the owner-gated per-item button),
+    // so it always targets the owner endpoint.
+    const single = this.singleItemId();
+    const ids = single ? [single] : this.ids();
+    this.closeReclassify();
+    if (this.busy() || !ids.length) return;
     this.busy.set(true);
     this.busyLabel.set('Reclassifying…');
-    firstValueFrom(this.bulk.run('owner', 'reclassify', this.ids(), { categoryId }))
+    firstValueFrom(this.bulk.run('owner', 'reclassify', ids, { categoryId }))
       .then((res) => {
         this.toast.add({ severity: 'success', summary: `Reclassified ${res.updated} ${res.updated === 1 ? 'item' : 'items'}`, life: 4000 });
-        this.selection.clear();
+        if (!single) this.selection.clear();
         this.done.emit();
       })
       .catch(() => this.toast.add({ severity: 'error', summary: "Couldn't reclassify.", life: 4000 }))

@@ -124,10 +124,12 @@ import { AuthService } from '../../core/auth/auth.service';
              quickViewOnly (marketplace/shopfront browse) suppresses ALL manage
              affordances — those surfaces are view-only; edit lives in the Shop. -->
         <div class="mt-3 flex items-center gap-2">
-          <!-- Build from components (itemize) — owner-only composition. -->
+          <!-- Reclassify (pV2-ITEM-BULK-ACTIONS-01) — owner-only; opens the shared
+               reclassify picker for THIS item. Replaced the shelved "Build from
+               components" entry (Liam 2026-10-28). -->
           @if (item().ownedByActiveOrg) {
-            <button type="button" class="bp-item-card__act" title="Build from components" aria-label="Build item" (click)="onBuild($event)">
-              <lucide-icon name="list-tree" [size]="15" />
+            <button type="button" class="bp-item-card__act" title="Reclassify" aria-label="Reclassify" (click)="onReclassify($event)">
+              <lucide-icon name="folder-tree" [size]="15" />
             </button>
           }
           <!-- Approved items are editable too now (photos locked in the editor). -->
@@ -375,12 +377,19 @@ export class ItemCardComponent {
     e.stopPropagation();
   }
 
-  /** Build-from-components entry — the host opens the buildup for this item.
-   *  Destination is the next slice; for now this just surfaces the intent. */
+  /** Build-from-components entry — SHELVED (the button was replaced by Reclassify).
+   *  Output kept for back-compat with the grid's passthrough; no longer emitted. */
   readonly build = output<string>();
   protected onBuild(e: Event): void {
     e.stopPropagation();
     this.build.emit(this.item().id);
+  }
+
+  /** Reclassify THIS item (owner-only) — the host opens the shared reclassify picker. */
+  readonly reclassify = output<string>();
+  protected onReclassify(e: Event): void {
+    e.stopPropagation();
+    this.reclassify.emit(this.item().id);
   }
 
   // ── Owner item management (pV2-STORE-01) ──────────────────────────────────
