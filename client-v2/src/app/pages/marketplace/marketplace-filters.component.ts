@@ -18,13 +18,13 @@ import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
            so the selects line up under their labels. (Liam 2026-10-28) -->
       <div class="flex flex-wrap items-end gap-3">
         <div class="flex flex-col gap-1">
-          <span class="bp-field-label">Price</span>
+          <span class="text-xs font-normal text-secondary">Price</span>
           <app-select ariaLabel="Price" class="w-40" [compact]="true" [options]="priceOptions"
             [value]="store.priceBracket() ?? 'any'"
             (changed)="store.setPriceBracket($event === 'any' ? null : $event)" />
         </div>
         <div class="flex flex-col gap-1">
-          <span class="bp-field-label">Tier</span>
+          <span class="text-xs font-normal text-secondary">Tier</span>
           <app-select ariaLabel="Tier" class="w-32" [compact]="true" [options]="tierOptions"
             [value]="store.tier() ?? 'any'"
             (changed)="store.setTier($event === 'any' ? null : $event)" />
@@ -32,7 +32,7 @@ import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
         <!-- Supplier filter is pointless on a pinned single-supplier store. -->
         @if (!store.pinnedSupplierId()) {
           <div class="flex flex-col gap-1">
-            <span class="bp-field-label">Supplier</span>
+            <span class="text-xs font-normal text-secondary">Supplier</span>
             <app-select ariaLabel="Supplier" class="w-64" [compact]="true" [options]="supplierOptions()"
               [value]="store.supplierId() ?? 'any'"
               (changed)="store.setSupplier($event === 'any' ? null : $event)" />
@@ -42,19 +42,19 @@ import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
              owner can find pending / rejected / hidden (inactive) items. -->
         @if (store.showStatusFilters()) {
           <div class="flex flex-col gap-1">
-            <span class="bp-field-label">Status</span>
+            <span class="text-xs font-normal text-secondary">Status</span>
             <app-select ariaLabel="Status" class="w-40" [compact]="true" [options]="statusOptions"
               [value]="store.statusFilter() ?? 'all'"
               (changed)="store.setStatusFilter($event)" />
           </div>
           <div class="flex flex-col gap-1">
-            <span class="bp-field-label">Active</span>
+            <span class="text-xs font-normal text-secondary">Active</span>
             <app-select ariaLabel="Active" class="w-32" [compact]="true" [options]="activeOptions"
               [value]="store.activeFilter() ?? 'all'"
               (changed)="store.setActiveFilter($event)" />
           </div>
           <div class="flex flex-col gap-1">
-            <span class="bp-field-label">Images</span>
+            <span class="text-xs font-normal text-secondary">Images</span>
             <app-select ariaLabel="Images" class="w-32" [compact]="true" [options]="imageOptions"
               [value]="store.imageFilter() ?? 'any'"
               (changed)="store.setImageFilter($event === 'any' ? null : $event)" />
