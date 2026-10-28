@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { PageConfigService } from '../../core/config/page-config.service';
@@ -13,6 +13,8 @@ import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { SupplierGridComponent } from '../../shared/catalogue/supplier-grid.component';
 import { MarketplaceStore } from './marketplace-store';
 import { MarketplaceWorkspaceComponent } from './marketplace-workspace.component';
+import { ItemSelectionStore } from '../../shared/catalogue/item-selection.store';
+import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.component';
 
 /** pV2-06a — /marketplace: the browse foundation (MARKETPLACE.md five
  *  regions). Route shell only — mounts hero + search row + the three
@@ -30,8 +32,9 @@ import { MarketplaceWorkspaceComponent } from './marketplace-workspace.component
     ToastModule,
     AddToProjectDialogComponent,
     QuickViewDialogComponent,
+    BulkActionBarComponent,
   ],
-  providers: [MarketplaceStore, MessageService],
+  providers: [MarketplaceStore, ItemSelectionStore, MessageService],
   /* bp-vpfit (md+): the page fills the viewport exactly — hero + filter
      band anchored, the catalogue columns scroll independently. */
   host: { class: 'block bp-vpfit' },
@@ -98,6 +101,9 @@ import { MarketplaceWorkspaceComponent } from './marketplace-workspace.component
             [showQuickView]="true"
             [dense]="true"
             [quickViewOnly]="!store.statusFilter()"
+            [selectable]="store.showStatusFilters()"
+            [selectedForBulk]="selection.ids()"
+            (bulkToggle)="selection.toggle($event)"
             (quickView)="openQuickView($event)"
             (entitySelected)="openQuickView($event)"
             (favouriteToggled)="favs.toggle('item', $event)"
@@ -111,6 +117,9 @@ import { MarketplaceWorkspaceComponent } from './marketplace-workspace.component
               </button>
             </div>
           }
+          <!-- SHARED sticky bulk-action bar (owner/admin management) — self-hides when
+               nothing is selected. -->
+          <app-bulk-action-bar (done)="store.reloadItems()" />
         }
       </app-marketplace-workspace>
     </div>
@@ -136,8 +145,15 @@ import { MarketplaceWorkspaceComponent } from './marketplace-workspace.component
 export class MarketplacePageComponent {
   protected readonly store = inject(MarketplaceStore);
   protected readonly favs = inject(FavouritesStore);
+  protected readonly selection = inject(ItemSelectionStore);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(MessageService);
+
+  /** Keep the bulk selection ⊆ the currently-loaded rows: a filter change resets
+   *  items() → stale selections drop; "show more" grows items() → selections kept. */
+  private readonly pruneSelection = effect(() => {
+    this.selection.retainOnly(this.store.items().map((i) => i.id));
+  });
 
   /** Buyer actions (Add to ballpark) are agency-only; suppliers browse. */
   protected readonly isAgent = computed(() => this.auth.user()?.activeOrgType === 'agency');

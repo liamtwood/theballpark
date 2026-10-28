@@ -102,11 +102,18 @@ export class MarketplaceStore {
   readonly activeFilter = computed(() =>
     this.showStatusFilters() ? this.query().get('active') : null
   );
+  /** pV2-ITEM-BULK-ACTIONS-01 — "has a photo?" tri-state (?image=with|without), owner/
+   *  admin only. null = Any (no filter). Surfaces imageless items for Refresh Images. */
+  readonly imageFilter = computed<'with' | 'without' | null>(() => {
+    if (!this.showStatusFilters()) return null;
+    const v = this.query().get('image');
+    return v === 'with' || v === 'without' ? v : null;
+  });
 
   /** The filter signature — offset + accumulation reset on ANY change. */
   private readonly filterKey = computed(
     () =>
-      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.subSubcategoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}|${this.tagFilter() ?? ''}|${this.statusFilter() ?? ''}|${this.activeFilter() ?? ''}|${this.publicView() ? 'pub' : ''}`
+      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.subSubcategoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}|${this.tagFilter() ?? ''}|${this.statusFilter() ?? ''}|${this.activeFilter() ?? ''}|${this.imageFilter() ?? ''}|${this.publicView() ? 'pub' : ''}`
   );
 
   /** Local page offset; snaps back to 0 when the filters change. */
@@ -222,6 +229,7 @@ export class MarketplaceStore {
         scope: this.publicView() ? ('public' as const) : null,
         status: this.publicView() ? null : this.statusFilter(),
         active: this.publicView() ? null : this.activeFilter(),
+        image: this.publicView() ? null : this.imageFilter(),
         offset: this.offset(),
         rev: this.catalogue.rev(), // reload the grid after any write (new item shows without refresh)
       };
@@ -333,6 +341,10 @@ export class MarketplaceStore {
   }
   setActiveFilter(active: string | null): void {
     this.merge({ active: active && active !== 'all' ? active : null, item: null });
+  }
+  /** "Has a photo?" tri-state (pV2-ITEM-BULK-ACTIONS-01). 'any' clears the param. */
+  setImageFilter(image: string | null): void {
+    this.merge({ image: image === 'with' || image === 'without' ? image : null, item: null });
   }
   clearFilters(): void {
     this.merge({ price: null, tier: null, sup: null, item: null });

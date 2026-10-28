@@ -82,6 +82,9 @@ export interface ItemsQuery {
    *  caller owns `supplier`. status = approval_status; active = publish state. */
   status?: string | null;
   active?: string | null;
+  /** pV2-ITEM-BULK-ACTIONS-01 — tri-state "has a photo?" filter (owner/admin only):
+   *  'with' = items with ≥1 image; 'without' = imageless (the Refresh Images backfill). */
+  image?: 'with' | 'without' | null;
   /** Shopfront (public brand page): forces the PUBLIC item set — approved +
    *  active — for every viewer, overriding owner/admin scope so a supplier or
    *  ballpark admin previewing the Shopfront sees exactly what a customer sees. */

@@ -77,6 +77,7 @@ export class CatalogueService {
     if (query.supplier) params.set('supplier', query.supplier);
     if (query.status) params.set('status', query.status);
     if (query.active) params.set('active', query.active);
+    if (query.image) params.set('image', query.image);
     if (query.scope) params.set('scope', query.scope);
     if (query.tag) params.set('tag', query.tag);
     if (query.offset) params.set('offset', String(query.offset));

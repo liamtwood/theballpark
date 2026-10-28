@@ -35,6 +35,9 @@ import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
           <app-select ariaLabel="Visibility" class="w-36" [compact]="true" [options]="activeOptions"
             [value]="store.activeFilter() ?? 'all'"
             (changed)="store.setActiveFilter($event)" />
+          <app-select ariaLabel="Image" class="w-32" [compact]="true" [options]="imageOptions"
+            [value]="store.imageFilter() ?? 'any'"
+            (changed)="store.setImageFilter($event === 'any' ? null : $event)" />
         }
         @if (store.hasFilters()) {
           <button type="button"
@@ -81,5 +84,12 @@ export class MarketplaceFiltersComponent {
     { label: 'Active & Inactive', value: 'all' },
     { label: 'Active', value: 'active' },
     { label: 'Inactive', value: 'inactive' },
+  ];
+
+  /** Owner / ballpark-admin "has a photo?" filter (pV2-ITEM-BULK-ACTIONS-01). */
+  protected readonly imageOptions: SelectOption[] = [
+    { label: 'Image: Any', value: 'any' },
+    { label: 'With image', value: 'with' },
+    { label: 'Without image', value: 'without' },
   ];
 }

@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, resource,
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { LucideAngularModule } from 'lucide-angular';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 import { AuthService } from '../../core/auth/auth.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
@@ -17,6 +19,8 @@ import { WebsiteImportPanelComponent } from './website-import-panel.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { HScrollComponent } from '../../shared/hscroll/hscroll.component';
+import { ItemSelectionStore } from '../../shared/catalogue/item-selection.store';
+import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.component';
 
 /** The merchandising tag the shopfront's "What's Hot" menu features. */
 const WHATS_HOT = "What's Hot";
@@ -44,8 +48,10 @@ const WHATS_HOT = "What's Hot";
     StorefrontPanelComponent,
     OrgProfileEditComponent,
     WebsiteImportPanelComponent,
+    ToastModule,
+    BulkActionBarComponent,
   ],
-  providers: [MarketplaceStore],
+  providers: [MarketplaceStore, ItemSelectionStore, MessageService],
   /* Both tabs are viewport-fit: the hero + Storefront/Store toggle stay
      anchored and only the content from the banner down scrolls (Liam QC
      2026-06-22). Store scrolls per-column inside catalogue-layout; Storefront
@@ -221,6 +227,9 @@ const WHATS_HOT = "What's Hot";
                 [quoteDraftIds]="favs.quoteDraft()"
                 [showQuickView]="true"
                 [dense]="true"
+                [selectable]="store.showStatusFilters()"
+                [selectedForBulk]="selection.ids()"
+                (bulkToggle)="selection.toggle($event)"
                 (entitySelected)="openQuickView($event)"
                 (quickView)="openQuickView($event)"
                 (favouriteToggled)="favs.toggle('item', $event)"
@@ -234,6 +243,8 @@ const WHATS_HOT = "What's Hot";
                   </button>
                 </div>
               }
+              <!-- SHARED sticky bulk-action bar (owner/admin management of this store). -->
+              <app-bulk-action-bar (done)="store.reloadItems()" />
             }
           </app-marketplace-workspace>
         }
@@ -242,6 +253,7 @@ const WHATS_HOT = "What's Hot";
       <!-- Item Quick View — a peek (no add-to-project here; buyers add via the
            card + / the global marketplace). -->
       <app-quick-view-dialog [item]="quickItem()" [showAdd]="false" (close)="quickItem.set(null)" />
+      <p-toast position="bottom-right" styleClass="bp-toast" />
     } @else if (detail.error()) {
       <div class="bp-page-body"><p class="bp-body-small text-warn">Supplier not found.</p></div>
     } @else {
@@ -257,6 +269,12 @@ export class SupplierDetailComponent {
   protected readonly favs = inject(FavouritesStore);
   /** The SAME store class the marketplace provides — pinned via :id. */
   protected readonly store = inject(MarketplaceStore);
+  /** Shared bulk multi-select (pV2-ITEM-BULK-ACTIONS-01) — the My Shop/Shop grid. */
+  protected readonly selection = inject(ItemSelectionStore);
+  /** Keep the selection ⊆ the loaded rows (filter change clears stale picks). */
+  private readonly pruneSelection = effect(() => {
+    this.selection.retainOnly(this.store.items().map((i) => i.id));
+  });
 
   // pV2-SUPPLIER-TABS-3-01 — three surfaces: Profile (editable, owner/admin only),
   // Shopfront (read-only public brand page, everyone), My Shop/Shop (items grid).
