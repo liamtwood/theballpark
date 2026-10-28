@@ -1282,6 +1282,27 @@ async function activeJobForOrg(orgId) {
   return jobToClient(r.rows[0]);
 }
 
+/** For the panel's leave-and-return (GET …/extract/job): the most recent job worth
+ *  re-showing — a LIVE job (re-attach to its progress) OR, failing that, a COMPLETED
+ *  analyse, so a user who analysed, left (e.g. to sort categories) and came back lands
+ *  back on the sections to pull instead of a blank start (Liam 2026-10-28). A done
+ *  analyse has no staleness window — it stays resumable until a newer analyse (or a
+ *  later live job) supersedes it by created_at. Pull dedup still uses
+ *  activeJobForOrg (running-only), so re-showing a done analyse never blocks a pull. */
+async function resumableJobForOrg(orgId) {
+  const r = await pool.query(
+    `SELECT * FROM catalogue_extract_job
+      WHERE org_id = $1
+        AND (
+          (status IN ('running','cancelling') AND updated_at > now() - interval '10 minutes')
+          OR (kind = 'analyse' AND status = 'done')
+        )
+      ORDER BY created_at DESC LIMIT 1`,
+    [orgId],
+  );
+  return jobToClient(r.rows[0]);
+}
+
 /** Boot janitor: in-process job runners don't survive a server restart, so any job
  *  left 'running'/'cancelling' when the process starts is an orphan — mark it errored.
  *  Called once from index.js at startup. Single-server assumption (no other process
@@ -1473,4 +1494,4 @@ function pruneNull(obj) {
   return out;
 }
 
-module.exports = { analyse, startAnalyseJob, detectProfile, prepare, applyMapping, pull, startPull, getJob, activeJobForOrg, cancelJob, failStaleJobs, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity, extractReviewFromJsonLd } };
+module.exports = { analyse, startAnalyseJob, detectProfile, prepare, applyMapping, pull, startPull, getJob, activeJobForOrg, resumableJobForOrg, cancelJob, failStaleJobs, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity, extractReviewFromJsonLd } };

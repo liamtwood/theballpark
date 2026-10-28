@@ -87,10 +87,11 @@ function makeExtractRouter(resolveOrgId) {
     }
   });
 
-  // GET …/extract/job → the org's active (running) pull job, or null — the panel
-  // calls this on load to re-attach to a pull started earlier.
+  // GET …/extract/job → the org's resumable job, or null — the panel calls this on
+  // load to re-attach. Returns a LIVE job (running pull/analyse) OR, failing that, the
+  // most recent COMPLETED analyse, so leave-and-return rehydrates the sections to pull.
   router.get('/job', async (req, res, next) => {
-    try { res.json(await CatalogueExtract.activeJobForOrg(resolveOrgId(req))); } catch (err) { next(err); }
+    try { res.json(await CatalogueExtract.resumableJobForOrg(resolveOrgId(req))); } catch (err) { next(err); }
   });
 
   // GET …/extract/job/:jobId → poll one job (status/progress/results).

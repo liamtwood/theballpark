@@ -38,7 +38,8 @@ export class CatalogueExtractClient {
     return this.api.get<PullJob>(`${base}/job/${jobId}`);
   }
 
-  /** The org's active (running) pull job, or null — for re-attaching on return. */
+  /** The org's resumable job, or null — for re-attaching on return: a running
+   *  pull/analyse, or (failing that) the most recent completed analyse to rehydrate. */
   activeJob(base: string): Observable<PullJob | null> {
     return this.api.get<PullJob | null>(`${base}/job`);
   }

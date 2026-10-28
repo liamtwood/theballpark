@@ -301,14 +301,20 @@ export class WebsiteImportPanelComponent implements OnInit, OnDestroy {
   });
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
-  /** Re-attach to a pull that's still running (started before we navigated away). */
+  /** Re-attach on return: a job still running (re-poll its progress) OR a completed
+   *  analyse from an earlier visit — rehydrate its task-list so analysing, leaving
+   *  (e.g. to sort categories) and coming back lands back on the sections to pull,
+   *  not a blank start (Liam 2026-10-28). */
   ngOnInit(): void {
     this.ex.activeJob(this.base()).subscribe({
       next: (j) => {
-        if (j && (j.status === 'running' || j.status === 'cancelling')) {
+        if (!j) return;
+        if (j.status === 'running' || j.status === 'cancelling') {
           this.job.set(j);
           if (j.kind === 'analyse') this.analyzing.set(true); else this.pulling.set(true);
           this.startPolling(j.jobId);
+        } else if (j.kind === 'analyse' && j.status === 'done') {
+          this.onAnalyseDone(j);
         }
       },
       error: () => { /* no active job / not reachable — nothing to re-attach */ },
