@@ -1170,8 +1170,18 @@ async function withPinnedOrgContext({ orgId, userId, isAdmin = true }, fn) {
     );
     return await als.run(ctx, fn);
   } finally {
-    await client.query('RESET ALL').catch(() => {});
-    client.release();
+    // RESET ALL clears the pinned GUCs (app.is_admin, and for a refresh job
+    // app.svc_refresh) before the client returns to the pool. If it FAILS, the
+    // connection may still carry those escapes — and request middleware never clears
+    // app.svc_refresh — so the next borrower could satisfy the `or app_svc_refresh()`
+    // branch. Destroy the client (release(err)) rather than pool a poisoned one (S3).
+    try {
+      await client.query('RESET ALL');
+      client.release();
+    } catch (err) {
+      console.warn('[withPinnedOrgContext] RESET ALL failed — destroying client to avoid a leaked escape GUC', err);
+      client.release(err);
+    }
   }
 }
 /** Admin concierge context (is_admin='t') — the extract runner's detached writes. */
@@ -1559,7 +1569,10 @@ async function reselectItemImages(item) {
     if (!images.length) return { itemId: item.id, status: 'skipped', reason: 'no product image found' };
     return { itemId: item.id, status: 'ok', images };
   } catch (err) {
-    return { itemId: item.id, status: 'error', reason: err.message };
+    // Log the real cause server-side; surface a generic reason via the poll (which is
+    // own-org scoped, but no upstream error text need reach the client — S5).
+    console.warn('[refresh-images] fetch/select failed for item', item.id, '—', err && err.message);
+    return { itemId: item.id, status: 'error', reason: 'fetch failed' };
   }
 }
 

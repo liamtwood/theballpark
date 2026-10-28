@@ -19,6 +19,7 @@
 const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
 const { withModeration } = require('../lib/moderation');
+const { als } = require('../db/request-context');
 
 const OWNER_ACTIONS = new Set(['activate', 'deactivate', 'reclassify', 'submit', 'delete']);
 const ADMIN_ACTIONS = new Set(['approve', 'reject', 'delete']);
@@ -122,22 +123,39 @@ async function adminBulk({ ids, action }) {
       return { action, requested, updated: r.rowCount, skipped: requested - r.rowCount };
     }
     if (action === 'delete') {
-      // Moderation takedown — soft delete (deleted_at). Cascade children too (allowed:
-      // deleted_at is in the 0017 guard's moderation allowlist).
-      const r = await pool.query(
-        `UPDATE items SET deleted_at = now()
-          WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL RETURNING id, org_id`,
-        [ids]
-      );
-      const deletedIds = r.rows.map((x) => x.id);
-      if (deletedIds.length) {
-        await pool.query(
-          `UPDATE items SET deleted_at = now()
-            WHERE parent_item_id = ANY($1::uuid[]) AND deleted_at IS NULL`,
-          [deletedIds]
-        );
+      // Moderation takedown — soft delete (deleted_at) + cascade children (both allowed:
+      // deleted_at is in the 0017 guard's moderation allowlist). The two statements are
+      // wrapped in an explicit BEGIN/COMMIT on the REQUEST's PINNED client (the one
+      // withModeration set app.svc_moderate on) so a crash between them can't orphan live
+      // children. We can't use withTransaction here — it opens a FRESH client that would
+      // NOT carry the svc_moderate GUC (hand-rolled txn is correct for this path; S2).
+      const client = als.getStore() && als.getStore().client;
+      if (!client) {
+        // No request context (shouldn't happen on this gated route) → svc_moderate isn't
+        // set anyway, so the cross-org write would no-op. Fail loud rather than silently.
+        throw new Error('admin bulk delete requires a request context');
       }
-      return { action, requested, updated: r.rowCount, skipped: requested - r.rowCount };
+      await client.query('BEGIN');
+      try {
+        const r = await client.query(
+          `UPDATE items SET deleted_at = now()
+            WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL RETURNING id`,
+          [ids]
+        );
+        const deletedIds = r.rows.map((x) => x.id);
+        if (deletedIds.length) {
+          await client.query(
+            `UPDATE items SET deleted_at = now()
+              WHERE parent_item_id = ANY($1::uuid[]) AND deleted_at IS NULL`,
+            [deletedIds]
+          );
+        }
+        await client.query('COMMIT');
+        return { action, requested, updated: r.rowCount, skipped: requested - r.rowCount };
+      } catch (err) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw err;
+      }
     }
     throw new Error(`unknown admin action: ${action}`);
   });
