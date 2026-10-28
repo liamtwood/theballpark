@@ -130,19 +130,14 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
       cursor: pointer;
       accent-color: var(--theme-accent);
     }
-    /* Card overlay checkbox — a legible chip over the image corner. RIGHT side: the
-       status pill owns the top-left, and the favourite/quote buttons (top-right) are
-       agent-only, so management views have the right corner free (Liam QC 2026-10-28). */
+    /* Card overlay checkbox — the BARE checkbox, no container/box (Liam QC 2026-10-28).
+       RIGHT side: the status pill owns the top-left, and the favourite/quote buttons
+       (top-right) are agent-only, so management views have the right corner free. */
     .bp-bulk-check--card {
       position: absolute;
       top: 10px;
       right: 10px;
       z-index: 20;
-      padding: 4px;
-      border-radius: var(--radius-input, 8px);
-      background: color-mix(in srgb, var(--color-surface) 86%, transparent);
-      border: 1px solid var(--color-border-hairline);
-      box-shadow: var(--shadow-xs);
     }
   `,
 })

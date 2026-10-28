@@ -123,15 +123,9 @@ import { AuthService } from '../../core/auth/auth.service';
              adminEditOrgId) manages the item: Edit, Duplicate, Show/Hide, Trash.
              quickViewOnly (marketplace/shopfront browse) suppresses ALL manage
              affordances — those surfaces are view-only; edit lives in the Shop. -->
+        <!-- Owner action order (Liam QC 2026-10-28): Edit → Duplicate → Activate →
+             Reclassify → Delete. -->
         <div class="mt-3 flex items-center gap-2">
-          <!-- Reclassify (pV2-ITEM-BULK-ACTIONS-01) — owner-only; opens the shared
-               reclassify picker for THIS item. Replaced the shelved "Build from
-               components" entry (Liam 2026-10-28). -->
-          @if (item().ownedByActiveOrg) {
-            <button type="button" class="bp-item-card__act" title="Reclassify" aria-label="Reclassify" (click)="onReclassify($event)">
-              <lucide-icon name="folder-tree" [size]="15" />
-            </button>
-          }
           <!-- Approved items are editable too now (photos locked in the editor). -->
           <a
             [routerLink]="editLink()"
@@ -155,6 +149,14 @@ import { AuthService } from '../../core/auth/auth.service';
           >
             <lucide-icon [name]="item().isActive ? 'eye-off' : 'eye'" [size]="15" />
           </button>
+          <!-- Reclassify (pV2-ITEM-BULK-ACTIONS-01) — owner-only; opens the shared
+               reclassify picker for THIS item. Replaced the shelved "Build from
+               components" entry (Liam 2026-10-28). -->
+          @if (item().ownedByActiveOrg) {
+            <button type="button" class="bp-item-card__act" title="Reclassify" aria-label="Reclassify" (click)="onReclassify($event)">
+              <lucide-icon name="folder-tree" [size]="15" />
+            </button>
+          }
           <button type="button" class="bp-item-card__act bp-item-card__act--danger" [disabled]="busy()" title="Move to trash" aria-label="Move to trash" (click)="onTrash($event)">
             <lucide-icon name="trash-2" [size]="15" />
           </button>

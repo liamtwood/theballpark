@@ -170,19 +170,22 @@ export class BulkActionBarComponent {
     return null;
   });
 
+  // Tones (Liam QC 2026-10-28): only the genuine approve/reject moderation decisions
+  // carry colour. Activate + Delete are neutral (a green eye / red trash on multi-pick
+  // read as over-loud); the delete is still confirm-gated.
   private static readonly OWNER: BulkButton[] = [
-    { action: 'activate', label: 'Activate', icon: 'eye', tone: 'ok' },
+    { action: 'activate', label: 'Activate', icon: 'eye', tone: 'neutral' },
     { action: 'deactivate', label: 'Deactivate', icon: 'eye-off', tone: 'neutral' },
     { action: 'reclassify', label: 'Reclassify', icon: 'folder-tree', tone: 'neutral' },
     { action: 'submit', label: 'Submit for review', icon: 'send', tone: 'neutral' },
     { action: 'refresh-images', label: 'Refresh images', icon: 'image', tone: 'neutral' },
-    { action: 'delete', label: 'Delete', icon: 'trash-2', tone: 'danger' },
+    { action: 'delete', label: 'Delete', icon: 'trash-2', tone: 'neutral' },
   ];
   private static readonly ADMIN: BulkButton[] = [
     { action: 'approve', label: 'Approve', icon: 'circle-check', tone: 'ok' },
     { action: 'reject', label: 'Reject', icon: 'octagon-x', tone: 'danger' },
     { action: 'refresh-images', label: 'Refresh images', icon: 'image', tone: 'neutral' },
-    { action: 'delete', label: 'Delete', icon: 'trash-2', tone: 'danger' },
+    { action: 'delete', label: 'Delete', icon: 'trash-2', tone: 'neutral' },
   ];
   protected readonly buttons = computed<BulkButton[]>(() =>
     this.scope() === 'admin' ? BulkActionBarComponent.ADMIN : BulkActionBarComponent.OWNER);
