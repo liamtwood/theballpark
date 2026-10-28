@@ -253,7 +253,9 @@ const WHATS_HOT = "What's Hot";
 
       <!-- Item Quick View — a peek (no add-to-project here; buyers add via the
            card + / the global marketplace). -->
-      <app-quick-view-dialog [item]="quickItem()" [showAdd]="false" (close)="quickItem.set(null)" />
+      <app-quick-view-dialog [item]="quickItem()" [showAdd]="false"
+        [canManage]="tab() === 'store' && (isOwner() || isPlatformAdmin())"
+        (close)="quickItem.set(null)" />
       <p-toast position="bottom-right" styleClass="bp-toast" />
     } @else if (detail.error()) {
       <div class="bp-page-body"><p class="bp-body-small text-warn">Supplier not found.</p></div>

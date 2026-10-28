@@ -187,14 +187,15 @@ type Pane = 'item' | 'supplier';
 
       <ng-template pTemplate="footer">
         @if (item(); as it) {
-          @if (editLink(); as link) {
-            <!-- Edit pencil for people with edit rights (owner or platform admin) — the
-                 way to reach the editor/approve page from a browse surface (Liam). -->
+          @if (canManage() && editLink(); as link) {
+            <!-- Edit pencil — ONLY in a management surface (My Shop / Approvals), never on
+                 the read-only Marketplace browse. Gated by canManage so an admin peeking at
+                 a live item from the browse can't jump to the editor (Liam 2026-10-28). -->
             <a [routerLink]="link" class="bp-btn-outline" (click)="close.emit()">
               <lucide-icon name="square-pen" [size]="15" /> Edit
             </a>
           }
-          @if (canDecide()) {
+          @if (canManage() && canDecide()) {
             <!-- pV2-STORE-APPROVALS-01 — moderator approve/reject (parity with the
                  card queue). Soft green / red (feedback). Server enforces authority. -->
             <button type="button" class="bp-act bp-act--green" [disabled]="busy()" (click)="decide('approve')">
@@ -291,6 +292,10 @@ type Pane = 'item' | 'supplier';
 })
 export class QuickViewDialogComponent {
   readonly item = input<CatalogueItem | null>(null);
+  /** Whether this surface is a management view (My Shop / Approvals). Default false
+   *  = read-only: no Edit, no Approve/Reject. The Marketplace browse leaves it false
+   *  so the dialog is a pure peek even for owners/admins (Liam 2026-10-28). */
+  readonly canManage = input<boolean>(false);
   /** Show the "Add to ballpark" action (off when the item is already in a
    *  project's estimate — a read-only quick view). */
   readonly showAdd = input<boolean>(true);

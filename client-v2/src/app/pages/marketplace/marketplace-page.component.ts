@@ -134,6 +134,7 @@ import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.c
     <app-quick-view-dialog
       [item]="quickItem()"
       [showAdd]="isAgent()"
+      [canManage]="store.isManagementView()"
       (close)="quickItem.set(null)"
       (add)="onQuickAdd($event)"
     />
