@@ -12,6 +12,7 @@
  */
 
 const pool = require('../db/pool');
+const { als } = require('../db/request-context');
 const { normalizeOrgType } = require('./permissions.service');
 
 // v1 says 'admin'; v2 says 'ballpark'. Both are valid INPUT; storage uses the
@@ -92,7 +93,14 @@ async function getV2Home(orgType) {
  */
 async function setV2Home(orgType, v2Home, userId) {
   if (!isValid(orgType)) throw new Error(`Invalid org_type: ${orgType}`);
-  const { rows } = await pool.query(
+  // org_type_config_write RLS = app_is_admin() on BOTH using + with-check, and
+  // requireActiveMembership sets the app.is_admin GUC only on the REQUEST's
+  // PINNED client (ballpark members). A bare pool.query lands on a different
+  // pooled connection where app_is_admin() is false → the write is silently
+  // blocked (reads pass via USING(true), so the page loads but never saves).
+  // Run on the pinned client when in a request; fall back to pool outside one.
+  const client = (als.getStore() && als.getStore().client) || pool;
+  const { rows } = await client.query(
     `INSERT INTO org_type_config (org_type, payload, updated_by, updated_at)
           VALUES ($1, jsonb_build_object('v2Home', $2::jsonb), $3, now())
      ON CONFLICT (org_type)
