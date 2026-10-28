@@ -66,7 +66,7 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
           <app-marketplace-filters />
         </div>
         <div>
-          <span class="bp-field-label mb-1.5 block font-bold text-text">View</span>
+          <span class="text-xs font-normal text-secondary mb-1 block">View</span>
           <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
         </div>
       </div>
