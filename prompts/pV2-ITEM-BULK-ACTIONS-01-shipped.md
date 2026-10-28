@@ -134,3 +134,13 @@ Two independent read-only passes (security + Angular/hygiene) over `ae2e7dd1^..4
 **Skipped (per triage):** S1 (namespace filter — false positive on the clean rebuild schema), S4 (harmless SSRF-safe forced fetch), A5/A7 (benign).
 **Verify:** `ng build` clean; backend green on :3002 after the server edits; `0024` already applied+verified (no new migration). No preview deploy (held).
 **Files:** `reclassify-dialog.component.ts`, `bulk-action-bar.component.ts`, `supplier-detail.component.ts`, `catalogue-grid.component.ts`, `catalogue-extract.service.js`, `item-bulk.service.js`.
+
+## Iteration — per-item Reclassify on the card (QC, 2026-10-28)
+**Triggered by QC (Liam):** replace the shelved per-item "Build from components" button with a per-item **Reclassify**.
+**Change:**
+- `item-card.component.ts` — the owner-only (`@if ownedByActiveOrg`) card button is now **Reclassify** (`folder-tree` icon, title "Reclassify"); added a `reclassify` output emitting the item id; the dead `build`/`onBuild` left in place (shelved, no longer wired to a button).
+- `catalogue-grid.component.ts` — forwards the new `reclassify` output up (same passthrough pattern as `bulkToggle`/`quickView`).
+- `bulk-action-bar.component.ts` — the reclassify **dialog is now rendered outside the selection gate** so it serves BOTH the bulk bar AND a single card. Added a `singleItemId` signal, a `reclassifySeedId` computed (single item's category else the first selected), a public `openReclassifyFor(itemId)`, and `closeReclassify()`; `onReclassify` now targets the single item or the whole selection (owner endpoint in both — reclassify is owner-only). **No duplicated reclassify logic** — one dialog, one service path.
+- `marketplace-page.component.ts` + `supplier-detail.component.ts` — `viewChild(BulkActionBarComponent)` + grid `(reclassify)="bulkBar()?.openReclassifyFor($event)"`. The bar is always mounted alongside the grid, so the single-item picker reuses it in both hosts (no per-host dialog/handler duplication).
+**Verify:** `ng build` clean; client-only (no server/migration). Held from preview.
+**Files:** `item-card.component.ts`, `catalogue-grid.component.ts`, `bulk-action-bar.component.ts`, `marketplace-page.component.ts`, `supplier-detail.component.ts`.
