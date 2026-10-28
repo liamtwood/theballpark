@@ -66,8 +66,13 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
           <app-marketplace-filters />
         </div>
         <div>
-          <span class="text-xs font-normal text-secondary mb-1 block">View</span>
-          <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
+          <!-- Mirror the Filter column (title + small control-labels) so left and
+               right line up: "View" title + a "Type" control-label (Liam 2026-10-28). -->
+          <span class="bp-field-label mb-1.5 block font-bold text-text">View</span>
+          <div class="flex flex-col gap-1">
+            <span class="text-xs font-normal text-secondary">Type</span>
+            <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
+          </div>
         </div>
       </div>
     }
