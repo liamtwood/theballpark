@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, output, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { MessageService } from 'primeng/api';
@@ -107,6 +107,19 @@ export class BulkActionBarComponent {
   private readonly bulk = inject(BulkItemsService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(MessageService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  /** Refresh-poll cleanup (A3): a recursive setTimeout must stop if the component is
+   *  destroyed mid-refresh (navigate away) — else it keeps polling and mutates a dead
+   *  component (busy/toast/selection/done). */
+  private destroyed = false;
+  private pollTimer: ReturnType<typeof setTimeout> | null = null;
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.destroyed = true;
+      if (this.pollTimer) clearTimeout(this.pollTimer);
+    });
+  }
 
   /** A bulk mutation landed — the host should reload its grid. */
   readonly done = output<void>();
@@ -220,17 +233,20 @@ export class BulkActionBarComponent {
 
   private async pollToDone(sc: BulkScope, jobId: string): Promise<void> {
     const tick = async (): Promise<void> => {
+      if (this.destroyed) return;
       let job: RefreshJob;
       try {
         job = await firstValueFrom(this.bulk.pollRefresh(sc, jobId));
       } catch {
+        if (this.destroyed) return;
         this.toast.add({ severity: 'error', summary: 'Lost track of the image refresh.', life: 4000 });
         this.busy.set(false);
         return;
       }
+      if (this.destroyed) return; // the await may have outlived the component
       this.busyLabel.set(`Refreshing images… ${job.processed}/${job.total}`);
       if (job.status === 'running' || job.status === 'cancelling') {
-        setTimeout(() => void tick(), 1200);
+        this.pollTimer = setTimeout(() => void tick(), 1200);
         return;
       }
       // Terminal — report + refresh the grid with the new photos.

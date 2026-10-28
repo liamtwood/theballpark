@@ -333,11 +333,14 @@ export class SupplierDetailComponent {
       : { label: 'Back', href: '/marketplace', history: true };
   });
 
-  /** Skips entirely until :id resolves — no empty-id fetch (audit C1). */
+  /** Skips entirely until :id resolves — no empty-id fetch (audit C1). Folds
+   *  catalogue.rev() (like `subcats`) so a reclassify / add-item re-runs it — the
+   *  storeDetail feeds the My Shop TOP-LEVEL rail + counts + Shopfront nav, which
+   *  otherwise went stale after a mutation until a hard refresh (audit A2). */
   protected readonly detail = resource({
     params: () => {
       const id = this.store.pinnedSupplierId();
-      return id ? { id, scope: this.tab() === 'storefront' ? ('public' as const) : null } : undefined;
+      return id ? { id, scope: this.tab() === 'storefront' ? ('public' as const) : null, rev: this.catalogue.rev() } : undefined;
     },
     loader: ({ params }) => this.catalogue.supplierDetail(params.id, params.scope),
   });

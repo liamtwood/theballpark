@@ -42,7 +42,7 @@ import { SelectComponent, SelectOption } from '../select/select.component';
             [value]="categoryId() ?? ''" placeholder="Choose a category"
             (changed)="onCategory($event)" />
         </div>
-        @if (subOptions().length) {
+        @if (subcats().length) {
           <div>
             <span class="bp-field-label mb-1 block font-bold text-text">Subcategory</span>
             <app-select ariaLabel="Subcategory" class="block w-full" [filter]="true" [options]="subOptions()"
@@ -50,7 +50,7 @@ import { SelectComponent, SelectOption } from '../select/select.component';
               (changed)="onSub($event)" />
           </div>
         }
-        @if (subSubOptions().length) {
+        @if (subsubcats().length) {
           <div>
             <span class="bp-field-label mb-1 block font-bold text-text">Sub-subcategory</span>
             <app-select ariaLabel="Sub-subcategory" class="block w-full" [filter]="true" [options]="subSubOptions()"
@@ -89,14 +89,21 @@ export class ReclassifyDialogComponent {
   protected readonly subId = signal<string | null>(null);
   protected readonly subSubId = signal<string | null>(null);
 
-  private loaded = false;
-
   protected readonly categoryOptions = computed<SelectOption[]>(() =>
     this.categories().map((c) => ({ label: c.name, value: c.id })));
-  protected readonly subOptions = computed<SelectOption[]>(() =>
-    this.subcats().map((c) => ({ label: c.name, value: c.id })));
-  protected readonly subSubOptions = computed<SelectOption[]>(() =>
-    this.subsubcats().map((c) => ({ label: c.name, value: c.id })));
+  // The explicit empty option is what lets a seeded drill be CLEARED back to a
+  // shallower node (A1): picking '(whole category)' emits onSub('') → subId null →
+  // deepestId() falls to the top categoryId. Without it, a sub-level seed can't be
+  // undone (re-picking the same top category is a no-op), so an item homed at L2
+  // could never be re-filed to its whole top-level category.
+  protected readonly subOptions = computed<SelectOption[]>(() => [
+    { label: '(whole category)', value: '' },
+    ...this.subcats().map((c) => ({ label: c.name, value: c.id })),
+  ]);
+  protected readonly subSubOptions = computed<SelectOption[]>(() => [
+    { label: '(whole subcategory)', value: '' },
+    ...this.subsubcats().map((c) => ({ label: c.name, value: c.id })),
+  ]);
 
   /** The deepest explicit pick — what reclassify writes. */
   protected readonly deepestId = computed(() => this.subSubId() || this.subId() || this.categoryId());
@@ -114,10 +121,12 @@ export class ReclassifyDialogComponent {
   }
 
   private async ensureLoaded(): Promise<void> {
-    if (this.loaded) return;
-    this.loaded = true;
+    // No open-once latch: categories() is session-cached by CatalogueService and
+    // busted on any catalogue write, so re-reading each open is cheap AND picks up a
+    // category created elsewhere this session (A4). A transient failure just leaves
+    // the list empty (logged); the next open retries.
     try { this.categories.set(await this.catalogue.categories()); }
-    catch { this.loaded = false; /* transient failure → retry on next open */ }
+    catch (err) { console.warn('[reclassify] categories load failed', err); }
   }
 
   /** Preselect the Category ▸ Subcategory ▸ Sub-subcategory cascade from the first
@@ -149,12 +158,12 @@ export class ReclassifyDialogComponent {
     this.categoryId.set(id || null);
     this.subId.set(null); this.subSubId.set(null);
     this.subcats.set([]); this.subsubcats.set([]);
-    if (id) { try { this.subcats.set(await this.catalogue.subcategories(id)); } catch { /* none */ } }
+    if (id) { try { this.subcats.set(await this.catalogue.subcategories(id)); } catch (err) { console.warn('[reclassify] subcategory load failed', err); } }
   }
   protected async onSub(id: string): Promise<void> {
     this.subId.set(id || null);
     this.subSubId.set(null); this.subsubcats.set([]);
-    if (id) { try { this.subsubcats.set(await this.catalogue.subcategories(id)); } catch { /* none */ } }
+    if (id) { try { this.subsubcats.set(await this.catalogue.subcategories(id)); } catch (err) { console.warn('[reclassify] sub-subcategory load failed', err); } }
   }
   protected onSubSub(id: string): void {
     this.subSubId.set(id || null);

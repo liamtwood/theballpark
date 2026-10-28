@@ -141,7 +141,7 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
       border-radius: var(--radius-input, 8px);
       background: color-mix(in srgb, var(--color-surface) 86%, transparent);
       border: 1px solid var(--color-border-hairline);
-      box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.1));
+      box-shadow: var(--shadow-xs);
     }
   `,
 })
