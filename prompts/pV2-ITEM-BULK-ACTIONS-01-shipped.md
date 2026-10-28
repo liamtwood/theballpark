@@ -144,3 +144,11 @@ Two independent read-only passes (security + Angular/hygiene) over `ae2e7dd1^..4
 - `marketplace-page.component.ts` + `supplier-detail.component.ts` — `viewChild(BulkActionBarComponent)` + grid `(reclassify)="bulkBar()?.openReclassifyFor($event)"`. The bar is always mounted alongside the grid, so the single-item picker reuses it in both hosts (no per-host dialog/handler duplication).
 **Verify:** `ng build` clean; client-only (no server/migration). Held from preview.
 **Files:** `item-card.component.ts`, `catalogue-grid.component.ts`, `bulk-action-bar.component.ts`, `marketplace-page.component.ts`, `supplier-detail.component.ts`.
+
+## Iteration — card/bar QC tweaks (QC, 2026-10-28)
+**Triggered by QC (Liam):** three small polish items.
+1. `catalogue-grid.component.ts` — the CARD-view select checkbox is now the BARE checkbox (stripped the `.bp-bulk-check--card` box: padding/background/border/shadow gone), still positioned top-right + functional. List/table unchanged.
+2. `item-card.component.ts` — owner action-icon order is now Edit → Duplicate → Activate → Reclassify → Delete (Reclassify moved from 1st to 4th, just before Delete). Moderation row unchanged.
+3. `bulk-action-bar.component.ts` — on multi-pick, Activate (owner) and Delete (owner + admin) are now `tone:'neutral'` (were green/red); Approve/Reject keep their colours. Delete is still confirm-gated.
+**Verify:** `ng build` clean; client-only. Held from preview.
+**Files:** `catalogue-grid.component.ts`, `item-card.component.ts`, `bulk-action-bar.component.ts`.
