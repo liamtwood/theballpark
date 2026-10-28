@@ -81,7 +81,7 @@ Plus: `org_id` always from `req.user`, never the body (owner scopes every WHERE 
   admin moderation writes deliberately use the pinned client under `withModeration` instead (see MUST #3).
 
 ## Follow-ups / open
-- **Reclassify to a TOP-LEVEL category fails** (Liam QC 2026-10-28) — reclass to a *subcategory* works, but picking only a top-level category (no sub) doesn't apply the move. Deferred by Liam; **fix before release**. Likely in the owner bulk reclassify path / server handling when the chosen node is a top-level `category_id` (items can legitimately home at any depth, 0015).
+- **Reclassify to a TOP-LEVEL category fails** (Liam QC 2026-10-28) — reclass to a *subcategory* works, but picking only a top-level category (no sub) doesn't apply the move. Deferred by Liam; **fix before release**. Items can legitimately home at any depth (0015). Build-session lead: the owner reclassify SQL is `UPDATE items SET category_id=$3 … AND org_id=$2` with NO leaf constraint (so a top-level id should apply server-side), and `isValidCategory` only checks existence — so suspect either **(a)** an items trigger/constraint requiring a leaf/descendant `category_id` (check `0010`/`0015`), or **(b)** the dialog emitting a stale `deepestId` — after `ab905141`'s `seedFromItem` prepopulates a deep node, confirm picking a new TOP category resets `subId`/`subSubId` so `deepestId` falls back to the top `categoryId`.
 - Filter labels changed to **All / Yes / No** (from Image: Any / With / Without) per QC.
 - Onboarding does not grant a ballpark admin a `user_orgs` seat in orgs they load (concierge-extracted),
   so admin refresh is genuinely cross-org → the svc_refresh escape is required (noted, not a bug here).
