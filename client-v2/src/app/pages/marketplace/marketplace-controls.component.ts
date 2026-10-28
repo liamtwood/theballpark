@@ -36,7 +36,7 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
           <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="open()"
             pTooltip="Filter & view" tooltipStyleClass="bp-tooltip" tooltipPosition="top"
             aria-label="Filter and view options" (click)="open.set(!open())">
-            <lucide-icon name="sliders-horizontal" [size]="15" />
+            <lucide-icon name="funnel-plus" [size]="15" />
           </button>
         </div>
 

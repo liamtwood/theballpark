@@ -15,6 +15,8 @@ import {
   ArrowLeft,
   ArrowLeftRight,
   SlidersHorizontal,
+  FunnelPlus,
+  FolderTree,
   Check,
   ChevronLeft,
   Lock,
@@ -183,7 +185,7 @@ export const appConfig: ApplicationConfig = {
         // pV2-06a — marketplace browse (search box + view toggle)
         Search, LayoutGrid, List, Table,
         // project Marketplace controls cluster (type / filter / view)
-        ArrowLeftRight, SlidersHorizontal,
+        ArrowLeftRight, SlidersHorizontal, FunnelPlus, FolderTree,
         // pV2-06d — favourites + storefront contact
         Heart, Globe, Phone, Mail, MapPin,
         // pV2-06-subcats — curation expanders
