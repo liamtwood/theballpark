@@ -86,3 +86,8 @@ Plus: `org_id` always from `req.user`, never the body (owner scopes every WHERE 
   Whether onboarding SHOULD seat the admin is a separate FR-00215 call.
 - Refresh runs items sequentially on the job runner (polite + single-client-safe); no cancel button for
   refresh yet (the job supports cancel server-side via the shared route if wanted later).
+
+## Iteration — bulk-bar icons (QC, 2026-10-28)
+**Triggered by QC (Liam):** the bulk action bar should match the item-card action icons — icon-only, label on hover, no visible text.
+**Change:** `bulk-action-bar.component.ts` — action + Clear buttons are now icon-only, with the label as a `title` + `aria-label` hover tooltip (mirrors the `bp-itemprev-close` hover-icon pattern on the item cards); Approve icon `check` → `circle-check` (the card's review/approve glyph); square icon-button padding.
+**Files:** `client-v2/src/app/shared/catalogue/bulk-action-bar.component.ts`

@@ -43,17 +43,16 @@ interface BulkButton {
           } @else {
             @for (b of buttons(); track b.action) {
               <button type="button" class="bp-bulk-btn" [attr.data-tone]="b.tone"
+                [title]="b.label" [attr.aria-label]="b.label"
                 (click)="onAction(b.action)">
                 <lucide-icon [name]="b.icon" [size]="14" />
-                <span>{{ b.label }}</span>
               </button>
             }
           }
 
           <span class="h-5 w-px bg-hairline"></span>
-          <button type="button" class="bp-bulk-btn" [disabled]="busy()" (click)="selection.clear()">
+          <button type="button" class="bp-bulk-btn" [disabled]="busy()" title="Clear" aria-label="Clear" (click)="selection.clear()">
             <lucide-icon name="x" [size]="14" />
-            <span>Clear</span>
           </button>
         </div>
       </div>
@@ -71,7 +70,7 @@ interface BulkButton {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 10px;
+      padding: 7px;
       border: 1px solid var(--color-border-hairline);
       border-radius: var(--radius-pill);
       background: var(--color-surface);
@@ -131,7 +130,7 @@ export class BulkActionBarComponent {
     { action: 'delete', label: 'Delete', icon: 'trash-2', tone: 'danger' },
   ];
   private static readonly ADMIN: BulkButton[] = [
-    { action: 'approve', label: 'Approve', icon: 'check', tone: 'ok' },
+    { action: 'approve', label: 'Approve', icon: 'circle-check', tone: 'ok' },
     { action: 'reject', label: 'Reject', icon: 'octagon-x', tone: 'danger' },
     { action: 'refresh-images', label: 'Refresh images', icon: 'image', tone: 'neutral' },
     { action: 'delete', label: 'Delete', icon: 'trash-2', tone: 'danger' },
