@@ -60,6 +60,7 @@ interface BulkButton {
       <app-reclassify-dialog
         [open]="reclassifyOpen()"
         [count]="selection.count()"
+        [seedCategoryId]="firstSelectedCategoryId()"
         (close)="reclassifyOpen.set(false)"
         (confirm)="onReclassify($event)"
       />
@@ -113,6 +114,14 @@ export class BulkActionBarComponent {
   protected readonly busy = signal(false);
   protected readonly busyLabel = signal('Working…');
   protected readonly reclassifyOpen = signal(false);
+
+  /** The first selected item's home category — seeds the reclassify dialog so it
+   *  opens on the item's current classification (Liam 2026-10-28). */
+  protected readonly firstSelectedCategoryId = computed<string | null>(() => {
+    const first = [...this.selection.ids()][0];
+    if (!first) return null;
+    return this.store.items().find((i) => i.id === first)?.categoryId ?? null;
+  });
 
   /** owner (own store) vs admin (cross-org moderation). null → no bar (host gates too). */
   protected readonly scope = computed<BulkScope | null>(() => {

@@ -91,3 +91,10 @@ Plus: `org_id` always from `req.user`, never the body (owner scopes every WHERE 
 **Triggered by QC (Liam):** the bulk action bar should match the item-card action icons — icon-only, label on hover, no visible text.
 **Change:** `bulk-action-bar.component.ts` — action + Clear buttons are now icon-only, with the label as a `title` + `aria-label` hover tooltip (mirrors the `bp-itemprev-close` hover-icon pattern on the item cards); Approve icon `check` → `circle-check` (the card's review/approve glyph); square icon-button padding.
 **Files:** `client-v2/src/app/shared/catalogue/bulk-action-bar.component.ts`
+
+## Iteration — reclassify fixes (QC, 2026-10-28)
+**Triggered by QC (Liam):** reclassify dropdown was empty; and prepopulate with the 1st selected item's classification.
+**Fixes:**
+- `reclassify-dialog.component.ts` — categories now load on the p-dialog `(onShow)` event. Root cause of the empty picker: `ensureLoaded()` fired from `onVisible()` (bound to `(visibleChange)`), but PrimeNG does NOT emit `visibleChange` when the dialog opens via the `[visible]` input, so categories never loaded. Added a `seedCategoryId` input + `seedFromItem()` that preselects the Category ▸ Subcategory ▸ Sub-subcategory cascade from the item's ancestor path (`/api/marketplace/categories/:id/path`, the same endpoint the item editor uses).
+- `bulk-action-bar.component.ts` — passes the first selected item's `categoryId` (from `store.items()`) as `seedCategoryId`.
+**Files:** `reclassify-dialog.component.ts`, `bulk-action-bar.component.ts`

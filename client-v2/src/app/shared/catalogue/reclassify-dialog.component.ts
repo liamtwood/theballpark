@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { DialogModule } from 'primeng/dialog';
+import { ApiService } from '../../core/api.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { CategoryInfo } from './catalogue.types';
 import { SelectComponent, SelectOption } from '../select/select.component';
@@ -18,6 +20,7 @@ import { SelectComponent, SelectOption } from '../select/select.component';
     <p-dialog
       [visible]="open()"
       (visibleChange)="onVisible($event)"
+      (onShow)="onShow()"
       styleClass="bp-modal"
       [closable]="true"
       [closeOnEscape]="true"
@@ -68,10 +71,13 @@ import { SelectComponent, SelectOption } from '../select/select.component';
 })
 export class ReclassifyDialogComponent {
   private readonly catalogue = inject(CatalogueService);
+  private readonly api = inject(ApiService);
 
   /** Parent toggles visibility; how many items are selected (for the title). */
   readonly open = input<boolean>(false);
   readonly count = input<number>(0);
+  /** The first selected item's home category id — preselects the cascade on open. */
+  readonly seedCategoryId = input<string | null>(null);
   readonly close = output<void>();
   /** Emits the DEEPEST chosen category id (the item's home node at any depth). */
   readonly confirm = output<string>();
@@ -96,13 +102,47 @@ export class ReclassifyDialogComponent {
   protected readonly deepestId = computed(() => this.subSubId() || this.subId() || this.categoryId());
 
   protected onVisible(v: boolean): void {
-    if (v) { this.ensureLoaded(); } else { this.close.emit(); }
+    if (!v) this.close.emit();
+  }
+
+  /** p-dialog (onShow) fires reliably when the dialog becomes visible — the
+   *  [visible] input alone does NOT emit (visibleChange), so the category load +
+   *  seed must happen here, not in onVisible (that's why the picker was empty). */
+  protected async onShow(): Promise<void> {
+    await this.ensureLoaded();
+    await this.seedFromItem();
   }
 
   private async ensureLoaded(): Promise<void> {
     if (this.loaded) return;
     this.loaded = true;
-    try { this.categories.set(await this.catalogue.categories()); } catch { /* empty list → the picker just shows nothing */ }
+    try { this.categories.set(await this.catalogue.categories()); }
+    catch { this.loaded = false; /* transient failure → retry on next open */ }
+  }
+
+  /** Preselect the Category ▸ Subcategory ▸ Sub-subcategory cascade from the first
+   *  selected item's home node (its ancestor path), so the dialog opens on the item's
+   *  current classification (Liam 2026-10-28). Reset-then-seed so a reopen with a
+   *  different selection never shows a stale pick; falls back to empty. */
+  private async seedFromItem(): Promise<void> {
+    this.categoryId.set(null); this.subId.set(null); this.subSubId.set(null);
+    this.subcats.set([]); this.subsubcats.set([]);
+    const leaf = this.seedCategoryId();
+    if (!leaf) return;
+    try {
+      // root → leaf ancestor path (same endpoint the item editor uses to rebuild the cascade).
+      const path = await firstValueFrom(this.api.get<CategoryInfo[]>(`/api/marketplace/categories/${leaf}/path`));
+      if (!path?.length) return;
+      this.categoryId.set(path[0].id);
+      if (path.length > 1) {
+        this.subcats.set(await this.catalogue.subcategories(path[0].id));
+        this.subId.set(path[1].id);
+        if (path.length > 2) {
+          this.subsubcats.set(await this.catalogue.subcategories(path[1].id));
+          this.subSubId.set(path[2].id);
+        }
+      }
+    } catch { /* path unavailable → leave the cascade empty */ }
   }
 
   protected async onCategory(id: string): Promise<void> {
