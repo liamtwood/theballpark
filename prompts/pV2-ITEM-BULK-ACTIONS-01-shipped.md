@@ -81,6 +81,8 @@ Plus: `org_id` always from `req.user`, never the body (owner scopes every WHERE 
   admin moderation writes deliberately use the pinned client under `withModeration` instead (see MUST #3).
 
 ## Follow-ups / open
+- **Reclassify to a TOP-LEVEL category fails** (Liam QC 2026-10-28) — reclass to a *subcategory* works, but picking only a top-level category (no sub) doesn't apply the move. Deferred by Liam; **fix before release**. Likely in the owner bulk reclassify path / server handling when the chosen node is a top-level `category_id` (items can legitimately home at any depth, 0015).
+- Filter labels changed to **All / Yes / No** (from Image: Any / With / Without) per QC.
 - Onboarding does not grant a ballpark admin a `user_orgs` seat in orgs they load (concierge-extracted),
   so admin refresh is genuinely cross-org → the svc_refresh escape is required (noted, not a bug here).
   Whether onboarding SHOULD seat the admin is a separate FR-00215 call.

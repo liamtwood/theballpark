@@ -88,8 +88,8 @@ export class MarketplaceFiltersComponent {
 
   /** Owner / ballpark-admin "has a photo?" filter (pV2-ITEM-BULK-ACTIONS-01). */
   protected readonly imageOptions: SelectOption[] = [
-    { label: 'Image: Any', value: 'any' },
-    { label: 'With image', value: 'with' },
-    { label: 'Without image', value: 'without' },
+    { label: 'All', value: 'any' },
+    { label: 'Yes', value: 'with' },
+    { label: 'No', value: 'without' },
   ];
 }
