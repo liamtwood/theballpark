@@ -152,3 +152,9 @@ Two independent read-only passes (security + Angular/hygiene) over `ae2e7dd1^..4
 3. `bulk-action-bar.component.ts` — on multi-pick, Activate (owner) and Delete (owner + admin) are now `tone:'neutral'` (were green/red); Approve/Reject keep their colours. Delete is still confirm-gated.
 **Verify:** `ng build` clean; client-only. Held from preview.
 **Files:** `catalogue-grid.component.ts`, `item-card.component.ts`, `bulk-action-bar.component.ts`.
+
+## Iteration — themed select checkbox (QC, 2026-10-28)
+**Triggered by QC (Liam):** restyle the bulk-select checkbox to match the Ballpark theme — a soft ROUNDED SQUARE (not a circle, which reads as a radio), accent-pink fill + white tick when checked, hairline border when not.
+**Change (`catalogue-grid.component.ts`):** `.bp-bulk-check input` → `appearance:none` custom box (5px radius), `--theme-accent` fill + `--theme-accent-contrast` CSS-border checkmark on `:checked`, `--color-border-hairline` border + `--color-surface` ground when unchecked, hover/focus-visible accent; `accent-color` kept as the fallback. Shared `.bp-bulk-check` → applies to card + list + table; the bare (no-container) card treatment is preserved. Tokens only (no raw hex).
+**Verify:** `ng build` clean; client-only. Held from preview.
+**Files:** `catalogue-grid.component.ts`.
