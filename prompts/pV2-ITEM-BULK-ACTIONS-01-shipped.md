@@ -121,3 +121,16 @@ Two independent read-only passes (security + Angular/hygiene) over `ae2e7dd1^..4
 - **S2 (LOW, server):** admin-delete parent+cascade atomicity (BEGIN/COMMIT on the pinned client).
 
 **Rejected:** S1 (namespace filter — false positive; rebuild `categories` has no namespace col / no junk rows, verified), S4 (harmless forced-fetch), A5 (benign double-reload). Nits A6/A8/A4/S5 optional.
+
+## Iteration — audit fixes (2026-10-28)
+**Triggered by:** the chat audit above (Liam: fix all actionable findings). Branch tip was `a411e638`.
+**Fixes (all ACCEPTED findings + the nits; SKIP set untouched per triage):**
+- **A1 (HIGH)** `reclassify-dialog.component.ts` — `subOptions`/`subSubOptions` now prepend an explicit `{label:'(whole category)'/'(whole subcategory)', value:''}` so a seeded sub-level drill can be cleared (picking it emits `onSub('')`/`onSubSub('')` → `deepestId()` falls back to the top `categoryId`). The render `@if`s switched to the real child-count signals (`subcats()`/`subsubcats().length`) so the empty option only shows when there are children. Resolves the deferred top-level-reclassify bug.
+- **A2 (MED)** `supplier-detail.component.ts` — folded `catalogue.rev()` into the `detail` resource params (mirrors the `subcats` fix), so the My Shop TOP-LEVEL rail + counts + Shopfront nav refresh after a mutation.
+- **A3 (MED)** `bulk-action-bar.component.ts` — the refresh `pollToDone` loop now injects `DestroyRef`, guards each tick on a `destroyed` flag (incl. after the await), and tracks + `clearTimeout`s the poll handle on destroy — no post-destroy GETs / `busy`/`toast`/`selection`/`done` mutations.
+- **S3 (LOW)** `catalogue-extract.service.js` `withPinnedOrgContext` — on a `RESET ALL` failure the client is now destroyed (`client.release(err)`) instead of returned to the pool possibly still carrying `app.svc_refresh`/`app.is_admin` (defence-in-depth for the svc_refresh escape).
+- **S2 (LOW)** `item-bulk.service.js` `adminBulk` delete — parent soft-delete + child cascade wrapped in an explicit `BEGIN/COMMIT/ROLLBACK` on the request's pinned `als` client (NOT `withTransaction`, which opens a fresh client lacking the `svc_moderate` GUC). Hand-rolled txn is the correct call for the moderation path (deliberate, audited deviation from hygiene Rule 1).
+- **Nits:** A6 `catalogue-grid` card checkbox `box-shadow` → `var(--shadow-xs)` (there is no `--shadow-sm` token — it was falling back to a raw rgba). A8 reclassify subcat-load catches now `console.warn` instead of silent. A4 dropped the dialog `loaded` latch (re-read categories each open — session-cached + bust-aware, so a category created elsewhere now appears). S5 per-item refresh failures log the real cause server-side and surface a generic `'fetch failed'` reason via the (own-org) poll.
+**Skipped (per triage):** S1 (namespace filter — false positive on the clean rebuild schema), S4 (harmless SSRF-safe forced fetch), A5/A7 (benign).
+**Verify:** `ng build` clean; backend green on :3002 after the server edits; `0024` already applied+verified (no new migration). No preview deploy (held).
+**Files:** `reclassify-dialog.component.ts`, `bulk-action-bar.component.ts`, `supplier-detail.component.ts`, `catalogue-grid.component.ts`, `catalogue-extract.service.js`, `item-bulk.service.js`.
