@@ -29,6 +29,10 @@ const ItemsQuerySchema = z
     // filters the publish toggle (inactive = draft/hidden).
     status: z.enum(['draft', 'pending', 'approved', 'rejected', 'all']).optional(),
     active: z.enum(['active', 'inactive', 'all']).optional(),
+    // pV2-ITEM-BULK-ACTIONS-01 — tri-state "has a photo?" filter (items.images jsonb
+    // array length). 'with' = ≥1 image; 'without' = none. Absent = no image filter
+    // (the common case). Surfaces imageless items for the Refresh Images bulk backfill.
+    image: z.enum(['with', 'without']).optional(),
     offset: z.coerce.number().int().min(0).max(100000).default(0),
   })
   .strip();

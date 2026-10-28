@@ -15,9 +15,46 @@ const { z } = require('zod');
 const router = require('express').Router();
 const { requireActiveMembership } = require('../middleware/require-active-membership');
 const ItemService = require('../services/item.service');
+const BulkService = require('../services/item-bulk.service');
+const CatalogueExtract = require('../services/catalogue-extract.service');
 const { StoreItemCreateSchema, StoreItemUpdateSchema } = require('../schemas/store-item.schema');
+const { OwnerBulkSchema } = require('../schemas/bulk-items.schema');
 
 router.use(requireActiveMembership('item.create'));
+
+// POST /api/store/items/bulk — bulk manage the caller's OWN items (pV2-ITEM-BULK-
+// ACTIONS-01). org from the SESSION (never the body). refresh-images starts a
+// background job (returns a jobId → poll /bulk/refresh/:jobId); every other action is
+// a synchronous own-org write returning { updated, skipped }. MUST precede GET /:id.
+router.post('/bulk', async (req, res, next) => {
+  try {
+    const parsed = OwnerBulkSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid request' });
+    }
+    const { ids, action, categoryId } = parsed.data;
+    if (action === 'refresh-images') {
+      const job = await CatalogueExtract.startRefreshImages(req.user.org_id, ids, { isAdmin: false, userId: req.user.id });
+      return res.status(202).json({ action, ...job });
+    }
+    if (action === 'reclassify' && !(await BulkService.isValidCategory(categoryId))) {
+      return res.status(400).json({ error: 'Unknown category' });
+    }
+    res.json(await BulkService.ownerBulk({ ids, action, categoryId, orgId: req.user.org_id }));
+  } catch (err) {
+    if (err.code === 'refresh_in_progress') return res.status(409).json({ error: err.message, jobId: err.jobId });
+    next(err);
+  }
+});
+
+// GET /api/store/items/bulk/refresh/:jobId — poll the refresh-images job (own org).
+router.get('/bulk/refresh/:jobId', async (req, res, next) => {
+  try {
+    const job = await CatalogueExtract.getJob(req.params.jobId, req.user.org_id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    res.json(job);
+  } catch (err) { next(err); }
+});
 
 // GET /api/store/items/counts — status rollup for the caller's org, feeding the
 // supplier home "Next steps" (drafts to submit, rejected to fix, approved-but-

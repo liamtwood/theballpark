@@ -13,9 +13,45 @@
 const router = require('express').Router();
 const { z } = require('zod');
 const ItemService = require('../services/item.service');
+const BulkService = require('../services/item-bulk.service');
+const CatalogueExtract = require('../services/catalogue-extract.service');
 const { withModeration } = require('../lib/moderation');
+const { AdminBulkSchema } = require('../schemas/bulk-items.schema');
 
 const DecisionSchema = z.object({ decision: z.enum(['approve', 'reject']) }).strip();
+
+// POST /api/admin/items/bulk — cross-org moderation bulk (pV2-ITEM-BULK-ACTIONS-01).
+// approve/reject/delete run through the svc_moderate escape (0017-guarded to
+// approval_status/deleted_at); refresh-images starts a background job (is_admin READ +
+// the narrow svc_refresh images-only WRITE). make-active/reclassify are NOT here —
+// FR-00215 reserves content-authoring to the owner org. MUST precede GET /items/:id.
+router.post('/items/bulk', async (req, res, next) => {
+  try {
+    const parsed = AdminBulkSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid request' });
+    }
+    const { ids, action } = parsed.data;
+    if (action === 'refresh-images') {
+      const job = await CatalogueExtract.startRefreshImages(req.user.org_id, ids, { isAdmin: true, userId: req.user.id });
+      return res.status(202).json({ action, ...job });
+    }
+    res.json(await BulkService.adminBulk({ ids, action }));
+  } catch (err) {
+    if (err.code === 'refresh_in_progress') return res.status(409).json({ error: err.message, jobId: err.jobId });
+    next(err);
+  }
+});
+
+// GET /api/admin/items/bulk/refresh/:jobId — poll the admin refresh-images job. The
+// job row is scoped to the admin's own org (the actor), so getJob keys on req.user.org_id.
+router.get('/items/bulk/refresh/:jobId', async (req, res, next) => {
+  try {
+    const job = await CatalogueExtract.getJob(req.params.jobId, req.user.org_id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    res.json(job);
+  } catch (err) { next(err); }
+});
 
 router.get('/items/:id', async (req, res, next) => {
   try {

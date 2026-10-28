@@ -408,7 +408,7 @@ router.get('/items', async (req, res, next) => {
         details: z.flattenError(parsed.error).fieldErrors,
       });
     }
-    const { cat, sub, q, offset, priceMin, priceMax, tier, supplier, status, active, tag } = parsed.data;
+    const { cat, sub, q, offset, priceMin, priceMax, tier, supplier, status, active, tag, image } = parsed.data;
     const vals = [req.user.org_id]; // $1 — ownership flag, never from the client
     // kind='component' items are the supplier's private cost-buildup library —
     // surfaced ONLY in Customize (Explore), never in the marketplace browse
@@ -471,6 +471,14 @@ router.get('/items', async (req, res, next) => {
     if (priceMax !== undefined) { vals.push(priceMax); where.push(`i.base_price <= $${vals.length}`); }
     if (tier) { vals.push(tier); where.push(`i.tier = $${vals.length}`); }
     if (supplier) { vals.push(supplier); where.push(`i.org_id = $${vals.length}`); }
+    // pV2-ITEM-BULK-ACTIONS-01 — "has a photo?" filter (owner/admin management only).
+    // images is a jsonb array; a null/non-array column counts as "without". jsonb_array_length
+    // errors on a non-array, so gate it behind jsonb_typeof = 'array'.
+    if (image === 'with') {
+      where.push(`(jsonb_typeof(i.images) = 'array' AND jsonb_array_length(i.images) > 0)`);
+    } else if (image === 'without') {
+      where.push(`(i.images IS NULL OR jsonb_typeof(i.images) <> 'array' OR jsonb_array_length(i.images) = 0)`);
+    }
     // pV2-STORE-WHATS-HOT-01 — tag filter (e.g. the shopfront "What's Hot" menu).
     // v2dev: item tags live in the item_tags junction → tags vocab (matched by name,
     // the client passes the tag label). An item matches when it has a live link to a

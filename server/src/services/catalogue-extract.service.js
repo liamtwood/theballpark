@@ -166,6 +166,30 @@ function collectImageUrls(html, baseUrl, cap = 40) {
 const isProductImage = (u) =>
   !/(logo|icon|sprite|favicon|placeholder|banner|com+ing[-_. ]?soon|\/product\.(webp|png|jpe?g)(\?|$)|\.svg(\?|$))/i.test(u);
 
+/** Pick the product photo set for a fetched page — the shared, DETERMINISTIC (zero-AI)
+ *  image selection used by BOTH the pull (processUrl, with the AI's images as the
+ *  authoritative first choice) AND the Refresh-Images backfill (no AI → page images
+ *  only). "Clearly this product" = the URL carries the product handle OR sits under a
+ *  /product-images path — a per-product photo, never a generic category banner. When
+ *  nothing qualifies, returns [] (the UI shows the "Image coming soon" tile — better a
+ *  deliberate placeholder than a wrong/placeholder photo; Liam 2026-10-12). The handle
+ *  match also hoists the best photo to hero. `aiImages` (optional) wins when present. */
+function selectProductImages(html, finalUrl, aiImages = null) {
+  const handle = (String(finalUrl).split('?')[0].split('/').filter(Boolean).pop() || '').toLowerCase();
+  const looksProduct = (u) => isProductImage(u)
+    && ((handle && u.toLowerCase().includes(handle)) || /\/product[-_]images/i.test(u));
+  // 1) AI-returned images are authoritative when present (filtered for placeholders).
+  let urls = (Array.isArray(aiImages) ? aiImages : [])
+    .map((u) => absolutize(u, finalUrl)).filter(Boolean).filter(isProductImage);
+  // 2) Fallback: only CLEARLY-this-product page images — never a generic banner/placeholder.
+  if (!urls.length) urls = collectImageUrls(html, finalUrl).filter(looksProduct);
+  if (handle) {
+    const hit = urls.find((u) => u.toLowerCase().includes(handle));
+    if (hit) urls = [hit, ...urls.filter((u) => u !== hit)];
+  }
+  return urls.map((u, i) => ({ url: u, is_hero: i === 0 }));
+}
+
 function absolutize(u, base) {
   try { return new URL(u, base).toString(); } catch { return null; }
 }
@@ -1045,23 +1069,10 @@ async function processUrl(ctx, url) {
     // a universal signal that beats a generic reused placeholder. When nothing qualifies
     // the item lands with NO image → the UI shows the "Image coming soon" tile (Liam:
     // better a deliberate placeholder than a wrong/placeholder photo).
-    const handle = (String(finalUrl).split('?')[0].split('/').filter(Boolean).pop() || '').toLowerCase();
-    // "Clearly this product" = URL carries the product handle OR sits under a
-    // product-images path — a per-product photo, not a generic category banner.
-    const looksProduct = (u) => isProductImage(u)
-      && ((handle && u.toLowerCase().includes(handle)) || /\/product[-_]images/i.test(u));
-    // 1) AI-returned images are authoritative when present (filtered for placeholders).
-    let urls = (Array.isArray(p.images) ? p.images : [])
-      .map((u) => absolutize(u, finalUrl)).filter(Boolean).filter(isProductImage);
-    // 2) Fallback: only CLEARLY-this-product page images — never a generic banner/
-    //    placeholder. When none qualify the item lands with no image → the UI shows
-    //    the "Image coming soon" tile (better than a wrong photo; Liam 2026-10-12).
-    if (!urls.length) urls = collectImageUrls(html, finalUrl).filter(looksProduct);
-    if (handle) {
-      const hit = urls.find((u) => u.toLowerCase().includes(handle));
-      if (hit) urls = [hit, ...urls.filter((u) => u !== hit)];
-    }
-    let images = urls.map((u, i) => ({ url: u, is_hero: i === 0 }));
+    // AI-returned images are authoritative when present; otherwise fall back to the
+    // page's clearly-this-product photos (extracted to selectProductImages so the
+    // Refresh-Images backfill re-runs the EXACT same deterministic selection).
+    let images = selectProductImages(html, finalUrl, p.images);
 
     // Review mode: keep the lean vetting set only. attributes narrows to the
     // internal _source block (so re-run dedup still works); images to the hero;
@@ -1149,13 +1160,13 @@ async function pull(orgId, urls, opts = {}) {
  *  re-establish the context. Legitimate: startPull is only reachable through the
  *  admin gate. pool.js prefers ctx.client for every query, so createForOrg's
  *  insert + our job writes all carry the admin context. RESET ALL on the way out. */
-async function withAdminContext({ orgId, userId }, fn) {
+async function withPinnedOrgContext({ orgId, userId, isAdmin = true }, fn) {
   const client = await pool.connect();
-  const ctx = { userId: userId || null, orgId: orgId || null, isAdmin: true, client };
+  const ctx = { userId: userId || null, orgId: orgId || null, isAdmin: !!isAdmin, client };
   try {
     await client.query(
-      "SELECT set_config('app.current_org_id',$1,false), set_config('app.current_user_id',$2,false), set_config('app.is_admin','t',false)",
-      [ctx.orgId, ctx.userId],
+      "SELECT set_config('app.current_org_id',$1,false), set_config('app.current_user_id',$2,false), set_config('app.is_admin',$3,false)",
+      [ctx.orgId, ctx.userId, isAdmin ? 't' : 'f'],
     );
     return await als.run(ctx, fn);
   } finally {
@@ -1163,6 +1174,8 @@ async function withAdminContext({ orgId, userId }, fn) {
     client.release();
   }
 }
+/** Admin concierge context (is_admin='t') — the extract runner's detached writes. */
+const withAdminContext = (opts, fn) => withPinnedOrgContext({ ...opts, isAdmin: true }, fn);
 
 /** Shape a job row for the client. Two kinds:
  *   'pull'    → the PullResult fields + live progress + AI cost.
@@ -1180,6 +1193,16 @@ function jobToClient(row) {
     error: row.error || null,
     updatedAt: row.updated_at,
   };
+  if (row.kind === 'refresh') {
+    // Refresh-images job (pV2-ITEM-BULK-ACTIONS-01) — progress + per-item outcomes.
+    return {
+      ...base,
+      updated: progress.updated || 0,
+      skipped: progress.skipped || 0,
+      failed: progress.failed || 0,
+      results: row.results || [],
+    };
+  }
   if ((row.kind || 'pull') === 'analyse') {
     const productLinks = (row.plan && row.plan.productLinks) || [];
     return {
@@ -1515,4 +1538,137 @@ function pruneNull(obj) {
   return out;
 }
 
-module.exports = { analyse, startAnalyseJob, detectProfile, prepare, applyMapping, pull, startPull, getJob, activeJobForOrg, resumableJobForOrg, cancelJob, failStaleJobs, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity, extractReviewFromJsonLd } };
+// ── Refresh Images (pV2-ITEM-BULK-ACTIONS-01) ──────────────────────────────────
+// Re-fetch an item's external_url and re-run the DETERMINISTIC image selection
+// (selectProductImages — collectImageUrls + the looksProduct filter, ZERO AI), then
+// UPDATE items.images IN PLACE. This backfills items that imported imageless (the
+// fixed image-cap bug left ~9% photo-less; dedup-before-AI means a re-pull skips them,
+// so they can't self-heal — this is the fix). PRESERVES every other field/manual edit:
+// only `images` is written, and ONLY when selection finds photos (never clobbers an
+// existing image with nothing). Slow (one guarded fetch per item) → runs as a bounded
+// background job on the shared catalogue_extract_job runner, pollable like a pull.
+
+/** Re-fetch ONE item's source page and reselect its product photos. Returns an
+ *  outcome row; never throws. Writes nothing (the runner persists the UPDATE). */
+async function reselectItemImages(item) {
+  const url = item && item.external_url;
+  if (!url) return { itemId: item.id, status: 'skipped', reason: 'no source URL' };
+  try {
+    const { finalUrl, html } = await guardedFetch(url);
+    const images = selectProductImages(html, finalUrl); // zero-AI, page photos only
+    if (!images.length) return { itemId: item.id, status: 'skipped', reason: 'no product image found' };
+    return { itemId: item.id, status: 'ok', images };
+  } catch (err) {
+    return { itemId: item.id, status: 'error', reason: err.message };
+  }
+}
+
+/** The org's active (running/cancelling) refresh job, for the one-per-org guard +
+ *  re-attach on return. Ignores rows idle >10 min (a stale/crashed runner). */
+async function activeRefreshJobForOrg(orgId) {
+  const r = await pool.query(
+    `SELECT * FROM catalogue_extract_job
+      WHERE org_id = $1 AND kind = 'refresh' AND status IN ('running','cancelling')
+        AND updated_at > now() - interval '10 minutes'
+      ORDER BY created_at DESC LIMIT 1`,
+    [orgId]
+  );
+  return jobToClient(r.rows[0]);
+}
+
+/** Create a refresh-images job for `itemIds` + kick off the detached runner; returns
+ *  the job id at once. `actorOrgId` scopes the job row (the admin/owner who launched
+ *  it polls it); `isAdmin` selects the write context (admin → per-item concierge org
+ *  context, same mechanism the extractor uses to write a supplier org's items; owner →
+ *  own-org). The runner enforces scope per item, so a bad id is simply skipped. */
+async function startRefreshImages(actorOrgId, itemIds, { isAdmin = false, userId = null } = {}) {
+  const ids = [...new Set((Array.isArray(itemIds) ? itemIds : []).filter(Boolean))].slice(0, MAX_PULL_URLS);
+  const existing = await activeRefreshJobForOrg(actorOrgId);
+  if (existing) {
+    const err = new Error('An image refresh is already running — wait for it to finish.');
+    err.code = 'refresh_in_progress';
+    err.jobId = existing.jobId;
+    throw err;
+  }
+  const plan = { itemIds: ids, isAdmin: !!isAdmin };
+  const progress = { processed: 0, updated: 0, skipped: 0, failed: 0 };
+  const r = await pool.query(
+    `INSERT INTO catalogue_extract_job (org_id, kind, status, mode, selected, total, plan, progress, results, created_by)
+     VALUES ($1, 'refresh', 'running', 'refresh', $2, $3, $4, $5, '[]'::jsonb, $6) RETURNING id`,
+    [actorOrgId, ids.length, ids.length, JSON.stringify(plan), JSON.stringify(progress), userId]
+  );
+  const jobId = r.rows[0].id;
+  // Detached runner (outlives the request) → re-establish a pinned context scoped to the
+  // ACTOR's org (so the job-row writes pass: org_id = actorOrgId = current_org). Admin
+  // runs is_admin='t' (to READ cross-org pending items via items_select) PLUS the narrow
+  // app.svc_refresh GUC (set in runRefreshJob) which the 0017 trigger permits to write
+  // ONLY images cross-org — never approval_status/deleted_at (that's svc_moderate). No
+  // org impersonation (the designer's Option D: least-privilege, a refresh bug can only
+  // touch images). Owner runs own-org, is_admin='f', no escape GUC.
+  withPinnedOrgContext({ orgId: actorOrgId, userId, isAdmin }, () => runRefreshJob(jobId, { isAdmin }))
+    .catch((e) => {
+      pool.query(`UPDATE catalogue_extract_job SET status='error', error=$2, updated_at=now() WHERE id=$1`,
+        [jobId, String((e && e.message) || e)]).catch(() => {});
+    });
+  return { jobId, total: ids.length };
+}
+
+/** The refresh runner: per item, reselect photos and UPDATE images in place, persisting
+ *  progress after each (cancellable between items). Sequential — one guarded fetch at a
+ *  time is polite and keeps the single pinned client safe. */
+async function runRefreshJob(jobId, { isAdmin = false } = {}) {
+  // Admin writes land cross-org, permitted ONLY for `images` via the app.svc_refresh
+  // GUC + the 0017 trigger branch (pV2-ITEM-BULK-ACTIONS-01 migration). Owner is own-org,
+  // no escape. The pinned client is reset on the way out (withPinnedOrgContext finally).
+  if (isAdmin) {
+    const client = als.getStore()?.client;
+    if (client) await client.query("SELECT set_config('app.svc_refresh','t',false)");
+  }
+  const planR = await pool.query(`SELECT plan FROM catalogue_extract_job WHERE id = $1`, [jobId]);
+  const ids = planR.rows[0]?.plan?.itemIds || [];
+  const results = [];
+  const progress = { processed: 0, updated: 0, skipped: 0, failed: 0 };
+  for (const id of ids) {
+    if (await isCancelled(jobId)) {
+      await pool.query(`UPDATE catalogue_extract_job SET status='cancelled', updated_at=now() WHERE id=$1`, [jobId]);
+      return;
+    }
+    // Load within the current context (admin sees all via is_admin; owner sees own). A
+    // missing/cross-scope id just returns no row → skipped.
+    const itemR = await pool.query(
+      `SELECT id, org_id, external_url FROM items WHERE id = $1 AND deleted_at IS NULL`, [id]);
+    const item = itemR.rows[0];
+    let row;
+    if (!item) {
+      row = { itemId: id, status: 'skipped', reason: 'not found' };
+    } else {
+      row = await reselectItemImages(item);
+      if (row.status === 'ok') {
+        // Own-org (owner, or admin's own org) → org_id=current_org branch; cross-org
+        // (admin) → the app.svc_refresh images-only branch. A row that matches neither
+        // RLS branch simply isn't updated → skipped ('not writable').
+        const upd = await pool.query(
+          `UPDATE items SET images = $2::jsonb, updated_at = now()
+            WHERE id = $1 AND deleted_at IS NULL RETURNING id`,
+          [id, JSON.stringify(row.images)]
+        );
+        if (!upd.rows.length) { row = { itemId: id, status: 'skipped', reason: 'not writable' }; }
+      }
+    }
+    results.push(row);
+    progress.processed += 1;
+    if (row.status === 'ok' || row.status === 'updated') progress.updated += 1;
+    else if (row.status === 'skipped') progress.skipped += 1;
+    else if (row.status === 'error') progress.failed += 1;
+    await pool.query(
+      `UPDATE catalogue_extract_job SET progress=$2, results=$3, updated_at=now() WHERE id=$1`,
+      [jobId, JSON.stringify(progress), JSON.stringify(results)]
+    );
+  }
+  await pool.query(
+    `UPDATE catalogue_extract_job SET status = CASE WHEN status='cancelling' THEN 'cancelled' ELSE 'done' END, updated_at=now() WHERE id=$1`,
+    [jobId]
+  );
+}
+
+module.exports = { analyse, startAnalyseJob, detectProfile, prepare, applyMapping, pull, startPull, getJob, activeJobForOrg, resumableJobForOrg, cancelJob, failStaleJobs, startRefreshImages, activeRefreshJobForOrg, _internals: { htmlToText, matchCategoryId, toNumber, routeAttributes, collectImageUrls, collectJsonLdImages, selectProductImages, marketplaceCategoryTree, groupKeyOf, dedupeByHandle, productHandle, extractIdentity, extractReviewFromJsonLd } };
