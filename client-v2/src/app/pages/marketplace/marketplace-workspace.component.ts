@@ -30,6 +30,7 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
           <div class="shrink-0 p-4 pb-3">
             <app-marketplace-controls
               class="block"
+              [supplierName]="supplierName()"
               [showCart]="showCart()"
               [cartCount]="cartCount()"
               [cartOpen]="cartOpen()"
@@ -100,6 +101,10 @@ export class MarketplaceWorkspaceComponent {
    *  the tab scrolls in the page's bp-gutter so the scrollbar matches the other
    *  project tabs (used by the in-project Marketplace tab). */
   readonly framed = input(true);
+
+  /** Pinned single-supplier store (My Shop): the supplier name, shown in the controls
+   *  where the Items|Suppliers toggle would be. Passed through to the controls. */
+  readonly supplierName = input<string | null>(null);
 
   /** Project-only quote cart: shows the toggle in the controls + the right-side
    *  `[cart]` slot. Off by default so the global marketplace is unchanged. */

@@ -200,7 +200,7 @@ const WHATS_HOT = "What's Hot";
           <!-- STORE — the SHARED marketplace workspace, pinned to this supplier.
                Same chrome as the global + in-project marketplace; the controls
                self-hide the Items|Suppliers type + supplier filter when pinned. -->
-          <app-marketplace-workspace>
+          <app-marketplace-workspace [supplierName]="detail.value()?.name ?? null">
             <app-category-strip
               strip
               mode="drilldown"

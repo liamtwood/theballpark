@@ -23,6 +23,10 @@ import { MarketplaceFiltersComponent } from './marketplace-filters.component';
     <div class="mb-3 flex items-center justify-between gap-3">
       @if (!pinned()) {
         <app-tab-band [tabs]="modeTabs" [active]="store.mode()" [compact]="true" (activeChange)="store.setMode($event)" />
+      } @else if (supplierName(); as name) {
+        <!-- Pinned single-supplier store (My Shop): the Items|Suppliers toggle is
+             pointless here, so show the supplier name instead of an empty gap. -->
+        <span class="bp-body min-w-0 truncate font-semibold text-text">{{ name }}</span>
       } @else {
         <span></span>
       }
@@ -94,6 +98,10 @@ export class MarketplaceControlsComponent {
 
   /** Pinned single-supplier store (supplier-detail) — no Items|Suppliers Type. */
   protected readonly pinned = computed(() => !!this.store.pinnedSupplierId());
+
+  /** On a pinned store, the supplier's name — shown where the Type toggle would be
+   *  (replaces the empty gap on My Shop). Threaded from supplier-detail. */
+  readonly supplierName = input<string | null>(null);
 
   /** One toggle: reveals the Type / Filter / View options line. */
   protected readonly open = signal(false);
