@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { ItemCardComponent } from './item-card.component';
 import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
@@ -83,7 +83,16 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
       @case ('table') {
         <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
           <div class="flex items-center border-b border-hairline bg-fill">
-            @if (selectable()) { <span class="bp-bulk-check pl-4"></span> }
+            @if (selectable()) {
+              <!-- Select-all (table header): checks every row shown; indeterminate when
+                   only some are selected. Management grids only (Approvals / My Shop). -->
+              <label class="bp-bulk-check pl-4" (click)="$event.stopPropagation()">
+                <input type="checkbox" aria-label="Select all"
+                  [checked]="allOnPage()"
+                  [indeterminate]="someOnPage() && !allOnPage()"
+                  (change)="bulkToggleAll.emit(!allOnPage())" />
+              </label>
+            }
             <div class="grid min-w-0 flex-1 grid-cols-[1.6fr_1fr_90px_110px] gap-x-4 px-4 py-2">
               <span class="bp-table-column-header">Item</span>
               <span class="bp-table-column-header">Supplier</span>
@@ -194,6 +203,9 @@ export class CatalogueGridComponent {
   readonly selectable = input<boolean>(false);
   readonly selectedForBulk = input<ReadonlySet<string>>(new Set<string>());
   readonly bulkToggle = output<string>();
+  /** Select-all toggle (table header checkbox): true = select every item currently
+   *  shown, false = clear. The host maps it onto the selection store. */
+  readonly bulkToggleAll = output<boolean>();
   readonly entitySelected = output<string>();
   readonly favouriteToggled = output<string>();
   readonly quoteToggled = output<string>();
@@ -212,4 +224,17 @@ export class CatalogueGridComponent {
   protected isSel(id: string): boolean {
     return this.selectedForBulk().has(id);
   }
+
+  /** Select-all state for the table header checkbox: all shown items selected
+   *  (checked), some (indeterminate), or none (unchecked). */
+  protected readonly allOnPage = computed(() => {
+    const items = this.items();
+    if (!items.length) return false;
+    const sel = this.selectedForBulk();
+    return items.every((i) => sel.has(i.id));
+  });
+  protected readonly someOnPage = computed(() => {
+    const sel = this.selectedForBulk();
+    return this.items().some((i) => sel.has(i.id));
+  });
 }

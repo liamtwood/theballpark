@@ -104,6 +104,7 @@ import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.c
             [selectable]="store.isManagementView()"
             [selectedForBulk]="selection.ids()"
             (bulkToggle)="selection.toggle($event)"
+            (bulkToggleAll)="$event ? selection.selectMany(store.items().map(i => i.id)) : selection.clear()"
             (reclassify)="bulkBar()?.openReclassifyFor($event)"
             (quickView)="openQuickView($event)"
             (entitySelected)="openQuickView($event)"

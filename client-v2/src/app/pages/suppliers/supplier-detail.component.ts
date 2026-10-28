@@ -230,6 +230,7 @@ const WHATS_HOT = "What's Hot";
                 [selectable]="store.showStatusFilters()"
                 [selectedForBulk]="selection.ids()"
                 (bulkToggle)="selection.toggle($event)"
+                (bulkToggleAll)="$event ? selection.selectMany(store.items().map(i => i.id)) : selection.clear()"
                 (reclassify)="bulkBar()?.openReclassifyFor($event)"
                 (entitySelected)="openQuickView($event)"
                 (quickView)="openQuickView($event)"
