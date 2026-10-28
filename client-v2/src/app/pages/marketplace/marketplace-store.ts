@@ -109,6 +109,15 @@ export class MarketplaceStore {
     const v = this.query().get('image');
     return v === 'with' || v === 'without' ? v : null;
   });
+  /** Management view — the ONLY context where select/bulk/manage affordances may
+   *  appear: the owner viewing their own pinned store, OR an explicit management
+   *  filter is active (status/active/image = the Approvals queue). The plain global
+   *  Marketplace browse is READ-ONLY for EVERYONE, admins included — so a ballpark
+   *  admin browsing the live catalogue can't select + bulk-delete it (Liam 2026-10-28).
+   *  Being an admin alone is NOT enough; moderation lives behind the Approvals nav. */
+  readonly isManagementView = computed(
+    () => this.isOwnerStore() || !!this.statusFilter() || !!this.activeFilter() || !!this.imageFilter()
+  );
 
   /** The filter signature — offset + accumulation reset on ANY change. */
   private readonly filterKey = computed(

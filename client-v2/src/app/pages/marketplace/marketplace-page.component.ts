@@ -100,8 +100,8 @@ import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.c
             [quoteDraftIds]="favs.quoteDraft()"
             [showQuickView]="true"
             [dense]="true"
-            [quickViewOnly]="!store.statusFilter()"
-            [selectable]="store.showStatusFilters()"
+            [quickViewOnly]="!store.isManagementView()"
+            [selectable]="store.isManagementView()"
             [selectedForBulk]="selection.ids()"
             (bulkToggle)="selection.toggle($event)"
             (reclassify)="bulkBar()?.openReclassifyFor($event)"
@@ -118,9 +118,13 @@ import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.c
               </button>
             </div>
           }
-          <!-- SHARED sticky bulk-action bar (owner/admin management) — self-hides when
+          <!-- SHARED sticky bulk-action bar (owner/admin management) — mounted ONLY in a
+               management view (My Shop / Approvals), never on the read-only Marketplace
+               browse, so a stale selection can't resurface it there. Self-hides when
                nothing is selected. -->
-          <app-bulk-action-bar (done)="store.reloadItems()" />
+          @if (store.isManagementView()) {
+            <app-bulk-action-bar (done)="store.reloadItems()" />
+          }
         }
       </app-marketplace-workspace>
     </div>
