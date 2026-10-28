@@ -129,10 +129,21 @@ function collectImageUrls(html, baseUrl, cap = 40) {
   const s = String(html || '')
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ');
-  const imgs = collectJsonLdImages(html, baseUrl); // authoritative product photos lead
+  const jsonld = collectJsonLdImages(html, baseUrl); // authoritative product photos lead
+  // Collect <img> URLs up to a GENEROUS hard limit (not `cap`), THEN prioritise real
+  // per-product photos (under a /product-images path) ahead of the page chrome before
+  // slicing to `cap`. Sites like Yahire emit ~50 nav/category/filter thumbnails BEFORE
+  // the product gallery (the real photos sit ~index 53 of 72), so a plain first-`cap`
+  // slice truncated the actual product images and the item imported with NO photo —
+  // this starved BOTH the AI's IMAGES-ON-PAGE list and the pull's looksProduct fallback.
+  // Prioritising within the same cap fixes it with no extra AI prompt/token cost.
+  // (Liam 2026-10-28 — "we load an item and take its photos".)
+  const HARD = Math.max(cap, 300);
+  const seen = new Set(jsonld);
+  const extra = [];
   const imgRe = /<img\b[^>]*>/gi;
   let im;
-  while ((im = imgRe.exec(s)) && imgs.length < cap) {
+  while ((im = imgRe.exec(s)) && (jsonld.length + extra.length) < HARD) {
     const tag = im[0];
     const cand =
       (tag.match(/\bsrc=["']([^"']+)["']/i) || [])[1]
@@ -142,9 +153,11 @@ function collectImageUrls(html, baseUrl, cap = 40) {
       || firstSrcsetUrl(tag);
     if (!cand) continue;
     const abs = absolutize(cand, baseUrl);
-    if (abs && /^https?:/i.test(abs) && !imgs.includes(abs)) imgs.push(abs);
+    if (abs && /^https?:/i.test(abs) && !seen.has(abs)) { seen.add(abs); extra.push(abs); }
   }
-  return imgs;
+  const isProd = (u) => /\/product[-_]images/i.test(u);
+  extra.sort((a, b) => (isProd(b) ? 1 : 0) - (isProd(a) ? 1 : 0)); // product photos first (stable)
+  return [...jsonld, ...extra].slice(0, cap);
 }
 
 /** Skip logos/icons/sprites/placeholders when picking a product photo. `product.webp`
