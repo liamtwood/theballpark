@@ -192,7 +192,7 @@ const WHATS_HOT = "What's Hot";
             <div class="bp-gutter px-6">
               <div class="mx-auto w-full max-w-[var(--workspace-max)]">
                 <!-- selfServe when acting-as (no cross_org_view) → own-org extract mount. -->
-                <app-website-import-panel [orgId]="orgId" [selfServe]="!isPlatformAdmin()" (pulled)="store.reloadItems()" />
+                <app-website-import-panel [orgId]="orgId" [selfServe]="!isPlatformAdmin()" (pulled)="onItemsChanged()" />
               </div>
             </div>
           }
@@ -377,10 +377,20 @@ export class SupplierDetailComponent {
   protected readonly subcats = resource({
     params: () => {
       const id = this.store.pinnedSupplierId();
-      return id ? { id, scope: this.tab() === 'storefront' ? ('public' as const) : null } : undefined;
+      // Fold catalogue.rev() into the params so a reclassify / add-item (which bumps
+      // rev via invalidate) re-runs this resource — otherwise the My Shop rail shows a
+      // newly-populated subcategory only after a hard refresh (Liam 2026-10-28).
+      return id ? { id, scope: this.tab() === 'storefront' ? ('public' as const) : null, rev: this.catalogue.rev() } : undefined;
     },
     loader: ({ params }) => this.catalogue.supplierSubcategories(params.id, params.scope),
   });
+
+  /** After an extract pull adds items, invalidate the catalogue (bumps rev) so the
+   *  rail's category/subcat counts refresh too — not just the grid (Liam 2026-10-28). */
+  protected onItemsChanged(): void {
+    this.catalogue.invalidate();
+    this.store.reloadItems();
+  }
 
   protected setTab(tab: string): void {
     // Reset the shopfront menu state so returning to Shopfront shows the category

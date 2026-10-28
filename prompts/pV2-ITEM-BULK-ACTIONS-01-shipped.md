@@ -98,3 +98,9 @@ Plus: `org_id` always from `req.user`, never the body (owner scopes every WHERE 
 - `reclassify-dialog.component.ts` — categories now load on the p-dialog `(onShow)` event. Root cause of the empty picker: `ensureLoaded()` fired from `onVisible()` (bound to `(visibleChange)`), but PrimeNG does NOT emit `visibleChange` when the dialog opens via the `[visible]` input, so categories never loaded. Added a `seedCategoryId` input + `seedFromItem()` that preselects the Category ▸ Subcategory ▸ Sub-subcategory cascade from the item's ancestor path (`/api/marketplace/categories/:id/path`, the same endpoint the item editor uses).
 - `bulk-action-bar.component.ts` — passes the first selected item's `categoryId` (from `store.items()`) as `seedCategoryId`.
 **Files:** `reclassify-dialog.component.ts`, `bulk-action-bar.component.ts`
+
+## Iteration — My Shop rail refresh after reclassify / add-items (QC, 2026-10-28)
+**Triggered by QC (Liam):** reclassifying to — or adding items to — a subcategory not previously shown needed a HARD REFRESH before it appeared in the My Shop rail.
+**Root cause:** `supplier-detail`'s `subcats` resource didn't fold `catalogue.rev()`, so `invalidate()` (which reclassify already calls via the service `bust()`) never re-ran it → stale rail; and the extract `(pulled)` path reloaded the grid without invalidating.
+**Fixes (`supplier-detail.component.ts`):** (1) fold `rev` into the `subcats` resource params so it re-runs on any catalogue write; (2) extract `(pulled)` → `onItemsChanged()` which invalidates + reloads. (The global marketplace rail already folded `rev` via `store.categories()/subcategories()`, so it was unaffected.)
+**Files:** `client-v2/src/app/pages/suppliers/supplier-detail.component.ts`
