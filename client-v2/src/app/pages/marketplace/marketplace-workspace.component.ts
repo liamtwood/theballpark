@@ -91,6 +91,13 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
       max-height: calc(100vh - 11rem);
     }
     :host(.ws-bare) .ws-scroll { overflow: visible; min-height: 0; padding-top: 0; }
+
+    /* FRAMED (global marketplace): the grid keeps its p-4 top (shadow breathing in
+       the overflow-y scroll container), so give the rail column a matching top inset
+       — the gray category container's TOP then lines up with the first row of item
+       cards, not 16px above it (Liam 2026-10-28). The bare variant already aligns via
+       the shared .ws-rails top + grid padding-top:0 above. */
+    :host(:not(.ws-bare)) .ws-rail-col { padding-top: 1rem; }
   `],
 })
 export class MarketplaceWorkspaceComponent {
