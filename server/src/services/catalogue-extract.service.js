@@ -924,15 +924,31 @@ async function processUrl(ctx, url) {
   try {
     const groupRow = ctx.mapping[groupKeyOf(url)] || null; // group keyed off the selected URL
     const { finalUrl, html } = await guardedFetch(url);
-    // Review mode: try a DETERMINISTIC extract from the Product JSON-LD first
-    // (name/price/description) — ZERO AI. Review only needs the lean vetting set,
-    // and on JSON-LD sites (Yahire etc.) it's all in the markup. Full mode, or a
-    // page with no usable JSON-LD, falls back to the Haiku extractor.
+
+    // Dedup BEFORE any AI spend (Liam 2026-10-28 — full-mode re-load cost). The vendor
+    // identity and the source URL are parsed DETERMINISTICALLY from the page
+    // (extractIdentity + the fetched URL — ZERO AI) and they ARE the dedup/delta key,
+    // so an already-imported item, or an in-selection duplicate, is skipped WITHOUT
+    // calling the Haiku extractor. Before, every item was AI-extracted and only THEN
+    // checked, so re-loading a catalogue you already had re-paid the full AI bill just
+    // to skip it (in FULL mode that was the entire re-load cost).
+    const identity = extractIdentity(html, finalUrl);
+    const productId = identity.productId;
+    const idKey = productId || identity.sku || identity.handle;
+    if (idKey && ctx.seenIds.has(idKey)) return { url: finalUrl, status: 'skipped', reason: 'duplicate in selection' };
+    if (idKey) ctx.seenIds.add(idKey);
+    const dupe = await findExisting(ctx.orgId, finalUrl, identity.sku, productId);
+    if (dupe) return { url: finalUrl, status: 'skipped', reason: 'already imported', itemId: dupe };
+
+    // New item → the (paid) extraction. Review: try a DETERMINISTIC extract from the
+    // Product JSON-LD first (name/price/description) — ZERO AI. Review only needs the
+    // lean vetting set, and on JSON-LD sites (Yahire etc.) it's all in the markup. Full
+    // mode, or a page with no usable JSON-LD, falls back to the Haiku extractor.
     let p = ctx.review ? extractReviewFromJsonLd(html, finalUrl) : null;
     if (!p) {
       const r = await extractProduct(htmlToText(html, finalUrl), finalUrl, ctx.categoryNames);
       p = r.data;
-      if (r.usage) { // tally the Haiku spend (zero-AI review path skips this)
+      if (r.usage) { // tally the Haiku spend (the zero-AI review + dedup paths skip this)
         ctx.usage.input += r.usage.input_tokens || 0;
         ctx.usage.output += r.usage.output_tokens || 0;
         ctx.usage.calls += 1;
@@ -941,16 +957,8 @@ async function processUrl(ctx, url) {
     const name = (p && typeof p.name === 'string') ? p.name.trim() : '';
     if (!name) return { url: finalUrl, status: 'skipped', reason: 'no product found (not a detail page?)' };
 
-    // Stable vendor identity, parsed deterministically from structured data (not the
-    // AI): the SKU/id is the vendor's + agent's key AND the reliable dedup key.
-    const identity = extractIdentity(html, finalUrl);
+    // SKU for the stored _source: deterministic identity, else the AI's value.
     const sku = identity.sku || (p.sku ? String(p.sku).trim() : null);
-    const productId = identity.productId;
-    const idKey = productId || sku || identity.handle;
-    if (idKey && ctx.seenIds.has(idKey)) return { url: finalUrl, status: 'skipped', reason: 'duplicate in selection' };
-    if (idKey) ctx.seenIds.add(idKey);
-    const dupe = await findExisting(ctx.orgId, finalUrl, sku, productId);
-    if (dupe) return { url: finalUrl, status: 'skipped', reason: 'already imported', itemId: dupe };
 
     // Gap report: data present on the page with no home in our model. Aggregated
     // across the imported items → "couldn't store yet: X (12 items)". Free — it
