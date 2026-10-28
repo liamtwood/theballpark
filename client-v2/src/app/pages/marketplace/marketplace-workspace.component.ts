@@ -48,9 +48,10 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
               </div>
             </div>
 
-            <!-- p-4 breathing room so the cards' (bigger) shadow/halo isn't
-                 clipped into a hard rectangle by this scroll container's edges. -->
-            <div class="ws-scroll min-h-0 min-w-0 flex-1 overflow-y-auto p-4">
+            <!-- NO top padding so the first row of cards lines up with the category
+                 container's top (Liam 2026-10-28); horizontal + bottom padding keep
+                 the cards' (bigger) shadow/halo off this scroll container's edges. -->
+            <div class="ws-scroll min-h-0 min-w-0 flex-1 overflow-y-auto px-4 pb-4">
               <ng-content />
             </div>
           </div>
@@ -91,13 +92,6 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
       max-height: calc(100vh - 11rem);
     }
     :host(.ws-bare) .ws-scroll { overflow: visible; min-height: 0; padding-top: 0; }
-
-    /* FRAMED (global marketplace): the grid keeps its p-4 top (shadow breathing in
-       the overflow-y scroll container), so give the rail column a matching top inset
-       — the gray category container's TOP then lines up with the first row of item
-       cards, not 16px above it (Liam 2026-10-28). The bare variant already aligns via
-       the shared .ws-rails top + grid padding-top:0 above. */
-    :host(:not(.ws-bare)) .ws-rail-col { padding-top: 1rem; }
   `],
 })
 export class MarketplaceWorkspaceComponent {
