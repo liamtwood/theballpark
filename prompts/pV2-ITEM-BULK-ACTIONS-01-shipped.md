@@ -106,3 +106,18 @@ Plus: `org_id` always from `req.user`, never the body (owner scopes every WHERE 
 **Root cause:** `supplier-detail`'s `subcats` resource didn't fold `catalogue.rev()`, so `invalidate()` (which reclassify already calls via the service `bust()`) never re-ran it → stale rail; and the extract `(pulled)` path reloaded the grid without invalidating.
 **Fixes (`supplier-detail.component.ts`):** (1) fold `rev` into the `subcats` resource params so it re-runs on any catalogue write; (2) extract `(pulled)` → `onItemsChanged()` which invalidates + reloads. (The global marketplace rail already folded `rev` via `store.categories()/subcategories()`, so it was unaffected.)
 **Files:** `client-v2/src/app/pages/suppliers/supplier-detail.component.ts`
+
+## Chat audit (2026-10-28)
+
+Two independent read-only passes (security + Angular/hygiene) over `ae2e7dd1^..4de79627`. Full report + triage: `docs/audits/2026-10-28-bulk-items-audit.md`. (Designer to co-review when their session is back.)
+
+**Verdict: ship-quality.** Security model correct — no HIGH; `org_id` always session-derived, owner enum has no approve/reject, admin moderation via scoped `svc_moderate`, `0024 svc_refresh` a faithful least-privilege extension of 0013/0017. Angular well-factored.
+
+**Fix before Done (row stays Shipped until these land):**
+- **A1 (HIGH, client):** reclassify to a top-level category impossible once the dialog seeds a sub-level — no empty option to clear the drill (the deferred bug; `seedFromItem` made it bite). Add a `(whole category)` empty option.
+- **A2 (MED, client):** `supplier-detail` `detail` resource doesn't fold `rev` → My Shop top-level rail stale after a mutation (completes the 114c3ed5 fix).
+- **A3 (MED, client):** `pollToDone` refresh poll has no destroy cleanup (leak).
+- **S3 (LOW, server):** harden `withPinnedOrgContext` RESET-ALL swallow (defence-in-depth for the svc_refresh escape).
+- **S2 (LOW, server):** admin-delete parent+cascade atomicity (BEGIN/COMMIT on the pinned client).
+
+**Rejected:** S1 (namespace filter — false positive; rebuild `categories` has no namespace col / no junk rows, verified), S4 (harmless forced-fetch), A5 (benign double-reload). Nits A6/A8/A4/S5 optional.
