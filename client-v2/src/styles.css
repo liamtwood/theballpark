@@ -506,8 +506,10 @@
 .bp-page-label    { font-family: var(--bp-font); font-size: var(--text-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-wide); line-height: var(--leading-normal); color: var(--theme-text); }
 /* Shared eyebrow — the uppercase/tracked label used by the page-hero eyebrow
    and the Ballpark quote section heading (Liam 2026-10-21). */
-.bp-eyebrow       { font-family: var(--bp-font); font-size: var(--text-lg); font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-secondary); }
-.bp-page-title    { font-family: var(--bp-font); font-size: var(--text-hero); font-weight: 400; line-height: var(--leading-tight); color: var(--color-text); }
+.bp-eyebrow       { font-family: var(--bp-font); font-size: var(--text-sm); font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-secondary); }
+/* Title matches the home greeting (.bp-home-title) so every hero — home launcher
+   AND page-hero bands — shares one style (Liam 2026-10-28, "all heros same style"). */
+.bp-page-title    { font-family: var(--bp-font); font-size: var(--text-greeting); font-weight: 700; line-height: var(--leading-tight); color: var(--color-text); letter-spacing: -0.01em; }
 .bp-page-subtitle { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
 
 /* Section */

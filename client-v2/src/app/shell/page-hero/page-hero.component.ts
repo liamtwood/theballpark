@@ -208,7 +208,8 @@ import { LucideAngularModule } from 'lucide-angular';
             'back    back'
             'text    actions';
         }
-        /* Title shrinks via the ROOT --text-hero mobile override (28px) —
+        /* Title is the shared .bp-page-title (now the home greeting face) whose
+           --text-greeting token is a responsive clamp() — it shrinks on its own,
            no per-component re-declaration (DESIGN.md §5 rule 5). */
       }
     `,
