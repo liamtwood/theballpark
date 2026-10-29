@@ -101,7 +101,9 @@ export interface RailOuter {
                   <span class="flex min-w-0 flex-1 flex-col items-start gap-1">
                     <span class="bp-list-title w-full truncate">{{ it.name }}</span>
                     <span class="flex flex-wrap items-center gap-1.5">
-                      <span [class]="'bp-spill bp-spill--' + pill(it).tone">{{ pill(it).label }}</span>
+                      <!-- Same size as the Running budget STATUS pill (min-width 16ch,
+                           centred) — Liam 2026-10-29. -->
+                      <span [class]="'bp-spill bp-spill--' + pill(it).tone" style="min-width: 16ch; justify-content: center">{{ pill(it).label }}</span>
                       @if (it.hasOpenQuestion) {
                         <span class="bp-spill bp-spill--yellow">Question</span>
                       }
