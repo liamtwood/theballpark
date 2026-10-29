@@ -58,7 +58,7 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
           </button>
         } @else {
           <!-- Explicit shopfront link — stops the body's "filter to supplier" click. -->
-          <a [routerLink]="['/suppliers', supplier().id]" class="store-link mt-3 block" (click)="$event.stopPropagation()">Visit the {{ supplier().name }} Store</a>
+          <a [routerLink]="['/suppliers', supplier().id]" class="store-link mt-3 block" (click)="$event.stopPropagation()">{{ supplier().name }} Store</a>
         }
       </div>
     </div>
@@ -81,7 +81,7 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
   styles: `
     .store-link {
       font-family: var(--font-body);
-      font-size: var(--text-sm);
+      font-size: var(--text-xs);
       color: var(--theme-accent);
     }
     .store-link:hover { text-decoration: underline; }
