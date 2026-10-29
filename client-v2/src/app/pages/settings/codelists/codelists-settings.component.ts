@@ -71,13 +71,14 @@ import { CodelistValueRowComponent } from './codelist-value-row.component';
             }
 
             <div class="mt-4 overflow-hidden rounded-xl border border-hairline bg-surface">
-              <div class="grid grid-cols-[100px_1fr_70px_60px_110px_110px] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-2">
+              <div class="grid grid-cols-[100px_1fr_70px_60px_110px_130px_80px] items-center gap-x-4 border-b border-hairline bg-fill px-4 py-2">
                 <span class="bp-table-column-header">Code</span>
                 <span class="bp-table-column-header">Label</span>
                 <span class="bp-table-column-header">Symbol</span>
                 <span class="bp-table-column-header">Sort</span>
                 <span class="bp-table-column-header">Color</span>
-                <span class="bp-table-column-header">Visibility</span>
+                <span class="bp-table-column-header">Preview</span>
+                <span class="bp-table-column-header">Visible</span>
               </div>
 
               @for (v of values(); track v.code) {
@@ -92,13 +93,14 @@ import { CodelistValueRowComponent } from './codelist-value-row.component';
 
               <!-- Add value — ballpark lists only (locked rule 1) -->
               @if (parent.type === 'ballpark') {
-                <div class="grid grid-cols-[100px_1fr_70px_60px_110px_110px] items-center gap-x-4 bg-fill px-4 py-2">
+                <div class="grid grid-cols-[100px_1fr_70px_60px_110px_130px_80px] items-center gap-x-4 bg-fill px-4 py-2">
                   <input class="ed-input" maxlength="50" placeholder="code" aria-label="Code" [ngModel]="draft().code" (ngModelChange)="patchDraft({ code: $event })" />
                   <input class="ed-input" maxlength="100" placeholder="Label" aria-label="Label" [ngModel]="draft().label" (ngModelChange)="patchDraft({ label: $event })" />
                   <input class="ed-input" maxlength="20" placeholder="£" aria-label="Symbol" [ngModel]="draft().symbol" (ngModelChange)="patchDraft({ symbol: $event })" />
                   <span></span>
                   <span></span>
-                  <button type="button" class="bp-btn-outline !px-4 !py-1.5" [disabled]="!draft().code || !draft().label" (click)="add(parent)">
+                  <span></span>
+                  <button type="button" class="bp-btn-outline !px-3 !py-1.5" [disabled]="!draft().code || !draft().label" (click)="add(parent)">
                     Add
                   </button>
                 </div>

@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CodelistValue, CodelistValuePatch } from '../../../core/codelists/codelist.types';
-import { SelectComponent, SelectOption } from '../../../shared/select/select.component';
 import { StatusPillComponent } from '../../../shared/status-pill/status-pill.component';
 
 /** pV2-CODELISTS-02 (audit F-7 extraction) — ONE value row of the
@@ -11,10 +10,10 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
 @Component({
   selector: 'app-codelist-value-row',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, SelectComponent, StatusPillComponent],
+  imports: [FormsModule, StatusPillComponent],
   host: {
     class:
-      'grid grid-cols-[100px_1fr_70px_60px_110px_110px] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0',
+      'grid grid-cols-[100px_1fr_70px_60px_110px_130px_80px] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0',
     '[class.opacity-60]': '!value().isActive',
   },
   template: `
@@ -30,11 +29,11 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
       <span class="bp-body-small text-secondary">{{ value().symbol ?? '—' }}</span>
       <span class="bp-body-small text-secondary">{{ value().sortOrder ?? '—' }}</span>
     }
+    <!-- Color — the picker (stores the hex in meta.color). Clear sits right after
+         the input so it lines up down the column; clearing → neutral pill. Read-only
+         (system) lists show no picker. -->
     <span>
       @if (editable()) {
-        <!-- Native colour picker — the swatch IS the preview (stores the hex in
-             meta.color). Clear sits right after the input so it lines up down the
-             column; clearing drops the custom colour → neutral pill (Liam 2026-10-29). -->
         <div class="flex items-center gap-3">
           <input type="color" class="h-6 w-8 shrink-0 cursor-pointer rounded border border-hairline bg-surface p-0"
             [value]="currentHex()" (change)="pickColor($event)"
@@ -43,18 +42,24 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
             <button type="button" class="bp-meta shrink-0 underline" (click)="save.emit({ color: '' })">Clear</button>
           }
         </div>
-      } @else if (value().meta.color) {
+      } @else {
+        <span class="bp-meta">—</span>
+      }
+    </span>
+    <!-- Preview — the live pill (label + colour). -->
+    <span>
+      @if (value().meta.color) {
         <app-status-pill [list]="listName()" [code]="value().code" />
       } @else {
         <span class="bp-meta">—</span>
       }
     </span>
-    <app-select
-      ariaLabel="Visibility"
-      [options]="visibility"
-      [value]="value().isActive ? 'visible' : 'hidden'"
-      (changed)="toggleActive.emit($event === 'visible')"
-    />
+    <!-- Visible — checkbox; unchecking deactivates (via the parent's in-use gate). -->
+    <label class="inline-flex cursor-pointer items-center">
+      <input type="checkbox" class="h-4 w-4 cursor-pointer" style="accent-color: var(--theme-accent)"
+        [checked]="value().isActive" (change)="toggleActive.emit($any($event.target).checked)"
+        aria-label="Visible" />
+    </label>
   `,
 })
 export class CodelistValueRowComponent {
@@ -83,13 +88,6 @@ export class CodelistValueRowComponent {
 
   readonly save = output<CodelistValuePatch>();
   readonly toggleActive = output<boolean>();
-
-  /** Binary UI mapping of isActive — deliberately NOT a codelist
-   *  (CODELISTS.md: booleans stay booleans). */
-  protected readonly visibility: SelectOption[] = [
-    { label: 'Visible', value: 'visible' },
-    { label: 'Hidden', value: 'hidden' },
-  ];
 
   /** Save-on-blur: emit only when the trimmed text actually changed (parity
    *  with the legacy edit-field commitText — no redundant PATCH). */
