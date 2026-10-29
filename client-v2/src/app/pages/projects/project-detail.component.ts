@@ -93,14 +93,11 @@ interface DetailForm {
     SaveStatePillComponent,
   ],
   providers: [MessageService],
-  /* Viewport-fit on EVERY tab (universal rule: the hero never scrolls).
-     The marketplace tab manages its own column scroll; Details/Estimate
-     scroll inside their own region below the anchored hero. */
-  // Viewport-fit ONLY for the Inbox tab (its 3-column chat needs a bounded height
-  // so the rails scroll internally). The other tabs (Marketplace / Running budget /
-  // Details) flow and scroll at the window edge — one page scrollbar, no inner
-  // column scroll (Liam 2026-10-29).
-  host: { class: 'block', '[class.bp-vpfit]': "tab() === 'inbox'" },
+  // EVERY tab now flows and scrolls at the window edge — one page scrollbar, no
+  // viewport-fit / inner column scroll. The Inbox used to be viewport-fit (3-col
+  // chat with internally-scrolling rails) but now flows like the Marketplace: the
+  // conversation shows its messages inline and the page scrolls (Liam 2026-10-29).
+  host: { class: 'block' },
   template: `
     @if (detail.value(); as p) {
       @if (isDraft()) {

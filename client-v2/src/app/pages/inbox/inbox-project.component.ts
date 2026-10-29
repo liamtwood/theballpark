@@ -62,8 +62,11 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
       } @else {
         <!-- Standard workspace column: inbox rail | conversation | assistant
              (far-right). Centred to --workspace-max like every other page. -->
+        <!-- Rails flank the conversation from lg (1024) like the Marketplace — on
+             a laptop it's 2-col (rail + conversation, roomy chat); the assistant
+             3rd column comes in at xl. Below lg it stacks (Liam 2026-10-29). -->
         <div class="mx-auto grid min-h-0 w-full max-w-[var(--workspace-max)] flex-1 grid-cols-1 gap-6"
-             [ngClass]="showAgent() ? 'xl:grid-cols-[260px_1fr_320px]' : 'xl:grid-cols-[280px_1fr]'">
+             [ngClass]="showAgent() ? 'lg:grid-cols-[280px_1fr] xl:grid-cols-[260px_1fr_320px]' : 'lg:grid-cols-[280px_1fr]'">
           <!-- Left rail: project context card + thread cards + their items. -->
           <app-inbox-rail
             [project]="project()"
@@ -174,7 +177,15 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
               <!-- Bubbles — on the page (parchment) ground so the white
                    agency bubbles read as cards; "You" stays gradient. In a
                    filtered (item) view, broadcasts fade + carry a General tag. -->
-              <div #msgScroll class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg px-5 py-4">
+              <!-- Embedded (project Inbox tab): the conversation FLOWS — no inner
+                   scroll, messages render inline and the page scrolls (a "Full
+                   thread" view for long histories comes next). Standalone (the
+                   supplier per-project inbox route) keeps the bounded inner scroll
+                   since it's still viewport-fit (Liam 2026-10-29). -->
+              <div #msgScroll
+                   [class]="embedded()
+                     ? 'flex flex-col gap-3 bg-bg px-5 py-4'
+                     : 'flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg px-5 py-4'">
                 @if (selectedItem()) {
                 @for (m of visibleMessages(); track m.id; let last = $last) {
                   <div class="flex flex-col" [class.items-end]="m.mine" [class.items-start]="!m.mine">
