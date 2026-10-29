@@ -365,8 +365,11 @@ interface DetailForm {
             <!-- Scrolls in the page's bp-gutter (window-edge scrollbar) like the
                  other project tabs; the bare workspace flows inside it. Pull up
                  to shave most of bp-page-body's 32px top so the grid sits close
-                 under the tab band on a laptop (Liam 2026-10-29). -->
-            <div class="min-h-0 flex-1 bp-gutter -mt-6">
+                 under the tab band, and -mx-8 cancels bp-page-body's 32px side
+                 padding so the workspace frame's own px-6 lines the card up with
+                 the hero/banner at every width (Liam 2026-10-29) — mx-auto hides
+                 the mismatch on a wide screen but not on a narrow one. -->
+            <div class="min-h-0 flex-1 bp-gutter -mt-6 -mx-8">
               <app-project-marketplace [projectId]="p.id" />
             </div>
           }
