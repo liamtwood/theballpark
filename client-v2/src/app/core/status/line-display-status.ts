@@ -21,7 +21,7 @@ export type LineDisplayCode =
 export const LINE_DISPLAY_FALLBACK: Record<LineDisplayCode, string> = {
   to_agree: 'To agree',
   quoted: 'Quoted',
-  new_cost: 'New cost suggested',
+  new_cost: 'New cost',
   you_accepted: 'You accepted',
   they_accepted: 'They accepted',
   all_confirmed: 'All confirmed',
@@ -47,8 +47,10 @@ export function lineDisplayCode(
   const st = (s.status ?? '').toString();
   if (st === 'booked') return 'booked';
   if (st.startsWith('declined') || st === 'cancelled') return 'declined';
-  if (st === 'adjusted_by_supplier' || st === 'adjusted_by_agent') return 'new_cost';
-  if (st === 'quoted') return 'quoted';
+  // Role-based (Liam 2026-10-29): the SUPPLIER pricing it → Quoted (inbox
+  // adjusted_by_supplier, budget 'quoted'); the AGENCY countering → New cost.
+  if (st === 'adjusted_by_supplier' || st === 'quoted') return 'quoted';
+  if (st === 'adjusted_by_agent') return 'new_cost';
   return 'to_agree';
 }
 
