@@ -58,11 +58,12 @@ export class CatalogueService {
     return hit;
   }
 
-  /** Active top-level categories + counts — the browse rail. */
-  categories(): Promise<CategoryInfo[]> {
-    return this.cached('/api/marketplace/categories', () =>
-      this.api.get<CategoryInfo[]>('/api/marketplace/categories')
-    );
+  /** Top-level categories + counts — the browse rail. `status` scopes the counts to
+   *  match the item grid (admin Approvals passes 'pending'); omit for the live set.
+   *  The server admin-gates the status scope, so a non-admin value is ignored. */
+  categories(status?: string | null): Promise<CategoryInfo[]> {
+    const url = `/api/marketplace/categories${status ? `?status=${encodeURIComponent(status)}` : ''}`;
+    return this.cached(url, () => this.api.get<CategoryInfo[]>(url));
   }
 
   /** One page of the browse grid (born paginated — PAGE_SIZE 48). */
@@ -85,11 +86,11 @@ export class CatalogueService {
     return this.cached(url, () => this.api.get<Paginated<CatalogueItem>>(url));
   }
 
-  /** Active subcategories of a category + live counts (browse strip). */
-  subcategories(categoryId: string): Promise<CategoryInfo[]> {
-    return this.cached(`/api/marketplace/categories/${categoryId}/subcategories`, () =>
-      this.api.get<CategoryInfo[]>(`/api/marketplace/categories/${categoryId}/subcategories`)
-    );
+  /** Subcategories of a category + counts (browse strip drill). `status` scopes the
+   *  counts to match the grid (admin Approvals passes 'pending'); server admin-gated. */
+  subcategories(categoryId: string, status?: string | null): Promise<CategoryInfo[]> {
+    const url = `/api/marketplace/categories/${categoryId}/subcategories${status ? `?status=${encodeURIComponent(status)}` : ''}`;
+    return this.cached(url, () => this.api.get<CategoryInfo[]>(url));
   }
 
   /** One page of the suppliers browse (pV2-06d — same envelope). */

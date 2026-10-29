@@ -134,23 +134,25 @@ export class MarketplaceStore {
   // ── Data ─────────────────────────────────────────────────────────────
   // `rev` (bumped by catalogue.invalidate() on any write) is folded into each params
   // so a create/edit/delete reloads the live view without a page refresh.
-  readonly categoriesRes = resource<CategoryInfo[], number>({
-    params: () => this.catalogue.rev(),
-    loader: () => this.catalogue.categories(),
+  // `status` is folded in alongside `rev` so the rail COUNTS match the grid scope:
+  // on Approvals (?status=pending) the rail counts pending, on browse the live set.
+  readonly categoriesRes = resource({
+    params: () => ({ status: this.statusFilter(), rev: this.catalogue.rev() }),
+    loader: ({ params }) => this.catalogue.categories(params.status),
   });
 
   /** The selected category's subcategory strip (cached reads; skips when
    *  no category is selected). */
   readonly subcategoriesRes = resource({
-    params: () => { const id = this.categoryId(); return id ? { id, rev: this.catalogue.rev() } : undefined; },
-    loader: ({ params }) => this.catalogue.subcategories(params.id),
+    params: () => { const id = this.categoryId(); return id ? { id, status: this.statusFilter(), rev: this.catalogue.rev() } : undefined; },
+    loader: ({ params }) => this.catalogue.subcategories(params.id, params.status),
   });
 
   /** The selected subcategory's children — the 3rd rail level (drills only when
    *  non-empty). Loads children of ANY node via the same endpoint. */
   readonly subSubcategoriesRes = resource({
-    params: () => { const id = this.subcategoryId(); return id ? { id, rev: this.catalogue.rev() } : undefined; },
-    loader: ({ params }) => this.catalogue.subcategories(params.id),
+    params: () => { const id = this.subcategoryId(); return id ? { id, status: this.statusFilter(), rev: this.catalogue.rev() } : undefined; },
+    loader: ({ params }) => this.catalogue.subcategories(params.id, params.status),
   });
 
   // ── Supplier-scoped rail (filter-aware) ──────────────────────────────────

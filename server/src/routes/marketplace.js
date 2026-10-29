@@ -69,8 +69,7 @@ const SELECT_CATEGORIES = `
      WHERE i.deleted_at IS NULL
        AND i.type IS DISTINCT FROM 'component'
        AND i.parent_item_id IS NULL
-       AND i.status = 'active'
-       AND i.approval_status = 'approved'
+       %ITEM_SCOPE%
      GROUP BY cr.root_id
   )
   SELECT c.id, c.name, c.tagline, c.icon_name, (c.status = 'active') AS is_active, c.sort_order,
@@ -94,10 +93,39 @@ function toCategory(row) {
   };
 }
 
-// GET /api/marketplace/categories — the browse rail (active only).
+// Build the rail's item-count scope so the category counts MATCH the item grid
+// (the "counts == grid" invariant). A ballpark admin with an explicit ?status
+// counts that approval_status (the Approvals queue), ?status=all the whole
+// catalogue; everyone else — and the read-only Marketplace browse — counts
+// active+approved. Admin-GATED here (server-side), so a non-admin passing ?status
+// can never surface non-public counts. Returns the SQL fragment (`AND …`, with any
+// value as a bound param at $startIdx+1…) + the params to append. Mirrors /items.
+function railItemScope(req, startIdx) {
+  const admin = !!req.user && req.user.role === 'ballpark_admin';
+  const status = typeof req.query.status === 'string' ? req.query.status : null;
+  const active = typeof req.query.active === 'string' ? req.query.active : null;
+  const where = [];
+  const params = [];
+  if (admin && status && status !== 'all') {
+    params.push(status);
+    where.push(`i.approval_status = $${startIdx + params.length}`);
+  } else if (!(admin && status === 'all')) {
+    // Default (public browse / non-admin): the live catalogue. (admin + status=all
+    // → no approval/status filter = whole catalogue.)
+    where.push(`i.status = 'active'`, `i.approval_status = 'approved'`);
+  }
+  if (admin && active === 'active') where.push(`i.status = 'active'`);
+  else if (admin && active === 'inactive') where.push(`i.status <> 'active'`);
+  return { clause: where.length ? 'AND ' + where.join(' AND ') : '', params };
+}
+
+// GET /api/marketplace/categories — the browse rail. Scope matches the item grid:
+// active+approved for the read-only browse, the ?status scope for admin Approvals.
 router.get('/categories', async (req, res, next) => {
   try {
-    const r = await pool.query(SELECT_CATEGORIES.replace('%ACTIVE%', "AND c.status = 'active'"));
+    const scope = railItemScope(req, 0);
+    const sql = SELECT_CATEGORIES.replace('%ITEM_SCOPE%', scope.clause).replace('%ACTIVE%', "AND c.status = 'active'");
+    const r = await pool.query(sql, scope.params);
     res.json(r.rows.map(toCategory));
   } catch (err) { next(err); }
 });
@@ -124,7 +152,13 @@ router.get(
         );
         return res.json(r.rows.map(toCategory));
       }
-      const r = await pool.query(SELECT_CATEGORIES.replace('%ACTIVE%', ''));
+      // Curation list shows every top-level node (incl. inactive); counts stay the
+      // public live set (unchanged by the rail-scope change).
+      const r = await pool.query(
+        SELECT_CATEGORIES
+          .replace('%ITEM_SCOPE%', "AND i.status = 'active' AND i.approval_status = 'approved'")
+          .replace('%ACTIVE%', '')
+      );
       res.json(r.rows.map(toCategory));
     } catch (err) { next(err); }
   }
@@ -335,6 +369,9 @@ router.get('/categories/:id/subcategories', async (req, res, next) => {
     // ITS descendants (so the rail count matches the tree-aware browse grid, and
     // the rail — which hides count=0 nodes — only shows drillable paths that lead
     // to items). Same public-browse filters + supplier_directory as the top rail.
+    // Same scope as the top rail + item grid: active+approved for browse, the admin
+    // ?status scope for Approvals — so drilling the Approvals queue isn't empty.
+    const scope = railItemScope(req, 1);
     const r = await pool.query(
       `WITH RECURSIVE sub AS (
          SELECT id AS child_id, id AS node_id FROM categories
@@ -351,8 +388,7 @@ router.get('/categories/:id/subcategories', async (req, res, next) => {
           WHERE i.deleted_at IS NULL
             AND i.type IS DISTINCT FROM 'component'
             AND i.parent_item_id IS NULL
-            AND i.status = 'active'
-            AND i.approval_status = 'approved'
+            ${scope.clause}
           GROUP BY s.child_id
        )
        SELECT c.id, c.name, c.tagline, c.icon_name, (c.status = 'active') AS is_active, c.sort_order,
@@ -361,7 +397,7 @@ router.get('/categories/:id/subcategories', async (req, res, next) => {
          LEFT JOIN cnt ON cnt.child_id = c.id
         WHERE c.deleted_at IS NULL AND c.parent_id = $1 AND c.status = 'active'
         ORDER BY c.sort_order ASC NULLS LAST, c.name ASC`,
-      [id.data]
+      [id.data, ...scope.params]
     );
     res.json(r.rows.map(toCategory));
   } catch (err) { next(err); }
