@@ -194,7 +194,7 @@ export class CatalogueGridComponent {
   // widens on a bigger screen, instead of stretching a few cards to fill (Liam
   // 2026-10-29: "fix the size of the card and let it display more width wise on a
   // bigger screen"). Full-width single column on a phone.
-  protected readonly denseCols = 'grid-cols-[repeat(auto-fill,184px)] max-[420px]:grid-cols-1';
+  protected readonly denseCols = 'grid-cols-[repeat(auto-fill,168px)] max-[420px]:grid-cols-1';
   readonly selectedId = input<string | null>(null);
   /** Favourited item ids (org-scoped) — hearts on the card view. */
   readonly favouriteIds = input<ReadonlySet<string>>(new Set<string>());
