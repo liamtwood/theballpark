@@ -96,7 +96,11 @@ interface DetailForm {
   /* Viewport-fit on EVERY tab (universal rule: the hero never scrolls).
      The marketplace tab manages its own column scroll; Details/Estimate
      scroll inside their own region below the anchored hero. */
-  host: { class: 'block bp-vpfit' },
+  // Viewport-fit ONLY for the Inbox tab (its 3-column chat needs a bounded height
+  // so the rails scroll internally). The other tabs (Marketplace / Running budget /
+  // Details) flow and scroll at the window edge — one page scrollbar, no inner
+  // column scroll (Liam 2026-10-29).
+  host: { class: 'block', '[class.bp-vpfit]': "tab() === 'inbox'" },
   template: `
     @if (detail.value(); as p) {
       @if (isDraft()) {

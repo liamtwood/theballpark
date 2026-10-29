@@ -39,7 +39,7 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
           </div>
           <!-- Rails: cats fixed (no scrollbar — down-arrow peek) + grid scrolls. -->
           <div class="ws-rails flex min-h-0 flex-1 gap-6 px-4 pb-4">
-            <div class="ws-rail-col hidden w-[210px] shrink-0 min-h-0 xl:block">
+            <div class="ws-rail-col hidden w-[200px] shrink-0 min-h-0 lg:block">
               <!-- Gray card for the categories. Plain card, not the bp-card class
                    (its display:block would beat the flex column). -->
               <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-fill p-2">
