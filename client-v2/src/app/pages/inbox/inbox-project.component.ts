@@ -9,7 +9,7 @@ import { PageConfigService } from '../../core/config/page-config.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
 import { QuoteLine } from '../../core/projects/project.types';
-import { TERMINAL_STATUSES, gbp } from './inbox-status';
+import { TERMINAL_STATUSES, gbp, statusPill } from './inbox-status';
 import { InboxRailComponent, RailOuter } from './inbox-rail.component';
 import { LinePreviewComponent } from '../projects/line-preview.component';
 import { lineCost } from '../projects/quote-line.util';
@@ -43,10 +43,14 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
   template: `
     <p-toast position="bottom-right" styleClass="bp-toast" />
     @if (!embedded()) {
-      <app-page-hero align="block" eyebrow="Messages" [back]="{ label: 'Back', href: '/inbox', history: true }" title="Inbox" [subtitle]="heroSubtitle()" />
+      <app-page-hero align="block" eyebrow="Messages" [back]="{ label: 'Back', href: '/inbox', history: true }" title="Project inbox" [subtitle]="heroSubtitle()" />
     }
 
     <div [class]="embedded() ? 'flex min-h-0 flex-1 flex-col px-4 pt-4' : 'bp-page-body'">
+      <!-- Embedded (agency project tab) has no page hero, so carry the title here. -->
+      @if (embedded()) {
+        <h2 class="bp-card-title mb-3 shrink-0">Project inbox</h2>
+      }
       <!-- FIRST load only. isLoading() is also true while RELOADING, and every
            send/accept/decline reloads — so gating on it alone tore the whole pane
            down each time: the rail's collapse state reset and the compose input
@@ -234,6 +238,34 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                 }
               </div>
 
+              <!-- Compose — moved ABOVE the cost actions (Liam 2026-10-29): the
+                   message input + Send sit directly under the conversation; the
+                   Accept / Change / Delete cost controls follow below. -->
+              <div class="flex items-center gap-2 border-t border-hairline bg-bg px-4 py-3">
+                <div class="flex h-[42px] flex-1 items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 shadow-[var(--shadow-xs)] focus-within:border-accent">
+                  <input
+                    #composeInput
+                    class="w-full border-none bg-transparent p-0 text-md outline-none ring-0 placeholder:text-muted focus:ring-0"
+                    [placeholder]="selectedItem() ? 'Type your message…' : 'Select an item above to reply'"
+                    [value]="draft()"
+                    [disabled]="sending() || !selectedItem()"
+                    (input)="draft.set($any($event.target).value)"
+                    (keydown.enter)="send(t.id)"
+                  />
+                </div>
+                <button
+                  type="button"
+                  class="bp-msg-btn shrink-0"
+                  style="padding-left: 12px; padding-right: 12px"
+                  title="Send"
+                  aria-label="Send"
+                  [disabled]="!draft().trim() || sending() || !selectedItem()"
+                  (click)="send(t.id)"
+                >
+                  <lucide-icon name="send" [size]="16" />
+                </button>
+              </div>
+
               <!-- Per-item actions — the selected item, when it's still
                    actionable (not terminal). Accept the current cost, or
                    propose a new one. Both viewers act; the server maps the
@@ -286,32 +318,6 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                 }
               }
 
-              <!-- Compose — on the parchment ground, standard field chrome +
-                   a gradient Send button. -->
-              <div class="flex items-center gap-2 border-t border-hairline bg-bg px-4 py-3">
-                <div class="flex h-[42px] flex-1 items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 shadow-[var(--shadow-xs)] focus-within:border-accent">
-                  <input
-                    #composeInput
-                    class="w-full border-none bg-transparent p-0 text-md outline-none ring-0 placeholder:text-muted focus:ring-0"
-                    [placeholder]="selectedItem() ? 'Type your message…' : 'Select an item above to reply'"
-                    [value]="draft()"
-                    [disabled]="sending() || !selectedItem()"
-                    (input)="draft.set($any($event.target).value)"
-                    (keydown.enter)="send(t.id)"
-                  />
-                </div>
-                <button
-                  type="button"
-                  class="bp-msg-btn shrink-0"
-                  style="padding-left: 12px; padding-right: 12px"
-                  title="Send"
-                  aria-label="Send"
-                  [disabled]="!draft().trim() || sending() || !selectedItem()"
-                  (click)="send(t.id)"
-                >
-                  <lucide-icon name="send" [size]="16" />
-                </button>
-              </div>
               }
             </div>
           }
@@ -322,6 +328,8 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
           @if (showAgent()) {
             <aside class="hidden min-h-0 xl:flex xl:flex-col">
               <app-agent-rail [context]="agentContext()!"
+                              [statusPill]="selectedPill()"
+                              [imageUrl]="selectedItem()?.imageUrl ?? null"
                               (quickAction)="onAgentQuick($event)"
                               (changed)="onCustomizeChanged()"
                               (accept)="onAgentAccept()" (decline)="onAgentDecline($event)"
@@ -330,6 +338,11 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
             </aside>
           }
         </div>
+
+        <!-- Indicative-estimate disclaimer, below the rails (Liam 2026-10-29). -->
+        <p class="bp-caption mx-auto mt-4 max-w-[var(--workspace-max)] px-4 text-center text-muted">
+          Ballpark estimates are indicative and subject to supplier confirmation, final scope, availability, delivery requirements and VAT.
+        </p>
       }
     </div>
   `,
@@ -474,6 +487,12 @@ export class InboxProjectComponent {
     const id = this.selectedId();
     if (!id) return null;
     return this.selectedThread()?.items.find((i) => i.id === id) ?? null;
+  });
+
+  /** The selected item's status pill — shown in the right rail's item strip. */
+  protected readonly selectedPill = computed(() => {
+    const it = this.selectedItem();
+    return it ? statusPill(it, this.isAgency()) : null;
   });
 
   // ── pV2-INTENT-01 — the conversational assistant rail on the selected line ──

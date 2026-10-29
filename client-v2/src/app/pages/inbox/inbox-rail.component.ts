@@ -85,14 +85,24 @@ export interface RailOuter {
                    negotiation state). Focuses the item in the conversation. -->
               @for (it of cat.items; track it.id) {
                 <!-- Glisten the specific line the current user must act on. -->
-                <button type="button" class="flex w-full flex-col items-start gap-1 border-b border-hairline px-3 py-2.5 pl-8 text-left last:border-b-0 hover:bg-fill"
+                <button type="button" class="flex w-full items-center gap-2.5 border-b border-hairline px-3 py-2.5 pl-8 text-left last:border-b-0 hover:bg-fill"
                         [class.bp-item--selected]="it.id === selectedId()" [class.bp-glisten]="isMyAction(it)" (click)="selectItem.emit(it.id)">
-                  <span class="bp-list-title w-full truncate">{{ it.name }}</span>
-                  <span class="flex flex-wrap items-center gap-1.5">
-                    <span [class]="'bp-spill bp-spill--' + pill(it).tone">{{ pill(it).label }}</span>
-                    @if (it.hasOpenQuestion) {
-                      <span class="bp-spill bp-spill--yellow">Question</span>
-                    }
+                  <!-- Cover thumbnail — same style as the Running budget (Liam 2026-10-29). -->
+                  @if (it.imageUrl) {
+                    <img [src]="it.imageUrl" alt="" class="h-9 w-9 shrink-0 rounded-[var(--radius-card)] object-cover" />
+                  } @else {
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-card)] bg-fill text-muted">
+                      <lucide-icon name="image" [size]="14" />
+                    </div>
+                  }
+                  <span class="flex min-w-0 flex-1 flex-col items-start gap-1">
+                    <span class="bp-list-title w-full truncate">{{ it.name }}</span>
+                    <span class="flex flex-wrap items-center gap-1.5">
+                      <span [class]="'bp-spill bp-spill--' + pill(it).tone">{{ pill(it).label }}</span>
+                      @if (it.hasOpenQuestion) {
+                        <span class="bp-spill bp-spill--yellow">Question</span>
+                      }
+                    </span>
                   </span>
                 </button>
               }
