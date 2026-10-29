@@ -19,7 +19,10 @@ import { RouterLink } from '@angular/router';
     `
       .bp-wordmark-img {
         display: block;
-        height: 22px;
+        /* Height rides a cascading token so the shell can shrink the logo on a
+           laptop (the shell sets --wordmark-h below the desktop breakpoint);
+           22px everywhere else. */
+        height: var(--wordmark-h, 22px);
         width: auto;
       }
     `,

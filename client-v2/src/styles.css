@@ -2414,6 +2414,30 @@ input.bp-input-field::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .bp-nav-link:hover { color: var(--theme-text); background: rgba(15, 23, 42, 0.04); }
 .bp-nav-link.bp-nav-link--active { color: var(--theme-text); font-weight: 600; }
 
+/* Laptop (≤1280px): the header chrome is all fixed-size — the wordmark, the nav
+   links and the Sign Out CTA don't scale with the window, so on a laptop they
+   crowd and the last nav items slide under the right-pinned account cluster.
+   Compact the whole header row at laptop widths so everything fits on one line
+   (Liam 2026-10-29). One fluid layout — not a separate profile, just a tighter
+   scale below the desktop breakpoint. */
+@media (max-width: 1280px) {
+  .bp-app-header { --wordmark-h: 18px; }
+  .bp-app-header .bp-nav-link {
+    padding: 4px 9px;
+    gap: 5px;
+    font-size: var(--text-sm);
+  }
+  .bp-app-header .bp-nav-link svg { width: 15px; height: 15px; }
+  /* Sign Out sits in the header as a full CTA (padding 12px 24px) — far bigger
+     than it needs to be up here; shrink it to a header-sized button. */
+  .bp-app-header .bp-btn-grad {
+    padding: 7px 14px;
+    font-size: var(--text-sm);
+  }
+  /* Acting-as pill matches the tighter scale. */
+  .bp-app-header .text-sm { font-size: var(--text-xs); }
+}
+
 /* The pink canvas ground — set on the shell <main> for EVERY authenticated page
    (one class + one --workspace-pink token = one reference for the whole app),
    full-bleed behind the header. min-height fills the viewport so short pages

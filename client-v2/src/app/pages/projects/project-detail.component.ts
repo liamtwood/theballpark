@@ -363,8 +363,10 @@ interface DetailForm {
           }
           @default {
             <!-- Scrolls in the page's bp-gutter (window-edge scrollbar) like the
-                 other project tabs; the bare workspace flows inside it. -->
-            <div class="min-h-0 flex-1 bp-gutter">
+                 other project tabs; the bare workspace flows inside it. Pull up
+                 to shave most of bp-page-body's 32px top so the grid sits close
+                 under the tab band on a laptop (Liam 2026-10-29). -->
+            <div class="min-h-0 flex-1 bp-gutter -mt-6">
               <app-project-marketplace [projectId]="p.id" />
             </div>
           }
