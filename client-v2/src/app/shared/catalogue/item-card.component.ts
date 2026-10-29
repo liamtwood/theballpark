@@ -65,25 +65,32 @@ import { AuthService } from '../../core/auth/auth.service';
     <!-- Wishlist + Add-to-Quote are BUYER actions — agents only. Suppliers and
          ballpark admins don't favourite/quote (they manage/moderate). -->
     @if (isAgent()) {
-      <button
-        type="button"
-        class="bp-fav-btn"
-        [class.bp-fav-btn--on]="favourited()"
-        [attr.aria-label]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
-        [pTooltip]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
-        tooltipStyleClass="bp-tooltip"
-        tooltipPosition="top"
-        (click)="onFavClick($event)"
-      >
-        <lucide-icon name="heart" [size]="15" />
-      </button>
+      <!-- Wishlist heart HIDDEN for now (Liam 2026-10-29) — flip showFavourite
+           to bring it back. When hidden, the "+" takes the top-right slot (it
+           drops the --second offset below). -->
+      @if (showFavourite) {
+        <button
+          type="button"
+          class="bp-fav-btn"
+          [class.bp-fav-btn--on]="favourited()"
+          [attr.aria-label]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
+          [pTooltip]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
+          tooltipStyleClass="bp-tooltip"
+          tooltipPosition="top"
+          (click)="onFavClick($event)"
+        >
+          <lucide-icon name="heart" [size]="15" />
+        </button>
+      }
       <!-- The customer-proposed "+" (v1 lineage) — replaced the gradient
            foot CTA (v2.20q). OWN state, independent of the heart (QC: one
            click was lighting both). TRANSITIONAL: session-local draft mark
-           until pV2-06f lands the real quote flow. -->
+           until pV2-06f lands the real quote flow. Sits left of the heart
+           (--second) only while the heart shows; otherwise it owns the slot. -->
       <button
         type="button"
-        class="bp-fav-btn bp-fav-btn--second"
+        class="bp-fav-btn"
+        [class.bp-fav-btn--second]="showFavourite"
         [class.bp-fav-btn--on]="quoted() && !hasVariantDims()"
         [attr.aria-label]="quoteBtnLabel()"
         [pTooltip]="quoteBtnLabel()"
@@ -231,10 +238,18 @@ import { AuthService } from '../../core/auth/auth.service';
       padding: 0;
       cursor: pointer;
       font-family: var(--font-body);
-      font-size: var(--text-sm);
+      font-size: var(--text-xs);
       color: var(--theme-accent);
     }
     .bp-qv-link:hover { text-decoration: underline; }
+    /* Card type a touch smaller than the shared defaults (Liam 2026-10-29) —
+       keeps the denser grid legible without crowding. Scoped to the card via
+       :host so .bp-list-title / .bp-tag-chip / .bp-price-large / .bp-caption are
+       unchanged everywhere else. */
+    :host .bp-list-title  { font-size: var(--text-sm); }
+    :host .bp-tag-chip    { font-size: var(--text-xs); }
+    :host .bp-price-large { font-size: var(--text-xl); }
+    :host .bp-caption     { font-size: var(--text-xs); }
   `,
 })
 export class ItemCardComponent {
@@ -243,6 +258,9 @@ export class ItemCardComponent {
   private readonly confirm = inject(ConfirmService);
   private readonly auth = inject(AuthService);
 
+  /** Wishlist heart hidden for now (Liam 2026-10-29) — flip to true to restore
+   *  it (the "+" then shifts back to its --second slot left of the heart). */
+  protected readonly showFavourite = false;
   /** Wishlist / Add-to-Quote are buyer actions — agency users only. */
   protected readonly isAgent = computed(() => this.auth.user()?.activeOrgType === 'agency');
   /** Ballpark admins moderate — a card click opens the review page, not Quick View. */
@@ -271,13 +289,10 @@ export class ItemCardComponent {
    *  editor; ballpark admin → the org-scoped editor/approve page). */
   protected readonly moderateEditLink = computed(() => itemEditLink(this.auth.user(), this.item()));
 
-  /** Card meta: the supplier name, with the city appended when both exist
-   *  ("Rocket Food · London") — falls back to whichever is present. */
-  protected readonly supplierMeta = computed(() => {
-    const n = this.item().supplierName;
-    const c = this.item().supplierCity;
-    return n && c ? `${n} · ${c}` : (n || c || '');
-  });
+  /** Card meta: just the supplier name — the city was dropped from the card to
+   *  keep the dense grid tidy (Liam 2026-10-29); it still lives in the preview /
+   *  detail view. */
+  protected readonly supplierMeta = computed(() => this.item().supplierName ?? '');
 
   readonly item = input.required<CatalogueItem>();
   readonly selected = input<boolean>(false);

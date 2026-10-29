@@ -189,12 +189,12 @@ export class CatalogueGridComponent {
   // breakpoint cliffs), so the grid fills the space on a laptop (Liam 2026-10-29).
   // A floor of ~200px keeps cards from going too narrow on a phone.
   protected readonly looseCols = 'grid-cols-[repeat(auto-fill,minmax(min(100%,240px),1fr))]';
-  // Dense (project Marketplace, constrained workspace column): FLUID, no hardcoded
-  // count — a smaller ~160px floor so the narrower workspace column (rail + gutters
-  // leave ~720-780px) packs 4 cards at laptop width, and flows to 5-6 on a wider
-  // screen rather than locking at 4 (Liam 2026-10-29). The earlier 176 floor still
-  // only fit 3 at that width, so the cards stretched and never shrank.
-  protected readonly denseCols = 'grid-cols-[repeat(auto-fill,minmax(min(100%,160px),1fr))]';
+  // Dense (project Marketplace): FIXED-width cards (~184px) rather than stretch —
+  // auto-fill packs as many 184px cards as fit and adds more columns as the column
+  // widens on a bigger screen, instead of stretching a few cards to fill (Liam
+  // 2026-10-29: "fix the size of the card and let it display more width wise on a
+  // bigger screen"). Full-width single column on a phone.
+  protected readonly denseCols = 'grid-cols-[repeat(auto-fill,184px)] max-[420px]:grid-cols-1';
   readonly selectedId = input<string | null>(null);
   /** Favourited item ids (org-scoped) — hearts on the card view. */
   readonly favouriteIds = input<ReadonlySet<string>>(new Set<string>());

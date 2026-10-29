@@ -79,7 +79,11 @@ import { ScrollPeekComponent } from '../../shared/scroll-peek/scroll-peek.compon
     :host(.ws-bare) { display: block; flex: none; min-height: 0; }
     :host(.ws-bare) .ws-root { display: block; }
     :host(.ws-bare) .ws-frame { overflow: visible; padding-top: 0; }
-    :host(.ws-bare) .ws-card { height: auto; min-height: 0; overflow: visible; }
+    /* The project Marketplace grid is a browse surface — let it use more of the
+       screen than the 1068px workspace column the other project tabs centre on,
+       so a bigger screen shows more fixed-width cards per row (Liam 2026-10-29).
+       Still bounded + centred (mx-auto), just a wider cap. */
+    :host(.ws-bare) .ws-card { height: auto; min-height: 0; overflow: visible; max-width: 1440px; }
     /* One shared top gap on the rails row + no extra top inset on the grid, so
        the left rail (cat container) and the first row of item cards line up
        vertically (the grid's p-4 top is only needed to stop shadow clipping in
