@@ -2436,6 +2436,11 @@ input.bp-input-field::-webkit-inner-spin-button { -webkit-appearance: none; marg
   }
   /* Acting-as pill matches the tighter scale. */
   .bp-app-header .text-sm { font-size: var(--text-xs); }
+  /* The nav is centred in the workspace column; at laptop widths that column's
+     left edge creeps under the left-pinned wordmark, so "Home" ends up beneath
+     the logo. Reserve a minimum left gap on the scroll container so the first
+     item always clears the wordmark (Liam 2026-10-29). */
+  .bp-app-header nav { padding-left: 6.5rem; }
 }
 
 /* The pink canvas ground — set on the shell <main> for EVERY authenticated page
