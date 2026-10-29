@@ -553,7 +553,7 @@
 
 /* Inline — pill sets type only; shape (padding/radius) and the per-state
    colors stay with the consumer (semantic tokens). */
-.bp-status-pill { font-family: var(--bp-font); font-size: var(--text-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-wide); line-height: 1; }
+.bp-status-pill { font-family: var(--bp-font); font-size: var(--text-xs); font-weight: 600; line-height: 1; }
 .bp-meta        { font-family: var(--bp-font); font-size: var(--text-2xs); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-muted); }
 
 /* Column */
