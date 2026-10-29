@@ -74,6 +74,7 @@ import { isDeclined } from './quote-line.util';
           <app-supplier-grid
             [suppliers]="relevantSuppliers()"
             [viewMode]="store.viewMode()"
+            [dense]="true"
             [favouriteIds]="favs.suppliers()"
             (favouriteToggled)="favs.toggle('supplier', $event)"
             (supplierSelected)="store.viewSupplierItems($event)"

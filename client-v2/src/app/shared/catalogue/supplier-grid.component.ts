@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { SupplierCardComponent } from './supplier-card.component';
-import { CatalogueSupplier, ViewMode } from './catalogue.types';
+import { CatalogueSupplier, ViewMode, CARD_GRID_LOOSE, CARD_GRID_DENSE } from './catalogue.types';
 
 /** pV2-06d (v2.15b QC fix) — the suppliers middle region with the SAME
  *  three view modes as items (the toggle was inert in suppliers mode).
@@ -14,7 +14,9 @@ import { CatalogueSupplier, ViewMode } from './catalogue.types';
   template: `
     @switch (viewMode()) {
       @case ('card') {
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <!-- Columns match the item grid exactly (catalogue-grid) so supplier
+             cards are the same size as item cards (Liam 2026-10-29). -->
+        <div [class]="'grid gap-4 ' + (dense() ? denseCols : looseCols)">
           @for (sup of suppliers(); track sup.id) {
             <app-supplier-card
               [supplier]="sup"
@@ -70,6 +72,11 @@ import { CatalogueSupplier, ViewMode } from './catalogue.types';
 export class SupplierGridComponent {
   readonly suppliers = input.required<readonly CatalogueSupplier[]>();
   readonly viewMode = input<ViewMode>('card');
+  /** Denser card grid for a constrained column (project Marketplace) — mirrors
+   *  catalogue-grid so supplier + item cards are the same size. */
+  readonly dense = input<boolean>(false);
+  protected readonly looseCols = CARD_GRID_LOOSE;
+  protected readonly denseCols = CARD_GRID_DENSE;
   readonly favouriteIds = input<ReadonlySet<string>>(new Set<string>());
   readonly favouriteToggled = output<string>();
   /** Card body click — the shell flips to Items + filters by this supplier. */

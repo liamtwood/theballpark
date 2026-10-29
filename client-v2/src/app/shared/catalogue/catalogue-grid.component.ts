@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { ItemCardComponent } from './item-card.component';
-import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
+import { CatalogueItem, ViewMode, sizedImage, CARD_GRID_LOOSE, CARD_GRID_DENSE } from './catalogue.types';
 
 /** pV2-06a — the PURE middle grid: entities in, selection events out,
  *  zero fetching. `@switch` on the view mode — card grid / list rows /
@@ -188,13 +188,11 @@ export class CatalogueGridComponent {
   // FLUID columns — auto-fill packs as many cards as fit at ANY width (no
   // breakpoint cliffs), so the grid fills the space on a laptop (Liam 2026-10-29).
   // A floor of ~200px keeps cards from going too narrow on a phone.
-  protected readonly looseCols = 'grid-cols-[repeat(auto-fill,minmax(min(100%,240px),1fr))]';
-  // Dense (project Marketplace): 4-up, cards STRETCH to fill the column (no right
-  // gutter). Safe to pin the count here because the workspace column is capped at
-  // the hero width (~1068px), so 4-up tops out at ~183px even on a big screen —
-  // the cards stay small and the row always fills edge-to-edge (Liam 2026-10-29).
-  // Steps down to 3 then 2 only when the viewport gets genuinely narrow.
-  protected readonly denseCols = 'grid-cols-4 max-[768px]:grid-cols-3 max-[520px]:grid-cols-2';
+  // Shared card-grid columns (one definition in catalogue.types — the supplier
+  // grid uses the same so both card types are the same size). Dense = the
+  // capped project column, 4-up stretch (cards stay ~small, row fills, no gutter).
+  protected readonly looseCols = CARD_GRID_LOOSE;
+  protected readonly denseCols = CARD_GRID_DENSE;
   readonly selectedId = input<string | null>(null);
   /** Favourited item ids (org-scoped) — hearts on the card view. */
   readonly favouriteIds = input<ReadonlySet<string>>(new Set<string>());

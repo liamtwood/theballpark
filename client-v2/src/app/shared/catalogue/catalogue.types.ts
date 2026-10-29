@@ -220,3 +220,11 @@ export function sizedImage(url: string | null, width: number): string | null {
 export function asViewMode(v: string | null): ViewMode {
   return v === 'list' || v === 'table' ? v : 'card';
 }
+
+/** The catalogue card-grid column classes — ONE definition shared by the item
+ *  grid (catalogue-grid) and the supplier grid so both render the same card
+ *  size. Loose = full-width surfaces (fluid auto-fill); dense = the constrained
+ *  project Marketplace column (4-up stretch, capped so cards stay small), with
+ *  a graceful step down on a narrow viewport (Liam 2026-10-29). */
+export const CARD_GRID_LOOSE = 'grid-cols-[repeat(auto-fill,minmax(min(100%,240px),1fr))]';
+export const CARD_GRID_DENSE = 'grid-cols-4 max-[768px]:grid-cols-3 max-[520px]:grid-cols-2';
