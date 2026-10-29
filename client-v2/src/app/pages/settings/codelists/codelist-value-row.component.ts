@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CodelistValue, CodelistValuePatch, metaColor } from '../../../core/codelists/codelist.types';
+import { CodelistValue, CodelistValuePatch } from '../../../core/codelists/codelist.types';
 import { SelectComponent, SelectOption } from '../../../shared/select/select.component';
 import { StatusPillComponent } from '../../../shared/status-pill/status-pill.component';
 
@@ -32,21 +32,15 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
     }
     <span>
       @if (editable()) {
-        <!-- Colour picker — swatches set meta.color (first = clear). Shows the live
-             pill too, so you see the result (Liam 2026-10-29). -->
+        <!-- Native colour picker — pick ANY colour; stores the hex in meta.color.
+             Live pill preview + Clear (Liam 2026-10-29). -->
         <div class="flex items-center gap-2">
-          <div class="flex flex-wrap items-center gap-[3px]">
-            @for (opt of colorOptions; track opt) {
-              <button type="button"
-                class="h-3.5 w-3.5 shrink-0 rounded-full border border-hairline"
-                [style.background]="opt ? metaColor(opt) : 'var(--color-surface)'"
-                [style.box-shadow]="(value().meta.color ?? '') === opt ? '0 0 0 2px var(--theme-accent)' : ''"
-                [attr.title]="opt || 'None'" [attr.aria-label]="opt || 'None'"
-                (click)="save.emit({ color: opt })"></button>
-            }
-          </div>
+          <input type="color" class="h-6 w-8 shrink-0 cursor-pointer rounded border border-hairline bg-surface p-0"
+            [value]="currentHex()" (change)="pickColor($event)"
+            [attr.aria-label]="'Colour for ' + value().code" />
           @if (value().meta.color) {
             <app-status-pill [list]="listName()" [code]="value().code" />
+            <button type="button" class="bp-meta shrink-0 underline" (click)="save.emit({ color: '' })">Clear</button>
           }
         </div>
       } @else if (value().meta.color) {
@@ -65,14 +59,22 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
 })
 export class CodelistValueRowComponent {
   protected readonly String = String;
-  protected readonly metaColor = metaColor;
 
-  /** The status-pill colour palette (design tokens). First '' = clear → the pill
-   *  falls back to neutral. Pick any in Settings ▸ Codelists. */
-  protected readonly colorOptions = [
-    '', '--color-state-gray', '--color-info', '--color-warn', '--color-state-sky',
-    '--color-state-orange', '--color-success', '--color-state-emerald', '--color-danger',
-  ];
+  /** The current colour as a hex, for the native <input type="color"> value. A hex
+   *  passes through; a design-token ref (--color-…) is resolved to its computed hex;
+   *  anything unresolvable (or no colour) falls back to a neutral grey. */
+  protected currentHex(): string {
+    const c = this.value().meta.color;
+    if (!c) return '#6b7280';
+    if (c.startsWith('#')) return c;
+    const v = getComputedStyle(document.documentElement).getPropertyValue(c).trim();
+    return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : '#6b7280';
+  }
+
+  /** Commit the picked hex to meta.color. */
+  protected pickColor(ev: Event): void {
+    this.save.emit({ color: (ev.target as HTMLInputElement).value });
+  }
 
   readonly listName = input.required<string>();
   readonly value = input.required<CodelistValue>();
