@@ -35,6 +35,9 @@ export interface RailOuter {
   imports: [LucideAngularModule],
   host: { class: 'hidden min-h-0 xl:flex xl:flex-col xl:gap-3 xl:overflow-y-auto' },
   template: `
+    <!-- Rail title (Liam 2026-10-29). -->
+    <h2 class="bp-card-title shrink-0 px-1">Project inbox</h2>
+
     <!-- Project context card removed — that info now lives in the conversation
          header (Liam 2026-09-10). -->
 
@@ -85,7 +88,7 @@ export interface RailOuter {
                    negotiation state). Focuses the item in the conversation. -->
               @for (it of cat.items; track it.id) {
                 <!-- Glisten the specific line the current user must act on. -->
-                <button type="button" class="flex w-full items-center gap-2.5 border-b border-hairline px-3 py-2.5 pl-8 text-left last:border-b-0 hover:bg-fill"
+                <button type="button" class="flex w-full items-center gap-2.5 border-b border-hairline px-3 py-2.5 text-left last:border-b-0 hover:bg-fill"
                         [class.bp-item--selected]="it.id === selectedId()" [class.bp-glisten]="isMyAction(it)" (click)="selectItem.emit(it.id)">
                   <!-- Cover thumbnail — same style as the Running budget (Liam 2026-10-29). -->
                   @if (it.imageUrl) {

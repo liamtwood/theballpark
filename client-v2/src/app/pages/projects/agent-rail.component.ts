@@ -77,24 +77,6 @@ interface Turn {
         </button>
       </div>
 
-      <!-- Item context — cover thumbnail (same style as the Running budget) + name,
-           with the item's status pill on the right (Liam 2026-10-29). -->
-      @if (imageUrl() || context().itemName || statusPill()) {
-        <div class="flex items-center gap-2.5 border-b border-hairline px-4 py-2.5">
-          @if (imageUrl(); as img) {
-            <img [src]="img" alt="" class="h-10 w-10 shrink-0 rounded-[var(--radius-card)] object-cover" />
-          } @else {
-            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-card)] bg-fill text-muted">
-              <lucide-icon name="image" [size]="16" />
-            </div>
-          }
-          <span class="bp-list-title min-w-0 flex-1 truncate">{{ context().itemName || 'This item' }}</span>
-          @if (statusPill(); as p) {
-            <span [class]="'bp-spill bp-spill--' + p.tone + ' shrink-0'">{{ p.label }}</span>
-          }
-        </div>
-      }
-
       <div #railScroll class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
         <!-- Persistent intro — state-aware: when the counterparty has just moved,
              lead with what they did; else the generic prompt. Stays put as history
@@ -293,10 +275,6 @@ interface Turn {
 export class AgentRailComponent {
   private readonly projects = inject(ProjectService);
   readonly context = input.required<AgentRailContext>();
-  /** The selected item's status pill + cover image — shown in the item-context
-   *  strip at the top of the rail (inbox right rail; Liam 2026-10-29). */
-  readonly statusPill = input<{ label: string; tone: string } | null>(null);
-  readonly imageUrl = input<string | null>(null);
   /** Opening radio picks + the supplier "open builder" link go to the host
    *  (keys: 'accept' | 'decline' | 'customize') → its existing handlers. */
   readonly quickAction = output<string>();

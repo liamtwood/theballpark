@@ -43,14 +43,10 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
   template: `
     <p-toast position="bottom-right" styleClass="bp-toast" />
     @if (!embedded()) {
-      <app-page-hero align="block" eyebrow="Messages" [back]="{ label: 'Back', href: '/inbox', history: true }" title="Project inbox" [subtitle]="heroSubtitle()" />
+      <app-page-hero align="block" eyebrow="Messages" [back]="{ label: 'Back', href: '/inbox', history: true }" title="Inbox" [subtitle]="heroSubtitle()" />
     }
 
     <div [class]="embedded() ? 'flex min-h-0 flex-1 flex-col px-4 pt-4' : 'bp-page-body'">
-      <!-- Embedded (agency project tab) has no page hero, so carry the title here. -->
-      @if (embedded()) {
-        <h2 class="bp-card-title mb-3 shrink-0">Project inbox</h2>
-      }
       <!-- FIRST load only. isLoading() is also true while RELOADING, and every
            send/accept/decline reloads — so gating on it alone tore the whole pane
            down each time: the rail's collapse state reset and the compose input
@@ -84,7 +80,19 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                    context lives in the rail card). -->
               <div class="border-b border-hairline px-5 py-4">
                 <div class="flex items-start justify-between gap-2">
-                  <span class="group relative">
+                  <div class="flex min-w-0 items-start gap-3">
+                    <!-- Item cover next to the name — same thumb style as the rails /
+                         Running budget (Liam 2026-10-29). Only when an item is picked. -->
+                    @if (selectedItem(); as sel) {
+                      @if (sel.imageUrl) {
+                        <img [src]="sel.imageUrl" alt="" class="mt-0.5 h-10 w-10 shrink-0 rounded-[var(--radius-card)] object-cover" />
+                      } @else {
+                        <div class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-card)] bg-fill text-muted">
+                          <lucide-icon name="image" [size]="16" />
+                        </div>
+                      }
+                    }
+                    <span class="group relative">
                     <h2 class="bp-card-title cursor-default">
                       @if (selectedItem(); as it) {
                         {{ it.name }}
@@ -109,8 +117,14 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                       }
                     </div>
                   </span>
-                  <!-- Kebab menu: Customize + Assistant. -->
-                  <div class="relative flex shrink-0 items-center">
+                  </div>
+                  <div class="flex shrink-0 items-center gap-2">
+                    <!-- Item status pill, right side of the header (Liam 2026-10-29). -->
+                    @if (selectedPill(); as p) {
+                      <span [class]="'bp-spill bp-spill--' + p.tone">{{ p.label }}</span>
+                    }
+                    <!-- Kebab menu: Customize + Assistant. -->
+                    <div class="relative flex shrink-0 items-center">
                     <button type="button" class="bp-itemprev-close shrink-0" title="More" aria-label="More" (click)="headerMenu.set(!headerMenu())">
                       <lucide-icon name="ellipsis-vertical" [size]="18" />
                     </button>
@@ -127,6 +141,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                         </button>
                       </div>
                     }
+                    </div>
                   </div>
                 </div>
               </div>
@@ -328,8 +343,6 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
           @if (showAgent()) {
             <aside class="hidden min-h-0 xl:flex xl:flex-col">
               <app-agent-rail [context]="agentContext()!"
-                              [statusPill]="selectedPill()"
-                              [imageUrl]="selectedItem()?.imageUrl ?? null"
                               (quickAction)="onAgentQuick($event)"
                               (changed)="onCustomizeChanged()"
                               (accept)="onAgentAccept()" (decline)="onAgentDecline($event)"
