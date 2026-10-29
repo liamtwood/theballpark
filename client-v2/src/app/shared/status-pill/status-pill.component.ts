@@ -55,14 +55,36 @@ export class StatusPillComponent {
   protected readonly bg = computed(
     () => metaColor(this.value()?.meta?.color) ?? 'var(--color-text-muted)'
   );
-  // White text on the (mostly dark) solid fills; dark text on the light/muted
-  // fills so a pale pill stays readable (e.g. draft → --color-state-mauve).
-  protected readonly fg = computed(() =>
-    LIGHT_FILLS.has(this.value()?.meta?.color ?? '')
-      ? 'var(--color-text)'
-      : 'var(--bp-text-on-gradient)'
-  );
-}
+  // Readable text on ANY fill: dark text on a light background, white on a dark
+  // one — computed from the background's luminance, so a custom light colour the
+  // admin picks (e.g. #f8fafc) stays legible (Liam 2026-10-29).
+  protected readonly fg = computed(() => {
+    const L = this.bgLuminance();
+    return L !== null && L > 0.6 ? 'var(--color-text)' : 'var(--bp-text-on-gradient)';
+  });
 
-/** Meta-color tokens that are too light for white text — use dark text. */
-const LIGHT_FILLS = new Set(['--color-state-mauve']);
+  /** Perceived lightness of the fill, 0 (dark) … 1 (light), or null if it can't
+   *  be parsed. Handles hex, rgb() and oklch() (incl. token refs resolved live). */
+  private bgLuminance(): number | null {
+    const raw = this.value()?.meta?.color || '--color-text-muted';
+    const v = raw.startsWith('--')
+      ? getComputedStyle(document.documentElement).getPropertyValue(raw).trim()
+      : raw.trim();
+    if (!v) return null;
+    let m = v.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (m) {
+      let h = m[1];
+      if (h.length === 3) h = h.split('').map((x) => x + x).join('');
+      const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+      return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    }
+    m = v.match(/rgba?\(([^)]+)\)/i);
+    if (m) {
+      const [r, g, b] = m[1].split(',').map((s) => parseFloat(s));
+      return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    }
+    m = v.match(/oklch\(\s*([\d.]+)/i);
+    if (m) return parseFloat(m[1]); // oklch lightness ≈ 0..1
+    return null;
+  }
+}
