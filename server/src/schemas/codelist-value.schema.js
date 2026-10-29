@@ -26,6 +26,9 @@ const CodelistValuePatchSchema = z
     description: z.string().trim().max(300).optional().or(z.literal('')),
     sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
     isActive: z.boolean().optional(),
+    // Status-pill colour (meta.color): a design token ref (--color-…) or '' to clear.
+    // Merged into the value's meta server-side (never replaces the whole meta).
+    color: z.string().trim().max(60).optional().or(z.literal('')),
   })
   .strip()
   .refine((o) => Object.keys(o).length > 0, { message: 'No editable fields provided' });

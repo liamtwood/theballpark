@@ -217,7 +217,16 @@ export class CodelistsSettingsComponent {
     const list = this.selected();
     if (!list) return;
     const before = this.values();
-    this.values.update((arr) => arr.map((x) => (x.code === v.code ? { ...x, ...patch } : x)));
+    this.values.update((arr) =>
+      arr.map((x) => {
+        if (x.code !== v.code) return x;
+        const { color, ...rest } = patch;
+        const next = { ...x, ...rest };
+        // colour lives in meta.color, not top-level — merge it for the optimistic view.
+        if (color !== undefined) next.meta = { ...x.meta, color: color || '' };
+        return next;
+      }),
+    );
     try {
       const fresh = await firstValueFrom(this.codelists.patchValue(list, v.code, patch));
       this.values.update((arr) => arr.map((x) => (x.code === v.code ? fresh : x)));

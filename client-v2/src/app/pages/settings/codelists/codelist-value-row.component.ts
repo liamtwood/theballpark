@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CodelistValue, CodelistValuePatch } from '../../../core/codelists/codelist.types';
+import { CodelistValue, CodelistValuePatch, metaColor } from '../../../core/codelists/codelist.types';
 import { SelectComponent, SelectOption } from '../../../shared/select/select.component';
 import { StatusPillComponent } from '../../../shared/status-pill/status-pill.component';
 
@@ -14,7 +14,7 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
   imports: [FormsModule, SelectComponent, StatusPillComponent],
   host: {
     class:
-      'grid grid-cols-[110px_1fr_80px_70px_120px_110px] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0',
+      'grid grid-cols-[110px_1fr_80px_70px_170px_110px] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0',
     '[class.opacity-60]': '!value().isActive',
   },
   template: `
@@ -31,7 +31,25 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
       <span class="bp-body-small text-secondary">{{ value().sortOrder ?? '—' }}</span>
     }
     <span>
-      @if (value().meta.color) {
+      @if (editable()) {
+        <!-- Colour picker — swatches set meta.color (first = clear). Shows the live
+             pill too, so you see the result (Liam 2026-10-29). -->
+        <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-[3px]">
+            @for (opt of colorOptions; track opt) {
+              <button type="button"
+                class="h-3.5 w-3.5 shrink-0 rounded-full border border-hairline"
+                [style.background]="opt ? metaColor(opt) : 'var(--color-surface)'"
+                [style.box-shadow]="(value().meta.color ?? '') === opt ? '0 0 0 2px var(--theme-accent)' : ''"
+                [attr.title]="opt || 'None'" [attr.aria-label]="opt || 'None'"
+                (click)="save.emit({ color: opt })"></button>
+            }
+          </div>
+          @if (value().meta.color) {
+            <app-status-pill [list]="listName()" [code]="value().code" />
+          }
+        </div>
+      } @else if (value().meta.color) {
         <app-status-pill [list]="listName()" [code]="value().code" />
       } @else {
         <span class="bp-meta">—</span>
@@ -47,6 +65,14 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
 })
 export class CodelistValueRowComponent {
   protected readonly String = String;
+  protected readonly metaColor = metaColor;
+
+  /** The status-pill colour palette (design tokens). First '' = clear → the pill
+   *  falls back to neutral. Pick any in Settings ▸ Codelists. */
+  protected readonly colorOptions = [
+    '', '--color-state-gray', '--color-info', '--color-warn', '--color-state-sky',
+    '--color-state-orange', '--color-success', '--color-state-emerald', '--color-danger',
+  ];
 
   readonly listName = input.required<string>();
   readonly value = input.required<CodelistValue>();

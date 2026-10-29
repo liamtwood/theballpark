@@ -53,6 +53,9 @@ export interface CodelistValuePatch {
   description?: string;
   sortOrder?: number;
   isActive?: boolean;
+  /** Status-pill colour (a design token ref like '--color-success', or '' to
+   *  clear) — merged into meta.color server-side. */
+  color?: string;
 }
 
 /** Resolve a meta color to CSS: token refs wrap in var(); anything else

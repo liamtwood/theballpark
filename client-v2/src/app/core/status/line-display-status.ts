@@ -14,23 +14,30 @@ import { CodelistValue } from '../codelists/codelist.types';
  *  `inbox-status` each had their own accept→label branch ("Both accepted" vs
  *  "All confirmed"); this is the single source. */
 export type LineDisplayCode =
-  | 'to_agree' | 'you_accepted' | 'they_accepted' | 'all_confirmed' | 'declined';
+  | 'to_agree' | 'quoted' | 'new_cost'
+  | 'you_accepted' | 'they_accepted' | 'all_confirmed'
+  | 'booked' | 'declined';
 
 export const LINE_DISPLAY_FALLBACK: Record<LineDisplayCode, string> = {
   to_agree: 'To agree',
+  quoted: 'Quoted',
+  new_cost: 'New cost suggested',
   you_accepted: 'You accepted',
   they_accepted: 'They accepted',
   all_confirmed: 'All confirmed',
+  booked: 'Booked',
   declined: 'Declined',
 };
 
-/** THE canonical display code for a line — the ONE deriver used by EVERY status
- *  pill (inbox rail + header, Running budget, estimate). The viewer-relative
- *  accept rollup (acceptanceCode) wins; else booked → all_confirmed, declined/
- *  cancelled → declined, otherwise to_agree. Works for both InboxThreadItem and
- *  QuoteLine (both carry status + buyerAccepted + sellerAccepted). Option A
- *  (Liam 2026-10-29): every pill shows these 5 states, with text + colour from
- *  the `line_display_status` codelist (edit in Settings ▸ Codelists). */
+/** THE single line-status vocabulary + deriver used by EVERY status pill (inbox
+ *  rail + header, Running budget, estimate). ONE codelist (`line_display_status`,
+ *  ballpark/editable) now covers the whole negotiation: the viewer-relative accept
+ *  rollup (acceptanceCode → you/they/all) wins; else booked, declined/cancelled,
+ *  a new-cost suggestion (adjusted_by_*), a quote, or the to_agree catch-all.
+ *  Works for InboxThreadItem + QuoteLine (both carry status + buyerAccepted +
+ *  sellerAccepted); each surface only ever produces the codes its data supports.
+ *  Consolidated from the old message_item_status + line_display_status split
+ *  (Liam 2026-10-29). Text + colour are edited in Settings ▸ Codelists. */
 export function lineDisplayCode(
   s: { status?: string | null; buyerAccepted?: boolean | null; sellerAccepted?: boolean | null },
   viewer: 'buyer' | 'seller',
@@ -38,8 +45,10 @@ export function lineDisplayCode(
   const code = acceptanceCode(s, viewer);
   if (code) return code;
   const st = (s.status ?? '').toString();
-  if (st === 'booked') return 'all_confirmed';
+  if (st === 'booked') return 'booked';
   if (st.startsWith('declined') || st === 'cancelled') return 'declined';
+  if (st === 'adjusted_by_supplier' || st === 'adjusted_by_agent') return 'new_cost';
+  if (st === 'quoted') return 'quoted';
   return 'to_agree';
 }
 

@@ -185,6 +185,10 @@ async function patchValue(listName, code, patch) {
   if (patch.meta !== undefined) {
     vals.push(JSON.stringify(patch.meta));
     sets.push(`meta = $${vals.length}::jsonb`);
+  } else if (patch.color !== undefined) {
+    // MERGE the status-pill colour into meta (keeps icon + any other keys); '' clears it.
+    vals.push(patch.color || null);
+    sets.push(`meta = coalesce(meta, '{}'::jsonb) || jsonb_build_object('color', $${vals.length}::text)`);
   }
   if (!sets.length) return { error: 'empty' };
   vals.push(parent.id, code);
