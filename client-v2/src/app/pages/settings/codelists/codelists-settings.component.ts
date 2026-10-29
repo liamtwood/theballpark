@@ -39,9 +39,9 @@ import { CodelistValueRowComponent } from './codelist-value-row.component';
       <div class="grid grid-cols-[260px_1fr] gap-6">
         <!-- Master: parents by application -->
         <nav class="flex flex-col gap-0.5">
-          @for (app of applications(); track app) {
-            <p class="bp-field-label mt-3 px-3 uppercase tracking-wide first:mt-0">{{ app }}</p>
-            @for (list of parentsFor(app); track list.listName) {
+          @for (family of families(); track family) {
+            <p class="bp-field-label mt-3 px-3 uppercase tracking-wide first:mt-0">{{ family }}</p>
+            @for (list of parentsFor(family); track list.listName) {
               <button
                 type="button"
                 class="bp-catstrip-row"
@@ -159,12 +159,15 @@ export class CodelistsSettingsComponent {
     },
   });
 
-  protected readonly applications = computed(() => [
-    ...new Set(this.parents().map((p) => p.application)),
-  ]);
+  /** The family group names, sorted — 'Other' (no family) always last. */
+  protected readonly families = computed(() =>
+    [...new Set(this.parents().map((p) => p.family ?? 'Other'))].sort((a, b) =>
+      a === 'Other' ? 1 : b === 'Other' ? -1 : a.localeCompare(b),
+    ),
+  );
 
-  protected parentsFor(app: string): Codelist[] {
-    return this.parents().filter((p) => p.application === app);
+  protected parentsFor(family: string): Codelist[] {
+    return this.parents().filter((p) => (p.family ?? 'Other') === family);
   }
 
   protected readonly selectedParent = computed(

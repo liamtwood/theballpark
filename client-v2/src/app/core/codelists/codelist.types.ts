@@ -7,7 +7,8 @@ export interface Codelist {
   isActive: boolean;
   defaultCode: string | null;
   type: 'system' | 'ballpark';
-  application: string;
+  /** Grouping tag (e.g. 'Pills', 'Item Attributes') — groups the Settings list. */
+  family: string | null;
   consumerTable: string | null;
   consumerColumn: string | null;
   valueCount: number;
