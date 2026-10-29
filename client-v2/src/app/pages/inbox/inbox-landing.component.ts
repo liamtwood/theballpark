@@ -7,6 +7,8 @@ import { InboxService, InboxSummaryRow, InboxSummarySupplier, InboxWaitingCounts
 import { ProjectCard } from '../../core/projects/project.types';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { ProjectCardComponent } from '../projects/project-card.component';
+import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
+import { supplierSummaryCode } from '../../core/status/line-display-status';
 
 /** pV2-INBOX (Messages landing) — /inbox. Persona-aware:
  *  - AGENCY: one card per active project it's negotiating, each listing its
@@ -21,7 +23,7 @@ import { ProjectCardComponent } from '../projects/project-card.component';
 @Component({
   selector: 'app-inbox-landing',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, LucideAngularModule, PageHeroComponent, ProjectCardComponent],
+  imports: [RouterLink, LucideAngularModule, PageHeroComponent, ProjectCardComponent, StatusPillComponent],
   host: { class: 'block bp-vpfit' },
   template: `
     <app-page-hero
@@ -66,8 +68,8 @@ import { ProjectCardComponent } from '../projects/project-card.component';
                         <div class="bp-meta truncate">{{ row.clientName }}</div>
                       }
                     </div>
-                    <span class="shrink-0 bp-pill bp-body-small min-w-[8rem] justify-center text-center" [class]="pillClass(row)" [title]="hoverText(row)">
-                      {{ pillLabel(row) }}
+                    <span class="shrink-0" [title]="hoverText(row)">
+                      <app-status-pill list="supplier_summary_status" [code]="summaryCode(row)" />
                     </span>
                   </div>
 
@@ -93,8 +95,8 @@ import { ProjectCardComponent } from '../projects/project-card.component';
                                     <lucide-icon name="mail" [size]="15" />
                                   </button>
                                 }
-                                <span class="bp-pill bp-body-small min-w-[8rem] justify-center text-center" [class]="pillClass(s)" [title]="hoverText(s)">
-                                  {{ pillLabel(s, true) }}
+                                <span [title]="hoverText(s)">
+                                  <app-status-pill list="supplier_summary_status" [code]="summaryCode(s)" />
                                 </span>
                               </span>
                             </div>
@@ -192,19 +194,11 @@ export class InboxLandingComponent {
     });
   }
 
-  /** One pill for a project OR a supplier. Action Required wins; else waiting
-   *  on the supplier(s); else everything settled. Shared so the project pill
-   *  and each supplier pill read identically. */
-  protected pillLabel(c: InboxWaitingCounts, supplier = false): string {
-    if (c.actionRequired) return 'Action Required';
-    if (c.waitingSupplier > 0) return supplier ? 'Awaiting supplier' : 'Awaiting suppliers';
-    return 'All confirmed';
-  }
-
-  protected pillClass(c: InboxWaitingCounts): string {
-    if (c.actionRequired) return 'bp-pill--danger';
-    if (c.waitingSupplier > 0) return 'bp-pill--outline';
-    return 'bp-pill--success';
+  /** The per-supplier rollup code (Action Required wins; else awaiting; else all
+   *  confirmed) — codelist-driven via supplier_summary_status, same as the Running
+   *  budget supplier cards. */
+  protected summaryCode(c: InboxWaitingCounts): string {
+    return supplierSummaryCode(!!c.actionRequired, c.waitingSupplier > 0);
   }
 
   /** The count breakdown, shown as the pill's tooltip. */

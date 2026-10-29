@@ -15,7 +15,7 @@ import { EstimateItemRowComponent } from './estimate-item-row.component';
 import { RateInputComponent } from './rate-input.component';
 import { InboxService, OutreachRosterEntry } from '../../core/inbox/inbox.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
-import { acceptanceCode, LineDisplayCode, LineDisplayStatusService } from '../../core/status/line-display-status';
+import { acceptanceCode, LineDisplayCode, LineDisplayStatusService, supplierSummaryCode, SupplierSummaryCode } from '../../core/status/line-display-status';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { MessageSuppliersDialogComponent, MsgSupplierCategory } from './message-suppliers-dialog.component';
 import { EventDetailsEditComponent } from './event-details-edit.component';
@@ -243,11 +243,10 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                     <lucide-icon [name]="isOpen(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="text-muted" />
                   </button>
                 </div>
-                @if (!isDraftProject() && g.summaryLabel) {
-                  <!-- Summary status of all the supplier's items (Messages-tab logic),
-                       on its own row under the number. SAME 16ch centered pill as the
-                       per-line Status. -->
-                  <span [class]="g.summaryClass" class="mt-2 inline-flex" style="min-width: 16ch; justify-content: center; text-align: center">{{ g.summaryLabel }}</span>
+                @if (!isDraftProject() && g.summaryCode) {
+                  <!-- Per-supplier rollup status (supplier_summary_status codelist;
+                       text + colour editable in Settings ▸ Codelists). -->
+                  <app-status-pill class="mt-2 inline-flex" list="supplier_summary_status" [code]="g.summaryCode" />
                 }
               </div>
 
@@ -704,7 +703,7 @@ export class ProjectEstimateComponent {
    *  Required (agent owes a move) → Awaiting supplier → All confirmed. "My move"
    *  from the acceptance flags + coarse status (supplier accepted & I haven't, or
    *  they've quoted). (Liam 2026-10-23) */
-  private activeSummary(items: QuoteLine[]): { label: string; cls: string } {
+  private activeSummaryCode(items: QuoteLine[]): SupplierSummaryCode | '' {
     let action = 0, awaiting = 0, counted = 0;
     for (const l of items) {
       if (isDeclined(l)) continue;
@@ -713,10 +712,8 @@ export class ProjectEstimateComponent {
       if ((l.sellerAccepted && !l.buyerAccepted) || l.status === 'quoted') action++;
       else awaiting++;
     }
-    if (!counted) return { label: '', cls: '' };
-    if (action > 0) return { label: 'Action Required', cls: 'bp-pill bp-pill--danger' };
-    if (awaiting > 0) return { label: 'Awaiting supplier', cls: 'bp-pill bp-pill--outline' };
-    return { label: 'All confirmed', cls: 'bp-pill bp-pill--success' };
+    if (!counted) return '';
+    return supplierSummaryCode(action > 0, awaiting > 0);
   }
 
   protected readonly groups = computed(() => {
@@ -731,7 +728,7 @@ export class ProjectEstimateComponent {
           (a.categoryName ?? '~').localeCompare(b.categoryName ?? '~') || (lineCost(b) - lineCost(a)));
         const isProject = !sg.supplierId;
         const linesTotal = items.reduce((s, l) => s + (isDeclined(l) ? 0 : lineCost(l)), 0);
-        const summary = isProject ? { label: '', cls: '' } : this.activeSummary(items);
+        const summaryCode = isProject ? '' : this.activeSummaryCode(items);
         return {
           id: sg.supplierId || '__none',
           items,
@@ -743,8 +740,7 @@ export class ProjectEstimateComponent {
           count: items.filter((l) => !isDeclined(l)).length,
           hasAgreed: items.some((l) => l.bothAccepted),
           agreedTotal: items.reduce((s, l) => s + (l.bothAccepted && !isDeclined(l) ? lineCost(l) : 0), 0) * (isProject ? 1 : this.marginMarkup()),
-          summaryLabel: summary.label,
-          summaryClass: summary.cls,
+          summaryCode,
           supplierGroups: [{ supplierId: sg.supplierId || '', supplierName: null, supplierCity: null, items }],
         };
       });
@@ -773,8 +769,7 @@ export class ProjectEstimateComponent {
         count: g.items.length,
         hasAgreed: false,
         agreedTotal: 0,
-        summaryLabel: '',
-        summaryClass: '',
+        summaryCode: '' as SupplierSummaryCode | '',
         // Own-cost lines have no external supplier → show the current org (the
         // agency) as "costed by".
         supplierGroups: isProject
@@ -786,7 +781,7 @@ export class ProjectEstimateComponent {
     // agent's own costs (even before they've added any).
     if (this.isFinal() && !mapped.some((g) => g.isProject)) {
       mapped.push({ id: '__none', name: 'Your own costs', items: [], isProject: true,
-        isCoverage: false, total: 0, iconName: 'wallet', count: 0, hasAgreed: false, agreedTotal: 0, summaryLabel: '', summaryClass: '', supplierGroups: [] });
+        isCoverage: false, total: 0, iconName: 'wallet', count: 0, hasAgreed: false, agreedTotal: 0, summaryCode: '' as SupplierSummaryCode | '', supplierGroups: [] });
     }
     return mapped;
   });

@@ -54,6 +54,17 @@ export function lineDisplayCode(
   return 'to_agree';
 }
 
+/** The per-supplier ROLLUP status — a coarser summary than the per-line
+ *  lineDisplayCode, shown on the Running budget supplier cards and the Messages
+ *  landing. Codelist: `supplier_summary_status` (ballpark/editable). Action wins,
+ *  else awaiting, else all confirmed (Liam 2026-10-29). */
+export type SupplierSummaryCode = 'action_required' | 'awaiting_supplier' | 'all_confirmed';
+export function supplierSummaryCode(hasAction: boolean, hasAwaiting: boolean): SupplierSummaryCode {
+  if (hasAction) return 'action_required';
+  if (hasAwaiting) return 'awaiting_supplier';
+  return 'all_confirmed';
+}
+
 /** The acceptance code from the two sides' accept flags, viewer-relative, or
  *  null if neither side has accepted yet (the caller then falls back to its own
  *  pre-acceptance state — `to_agree` for the budget, the granular inbox vocab
