@@ -101,9 +101,9 @@ export interface RailOuter {
                   <span class="flex min-w-0 flex-1 flex-col items-start gap-1">
                     <span class="bp-list-title w-full truncate">{{ it.name }}</span>
                     <span class="flex flex-wrap items-center gap-1.5">
-                      <!-- Same size as the Running budget STATUS pill (min-width 16ch,
-                           centred) — Liam 2026-10-29. -->
-                      <span [class]="'bp-spill bp-spill--' + pill(it).tone" style="min-width: 16ch; justify-content: center">{{ pill(it).label }}</span>
+                      <!-- Same pill as the Running budget STATUS column: shared .bp-pill
+                           + min-width 16ch, centred (Liam 2026-10-29). -->
+                      <span [class]="pillClass(it)" style="min-width: 16ch; justify-content: center">{{ pill(it).label }}</span>
                       @if (it.hasOpenQuestion) {
                         <span class="bp-spill bp-spill--yellow">Question</span>
                       }
@@ -144,6 +144,15 @@ export class InboxRailComponent {
 
   protected pill(it: InboxThreadItem) {
     return statusPill(it, this.isAgency());
+  }
+
+  /** Render the status on the shared .bp-pill (the Running budget's STATUS pill),
+   *  mapping the status tone to its variant — so the two read identically
+   *  (Liam 2026-10-29; .bp-spill was uppercase/heavier, hence the mismatch). */
+  protected pillClass(it: InboxThreadItem): string {
+    const tone = this.pill(it).tone;
+    const v = tone === 'green' ? 'success' : tone === 'red' ? 'danger' : tone === 'yellow' ? 'warn' : 'muted';
+    return 'bp-pill bp-pill--' + v;
   }
 
   /** True when this line is waiting on the current user (drives the glisten). */
