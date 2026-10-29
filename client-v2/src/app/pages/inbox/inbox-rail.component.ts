@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { InboxProjectSummary, InboxThreadItem } from '../../core/inbox/inbox.service';
-import { statusPill, supplierRollup, itemAction } from './inbox-status';
+import { supplierRollup, itemAction } from './inbox-status';
+import { lineDisplayCode } from '../../core/status/line-display-status';
+import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 
 /** A category thread inside an outer counterparty card — the middle band of the
  *  Final-Quote containment pattern (cat icon + name), with its item rows. */
@@ -32,7 +34,7 @@ export interface RailOuter {
 @Component({
   selector: 'app-inbox-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, StatusPillComponent],
   host: { class: 'hidden min-h-0 xl:flex xl:flex-col xl:gap-3 xl:overflow-y-auto' },
   template: `
     <!-- Rail title (Liam 2026-10-29). -->
@@ -101,9 +103,9 @@ export interface RailOuter {
                   <span class="flex min-w-0 flex-1 flex-col items-start gap-1">
                     <span class="bp-list-title w-full truncate">{{ it.name }}</span>
                     <span class="flex flex-wrap items-center gap-1.5">
-                      <!-- Same pill as the Running budget STATUS column: shared .bp-pill
-                           + min-width 16ch, centred (Liam 2026-10-29). -->
-                      <span [class]="pillClass(it)" style="min-width: 16ch; justify-content: center">{{ pill(it).label }}</span>
+                      <!-- Codelist-driven status pill (line_display_status): text +
+                           colour editable in Settings ▸ Codelists (Liam 2026-10-29). -->
+                      <app-status-pill list="line_display_status" [code]="railCode(it)" />
                       @if (it.hasOpenQuestion) {
                         <span class="bp-spill bp-spill--yellow">Question</span>
                       }
@@ -142,17 +144,10 @@ export class InboxRailComponent {
     });
   }
 
-  protected pill(it: InboxThreadItem) {
-    return statusPill(it, this.isAgency());
-  }
-
-  /** Render the status on the shared .bp-pill (the Running budget's STATUS pill),
-   *  mapping the status tone to its variant — so the two read identically
-   *  (Liam 2026-10-29; .bp-spill was uppercase/heavier, hence the mismatch). */
-  protected pillClass(it: InboxThreadItem): string {
-    const tone = this.pill(it).tone;
-    const v = tone === 'green' ? 'success' : tone === 'red' ? 'danger' : tone === 'yellow' ? 'warn' : 'muted';
-    return 'bp-pill bp-pill--' + v;
+  /** The canonical display code for the item's status pill (codelist-driven via
+   *  app-status-pill). Agency = buyer, supplier = seller. */
+  protected railCode(it: InboxThreadItem): string {
+    return lineDisplayCode(it, this.isAgency() ? 'buyer' : 'seller');
   }
 
   /** True when this line is waiting on the current user (drives the glisten). */

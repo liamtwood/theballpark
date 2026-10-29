@@ -24,6 +24,25 @@ export const LINE_DISPLAY_FALLBACK: Record<LineDisplayCode, string> = {
   declined: 'Declined',
 };
 
+/** THE canonical display code for a line — the ONE deriver used by EVERY status
+ *  pill (inbox rail + header, Running budget, estimate). The viewer-relative
+ *  accept rollup (acceptanceCode) wins; else booked → all_confirmed, declined/
+ *  cancelled → declined, otherwise to_agree. Works for both InboxThreadItem and
+ *  QuoteLine (both carry status + buyerAccepted + sellerAccepted). Option A
+ *  (Liam 2026-10-29): every pill shows these 5 states, with text + colour from
+ *  the `line_display_status` codelist (edit in Settings ▸ Codelists). */
+export function lineDisplayCode(
+  s: { status?: string | null; buyerAccepted?: boolean | null; sellerAccepted?: boolean | null },
+  viewer: 'buyer' | 'seller',
+): LineDisplayCode {
+  const code = acceptanceCode(s, viewer);
+  if (code) return code;
+  const st = (s.status ?? '').toString();
+  if (st === 'booked') return 'all_confirmed';
+  if (st.startsWith('declined') || st === 'cancelled') return 'declined';
+  return 'to_agree';
+}
+
 /** The acceptance code from the two sides' accept flags, viewer-relative, or
  *  null if neither side has accepted yet (the caller then falls back to its own
  *  pre-acceptance state — `to_agree` for the budget, the granular inbox vocab

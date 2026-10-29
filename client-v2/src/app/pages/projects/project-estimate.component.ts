@@ -16,6 +16,7 @@ import { RateInputComponent } from './rate-input.component';
 import { InboxService, OutreachRosterEntry } from '../../core/inbox/inbox.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { acceptanceCode, LineDisplayCode, LineDisplayStatusService } from '../../core/status/line-display-status';
+import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { MessageSuppliersDialogComponent, MsgSupplierCategory } from './message-suppliers-dialog.component';
 import { EventDetailsEditComponent } from './event-details-edit.component';
 import { EstimateBreakdownComponent } from './estimate-breakdown.component';
@@ -58,7 +59,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
   imports: [
     CurrencyPipe, LucideAngularModule, MessageSuppliersDialogComponent, EstimateItemRowComponent, RateInputComponent,
     EventDetailsEditComponent, EstimateBreakdownComponent, CustomLineDialogComponent,
-    OptionsPickerComponent, QuickViewDialogComponent,
+    OptionsPickerComponent, QuickViewDialogComponent, StatusPillComponent,
   ],
   host: { class: 'block' },
   template: `
@@ -344,7 +345,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       </span>
                       <span class="bp-body-small text-secondary">× {{ l.quantity }}</span>
                       <button type="button" class="bp-pill bp-pill--accent justify-self-start" (click)="selectLine(l)" [attr.aria-label]="'Quick view ' + l.name">Quick view</button>
-                      <span [class]="activeStatusPill(l)" style="min-width: 16ch; justify-content: center; text-align: center; justify-self: center">{{ activeStatusLabel(l) }}</span>
+                      <app-status-pill list="line_display_status" [code]="activeStatusCode(l)" style="justify-self: center" />
                       <span class="bp-body-small text-right tabular-nums text-secondary">{{ lineCostOf(l, mk) | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
                   }
@@ -694,11 +695,6 @@ export class ProjectEstimateComponent {
   }
   protected activeStatusLabel(l: QuoteLine): string {
     return this.lineDisplay.label(this.activeStatusCode(l));
-  }
-  protected activeStatusPill(l: QuoteLine): string {
-    if (l.buyerAccepted || l.sellerAccepted) return 'bp-pill bp-pill--success';
-    if (l.status === 'declined') return 'bp-pill bp-pill--danger';
-    return 'bp-pill bp-pill--muted';
   }
   /** Displayed line cost (hard costs marked up, own lines raw — via mk). */
   protected lineCostOf(l: QuoteLine, mk: number): number { return lineCost(l) * mk; }

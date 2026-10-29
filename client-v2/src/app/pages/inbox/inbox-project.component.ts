@@ -9,7 +9,9 @@ import { PageConfigService } from '../../core/config/page-config.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
 import { QuoteLine } from '../../core/projects/project.types';
-import { TERMINAL_STATUSES, gbp, statusPill } from './inbox-status';
+import { TERMINAL_STATUSES, gbp } from './inbox-status';
+import { lineDisplayCode } from '../../core/status/line-display-status';
+import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { InboxRailComponent, RailOuter } from './inbox-rail.component';
 import { LinePreviewComponent } from '../projects/line-preview.component';
 import { lineCost } from '../projects/quote-line.util';
@@ -33,7 +35,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, NgClass, LucideAngularModule, PageHeroComponent, InboxRailComponent, LinePreviewComponent, CustomizeDialogComponent, LineEditorComponent, AgentRailComponent, ToastModule],
+  imports: [CurrencyPipe, DatePipe, NgClass, LucideAngularModule, PageHeroComponent, InboxRailComponent, LinePreviewComponent, CustomizeDialogComponent, LineEditorComponent, AgentRailComponent, ToastModule, StatusPillComponent],
   // BE-00114 — own the MessageService/p-toast so error surfacing works on the
   // STANDALONE supplier route too (inbox/:projectId — not embedded in
   // project-detail, so no parent provider). Injecting a parent-only service here
@@ -119,9 +121,10 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                   </span>
                   </div>
                   <div class="flex shrink-0 items-center gap-2">
-                    <!-- Item status pill, right side of the header (Liam 2026-10-29). -->
-                    @if (selectedPill(); as p) {
-                      <span [class]="'bp-spill bp-spill--' + p.tone">{{ p.label }}</span>
+                    <!-- Codelist-driven status pill (line_display_status) — text +
+                         colour editable in Settings ▸ Codelists (Liam 2026-10-29). -->
+                    @if (headerStatusCode(); as code) {
+                      <app-status-pill list="line_display_status" [code]="code" />
                     }
                     <!-- Kebab menu: Customize + Assistant. -->
                     <div class="relative flex shrink-0 items-center">
@@ -502,10 +505,11 @@ export class InboxProjectComponent {
     return this.selectedThread()?.items.find((i) => i.id === id) ?? null;
   });
 
-  /** The selected item's status pill — shown in the right rail's item strip. */
-  protected readonly selectedPill = computed(() => {
+  /** The selected item's canonical status code (codelist-driven pill in the
+   *  conversation header). Null when no item is selected. */
+  protected readonly headerStatusCode = computed(() => {
     const it = this.selectedItem();
-    return it ? statusPill(it, this.isAgency()) : null;
+    return it ? lineDisplayCode(it, this.isAgency() ? 'buyer' : 'seller') : null;
   });
 
   // ── pV2-INTENT-01 — the conversational assistant rail on the selected line ──

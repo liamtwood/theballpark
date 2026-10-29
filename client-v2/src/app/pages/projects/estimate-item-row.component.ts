@@ -3,7 +3,9 @@ import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { QuoteLine } from '../../core/projects/project.types';
 import { QtyInputComponent } from './qty-input.component';
-import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, statusPill, unitPlain, unitPrice } from './quote-line.util';
+import { editable, hasInstall, isDeclined, isInstalled, lineCost, unitPlain, unitPrice } from './quote-line.util';
+import { lineDisplayCode } from '../../core/status/line-display-status';
+import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 
 /** pV2-CART-01 — one quote line row (thumb + name/status + cost·unit +
  *  Installed? + qty + line total + trash/lock). Read-only once out for quote.
@@ -11,7 +13,7 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
 @Component({
   selector: 'app-estimate-item-row',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule, QtyInputComponent],
+  imports: [CurrencyPipe, LucideAngularModule, QtyInputComponent, StatusPillComponent],
   // One row = the shared estimate grid (ITEM | QTY | COSTED BY | QUICK VIEW |
   // BALLPARK | trash), aligned to the column-header row in project-estimate via
   // the same .bp-estimate-grid template. Full-width with only a BOTTOM hairline
@@ -47,7 +49,7 @@ import { editable, hasInstall, isDeclined, isInstalled, lineCost, statusLabel, s
           <!-- Send-status only for lines that actually go to a supplier. An
                agent's own custom line (no supplier) never gets sent. -->
           @if (isFinal() && line().supplierId) {
-            <span [class]="pill()">{{ label() }}</span>
+            <app-status-pill list="line_display_status" [code]="code()" />
           }
         </div>
         <!-- pV2-STORE-VARIANTS-UPCHARGE-01 — the chosen variant ("Ivory · Bedazzled"). -->
@@ -139,7 +141,6 @@ export class EstimateItemRowComponent {
   protected displayUnit(): number { return unitPrice(this.line()) * this.markup(); }
   protected displayCost(): number { return this.cost() * this.markup(); }
   protected readonly isDeclined = computed(() => isDeclined(this.line()));
-  protected label(): string { return statusLabel(this.line()); }
-  protected pill(): string { return statusPill(this.line()); }
+  protected code(): string { return lineDisplayCode(this.line(), 'buyer'); }
   protected unitText(): string { return unitPlain(this.line().unit); }
 }
