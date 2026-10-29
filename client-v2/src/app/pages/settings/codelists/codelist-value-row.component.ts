@@ -14,7 +14,7 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
   imports: [FormsModule, SelectComponent, StatusPillComponent],
   host: {
     class:
-      'grid grid-cols-[110px_1fr_80px_70px_170px_110px] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0',
+      'grid grid-cols-[100px_1fr_70px_60px_110px_110px] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0',
     '[class.opacity-60]': '!value().isActive',
   },
   template: `
@@ -32,14 +32,14 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
     }
     <span>
       @if (editable()) {
-        <!-- Native colour picker — pick ANY colour; stores the hex in meta.color.
-             Live pill preview + Clear (Liam 2026-10-29). -->
-        <div class="flex items-center gap-2">
+        <!-- Native colour picker — the swatch IS the preview (stores the hex in
+             meta.color). Clear sits right after the input so it lines up down the
+             column; clearing drops the custom colour → neutral pill (Liam 2026-10-29). -->
+        <div class="flex items-center gap-3">
           <input type="color" class="h-6 w-8 shrink-0 cursor-pointer rounded border border-hairline bg-surface p-0"
             [value]="currentHex()" (change)="pickColor($event)"
             [attr.aria-label]="'Colour for ' + value().code" />
           @if (value().meta.color) {
-            <app-status-pill [list]="listName()" [code]="value().code" />
             <button type="button" class="bp-meta shrink-0 underline" (click)="save.emit({ color: '' })">Clear</button>
           }
         </div>
