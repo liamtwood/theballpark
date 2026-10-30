@@ -19,7 +19,7 @@ import { StatusPillComponent } from '../status-pill/status-pill.component';
     <div class="bp-inboxcard__body">
       <header class="bp-inboxcard__head">
         <h2 class="bp-card-title">Inbox</h2>
-        <a routerLink="/inbox" class="bp-inboxcard__viewall">View all</a>
+        <a routerLink="/inbox" class="bp-inboxcard__viewall">View inbox</a>
       </header>
 
       @if (loader.isLoading()) {
