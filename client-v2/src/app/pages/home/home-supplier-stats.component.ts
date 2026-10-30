@@ -14,13 +14,27 @@ import { SupplierHomeStats } from '../../core/inbox/inbox.service';
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
       @for (c of cards(); track c.label) {
         <div class="bp-card bp-card--lifted p-6">
-          <lucide-icon [name]="c.icon" [size]="20" [strokeWidth]="1.75" class="text-accent" />
-          <div class="bp-amount-hero mt-3 text-text">{{ c.value }}</div>
-          <div class="bp-caption mt-1">{{ c.label }}</div>
+          <!-- Icon + type match the agent launcher tiles: bare softer-pink glyph
+               (size 20 / stroke 1.5), count in .bp-card-title (same as a tile's
+               "Projects" label), label in .bp-card-subtitle (Liam 2026-10-30). -->
+          <span class="stat-icon">
+            <lucide-icon [name]="c.icon" [size]="20" [strokeWidth]="1.5" />
+          </span>
+          <div class="bp-card-title mt-3">{{ c.value }}</div>
+          <div class="bp-card-subtitle mt-1">{{ c.label }}</div>
         </div>
       }
     </div>
   `,
+  styles: [
+    `
+      /* Bare icon, softer pink — the SAME treatment as .bp-launcher-tile__icon. */
+      .stat-icon {
+        display: inline-flex;
+        color: color-mix(in srgb, var(--theme-accent) 58%, #fff);
+      }
+    `,
+  ],
 })
 export class HomeSupplierStatsComponent {
   readonly stats = input.required<SupplierHomeStats>();
