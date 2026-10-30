@@ -123,7 +123,8 @@ import { SelectComponent } from '../../shared/select/select.component';
                   <input type="text" class="ed-input" placeholder="London" [value]="location()" (input)="location.set($any($event.target).value)" />
                 </label>
               </div>
-              <div class="mt-4 grid grid-cols-1 gap-4">
+              <!-- Guests + Budget side by side (Liam 2026-10-30). -->
+              <div class="mt-4 grid grid-cols-2 gap-4">
                 <label class="block">
                   <span class="ed-label mb-1.5 block">Guests</span>
                   <input type="number" min="0" class="ed-input" [value]="guests()" (input)="guests.set($any($event.target).value)" />
