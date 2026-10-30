@@ -110,7 +110,7 @@ export class HomeAgentComponent {
 const AGENCY_STEPS: readonly NextStep[] = [
   { icon: 'circle-plus', label: 'Start a new project from a brief', href: '/projects/new' },
   { icon: 'store', label: 'Browse approved suppliers', href: '/marketplace' },
-  { icon: 'user', label: 'Complete your profile so approval is quicker', href: '/settings/profile' },
+  { icon: 'user-round', label: 'Complete your profile so approval is quicker', href: '/settings/profile' },
 ];
 const AGENCY_NOTE =
   'Ballpark estimates are indicative and subject to supplier confirmation, final scope, availability, delivery requirements and VAT.';
