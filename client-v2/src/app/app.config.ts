@@ -90,6 +90,7 @@ import {
   Car,
   Flower2,
   MessageSquare,
+  MessagesSquare,
   Music,
   Spotlight,
   Tv,
@@ -204,7 +205,7 @@ export const appConfig: ApplicationConfig = {
         // pV2-PROJECTS-03 — add-project brief page (upload + AI build CTA)
         Upload, FileUp, Sparkles,
         // pV2-PROJECTS-02 — Estimate category-card icons (event categories)
-        Car, Flower2, MessageSquare, Music, Spotlight, Tv, User, Utensils,
+        Car, Flower2, MessageSquare, MessagesSquare, Music, Spotlight, Tv, User, Utensils,
         // Remaining DB category-seed icons (were unregistered → blank cards)
         Bug, Camera, CircleHelp, ClipboardPen, FlaskConical, Lightbulb, Monitor,
         PersonStanding, ShoppingBag, Signature, Ticket, Wrench,

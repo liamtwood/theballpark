@@ -138,9 +138,9 @@ interface NavItem {
 /** Agency (default) — create + track projects, message suppliers, browse. */
 const AGENCY_NAV: readonly NavItem[] = [
   { label: 'Home', path: '/home', icon: 'layout-grid', exact: true },
-  { label: 'New project', path: '/projects/new', icon: 'folder-plus', exact: true },
+  { label: 'New project', path: '/projects/new', icon: 'circle-plus', exact: true },
   { label: 'Projects', path: '/projects', icon: 'folder-open', exact: true },
-  { label: 'Messages', path: '/inbox', icon: 'message-square', exact: false },
+  { label: 'Messages', path: '/inbox', icon: 'messages-square', exact: false },
   { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
   { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
 ];
@@ -149,7 +149,7 @@ const AGENCY_NAV: readonly NavItem[] = [
 const SUPPLIER_NAV: readonly NavItem[] = [
   { label: 'Home', path: '/home', icon: 'layout-grid', exact: true },
   { label: 'Projects', path: '/projects-hub', icon: 'folder-open', exact: false },
-  { label: 'Messages', path: '/inbox', icon: 'message-square', exact: false },
+  { label: 'Messages', path: '/inbox', icon: 'messages-square', exact: false },
   { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
   { label: 'My Shop', path: '/store', icon: 'package', exact: false },
   { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
