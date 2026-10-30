@@ -36,7 +36,10 @@ import { SelectComponent } from '../../shared/select/select.component';
       [subtitle]="hero().subtitle"
     />
 
-    <div class="bp-page-body bp-page-body--workspace">
+    <!-- Full-width bp-page-body (NOT --workspace) so the scroll area spans the page
+         and the scrollbar sits at the window edge like the other vpfit pages; the
+         content centres itself in the workspace column inside (Liam 2026-10-30). -->
+    <div class="bp-page-body">
       <!-- Own the overflow so the body scrolls, not the whole page. -->
       <div class="min-h-0 flex-1 overflow-y-auto">
       @if (busy()) {
@@ -49,7 +52,7 @@ import { SelectComponent } from '../../shared/select/select.component';
           <p class="bp-body-small text-secondary">Reading your brief and setting up the project.</p>
         </div>
       } @else {
-        <div class="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
+        <div class="mx-auto grid w-full max-w-[var(--workspace-max)] grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
           <!-- Left: the brief (upload + paste). Fills the column so it matches
                the right side's full height (details + button + disclaimer). -->
           <div class="bp-card bp-card--lifted flex h-full flex-col p-6">
