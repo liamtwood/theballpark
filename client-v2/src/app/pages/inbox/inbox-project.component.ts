@@ -342,13 +342,17 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                 }
               }
 
-              <!-- Classic per-line actions (the non-AI path; toggled in the header).
-                   "Suggest" opens the inline New-cost entry above; the rest act
-                   directly. Same handlers the Assistant drives. -->
-              @if (showClassicActions()) {
-                @if (selectedItem(); as it) {
-                  @if (!isTerminal(it.status)) {
-                    <div class="flex flex-wrap items-center gap-2 border-t border-hairline bg-surface px-4 py-2.5">
+              <!-- Bottom action row. Accept / Change / Delete show for an ACTIVE item
+                   in the classic (non-AI) path; Full thread shows for ANY selected
+                   item in normal mode — including terminal (agreed/booked/declined),
+                   where the whole point is to review the thread. ONE row so Full
+                   thread lines up with the actions when both show (Liam 2026-10-30). -->
+              @if (selectedItem(); as it) {
+                @let showClassic = showClassicActions() && !isTerminal(it.status);
+                @let showFull = embedded() && !fullThread();
+                @if (showClassic || showFull) {
+                  <div class="flex flex-wrap items-center gap-2 border-t border-hairline bg-surface px-4 py-2.5">
+                    @if (showClassic) {
                       <button type="button" class="bp-act bp-act--primary" [disabled]="sending()" (click)="accept(it)">
                         <lucide-icon name="circle-check-big" [size]="15" /> Accept Cost
                       </button>
@@ -360,16 +364,15 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                       <button type="button" class="bp-act bp-act--red" [disabled]="sending()" (click)="decline(it)">
                         <lucide-icon name="trash-2" [size]="15" /> Delete Item
                       </button>
-                      <!-- Full thread — bottom-right of the conversation, same line as
-                           the actions (Liam 2026-10-30). Focuses this conversation
-                           (rail + assistant drop, full width); "All messages" returns. -->
-                      @if (embedded() && !fullThread()) {
-                        <button type="button" class="bp-act bp-act--transparent ml-auto" (click)="openFullThread()" title="Open the full thread">
-                          <lucide-icon name="maximize-2" [size]="15" /> Full thread
-                        </button>
-                      }
-                    </div>
-                  }
+                    }
+                    @if (showFull) {
+                      <!-- Full thread — bottom-right; focuses this conversation (rail +
+                           assistant drop, full width); "All messages" returns. -->
+                      <button type="button" class="bp-act bp-act--transparent ml-auto" (click)="openFullThread()" title="Open the full thread">
+                        <lucide-icon name="maximize-2" [size]="15" /> Full thread
+                      </button>
+                    }
+                  </div>
                 }
               }
 
