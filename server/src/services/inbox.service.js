@@ -931,8 +931,53 @@ async function getSupplierInboxItems(supplierOrgId, limit = 6) {
   return items.slice(0, limit);
 }
 
+/** Supplier Messages landing (Liam 2026-10-30): one card per engaged project, each
+ *  with the requesting agency, a supplier-perspective rollup pill and its line items
+ *  (name / status / price) — the agent landing's shape, but items instead of
+ *  suppliers. Rollup: action_required (your turn) → awaiting_agency → all_confirmed. */
+async function getSupplierInboxSummary(supplierOrgId) {
+  const projs = await pool.query(
+    `SELECT DISTINCT p.id, p.name FROM projects p
+       JOIN messages m ON m.project_id = p.id
+        AND (m.from_org_id = $1 OR m.to_org_id = $1) AND m.deleted_at IS NULL
+      WHERE p.deleted_at IS NULL
+        AND COALESCE(p.status, 'draft') NOT IN ('completed', 'archived')`,
+    [supplierOrgId]
+  );
+  const out = [];
+  for (const p of projs.rows) {
+    const { threads } = await assembleThreads('supplier', supplierOrgId, p.id);
+    const items = [];
+    let agencyName = null, anyWaitingSupplier = false, allAgreed = true;
+    const seen = new Set();
+    for (const t of threads) {
+      if (!agencyName && t.agencyName) agencyName = t.agencyName;
+      for (const it of t.items) {
+        if (seen.has(it.id)) continue;
+        seen.add(it.id);
+        if (isDeclined(it.status)) continue;
+        const agreed = it.status === 'booked' || (it.buyerAccepted && it.sellerAccepted);
+        if (!agreed) allAgreed = false;
+        if (itemWaitingOn(it) === 'supplier') anyWaitingSupplier = true;
+        items.push({
+          itemId: it.itemId ?? it.id,
+          name: it.name,
+          status: it.status,
+          buyerAccepted: it.buyerAccepted,
+          sellerAccepted: it.sellerAccepted,
+          price: it.priceCurrent ?? it.priceRef ?? null,
+        });
+      }
+    }
+    if (!items.length) continue;
+    const status = anyWaitingSupplier ? 'action_required' : (allAgreed ? 'all_confirmed' : 'awaiting_agency');
+    out.push({ projectId: p.id, projectName: p.name, agencyName, status, items });
+  }
+  return out;
+}
+
 module.exports = {
   listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads,
   getAgentInboxSummary, getProjectOverview, getAgentActionCount, getSupplierHomeStats,
-  getSupplierInboxItems, reply, getLineConversation,
+  getSupplierInboxItems, getSupplierInboxSummary, reply, getLineConversation,
 };

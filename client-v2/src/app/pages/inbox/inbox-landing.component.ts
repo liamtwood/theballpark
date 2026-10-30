@@ -3,12 +3,10 @@ import { Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
-import { InboxService, InboxSummaryRow, InboxSummarySupplier, InboxWaitingCounts } from '../../core/inbox/inbox.service';
-import { ProjectCard } from '../../core/projects/project.types';
+import { InboxService, InboxSummaryRow, InboxSummarySupplier, InboxWaitingCounts, SupplierInboxProject, SupplierInboxLineItem } from '../../core/inbox/inbox.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
-import { ProjectCardComponent } from '../projects/project-card.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
-import { supplierSummaryCode } from '../../core/status/line-display-status';
+import { supplierSummaryCode, lineDisplayCode } from '../../core/status/line-display-status';
 import { InboxLandingStateService } from './inbox-landing-state.service';
 
 /** pV2-INBOX (Messages landing) — /inbox. Persona-aware:
@@ -24,7 +22,7 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
 @Component({
   selector: 'app-inbox-landing',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, LucideAngularModule, PageHeroComponent, ProjectCardComponent, StatusPillComponent],
+  imports: [RouterLink, LucideAngularModule, PageHeroComponent, StatusPillComponent],
   // Flowing page (standard): whole page scrolls at the window edge under the fixed
   // nav; the hero scrolls with the content (Liam 2026-10-30).
   host: { class: 'block' },
@@ -39,16 +37,57 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
     <div class="bp-page-body">
       <div class="min-h-0 overflow-y-auto md:flex-1">
         @if (isSupplier()) {
-          @if (supplierRows.isLoading()) {
+          @if (supplierSummary.isLoading()) {
             <p class="bp-body-small text-secondary">Loading…</p>
-          } @else if (supplierRows.error()) {
+          } @else if (supplierSummary.error()) {
             <p class="bp-body-small text-warn">Couldn't load your conversations.</p>
-          } @else if ((supplierRows.value() ?? []).length === 0) {
+          } @else if ((supplierSummary.value() ?? []).length === 0) {
             <p class="bp-body-small text-secondary">No conversations yet — an agency will reach out here.</p>
           } @else {
-            <div class="mx-auto grid w-full max-w-[var(--workspace-max)] grid-cols-1 gap-6 sm:grid-cols-2">
-              @for (p of supplierRows.value(); track p.id) {
-                <app-project-card [project]="p" [now]="now()" linkBase="/inbox" />
+            <!-- Supplier landing: same card shape as the agent, but ITEMS (name /
+                 status / cost) instead of suppliers; the project pill is the
+                 supplier-perspective rollup (Liam 2026-10-30). -->
+            <div class="mx-auto grid w-full max-w-[var(--workspace-max)] grid-cols-1 items-start gap-6 sm:grid-cols-2">
+              @for (proj of supplierSummary.value(); track proj.projectId) {
+                <div class="bp-card bp-card--lifted">
+                  <div class="flex flex-col gap-3 p-5">
+                    <div class="flex items-start justify-between gap-3">
+                      <a [routerLink]="['/inbox', proj.projectId]" class="min-w-0 no-underline text-text">
+                        <div class="bp-card-title truncate">{{ proj.projectName }}</div>
+                        @if (proj.agencyName) {
+                          <div class="bp-meta truncate">{{ proj.agencyName }}</div>
+                        }
+                      </a>
+                      <span class="shrink-0">
+                        <app-status-pill list="supplier_self_status" [code]="proj.status" />
+                      </span>
+                    </div>
+
+                    @if (proj.items.length) {
+                      <div>
+                        <button type="button" class="inline-flex items-center gap-1 bp-body-small text-secondary transition-colors hover:text-text"
+                                (click)="toggle(proj.projectId, $event)">
+                          <lucide-icon [name]="isOpen(proj.projectId) ? 'chevron-down' : 'chevron-right'" [size]="15" />
+                          {{ isOpen(proj.projectId) ? 'Hide items' : 'Show items' }} ({{ proj.items.length }})
+                        </button>
+                        @if (isOpen(proj.projectId)) {
+                          <div class="mt-1.5 flex flex-col gap-1.5 pl-5">
+                            @for (it of proj.items; track it.itemId) {
+                              <a [routerLink]="['/inbox', proj.projectId]" [queryParams]="{ item: it.itemId }"
+                                 class="flex items-center justify-between gap-3 no-underline text-text hover:text-text">
+                                <span class="min-w-0 truncate bp-body-small text-secondary">{{ it.name }}</span>
+                                <span class="flex shrink-0 items-center gap-2">
+                                  <app-status-pill list="line_display_status" [code]="itemPill(it)" />
+                                  @if (it.price != null) { <span class="bp-caption">{{ money(it.price) }}</span> }
+                                </span>
+                              </a>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
               }
             </div>
           }
@@ -152,16 +191,29 @@ export class InboxLandingComponent {
       : "Projects you're negotiating with suppliers.",
   );
 
-  /** Card clock (relative times) — matches the Projects hub. */
-  protected readonly now = signal(Date.now());
-
-  /** Supplier conversation list — the SAME gated feed the Projects hub uses.
-   *  Only hits the network for suppliers (agency short-circuits to []). */
-  protected readonly supplierRows = resource<ProjectCard[], boolean>({
+  /** Supplier Messages landing — one card per engaged project with its line items
+   *  (agent landing shape, items instead of suppliers). Suppliers only. */
+  protected readonly supplierSummary = resource<SupplierInboxProject[], boolean>({
     params: () => this.isSupplier(),
     loader: ({ params: supplier }) =>
-      supplier ? firstValueFrom(this.inbox.supplierProjects()) : Promise.resolve([]),
+      supplier ? firstValueFrom(this.inbox.supplierInboxSummary()) : Promise.resolve([]),
   });
+
+  /** The per-item line_display_status pill code, from the supplier's side. */
+  protected itemPill(it: SupplierInboxLineItem): string {
+    return lineDisplayCode(
+      { status: it.status, buyerAccepted: it.buyerAccepted, sellerAccepted: it.sellerAccepted },
+      'seller',
+    );
+  }
+
+  protected money(value: number): string {
+    try {
+      return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(value);
+    } catch {
+      return `£${value}`;
+    }
+  }
 
   /** Envelope click → the project's Inbox tab, opening the picked conversation in
    *  full-thread mode (?full=1) so you land straight in the message, no rail

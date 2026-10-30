@@ -62,6 +62,12 @@ export class InboxService {
   supplierInboxItems(): Observable<SupplierInboxItem[]> {
     return this.api.get<SupplierInboxItem[]>('/api/inbox/supplier-items');
   }
+
+  /** Supplier Messages landing — one card per engaged project with its line items
+   *  (the agent landing's shape, items instead of suppliers). Empty for non-suppliers. */
+  supplierInboxSummary(): Observable<SupplierInboxProject[]> {
+    return this.api.get<SupplierInboxProject[]>('/api/inbox/supplier-summary');
+  }
 }
 
 /** Supplier home dashboard metrics. */
@@ -82,6 +88,26 @@ export interface SupplierInboxItem {
   buyerAccepted: boolean | null;
   sellerAccepted: boolean | null;
   price: number | null;
+}
+
+/** One line item inside a supplier Messages-landing project card. */
+export interface SupplierInboxLineItem {
+  itemId: string;
+  name: string;
+  status: string | null;
+  buyerAccepted: boolean | null;
+  sellerAccepted: boolean | null;
+  price: number | null;
+}
+
+/** One project card on the supplier Messages landing. */
+export interface SupplierInboxProject {
+  projectId: string;
+  projectName: string;
+  agencyName: string | null;
+  /** supplier_self_status code: action_required | awaiting_agency | all_confirmed. */
+  status: string;
+  items: SupplierInboxLineItem[];
 }
 
 /** Live-project negotiation metrics for the overview hero tiles. */
