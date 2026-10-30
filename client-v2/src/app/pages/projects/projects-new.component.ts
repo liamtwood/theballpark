@@ -86,12 +86,9 @@ import { SelectComponent } from '../../shared/select/select.component';
             <div class="bp-card bp-card--lifted p-6">
               <h2 class="bp-card-title">Project details</h2>
 
-              <!-- One field per row (Liam 2026-10-30). -->
+              <!-- Ref hidden here — auto-assigned on create; managed in project
+                   Details later (Liam 2026-10-30). One field per row. -->
               <div class="mt-4 flex flex-col gap-4">
-                <label class="block">
-                  <span class="ed-label mb-1.5 block">Ref</span>
-                  <input type="text" class="ed-input" placeholder="Auto" title="Leave blank to auto-assign, or set your own" [value]="ref()" (input)="ref.set($any($event.target).value)" />
-                </label>
                 <label class="block">
                   <span class="ed-label mb-1.5 block">Project name</span>
                   <input type="text" class="ed-input" [value]="name()" (input)="name.set($any($event.target).value)" />
