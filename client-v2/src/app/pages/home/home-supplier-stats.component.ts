@@ -11,7 +11,7 @@ import { SupplierHomeStats } from '../../core/inbox/inbox.service';
   imports: [LucideAngularModule],
   host: { class: 'block' },
   template: `
-    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
       @for (c of cards(); track c.label) {
         <div class="bp-card bp-card--lifted p-6">
           <!-- Icon + type match the agent launcher tiles: bare softer-pink glyph
