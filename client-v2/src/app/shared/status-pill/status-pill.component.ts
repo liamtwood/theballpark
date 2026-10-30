@@ -19,6 +19,7 @@ import { CodelistValue, metaColor } from '../../core/codelists/codelist.types';
       class="bp-status-pill bp-pill"
       [style.color]="fg()"
       [style.background]="bg()"
+      [style.font-weight]="strong() ? '700' : null"
     >
       @if (icon(); as i) {
         <lucide-icon [name]="i" [size]="11" />
@@ -34,6 +35,10 @@ export class StatusPillComponent {
   readonly list = input.required<string>();
   /** The value code (e.g. 'sent'). */
   readonly code = input.required<string>();
+  /** Render the label bold — the "needsYou" turn signal (Liam 2026-10-30): the
+   *  line is waiting on the current user. Purely presentational; the code/label
+   *  are unchanged. */
+  readonly strong = input<boolean>(false);
 
   // N pills on one list share ONE fetch: list() memoises the in-flight
   // promise per list, so per-instance resources dedupe at the service

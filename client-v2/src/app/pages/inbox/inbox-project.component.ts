@@ -10,7 +10,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
 import { QuoteLine } from '../../core/projects/project.types';
 import { TERMINAL_STATUSES, gbp } from './inbox-status';
-import { lineDisplayCode } from '../../core/status/line-display-status';
+import { lineDisplayCode, needsYou } from '../../core/status/line-display-status';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { InboxRailComponent, RailOuter } from './inbox-rail.component';
 import { LinePreviewComponent } from '../projects/line-preview.component';
@@ -145,7 +145,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                     <!-- Codelist-driven status pill (line_display_status) — text +
                          colour editable in Settings ▸ Codelists (Liam 2026-10-29). -->
                     @if (headerStatusCode(); as code) {
-                      <app-status-pill list="line_display_status" [code]="code" />
+                      <app-status-pill list="line_display_status" [code]="code" [strong]="headerNeedsYou()" />
                     }
                     <!-- Kebab menu: Customize + Assistant. -->
                     <div class="relative flex shrink-0 items-center">
@@ -561,6 +561,13 @@ export class InboxProjectComponent {
   protected readonly headerStatusCode = computed(() => {
     const it = this.selectedItem();
     return it ? lineDisplayCode(it, this.isAgency() ? 'buyer' : 'seller') : null;
+  });
+
+  /** Bold the header pill when the selected line is on the current user
+   *  (Liam 2026-10-30). */
+  protected readonly headerNeedsYou = computed(() => {
+    const it = this.selectedItem();
+    return it ? needsYou(it, this.isAgency() ? 'buyer' : 'seller') : false;
   });
 
   // ── pV2-INTENT-01 — the conversational assistant rail on the selected line ──

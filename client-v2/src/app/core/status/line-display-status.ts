@@ -16,7 +16,10 @@ import { CodelistValue } from '../codelists/codelist.types';
 export type LineDisplayCode =
   | 'to_agree' | 'quoted' | 'new_cost'
   | 'you_accepted' | 'they_accepted' | 'all_confirmed'
-  | 'booked' | 'declined';
+  | 'booked' | 'declined'
+  // Conversation-TURN codes (used when the last event on a line is a message
+  // with NO price action) — Liam 2026-10-30.
+  | 'reply_needed' | 'replied';
 
 export const LINE_DISPLAY_FALLBACK: Record<LineDisplayCode, string> = {
   to_agree: 'To agree',
@@ -27,7 +30,39 @@ export const LINE_DISPLAY_FALLBACK: Record<LineDisplayCode, string> = {
   all_confirmed: 'All confirmed',
   booked: 'Booked',
   declined: 'Declined',
+  reply_needed: 'Reply needed',
+  replied: 'Replied',
 };
+
+/** The two inputs that carry the conversation TURN (who spoke last on the line),
+ *  layered onto the deal-state inputs. Optional so surfaces without message data
+ *  (e.g. the standalone estimate) keep producing pure deal codes. `lastMessageBy`
+ *  = who sent the most recent message on the line ('buyer' = agency, 'seller' =
+ *  supplier), null if none. `lastEventIsMessage` = that message is newer than the
+ *  last price/accept action (i.e. a message-only turn). */
+export interface LineStatusInput {
+  status?: string | null;
+  buyerAccepted?: boolean | null;
+  sellerAccepted?: boolean | null;
+  lastMessageBy?: 'buyer' | 'seller' | null;
+  lastEventIsMessage?: boolean | null;
+}
+
+/** A line is TERMINAL (settled — no turn, never bold) when both sides have
+ *  accepted, or it is booked or declined/cancelled. */
+export function isTerminal(s: LineStatusInput): boolean {
+  if (s.buyerAccepted && s.sellerAccepted) return true;
+  const st = (s.status ?? '').toString();
+  return st === 'booked' || st.startsWith('declined') || st === 'cancelled';
+}
+
+/** Whether the pill should render BOLD for `viewer`: the OTHER party sent the
+ *  last message on a non-terminal line, so a reply/action is owed by you. Covers
+ *  both their price actions and their plain messages (same last-sender read). */
+export function needsYou(s: LineStatusInput, viewer: 'buyer' | 'seller'): boolean {
+  if (isTerminal(s)) return false;
+  return s.lastMessageBy != null && s.lastMessageBy !== viewer;
+}
 
 /** THE single line-status vocabulary + deriver used by EVERY status pill (inbox
  *  rail + header, Running budget, estimate). ONE codelist (`line_display_status`,
@@ -39,14 +74,23 @@ export const LINE_DISPLAY_FALLBACK: Record<LineDisplayCode, string> = {
  *  Consolidated from the old message_item_status + line_display_status split
  *  (Liam 2026-10-29). Text + colour are edited in Settings ▸ Codelists. */
 export function lineDisplayCode(
-  s: { status?: string | null; buyerAccepted?: boolean | null; sellerAccepted?: boolean | null },
+  s: LineStatusInput,
   viewer: 'buyer' | 'seller',
 ): LineDisplayCode {
-  const code = acceptanceCode(s, viewer);
-  if (code) return code;
   const st = (s.status ?? '').toString();
+  // 1) Terminal deal states win — settled, no turn (Liam 2026-10-30).
+  if (s.buyerAccepted && s.sellerAccepted) return 'all_confirmed';
   if (st === 'booked') return 'booked';
   if (st.startsWith('declined') || st === 'cancelled') return 'declined';
+  // 2) If the LAST event on the line is a message-only (newer than the last
+  //    price/accept action), the status IS the turn: you replied, or a reply is
+  //    needed from you. (Bold — needsYou — is applied separately by the surface.)
+  if (s.lastEventIsMessage && s.lastMessageBy != null) {
+    return s.lastMessageBy === viewer ? 'replied' : 'reply_needed';
+  }
+  // 3) Otherwise the last event was an ACTION → its deal code.
+  const code = acceptanceCode(s, viewer);
+  if (code) return code;
   // Role-based (Liam 2026-10-29): the SUPPLIER pricing it → Quoted (inbox
   // adjusted_by_supplier, budget 'quoted'); the AGENCY countering → New cost.
   if (st === 'adjusted_by_supplier' || st === 'quoted') return 'quoted';

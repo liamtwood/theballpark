@@ -119,7 +119,7 @@ async function resolvedLines(projectItemIds, providerId) {
 /** The InboxThreadItem (client contract). Prices = the pricing module; approval
  *  state = deriveLineState over the (provider × item) events; `line` = the SAME
  *  QuoteLine the Final Quote renders, resolved against the provider overlay. */
-function toThreadItem(raw, state, line) {
+function toThreadItem(raw, state, line, turn) {
   const { original, revised } = lineTotals(raw);
   return {
     id: raw.id,
@@ -127,6 +127,12 @@ function toThreadItem(raw, state, line) {
     name: raw.name,
     description: raw.description || null,
     status: state.status,
+    // Conversation TURN (Liam 2026-10-30): who sent the last message on this line
+    // ('buyer' = agency, 'seller' = supplier) and whether that message is newer
+    // than the last price/accept action (a message-only turn). The client deriver
+    // folds these into the display code + the bold "needsYou" flag.
+    lastMessageBy: turn?.lastMessageBy ?? null,
+    lastEventIsMessage: turn?.lastEventIsMessage ?? false,
     priceRef: original == null ? null : Number(original),
     priceCurrent: revised == null ? null : Number(revised),
     unitPriceRef: raw.f_base == null ? null : Number(raw.f_base),
@@ -207,6 +213,16 @@ async function assembleThreads(viewer, callerOrgId, projectId) {
       arr.push({ projectItemId: row.project_item_id, catId: row.project_category_id, tagKey: row.tag_key });
       relsByMessage.set(row.message_id, arr);
       itemCat.set(row.project_item_id, row.project_category_id);
+    }
+  }
+
+  // Latest message per line (for the conversation TURN — Liam 2026-10-30).
+  // `messages` is created_at ASC, so the last write per item wins. lastFrom is
+  // the sender org; lastAt lets us tell a message-only turn from an action.
+  const msgByItem = new Map(); // project_item_id → { lastAt, lastFrom }
+  for (const m of messages) {
+    for (const r of relsByMessage.get(m.id) ?? []) {
+      msgByItem.set(r.projectItemId, { lastAt: m.created_at, lastFrom: m.from_org_id });
     }
   }
 
@@ -300,7 +316,15 @@ async function assembleThreads(viewer, callerOrgId, projectId) {
         const evs = eventsByKey.get(`${providerOrg}|${itemId}`) ?? [];
         const state = mev.deriveLineState(evs, { briefed: true });
         const line = providerId ? await projectLine.lineByIdForProvider(pool, itemId, providerId) : null;
-        items.push(toThreadItem(raw, state, line));
+        // Conversation turn: who sent the last message on this line, and whether
+        // it post-dates the last action (a message-only turn). evs are ASC.
+        const lastAction = evs.length ? evs[evs.length - 1].createdAt : null;
+        const mi = msgByItem.get(itemId);
+        const turn = {
+          lastMessageBy: mi ? (mi.lastFrom === agencyOrgId ? 'buyer' : 'seller') : null,
+          lastEventIsMessage: !!(mi && (!lastAction || new Date(mi.lastAt) > new Date(lastAction))),
+        };
+        items.push(toThreadItem(raw, state, line, turn));
       }
       if (!items.length) continue;
 

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input, output, signal } from '@angu
 import { LucideAngularModule } from 'lucide-angular';
 import { InboxProjectSummary, InboxThreadItem } from '../../core/inbox/inbox.service';
 import { supplierRollup, itemAction } from './inbox-status';
-import { lineDisplayCode } from '../../core/status/line-display-status';
+import { lineDisplayCode, needsYou } from '../../core/status/line-display-status';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 
 /** A category thread inside an outer counterparty card — the middle band of the
@@ -103,7 +103,7 @@ export interface RailOuter {
                     <span class="flex flex-wrap items-center gap-1.5">
                       <!-- Codelist-driven status pill (line_display_status): text +
                            colour editable in Settings ▸ Codelists (Liam 2026-10-29). -->
-                      <app-status-pill list="line_display_status" [code]="railCode(it)" />
+                      <app-status-pill list="line_display_status" [code]="railCode(it)" [strong]="needsReply(it)" />
                       @if (it.hasOpenQuestion) {
                         <span class="bp-spill bp-spill--yellow">Question</span>
                       }
@@ -146,6 +146,13 @@ export class InboxRailComponent {
    *  app-status-pill). Agency = buyer, supplier = seller. */
   protected railCode(it: InboxThreadItem): string {
     return lineDisplayCode(it, this.isAgency() ? 'buyer' : 'seller');
+  }
+
+  /** Bold the pill when the line is on the current user — the other party sent
+   *  the last message on a non-terminal line (Liam 2026-10-30). Catches plain
+   *  messages the price/accept `isMyAction` glisten misses. */
+  protected needsReply(it: InboxThreadItem): boolean {
+    return needsYou(it, this.isAgency() ? 'buyer' : 'seller');
   }
 
   /** True when this line is waiting on the current user (drives the glisten). */

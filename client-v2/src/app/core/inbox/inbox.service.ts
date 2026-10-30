@@ -230,6 +230,12 @@ export interface InboxThreadItem {
    *  line's project_items.id) — the inbox mounts the identical item-preview
    *  card under the message. null if the server couldn't resolve it. */
   line: QuoteLine | null;
+  /** Conversation TURN (Liam 2026-10-30): who sent the last message on this line
+   *  ('buyer' = agency, 'seller' = supplier), and whether that message is newer
+   *  than the last price/accept action (a message-only turn). Fed to the shared
+   *  deriver for the reply_needed/replied codes and the bold "needsYou" flag. */
+  lastMessageBy: 'buyer' | 'seller' | null;
+  lastEventIsMessage: boolean;
 }
 
 export interface InboxBubble {
