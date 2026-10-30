@@ -112,7 +112,9 @@ import { LucideAngularModule } from 'lucide-angular';
         grid-area: text;
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        /* Row spacing comes from the eyebrow/title bottom margins (6px / 10px) so
+           it matches the home hero exactly — not a uniform gap (Liam 2026-10-30). */
+        gap: 0;
       }
 
       :host(.bp-page-hero--align-center) .bp-page-hero__text {
@@ -165,9 +167,9 @@ import { LucideAngularModule } from 'lucide-angular';
       /* Optional eyebrow (e.g. "PROJECT") above the title — small, tracked,
          uppercase, secondary. Renders only when set. */
       .bp-page-hero__eyebrow {
-        /* Structural only — the eyebrow TYPE (size/tracking/uppercase/colour) now
-           lives in the shared global .bp-eyebrow token (Liam 2026-10-21). */
-        margin: 10px 0 0;
+        /* Structural only — the eyebrow TYPE lives in the global .bp-eyebrow token.
+           6px below, matching the home hero eyebrow (Liam 2026-10-30). */
+        margin: 0 0 6px;
       }
 
       /* Subtitle size is now the single .bp-page-subtitle standard (--text-sm,
@@ -175,7 +177,8 @@ import { LucideAngularModule } from 'lucide-angular';
          (Liam 2026-10-30). */
 
       .bp-page-hero__title {
-        margin: 0;
+        /* 10px below, matching the home hero title (Liam 2026-10-30). */
+        margin: 0 0 10px;
       }
 
       .bp-page-hero__subtitle {
