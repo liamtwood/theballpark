@@ -170,10 +170,9 @@ import { LucideAngularModule } from 'lucide-angular';
         margin: 10px 0 0;
       }
 
-      /* Dense heroes (project workspace) shrink the ref a touch to match. */
-      :host(.bp-page-hero--dense) .bp-page-hero__subtitle {
-        font-size: var(--text-lg);
-      }
+      /* Subtitle size is now the single .bp-page-subtitle standard (--text-sm,
+         matching home) on every hero, dense or not — no per-variant size
+         (Liam 2026-10-30). */
 
       .bp-page-hero__title {
         margin: 0;
