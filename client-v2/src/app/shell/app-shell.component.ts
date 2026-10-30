@@ -142,7 +142,7 @@ const AGENCY_NAV: readonly NavItem[] = [
   { label: 'Projects', path: '/projects', icon: 'folder-open', exact: true },
   { label: 'Messages', path: '/inbox', icon: 'messages-square', exact: false },
   { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
-  { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
+  { label: 'Profile', path: '/settings/profile', icon: 'user-round', exact: false },
 ];
 
 /** Supplier — incoming work + conversations + their storefront (no create). */
@@ -152,7 +152,7 @@ const SUPPLIER_NAV: readonly NavItem[] = [
   { label: 'Messages', path: '/inbox', icon: 'messages-square', exact: false },
   { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
   { label: 'My Shop', path: '/store', icon: 'package', exact: false },
-  { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
+  { label: 'Profile', path: '/settings/profile', icon: 'user-round', exact: false },
 ];
 
 /** Ballpark platform admin (BE-00128/BE-00130) — four top-level items; the
@@ -162,5 +162,5 @@ const BALLPARK_NAV: readonly NavItem[] = [
   { label: 'Home', path: '/home', icon: 'layout-grid', exact: true },
   { label: 'Approvals', path: '/marketplace', icon: 'circle-check', exact: false, query: { status: 'pending' } },
   { label: 'Admin', path: '/admin', icon: 'settings', exact: false },
-  { label: 'Profile', path: '/settings/profile', icon: 'circle-user', exact: false },
+  { label: 'Profile', path: '/settings/profile', icon: 'user-round', exact: false },
 ];
