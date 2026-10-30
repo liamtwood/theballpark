@@ -166,6 +166,10 @@
      gap from the subtitle down to the grid. Home + past projects share both. */
   --workspace-top: 32px;
   --workspace-gap: 48px;
+  /* THE single lever for the vertical gap UNDER every hero (subtitle → content).
+     Owned by .bp-page-body top padding + the home launcher chrome margin; the hero
+     adds none of its own. Change here to retune every page at once (Liam 2026-10-30). */
+  --hero-gap: 32px;
   --card-border: oklch(0.915 0.008 300);
   --shadow-quiet: 0 1px 2px rgba(17, 24, 39, 0.04), 0 1px 3px rgba(17, 24, 39, 0.05);
 
@@ -186,7 +190,8 @@
 
 /* Standard page-body padding below an <app-page-hero>. */
 .bp-page-body {
-  padding: 32px;
+  /* Top padding IS the under-hero gap (the hero adds none); sides/bottom 32px. */
+  padding: var(--hero-gap) 32px 32px;
 }
 
 /* pV2-BUILDUP-04 — Quote document print isolation. The document renders as a

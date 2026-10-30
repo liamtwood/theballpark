@@ -132,7 +132,9 @@ import { LucideAngularModule } from 'lucide-angular';
            and a net --workspace-gap to the grid (bp-page-body adds ~12px, so
            subtract it here). */
         padding-top: var(--workspace-top);
-        padding-bottom: calc(var(--workspace-gap) - 12px);
+        /* The under-hero gap lives in .bp-page-body top (--hero-gap), the single
+           lever — the hero adds none of its own (Liam 2026-10-30). */
+        padding-bottom: 0;
       }
       /* Home's eyebrow has no top margin — drop the hero eyebrow's 10px so
          the greeting starts at the same Y. */

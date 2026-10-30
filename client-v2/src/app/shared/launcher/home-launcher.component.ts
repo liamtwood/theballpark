@@ -70,7 +70,8 @@ import { LauncherTile } from './launcher-tile.types';
       .bp-home-launcher__chrome {
         text-align: center;
         max-width: 720px;
-        margin-bottom: var(--workspace-gap);
+        /* Same single under-hero gap token as .bp-page-body top (Liam 2026-10-30). */
+        margin-bottom: var(--hero-gap);
       }
       /* Eyebrow above the greeting — matches the project-hero eyebrow
          (small, tracked, uppercase, secondary). */
