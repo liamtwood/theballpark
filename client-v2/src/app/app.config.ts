@@ -55,7 +55,7 @@ import {
   CircleDollarSign,
   Package,
   BriefcaseBusiness,
-  HandCoins,
+  CirclePoundSterling,
   Building2,
   Store,
   Trash2,
@@ -184,7 +184,7 @@ export const appConfig: ApplicationConfig = {
         // Profile: section edit lifecycle
         SquarePen, Check, Lock,
         // v2.13a supplier sub-hubs: projects-hub stages + storefront trio
-        FileText, Printer, Zap, CircleCheck, Package, BriefcaseBusiness, HandCoins, Building2,
+        FileText, Printer, Zap, CircleCheck, Package, BriefcaseBusiness, CirclePoundSterling, Building2,
         // pV2-MARKET-00 — admin Categories tile
         Tags,
         // pV2-06a — marketplace browse (search box + view toggle)

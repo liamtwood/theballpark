@@ -45,7 +45,7 @@ export class HomeSupplierStatsComponent {
       { icon: 'messages-square', value: String(s.needsReply), label: 'Needs a reply' },
       { icon: 'package', value: String(s.publishedListings), label: 'Published listings' },
       { icon: 'briefcase-business', value: String(s.liveProjects), label: 'Live projects' },
-      { icon: 'hand-coins', value: '£' + (s.confirmedWork ?? 0).toLocaleString('en-GB'), label: 'Confirmed work' },
+      { icon: 'circle-pound-sterling', value: '£' + (s.confirmedWork ?? 0).toLocaleString('en-GB'), label: 'Confirmed work' },
     ];
   });
 }
