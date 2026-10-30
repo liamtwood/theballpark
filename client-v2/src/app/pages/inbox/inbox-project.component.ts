@@ -63,9 +63,12 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
       } @else if (threads().length === 0) {
         <p class="bp-body-small text-secondary">No quote requests in this project yet.</p>
       } @else {
+        <!-- "Project inbox" heading ABOVE both columns so the rail cards and the
+             conversation box top-align underneath it (Liam 2026-10-29). -->
+        <h2 class="bp-card-title mx-auto mb-3 w-full max-w-[var(--workspace-max)] px-1">Project inbox</h2>
         <!-- Standard workspace column: inbox rail | conversation | assistant
-             (far-right). Centred to --workspace-max like every other page. -->
-        <!-- Rails flank the conversation from lg (1024) like the Marketplace — on
+             (far-right). Centred to --workspace-max like every other page.
+             Rails flank the conversation from lg (1024) like the Marketplace — on
              a laptop it's 2-col (rail + conversation, roomy chat); the assistant
              3rd column comes in at xl. Below lg it stacks (Liam 2026-10-29). -->
         <div class="mx-auto grid min-h-0 w-full max-w-[var(--workspace-max)] flex-1 grid-cols-1 gap-6"

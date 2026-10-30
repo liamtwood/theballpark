@@ -35,13 +35,11 @@ export interface RailOuter {
   selector: 'app-inbox-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule, StatusPillComponent],
-  host: { class: 'hidden min-h-0 xl:flex xl:flex-col xl:gap-3 xl:overflow-y-auto' },
+  host: { class: 'hidden min-h-0 lg:flex lg:flex-col lg:gap-3 lg:overflow-y-auto' },
   template: `
-    <!-- Rail title (Liam 2026-10-29). -->
-    <h2 class="bp-card-title shrink-0 px-1">Project inbox</h2>
-
-    <!-- Project context card removed — that info now lives in the conversation
-         header (Liam 2026-09-10). -->
+    <!-- "Project inbox" title moved ABOVE both columns (in inbox-project) so the
+         rail cards line up vertically with the top of the conversation box
+         (Liam 2026-10-29). Project context now lives in the conversation header. -->
 
     <!-- Outer counterparty cards (supplier / agency), the Final-Quote pattern:
          icon + name + total + chevron, expanding to category bands + items. -->
