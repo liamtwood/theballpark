@@ -35,9 +35,10 @@ import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.c
     BulkActionBarComponent,
   ],
   providers: [MarketplaceStore, ItemSelectionStore, MessageService],
-  /* bp-vpfit (md+): the page fills the viewport exactly — hero + filter
-     band anchored, the catalogue columns scroll independently. */
-  host: { class: 'block bp-vpfit' },
+  /* Flowing page (standard): the whole page scrolls at the window edge under the
+     fixed nav; the hero scrolls with the content and the workspace runs in BARE
+     mode (page scroll, sticky rail) like the project Marketplace tab (Liam 2026-10-30). */
+  host: { class: 'block' },
   template: `
     <app-page-hero
       align="block"
@@ -50,7 +51,7 @@ import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.c
       <!-- SHARED marketplace chrome (same objects as the in-project tab):
            container + search/cluster + gray drill-down rail + dense grid. The
            "+" here opens the Add-to-project picker (vs the project tab's quote). -->
-      <app-marketplace-workspace>
+      <app-marketplace-workspace [framed]="false">
         <app-category-strip
           strip
           mode="drilldown"

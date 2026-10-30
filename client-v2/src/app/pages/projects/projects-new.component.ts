@@ -27,7 +27,9 @@ import { SelectComponent } from '../../shared/select/select.component';
   // bp-vpfit: the PAGE never scrolls — the hero stays anchored and only the
   // form body scrolls within itself (matches the catalogue pages). This keeps
   // the scrollbar below the fixed header, not spanning it.
-  host: { class: 'bp-vpfit' },
+  // Flowing page (standard): the whole page scrolls at the window edge under the
+  // fixed top nav — the hero scrolls with the content (Liam 2026-10-30).
+  host: { class: 'block' },
   template: `
     <app-page-hero
       align="block"

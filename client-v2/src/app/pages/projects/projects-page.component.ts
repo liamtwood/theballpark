@@ -22,7 +22,9 @@ import { ProjectCardComponent } from './project-card.component';
   selector: 'app-projects-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [PageHeroComponent, TabBandComponent, ProjectCardComponent],
-  host: { class: 'block bp-vpfit' },
+  // Flowing page (standard): whole page scrolls at the window edge under the fixed
+  // nav; the hero scrolls with the content (Liam 2026-10-30).
+  host: { class: 'block' },
   template: `
     <app-page-hero align="block" [eyebrow]="heroEyebrow()" [title]="heroTitle()" [subtitle]="heroSubtitle()" />
 

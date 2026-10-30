@@ -25,7 +25,9 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
   selector: 'app-inbox-landing',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, LucideAngularModule, PageHeroComponent, ProjectCardComponent, StatusPillComponent],
-  host: { class: 'block bp-vpfit' },
+  // Flowing page (standard): whole page scrolls at the window edge under the fixed
+  // nav; the hero scrolls with the content (Liam 2026-10-30).
+  host: { class: 'block' },
   template: `
     <app-page-hero
       align="block"

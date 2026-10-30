@@ -48,7 +48,9 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
   providers: [MessageService, ProfileEditService],
   // bp-vpfit: hero (and the supplier tab-band) stay anchored; only the content
   // below scrolls — the Past projects standard.
-  host: { class: 'block bp-vpfit' },
+  // Flowing page (standard): whole page scrolls at the window edge under the fixed
+  // nav; the hero (and supplier tab-band) scroll with the content (Liam 2026-10-30).
+  host: { class: 'block' },
   template: `
     <app-page-hero align="block" [eyebrow]="hero().eyebrow" [title]="hero().title" [subtitle]="hero().subtitle" />
 
