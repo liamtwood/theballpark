@@ -841,9 +841,11 @@ async function getAgentActionCount(agencyOrgId) {
  *  so they can't drift from it. */
 async function getSupplierHomeStats(supplierOrgId) {
   const projs = await pool.query(
-    `SELECT p.id FROM projects p
-       JOIN project_providers pp ON pp.project_id = p.id
-        AND pp.org_id = $1 AND pp.deleted_at IS NULL
+    // Projects the supplier is engaged on = those it's a message party in (the
+    // conversation is the source of truth; project_providers can be incomplete).
+    `SELECT DISTINCT p.id FROM projects p
+       JOIN messages m ON m.project_id = p.id
+        AND (m.from_org_id = $1 OR m.to_org_id = $1) AND m.deleted_at IS NULL
       WHERE p.deleted_at IS NULL
         AND COALESCE(p.status, 'draft') NOT IN ('completed', 'archived')`,
     [supplierOrgId]
@@ -887,9 +889,11 @@ async function getSupplierHomeStats(supplierOrgId) {
  *  thread assembly so status/price match the inbox. */
 async function getSupplierInboxItems(supplierOrgId, limit = 6) {
   const projs = await pool.query(
-    `SELECT p.id FROM projects p
-       JOIN project_providers pp ON pp.project_id = p.id
-        AND pp.org_id = $1 AND pp.deleted_at IS NULL
+    // Projects the supplier is engaged on = those it's a message party in (the
+    // conversation is the source of truth; project_providers can be incomplete).
+    `SELECT DISTINCT p.id FROM projects p
+       JOIN messages m ON m.project_id = p.id
+        AND (m.from_org_id = $1 OR m.to_org_id = $1) AND m.deleted_at IS NULL
       WHERE p.deleted_at IS NULL
         AND COALESCE(p.status, 'draft') NOT IN ('completed', 'archived')`,
     [supplierOrgId]
