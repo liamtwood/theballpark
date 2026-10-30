@@ -59,7 +59,7 @@ import { supplierSummaryCode } from '../../core/status/line-display-status';
         } @else {
           <div class="mx-auto grid w-full max-w-[var(--workspace-max)] grid-cols-1 items-start gap-6 sm:grid-cols-2">
             @for (row of rows.value(); track row.id) {
-              <a [routerLink]="['/projects', row.id]" [queryParams]="{ tab: 'inbox' }" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="row.name">
+              <a [routerLink]="['/projects', row.id]" [queryParams]="{ tab: 'inbox', full: 1 }" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="row.name">
                 <div class="flex flex-col gap-3 p-5">
                   <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
