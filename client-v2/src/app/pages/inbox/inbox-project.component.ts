@@ -783,19 +783,23 @@ export class InboxProjectComponent {
     return t.messages.filter((m) => m.taggedItemIds.includes(itemId));
   });
 
-  /** The compact "current round" slice (normal inbox): from the VIEWER's most
-   *  recent message onward — the live ask + any responses to it. Everything before
-   *  is settled history, shown only in Full thread. If the viewer hasn't replied
-   *  yet (fresh brief / nothing from you), there's nothing to collapse → show all.
-   *  Rule confirmed by Liam 2026-10-30 (you say £100, supplier counters £120 →
-   *  show just those two, ignore what came before). Pure `mine`-flag slice. */
+  /** The compact "current round" slice (normal inbox): the LAST response from each
+   *  party — your most recent message AND theirs — plus anything between/after.
+   *  Everything before is settled history, shown only in Full thread. Until BOTH
+   *  sides have spoken (fresh brief, or no reply yet) there's nothing settled to
+   *  collapse → show all. Rule confirmed by Liam 2026-10-30: …80 → 150 → 90 →
+   *  (you) 100 → (supplier) 120 displays just the 100 and 120. */
   protected readonly roundMessages = computed(() => {
     const msgs = this.visibleMessages();
-    let lastMine = -1;
+    let lastMine = -1, lastTheirs = -1;
     for (let i = msgs.length - 1; i >= 0; i--) {
-      if (msgs[i].mine) { lastMine = i; break; }
+      if (lastMine < 0 && msgs[i].mine) lastMine = i;
+      if (lastTheirs < 0 && !msgs[i].mine) lastTheirs = i;
+      if (lastMine >= 0 && lastTheirs >= 0) break;
     }
-    return lastMine <= 0 ? msgs : msgs.slice(lastMine);
+    if (lastMine < 0 || lastTheirs < 0) return msgs; // one side only → nothing to collapse
+    const start = Math.min(lastMine, lastTheirs);
+    return start <= 0 ? msgs : msgs.slice(start);
   });
   /** How many settled messages the compact view hides (0 = nothing to collapse). */
   protected readonly hiddenBeforeCount = computed(
