@@ -58,8 +58,9 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                           <div class="bp-meta truncate">{{ proj.agencyName }}</div>
                         }
                       </a>
-                      <span class="shrink-0">
+                      <span class="flex shrink-0 flex-col items-end gap-1">
                         <app-status-pill list="supplier_self_status" [code]="proj.status" />
+                        <span class="bp-caption">{{ money(proj.confirmedWork) }}</span>
                       </span>
                     </div>
 
@@ -110,8 +111,9 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                         <div class="bp-meta truncate">{{ row.clientName }}</div>
                       }
                     </div>
-                    <span class="shrink-0" [title]="hoverText(row)">
+                    <span class="flex shrink-0 flex-col items-end gap-1" [title]="hoverText(row)">
                       <app-status-pill list="supplier_summary_status" [code]="summaryCode(row)" />
+                      <span class="bp-caption">{{ money(row.confirmedWork) }}</span>
                     </span>
                   </div>
 

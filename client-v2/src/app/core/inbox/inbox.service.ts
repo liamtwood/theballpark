@@ -108,6 +108,8 @@ export interface SupplierInboxProject {
   /** supplier_self_status code: action_required | awaiting_agency | all_confirmed. */
   status: string;
   items: SupplierInboxLineItem[];
+  /** Total £ of this supplier's agreed (booked / both-accepted) items. */
+  confirmedWork: number;
 }
 
 /** Live-project negotiation metrics for the overview hero tiles. */
@@ -144,6 +146,8 @@ export interface InboxSummaryRow extends InboxWaitingCounts {
   name: string;
   clientName: string | null;
   suppliers: InboxSummarySupplier[];
+  /** Total £ of agreed (booked / both-accepted) lines on the project. */
+  confirmedWork: number;
 }
 
 export interface InboxItemAction {
