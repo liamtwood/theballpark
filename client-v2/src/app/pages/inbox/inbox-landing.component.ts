@@ -160,13 +160,15 @@ export class InboxLandingComponent {
       supplier ? firstValueFrom(this.inbox.supplierProjects()) : Promise.resolve([]),
   });
 
-  /** Envelope click → the project's Inbox tab with the action item selected. */
+  /** Envelope click → the project's Inbox tab, opening the picked conversation in
+   *  full-thread mode (?full=1) so you land straight in the message, no rail
+   *  (Liam 2026-10-29). "All messages" there goes back here. */
   protected openItem(ev: Event, projectId: string, s: InboxSummarySupplier): void {
     ev.preventDefault();
     ev.stopPropagation();
     this.hideBubble();
     void this.router.navigate(['/projects', projectId], {
-      queryParams: { tab: 'inbox', item: s.actionItemId },
+      queryParams: { tab: 'inbox', item: s.actionItemId, full: 1 },
     });
   }
 

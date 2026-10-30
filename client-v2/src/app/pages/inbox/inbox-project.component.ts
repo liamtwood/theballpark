@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, linkedSignal, resource, signal, viewChild } from '@angular/core';
-import { CurrencyPipe, DatePipe, NgClass } from '@angular/common';
+import { CurrencyPipe, DatePipe, Location, NgClass } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom, map } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../core/auth/auth.service';
@@ -68,7 +68,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
              "All messages" back link that drops the rail + assistant and gives the
              picked conversation the full width. -->
         @if (fullThread()) {
-          <button type="button" class="mx-auto mb-3 flex w-full max-w-[var(--workspace-max)] items-center gap-1.5 px-1 bp-body-small text-secondary transition-colors hover:text-accent" (click)="fullThread.set(false)">
+          <button type="button" class="mx-auto mb-3 flex w-full max-w-[var(--workspace-max)] items-center gap-1.5 px-1 bp-body-small text-secondary transition-colors hover:text-accent" (click)="exitFullThread()">
             <lucide-icon name="arrow-left" [size]="16" /> All messages
           </button>
         } @else {
@@ -147,7 +147,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                          read the entire history. The "All messages" link at the top
                          returns to the normal inbox. -->
                     @if (embedded() && !fullThread()) {
-                      <button type="button" class="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-field)] border border-hairline px-2.5 py-1 bp-body-small text-secondary transition-colors hover:bg-fill hover:text-text" (click)="fullThread.set(true)" title="Open the full thread">
+                      <button type="button" class="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-field)] border border-hairline px-2.5 py-1 bp-body-small text-secondary transition-colors hover:bg-fill hover:text-text" (click)="openFullThread()" title="Open the full thread">
                         <lucide-icon name="maximize-2" [size]="14" /> Full thread
                       </button>
                     }
@@ -405,6 +405,8 @@ export class InboxProjectComponent {
   private readonly inbox = inject(InboxService);
   private readonly toast = inject(MessageService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly pageConfig = inject(PageConfigService);
   private readonly auth = inject(AuthService);
 
@@ -899,10 +901,28 @@ export class InboxProjectComponent {
   /** Header kebab menu (Customize + Assistant) open state. */
   protected readonly headerMenu = signal(false);
 
-  /** Full-thread focus mode (embedded only): hides the rail + assistant and gives
-   *  the picked conversation the full width to read the whole history. The "All
-   *  messages" link at the top returns to the normal inbox (Liam 2026-10-29). */
-  protected readonly fullThread = signal(false);
+  /** Full-thread focus mode (embedded only), driven by ?full=1 so BOTH entry paths
+   *  reach the same place: the Messages landing (select a message) and the in-tab
+   *  "Full thread" button both add the param; "All messages" uses browser back to
+   *  return wherever you came from (Liam 2026-10-29). */
+  private readonly fullParam = toSignal(
+    this.route.queryParamMap.pipe(map((p) => p.get('full') === '1')),
+    { initialValue: this.route.snapshot.queryParamMap.get('full') === '1' }
+  );
+  protected readonly fullThread = computed(() => this.embedded() && this.fullParam());
+  /** Enter full-thread — push ?full=1 so browser back returns to this inbox view. */
+  protected openFullThread(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { full: 1 },
+      queryParamsHandling: 'merge',
+    });
+  }
+  /** "All messages" — go back to wherever you came from (Messages landing, or the
+   *  normal inbox if you opened Full thread from the tab). */
+  protected exitFullThread(): void {
+    this.location.back();
+  }
 
   // ── Per-item actions (Accept / Propose new price) ──────────────────────
   protected readonly proposing = signal(false);
