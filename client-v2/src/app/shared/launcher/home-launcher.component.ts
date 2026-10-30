@@ -77,7 +77,7 @@ import { LauncherTile } from './launcher-tile.types';
       .bp-home-launcher__eyebrow {
         margin: 0 0 6px;
         font-size: var(--text-sm);
-        font-weight: 400;
+        font-weight: 600;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--color-text-secondary);
