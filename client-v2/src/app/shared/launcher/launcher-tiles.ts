@@ -18,7 +18,7 @@ export const AGENT_TILES: readonly LauncherTile[] = [
     href: '/projects/new',
   },
   {
-    icon: 'folder-clock',
+    icon: 'folder-open',
     label: 'Projects',
     subtitle: "Revisit every brief you've costed, with assumptions and line items intact.",
     href: '/projects',
@@ -26,7 +26,7 @@ export const AGENT_TILES: readonly LauncherTile[] = [
   // Inbox + Marketplace tiles hidden from the agent home (Liam, 2026-09-09) —
   // the routes still exist and resolve heroes via the other tile sets.
   {
-    icon: 'user',
+    icon: 'user-round',
     label: 'Profile',
     subtitle: 'Your details, your organisation and how you appear on Ballpark.',
     href: '/settings/profile',
@@ -91,7 +91,7 @@ export const BALLPARK_TILES: readonly LauncherTile[] = [
     href: '/admin',
   },
   {
-    icon: 'user',
+    icon: 'user-round',
     label: 'Profile',
     subtitle: 'Manage company information, team members and business details.',
     href: '/settings/profile',
