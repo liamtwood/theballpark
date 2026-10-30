@@ -531,7 +531,7 @@ async function getAgentInboxSummary(agencyOrgId) {
  *  open item. Cancelled/declined lines excluded. org from JWT. */
 async function getProjectOverview(agencyOrgId, projectId) {
   const { threads } = await assembleThreads('agency', agencyOrgId, projectId);
-  let agreedItems = 0, totalItems = 0, openThreads = 0;
+  let agreedItems = 0, totalItems = 0, openThreads = 0, actionItems = 0;
   const seen = new Set();
   for (const t of threads) {
     let threadOpen = false;
@@ -542,11 +542,15 @@ async function getProjectOverview(agencyOrgId, projectId) {
       totalItems++;
       const agreed = it.status === 'booked' || (it.buyerAccepted && it.sellerAccepted);
       if (agreed) agreedItems++;
-      else threadOpen = true;
+      else {
+        threadOpen = true;
+        // "Unactioned" = it's the agent's turn to act (the Inbox tab badge).
+        if (itemWaitingOn(it) === 'agent') actionItems++;
+      }
     }
     if (threadOpen) openThreads++;
   }
-  return { agreedItems, totalItems, openThreads };
+  return { agreedItems, totalItems, openThreads, actionItems };
 }
 
 // ── writes (route-facing) ────────────────────────────────────────────────────

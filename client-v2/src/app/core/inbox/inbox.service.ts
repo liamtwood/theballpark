@@ -51,6 +51,8 @@ export interface ProjectOverview {
   agreedItems: number;
   totalItems: number;
   openThreads: number;
+  /** Items awaiting the agent's action ("unactioned") — the Inbox tab badge. */
+  actionItems: number;
 }
 
 /** Waiting-count rollup shared by a project row and each supplier row. */

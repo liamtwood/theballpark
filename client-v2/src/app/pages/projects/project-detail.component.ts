@@ -467,7 +467,10 @@ export class ProjectDetailComponent {
     // Active order (Liam 2026-10-22): Running budget · Marketplace · Inbox · Details.
     // (Inbox/Details unlock once the project is Active.)
     if (!this.isDraft()) {
-      nav.push({ tab: 'inbox', label: 'Inbox' });
+      // Inbox carries a count of items awaiting YOUR action ("unactioned") — e.g.
+      // "Inbox (3)" — so you see outstanding work without opening the tab (Liam).
+      const n = this.overview.value()?.actionItems ?? 0;
+      nav.push({ tab: 'inbox', label: n > 0 ? `Inbox (${n})` : 'Inbox' });
       nav.push({ tab: 'details', label: 'Details' });
     }
     return nav;
