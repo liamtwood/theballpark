@@ -499,7 +499,9 @@
 
 /* Hero — home */
 .bp-home-title    { font-family: var(--bp-font); font-size: var(--text-greeting); font-weight: 700; line-height: var(--leading-tight); color: var(--color-text); letter-spacing: -0.01em; }
-.bp-home-subtitle { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
+/* Home + page heroes share ONE subtitle style — the refined small label (matches
+   .bp-page-subtitle; Liam 2026-10-30). The launcher no longer overrides the size. */
+.bp-home-subtitle { font-family: var(--bp-font); font-size: var(--text-sm); font-weight: 400; letter-spacing: 0.08em; line-height: var(--leading-normal); color: var(--color-text-secondary); }
 
 /* Hero — page */
 .bp-page-back     { font-family: var(--bp-font); font-size: var(--text-base); font-weight: 500; line-height: var(--leading-normal); color: var(--color-text-secondary); }
