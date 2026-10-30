@@ -86,17 +86,18 @@ import { SelectComponent } from '../../shared/select/select.component';
             <div class="bp-card bp-card--lifted p-6">
               <h2 class="bp-card-title">Project details</h2>
 
-              <div class="mt-4 flex gap-4">
-                <label class="block w-[calc(6ch+2.5rem)] shrink-0">
+              <!-- One field per row (Liam 2026-10-30). -->
+              <div class="mt-4 flex flex-col gap-4">
+                <label class="block">
                   <span class="ed-label mb-1.5 block">Ref</span>
                   <input type="text" class="ed-input" placeholder="Auto" title="Leave blank to auto-assign, or set your own" [value]="ref()" (input)="ref.set($any($event.target).value)" />
                 </label>
-                <label class="block min-w-0 flex-1">
+                <label class="block">
                   <span class="ed-label mb-1.5 block">Project name</span>
                   <input type="text" class="ed-input" [value]="name()" (input)="name.set($any($event.target).value)" />
                 </label>
               </div>
-              <div class="mt-4 grid grid-cols-2 gap-4">
+              <div class="mt-4 grid grid-cols-1 gap-4">
                 <label class="block">
                   <span class="ed-label mb-1.5 block">Client</span>
                   <input type="text" class="ed-input" [value]="client()" (input)="client.set($any($event.target).value)" />
@@ -106,7 +107,7 @@ import { SelectComponent } from '../../shared/select/select.component';
                   <app-select ariaLabel="Event type" placeholder="Select…" [options]="eventTypeOptions()" [value]="eventType()" (changed)="eventType.set($event)" />
                 </label>
               </div>
-              <div class="mt-4 grid grid-cols-2 gap-4">
+              <div class="mt-4 grid grid-cols-1 gap-4">
                 <label class="block">
                   <span class="ed-label mb-1.5 block">Event date</span>
                   <!-- NATO display + native OS picker: the transparent date input
@@ -122,7 +123,7 @@ import { SelectComponent } from '../../shared/select/select.component';
                   <input type="text" class="ed-input" placeholder="London" [value]="location()" (input)="location.set($any($event.target).value)" />
                 </label>
               </div>
-              <div class="mt-4 grid grid-cols-2 gap-4">
+              <div class="mt-4 grid grid-cols-1 gap-4">
                 <label class="block">
                   <span class="ed-label mb-1.5 block">Guests</span>
                   <input type="number" min="0" class="ed-input" [value]="guests()" (input)="guests.set($any($event.target).value)" />
