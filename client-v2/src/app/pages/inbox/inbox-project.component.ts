@@ -48,7 +48,10 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
       <app-page-hero align="block" eyebrow="Messages" [back]="{ label: 'Back', href: '/inbox', history: true }" title="Inbox" [subtitle]="heroSubtitle()" />
     }
 
-    <div [class]="embedded() ? 'flex min-h-0 flex-1 flex-col px-4 pt-4' : 'bp-page-body'">
+    <!-- Embedded: -mx-8 cancels bp-page-body's 32px side padding and px-6 matches
+         the hero so the inbox lines up with the banner (like the Marketplace tab,
+         Liam 2026-10-29). Standalone keeps the normal bp-page-body. -->
+    <div [class]="embedded() ? 'flex min-h-0 flex-1 flex-col px-6 pt-4 -mx-8' : 'bp-page-body'">
       <!-- FIRST load only. isLoading() is also true while RELOADING, and every
            send/accept/decline reloads — so gating on it alone tore the whole pane
            down each time: the rail's collapse state reset and the compose input
