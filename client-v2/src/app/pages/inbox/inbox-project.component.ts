@@ -45,7 +45,10 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
   template: `
     <p-toast position="bottom-right" styleClass="bp-toast" />
     @if (!embedded()) {
-      <app-page-hero align="block" eyebrow="Messages" [back]="{ label: 'Back', href: '/inbox', history: true }" title="Inbox" [subtitle]="heroSubtitle()" />
+      <!-- showBack ON for project view so the standalone supplier route has a Back
+           to the Messages landing; OFF in full thread, where the inline "All
+           messages" link is already the back (no redundant double-back) — Liam 2026-10-30. -->
+      <app-page-hero align="block" eyebrow="Messages" [back]="{ label: 'Back', href: '/inbox', history: true }" [showBack]="!fullThread()" title="Inbox" [subtitle]="heroSubtitle()" />
     }
 
     <!-- Embedded: -mx-8 cancels bp-page-body's 32px side padding and px-6 matches
