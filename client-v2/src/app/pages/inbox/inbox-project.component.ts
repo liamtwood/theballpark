@@ -142,15 +142,6 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                   </span>
                   </div>
                   <div class="flex shrink-0 items-center gap-2">
-                    <!-- Full thread (Liam 2026-10-29): focuses the picked conversation
-                         — hides the rail + assistant and gives it the full width to
-                         read the entire history. The "All messages" link at the top
-                         returns to the normal inbox. -->
-                    @if (embedded() && !fullThread()) {
-                      <button type="button" class="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-field)] border border-hairline px-2.5 py-1 bp-body-small text-secondary transition-colors hover:bg-fill hover:text-text" (click)="openFullThread()" title="Open the full thread">
-                        <lucide-icon name="maximize-2" [size]="14" /> Full thread
-                      </button>
-                    }
                     <!-- Codelist-driven status pill (line_display_status) — text +
                          colour editable in Settings ▸ Codelists (Liam 2026-10-29). -->
                     @if (headerStatusCode(); as code) {
@@ -369,6 +360,14 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                       <button type="button" class="bp-act bp-act--red" [disabled]="sending()" (click)="decline(it)">
                         <lucide-icon name="trash-2" [size]="15" /> Delete Item
                       </button>
+                      <!-- Full thread — bottom-right of the conversation, same line as
+                           the actions (Liam 2026-10-30). Focuses this conversation
+                           (rail + assistant drop, full width); "All messages" returns. -->
+                      @if (embedded() && !fullThread()) {
+                        <button type="button" class="bp-act bp-act--transparent ml-auto" (click)="openFullThread()" title="Open the full thread">
+                          <lucide-icon name="maximize-2" [size]="15" /> Full thread
+                        </button>
+                      }
                     </div>
                   }
                 }
