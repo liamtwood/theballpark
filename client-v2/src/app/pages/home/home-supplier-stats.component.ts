@@ -18,7 +18,7 @@ import { SupplierHomeStats } from '../../core/inbox/inbox.service';
                (size 20 / stroke 1.5), count in .bp-card-title (same as a tile's
                "Projects" label), label in .bp-card-subtitle (Liam 2026-10-30). -->
           <span class="stat-icon">
-            <lucide-icon [name]="c.icon" [size]="20" [strokeWidth]="1.5" />
+            <lucide-icon [name]="c.icon" [size]="16" [strokeWidth]="1.5" />
           </span>
           <div class="bp-card-title mt-3">{{ c.value }}</div>
           <div class="bp-card-subtitle mt-1">{{ c.label }}</div>
@@ -44,8 +44,8 @@ export class HomeSupplierStatsComponent {
     return [
       { icon: 'messages-square', value: String(s.needsReply), label: 'Needs a reply' },
       { icon: 'package', value: String(s.publishedListings), label: 'Published listings' },
-      { icon: 'briefcase', value: String(s.liveProjects), label: 'Live projects' },
-      { icon: 'pound-sterling', value: '£' + (s.confirmedWork ?? 0).toLocaleString('en-GB'), label: 'Confirmed work' },
+      { icon: 'briefcase-business', value: String(s.liveProjects), label: 'Live projects' },
+      { icon: 'hand-coins', value: '£' + (s.confirmedWork ?? 0).toLocaleString('en-GB'), label: 'Confirmed work' },
     ];
   });
 }
