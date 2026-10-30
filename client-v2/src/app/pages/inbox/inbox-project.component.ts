@@ -205,7 +205,16 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                      ? 'flex flex-col gap-3 bg-surface px-5 py-4'
                      : 'flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-surface px-5 py-4'">
                 @if (selectedItem()) {
-                @for (m of visibleMessages(); track m.id; let last = $last) {
+                <!-- Compact view shows only the CURRENT round (from your last message
+                     on); settled earlier messages collapse to this count, which opens
+                     Full thread (Liam 2026-10-30). Hidden when already in full thread. -->
+                @if (!fullThread() && hiddenBeforeCount() > 0) {
+                  <button type="button" class="mx-auto mb-1 flex items-center gap-1.5 rounded-full border border-hairline bg-surface px-3 py-1 bp-caption text-secondary transition-colors hover:bg-fill" (click)="openFullThread()">
+                    <lucide-icon name="chevron-up" [size]="13" />
+                    {{ hiddenBeforeCount() }} earlier message{{ hiddenBeforeCount() === 1 ? '' : 's' }} — Full thread
+                  </button>
+                }
+                @for (m of displayMessages(); track m.id; let last = $last) {
                   <div class="flex flex-col" [class.items-end]="m.mine" [class.items-start]="!m.mine">
                     <div class="bp-bubble" [class.bp-bubble--mine]="m.mine" [class.bp-bubble--general]="isGeneral(m)" [class.bp-blink]="blinkMsg() && last">
                       <span class="bp-bubble__author">
@@ -773,6 +782,30 @@ export class InboxProjectComponent {
     // General messages remain visible in the thread overview (no item selected).
     return t.messages.filter((m) => m.taggedItemIds.includes(itemId));
   });
+
+  /** The compact "current round" slice (normal inbox): from the VIEWER's most
+   *  recent message onward — the live ask + any responses to it. Everything before
+   *  is settled history, shown only in Full thread. If the viewer hasn't replied
+   *  yet (fresh brief / nothing from you), there's nothing to collapse → show all.
+   *  Rule confirmed by Liam 2026-10-30 (you say £100, supplier counters £120 →
+   *  show just those two, ignore what came before). Pure `mine`-flag slice. */
+  protected readonly roundMessages = computed(() => {
+    const msgs = this.visibleMessages();
+    let lastMine = -1;
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].mine) { lastMine = i; break; }
+    }
+    return lastMine <= 0 ? msgs : msgs.slice(lastMine);
+  });
+  /** How many settled messages the compact view hides (0 = nothing to collapse). */
+  protected readonly hiddenBeforeCount = computed(
+    () => this.visibleMessages().length - this.roundMessages().length
+  );
+  /** What the conversation actually renders: the full history in Full thread, the
+   *  compact current round otherwise. */
+  protected readonly displayMessages = computed(() =>
+    this.fullThread() ? this.visibleMessages() : this.roundMessages()
+  );
 
   /** A broadcast shown inside a filtered (item) view — gets the faded
    *  "general" treatment so it doesn't read as misplaced. */
