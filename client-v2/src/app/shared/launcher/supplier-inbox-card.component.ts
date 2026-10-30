@@ -71,7 +71,7 @@ import { StatusPillComponent } from '../status-pill/status-pill.component';
       .bp-inboxcard__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
       .bp-inboxcard__name { font-family: var(--font-body); font-size: var(--text-sm); font-weight: 500; }
       .bp-inboxcard__row:hover .bp-inboxcard__name { text-decoration: underline; }
-      .bp-inboxcard__meta { display: flex; align-items: center; gap: 10px; flex: none; }
+      .bp-inboxcard__meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
       .bp-inboxcard__agency { font-family: var(--font-body); font-size: var(--text-xs); color: var(--color-text-secondary); }
       .bp-inboxcard__price { font-family: var(--font-body); font-size: var(--text-xs); color: var(--color-text-secondary); white-space: nowrap; }
       @media (max-width: 1024px) { :host(.bp-inboxcard) { grid-column: 1 / -1; } }
