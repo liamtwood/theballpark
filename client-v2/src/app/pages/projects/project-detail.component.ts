@@ -208,11 +208,14 @@ interface DetailForm {
                   <label class="block w-[calc(11ch+2.5rem)]"><span class="ed-label mb-1.5 block">Status</span>
                     <app-select ariaLabel="Project status" [options]="statusSelectOptions" [value]="form().status" (changed)="patch({ status: $event }); saveSection('event')" />
                   </label>
-                  <!-- One field per row (Liam 2026-10-30). -->
-                  <label class="block"><span class="ed-label mb-1.5 block">Ref</span><input class="ed-input" [value]="p.ref ?? '—'" disabled /></label>
-                  <label class="block"><span class="ed-label mb-1.5 block">Event name</span><input class="ed-input" [ngModel]="form().name" (ngModelChange)="patch({ name: $event })" (blur)="saveSection('event')" /></label>
-                  <label class="block"><span class="ed-label mb-1.5 block">Client company no.</span><input class="ed-input" [ngModel]="form().clientCompanyNumber" (ngModelChange)="patch({ clientCompanyNumber: $event })" (blur)="saveSection('event')" /></label>
-                  <label class="block"><span class="ed-label mb-1.5 block">Client</span><input class="ed-input" [ngModel]="form().clientName" (ngModelChange)="patch({ clientName: $event })" (blur)="saveSection('event')" /></label>
+                  <!-- Ref + Event name + Company number + Client on one line;
+                       Ref and Company number share a width. -->
+                  <div class="flex flex-wrap items-start gap-x-5 gap-y-4">
+                    <label class="block w-[calc(11ch+2.5rem)]"><span class="ed-label mb-1.5 block">Ref</span><input class="ed-input" [value]="p.ref ?? '—'" disabled /></label>
+                    <label class="block min-w-[12rem] flex-1"><span class="ed-label mb-1.5 block">Event name</span><input class="ed-input" [ngModel]="form().name" (ngModelChange)="patch({ name: $event })" (blur)="saveSection('event')" /></label>
+                    <label class="block w-[calc(11ch+2.5rem)]"><span class="ed-label mb-1.5 block">Client company no.</span><input class="ed-input" [ngModel]="form().clientCompanyNumber" (ngModelChange)="patch({ clientCompanyNumber: $event })" (blur)="saveSection('event')" /></label>
+                    <label class="block min-w-[12rem] flex-1"><span class="ed-label mb-1.5 block">Client</span><input class="ed-input" [ngModel]="form().clientName" (ngModelChange)="patch({ clientName: $event })" (blur)="saveSection('event')" /></label>
+                  </div>
                   <label class="block"><span class="ed-label mb-1.5 block">Client address</span><textarea class="ed-textarea" rows="2" [ngModel]="form().clientAddress" (ngModelChange)="patch({ clientAddress: $event })" (blur)="saveSection('event')"></textarea></label>
                   <label class="block"><span class="ed-label mb-1.5 block">Description</span><textarea class="ed-textarea" rows="3" placeholder="Project overview — seeded from the brief; shown on the quote document." [ngModel]="form().description" (ngModelChange)="patch({ description: $event })" (blur)="saveSection('event')"></textarea></label>
                 </div>
@@ -224,7 +227,7 @@ interface DetailForm {
                   <h2 class="bp-card-title">Event Logistics</h2>
                   <app-save-state-pill [state]="detailState()" />
                 </div>
-                <div class="mt-4 flex flex-col gap-4">
+                <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
                   <label class="block"><span class="ed-label mb-1.5 block">Event type</span>
                     <app-select ariaLabel="Event type" [options]="eventTypeSelectOptions()" [value]="form().eventType" (changed)="patch({ eventType: $event }); saveSection('type')" />
                   </label>
