@@ -74,7 +74,10 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                         @if (isOpen(proj.projectId)) {
                           <div class="mt-1.5 flex flex-col gap-1.5 pl-5">
                             @for (it of proj.items; track it.itemId) {
-                              <a [routerLink]="['/inbox', proj.projectId]" [queryParams]="{ item: it.itemId }"
+                              <!-- Item → FULL THREAD (?full=1): straight into that line's
+                                   conversation, no rail. The project NAME (above) goes to the
+                                   project view instead (Liam 2026-10-30). -->
+                              <a [routerLink]="['/inbox', proj.projectId]" [queryParams]="{ item: it.itemId, full: 1 }"
                                  class="flex items-center justify-between gap-3 no-underline text-text hover:text-text">
                                 <span class="min-w-0 truncate bp-body-small text-secondary">{{ it.name }}</span>
                                 <span class="flex shrink-0 items-center gap-2">

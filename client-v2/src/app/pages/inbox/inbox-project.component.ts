@@ -947,15 +947,16 @@ export class InboxProjectComponent {
   /** Header kebab menu (Customize + Assistant) open state. */
   protected readonly headerMenu = signal(false);
 
-  /** Full-thread focus mode (embedded only), driven by ?full=1 so BOTH entry paths
-   *  reach the same place: the Messages landing (select a message) and the in-tab
-   *  "Full thread" button both add the param; "All messages" uses browser back to
-   *  return wherever you came from (Liam 2026-10-29). */
+  /** Full-thread focus mode, driven by ?full=1 so EVERY entry path reaches the same
+   *  place: the agent Messages landing, the in-tab "Full thread" button, AND the
+   *  SUPPLIER landing's item rows on the standalone /inbox/:projectId route
+   *  (Liam 2026-10-30 — no longer gated on embedded, so the supplier gets it too).
+   *  "All messages" uses browser back to return wherever you came from. */
   private readonly fullParam = toSignal(
     this.route.queryParamMap.pipe(map((p) => p.get('full') === '1')),
     { initialValue: this.route.snapshot.queryParamMap.get('full') === '1' }
   );
-  protected readonly fullThread = computed(() => this.embedded() && this.fullParam());
+  protected readonly fullThread = computed(() => this.fullParam());
   /** Enter full-thread — push ?full=1 so browser back returns to this inbox view. */
   protected openFullThread(): void {
     void this.router.navigate([], {
