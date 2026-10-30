@@ -257,18 +257,19 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                 <!-- Payment summary — appears once ≥1 item is accepted by both.
                      Money is placeholder (£0 Paid) until payments are wired; terms
                      default to Ballpark 50/50, balance day after delivery. -->
-                <!-- Payment summary cards use the soft-pink selection tint so they
-                     match the selected item in the inbox left rail (Liam 2026-10-29). -->
+                <!-- Payment summary cards use the standard light gray (--color-fill)
+                     — same as the inbox selected-row highlight + incoming bubbles
+                     (Liam 2026-10-29). -->
                 <div class="mt-3 grid grid-cols-1 gap-4 px-3 sm:grid-cols-3">
-                  <div class="rounded-[var(--radius-card)] border border-hairline px-5 py-3.5" style="background: var(--bp-gradient-soft)">
+                  <div class="rounded-[var(--radius-card)] border border-hairline bg-fill px-5 py-3.5">
                     <div class="bp-caption text-secondary">Paid</div>
                     <div class="bp-amount text-text">{{ 0 | currency: cur() : 'symbol' : '1.0-0' }}</div>
                   </div>
-                  <div class="rounded-[var(--radius-card)] border border-hairline px-5 py-3.5" style="background: var(--bp-gradient-soft)">
+                  <div class="rounded-[var(--radius-card)] border border-hairline bg-fill px-5 py-3.5">
                     <div class="bp-caption text-secondary">Outstanding</div>
                     <div class="bp-amount text-text">{{ g.agreedTotal | currency: cur() : 'symbol' : '1.0-0' }}</div>
                   </div>
-                  <div class="rounded-[var(--radius-card)] border border-hairline px-5 py-3.5" style="background: var(--bp-gradient-soft)">
+                  <div class="rounded-[var(--radius-card)] border border-hairline bg-fill px-5 py-3.5">
                     <div class="bp-caption text-secondary">Final 50% due</div>
                     <div class="bp-list-title text-text">Day after delivery</div>
                   </div>

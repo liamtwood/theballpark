@@ -2294,7 +2294,10 @@ input.bp-input-field::-webkit-inner-spin-button { -webkit-appearance: none; marg
    inbox-project component styles to the one-definition global layer). ═══ */
 
 /* Selected item card — soft brand-gradient tint. */
-.bp-item--selected { background: var(--bp-gradient-soft); }
+/* Selected row highlight — the standard light gray (--color-fill), matching the
+   inbox incoming bubbles + payment summary cards so every "selected / soft panel"
+   surface uses one gray (Liam 2026-10-29). */
+.bp-item--selected { background: var(--color-fill); }
 
 /* Per-item action buttons — soft fills, one (Request-Information) width so the
    three line up. */
