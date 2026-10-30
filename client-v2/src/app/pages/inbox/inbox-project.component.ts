@@ -187,8 +187,8 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                    since it's still viewport-fit (Liam 2026-10-29). -->
               <div #msgScroll
                    [class]="embedded()
-                     ? 'flex flex-col gap-3 bg-bg px-5 py-4'
-                     : 'flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg px-5 py-4'">
+                     ? 'flex flex-col gap-3 bg-surface px-5 py-4'
+                     : 'flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-surface px-5 py-4'">
                 @if (selectedItem()) {
                 @for (m of visibleMessages(); track m.id; let last = $last) {
                   <div class="flex flex-col" [class.items-end]="m.mine" [class.items-start]="!m.mine">
@@ -273,7 +273,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
               <!-- Compose — moved ABOVE the cost actions (Liam 2026-10-29): the
                    message input + Send sit directly under the conversation; the
                    Accept / Change / Delete cost controls follow below. -->
-              <div class="flex items-center gap-2 border-t border-hairline bg-bg px-4 py-3">
+              <div class="flex items-center gap-2 border-t border-hairline bg-surface px-4 py-3">
                 <div class="flex h-[42px] flex-1 items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-surface px-3 shadow-[var(--shadow-xs)] focus-within:border-accent">
                   <input
                     #composeInput

@@ -2333,7 +2333,10 @@ input.bp-input-field::-webkit-inner-spin-button { -webkit-appearance: none; marg
   max-width: 78%;
   border-radius: 14px;
   padding: 8px 12px;
-  background: var(--color-surface);
+  /* Incoming (other side): standard light gray on the white conversation ground
+     so it reads as a bubble without a card border (Liam 2026-10-29). "You" is the
+     accent fill below. */
+  background: var(--color-fill);
   border: 1px solid var(--color-border-hairline);
   display: flex;
   flex-direction: column;
