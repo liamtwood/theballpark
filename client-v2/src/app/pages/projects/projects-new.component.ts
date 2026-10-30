@@ -59,7 +59,7 @@ import { SelectComponent } from '../../shared/select/select.component';
                  payment summary cards; border highlights on hover (Liam 2026-10-30). -->
             <label class="mt-4 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-[var(--radius-card)] border border-hairline bg-fill px-4 py-8 text-center transition-colors hover:border-accent">
               <input type="file" class="hidden" accept=".txt,.md,.csv,.rtf" (change)="onFile($event)" />
-              <lucide-icon name="upload" [size]="20" [strokeWidth]="1.75" class="text-accent" />
+              <lucide-icon name="file-up" [size]="20" [strokeWidth]="1.75" class="text-accent" />
               <span class="bp-body-small font-medium">{{ fileName() || 'Upload a brief' }}</span>
               <span class="bp-caption">.txt, .md, .csv or .rtf — or paste the text below</span>
             </label>

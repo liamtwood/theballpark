@@ -85,6 +85,7 @@ import {
   CircleAlert,
   TriangleAlert,
   Upload,
+  FileUp,
   Sparkles,
   Car,
   Flower2,
@@ -201,7 +202,7 @@ export const appConfig: ApplicationConfig = {
         // pV2-INBOX-01 — supplier per-item actions
         CircleCheckBig, CircleDollarSign,
         // pV2-PROJECTS-03 — add-project brief page (upload + AI build CTA)
-        Upload, Sparkles,
+        Upload, FileUp, Sparkles,
         // pV2-PROJECTS-02 — Estimate category-card icons (event categories)
         Car, Flower2, MessageSquare, Music, Spotlight, Tv, User, Utensils,
         // Remaining DB category-seed icons (were unregistered → blank cards)
