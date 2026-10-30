@@ -834,7 +834,55 @@ async function getAgentActionCount(agencyOrgId) {
   return rows.reduce((sum, r) => sum + (r.waitingAgent || 0), 0);
 }
 
+/** Supplier home dashboard stats (Liam 2026-10-30): needs-reply (items where it's
+ *  the supplier's turn), published listings (active + approved items), live projects
+ *  (active projects the supplier is on), and confirmed work (£ of agreed/booked
+ *  lines). The negotiation-state metrics reuse the SAME thread assembly as the inbox
+ *  so they can't drift from it. */
+async function getSupplierHomeStats(supplierOrgId) {
+  const projs = await pool.query(
+    `SELECT p.id FROM projects p
+       JOIN project_providers pp ON pp.project_id = p.id
+        AND pp.org_id = $1 AND pp.deleted_at IS NULL
+      WHERE p.deleted_at IS NULL
+        AND COALESCE(p.status, 'draft') NOT IN ('completed', 'archived')`,
+    [supplierOrgId]
+  );
+  const liveProjects = projs.rows.length;
+
+  let needsReply = 0, confirmedWork = 0;
+  const seen = new Set();
+  for (const p of projs.rows) {
+    const { threads } = await assembleThreads('supplier', supplierOrgId, p.id);
+    for (const t of threads) {
+      for (const it of t.items) {
+        if (seen.has(it.id)) continue;
+        seen.add(it.id);
+        if (isDeclined(it.status)) continue;
+        if (itemWaitingOn(it) === 'supplier') needsReply++;
+        const agreed = it.status === 'booked' || (it.buyerAccepted && it.sellerAccepted);
+        if (agreed) confirmedWork += Number(it.priceCurrent ?? it.priceRef ?? 0);
+      }
+    }
+  }
+
+  const listings = await pool.query(
+    `SELECT count(*)::int AS n FROM items
+      WHERE org_id = $1 AND deleted_at IS NULL
+        AND status = 'active' AND approval_status = 'approved'`,
+    [supplierOrgId]
+  );
+
+  return {
+    needsReply,
+    publishedListings: listings.rows[0]?.n ?? 0,
+    liveProjects,
+    confirmedWork: Math.round(confirmedWork),
+  };
+}
+
 module.exports = {
   listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads,
-  getAgentInboxSummary, getProjectOverview, getAgentActionCount, reply, getLineConversation,
+  getAgentInboxSummary, getProjectOverview, getAgentActionCount, getSupplierHomeStats,
+  reply, getLineConversation,
 };

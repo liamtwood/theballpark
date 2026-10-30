@@ -50,6 +50,20 @@ export class InboxService {
   actionCount(): Observable<{ actionItems: number }> {
     return this.api.get<{ actionItems: number }>('/api/inbox/action-count');
   }
+
+  /** Supplier home dashboard stats (needs-reply / published listings / live
+   *  projects / confirmed work). Zeros for non-suppliers. */
+  supplierHomeStats(): Observable<SupplierHomeStats> {
+    return this.api.get<SupplierHomeStats>('/api/inbox/supplier-home-stats');
+  }
+}
+
+/** Supplier home dashboard metrics. */
+export interface SupplierHomeStats {
+  needsReply: number;
+  publishedListings: number;
+  liveProjects: number;
+  confirmedWork: number;
 }
 
 /** Live-project negotiation metrics for the overview hero tiles. */

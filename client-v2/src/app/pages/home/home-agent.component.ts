@@ -3,10 +3,12 @@ import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { PageConfigService } from '../../core/config/page-config.service';
+import { InboxService } from '../../core/inbox/inbox.service';
 import { HomeLauncherComponent } from '../../shared/launcher/home-launcher.component';
 import { NextStep, NextStepsCardComponent } from '../../shared/launcher/next-steps-card.component';
 import { RecentProjectsCardComponent } from '../../shared/launcher/recent-projects-card.component';
 import { tilesForOrgType } from '../../shared/launcher/launcher-tiles';
+import { HomeSupplierStatsComponent } from './home-supplier-stats.component';
 import { heroTitle } from './hero-title';
 
 interface ItemCounts {
@@ -27,7 +29,7 @@ interface ItemCounts {
 @Component({
   selector: 'app-home-agent',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [HomeLauncherComponent, RecentProjectsCardComponent, NextStepsCardComponent],
+  imports: [HomeLauncherComponent, RecentProjectsCardComponent, NextStepsCardComponent, HomeSupplierStatsComponent],
   host: { class: 'bp-home-agent block' },
   template: `
     <app-home-launcher
@@ -39,6 +41,11 @@ interface ItemCounts {
     >
       <!-- One @if per projected node: a control-flow block with >1 root node
            is not projected into the [gridExtra] slot (Angular NG8011). -->
+      <!-- Supplier home: the 4 stat cards replace the launcher tiles (tiles are
+           empty for suppliers); spans the full grid row (Liam 2026-10-30). -->
+      @if (isSupplier() && supplierStats(); as s) {
+        <app-home-supplier-stats gridExtra style="grid-column: 1 / -1" [stats]="s" />
+      }
       @if (showCards()) {
         <app-recent-projects-card gridExtra />
       }
@@ -51,6 +58,7 @@ interface ItemCounts {
 export class HomeAgentComponent {
   private readonly auth = inject(AuthService);
   private readonly api = inject(ApiService);
+  private readonly inbox = inject(InboxService);
   protected readonly config = inject(PageConfigService);
 
   protected readonly title = computed(() =>
@@ -66,9 +74,19 @@ export class HomeAgentComponent {
    *  The eyebrow style uppercases it. */
   protected readonly eyebrow = computed(() => (this.auth.user()?.activeOrgType ? this.config.heroEyebrow() : ''));
 
-  protected readonly tiles = computed(() => tilesForOrgType(this.auth.user()?.activeOrgType));
+  /** Suppliers get the stat cards instead of launcher tiles → empty tiles. */
+  protected readonly tiles = computed(() =>
+    this.isSupplier() ? [] : tilesForOrgType(this.auth.user()?.activeOrgType),
+  );
 
-  private readonly isSupplier = computed(() => this.auth.user()?.activeOrgType === 'supplier');
+  protected readonly isSupplier = computed(() => this.auth.user()?.activeOrgType === 'supplier');
+
+  /** Supplier home dashboard stats (needs-reply / listings / projects / £). */
+  private readonly statsRes = resource({
+    params: () => this.isSupplier() || undefined,
+    loader: () => firstValueFrom(this.inbox.supplierHomeStats()),
+  });
+  protected readonly supplierStats = computed(() => this.statsRes.value() ?? null);
 
   /** Recent + Next steps show for agencies and suppliers, not ballpark admins. */
   protected readonly showCards = computed(() => {

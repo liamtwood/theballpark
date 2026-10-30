@@ -47,6 +47,20 @@ router.get('/action-count', async (req, res, next) => {
   }
 });
 
+// GET /api/inbox/supplier-home-stats — the supplier home dashboard cards
+// (needs-reply / published listings / live projects / confirmed work). Supplier-only.
+router.get('/supplier-home-stats', async (req, res, next) => {
+  try {
+    if (req.user.org_type !== 'supplier') {
+      return res.json({ needsReply: 0, publishedListings: 0, liveProjects: 0, confirmedWork: 0 });
+    }
+    res.json(await inbox.getSupplierHomeStats(req.user.org_id));
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
 // POST /api/inbox/send — the agency fans a project's quote out to the
 // picked suppliers (one thread per category × supplier). The agency org is
 // the JWT caller; the service verifies it owns the project (RP-INB1).
