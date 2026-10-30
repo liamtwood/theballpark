@@ -56,6 +56,12 @@ export class InboxService {
   supplierHomeStats(): Observable<SupplierHomeStats> {
     return this.api.get<SupplierHomeStats>('/api/inbox/supplier-home-stats');
   }
+
+  /** Supplier home "Inbox" card feed — line items with agency / status / price,
+   *  each linking to the conversation. Empty for non-suppliers. */
+  supplierInboxItems(): Observable<SupplierInboxItem[]> {
+    return this.api.get<SupplierInboxItem[]>('/api/inbox/supplier-items');
+  }
 }
 
 /** Supplier home dashboard metrics. */
@@ -64,6 +70,18 @@ export interface SupplierHomeStats {
   publishedListings: number;
   liveProjects: number;
   confirmedWork: number;
+}
+
+/** One row in the supplier home "Inbox" card. */
+export interface SupplierInboxItem {
+  projectId: string;
+  itemId: string;
+  name: string;
+  agencyName: string | null;
+  status: string | null;
+  buyerAccepted: boolean | null;
+  sellerAccepted: boolean | null;
+  price: number | null;
 }
 
 /** Live-project negotiation metrics for the overview hero tiles. */

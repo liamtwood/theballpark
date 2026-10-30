@@ -7,6 +7,7 @@ import { InboxService } from '../../core/inbox/inbox.service';
 import { HomeLauncherComponent } from '../../shared/launcher/home-launcher.component';
 import { NextStep, NextStepsCardComponent } from '../../shared/launcher/next-steps-card.component';
 import { RecentProjectsCardComponent } from '../../shared/launcher/recent-projects-card.component';
+import { SupplierInboxCardComponent } from '../../shared/launcher/supplier-inbox-card.component';
 import { tilesForOrgType } from '../../shared/launcher/launcher-tiles';
 import { HomeSupplierStatsComponent } from './home-supplier-stats.component';
 import { heroTitle } from './hero-title';
@@ -29,7 +30,7 @@ interface ItemCounts {
 @Component({
   selector: 'app-home-agent',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [HomeLauncherComponent, RecentProjectsCardComponent, NextStepsCardComponent, HomeSupplierStatsComponent],
+  imports: [HomeLauncherComponent, RecentProjectsCardComponent, NextStepsCardComponent, HomeSupplierStatsComponent, SupplierInboxCardComponent],
   host: { class: 'bp-home-agent block' },
   template: `
     <app-home-launcher
@@ -46,7 +47,12 @@ interface ItemCounts {
       @if (isSupplier() && supplierStats(); as s) {
         <app-home-supplier-stats gridExtra style="grid-column: 1 / -1" [stats]="s" />
       }
-      @if (showCards()) {
+      <!-- Suppliers get the Inbox card (line items → conversation); agencies keep
+           Recent projects (Liam 2026-10-30). -->
+      @if (isSupplier()) {
+        <app-supplier-inbox-card gridExtra />
+      }
+      @if (showCards() && !isSupplier()) {
         <app-recent-projects-card gridExtra />
       }
       @if (showCards()) {

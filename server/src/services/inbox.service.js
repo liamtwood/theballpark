@@ -881,8 +881,54 @@ async function getSupplierHomeStats(supplierOrgId) {
   };
 }
 
+/** Supplier home "Inbox" card feed (Liam 2026-10-30): the supplier's live line items
+ *  across projects — item name, requesting agency, status + price — each linking to
+ *  that conversation. Needs-reply items first, then most-recent activity. Reuses the
+ *  thread assembly so status/price match the inbox. */
+async function getSupplierInboxItems(supplierOrgId, limit = 6) {
+  const projs = await pool.query(
+    `SELECT p.id FROM projects p
+       JOIN project_providers pp ON pp.project_id = p.id
+        AND pp.org_id = $1 AND pp.deleted_at IS NULL
+      WHERE p.deleted_at IS NULL
+        AND COALESCE(p.status, 'draft') NOT IN ('completed', 'archived')`,
+    [supplierOrgId]
+  );
+  const items = [];
+  const seen = new Set();
+  for (const p of projs.rows) {
+    const { threads } = await assembleThreads('supplier', supplierOrgId, p.id);
+    for (const t of threads) {
+      const last = t.messages[t.messages.length - 1];
+      const lastMessageAt = last ? last.createdAt : null;
+      for (const it of t.items) {
+        if (seen.has(it.id)) continue;
+        seen.add(it.id);
+        if (isDeclined(it.status)) continue;
+        items.push({
+          projectId: p.id,
+          itemId: it.itemId ?? it.id,
+          name: it.name,
+          agencyName: t.agencyName,
+          status: it.status,
+          buyerAccepted: it.buyerAccepted,
+          sellerAccepted: it.sellerAccepted,
+          price: it.priceCurrent ?? it.priceRef ?? null,
+          waitingSupplier: itemWaitingOn(it) === 'supplier',
+          lastMessageAt,
+        });
+      }
+    }
+  }
+  items.sort((a, b) => {
+    if (a.waitingSupplier !== b.waitingSupplier) return a.waitingSupplier ? -1 : 1;
+    return (b.lastMessageAt ?? '') < (a.lastMessageAt ?? '') ? -1 : 1;
+  });
+  return items.slice(0, limit);
+}
+
 module.exports = {
   listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads,
   getAgentInboxSummary, getProjectOverview, getAgentActionCount, getSupplierHomeStats,
-  reply, getLineConversation,
+  getSupplierInboxItems, reply, getLineConversation,
 };

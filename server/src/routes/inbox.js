@@ -61,6 +61,18 @@ router.get('/supplier-home-stats', async (req, res, next) => {
   }
 });
 
+// GET /api/inbox/supplier-items — the supplier home "Inbox" card feed (line items
+// with agency / status / price, linking to the conversation). Supplier-only.
+router.get('/supplier-items', async (req, res, next) => {
+  try {
+    if (req.user.org_type !== 'supplier') return res.json([]);
+    res.json(await inbox.getSupplierInboxItems(req.user.org_id));
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
 // POST /api/inbox/send — the agency fans a project's quote out to the
 // picked suppliers (one thread per category × supplier). The agency org is
 // the JWT caller; the service verifies it owns the project (RP-INB1).
