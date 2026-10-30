@@ -9,6 +9,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { ProjectCardComponent } from '../projects/project-card.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { supplierSummaryCode } from '../../core/status/line-display-status';
+import { InboxLandingStateService } from './inbox-landing-state.service';
 
 /** pV2-INBOX (Messages landing) — /inbox. Persona-aware:
  *  - AGENCY: one card per active project it's negotiating, each listing its
@@ -180,8 +181,9 @@ export class InboxLandingComponent {
       agency ? firstValueFrom(this.inbox.summary()) : Promise.resolve([]),
   });
 
-  /** Which project cards have their supplier list expanded. */
-  private readonly expanded = signal(new Set<string>());
+  /** Which project cards have their supplier list expanded — held in a root
+   *  service so it survives opening a conversation and coming back (Liam 2026-10-30). */
+  private readonly expanded = inject(InboxLandingStateService).expanded;
   protected isOpen(id: string): boolean {
     return this.expanded().has(id);
   }
