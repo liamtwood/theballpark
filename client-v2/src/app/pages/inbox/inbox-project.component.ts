@@ -63,25 +63,37 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
       } @else if (threads().length === 0) {
         <p class="bp-body-small text-secondary">No quote requests in this project yet.</p>
       } @else {
-        <!-- "Project inbox" heading ABOVE both columns so the rail cards and the
-             conversation box top-align underneath it (Liam 2026-10-29). -->
-        <h2 class="bp-card-title mx-auto mb-3 w-full max-w-[var(--workspace-max)] px-1">Project inbox</h2>
+        <!-- Heading row above the columns. Normal: "Project inbox" so the rail cards
+             and conversation top-align under it. Full thread (Liam 2026-10-29): an
+             "All messages" back link that drops the rail + assistant and gives the
+             picked conversation the full width. -->
+        @if (fullThread()) {
+          <button type="button" class="mx-auto mb-3 flex w-full max-w-[var(--workspace-max)] items-center gap-1.5 px-1 bp-body-small text-secondary transition-colors hover:text-accent" (click)="fullThread.set(false)">
+            <lucide-icon name="arrow-left" [size]="16" /> All messages
+          </button>
+        } @else {
+          <h2 class="bp-card-title mx-auto mb-3 w-full max-w-[var(--workspace-max)] px-1">Project inbox</h2>
+        }
         <!-- Standard workspace column: inbox rail | conversation | assistant
              (far-right). Centred to --workspace-max like every other page.
              Rails flank the conversation from lg (1024) like the Marketplace — on
              a laptop it's 2-col (rail + conversation, roomy chat); the assistant
-             3rd column comes in at xl. Below lg it stacks (Liam 2026-10-29). -->
+             3rd column comes in at xl. Below lg it stacks. Full thread = one column,
+             just the conversation (Liam 2026-10-29). -->
         <div class="mx-auto grid min-h-0 w-full max-w-[var(--workspace-max)] flex-1 grid-cols-1 gap-6"
-             [ngClass]="showAgent() ? 'lg:grid-cols-[280px_1fr] xl:grid-cols-[260px_1fr_320px]' : 'lg:grid-cols-[280px_1fr]'">
-          <!-- Left rail: project context card + thread cards + their items. -->
-          <app-inbox-rail
-            [project]="project()"
-            [groups]="railGroups()"
-            [selectedThreadId]="selectedThreadId()"
-            [selectedId]="selectedId()"
-            [isAgency]="isAgency()"
-            (selectThread)="selectThread($event)"
-            (selectItem)="selectItem($event)" />
+             [ngClass]="fullThread() ? 'grid-cols-1' : (showAgent() ? 'lg:grid-cols-[280px_1fr] xl:grid-cols-[260px_1fr_320px]' : 'lg:grid-cols-[280px_1fr]')">
+          <!-- Left rail: project context card + thread cards + their items.
+               Dropped in full-thread mode (Liam 2026-10-29). -->
+          @if (!fullThread()) {
+            <app-inbox-rail
+              [project]="project()"
+              [groups]="railGroups()"
+              [selectedThreadId]="selectedThreadId()"
+              [selectedId]="selectedId()"
+              [isAgency]="isAgency()"
+              (selectThread)="selectThread($event)"
+              (selectItem)="selectItem($event)" />
+          }
 
           <!-- Right pane: the selected item's category conversation. -->
           @if (selectedThread(); as t) {
@@ -130,6 +142,15 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                   </span>
                   </div>
                   <div class="flex shrink-0 items-center gap-2">
+                    <!-- Full thread (Liam 2026-10-29): focuses the picked conversation
+                         — hides the rail + assistant and gives it the full width to
+                         read the entire history. The "All messages" link at the top
+                         returns to the normal inbox. -->
+                    @if (embedded() && !fullThread()) {
+                      <button type="button" class="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-field)] border border-hairline px-2.5 py-1 bp-body-small text-secondary transition-colors hover:bg-fill hover:text-text" (click)="fullThread.set(true)" title="Open the full thread">
+                        <lucide-icon name="maximize-2" [size]="14" /> Full thread
+                      </button>
+                    }
                     <!-- Codelist-driven status pill (line_display_status) — text +
                          colour editable in Settings ▸ Codelists (Liam 2026-10-29). -->
                     @if (headerStatusCode(); as code) {
@@ -360,7 +381,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
           <!-- pV2-INTENT-01 — the reusable conversational assistant rail (xl only),
                acting on the selected line; hidden while the Customize builder owns
                the pane. -->
-          @if (showAgent()) {
+          @if (showAgent() && !fullThread()) {
             <aside class="hidden min-h-0 xl:flex xl:flex-col">
               <app-agent-rail [context]="agentContext()!"
                               (quickAction)="onAgentQuick($event)"
@@ -877,6 +898,11 @@ export class InboxProjectComponent {
 
   /** Header kebab menu (Customize + Assistant) open state. */
   protected readonly headerMenu = signal(false);
+
+  /** Full-thread focus mode (embedded only): hides the rail + assistant and gives
+   *  the picked conversation the full width to read the whole history. The "All
+   *  messages" link at the top returns to the normal inbox (Liam 2026-10-29). */
+  protected readonly fullThread = signal(false);
 
   // ── Per-item actions (Accept / Propose new price) ──────────────────────
   protected readonly proposing = signal(false);
