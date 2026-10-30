@@ -35,6 +35,18 @@ router.get('/summary', async (req, res, next) => {
   }
 });
 
+// GET /api/inbox/action-count — total items awaiting the agent's action across all
+// active projects (the top-nav "Messages (N)" badge). Agency-only; 0 for others.
+router.get('/action-count', async (req, res, next) => {
+  try {
+    if (req.user.org_type !== 'agency') return res.json({ actionItems: 0 });
+    res.json({ actionItems: await inbox.getAgentActionCount(req.user.org_id) });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
 // POST /api/inbox/send — the agency fans a project's quote out to the
 // picked suppliers (one thread per category × supplier). The agency org is
 // the JWT caller; the service verifies it owns the project (RP-INB1).

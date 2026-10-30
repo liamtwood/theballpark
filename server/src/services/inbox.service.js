@@ -826,7 +826,15 @@ async function getLineConversation(orgId, projectId, lineId, { limit = 14 } = {}
   }));
 }
 
+/** Total items awaiting the agent's action across ALL the agency's active projects
+ *  — the top-nav "Messages (N)" badge. Reuses the summary's per-project waitingAgent
+ *  so "waiting on agent" keeps ONE definition (no logic drift). */
+async function getAgentActionCount(agencyOrgId) {
+  const rows = await getAgentInboxSummary(agencyOrgId);
+  return rows.reduce((sum, r) => sum + (r.waitingAgent || 0), 0);
+}
+
 module.exports = {
   listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads,
-  getAgentInboxSummary, getProjectOverview, reply, getLineConversation,
+  getAgentInboxSummary, getProjectOverview, getAgentActionCount, reply, getLineConversation,
 };

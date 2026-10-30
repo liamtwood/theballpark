@@ -44,6 +44,12 @@ export class InboxService {
   projectOverview(projectId: string): Observable<ProjectOverview> {
     return this.api.get<ProjectOverview>(`/api/inbox/projects/${projectId}/overview`);
   }
+
+  /** Total items awaiting the agent's action across all projects — the top-nav
+   *  "Messages (N)" badge. 0 for non-agency users. */
+  actionCount(): Observable<{ actionItems: number }> {
+    return this.api.get<{ actionItems: number }>('/api/inbox/action-count');
+  }
 }
 
 /** Live-project negotiation metrics for the overview hero tiles. */

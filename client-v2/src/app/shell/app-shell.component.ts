@@ -1,7 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, firstValueFrom, map } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../core/auth/auth.service';
+import { InboxService } from '../core/inbox/inbox.service';
 import { WordmarkComponent } from '../shared/wordmark/wordmark.component';
 import { UserMenuComponent } from './user-menu/user-menu.component';
 import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.component';
@@ -77,17 +80,38 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
 })
 export class AppShellComponent {
   protected readonly auth = inject(AuthService);
+  private readonly inbox = inject(InboxService);
+  private readonly router = inject(Router);
+
+  /** Re-fetch the action count on every navigation so the Messages badge stays
+   *  fresh after you accept / counter / decline and move on. */
+  private readonly navUrl = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map((e) => e.urlAfterRedirects),
+    ),
+    { initialValue: '' },
+  );
+  /** Agency "needs your action" total — the top-nav "Messages (N)" badge. */
+  private readonly actionCountRes = resource({
+    params: () => (this.auth.user()?.activeOrgType === 'agency' ? this.navUrl() : undefined),
+    loader: () => firstValueFrom(this.inbox.actionCount()),
+  });
+  protected readonly actionCount = computed(() => this.actionCountRes.value()?.actionItems ?? 0);
 
   /** Primary nav, persona-aware — mirrors the launcher tile sets so the header
    *  and home agree. Suppliers manage incoming work + their shop (no create);
    *  ballpark admins get the platform-admin surfaces (approvals + settings), NOT
    *  agency New/Past projects (BE-00126). Every destination is an existing authed
-   *  route. */
+   *  route. Agency "Messages" carries the "(N)" needs-your-action badge. */
   protected readonly navItems = computed(() => {
     const t = this.auth.user()?.activeOrgType;
     if (t === 'ballpark') return BALLPARK_NAV;
     if (t === 'supplier') return SUPPLIER_NAV;
-    return AGENCY_NAV;
+    const n = this.actionCount();
+    return n > 0
+      ? AGENCY_NAV.map((it) => (it.path === '/inbox' ? { ...it, label: `Messages (${n})` } : it))
+      : AGENCY_NAV;
   });
 
   /** Switch back to the user's home org and land on admin → orgs (where the
