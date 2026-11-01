@@ -48,7 +48,9 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
             <!-- Supplier landing: same card shape as the agent, but ITEMS (name /
                  status / cost) instead of suppliers; the project pill is the
                  supplier-perspective rollup (Liam 2026-10-30). -->
-            <div class="mx-auto grid w-full max-w-[var(--workspace-max)] grid-cols-1 items-start gap-6 sm:grid-cols-2">
+            <!-- Full-width rows: each card fills the container (the row-style card
+                 reads better stretched than 2-up) — Liam 2026-10-31. -->
+            <div class="mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-3">
               @for (proj of supplierSummary.value(); track proj.projectId) {
                 <!-- Whole card → the project inbox (all items in detail). No expand;
                      the top line carries "name · N items" (Liam 2026-10-31). -->
