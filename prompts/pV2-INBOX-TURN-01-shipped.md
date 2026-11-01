@@ -32,10 +32,14 @@ Terminal lines (`all_confirmed` / `booked` / `declined`) are never bold.
 
 Applied to **dev2** (MCP): relabel `new_cost` + add `reply_needed`/`replied`. Rebuild migration **0028** for fresh envs (preview/prod on promote).
 
-## Scope / follow-ups (not in this ship)
+## Scope / surfaces
 
-- **Covered now:** inbox conversation rail + conversation header (the `InboxThreadItem` path).
-- **Deferred:** Running-budget estimate rows (needs `QuoteLine` to carry last-sender) and the supplier/agent **Messages-landing** item rows (the `supplier-items` / `supplier-summary` feeds don't carry message info yet). Both still show correct deal codes; they just won't show `reply_needed`/`replied` or bold until their feeds carry the turn fields.
+All per-line pill surfaces now carry turn + bold (needsYou):
+- inbox conversation **rail** + conversation **header** (`InboxThreadItem`) — commit 85c38e05.
+- Running-budget **estimate rows** — `attachAcceptance` attaches `lastMessageBy`/`lastEventIsMessage` (latest tagged message vs last action); `QuoteLine` carries them; `estimate-item-row` binds `[strong]=needsYou('buyer')` — commit ad43ad9b.
+- supplier **Messages-landing** item rows + supplier **home Inbox card** — `getSupplierInboxSummary` / `getSupplierInboxItems` pass the thread item's turn through; both bind `[strong]=needsYou('seller')` — commit ad43ad9b.
+
+(The AGENT Messages landing shows per-SUPPLIER rollup pills — `supplier_summary_status`, not per-line — so there's no per-line pill there to bold.)
 
 ## Acceptance (to QC on :4202)
 
