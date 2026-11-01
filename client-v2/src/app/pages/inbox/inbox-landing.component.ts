@@ -52,12 +52,22 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                 <div class="bp-card bp-card--lifted">
                   <div class="flex flex-col gap-3 p-5">
                     <div class="flex items-start justify-between gap-3">
-                      <a [routerLink]="['/inbox', proj.projectId]" class="min-w-0 no-underline text-text">
-                        <div class="bp-card-title truncate">{{ proj.projectName }}</div>
-                        @if (proj.agencyName) {
-                          <div class="bp-meta truncate">{{ proj.agencyName }}</div>
+                      <div class="flex min-w-0 flex-col gap-1">
+                        <a [routerLink]="['/inbox', proj.projectId]" class="min-w-0 no-underline text-text">
+                          <div class="bp-card-title truncate">{{ proj.projectName }}</div>
+                          @if (proj.agencyName) {
+                            <div class="bp-meta truncate">{{ proj.agencyName }}</div>
+                          }
+                        </a>
+                        <!-- Show items sits directly under the name (Liam 2026-10-31). -->
+                        @if (proj.items.length) {
+                          <button type="button" class="inline-flex items-center gap-1 bp-body-small text-secondary transition-colors hover:text-text"
+                                  (click)="toggle(proj.projectId, $event)">
+                            <lucide-icon [name]="isOpen(proj.projectId) ? 'chevron-down' : 'chevron-right'" [size]="15" />
+                            {{ isOpen(proj.projectId) ? 'Hide items' : 'Show items' }} ({{ proj.items.length }})
+                          </button>
                         }
-                      </a>
+                      </div>
                       <span class="flex shrink-0 flex-col items-end gap-1">
                         <!-- Total cost on the top line opposite the name, same style
                              as the project name; status pill drops below (Liam 2026-10-31). -->
@@ -66,29 +76,20 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                       </span>
                     </div>
 
-                    @if (proj.items.length) {
-                      <div>
-                        <button type="button" class="inline-flex items-center gap-1 bp-body-small text-secondary transition-colors hover:text-text"
-                                (click)="toggle(proj.projectId, $event)">
-                          <lucide-icon [name]="isOpen(proj.projectId) ? 'chevron-down' : 'chevron-right'" [size]="15" />
-                          {{ isOpen(proj.projectId) ? 'Hide items' : 'Show items' }} ({{ proj.items.length }})
-                        </button>
-                        @if (isOpen(proj.projectId)) {
-                          <div class="mt-1.5 flex flex-col gap-1.5 pl-5">
-                            @for (it of proj.items; track it.itemId) {
-                              <!-- Item → FULL THREAD (?full=1): straight into that line's
-                                   conversation, no rail. The project NAME (above) goes to the
-                                   project view instead (Liam 2026-10-30). -->
-                              <a [routerLink]="['/inbox', proj.projectId]" [queryParams]="{ item: it.itemId, full: 1 }"
-                                 class="flex items-center justify-between gap-3 no-underline text-text hover:text-text">
-                                <span class="min-w-0 truncate bp-body-small text-secondary">{{ it.name }}</span>
-                                <span class="flex shrink-0 items-center gap-2">
-                                  <app-status-pill list="line_display_status" [code]="itemPill(it)" [strong]="itemNeedsYou(it)" />
-                                  @if (it.price != null) { <span class="bp-caption">{{ money(it.price) }}</span> }
-                                </span>
-                              </a>
-                            }
-                          </div>
+                    @if (proj.items.length && isOpen(proj.projectId)) {
+                      <div class="flex flex-col gap-1.5 pl-5">
+                        @for (it of proj.items; track it.itemId) {
+                          <!-- Item → FULL THREAD (?full=1): straight into that line's
+                               conversation, no rail. The project NAME (above) goes to the
+                               project view instead (Liam 2026-10-30). -->
+                          <a [routerLink]="['/inbox', proj.projectId]" [queryParams]="{ item: it.itemId, full: 1 }"
+                             class="flex items-center justify-between gap-3 no-underline text-text hover:text-text">
+                            <span class="min-w-0 truncate bp-body-small text-secondary">{{ it.name }}</span>
+                            <span class="flex shrink-0 items-center gap-2">
+                              <app-status-pill list="line_display_status" [code]="itemPill(it)" [strong]="itemNeedsYou(it)" />
+                              @if (it.price != null) { <span class="bp-caption">{{ money(it.price) }}</span> }
+                            </span>
+                          </a>
                         }
                       </div>
                     }
