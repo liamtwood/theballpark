@@ -188,7 +188,9 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
         <div class="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-x-4 gap-y-2">
           @for (it of ib.items; track it.itemId) {
             <span class="min-w-0 truncate bp-body-small text-text">{{ it.name }}</span>
-            <app-status-pill list="line_display_status" [code]="itemPill(it)" [strong]="itemNeedsYou(it)" />
+            <!-- No [strong] here: the tick column carries the turn signal, so the
+                 pills stay uniform with the summary pill's weight (Liam 2026-10-31). -->
+            <app-status-pill list="line_display_status" [code]="itemPill(it)" />
             <span class="bp-body-small text-right text-secondary">{{ it.price != null ? money(it.price) : '—' }}</span>
             <span class="bp-meta text-right">{{ lastActivity(it.lastMessageAt) }}</span>
             <!-- Tick when the item is actioned (not the supplier's turn) — Liam 2026-10-31. -->
