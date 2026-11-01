@@ -53,29 +53,20 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                 <!-- Whole card → the project inbox (all items in detail). No expand;
                      the top line carries "name · N items" (Liam 2026-10-31). -->
                 <a [routerLink]="['/inbox', proj.projectId]" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="proj.projectName">
-                  <div class="flex flex-col gap-3 p-5">
-                    <!-- Top: project + supplier name (left) · cost + status centred
-                         vertically to that group (right) — Liam 2026-10-31. -->
-                    <div class="flex items-center justify-between gap-3">
-                      <div class="min-w-0">
-                        <div class="bp-card-title truncate">{{ proj.projectName }}</div>
-                        @if (proj.agencyName) {
-                          <div class="bp-meta truncate">{{ proj.agencyName }}</div>
-                        }
-                      </div>
-                      <span class="flex shrink-0 items-center gap-2">
-                        <span class="text-sm font-semibold leading-none text-text">{{ money(proj.confirmedWork) }}</span>
-                        <app-status-pill list="supplier_self_status" [code]="proj.status" />
-                      </span>
+                  <!-- Date circle (left, centred vertically) · project name + supplier
+                       name with its item names (·-joined) · cost + status (Liam 2026-10-31). -->
+                  <div class="flex items-center gap-3 p-5">
+                    <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-fill px-1 text-center">
+                      <span class="bp-meta leading-tight">{{ lastActivity(proj.lastMessageAt) }}</span>
                     </div>
-                    <!-- No separator / no labels; indented item names + date read as
-                         sub-content under the header (Liam 2026-10-31). -->
-                    <div class="flex items-start justify-between gap-4 pl-4">
-                      <div class="min-w-0 truncate bp-body-small text-secondary">{{ itemsLabel(proj) }}</div>
-                      @if (proj.lastMessageAt) {
-                        <div class="shrink-0 bp-body-small text-secondary">{{ lastActivity(proj.lastMessageAt) }}</div>
-                      }
+                    <div class="min-w-0 flex-1">
+                      <div class="bp-card-title truncate">{{ proj.projectName }}</div>
+                      <div class="bp-meta truncate">{{ supplierLine(proj) }}</div>
                     </div>
+                    <span class="flex shrink-0 items-center gap-2">
+                      <span class="text-sm font-semibold leading-none text-text">{{ money(proj.confirmedWork) }}</span>
+                      <app-status-pill list="supplier_self_status" [code]="proj.status" />
+                    </span>
                   </div>
                 </a>
               }
@@ -195,10 +186,13 @@ export class InboxLandingComponent {
   /** Card "last activity" stamp (today → time, this week → day, older → dd-MMM). */
   protected readonly lastActivity = lastActivity;
 
-  /** The project's item names for the ITEMS line, joined by " · " (truncated in the
-   *  template to one line). */
-  protected itemsLabel(proj: SupplierInboxProject): string {
-    return proj.items.map((i) => i.name).join(' · ');
+  /** The supplier line: the requesting agency followed by the item names, joined by
+   *  " · " (truncated in the template to one line). */
+  protected supplierLine(proj: SupplierInboxProject): string {
+    const parts: string[] = [];
+    if (proj.agencyName) parts.push(proj.agencyName);
+    for (const it of proj.items) parts.push(it.name);
+    return parts.join(' · ');
   }
 
   protected money(value: number): string {
