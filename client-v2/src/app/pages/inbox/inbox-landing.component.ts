@@ -56,7 +56,7 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                   <!-- Date circle (left, centred vertically) · project name + supplier
                        name with its item names (·-joined) · cost + status (Liam 2026-10-31). -->
                   <div class="flex items-center gap-3 p-5">
-                    <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-fill px-1 text-center">
+                    <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-fill px-1 text-center">
                       <span class="bp-meta leading-tight">{{ lastActivity(proj.lastMessageAt) }}</span>
                     </div>
                     <div class="min-w-0 flex-1">
