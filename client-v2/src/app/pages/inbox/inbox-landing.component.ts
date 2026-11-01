@@ -75,7 +75,7 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                       <div class="bp-meta truncate">{{ supplierLine(proj) }}</div>
                     </div>
                     <span class="flex shrink-0 items-center gap-2">
-                      <span class="text-sm font-semibold leading-none text-text">{{ money(proj.confirmedWork) }}</span>
+                      <span class="text-base font-semibold leading-none text-text">{{ money(proj.confirmedWork) }}</span>
                       <app-status-pill list="supplier_self_status" [code]="proj.status" />
                     </span>
                   </div>
