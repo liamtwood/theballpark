@@ -220,7 +220,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                 @for (m of displayMessages(); track m.id; let last = $last; let i = $index) {
                   <!-- WhatsApp-style day divider when the day changes (Liam 2026-10-31). -->
                   @if (showDaySeparator(i)) {
-                    <div class="mx-auto my-1 rounded-full bg-fill px-3 py-0.5 bp-caption text-secondary">{{ dayLabel(m.createdAt) }}</div>
+                    <div class="mx-auto my-1 rounded-full bg-fill px-3 py-0.5 bp-caption text-secondary">{{ dayLabel(m.createdAt, true) }}</div>
                   }
                   <div class="flex flex-col" [class.items-end]="m.mine" [class.items-start]="!m.mine">
                     <div class="bp-bubble" [class.bp-bubble--mine]="m.mine" [class.bp-bubble--general]="isGeneral(m)" [class.bp-blink]="blinkMsg() && last">

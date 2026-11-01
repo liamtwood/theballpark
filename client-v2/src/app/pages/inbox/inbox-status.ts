@@ -105,9 +105,10 @@ export function sameDay(a: string, b: string): boolean {
 }
 
 /** WhatsApp-style day label for a timestamp (Liam 2026-10-31): Today / Yesterday /
- *  the weekday within the past week, else a dd-MMM-yyyy date for older messages.
- *  Used for the conversation day dividers AND the rail's "last response" stamp. */
-export function dayLabel(iso: string | null): string {
+ *  the weekday within the past week, else a dd-MMM[-yyyy] date for older ones.
+ *  `withYear` on → the conversation day dividers keep the year; off (default) →
+ *  the rail's compact "last response" stamp drops it. */
+export function dayLabel(iso: string | null, withYear = false): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
@@ -115,8 +116,7 @@ export function dayLabel(iso: string | null): string {
   if (days <= 0) return 'Today';
   if (days === 1) return 'Yesterday';
   if (days < 7) return d.toLocaleDateString('en-GB', { weekday: 'long' });
-  // Older — day + month, no year (Liam 2026-10-31: year doesn't matter here).
   const dd = String(d.getDate()).padStart(2, '0');
   const mon = d.toLocaleDateString('en-GB', { month: 'short' });
-  return `${dd}-${mon}`;
+  return withYear ? `${dd}-${mon}-${d.getFullYear()}` : `${dd}-${mon}`;
 }
