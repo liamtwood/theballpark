@@ -53,32 +53,35 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                 <!-- Whole card → the project inbox (all items in detail). No expand;
                      the top line carries "name · N items" (Liam 2026-10-31). -->
                 <a [routerLink]="['/inbox', proj.projectId]" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="proj.projectName">
-                  <div class="flex items-start justify-between gap-3 p-5">
-                    <div class="min-w-0">
-                      <div class="flex min-w-0 items-baseline gap-1">
-                        <span class="bp-card-title truncate">{{ proj.projectName }}</span>
-                        @if (proj.items.length > 1) {
-                          <span class="bp-card-title shrink-0 text-secondary">· {{ proj.items.length }} items</span>
+                  <div class="flex flex-col gap-3 p-5">
+                    <!-- Top: project + supplier name (left) · cost + status centred
+                         vertically to that group (right) — Liam 2026-10-31. -->
+                    <div class="flex items-center justify-between gap-3">
+                      <div class="min-w-0">
+                        <div class="bp-card-title truncate">{{ proj.projectName }}</div>
+                        @if (proj.agencyName) {
+                          <div class="bp-meta truncate">{{ proj.agencyName }}</div>
                         }
                       </div>
-                      @if (proj.agencyName) {
-                        <div class="bp-meta truncate">{{ proj.agencyName }}</div>
-                      }
-                    </div>
-                    <span class="flex shrink-0 flex-col items-end gap-1">
-                      <!-- Cost left, status right of it (same font size, pill primary);
-                           last-activity stamp below (Liam 2026-10-31). -->
-                      <span class="flex items-center gap-2">
-                        <!-- Cost balances the pill: one step up (--text-sm), pill weight
-                             (600), readable colour; leading-none keeps its box tight so it
-                             centres vertically against the pill (Liam 2026-10-31). -->
+                      <span class="flex shrink-0 items-center gap-2">
                         <span class="text-sm font-semibold leading-none text-text">{{ money(proj.confirmedWork) }}</span>
                         <app-status-pill list="supplier_self_status" [code]="proj.status" />
                       </span>
+                    </div>
+                    <!-- Hairline, then ITEMS (names joined by ·) and DATE, each with a
+                         micro-label above its value (Liam 2026-10-31). -->
+                    <div class="flex items-start justify-between gap-4 border-t border-hairline pt-3">
+                      <div class="min-w-0">
+                        <div class="bp-meta uppercase tracking-wide">Items</div>
+                        <div class="truncate bp-body-small text-secondary">{{ itemsLabel(proj) }}</div>
+                      </div>
                       @if (proj.lastMessageAt) {
-                        <span class="bp-meta">{{ lastActivity(proj.lastMessageAt) }}</span>
+                        <div class="shrink-0 text-right">
+                          <div class="bp-meta uppercase tracking-wide">Date</div>
+                          <div class="bp-body-small text-secondary">{{ lastActivity(proj.lastMessageAt) }}</div>
+                        </div>
                       }
-                    </span>
+                    </div>
                   </div>
                 </a>
               }
@@ -197,6 +200,12 @@ export class InboxLandingComponent {
 
   /** Card "last activity" stamp (today → time, this week → day, older → dd-MMM). */
   protected readonly lastActivity = lastActivity;
+
+  /** The project's item names for the ITEMS line, joined by " · " (truncated in the
+   *  template to one line). */
+  protected itemsLabel(proj: SupplierInboxProject): string {
+    return proj.items.map((i) => i.name).join(' · ');
+  }
 
   protected money(value: number): string {
     try {
