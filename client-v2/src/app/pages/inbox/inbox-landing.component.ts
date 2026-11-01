@@ -72,7 +72,15 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                     </div>
                     <div class="min-w-0 flex-1">
                       <div class="bp-card-title truncate">{{ proj.projectName }}</div>
-                      <div class="bp-meta truncate">{{ supplierLine(proj) }}</div>
+                      <!-- Supplier (semi-bold) then item names (·-joined), a touch bigger. -->
+                      <div class="truncate text-sm text-secondary">
+                        @if (proj.agencyName) {
+                          <span class="font-semibold text-text">{{ proj.agencyName }}</span>
+                        }
+                        @if (proj.items.length) {
+                          <span>{{ (proj.agencyName ? ' · ' : '') + itemsJoined(proj) }}</span>
+                        }
+                      </div>
                     </div>
                     <span class="flex shrink-0 items-center gap-2">
                       <span class="text-base font-semibold leading-none text-text">{{ money(proj.confirmedWork) }}</span>
@@ -204,13 +212,10 @@ export class InboxLandingComponent {
     return proj.status === 'action_required';
   }
 
-  /** The supplier line: the requesting agency followed by the item names, joined by
-   *  " · " (truncated in the template to one line). */
-  protected supplierLine(proj: SupplierInboxProject): string {
-    const parts: string[] = [];
-    if (proj.agencyName) parts.push(proj.agencyName);
-    for (const it of proj.items) parts.push(it.name);
-    return parts.join(' · ');
+  /** The project's item names joined by " · " (the supplier line's tail, after the
+   *  agency name). Truncated to one line in the template. */
+  protected itemsJoined(proj: SupplierInboxProject): string {
+    return proj.items.map((i) => i.name).join(' · ');
   }
 
   protected money(value: number): string {
