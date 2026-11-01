@@ -1692,6 +1692,13 @@ body {
   white-space: nowrap;
 }
 
+/* The app-status-pill host wraps the .bp-pill span. Without a display it is a
+   default inline box whose line-height leading sits around the pill, so in a flex
+   row `align-items: center` centres that padded box, not the pill itself — the pill
+   then reads a hair off against adjacent text. inline-flex makes the host hug the
+   pill so it centres cleanly (Liam 2026-10-31). */
+.bp-pill-host { display: inline-flex; align-items: center; }
+
 /* ═══ Dialogs (DIALOGS.md — locked specs, pV2-DIALOGS-01) ════════════════
    Every system-to-user message: blocking modals (confirm/info), inline
    alerts, transient toasts, hover tooltips. Locked rules: danger buttons
