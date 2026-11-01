@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { InboxProjectSummary, InboxThreadItem } from '../../core/inbox/inbox.service';
 import { supplierRollup, itemAction } from './inbox-status';
@@ -68,10 +68,14 @@ export interface RailOuter {
               {{ c.items }} {{ c.items === 1 ? 'item' : 'items' }} · {{ c.accepted }} accepted
             </span>
           </button>
-          <button type="button" class="shrink-0 rounded-md p-0.5 text-muted transition-colors hover:text-text"
-                  [attr.aria-label]="isExpanded(o.id) ? 'Collapse' : 'Expand'" (click)="toggle(o.id)">
-            <lucide-icon [name]="isExpanded(o.id) ? 'chevron-down' : 'chevron-right'" [size]="16" />
-          </button>
+          <!-- A single outer card (always the case for a supplier — one agency)
+               is shown expanded with no collapse chevron (Liam 2026-10-31). -->
+          @if (!autoExpand()) {
+            <button type="button" class="shrink-0 rounded-md p-0.5 text-muted transition-colors hover:text-text"
+                    [attr.aria-label]="isExpanded(o.id) ? 'Collapse' : 'Expand'" (click)="toggle(o.id)">
+              <lucide-icon [name]="isExpanded(o.id) ? 'chevron-down' : 'chevron-right'" [size]="16" />
+            </button>
+          }
         </div>
 
         @if (isExpanded(o.id)) {
@@ -130,8 +134,12 @@ export class InboxRailComponent {
   // Outer expand — expanded-by-id; DEFAULT MINIMIZED (Liam 2026-09-10): the
   // supplier cards start collapsed, showing just name + counts.
   private readonly expanded = signal<ReadonlySet<string>>(new Set());
+  /** A single outer card is always open — a supplier only ever has one agency, so
+   *  there's nothing to collapse into (Liam 2026-10-31). Also auto-opens a
+   *  single-supplier agent project. */
+  protected readonly autoExpand = computed(() => this.groups().length === 1);
   protected isExpanded(id: string): boolean {
-    return this.expanded().has(id);
+    return this.autoExpand() || this.expanded().has(id);
   }
   protected toggle(id: string): void {
     this.expanded.update((s) => {
