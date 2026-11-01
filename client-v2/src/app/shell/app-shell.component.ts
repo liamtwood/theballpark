@@ -92,9 +92,14 @@ export class AppShellComponent {
     ),
     { initialValue: '' },
   );
-  /** Agency "needs your action" total — the top-nav "Messages (N)" badge. */
+  /** "Needs your action" total — the top-nav "Messages (N)" badge. Agency =
+   *  waiting-on-agent, supplier = waiting-on-supplier (the server keys off the
+   *  caller's org type); re-fetched on every navigation. */
   private readonly actionCountRes = resource({
-    params: () => (this.auth.user()?.activeOrgType === 'agency' ? this.navUrl() : undefined),
+    params: () => {
+      const t = this.auth.user()?.activeOrgType;
+      return t === 'agency' || t === 'supplier' ? this.navUrl() : undefined;
+    },
     loader: () => firstValueFrom(this.inbox.actionCount()),
   });
   protected readonly actionCount = computed(() => this.actionCountRes.value()?.actionItems ?? 0);
@@ -107,11 +112,13 @@ export class AppShellComponent {
   protected readonly navItems = computed(() => {
     const t = this.auth.user()?.activeOrgType;
     if (t === 'ballpark') return BALLPARK_NAV;
-    if (t === 'supplier') return SUPPLIER_NAV;
     const n = this.actionCount();
+    // Both agency and supplier carry the "(N)" needs-your-action badge on their
+    // Messages (/inbox) item; ballpark has no inbox.
+    const base = t === 'supplier' ? SUPPLIER_NAV : AGENCY_NAV;
     return n > 0
-      ? AGENCY_NAV.map((it) => (it.path === '/inbox' ? { ...it, label: `Messages (${n})` } : it))
-      : AGENCY_NAV;
+      ? base.map((it) => (it.path === '/inbox' ? { ...it, label: `Messages (${n})` } : it))
+      : base;
   });
 
   /** Switch back to the user's home org and land on admin → orgs (where the

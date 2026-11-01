@@ -45,8 +45,9 @@ export class InboxService {
     return this.api.get<ProjectOverview>(`/api/inbox/projects/${projectId}/overview`);
   }
 
-  /** Total items awaiting the agent's action across all projects — the top-nav
-   *  "Messages (N)" badge. 0 for non-agency users. */
+  /** Total items awaiting the CALLER's action across all projects — the top-nav
+   *  "Messages (N)" badge. Agency = waiting-on-agent, supplier = waiting-on-supplier
+   *  (server keys off org type); 0 for ballpark/other. */
   actionCount(): Observable<{ actionItems: number }> {
     return this.api.get<{ actionItems: number }>('/api/inbox/action-count');
   }
@@ -108,6 +109,9 @@ export interface SupplierInboxProject {
   /** supplier_self_status code: action_required | awaiting_agency | all_confirmed. */
   status: string;
   items: SupplierInboxLineItem[];
+  /** Count of this project's line items awaiting the supplier's action — summed
+   *  across projects for the supplier's "Messages (N)" nav badge. */
+  waitingSupplier: number;
   /** Total £ of this supplier's agreed (booked / both-accepted) items. */
   confirmedWork: number;
 }

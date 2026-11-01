@@ -977,7 +977,7 @@ async function getSupplierInboxSummary(supplierOrgId) {
   for (const p of projs.rows) {
     const { threads } = await assembleThreads('supplier', supplierOrgId, p.id);
     const items = [];
-    let agencyName = null, anyWaitingSupplier = false, allAgreed = true, confirmedWork = 0;
+    let agencyName = null, waitingSupplier = 0, allAgreed = true, confirmedWork = 0;
     const seen = new Set();
     for (const t of threads) {
       if (!agencyName && t.agencyName) agencyName = t.agencyName;
@@ -988,7 +988,7 @@ async function getSupplierInboxSummary(supplierOrgId) {
         const agreed = it.status === 'booked' || (it.buyerAccepted && it.sellerAccepted);
         if (!agreed) allAgreed = false;
         if (agreed) confirmedWork += Number(it.priceCurrent ?? it.priceRef ?? 0);
-        if (itemWaitingOn(it) === 'supplier') anyWaitingSupplier = true;
+        if (itemWaitingOn(it) === 'supplier') waitingSupplier++;
         items.push({
           itemId: it.itemId ?? it.id,
           name: it.name,
@@ -1000,14 +1000,23 @@ async function getSupplierInboxSummary(supplierOrgId) {
       }
     }
     if (!items.length) continue;
-    const status = anyWaitingSupplier ? 'action_required' : (allAgreed ? 'all_confirmed' : 'awaiting_agency');
-    out.push({ projectId: p.id, projectName: p.name, agencyName, status, items, confirmedWork: Math.round(confirmedWork) });
+    const status = waitingSupplier > 0 ? 'action_required' : (allAgreed ? 'all_confirmed' : 'awaiting_agency');
+    out.push({ projectId: p.id, projectName: p.name, agencyName, status, items, waitingSupplier, confirmedWork: Math.round(confirmedWork) });
   }
   return out;
 }
 
+/** Total line items awaiting the SUPPLIER's action across all their active projects
+ *  — the supplier's top-nav "Messages (N)" badge (mirror of getAgentActionCount).
+ *  Reuses the supplier summary's per-project waitingSupplier so "waiting on the
+ *  supplier" keeps ONE definition (itemWaitingOn), no logic drift. */
+async function getSupplierActionCount(supplierOrgId) {
+  const rows = await getSupplierInboxSummary(supplierOrgId);
+  return rows.reduce((sum, r) => sum + (r.waitingSupplier || 0), 0);
+}
+
 module.exports = {
   listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads,
-  getAgentInboxSummary, getProjectOverview, getAgentActionCount, getSupplierHomeStats,
+  getAgentInboxSummary, getProjectOverview, getAgentActionCount, getSupplierActionCount, getSupplierHomeStats,
   getSupplierInboxItems, getSupplierInboxSummary, reply, getLineConversation,
 };

@@ -35,12 +35,18 @@ router.get('/summary', async (req, res, next) => {
   }
 });
 
-// GET /api/inbox/action-count — total items awaiting the agent's action across all
-// active projects (the top-nav "Messages (N)" badge). Agency-only; 0 for others.
+// GET /api/inbox/action-count — total items awaiting the CALLER's action across all
+// active projects (the top-nav "Messages (N)" badge). Agency = waiting-on-agent;
+// supplier = waiting-on-supplier; 0 for ballpark/other.
 router.get('/action-count', async (req, res, next) => {
   try {
-    if (req.user.org_type !== 'agency') return res.json({ actionItems: 0 });
-    res.json({ actionItems: await inbox.getAgentActionCount(req.user.org_id) });
+    if (req.user.org_type === 'agency') {
+      return res.json({ actionItems: await inbox.getAgentActionCount(req.user.org_id) });
+    }
+    if (req.user.org_type === 'supplier') {
+      return res.json({ actionItems: await inbox.getSupplierActionCount(req.user.org_id) });
+    }
+    return res.json({ actionItems: 0 });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
