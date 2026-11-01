@@ -68,9 +68,10 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                         <app-status-pill list="supplier_self_status" [code]="proj.status" />
                       </span>
                     </div>
-                    <!-- Hairline, then ITEMS (names joined by ·) and DATE, each with a
-                         micro-label above its value (Liam 2026-10-31). -->
-                    <div class="flex items-start justify-between gap-4 border-t border-hairline pt-3">
+                    <!-- No separator; the ITEMS/DATE block is indented so it reads as
+                         sub-content under the header. Micro-label above each value
+                         (Liam 2026-10-31). -->
+                    <div class="flex items-start justify-between gap-4 pl-4">
                       <div class="min-w-0">
                         <div class="bp-meta uppercase tracking-wide">Items</div>
                         <div class="truncate bp-body-small text-secondary">{{ itemsLabel(proj) }}</div>
