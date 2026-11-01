@@ -69,10 +69,10 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                       <!-- Cost left, status right of it (same font size, pill primary);
                            last-activity stamp below (Liam 2026-10-31). -->
                       <span class="flex items-center gap-2">
-                        <!-- Cost sized to balance the pill: one step up (--text-sm),
-                             pill weight (600), readable colour, matching vertical
-                             padding so the boxes sit level (Liam 2026-10-31). -->
-                        <span class="py-0.5 text-sm font-semibold text-text">{{ money(proj.confirmedWork) }}</span>
+                        <!-- Cost balances the pill: one step up (--text-sm), pill weight
+                             (600), readable colour; leading-none keeps its box tight so it
+                             centres vertically against the pill (Liam 2026-10-31). -->
+                        <span class="text-sm font-semibold leading-none text-text">{{ money(proj.confirmedWork) }}</span>
                         <app-status-pill list="supplier_self_status" [code]="proj.status" />
                       </span>
                       @if (proj.lastMessageAt) {
