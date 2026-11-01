@@ -68,19 +68,12 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                         <app-status-pill list="supplier_self_status" [code]="proj.status" />
                       </span>
                     </div>
-                    <!-- No separator; the ITEMS/DATE block is indented so it reads as
-                         sub-content under the header. Micro-label above each value
-                         (Liam 2026-10-31). -->
+                    <!-- No separator / no labels; indented item names + date read as
+                         sub-content under the header (Liam 2026-10-31). -->
                     <div class="flex items-start justify-between gap-4 pl-4">
-                      <div class="min-w-0">
-                        <div class="bp-meta uppercase tracking-wide">Items</div>
-                        <div class="truncate bp-body-small text-secondary">{{ itemsLabel(proj) }}</div>
-                      </div>
+                      <div class="min-w-0 truncate bp-body-small text-secondary">{{ itemsLabel(proj) }}</div>
                       @if (proj.lastMessageAt) {
-                        <div class="shrink-0 text-right">
-                          <div class="bp-meta uppercase tracking-wide">Date</div>
-                          <div class="bp-body-small text-secondary">{{ lastActivity(proj.lastMessageAt) }}</div>
-                        </div>
+                        <div class="shrink-0 bp-body-small text-secondary">{{ lastActivity(proj.lastMessageAt) }}</div>
                       }
                     </div>
                   </div>
