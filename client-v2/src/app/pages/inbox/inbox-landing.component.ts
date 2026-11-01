@@ -3,10 +3,10 @@ import { Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
-import { InboxService, InboxSummaryRow, InboxSummarySupplier, InboxWaitingCounts, SupplierInboxProject, SupplierInboxLineItem } from '../../core/inbox/inbox.service';
+import { InboxService, InboxSummaryRow, InboxSummarySupplier, InboxWaitingCounts, SupplierInboxProject } from '../../core/inbox/inbox.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
-import { supplierSummaryCode, lineDisplayCode, needsYou } from '../../core/status/line-display-status';
+import { supplierSummaryCode } from '../../core/status/line-display-status';
 import { InboxLandingStateService } from './inbox-landing-state.service';
 
 /** pV2-INBOX (Messages landing) — /inbox. Persona-aware:
@@ -49,52 +49,27 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                  supplier-perspective rollup (Liam 2026-10-30). -->
             <div class="mx-auto grid w-full max-w-[var(--workspace-max)] grid-cols-1 items-start gap-6 sm:grid-cols-2">
               @for (proj of supplierSummary.value(); track proj.projectId) {
-                <div class="bp-card bp-card--lifted">
-                  <div class="flex flex-col gap-3 p-5">
-                    <div class="flex items-start justify-between gap-3">
-                      <div class="flex min-w-0 flex-col gap-1">
-                        <a [routerLink]="['/inbox', proj.projectId]" class="min-w-0 no-underline text-text">
-                          <div class="bp-card-title truncate">{{ proj.projectName }}</div>
-                          @if (proj.agencyName) {
-                            <div class="bp-meta truncate">{{ proj.agencyName }}</div>
-                          }
-                        </a>
-                        <!-- Show items sits directly under the name (Liam 2026-10-31). -->
-                        @if (proj.items.length) {
-                          <button type="button" class="inline-flex items-center gap-1 bp-body-small text-secondary transition-colors hover:text-text"
-                                  (click)="toggle(proj.projectId, $event)">
-                            <lucide-icon [name]="isOpen(proj.projectId) ? 'chevron-down' : 'chevron-right'" [size]="15" />
-                            {{ isOpen(proj.projectId) ? 'Hide items' : 'Show items' }} ({{ proj.items.length }})
-                          </button>
+                <!-- Whole card → the project inbox (all items in detail). No expand;
+                     the top line carries "name · N items" (Liam 2026-10-31). -->
+                <a [routerLink]="['/inbox', proj.projectId]" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="proj.projectName">
+                  <div class="flex items-start justify-between gap-3 p-5">
+                    <div class="min-w-0">
+                      <div class="flex min-w-0 items-baseline gap-1">
+                        <span class="bp-card-title truncate">{{ proj.projectName }}</span>
+                        @if (proj.items.length > 1) {
+                          <span class="bp-card-title shrink-0 text-secondary">· {{ proj.items.length }} items</span>
                         }
                       </div>
-                      <span class="flex shrink-0 flex-col items-end gap-1">
-                        <!-- Total cost on the top line opposite the name, same style
-                             as the project name; status pill drops below (Liam 2026-10-31). -->
-                        <span class="bp-card-title">{{ money(proj.confirmedWork) }}</span>
-                        <app-status-pill list="supplier_self_status" [code]="proj.status" />
-                      </span>
+                      @if (proj.agencyName) {
+                        <div class="bp-meta truncate">{{ proj.agencyName }}</div>
+                      }
                     </div>
-
-                    @if (proj.items.length && isOpen(proj.projectId)) {
-                      <div class="flex flex-col gap-1.5 pl-5">
-                        @for (it of proj.items; track it.itemId) {
-                          <!-- Item → FULL THREAD (?full=1): straight into that line's
-                               conversation, no rail. The project NAME (above) goes to the
-                               project view instead (Liam 2026-10-30). -->
-                          <a [routerLink]="['/inbox', proj.projectId]" [queryParams]="{ item: it.itemId, full: 1 }"
-                             class="flex items-center justify-between gap-3 no-underline text-text hover:text-text">
-                            <span class="min-w-0 truncate bp-body-small text-secondary">{{ it.name }}</span>
-                            <span class="flex shrink-0 items-center gap-2">
-                              <app-status-pill list="line_display_status" [code]="itemPill(it)" [strong]="itemNeedsYou(it)" />
-                              @if (it.price != null) { <span class="bp-caption">{{ money(it.price) }}</span> }
-                            </span>
-                          </a>
-                        }
-                      </div>
-                    }
+                    <span class="flex shrink-0 flex-col items-end gap-1">
+                      <span class="bp-card-title">{{ money(proj.confirmedWork) }}</span>
+                      <app-status-pill list="supplier_self_status" [code]="proj.status" />
+                    </span>
                   </div>
-                </div>
+                </a>
               }
             </div>
           }
@@ -208,26 +183,6 @@ export class InboxLandingComponent {
     loader: ({ params: supplier }) =>
       supplier ? firstValueFrom(this.inbox.supplierInboxSummary()) : Promise.resolve([]),
   });
-
-  /** The per-item line_display_status pill code, from the supplier's side. */
-  protected itemPill(it: SupplierInboxLineItem): string {
-    return lineDisplayCode(this.toStatusInput(it), 'seller');
-  }
-
-  /** Bold the item pill when it's the supplier's turn (agency sent last) — Liam 2026-10-30. */
-  protected itemNeedsYou(it: SupplierInboxLineItem): boolean {
-    return needsYou(this.toStatusInput(it), 'seller');
-  }
-
-  private toStatusInput(it: SupplierInboxLineItem) {
-    return {
-      status: it.status,
-      buyerAccepted: it.buyerAccepted,
-      sellerAccepted: it.sellerAccepted,
-      lastMessageBy: it.lastMessageBy,
-      lastEventIsMessage: it.lastEventIsMessage,
-    };
-  }
 
   protected money(value: number): string {
     try {
