@@ -111,12 +111,13 @@ export interface RailOuter {
                       @if (it.hasOpenQuestion) {
                         <span class="bp-spill bp-spill--yellow">Question</span>
                       }
-                      <!-- Last response: WhatsApp-style day/date stamp (Liam 2026-10-31). -->
-                      @if (it.lastMessageAt) {
-                        <span class="bp-caption text-muted">{{ lastDate(it) }}</span>
-                      }
                     </span>
                   </span>
+                  <!-- Last response: WhatsApp-style day/date stamp, right-justified
+                       (Liam 2026-10-31). flex-1 name column pushes it to the edge. -->
+                  @if (it.lastMessageAt) {
+                    <span class="bp-caption shrink-0 text-muted">{{ lastDate(it) }}</span>
+                  }
                 </button>
               }
             }

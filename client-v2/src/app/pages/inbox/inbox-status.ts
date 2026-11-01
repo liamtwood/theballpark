@@ -115,7 +115,8 @@ export function dayLabel(iso: string | null): string {
   if (days <= 0) return 'Today';
   if (days === 1) return 'Yesterday';
   if (days < 7) return d.toLocaleDateString('en-GB', { weekday: 'long' });
+  // Older — day + month, no year (Liam 2026-10-31: year doesn't matter here).
   const dd = String(d.getDate()).padStart(2, '0');
   const mon = d.toLocaleDateString('en-GB', { month: 'short' });
-  return `${dd}-${mon}-${d.getFullYear()}`;
+  return `${dd}-${mon}`;
 }
