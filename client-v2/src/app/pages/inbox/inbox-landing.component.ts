@@ -185,12 +185,18 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
     @if (itemsBubble(); as ib) {
       <div class="fixed z-50 w-[460px] max-w-[92vw] rounded-2xl border border-hairline bg-surface p-3 shadow-lg"
            [style.left.px]="ib.x" [style.top.px]="ib.y">
-        <div class="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 gap-y-2">
+        <div class="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-x-4 gap-y-2">
           @for (it of ib.items; track it.itemId) {
             <span class="min-w-0 truncate bp-body-small text-text">{{ it.name }}</span>
             <app-status-pill list="line_display_status" [code]="itemPill(it)" [strong]="itemNeedsYou(it)" />
             <span class="bp-body-small text-right text-secondary">{{ it.price != null ? money(it.price) : '—' }}</span>
             <span class="bp-meta text-right">{{ lastActivity(it.lastMessageAt) }}</span>
+            <!-- Tick when the item is actioned (not the supplier's turn) — Liam 2026-10-31. -->
+            <span class="w-4 text-right text-[var(--color-state-emerald)]">
+              @if (!itemNeedsYou(it)) {
+                <lucide-icon name="check" [size]="13" [strokeWidth]="3" />
+              }
+            </span>
           }
         </div>
       </div>
