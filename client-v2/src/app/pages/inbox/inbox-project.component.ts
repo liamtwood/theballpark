@@ -9,7 +9,7 @@ import { PageConfigService } from '../../core/config/page-config.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
 import { QuoteLine } from '../../core/projects/project.types';
-import { TERMINAL_STATUSES, gbp } from './inbox-status';
+import { TERMINAL_STATUSES, gbp, dayLabel, sameDay } from './inbox-status';
 import { lineDisplayCode, needsYou } from '../../core/status/line-display-status';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { InboxRailComponent, RailOuter } from './inbox-rail.component';
@@ -217,7 +217,11 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                     {{ hiddenBeforeCount() }} earlier message{{ hiddenBeforeCount() === 1 ? '' : 's' }} — Full thread
                   </button>
                 }
-                @for (m of displayMessages(); track m.id; let last = $last) {
+                @for (m of displayMessages(); track m.id; let last = $last; let i = $index) {
+                  <!-- WhatsApp-style day divider when the day changes (Liam 2026-10-31). -->
+                  @if (showDaySeparator(i)) {
+                    <div class="mx-auto my-1 rounded-full bg-fill px-3 py-0.5 bp-caption text-secondary">{{ dayLabel(m.createdAt) }}</div>
+                  }
                   <div class="flex flex-col" [class.items-end]="m.mine" [class.items-start]="!m.mine">
                     <div class="bp-bubble" [class.bp-bubble--mine]="m.mine" [class.bp-bubble--general]="isGeneral(m)" [class.bp-blink]="blinkMsg() && last">
                       <span class="bp-bubble__author">
@@ -682,6 +686,18 @@ export class InboxProjectComponent {
     const it = this.selectedItem();
     if (it) { this.accept(it); this.blinkNextMessage(); }
   }
+  /** WhatsApp-style day label for a bubble's timestamp (Today / Yesterday /
+   *  weekday / dd-MMM-yyyy). */
+  protected readonly dayLabel = dayLabel;
+  /** Show a day divider before the message at index i: always for the first, then
+   *  whenever its day differs from the previous message's. */
+  protected showDaySeparator(i: number): boolean {
+    const msgs = this.displayMessages();
+    if (!msgs.length) return false;
+    if (i === 0) return true;
+    return !sameDay(msgs[i - 1].createdAt, msgs[i].createdAt);
+  }
+
   /** Blink the newest conversation bubble (twice) after a confirmation posts. */
   protected readonly blinkMsg = signal(false);
   private blinkNextMessage(): void {

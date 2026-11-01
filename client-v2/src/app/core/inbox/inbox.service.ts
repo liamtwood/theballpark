@@ -244,6 +244,9 @@ export interface InboxThreadItem {
    *  deriver for the reply_needed/replied codes and the bold "needsYou" flag. */
   lastMessageBy: 'buyer' | 'seller' | null;
   lastEventIsMessage: boolean;
+  /** ISO timestamp of the last message on the line — the rail shows it as a
+   *  WhatsApp-style day/date label ("last response"). */
+  lastMessageAt: string | null;
 }
 
 export interface InboxBubble {

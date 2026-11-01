@@ -133,6 +133,9 @@ function toThreadItem(raw, state, line, turn) {
     // folds these into the display code + the bold "needsYou" flag.
     lastMessageBy: turn?.lastMessageBy ?? null,
     lastEventIsMessage: turn?.lastEventIsMessage ?? false,
+    // Timestamp of the last message on this line — the rail shows "last response"
+    // as a WhatsApp-style day/date label (Liam 2026-10-31).
+    lastMessageAt: turn?.lastMessageAt ?? null,
     priceRef: original == null ? null : Number(original),
     priceCurrent: revised == null ? null : Number(revised),
     unitPriceRef: raw.f_base == null ? null : Number(raw.f_base),
@@ -323,6 +326,7 @@ async function assembleThreads(viewer, callerOrgId, projectId) {
         const turn = {
           lastMessageBy: mi ? (mi.lastFrom === agencyOrgId ? 'buyer' : 'seller') : null,
           lastEventIsMessage: !!(mi && (!lastAction || new Date(mi.lastAt) > new Date(lastAction))),
+          lastMessageAt: mi ? mi.lastAt : null,
         };
         items.push(toThreadItem(raw, state, line, turn));
       }

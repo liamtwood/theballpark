@@ -92,3 +92,30 @@ export function supplierRollup(items: InboxThreadItem[], isAgency: boolean): { i
 export function gbp(n: number): string {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(n);
 }
+
+function startOfDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+/** Two ISO timestamps fall on the same calendar day (local). */
+export function sameDay(a: string, b: string): boolean {
+  const da = new Date(a), db = new Date(b);
+  if (Number.isNaN(da.getTime()) || Number.isNaN(db.getTime())) return false;
+  return startOfDay(da) === startOfDay(db);
+}
+
+/** WhatsApp-style day label for a timestamp (Liam 2026-10-31): Today / Yesterday /
+ *  the weekday within the past week, else a dd-MMM-yyyy date for older messages.
+ *  Used for the conversation day dividers AND the rail's "last response" stamp. */
+export function dayLabel(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return d.toLocaleDateString('en-GB', { weekday: 'long' });
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mon = d.toLocaleDateString('en-GB', { month: 'short' });
+  return `${dd}-${mon}-${d.getFullYear()}`;
+}

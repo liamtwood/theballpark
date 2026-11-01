@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { InboxProjectSummary, InboxThreadItem } from '../../core/inbox/inbox.service';
-import { supplierRollup, itemAction } from './inbox-status';
+import { supplierRollup, itemAction, dayLabel } from './inbox-status';
 import { lineDisplayCode, needsYou } from '../../core/status/line-display-status';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 
@@ -111,6 +111,10 @@ export interface RailOuter {
                       @if (it.hasOpenQuestion) {
                         <span class="bp-spill bp-spill--yellow">Question</span>
                       }
+                      <!-- Last response: WhatsApp-style day/date stamp (Liam 2026-10-31). -->
+                      @if (it.lastMessageAt) {
+                        <span class="bp-caption text-muted">{{ lastDate(it) }}</span>
+                      }
                     </span>
                   </span>
                 </button>
@@ -161,6 +165,11 @@ export class InboxRailComponent {
    *  messages the price/accept `isMyAction` glisten misses. */
   protected needsReply(it: InboxThreadItem): boolean {
     return needsYou(it, this.isAgency() ? 'buyer' : 'seller');
+  }
+
+  /** "Last response" day/date stamp for the item row (Liam 2026-10-31). */
+  protected lastDate(it: InboxThreadItem): string {
+    return dayLabel(it.lastMessageAt);
   }
 
   /** True when this line is waiting on the current user (drives the glisten). */
