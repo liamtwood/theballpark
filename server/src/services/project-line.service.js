@@ -395,17 +395,38 @@ async function attachAcceptance(agencyOrgId, lines) {
     [ids]
   );
   const byItem = new Map();
+  const lastActionAt = new Map(); // project_item_id → latest ACTION time (events are ASC)
   for (const row of ev.rows) {
     const side = row.from_org_id === agencyOrgId ? 'buyer' : 'seller';
     const arr = byItem.get(row.project_item_id) ?? [];
     arr.push({ status: row.status, side, createdAt: row.created_at });
     byItem.set(row.project_item_id, arr);
+    lastActionAt.set(row.project_item_id, row.created_at);
   }
+
+  // Conversation TURN (Liam 2026-10-30): the latest MESSAGE tagged to each line
+  // (plain or action-bearing) and whether it post-dates the last action — so the
+  // Running budget pill can show reply_needed/replied + bold, same as the inbox.
+  const lastMsg = new Map(); // project_item_id → { at, from }
+  const mrows = await pool.query(
+    `SELECT mr.project_item_id, m.from_org_id, m.created_at
+       FROM message_relations mr
+       JOIN messages m ON m.id = mr.message_id AND m.deleted_at IS NULL
+      WHERE mr.project_item_id = ANY($1::uuid[])
+      ORDER BY m.created_at ASC`,
+    [ids]
+  );
+  for (const row of mrows.rows) lastMsg.set(row.project_item_id, { at: row.created_at, from: row.from_org_id });
+
   for (const l of lines) {
     const state = mev.deriveLineState(byItem.get(l.id) ?? [], { briefed: true });
     l.buyerAccepted = state.buyerAccepted;
     l.sellerAccepted = state.sellerAccepted;
     l.bothAccepted = state.buyerAccepted && state.sellerAccepted;
+    const mi = lastMsg.get(l.id);
+    const act = lastActionAt.get(l.id) ?? null;
+    l.lastMessageBy = mi ? (mi.from === agencyOrgId ? 'buyer' : 'seller') : null;
+    l.lastEventIsMessage = !!(mi && (!act || new Date(mi.at) > new Date(act)));
   }
 }
 

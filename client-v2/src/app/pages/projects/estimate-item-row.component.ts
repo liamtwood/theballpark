@@ -4,7 +4,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { QuoteLine } from '../../core/projects/project.types';
 import { QtyInputComponent } from './qty-input.component';
 import { editable, hasInstall, isDeclined, isInstalled, lineCost, unitPlain, unitPrice } from './quote-line.util';
-import { lineDisplayCode } from '../../core/status/line-display-status';
+import { lineDisplayCode, needsYou } from '../../core/status/line-display-status';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 
 /** pV2-CART-01 — one quote line row (thumb + name/status + cost·unit +
@@ -49,7 +49,7 @@ import { StatusPillComponent } from '../../shared/status-pill/status-pill.compon
           <!-- Send-status only for lines that actually go to a supplier. An
                agent's own custom line (no supplier) never gets sent. -->
           @if (isFinal() && line().supplierId) {
-            <app-status-pill list="line_display_status" [code]="code()" />
+            <app-status-pill list="line_display_status" [code]="code()" [strong]="needsYou()" />
           }
         </div>
         <!-- pV2-STORE-VARIANTS-UPCHARGE-01 — the chosen variant ("Ivory · Bedazzled"). -->
@@ -142,5 +142,7 @@ export class EstimateItemRowComponent {
   protected displayCost(): number { return this.cost() * this.markup(); }
   protected readonly isDeclined = computed(() => isDeclined(this.line()));
   protected code(): string { return lineDisplayCode(this.line(), 'buyer'); }
+  /** Bold the pill when the line is on the agency (the supplier sent last) — Liam 2026-10-30. */
+  protected needsYou(): boolean { return needsYou(this.line(), 'buyer'); }
   protected unitText(): string { return unitPlain(this.line().unit); }
 }

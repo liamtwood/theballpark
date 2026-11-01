@@ -88,6 +88,8 @@ export interface SupplierInboxItem {
   status: string | null;
   buyerAccepted: boolean | null;
   sellerAccepted: boolean | null;
+  lastMessageBy: 'buyer' | 'seller' | null;
+  lastEventIsMessage: boolean;
   price: number | null;
 }
 
@@ -98,6 +100,8 @@ export interface SupplierInboxLineItem {
   status: string | null;
   buyerAccepted: boolean | null;
   sellerAccepted: boolean | null;
+  lastMessageBy: 'buyer' | 'seller' | null;
+  lastEventIsMessage: boolean;
   price: number | null;
 }
 

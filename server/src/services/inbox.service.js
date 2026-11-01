@@ -946,6 +946,8 @@ async function getSupplierInboxItems(supplierOrgId, limit = 6) {
           status: it.status,
           buyerAccepted: it.buyerAccepted,
           sellerAccepted: it.sellerAccepted,
+          lastMessageBy: it.lastMessageBy,
+          lastEventIsMessage: it.lastEventIsMessage,
           price: it.priceCurrent ?? it.priceRef ?? null,
           waitingSupplier: itemWaitingOn(it) === 'supplier',
           lastMessageAt,
@@ -995,6 +997,8 @@ async function getSupplierInboxSummary(supplierOrgId) {
           status: it.status,
           buyerAccepted: it.buyerAccepted,
           sellerAccepted: it.sellerAccepted,
+          lastMessageBy: it.lastMessageBy,
+          lastEventIsMessage: it.lastEventIsMessage,
           price: it.priceCurrent ?? it.priceRef ?? null,
         });
       }

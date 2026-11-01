@@ -96,6 +96,11 @@ export interface QuoteLine {
   buyerAccepted?: boolean;
   sellerAccepted?: boolean;
   bothAccepted?: boolean;
+  /** Conversation TURN (Liam 2026-10-30): who sent the last message on the line
+   *  ('buyer' = agency, 'seller' = supplier) + whether it post-dates the last
+   *  action — feeds the reply_needed/replied code + bold needsYou on the estimate. */
+  lastMessageBy?: 'buyer' | 'seller' | null;
+  lastEventIsMessage?: boolean;
   /** The ORIGINAL library item (the request) — the inbox brief renders this so
    *  it shows the library price/description, not the (revised) line. Null for
    *  custom lines (no catalogue backing). */

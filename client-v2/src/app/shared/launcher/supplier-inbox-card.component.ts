@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { resource } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { InboxService, SupplierInboxItem } from '../../core/inbox/inbox.service';
-import { lineDisplayCode } from '../../core/status/line-display-status';
+import { lineDisplayCode, needsYou } from '../../core/status/line-display-status';
 import { StatusPillComponent } from '../status-pill/status-pill.component';
 
 /** Supplier home — the "Inbox" panel (Liam 2026-10-30): the supplier's live line
@@ -38,7 +38,7 @@ import { StatusPillComponent } from '../status-pill/status-pill.component';
                   @if (it.agencyName) { <span class="bp-inboxcard__agency">{{ it.agencyName }}</span> }
                 </span>
                 <span class="bp-inboxcard__meta">
-                  <app-status-pill list="line_display_status" [code]="pill(it)" />
+                  <app-status-pill list="line_display_status" [code]="pill(it)" [strong]="needsYou(it)" />
                   @if (it.price != null) { <span class="bp-inboxcard__price">{{ money(it.price) }}</span> }
                 </span>
               </a>
@@ -89,10 +89,22 @@ export class SupplierInboxCardComponent {
 
   /** The line_display_status pill code from the supplier's point of view. */
   protected pill(it: SupplierInboxItem): string {
-    return lineDisplayCode(
-      { status: it.status, buyerAccepted: it.buyerAccepted, sellerAccepted: it.sellerAccepted },
-      'seller',
-    );
+    return lineDisplayCode(this.statusInput(it), 'seller');
+  }
+
+  /** Bold when it's the supplier's turn (agency sent last) — Liam 2026-10-30. */
+  protected needsYou(it: SupplierInboxItem): boolean {
+    return needsYou(this.statusInput(it), 'seller');
+  }
+
+  private statusInput(it: SupplierInboxItem) {
+    return {
+      status: it.status,
+      buyerAccepted: it.buyerAccepted,
+      sellerAccepted: it.sellerAccepted,
+      lastMessageBy: it.lastMessageBy,
+      lastEventIsMessage: it.lastEventIsMessage,
+    };
   }
 
   protected money(value: number): string {

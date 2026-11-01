@@ -6,7 +6,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { InboxService, InboxSummaryRow, InboxSummarySupplier, InboxWaitingCounts, SupplierInboxProject, SupplierInboxLineItem } from '../../core/inbox/inbox.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
-import { supplierSummaryCode, lineDisplayCode } from '../../core/status/line-display-status';
+import { supplierSummaryCode, lineDisplayCode, needsYou } from '../../core/status/line-display-status';
 import { InboxLandingStateService } from './inbox-landing-state.service';
 
 /** pV2-INBOX (Messages landing) — /inbox. Persona-aware:
@@ -81,7 +81,7 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                                  class="flex items-center justify-between gap-3 no-underline text-text hover:text-text">
                                 <span class="min-w-0 truncate bp-body-small text-secondary">{{ it.name }}</span>
                                 <span class="flex shrink-0 items-center gap-2">
-                                  <app-status-pill list="line_display_status" [code]="itemPill(it)" />
+                                  <app-status-pill list="line_display_status" [code]="itemPill(it)" [strong]="itemNeedsYou(it)" />
                                   @if (it.price != null) { <span class="bp-caption">{{ money(it.price) }}</span> }
                                 </span>
                               </a>
@@ -206,10 +206,22 @@ export class InboxLandingComponent {
 
   /** The per-item line_display_status pill code, from the supplier's side. */
   protected itemPill(it: SupplierInboxLineItem): string {
-    return lineDisplayCode(
-      { status: it.status, buyerAccepted: it.buyerAccepted, sellerAccepted: it.sellerAccepted },
-      'seller',
-    );
+    return lineDisplayCode(this.toStatusInput(it), 'seller');
+  }
+
+  /** Bold the item pill when it's the supplier's turn (agency sent last) — Liam 2026-10-30. */
+  protected itemNeedsYou(it: SupplierInboxLineItem): boolean {
+    return needsYou(this.toStatusInput(it), 'seller');
+  }
+
+  private toStatusInput(it: SupplierInboxLineItem) {
+    return {
+      status: it.status,
+      buyerAccepted: it.buyerAccepted,
+      sellerAccepted: it.sellerAccepted,
+      lastMessageBy: it.lastMessageBy,
+      lastEventIsMessage: it.lastEventIsMessage,
+    };
   }
 
   protected money(value: number): string {
