@@ -56,8 +56,17 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                   <!-- Date circle (left, centred vertically) · project name + supplier
                        name with its item names (·-joined) · cost + status (Liam 2026-10-31). -->
                   <div class="flex items-center gap-3 p-5">
-                    <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-fill px-1 text-center">
-                      <span class="bp-meta leading-tight">{{ lastActivity(proj.lastMessageAt) }}</span>
+                    <!-- Unactioned (your move) → dark-pink filled circle; otherwise the
+                         hairline circle with a corner tick = your side is handled (Liam 2026-10-31). -->
+                    <div class="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-fill px-1 text-center"
+                         [style.background]="isUnactioned(proj) ? 'var(--theme-accent)' : null"
+                         [style.border-color]="isUnactioned(proj) ? 'transparent' : null">
+                      <span class="bp-meta leading-tight" [style.color]="isUnactioned(proj) ? 'var(--bp-text-on-gradient)' : null">{{ lastActivity(proj.lastMessageAt) }}</span>
+                      @if (!isUnactioned(proj)) {
+                        <span class="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-hairline bg-surface text-[var(--color-state-emerald)]">
+                          <lucide-icon name="check" [size]="12" [strokeWidth]="3" />
+                        </span>
+                      }
                     </div>
                     <div class="min-w-0 flex-1">
                       <div class="bp-card-title truncate">{{ proj.projectName }}</div>
@@ -185,6 +194,13 @@ export class InboxLandingComponent {
 
   /** Card "last activity" stamp (today → time, this week → day, older → dd-MMM). */
   protected readonly lastActivity = lastActivity;
+
+  /** The supplier's own turn on this project — the card's "unactioned" state
+   *  (dark-pink date circle). Otherwise the move is with the agency / all confirmed
+   *  (hairline circle + tick). */
+  protected isUnactioned(proj: SupplierInboxProject): boolean {
+    return proj.status === 'action_required';
+  }
 
   /** The supplier line: the requesting agency followed by the item names, joined by
    *  " · " (truncated in the template to one line). */
