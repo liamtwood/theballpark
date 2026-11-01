@@ -102,6 +102,8 @@ export interface SupplierInboxLineItem {
   sellerAccepted: boolean | null;
   lastMessageBy: 'buyer' | 'seller' | null;
   lastEventIsMessage: boolean;
+  /** ISO timestamp of the last message on this item — the hover mini-table's date. */
+  lastMessageAt: string | null;
   price: number | null;
 }
 

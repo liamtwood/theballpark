@@ -1004,6 +1004,7 @@ async function getSupplierInboxSummary(supplierOrgId) {
           sellerAccepted: it.sellerAccepted,
           lastMessageBy: it.lastMessageBy,
           lastEventIsMessage: it.lastEventIsMessage,
+          lastMessageAt: it.lastMessageAt,
           price: it.priceCurrent ?? it.priceRef ?? null,
         });
       }

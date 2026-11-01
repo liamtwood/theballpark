@@ -3,10 +3,10 @@ import { Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
-import { InboxService, InboxSummaryRow, InboxSummarySupplier, InboxWaitingCounts, SupplierInboxProject } from '../../core/inbox/inbox.service';
+import { InboxService, InboxSummaryRow, InboxSummarySupplier, InboxWaitingCounts, SupplierInboxProject, SupplierInboxLineItem } from '../../core/inbox/inbox.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
-import { supplierSummaryCode } from '../../core/status/line-display-status';
+import { supplierSummaryCode, lineDisplayCode, needsYou } from '../../core/status/line-display-status';
 import { lastActivity } from './inbox-status';
 import { InboxLandingStateService } from './inbox-landing-state.service';
 
@@ -72,8 +72,10 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                     </div>
                     <div class="min-w-0 flex-1">
                       <div class="bp-card-title truncate">{{ proj.projectName }}</div>
-                      <!-- Supplier (semi-bold) then item names (·-joined), a touch bigger. -->
-                      <div class="truncate text-sm text-secondary">
+                      <!-- Supplier (semi-bold) then item names (·-joined), a touch bigger.
+                           Hover reveals the per-item mini table (Liam 2026-10-31). -->
+                      <div class="truncate text-sm text-secondary"
+                           (mouseenter)="showItems($event, proj)" (mouseleave)="hideItems()">
                         @if (proj.agencyName) {
                           <span class="font-semibold text-text">{{ proj.agencyName }}</span>
                         }
@@ -177,6 +179,22 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
         }
       </div>
     }
+
+    <!-- Supplier card hover: the per-item mini table (name · status · cost · date).
+         Fixed so the card's overflow can't clip it (Liam 2026-10-31). -->
+    @if (itemsBubble(); as ib) {
+      <div class="fixed z-50 w-[460px] max-w-[92vw] rounded-2xl border border-hairline bg-surface p-3 shadow-lg"
+           [style.left.px]="ib.x" [style.top.px]="ib.y">
+        <div class="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 gap-y-2">
+          @for (it of ib.items; track it.itemId) {
+            <span class="min-w-0 truncate bp-body-small text-text">{{ it.name }}</span>
+            <app-status-pill list="line_display_status" [code]="itemPill(it)" [strong]="itemNeedsYou(it)" />
+            <span class="bp-body-small text-right text-secondary">{{ it.price != null ? money(it.price) : '—' }}</span>
+            <span class="bp-meta text-right">{{ lastActivity(it.lastMessageAt) }}</span>
+          }
+        </div>
+      </div>
+    }
   `,
 })
 export class InboxLandingComponent {
@@ -216,6 +234,34 @@ export class InboxLandingComponent {
    *  agency name). Truncated to one line in the template. */
   protected itemsJoined(proj: SupplierInboxProject): string {
     return proj.items.map((i) => i.name).join(' · ');
+  }
+
+  // ── Supplier card hover: per-item mini table (name · status · cost · date) ──
+  protected readonly itemsBubble = signal<{ items: SupplierInboxLineItem[]; x: number; y: number } | null>(null);
+  protected showItems(ev: MouseEvent, proj: SupplierInboxProject): void {
+    if (!proj.items.length) return;
+    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = Math.max(8, Math.min(r.left, window.innerWidth - 468));
+    this.itemsBubble.set({ items: proj.items, x, y: r.bottom + 6 });
+  }
+  protected hideItems(): void {
+    this.itemsBubble.set(null);
+  }
+  /** Per-item line_display_status code + bold turn, from the supplier's side. */
+  protected itemPill(it: SupplierInboxLineItem): string {
+    return lineDisplayCode(this.itemStatusInput(it), 'seller');
+  }
+  protected itemNeedsYou(it: SupplierInboxLineItem): boolean {
+    return needsYou(this.itemStatusInput(it), 'seller');
+  }
+  private itemStatusInput(it: SupplierInboxLineItem) {
+    return {
+      status: it.status,
+      buyerAccepted: it.buyerAccepted,
+      sellerAccepted: it.sellerAccepted,
+      lastMessageBy: it.lastMessageBy,
+      lastEventIsMessage: it.lastEventIsMessage,
+    };
   }
 
   protected money(value: number): string {
