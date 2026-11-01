@@ -983,7 +983,7 @@ async function getSupplierInboxSummary(supplierOrgId) {
   for (const p of projs.rows) {
     const { threads } = await assembleThreads('supplier', supplierOrgId, p.id);
     const items = [];
-    let agencyName = null, waitingSupplier = 0, allAgreed = true, confirmedWork = 0;
+    let agencyName = null, waitingSupplier = 0, allAgreed = true, confirmedWork = 0, lastMessageAt = null;
     const seen = new Set();
     for (const t of threads) {
       if (!agencyName && t.agencyName) agencyName = t.agencyName;
@@ -995,6 +995,7 @@ async function getSupplierInboxSummary(supplierOrgId) {
         if (!agreed) allAgreed = false;
         if (agreed) confirmedWork += Number(it.priceCurrent ?? it.priceRef ?? 0);
         if (itemWaitingOn(it) === 'supplier') waitingSupplier++;
+        if (it.lastMessageAt && (!lastMessageAt || it.lastMessageAt > lastMessageAt)) lastMessageAt = it.lastMessageAt;
         items.push({
           itemId: it.itemId ?? it.id,
           name: it.name,
@@ -1009,7 +1010,7 @@ async function getSupplierInboxSummary(supplierOrgId) {
     }
     if (!items.length) continue;
     const status = waitingSupplier > 0 ? 'action_required' : (allAgreed ? 'all_confirmed' : 'awaiting_agency');
-    out.push({ projectId: p.id, projectName: p.name, agencyName, status, items, waitingSupplier, confirmedWork: Math.round(confirmedWork) });
+    out.push({ projectId: p.id, projectName: p.name, agencyName, status, items, waitingSupplier, lastMessageAt, confirmedWork: Math.round(confirmedWork) });
   }
   return out;
 }

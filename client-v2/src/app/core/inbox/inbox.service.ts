@@ -116,6 +116,9 @@ export interface SupplierInboxProject {
   /** Count of this project's line items awaiting the supplier's action — summed
    *  across projects for the supplier's "Messages (N)" nav badge. */
   waitingSupplier: number;
+  /** ISO timestamp of the latest message across the project's items — the card's
+   *  "last activity" stamp (today → time, this week → day, older → dd-MMM). */
+  lastMessageAt: string | null;
   /** Total £ of this supplier's agreed (booked / both-accepted) items. */
   confirmedWork: number;
 }

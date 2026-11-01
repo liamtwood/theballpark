@@ -7,6 +7,7 @@ import { InboxService, InboxSummaryRow, InboxSummarySupplier, InboxWaitingCounts
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { supplierSummaryCode } from '../../core/status/line-display-status';
+import { lastActivity } from './inbox-status';
 import { InboxLandingStateService } from './inbox-landing-state.service';
 
 /** pV2-INBOX (Messages landing) — /inbox. Persona-aware:
@@ -65,8 +66,15 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                       }
                     </div>
                     <span class="flex shrink-0 flex-col items-end gap-1">
-                      <span class="bp-card-title">{{ money(proj.confirmedWork) }}</span>
-                      <app-status-pill list="supplier_self_status" [code]="proj.status" />
+                      <!-- Cost left, status right of it (same font size, pill primary);
+                           last-activity stamp below (Liam 2026-10-31). -->
+                      <span class="flex items-center gap-2">
+                        <span class="text-xs text-muted">{{ money(proj.confirmedWork) }}</span>
+                        <app-status-pill list="supplier_self_status" [code]="proj.status" />
+                      </span>
+                      @if (proj.lastMessageAt) {
+                        <span class="bp-meta">{{ lastActivity(proj.lastMessageAt) }}</span>
+                      }
                     </span>
                   </div>
                 </a>
@@ -183,6 +191,9 @@ export class InboxLandingComponent {
     loader: ({ params: supplier }) =>
       supplier ? firstValueFrom(this.inbox.supplierInboxSummary()) : Promise.resolve([]),
   });
+
+  /** Card "last activity" stamp (today → time, this week → day, older → dd-MMM). */
+  protected readonly lastActivity = lastActivity;
 
   protected money(value: number): string {
     try {

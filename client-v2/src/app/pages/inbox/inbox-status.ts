@@ -120,3 +120,18 @@ export function dayLabel(iso: string | null, withYear = false): string {
   const mon = d.toLocaleDateString('en-GB', { month: 'short' });
   return withYear ? `${dd}-${mon}-${d.getFullYear()}` : `${dd}-${mon}`;
 }
+
+/** "Last activity" stamp for the Messages card (Liam 2026-10-31): today → time,
+ *  within the past week → weekday, older → dd-MMM. Unlike dayLabel, today shows
+ *  the actual time rather than the word "Today". */
+export function lastActivity(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
+  if (days <= 0) return d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' });
+  if (days < 7) return d.toLocaleDateString('en-GB', { weekday: 'long' });
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mon = d.toLocaleDateString('en-GB', { month: 'short' });
+  return `${dd}-${mon}`;
+}
