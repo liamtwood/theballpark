@@ -59,8 +59,10 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                         }
                       </a>
                       <span class="flex shrink-0 flex-col items-end gap-1">
+                        <!-- Total cost on the top line opposite the name, same style
+                             as the project name; status pill drops below (Liam 2026-10-31). -->
+                        <span class="bp-card-title">{{ money(proj.confirmedWork) }}</span>
                         <app-status-pill list="supplier_self_status" [code]="proj.status" />
-                        <span class="bp-caption">{{ money(proj.confirmedWork) }}</span>
                       </span>
                     </div>
 
@@ -115,8 +117,10 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
                       }
                     </div>
                     <span class="flex shrink-0 flex-col items-end gap-1" [title]="hoverText(row)">
+                      <!-- Total cost on the top line opposite the name, same style
+                           as the project name; status pill drops below (Liam 2026-10-31). -->
+                      <span class="bp-card-title">{{ money(row.confirmedWork) }}</span>
                       <app-status-pill list="supplier_summary_status" [code]="summaryCode(row)" />
-                      <span class="bp-caption">{{ money(row.confirmedWork) }}</span>
                     </span>
                   </div>
 
