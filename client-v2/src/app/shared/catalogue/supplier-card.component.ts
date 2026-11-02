@@ -13,18 +13,12 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
   selector: 'app-supplier-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule, TooltipModule],
-  host: {
-    class: 'bp-card bp-card--zoom',
-    // Fixed portrait aspect so every marketplace card is the same size (scales with
-    // the column width) — matches the item card's ~3:4 (Liam 2026-11-02). Inline
-    // style beats .bp-card's display:block.
-    style: 'aspect-ratio: 3 / 4; display: flex; flex-direction: column;',
-  },
+  host: { class: 'bp-card bp-card--zoom' },
   template: `
     <!-- Card BODY click → show this supplier's items in the marketplace (flip to
          Items + filter by supplier). The "Visit … Store" link is the way to the
          full shopfront (pV2-CARDS-01, Liam 2026-09-27). -->
-    <div class="bp-supplier-card__link flex min-h-0 flex-1 cursor-pointer flex-col" role="button" tabindex="0"
+    <div class="bp-supplier-card__link cursor-pointer" role="button" tabindex="0"
          [attr.aria-label]="'Show ' + supplier().name + ' items'"
          (click)="selected.emit(supplier().id)"
          (keydown.enter)="selected.emit(supplier().id)"
@@ -85,10 +79,7 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
   styles: `
     .bp-supplier-card__hero {
       position: relative;
-      /* Fill the card above the footer — the host's fixed 3:4 aspect sets the card
-         height, so the image flexes to whatever is left (Liam 2026-11-02). */
-      flex: 1 1 auto;
-      min-height: 0;
+      aspect-ratio: 4 / 3;
       overflow: hidden;
       display: flex;
       align-items: center;
