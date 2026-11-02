@@ -151,8 +151,9 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                             (blur)="store.saveSection('about')"></textarea>
 
                   <!-- Contact pills: website · instagram (empty for now) · email.
-                       Values come from Company Information below. -->
-                  <div class="mt-4 flex flex-wrap gap-2">
+                       Centred, each a fixed ~30ch width. Values come from Company
+                       Information below. -->
+                  <div class="bp-contact-row mt-4 flex flex-wrap justify-center gap-2">
                     @if (org.website) {
                       <a class="bp-contact-pill" [href]="webHref(org.website)" target="_blank" rel="noopener noreferrer">
                         <lucide-icon name="globe" [size]="15" /><span>{{ webText(org.website) }}</span>

@@ -1063,6 +1063,8 @@ body {
 .bp-contact-pill > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 a.bp-contact-pill:hover { border-color: var(--theme-accent); }
 .bp-contact-pill--empty { color: var(--color-text-muted); }
+/* Equal-width pills (~30 chars), content left-aligned. */
+.bp-contact-row .bp-contact-pill { width: 30ch; justify-content: flex-start; }
 .bp-org-banner__cover img {
   width: 100%;
   height: 100%;
