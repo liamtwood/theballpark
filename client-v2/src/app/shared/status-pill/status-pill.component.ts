@@ -16,7 +16,7 @@ import { CodelistValue, metaColor } from '../../core/codelists/codelist.types';
   host: { class: 'bp-pill-host' },
   template: `
     <span
-      class="bp-status-pill bp-pill"
+      class="bp-status-pill"
       [style.color]="fg()"
       [style.background]="bg()"
       [style.font-weight]="strong() ? '700' : null"

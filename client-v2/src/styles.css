@@ -561,9 +561,23 @@
 .bp-amount      { font-family: var(--bp-font); font-size: var(--text-md);  font-weight: 600; line-height: var(--leading-snug); }
 .bp-amount-hero { font-family: var(--bp-font); font-size: var(--text-3xl); font-weight: 600; line-height: var(--leading-snug); }
 
-/* Inline — pill sets type only; shape (padding/radius) and the per-state
-   colors stay with the consumer (semantic tokens). */
-.bp-status-pill { font-family: var(--bp-font); font-size: var(--text-xs); font-weight: 600; line-height: 1; }
+/* Codelist status pill — self-contained shape + type (Liam 2026-11-01: was
+   `.bp-status-pill .bp-pill`, but `.bp-pill` is also the generic quote-badge base
+   — a later duplicate of it overrode this pill's size/weight. The status pill now
+   owns its whole look so it no longer collides with the badge). Per-state colours
+   arrive inline from codelist meta. */
+.bp-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  font-family: var(--bp-font);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1;
+}
 .bp-meta        { font-family: var(--bp-font); font-size: var(--text-2xs); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-muted); }
 
 /* Column */
@@ -1680,23 +1694,14 @@ body {
   background: var(--color-fill);
 }
 
-/* Codelist status pill shape (pV2-CODELISTS-01) — TYPE comes from
-   .bp-status-pill (the §5 table class); this adds the pill chrome.
-   Colors arrive inline from codelist meta (data, not tokens). */
-.bp-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 10px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-
-/* The app-status-pill host wraps the .bp-pill span. Without a display it is a
-   default inline box whose line-height leading sits around the pill, so in a flex
+/* The app-status-pill host wraps the .bp-status-pill span. Without a display it is
+   a default inline box whose line-height leading sits around the pill, so in a flex
    row `align-items: center` centres that padded box, not the pill itself — the pill
    then reads a hair off against adjacent text. inline-flex makes the host hug the
-   pill so it centres cleanly (Liam 2026-10-31). */
+   pill so it centres cleanly (Liam 2026-10-31).
+   NB: the `.bp-pill` base that used to live here was a DUPLICATE of the generic
+   quote-badge `.bp-pill` further down; it has been removed and the status pill now
+   owns its whole shape via `.bp-status-pill` (Liam 2026-11-01). */
 .bp-pill-host { display: inline-flex; align-items: center; }
 
 /* ═══ Dialogs (DIALOGS.md — locked specs, pV2-DIALOGS-01) ════════════════
@@ -2115,12 +2120,18 @@ body {
    global layer). Consumed by project-estimate rows/badges + the
    custom-line dialog. ═══ */
 
-/* Per-item send-state badge. */
+/* Generic badge/chip — the single `.bp-pill` base (its `--muted/--warn/--success/
+   --danger/--info/--outline/--accent` variants follow). Used across whats-new,
+   feedback, quote lines, website-import, save-state, etc. `gap`/`white-space`
+   folded in from the removed duplicate so icon badges keep their spacing
+   (Liam 2026-11-01). The codelist status pill no longer uses this class. */
 .bp-pill {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   padding: 1px 9px;
   border-radius: var(--radius-pill);
+  white-space: nowrap;
   font-size: var(--text-2xs);
   font-weight: 500;
   line-height: 1.5;
