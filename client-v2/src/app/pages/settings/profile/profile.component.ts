@@ -121,11 +121,12 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                   />
                   </div>
                   <!-- Identity: name + approved check, then "Approved Ballpark
-                       supplier · <pin> <city>". -->
-                  <div class="mt-3">
+                       supplier · <pin> <city>". Indented (pl-4) to line up with
+                       the logo (left:16px inside the banner). -->
+                  <div class="mt-3 pl-4">
                     <div class="flex items-center gap-1.5">
-                      <h3 class="text-lg font-semibold text-text">{{ org.name }}</h3>
-                      <lucide-icon name="circle-check" [size]="18" class="bp-verified" />
+                      <h3 class="bp-card-title">{{ org.name }}</h3>
+                      <lucide-icon name="circle-check" [size]="20" class="bp-verified" />
                     </div>
                     <div class="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-secondary">
                       <span class="bp-body-small">Approved Ballpark {{ isSupplier() ? 'supplier' : 'agency' }}</span>
