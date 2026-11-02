@@ -117,7 +117,7 @@ export class AppShellComponent {
     // Messages (/inbox) item; ballpark has no inbox.
     const base = t === 'supplier' ? SUPPLIER_NAV : AGENCY_NAV;
     return n > 0
-      ? base.map((it) => (it.path === '/inbox' ? { ...it, label: `Messages (${n})` } : it))
+      ? base.map((it) => (it.path === '/inbox' ? { ...it, label: `Inbox (${n})` } : it))
       : base;
   });
 
@@ -147,7 +147,7 @@ const AGENCY_NAV: readonly NavItem[] = [
   { label: 'Home', path: '/home', icon: 'layout-grid', exact: true },
   { label: 'New project', path: '/projects/new', icon: 'circle-plus', exact: true },
   { label: 'Projects', path: '/projects', icon: 'folder-open', exact: true },
-  { label: 'Messages', path: '/inbox', icon: 'messages-square', exact: false },
+  { label: 'Inbox', path: '/inbox', icon: 'messages-square', exact: false },
   { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
   { label: 'Profile', path: '/settings/profile', icon: 'user-round', exact: false },
 ];
@@ -156,7 +156,7 @@ const AGENCY_NAV: readonly NavItem[] = [
 const SUPPLIER_NAV: readonly NavItem[] = [
   { label: 'Home', path: '/home', icon: 'layout-grid', exact: true },
   { label: 'Projects', path: '/projects-hub', icon: 'folder-open', exact: false },
-  { label: 'Messages', path: '/inbox', icon: 'messages-square', exact: false },
+  { label: 'Inbox', path: '/inbox', icon: 'messages-square', exact: false },
   { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
   { label: 'My Shop', path: '/store', icon: 'package', exact: false },
   { label: 'Profile', path: '/settings/profile', icon: 'user-round', exact: false },

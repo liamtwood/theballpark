@@ -29,9 +29,9 @@ import { lastActivity } from './inbox-status';
   template: `
     <app-page-hero
       align="block"
-      eyebrow="Messages"
+      eyebrow="Inbox"
       title="Your conversations"
-      [subtitle]="heroSubtitle()"
+      subtitle="Latest producer enquiries"
     />
 
     <div class="bp-page-body">
@@ -245,11 +245,6 @@ export class InboxLandingComponent {
    *  the shared ProjectCard), not the agency /summary rollup. */
   protected readonly isSupplier = computed(() => this.auth.user()?.activeOrgType === 'supplier');
 
-  protected readonly heroSubtitle = computed(() =>
-    this.isSupplier()
-      ? 'Projects an agency has asked you to quote.'
-      : "Projects you're negotiating with suppliers.",
-  );
 
   /** Supplier Messages landing — one card per engaged project with its line items
    *  (agent landing shape, items instead of suppliers). Suppliers only. */
