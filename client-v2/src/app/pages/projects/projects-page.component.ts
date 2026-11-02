@@ -34,7 +34,7 @@ import { ProjectCardComponent } from './project-card.component';
              its right edge lines up with the rightmost project card. -->
         @if (!isSupplier()) {
           <div class="mx-auto mb-4 flex w-full max-w-[var(--workspace-max)] justify-end">
-            <app-tab-band [tabs]="tabs()" [active]="bucket()" (activeChange)="bucket.set($event === 'completed' ? 'completed' : 'current')" />
+            <app-tab-band [tabs]="tabs()" [active]="bucket()" [compact]="true" (activeChange)="bucket.set($event === 'completed' ? 'completed' : 'current')" />
           </div>
         }
         @if (loader.isLoading()) {
