@@ -95,15 +95,18 @@ export function lineDisplayCode(
   if (s.lastEventIsMessage && s.lastMessageBy != null) {
     return s.lastMessageBy === viewer ? 'replied' : 'reply_needed';
   }
-  // 3) Otherwise the last event was an ACTION → its deal code.
-  const code = acceptanceCode(s, viewer);
-  if (code) return code;
-  // Role-based (Liam 2026-10-29): the SUPPLIER pricing it → Quoted (inbox
-  // adjusted_by_supplier, budget 'quoted'); the AGENCY countering → New cost.
+  // 3) A PROPOSED NEW COST wins over the one-sided accept the data model sets
+  //    ("proposing a new cost IS accepting it" — deriveLineState). Without this,
+  //    a supplier's new cost rendered as "you/they accepted" (Liam 2026-11-02).
+  //    SUPPLIER pricing it → Quoted (adjusted_by_supplier / budget 'quoted'); the
+  //    AGENCY countering → New cost.
   if (st === 'adjusted_by_supplier' || st === 'quoted') return 'quoted';
   if (st === 'adjusted_by_agent') return 'new_cost';
-  // Pre-pricing (brief_sent / holding / none): "Quote requested" until the supplier
-  // engages, then "Agreeing cost" (Liam 2026-11-02).
+  // 4) A genuine one-sided ACCEPT (status 'accepted') → you/they accepted.
+  const code = acceptanceCode(s, viewer);
+  if (code) return code;
+  // 5) Pre-pricing (brief_sent / holding / none): "Quote requested" until the
+  //    supplier engages, then "Agreeing cost" (Liam 2026-11-02).
   return s.supplierEngaged ? 'to_agree' : 'quote_requested';
 }
 
