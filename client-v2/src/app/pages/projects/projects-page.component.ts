@@ -9,7 +9,7 @@ import { ProjectService } from '../../core/projects/project.service';
 import { InboxService } from '../../core/inbox/inbox.service';
 import { COMPLETED_STATUSES, ProjectCard } from '../../core/projects/project.types';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
-import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
+import { TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { ProjectCardComponent } from './project-card.component';
 
 /** pV2-PROJECTS-01 / pV2-INBOX-01 — /projects. For an agency this is the
@@ -22,25 +22,36 @@ import { ProjectCardComponent } from './project-card.component';
 @Component({
   selector: 'app-projects-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PageHeroComponent, TabBandComponent, ProjectCardComponent, RouterLink, LucideAngularModule],
+  imports: [PageHeroComponent, ProjectCardComponent, RouterLink, LucideAngularModule],
   // Flowing page (standard): whole page scrolls at the window edge under the fixed
   // nav; the hero scrolls with the content (Liam 2026-10-30).
   host: { class: 'block' },
   template: `
-    <app-page-hero align="block" [eyebrow]="heroEyebrow()" [title]="heroTitle()" [subtitle]="heroSubtitle()" />
+    <app-page-hero align="block" [eyebrow]="heroEyebrow()" [title]="heroTitle()" [subtitle]="heroSubtitle()">
+      <!-- New project CTA top-right in the hero (Liam 2026-11-02). -->
+      @if (!isSupplier()) {
+        <a hero-actions routerLink="/projects/new" class="bp-btn-grad">
+          <lucide-icon name="plus" [size]="15" /> New project
+        </a>
+      }
+    </app-page-hero>
 
     <div class="bp-page-body">
       <div class="min-h-0 overflow-y-auto md:flex-1">
-        <!-- Current/Completed filter lives in the work column, right-aligned so
-             its right edge lines up with the rightmost project card. -->
         @if (!isSupplier()) {
-          <!-- New project CTA (same style as the My Shop "Add product" button) on
-               the left; Current/Completed tab-band right-aligned (Liam 2026-11-02). -->
-          <div class="mx-auto mb-4 flex w-full max-w-[var(--workspace-max)] items-center justify-between gap-3">
-            <a routerLink="/projects/new" class="bp-btn-grad">
-              <lucide-icon name="plus" [size]="15" /> New project
-            </a>
-            <app-tab-band [tabs]="tabs()" [active]="bucket()" [compact]="true" (activeChange)="bucket.set($event === 'completed' ? 'completed' : 'current')" />
+          <!-- Current/Completed — centred, in the project-nav pill style (Liam 2026-11-02). -->
+          <div class="mb-4 flex justify-center">
+            <div class="bp-projnav" role="tablist" aria-label="Project status">
+              @for (t of tabs(); track t.key) {
+                <button type="button" role="tab" class="bp-projnav-opt"
+                        [class.bp-projnav-opt--active]="bucket() === t.key"
+                        [attr.aria-selected]="bucket() === t.key"
+                        (click)="bucket.set(t.key === 'completed' ? 'completed' : 'current')">
+                  @if (bucket() === t.key) { <lucide-icon name="check" [size]="15" /> }
+                  <span>{{ t.label }}</span>
+                </button>
+              }
+            </div>
           </div>
         }
         @if (loader.isLoading()) {
