@@ -43,6 +43,7 @@ import {
   Phone,
   Mail,
   MapPin,
+  Instagram,
   LayoutGrid,
   List,
   Search,
@@ -192,7 +193,7 @@ export const appConfig: ApplicationConfig = {
         // project Marketplace controls cluster (type / filter / view)
         ArrowLeftRight, SlidersHorizontal, FunnelPlus, FolderTree,
         // pV2-06d — favourites + storefront contact
-        Heart, Globe, Phone, Mail, MapPin,
+        Heart, Globe, Phone, Mail, MapPin, Instagram,
         // pV2-06-subcats — curation expanders
         ChevronDown, ChevronRight,
         // pV2-CODELISTS-01 — admin Codelists tile + status-pill meta icons

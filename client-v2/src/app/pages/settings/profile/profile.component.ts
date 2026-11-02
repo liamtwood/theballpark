@@ -125,7 +125,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                        top margin into the banner's bottom reserve; left padding clears
                        the 88px logo at left:16px) so it sits just under the banner to
                        the right of the logo (Liam 2026-11-02). -->
-                  <div class="-mt-12 pl-28">
+                  <div class="-mt-10 pl-32">
                     <div class="flex items-center gap-1.5">
                       <h3 class="bp-card-title">{{ org.name }}</h3>
                       <lucide-icon name="circle-check" [size]="20" class="bp-verified" />
@@ -149,6 +149,32 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                             [ngModel]="store.form().description"
                             (ngModelChange)="store.patch({ description: $event })"
                             (blur)="store.saveSection('about')"></textarea>
+
+                  <!-- Contact pills: website · instagram (empty for now) · email.
+                       Values come from Company Information below. -->
+                  <div class="mt-4 flex flex-wrap gap-2">
+                    @if (org.website) {
+                      <a class="bp-contact-pill" [href]="webHref(org.website)" target="_blank" rel="noopener noreferrer">
+                        <lucide-icon name="globe" [size]="15" /><span>{{ webText(org.website) }}</span>
+                      </a>
+                    } @else {
+                      <span class="bp-contact-pill bp-contact-pill--empty">
+                        <lucide-icon name="globe" [size]="15" /><span>Add website</span>
+                      </span>
+                    }
+                    <span class="bp-contact-pill bp-contact-pill--empty">
+                      <lucide-icon name="instagram" [size]="15" /><span>Instagram</span>
+                    </span>
+                    @if (org.email) {
+                      <a class="bp-contact-pill" [href]="'mailto:' + org.email">
+                        <lucide-icon name="mail" [size]="15" /><span>{{ org.email }}</span>
+                      </a>
+                    } @else {
+                      <span class="bp-contact-pill bp-contact-pill--empty">
+                        <lucide-icon name="mail" [size]="15" /><span>Add email</span>
+                      </span>
+                    }
+                  </div>
                 </div>
 
                 <app-drawer [(open)]="store.coverDrawer" title="Cover image">
@@ -326,6 +352,20 @@ export class ProfileComponent {
   protected readonly countrySelectOptions = computed<SelectOption[]>(
     () => [{ value: '', label: '—' }, ...this.store.countryOptions()],
   );
+
+  /** Website pill: safe absolute href (prefix https:// when missing). */
+  protected webHref(u: string): string {
+    const r = (u ?? '').trim();
+    return /^https?:\/\//i.test(r) ? r : `https://${r}`;
+  }
+  /** Website pill label — host without protocol / www / trailing slash. */
+  protected webText(u: string): string {
+    try {
+      return new URL(this.webHref(u)).host.replace(/^www\./, '');
+    } catch {
+      return (u ?? '').replace(/^https?:\/\//i, '').replace(/\/$/, '');
+    }
+  }
 
   // ── Profile / Shopfront tabs (suppliers only). ────────────────────────────
   protected readonly isSupplier = computed(() => this.auth.user()?.activeOrgType === 'supplier');
