@@ -218,6 +218,24 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                 </div>
               }
 
+              <!-- Past projects gallery — directly under Branding (Liam 2026-11-02);
+                   org-media's portfolio mode renders its own card. -->
+              @if (store.profile.value(); as org) {
+                <div #mediaSection>
+                  <app-org-media
+                    mode="edit"
+                    show="portfolio"
+                    [canEdit]="store.canEdit()"
+                    [name]="org.name"
+                    [coverUrl]="org.coverImageUrl"
+                    [logoUrl]="org.logoUrl"
+                    [images]="org.images"
+                    (imagesChange)="store.saveImages($event)"
+                    (primarySet)="store.setCover($event)"
+                  />
+                </div>
+              }
+
               <div #companySection class="ed-card p-6">
                 <div class="flex items-center justify-between">
                   <h2 class="bp-card-title">Company Information</h2>
@@ -322,29 +340,12 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
               </div>
             </div>
 
-            <!-- ── Bottom: Availability + Gallery ─────────────────────────── -->
+            <!-- ── Bottom: Availability ──────────────────────────────────── -->
             <div class="flex flex-col gap-5">
               <div class="ed-card p-6">
                 <h2 class="bp-card-title">Availability</h2>
                 <p class="bp-caption mt-2">Coming soon.</p>
               </div>
-
-              @if (store.profile.value(); as org) {
-                <!-- Gallery — org-media's portfolio mode renders its own card. -->
-                <div #mediaSection>
-                  <app-org-media
-                    mode="edit"
-                    show="portfolio"
-                    [canEdit]="store.canEdit()"
-                    [name]="org.name"
-                    [coverUrl]="org.coverImageUrl"
-                    [logoUrl]="org.logoUrl"
-                    [images]="org.images"
-                    (imagesChange)="store.saveImages($event)"
-                    (primarySet)="store.setCover($event)"
-                  />
-                </div>
-              }
             </div>
           </div>
         </div>

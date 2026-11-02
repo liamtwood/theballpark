@@ -74,7 +74,7 @@ import { GalleryImage } from '../../core/media/media.types';
         <!-- Portfolio — photos as cards using the storefront subcat-card chrome
              (.bp-card--zoom), no surrounding container (pV2-MEDIA-01e QC). -->
         <section>
-          <h3 class="bp-edit-section-title">Past projects</h3>
+          <h3 class="bp-card-title">Past projects</h3>
           <div class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             @for (img of images(); track img.url) {
               <div>
@@ -98,7 +98,7 @@ import { GalleryImage } from '../../core/media/media.types';
         </section>
       } @else {
         <div class="rounded-[var(--radius-lg)] border border-hairline bg-surface p-5 shadow-[var(--shadow-md)]">
-          <h3 class="bp-edit-section-title">Past projects</h3>
+          <h3 class="bp-card-title">Past projects</h3>
           <p class="bp-caption mt-1">Four hero images of work you're proud of. These are the same images producers see in quick view.</p>
           <div class="mt-3">
             <app-image-gallery
