@@ -45,49 +45,60 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
       (cdkDropListDropped)="onDrop($event)"
     >
       @for (img of slots(); track img.url; let i = $index) {
-        <div class="tile" [class.tile--draggable]="editable()" [style.aspect-ratio]="tileAspect()" cdkDrag [cdkDragDisabled]="!editable()">
-          <img
-            class="thumb"
-            [src]="img.url"
-            alt=""
-            [style.object-position]="img.focalX + '% ' + img.focalY + '%'"
-          />
-          @if (isPrimary(img)) {
-            <span class="badge">Cover</span>
-          }
-          @if (editable()) {
-          <div class="actions">
-            @if (showSetCover()) {
-              <button
-                type="button"
-                class="act"
-                [disabled]="isPrimary(img)"
-                (click)="makePrimary(img)"
-                aria-label="Set as cover"
-                title="Set as cover"
-              >
-                <lucide-icon name="star" [size]="15" />
-              </button>
+        <div class="cell" [class.cell--draggable]="editable()" cdkDrag [cdkDragDisabled]="!editable()">
+          <div class="tile" [style.aspect-ratio]="tileAspect()">
+            <img
+              class="thumb"
+              [src]="img.url"
+              alt=""
+              [style.object-position]="img.focalX + '% ' + img.focalY + '%'"
+            />
+            @if (isPrimary(img)) {
+              <span class="badge">Cover</span>
             }
-            <button type="button" class="act" (click)="remove(i)" aria-label="Remove image" title="Remove">
-              <lucide-icon name="trash-2" [size]="15" />
-            </button>
+            <!-- Overlay actions: set-cover always; remove lives here only when the
+                 gallery is unlabelled (labelled galleries move it below the image). -->
+            @if (editable() && (showSetCover() || !labels())) {
+            <div class="actions">
+              @if (showSetCover()) {
+                <button
+                  type="button"
+                  class="act"
+                  [disabled]="isPrimary(img)"
+                  (click)="makePrimary(img)"
+                  aria-label="Set as cover"
+                  title="Set as cover"
+                >
+                  <lucide-icon name="star" [size]="15" />
+                </button>
+              }
+              @if (!labels()) {
+                <button type="button" class="act" (click)="remove(i)" aria-label="Remove image" title="Remove">
+                  <lucide-icon name="trash-2" [size]="15" />
+                </button>
+              }
+            </div>
+            }
           </div>
-          }
-          <!-- Optional per-photo caption (opt-in via [labels]). Commits on change
-               (blur) so it rides the consumer's save-on-blur, not every keystroke.
+          <!-- Labelled galleries (opt-in via [labels]): description below the image
+               + its own remove. Caption commits on change (rides save-on-blur);
                stopPropagation keeps typing/clicks from starting a tile drag. -->
           @if (labels() && editable()) {
-            <input
-              class="cap"
-              type="text"
-              maxlength="120"
-              [value]="img.label ?? ''"
-              placeholder="Add a label"
-              (pointerdown)="$event.stopPropagation()"
-              (click)="$event.stopPropagation()"
-              (change)="setLabel(i, $any($event.target).value)"
-            />
+            <div class="cap-row">
+              <input
+                class="cap"
+                type="text"
+                maxlength="120"
+                [value]="img.label ?? ''"
+                placeholder="Add a description"
+                (pointerdown)="$event.stopPropagation()"
+                (click)="$event.stopPropagation()"
+                (change)="setLabel(i, $any($event.target).value)"
+              />
+              <button type="button" class="cap-del" (click)="remove(i)" aria-label="Remove image" title="Remove">
+                <lucide-icon name="trash-2" [size]="16" />
+              </button>
+            </div>
           }
         </div>
       }
@@ -131,9 +142,11 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
       border: 1px solid var(--color-border-hairline);
       background: var(--color-surface);
     }
-    /* Whole tile is the drag source (grab the image — no separate handle). */
-    .tile--draggable { cursor: grab; }
-    .tile--draggable:active { cursor: grabbing; }
+    /* The cell wraps the image tile (+ optional caption row below). It is the
+       drag source and grid child; the image tile keeps its own fixed aspect. */
+    .cell { display: flex; flex-direction: column; }
+    .cell--draggable { cursor: grab; }
+    .cell--draggable:active { cursor: grabbing; }
     .thumb {
       width: 100%;
       height: 100%;
@@ -194,16 +207,20 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
       background: var(--theme-accent);
       color: var(--theme-accent-contrast);
     }
-    /* Per-photo caption input, pinned over the bottom of the tile. */
+    /* Per-photo description row BELOW the image: input + its own remove. */
+    .cap-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+    }
     .cap {
-      position: absolute;
-      left: 6px;
-      right: 6px;
-      bottom: 6px;
-      padding: 4px 8px;
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 5px 8px;
       border: 1px solid var(--color-border-hairline);
       border-radius: 8px;
-      background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+      background: var(--color-surface);
       color: var(--color-text);
       font-family: var(--font-body);
       font-size: var(--text-xs);
@@ -211,9 +228,24 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
     }
     .cap::placeholder { color: var(--color-text-muted); }
     .cap:focus { outline: 2px solid var(--theme-accent); outline-offset: 0; }
-    /* In labelled galleries the caption owns the bottom, so the Cover badge
-       moves to the top-left (projects/item galleries are unaffected). */
-    .grid--labelled .badge { top: 6px; bottom: auto; }
+    .cap-del {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border-hairline);
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      transition: color 0.15s ease, border-color 0.15s ease;
+    }
+    .cap-del:hover { color: var(--color-danger); border-color: var(--color-danger); }
+    /* Labelled galleries have taller cells (image + caption); don't stretch the
+       shorter empty "+" slots to match. */
+    .grid--labelled { align-items: start; }
     /* CDK drag chrome */
     .cdk-drag-preview {
       border-radius: 12px;
@@ -223,7 +255,7 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
       opacity: 0.4;
     }
     .cdk-drag-animating,
-    .grid.cdk-drop-list-dragging .tile:not(.cdk-drag-placeholder) {
+    .grid.cdk-drop-list-dragging .cell:not(.cdk-drag-placeholder) {
       transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
     }
   `,
