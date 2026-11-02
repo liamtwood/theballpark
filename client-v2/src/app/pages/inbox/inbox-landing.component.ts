@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
@@ -8,7 +8,6 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { supplierSummaryCode, lineDisplayCode, needsYou } from '../../core/status/line-display-status';
 import { lastActivity } from './inbox-status';
-import { InboxLandingStateService } from './inbox-landing-state.service';
 
 /** pV2-INBOX (Messages landing) — /inbox. Persona-aware:
  *  - AGENCY: one card per active project it's negotiating, each listing its
@@ -101,59 +100,43 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
         } @else if ((rows.value() ?? []).length === 0) {
           <p class="bp-body-small text-secondary">No active conversations yet. Send a project out for quotes to start one.</p>
         } @else {
-          <div class="mx-auto grid w-full max-w-[var(--workspace-max)] grid-cols-1 items-start gap-6 sm:grid-cols-2">
+          <!-- Full-width rows — the SAME card as the supplier side (Liam 2026-11-02):
+               date circle + action indicator · project name over 'client · suppliers'
+               · cost + rollup status. Hover the sub-line for the per-supplier mini table. -->
+          <div class="mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-3">
             @for (row of rows.value(); track row.id) {
-              <a [routerLink]="['/projects', row.id]" [queryParams]="{ tab: 'inbox', full: 1 }" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="row.name">
-                <div class="flex flex-col gap-3 p-5">
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                      <div class="bp-card-title truncate">{{ row.name }}</div>
-                      @if (row.clientName) {
-                        <div class="bp-meta truncate">{{ row.clientName }}</div>
-                      }
-                    </div>
-                    <span class="flex shrink-0 flex-col items-end gap-1" [title]="hoverText(row)">
-                      <!-- Total cost on the top line opposite the name, same style
-                           as the project name; status pill drops below (Liam 2026-10-31). -->
-                      <span class="bp-card-title">{{ money(row.confirmedWork) }}</span>
-                      <app-status-pill list="supplier_summary_status" [code]="summaryCode(row)" />
-                    </span>
+              <a [routerLink]="['/projects', row.id]" [queryParams]="{ tab: 'inbox' }" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="row.name">
+                <div class="flex items-center gap-3 p-5">
+                  <!-- Unactioned (your move) → dark-pink circle; else hairline + tick. -->
+                  <div class="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-fill px-1 text-center"
+                       [style.background]="row.actionRequired ? 'var(--theme-accent)' : null"
+                       [style.border-color]="row.actionRequired ? 'transparent' : null">
+                    <span class="bp-meta leading-tight" [style.color]="row.actionRequired ? 'var(--bp-text-on-gradient)' : null">{{ lastActivity(agentLastMessage(row)) }}</span>
+                    @if (!row.actionRequired) {
+                      <span class="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-hairline bg-surface text-[var(--color-state-emerald)]">
+                        <lucide-icon name="check" [size]="12" [strokeWidth]="3" />
+                      </span>
+                    }
                   </div>
-
-                  <!-- Suppliers on the project — collapsed behind a toggle. -->
-                  @if (row.suppliers.length) {
-                    <div>
-                      <button type="button" class="inline-flex items-center gap-1 bp-body-small text-secondary transition-colors hover:text-text"
-                              (click)="toggle(row.id, $event)">
-                        <lucide-icon [name]="isOpen(row.id) ? 'chevron-down' : 'chevron-right'" [size]="15" />
-                        {{ isOpen(row.id) ? 'Hide suppliers' : 'Show suppliers' }} ({{ row.suppliers.length }})
-                      </button>
-                      @if (isOpen(row.id)) {
-                        <div class="mt-1.5 flex flex-col gap-1.5 pl-5">
-                          @for (s of row.suppliers; track s.name) {
-                            <div class="flex items-center justify-between gap-3">
-                              <span class="min-w-0 truncate bp-body-small text-secondary">{{ s.name }}</span>
-                              <span class="flex shrink-0 items-center gap-1.5">
-                                @if (s.actionRequired && s.lastMessage) {
-                                  <button type="button" class="text-[var(--theme-accent)] transition-opacity hover:opacity-70"
-                                          aria-label="Open the item that needs your action"
-                                          (click)="openItem($event, row.id, s)"
-                                          (mouseenter)="showBubble($event, s)" (mouseleave)="hideBubble()">
-                                    <lucide-icon name="mail" [size]="15" />
-                                  </button>
-                                }
-                                <span [title]="hoverText(s)">
-                                  <app-status-pill list="supplier_summary_status" [code]="summaryCode(s)" />
-                                </span>
-                              </span>
-                            </div>
-                          }
-                        </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="bp-card-title truncate">{{ row.name }}</div>
+                    <!-- Client (semi-bold) then supplier names (·-joined); hover → mini table. -->
+                    <div class="truncate text-sm text-secondary"
+                         (mouseenter)="showSuppliers($event, row)" (mouseleave)="hideSuppliers()">
+                      @if (row.clientName) {
+                        <span class="font-semibold text-text">{{ row.clientName }}</span>
+                      }
+                      @if (row.suppliers.length) {
+                        <span>{{ (row.clientName ? ' · ' : '') + supplierNamesJoined(row) }}</span>
+                      } @else {
+                        <span>No suppliers yet</span>
                       }
                     </div>
-                  } @else {
-                    <span class="bp-caption">No suppliers yet</span>
-                  }
+                  </div>
+                  <span class="flex shrink-0 items-center gap-2" [title]="hoverText(row)">
+                    <span class="text-base font-semibold leading-none text-text">{{ money(row.confirmedWork) }}</span>
+                    <app-status-pill list="supplier_summary_status" [code]="summaryCode(row)" />
+                  </span>
                 </div>
               </a>
             }
@@ -163,20 +146,23 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
       </div>
     </div>
 
-    <!-- Floating message bubble (position: fixed so the card's overflow can't
-         clip it), shown while hovering a supplier's envelope: name · message ·
-         time. -->
-    @if (bubble(); as b) {
-      <div class="fixed z-50 w-[320px] max-w-[90vw] rounded-2xl border border-hairline bg-fill px-3 py-3 shadow-lg"
-           [style.left.px]="b.x" [style.top.px]="b.y">
-        <div class="bp-caption mb-1.5 px-1 text-secondary">{{ b.name }}</div>
-        <!-- The message in an inbox-style bubble (white on the tinted panel). -->
-        <div class="bp-bubble" style="max-width: 100%">
-          <span class="bp-bubble__body">{{ b.text }}</span>
+    <!-- Agent card hover: the per-supplier mini table (name · status · items · date). -->
+    @if (suppliersBubble(); as sb) {
+      <div class="fixed z-50 w-[460px] max-w-[92vw] rounded-2xl border border-hairline bg-surface p-3 shadow-lg"
+           [style.left.px]="sb.x" [style.top.px]="sb.y">
+        <div class="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-x-4 gap-y-2">
+          @for (s of sb.suppliers; track s.name) {
+            <span class="min-w-0 truncate bp-body-small text-text">{{ s.name }}</span>
+            <span [title]="hoverText(s)"><app-status-pill list="supplier_summary_status" [code]="summaryCode(s)" /></span>
+            <span class="bp-body-small text-right text-secondary">{{ s.itemCount }} item{{ s.itemCount === 1 ? '' : 's' }}</span>
+            <span class="bp-meta text-right">{{ lastActivity(s.lastMessageAt) }}</span>
+            <span class="w-4 text-right text-[var(--color-state-emerald)]">
+              @if (!s.actionRequired) {
+                <lucide-icon name="check" [size]="13" [strokeWidth]="3" />
+              }
+            </span>
+          }
         </div>
-        @if (b.time) {
-          <div class="bp-caption mt-1.5 px-1 text-muted">{{ b.time }}</div>
-        }
       </div>
     }
 
@@ -207,7 +193,6 @@ import { InboxLandingStateService } from './inbox-landing-state.service';
 })
 export class InboxLandingComponent {
   private readonly inbox = inject(InboxService);
-  private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
 
   /** Suppliers get their quote-request conversations (the gated supplier feed +
@@ -280,18 +265,6 @@ export class InboxLandingComponent {
     }
   }
 
-  /** Envelope click → the project's Inbox tab, opening the picked conversation in
-   *  full-thread mode (?full=1) so you land straight in the message, no rail
-   *  (Liam 2026-10-29). "All messages" there goes back here. */
-  protected openItem(ev: Event, projectId: string, s: InboxSummarySupplier): void {
-    ev.preventDefault();
-    ev.stopPropagation();
-    this.hideBubble();
-    void this.router.navigate(['/projects', projectId], {
-      queryParams: { tab: 'inbox', item: s.actionItemId, full: 1 },
-    });
-  }
-
   /** Agency Messages rollup — only hits the network for the agency (the
    *  /summary endpoint returns [] to suppliers anyway; skip the call). */
   protected readonly rows = resource<InboxSummaryRow[], boolean>({
@@ -300,21 +273,29 @@ export class InboxLandingComponent {
       agency ? firstValueFrom(this.inbox.summary()) : Promise.resolve([]),
   });
 
-  /** Which project cards have their supplier list expanded — held in a root
-   *  service so it survives opening a conversation and coming back (Liam 2026-10-30). */
-  private readonly expanded = inject(InboxLandingStateService).expanded;
-  protected isOpen(id: string): boolean {
-    return this.expanded().has(id);
+  // ── Agent card: date circle + per-supplier hover mini table ──
+  /** The project's latest activity = the newest message across its suppliers —
+   *  the date circle's stamp. */
+  protected agentLastMessage(row: InboxSummaryRow): string | null {
+    let max: string | null = null;
+    for (const s of row.suppliers) {
+      if (s.lastMessageAt && (!max || s.lastMessageAt > max)) max = s.lastMessageAt;
+    }
+    return max;
   }
-  /** Toggle a card's supplier list without following the card's link. */
-  protected toggle(id: string, ev: Event): void {
-    ev.preventDefault();
-    ev.stopPropagation();
-    this.expanded.update((set) => {
-      const next = new Set(set);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  /** Supplier names for the sub-line (after the client name), joined by " · ". */
+  protected supplierNamesJoined(row: InboxSummaryRow): string {
+    return row.suppliers.map((s) => s.name).join(' · ');
+  }
+  protected readonly suppliersBubble = signal<{ suppliers: InboxSummarySupplier[]; x: number; y: number } | null>(null);
+  protected showSuppliers(ev: MouseEvent, row: InboxSummaryRow): void {
+    if (!row.suppliers.length) return;
+    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = Math.max(8, Math.min(r.left, window.innerWidth - 468));
+    this.suppliersBubble.set({ suppliers: row.suppliers, x, y: r.bottom + 6 });
+  }
+  protected hideSuppliers(): void {
+    this.suppliersBubble.set(null);
   }
 
   /** The per-supplier rollup code (Action Required wins; else awaiting; else all
@@ -330,28 +311,4 @@ export class InboxLandingComponent {
     return `${items} · ${c.waitingAgent} waiting on you, ${c.waitingSupplier} waiting on the supplier`;
   }
 
-  /** The floating message bubble shown when hovering a supplier's envelope:
-   *  counterparty name + the last message + its time. */
-  protected readonly bubble = signal<{ name: string; text: string; time: string; x: number; y: number } | null>(null);
-  protected showBubble(ev: MouseEvent, s: InboxSummarySupplier): void {
-    if (!s.lastMessage) return;
-    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
-    // Anchor below the envelope; keep it on-screen (bubble ~ 320px wide).
-    const x = Math.max(8, Math.min(r.left, window.innerWidth - 332));
-    this.bubble.set({ name: s.name, text: s.lastMessage, time: this.fmtTime(s.lastMessageAt), x, y: r.bottom + 8 });
-  }
-  protected hideBubble(): void {
-    this.bubble.set(null);
-  }
-
-  /** Short time (today → "10:54 AM"; older → "5 Sep, 10:54 AM"). */
-  private fmtTime(iso: string | null): string {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
-    const time = d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' });
-    const today = new Date();
-    const sameDay = d.toDateString() === today.toDateString();
-    return sameDay ? time : `${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}, ${time}`;
-  }
 }
