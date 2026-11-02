@@ -71,7 +71,16 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
             <lucide-icon name="arrow-left" [size]="16" /> All messages
           </button>
         } @else {
-          <h2 class="bp-card-title mx-auto mb-3 w-full max-w-[var(--workspace-max)] px-1">Project inbox</h2>
+          <div class="mx-auto mb-3 flex w-full max-w-[var(--workspace-max)] items-center gap-3 px-1">
+            <!-- Back to the Messages landing (standalone route only — the hero that
+                 used to carry it was removed, Liam 2026-11-02). -->
+            @if (!embedded()) {
+              <button type="button" class="flex shrink-0 items-center gap-1.5 bp-body-small text-secondary transition-colors hover:text-accent" (click)="backToMessages()">
+                <lucide-icon name="arrow-left" [size]="16" /> All messages
+              </button>
+            }
+            <h2 class="bp-card-title">Project inbox</h2>
+          </div>
         }
         <!-- Standard workspace column: inbox rail | conversation | assistant
              (far-right). Centred to --workspace-max like every other page.
@@ -983,6 +992,11 @@ export class InboxProjectComponent {
    *  normal inbox if you opened Full thread from the tab). */
   protected exitFullThread(): void {
     this.location.back();
+  }
+  /** Project-view back → the Messages landing (history-aware, else route there). */
+  protected backToMessages(): void {
+    if (history.length > 1) this.location.back();
+    else void this.router.navigateByUrl('/inbox');
   }
 
   // ── Per-item actions (Accept / Propose new price) ──────────────────────
