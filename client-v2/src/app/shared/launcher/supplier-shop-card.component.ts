@@ -13,9 +13,7 @@ import { LucideAngularModule } from 'lucide-angular';
   template: `
     <div class="flex flex-col gap-3 p-6">
       <div>
-        <h2 class="bp-card-title flex items-center gap-2">
-          <lucide-icon name="shopping-bag" [size]="16" [strokeWidth]="1.75" />Your shop
-        </h2>
+        <h2 class="bp-card-title">Your shop</h2>
         <p class="mt-0.5 bp-body-small font-semibold text-text">Keep your storefront current</p>
       </div>
       <p class="bp-meta">
