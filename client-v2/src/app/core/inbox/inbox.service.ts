@@ -148,6 +148,8 @@ export interface InboxSummarySupplier extends InboxWaitingCounts {
   name: string;
   /** First line needing the agent — the inbox deep-link selects it. */
   actionItemId: string | null;
+  /** This supplier's agreed (booked / both-accepted) total — the "by supplier" card's cost. */
+  confirmedWork: number;
   lastMessage: string | null;
   lastMessageAt: string | null;
 }

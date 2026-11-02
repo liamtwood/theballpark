@@ -100,45 +100,89 @@ import { lastActivity } from './inbox-status';
         } @else if ((rows.value() ?? []).length === 0) {
           <p class="bp-body-small text-secondary">No active conversations yet. Send a project out for quotes to start one.</p>
         } @else {
+          <!-- Group-by filter (agent): one row per project (default) or per supplier. -->
+          <div class="mx-auto mb-4 flex w-full max-w-[var(--workspace-max)] items-center justify-end gap-2">
+            <span class="bp-meta">Group by</span>
+            <div class="inline-flex rounded-full border border-hairline bg-fill p-0.5 text-sm">
+              <button type="button" class="rounded-full px-3 py-1 transition-colors"
+                      [class.bg-surface]="agentView() === 'project'" [class.font-semibold]="agentView() === 'project'"
+                      [class.text-text]="agentView() === 'project'" [class.text-secondary]="agentView() !== 'project'"
+                      (click)="agentView.set('project')">Project</button>
+              <button type="button" class="rounded-full px-3 py-1 transition-colors"
+                      [class.bg-surface]="agentView() === 'supplier'" [class.font-semibold]="agentView() === 'supplier'"
+                      [class.text-text]="agentView() === 'supplier'" [class.text-secondary]="agentView() !== 'supplier'"
+                      (click)="agentView.set('supplier')">Supplier</button>
+            </div>
+          </div>
+
           <!-- Full-width rows — the SAME card as the supplier side (Liam 2026-11-02):
-               date circle + action indicator · project name over 'client · suppliers'
-               · cost + rollup status. Hover the sub-line for the per-supplier mini table. -->
+               date circle + action indicator · name over sub-line · cost + rollup status. -->
           <div class="mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-3">
-            @for (row of rows.value(); track row.id) {
-              <a [routerLink]="['/projects', row.id]" [queryParams]="{ tab: 'inbox' }" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="row.name">
-                <div class="flex items-center gap-3 p-5">
-                  <!-- Unactioned (your move) → dark-pink circle; else hairline + tick. -->
-                  <div class="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-fill px-1 text-center"
-                       [style.background]="row.actionRequired ? 'var(--theme-accent)' : null"
-                       [style.border-color]="row.actionRequired ? 'transparent' : null">
-                    <span class="bp-meta leading-tight" [style.color]="row.actionRequired ? 'var(--bp-text-on-gradient)' : null">{{ lastActivity(agentLastMessage(row)) }}</span>
-                    @if (!row.actionRequired) {
-                      <span class="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-hairline bg-surface text-[var(--color-state-emerald)]">
-                        <lucide-icon name="check" [size]="12" [strokeWidth]="3" />
-                      </span>
-                    }
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <div class="bp-card-title truncate">{{ row.name }}</div>
-                    <!-- Client (semi-bold) then supplier names (·-joined); hover → mini table. -->
-                    <div class="truncate text-sm text-secondary"
-                         (mouseenter)="showSuppliers($event, row)" (mouseleave)="hideSuppliers()">
-                      @if (row.clientName) {
-                        <span class="font-semibold text-text">{{ row.clientName }}</span>
-                      }
-                      @if (row.suppliers.length) {
-                        <span>{{ (row.clientName ? ' · ' : '') + supplierNamesJoined(row) }}</span>
-                      } @else {
-                        <span>No suppliers yet</span>
+            @if (agentView() === 'project') {
+              @for (row of rows.value(); track row.id) {
+                <a [routerLink]="['/projects', row.id]" [queryParams]="{ tab: 'inbox' }" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="row.name">
+                  <div class="flex items-center gap-3 p-5">
+                    <div class="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-fill px-1 text-center"
+                         [style.background]="row.actionRequired ? 'var(--theme-accent)' : null"
+                         [style.border-color]="row.actionRequired ? 'transparent' : null">
+                      <span class="bp-meta leading-tight" [style.color]="row.actionRequired ? 'var(--bp-text-on-gradient)' : null">{{ lastActivity(agentLastMessage(row)) }}</span>
+                      @if (!row.actionRequired) {
+                        <span class="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-hairline bg-surface text-[var(--color-state-emerald)]">
+                          <lucide-icon name="check" [size]="12" [strokeWidth]="3" />
+                        </span>
                       }
                     </div>
+                    <div class="min-w-0 flex-1">
+                      <div class="bp-card-title truncate">{{ row.name }}</div>
+                      <!-- Client (semi-bold) then supplier names (·-joined); hover → mini table. -->
+                      <div class="truncate text-sm text-secondary"
+                           (mouseenter)="showSuppliers($event, row)" (mouseleave)="hideSuppliers()">
+                        @if (row.clientName) {
+                          <span class="font-semibold text-text">{{ row.clientName }}</span>
+                        }
+                        @if (row.suppliers.length) {
+                          <span>{{ (row.clientName ? ' · ' : '') + supplierNamesJoined(row) }}</span>
+                        } @else {
+                          <span>No suppliers yet</span>
+                        }
+                      </div>
+                    </div>
+                    <span class="flex shrink-0 items-center gap-2" [title]="hoverText(row)">
+                      <span class="text-base font-semibold leading-none text-text">{{ money(row.confirmedWork) }}</span>
+                      <app-status-pill list="supplier_summary_status" [code]="summaryCode(row)" />
+                    </span>
                   </div>
-                  <span class="flex shrink-0 items-center gap-2" [title]="hoverText(row)">
-                    <span class="text-base font-semibold leading-none text-text">{{ money(row.confirmedWork) }}</span>
-                    <app-status-pill list="supplier_summary_status" [code]="summaryCode(row)" />
-                  </span>
-                </div>
-              </a>
+                </a>
+              }
+            } @else {
+              <!-- One row per supplier (flattened across projects). -->
+              @for (r of supplierRows(); track r.key) {
+                <a [routerLink]="['/projects', r.projectId]" [queryParams]="{ tab: 'inbox' }" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="r.supplier.name">
+                  <div class="flex items-center gap-3 p-5">
+                    <div class="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-fill px-1 text-center"
+                         [style.background]="r.supplier.actionRequired ? 'var(--theme-accent)' : null"
+                         [style.border-color]="r.supplier.actionRequired ? 'transparent' : null">
+                      <span class="bp-meta leading-tight" [style.color]="r.supplier.actionRequired ? 'var(--bp-text-on-gradient)' : null">{{ lastActivity(r.supplier.lastMessageAt) }}</span>
+                      @if (!r.supplier.actionRequired) {
+                        <span class="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-hairline bg-surface text-[var(--color-state-emerald)]">
+                          <lucide-icon name="check" [size]="12" [strokeWidth]="3" />
+                        </span>
+                      }
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <div class="bp-card-title truncate">{{ r.projectName }}</div>
+                      <div class="truncate text-sm text-secondary">
+                        <span class="font-semibold text-text">{{ r.supplier.name }}</span>
+                        @if (r.clientName) { <span> · {{ r.clientName }}</span> }
+                      </div>
+                    </div>
+                    <span class="flex shrink-0 items-center gap-2" [title]="hoverText(r.supplier)">
+                      <span class="text-base font-semibold leading-none text-text">{{ money(r.supplier.confirmedWork) }}</span>
+                      <app-status-pill list="supplier_summary_status" [code]="summaryCode(r.supplier)" />
+                    </span>
+                  </div>
+                </a>
+              }
             }
           </div>
         }
@@ -271,6 +315,20 @@ export class InboxLandingComponent {
     params: () => !this.isSupplier(),
     loader: ({ params: agency }) =>
       agency ? firstValueFrom(this.inbox.summary()) : Promise.resolve([]),
+  });
+
+  /** Agent landing grouping: one card per project (default) or per supplier. */
+  protected readonly agentView = signal<'project' | 'supplier'>('project');
+  /** The project rows flattened to one entry per (project × supplier) for the
+   *  "by supplier" view. */
+  protected readonly supplierRows = computed(() => {
+    const out: { key: string; projectId: string; projectName: string; clientName: string | null; supplier: InboxSummarySupplier }[] = [];
+    for (const row of this.rows.value() ?? []) {
+      for (const s of row.suppliers) {
+        out.push({ key: `${row.id}|${s.name}`, projectId: row.id, projectName: row.name, clientName: row.clientName, supplier: s });
+      }
+    }
+    return out;
   });
 
   // ── Agent card: date circle + per-supplier hover mini table ──

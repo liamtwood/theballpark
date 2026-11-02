@@ -545,6 +545,8 @@ async function getAgentInboxSummary(agencyOrgId) {
       suppliers.push({
         name: g.name, itemCount: n, waitingAgent: wa, waitingSupplier: ws,
         actionRequired: wa > 0, actionItemId,
+        // Per-supplier agreed total — the "by supplier" view's cost (Liam 2026-11-02).
+        confirmedWork: Math.round(cw),
         lastMessage: truncate(g.lastMessage, 240), lastMessageAt: g.lastMessageAt,
       });
       waitingAgent += wa; waitingSupplier += ws; itemCount += n; confirmedWork += cw;
