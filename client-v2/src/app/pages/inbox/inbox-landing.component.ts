@@ -134,17 +134,14 @@ import { lastActivity } from './inbox-status';
                     </div>
                     <div class="min-w-0 flex-1">
                       <div class="bp-card-title truncate">{{ row.name }}</div>
-                      <!-- Client (semi-bold) then ITEM names (·-joined); the suppliers
-                           live in the hover mini-table (Liam 2026-11-02). -->
+                      <!-- Summary count 'X items for Y suppliers'; the suppliers live in
+                           the hover mini-table (Liam 2026-11-02). -->
                       <div class="truncate text-sm text-secondary"
                            (mouseenter)="showSuppliers($event, row)" (mouseleave)="hideSuppliers()">
-                        @if (row.clientName) {
-                          <span class="font-semibold text-text">{{ row.clientName }}</span>
-                        }
-                        @if (row.itemNames.length) {
-                          <span>{{ (row.clientName ? ' · ' : '') + row.itemNames.join(' · ') }}</span>
-                        } @else if (!row.suppliers.length) {
-                          <span>No suppliers yet</span>
+                        @if (row.suppliers.length) {
+                          {{ projectSummaryLine(row) }}
+                        } @else {
+                          No suppliers yet
                         }
                       </div>
                     </div>
@@ -345,6 +342,12 @@ export class InboxLandingComponent {
       if (s.lastMessageAt && (!max || s.lastMessageAt > max)) max = s.lastMessageAt;
     }
     return max;
+  }
+  /** Project-view sub-line: "X items for Y suppliers". */
+  protected projectSummaryLine(row: InboxSummaryRow): string {
+    const items = row.itemNames.length;
+    const sup = row.suppliers.length;
+    return `${items} item${items === 1 ? '' : 's'} for ${sup} supplier${sup === 1 ? '' : 's'}`;
   }
   protected readonly suppliersBubble = signal<{ suppliers: InboxSummarySupplier[]; x: number; y: number } | null>(null);
   protected showSuppliers(ev: MouseEvent, row: InboxSummaryRow): void {
