@@ -63,11 +63,8 @@ const WHATS_HOT = "What's Hot";
       <!-- Brand header (pV2-STOREFRONT-MENU-01 / Liam 2026-09-25): on the Shopfront
            tab the supplier's cover image sits BEHIND the hero (name + city) and the
            tab band, so the header IS the brand banner. Other tabs render it plain. -->
-      <div
-        class="bp-supplier-brandhead"
-        [class.bp-supplier-brandhead--cover]="brandCover(sup)"
-        [style.background-image]="brandCoverUrl(sup)"
-      >
+      <!-- Cover image removed from the hero on Shopfront + My Shop (Liam 2026-11-02). -->
+      <div class="bp-supplier-brandhead">
         <app-page-hero align="block" [eyebrow]="heroEyebrow()" [back]="heroBack()" [title]="sup.name" [subtitle]="sup.city ?? ''">
           <div hero-actions class="flex items-center gap-3">
             @if (isOwner()) {
@@ -362,20 +359,6 @@ export class SupplierDetailComponent {
   protected readonly isAgent = computed(() => this.auth.user()?.activeOrgType === 'agency');
   /** Platform admin (ballpark) — edits this org's Profile tab in place. */
   protected readonly isPlatformAdmin = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
-
-  /** Shopfront + Shop tabs: the supplier's cover backs the brand header (name +
-   *  tabs ride on top of it). Profile/AI Assist — and suppliers with no cover —
-   *  render plain (a photo backdrop would fight the editor / extractor). */
-  protected brandCover(sup: SupplierDetail): boolean {
-    return (this.tab() === 'storefront' || this.tab() === 'store') && !!sup.coverUrl;
-  }
-  /** The cover as a CSS background-image value (spaces encoded — some imported
-   *  cover URLs carry raw spaces that break the load). Null when no cover shows. */
-  protected brandCoverUrl(sup: SupplierDetail): string | null {
-    if (!this.brandCover(sup)) return null;
-    const u = (sup.coverUrl ?? '').trim().replace(/ /g, '%20');
-    return u ? `url("${u}")` : null;
-  }
 
   /** Hero eyebrow (uppercased by the hero) — "My Shop" for the owner, else a
    *  stable "Supplier" (the three tabs now name the surface; a fixed "Storefront"
