@@ -8,13 +8,12 @@ import { MarkdownPipe } from '../../shared/markdown.pipe';
 /** pV2-STORE-QUICKVIEW-SUPPLIER-01 — the supplier-profile PANE of the two-page Quick
  *  View. Reads the storefront projection (GET /api/marketplace/suppliers/:id →
  *  supplier_directory) and renders, in order: cover + overlapping circular logo →
- *  name + approved check → "Approved Ballpark supplier · <city>" → About Us
- *  (markdown) → website pill → "Projects" (gallery images in the shared carousel).
- *  Every marketplace supplier is approved by default, so the check + "Approved
- *  Ballpark supplier" line are a static trust signal (Liam 2026-11-02, screenshot).
+ *  name + location → website pill → description (markdown, clamped with Show more) →
+ *  "Past projects" (the supplier's gallery images in the shared carousel). No
+ *  "approved/verified" badge (every marketplace supplier is approved by default) and
  *  NO "View full store" / store navigation (deferred, Liam 2026-10-15) — the pane
  *  never routes. Conditional-everywhere: no cover → neutral band, no logo → monogram,
- *  no gallery → hide "Projects", no description/website/city → hide. */
+ *  no gallery → hide "Past projects", no description/website/city → hide. */
 @Component({
   selector: 'app-supplier-profile-pane',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -40,25 +39,15 @@ import { MarkdownPipe } from '../../shared/markdown.pipe';
 
         <div class="flex flex-col gap-3 pt-1">
           <div class="min-w-0">
-            <!-- Name + approved check (every marketplace supplier is approved). -->
-            <div class="flex items-center gap-1.5">
-              <h2 class="bp-card-title">{{ s.name }}</h2>
-              <lucide-icon name="badge-check" [size]="18" class="bp-sp-verified" />
-            </div>
-            <!-- "Approved Ballpark supplier · <pin> <city>" trust + locality line. -->
-            <div class="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-secondary">
-              <span class="bp-body-small">Approved Ballpark supplier</span>
-              @if (s.city) {
-                <span class="bp-body-small">·</span>
+            <span class="bp-sp-eyebrow">Quick view</span>
+            <h2 class="bp-card-title mt-0.5">{{ s.name }}</h2>
+            @if (s.city) {
+              <div class="mt-1 flex items-center gap-1 text-secondary">
                 <lucide-icon name="map-pin" [size]="14" [strokeWidth]="1.75" />
                 <span class="bp-body-small">{{ s.city }}</span>
-              }
-            </div>
+              </div>
+            }
           </div>
-
-          @if (s.description) {
-            <div class="bp-md bp-body text-secondary" [innerHTML]="s.description | md"></div>
-          }
 
           @if (websiteHref(); as href) {
             <a class="bp-sp-web self-start" [href]="href" target="_blank" rel="noopener noreferrer">
@@ -66,6 +55,10 @@ import { MarkdownPipe } from '../../shared/markdown.pipe';
               <span>{{ websiteLabel() }}</span>
               <lucide-icon name="external-link" [size]="14" />
             </a>
+          }
+
+          @if (s.description) {
+            <div class="bp-md bp-body text-secondary" [innerHTML]="s.description | md"></div>
           }
 
           @if (gallery().length) {
@@ -133,8 +126,13 @@ import { MarkdownPipe } from '../../shared/markdown.pipe';
     }
     /* Clear the logo overflow before the name block. */
     .bp-sp-cover + div { margin-top: 20px; }
-    /* Approved/verified check beside the supplier name (brand rose). */
-    .bp-sp-verified { color: var(--theme-accent); flex: none; }
+    .bp-sp-eyebrow {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--color-text-secondary);
+    }
     .bp-sp-web {
       display: inline-flex;
       align-items: center;
