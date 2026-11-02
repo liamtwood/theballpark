@@ -71,7 +71,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
             <lucide-icon name="arrow-left" [size]="16" /> All messages
           </button>
         } @else {
-          <div class="mx-auto mb-3 flex w-full max-w-[var(--workspace-max)] items-center gap-3 px-1">
+          <div class="mx-auto mb-3 flex w-full max-w-[var(--workspace-max)] flex-col items-start gap-2 px-1">
             <!-- Back to the Messages landing (standalone route only — the hero that
                  used to carry it was removed, Liam 2026-11-02). -->
             @if (!embedded()) {
