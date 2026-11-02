@@ -20,13 +20,13 @@ import { LucideAngularModule } from 'lucide-angular';
         You have {{ published() }} published listing{{ published() === 1 ? '' : 's' }} and
         {{ awaitingReview() }} awaiting review.
       </p>
-      <!-- Equal-width buttons (grid), content centred; icons match the header nav
-           (size 16); buttons share the Sign Out height. -->
+      <!-- Plain base buttons (no overrides) → exactly the Sign Out height + font
+           (--text-md); they stretch full width in the flex-col. Icon = nav size (16). -->
       <div class="mt-1 flex flex-col gap-2">
-        <a routerLink="/store" class="bp-btn-grad flex items-center justify-center gap-2">
+        <a routerLink="/store" class="bp-btn-grad">
           <lucide-icon name="shopping-bag" [size]="16" [strokeWidth]="1.75" />Open my shop
         </a>
-        <a routerLink="/marketplace" class="bp-btn-outline flex items-center justify-center gap-2">
+        <a routerLink="/marketplace" class="bp-btn-outline">
           <lucide-icon name="store" [size]="16" [strokeWidth]="1.75" />Browse marketplace
         </a>
       </div>
