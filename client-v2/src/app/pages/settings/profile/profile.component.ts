@@ -125,7 +125,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                   <div class="mt-3">
                     <div class="flex items-center gap-1.5">
                       <h3 class="text-lg font-semibold text-text">{{ org.name }}</h3>
-                      <lucide-icon name="badge-check" [size]="18" class="bp-verified" />
+                      <lucide-icon name="circle-check" [size]="18" class="bp-verified" />
                     </div>
                     <div class="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-secondary">
                       <span class="bp-body-small">Approved Ballpark {{ isSupplier() ? 'supplier' : 'agency' }}</span>
