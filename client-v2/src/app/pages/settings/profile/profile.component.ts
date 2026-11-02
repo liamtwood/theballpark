@@ -175,6 +175,15 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                         <lucide-icon name="mail" [size]="15" /><span>Add email</span>
                       </span>
                     }
+                    @if (org.companyNumber) {
+                      <span class="bp-contact-pill bp-contact-pill--fill">
+                        <span>Company no. {{ org.companyNumber }}</span>
+                      </span>
+                    } @else {
+                      <span class="bp-contact-pill bp-contact-pill--fill bp-contact-pill--empty">
+                        <span>Add company number</span>
+                      </span>
+                    }
                   </div>
                 </div>
 

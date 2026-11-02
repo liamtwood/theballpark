@@ -1065,6 +1065,8 @@ a.bp-contact-pill:hover { border-color: var(--theme-accent); }
 .bp-contact-pill--empty { color: var(--color-text-muted); }
 /* Equal-width pills (~30 chars), content left-aligned. */
 .bp-contact-row .bp-contact-pill { width: 30ch; justify-content: flex-start; }
+/* Light-gray fill variant (company number) — standard fill, no border. */
+.bp-contact-pill--fill { background: var(--color-fill); border-color: transparent; }
 .bp-org-banner__cover img {
   width: 100%;
   height: 100%;
