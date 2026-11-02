@@ -54,8 +54,9 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
   template: `
     <app-page-hero align="block" [eyebrow]="hero().eyebrow" [title]="hero().title" [subtitle]="hero().subtitle" />
 
-    <!-- Profile (editable) + Shopfront (consumer view). Suppliers only. -->
-    @if (isSupplier()) {
+    <!-- Profile (editable) + Shopfront (consumer view). Suppliers only.
+         Tab-band shows only with >1 tab — Shopfront is hidden for now. -->
+    @if (isSupplier() && tabs.length > 1) {
       <div class="flex justify-center px-6 pt-4">
         <app-tab-band [tabs]="tabs" [active]="tab()" (activeChange)="setTab($event)" />
       </div>
@@ -315,11 +316,17 @@ export class ProfileComponent {
     { initialValue: this.route.snapshot.queryParamMap.get('tab') },
   );
   protected readonly tab = computed<'profile' | 'shopfront'>(() =>
-    this.tabParam() === 'shopfront' ? 'shopfront' : 'profile',
+    // Shopfront hidden for now (Liam 2026-11-02) — always the Profile editor,
+    // even if a stale ?tab=shopfront deep-link lands here. Restore the param
+    // read below when Shopfront returns.
+    // this.tabParam() === 'shopfront' ? 'shopfront' : 'profile',
+    'profile',
   );
+  // Shopfront tab hidden for now (Liam 2026-11-02); may return later. With one
+  // tab the tab-band is suppressed in the template (tabs.length > 1).
   protected readonly tabs: TabBandTab[] = [
     { key: 'profile', label: 'Profile' },
-    { key: 'shopfront', label: 'Shopfront' },
+    // { key: 'shopfront', label: 'Shopfront' },
   ];
   /** pV2-BUILDUP-04 — file input → upload the T&C PDF, then clear the input. */
   protected onTermsFile(ev: Event): void {
