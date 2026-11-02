@@ -325,7 +325,11 @@ async function assembleThreads(viewer, callerOrgId, projectId) {
         const mi = msgByItem.get(itemId);
         const turn = {
           lastMessageBy: mi ? (mi.lastFrom === agencyOrgId ? 'buyer' : 'seller') : null,
-          lastEventIsMessage: !!(mi && (!lastAction || new Date(mi.lastAt) > new Date(lastAction))),
+          // The reply_needed/replied CODES apply only once pricing has started — a
+          // message strictly newer than an EXISTING action. The initial brief (no
+          // action yet) keeps the deal code; bold/needsYou still shows the turn
+          // (Liam 2026-11-02 — a brief was reading as "Replied").
+          lastEventIsMessage: !!(mi && lastAction && new Date(mi.lastAt) > new Date(lastAction)),
           lastMessageAt: mi ? mi.lastAt : null,
         };
         items.push(toThreadItem(raw, state, line, turn));

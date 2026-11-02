@@ -426,7 +426,9 @@ async function attachAcceptance(agencyOrgId, lines) {
     const mi = lastMsg.get(l.id);
     const act = lastActionAt.get(l.id) ?? null;
     l.lastMessageBy = mi ? (mi.from === agencyOrgId ? 'buyer' : 'seller') : null;
-    l.lastEventIsMessage = !!(mi && (!act || new Date(mi.at) > new Date(act)));
+    // reply_needed/replied only once pricing has started — a message strictly newer
+    // than an EXISTING action; the initial brief keeps its deal code (Liam 2026-11-02).
+    l.lastEventIsMessage = !!(mi && act && new Date(mi.at) > new Date(act));
   }
 }
 
