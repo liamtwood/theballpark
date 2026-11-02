@@ -6,6 +6,8 @@ import { MarketplaceStore } from '../marketplace/marketplace-store';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { CatalogueSupplier, CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { QuickViewDialogComponent, QuickAddEvent } from '../marketplace/quick-view-dialog.component';
+import { AddToActiveProjectDialogComponent } from '../marketplace/add-to-active-project-dialog.component';
+import { AddToProjectItem } from '../marketplace/add-to-project-dialog.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
 import { SupplierGridComponent } from '../../shared/catalogue/supplier-grid.component';
@@ -33,6 +35,7 @@ import { isDeclined } from './quote-line.util';
     CatalogueGridComponent,
     SupplierGridComponent,
     QuickViewDialogComponent,
+    AddToActiveProjectDialogComponent,
     ProjectQuoteRailComponent,
   ],
   providers: [MarketplaceStore],
@@ -128,6 +131,13 @@ import { isDeclined } from './quote-line.util';
       (close)="quickItem.set(null)"
       (add)="onQuickAdd($event)"
     />
+    <!-- Live project → pick a supplier + settlement for the new item. -->
+    <app-add-to-active-project-dialog
+      [item]="activeAdd()?.item ?? null"
+      [projectId]="activeAdd()?.projectId ?? null"
+      (close)="activeAdd.set(null)"
+      (added)="onActiveAdded($event)"
+    />
   `,
 })
 export class ProjectMarketplaceComponent {
@@ -140,6 +150,12 @@ export class ProjectMarketplaceComponent {
   private readonly route = inject(ActivatedRoute);
 
   readonly projectId = input.required<string>();
+  /** The project's status — 'active' routes the card + through the supplier +
+   *  settlement flow instead of a silent add (Liam 2026-11-02). */
+  readonly projectStatus = input<string | null>(null);
+
+  /** The live-project add-in-flight (item + project) → opens the active-add dialog. */
+  protected readonly activeAdd = signal<{ projectId: string; item: AddToProjectItem } | null>(null);
 
   /** Whether the project-costs cart rail is open (two-way with the workspace). */
   protected readonly cartOpen = signal(false);
@@ -160,6 +176,15 @@ export class ProjectMarketplaceComponent {
       return;
     }
     void this.onQuoteToggle(e.id, e.variant, e.quantity);
+  }
+
+  /** The active-add dialog finished — the line + supplier brief were created
+   *  server-side; refresh the quote + estimate. */
+  protected onActiveAdded(e: { projectId: string; itemName: string }): void {
+    this.activeAdd.set(null);
+    this.loader.reload();
+    this.est.reload();
+    this.toast.add({ severity: 'success', summary: `Added ${e.itemName} as a ballpark.`, life: 3000 });
   }
 
   /** "All Categories" count = sum of the rail counts (no extra request). */
@@ -240,6 +265,14 @@ export class ProjectMarketplaceComponent {
     if (this.quoteIds().has(itemId)) {
       this.toast.add({ severity: 'info', summary: 'Already in the ballpark.', life: 3000 });
       return;
+    }
+    // Live project → the supplier + settlement dialog, not a silent add (Liam 2026-11-02).
+    if (this.projectStatus() === 'active') {
+      const it = this.store.items().find((i) => i.id === itemId);
+      if (it) {
+        this.activeAdd.set({ projectId: id, item: { id: it.id, name: it.name, basePrice: it.basePrice, unit: it.unit } });
+        return;
+      }
     }
     const before = this.quoteLines();
     try {

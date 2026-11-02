@@ -367,7 +367,7 @@ interface DetailForm {
                  the hero/banner at every width (Liam 2026-10-29) — mx-auto hides
                  the mismatch on a wide screen but not on a narrow one. -->
             <div class="min-h-0 flex-1 bp-gutter -mt-6 -mx-8">
-              <app-project-marketplace [projectId]="p.id" />
+              <app-project-marketplace [projectId]="p.id" [projectStatus]="p.status" />
             </div>
           }
         }
