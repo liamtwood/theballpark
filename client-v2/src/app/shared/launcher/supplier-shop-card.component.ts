@@ -22,7 +22,7 @@ import { LucideAngularModule } from 'lucide-angular';
       </p>
       <!-- Equal-width buttons (grid), content centred; icons match the header nav
            (size 16); buttons share the Sign Out height. -->
-      <div class="mt-1 grid grid-cols-2 gap-2">
+      <div class="mt-1 flex flex-col gap-2">
         <a routerLink="/store" class="bp-btn-grad flex items-center justify-center gap-2">
           <lucide-icon name="shopping-bag" [size]="16" [strokeWidth]="1.75" />Open my shop
         </a>
