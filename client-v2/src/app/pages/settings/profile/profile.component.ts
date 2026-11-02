@@ -175,6 +175,9 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                         <lucide-icon name="mail" [size]="15" /><span>Add email</span>
                       </span>
                     }
+                  </div>
+                  <!-- Company number on its own centred row below the contact pills. -->
+                  <div class="bp-contact-row mt-2 flex justify-center">
                     @if (org.companyNumber) {
                       <span class="bp-contact-pill bp-contact-pill--fill">
                         <span>Company no. {{ org.companyNumber }}</span>
