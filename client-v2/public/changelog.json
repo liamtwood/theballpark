@@ -2,6 +2,119 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.7.0",
+      "name": "Supplier profiles & conversations",
+      "build": "v2.1037",
+      "date": "2026-11-02",
+      "datetime": "2026-11-02",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Inbox & conversations",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Two-axis line status — every line now shows both the deal state and whose turn it is. A line waiting on you reads \"Reply needed\"; one you have answered reads \"Replied\"; and whenever the other party made the last move, the status is shown in bold so it stands out at a glance."
+            },
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Quote requested → Agreeing cost — a briefed line reads \"Quote requested\" until the supplier engages, then moves to \"Agreeing cost\", so you can see which enquiries a supplier has actually picked up."
+            },
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Redesigned Inbox cards — full-width rows with a date circle that carries an action indicator (pink when it needs you, a tick once handled), the project name, a cost + status rollup, and a hover mini-table of the items. Agents can group the list by Project or by Supplier."
+            },
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "Conversation dates — conversations now group messages under day dividers (Today / Yesterday / weekday / date), and the inbox rail shows the date of the last response."
+            },
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "Messages is now the Inbox — renamed throughout, with a configurable hero and a per-organisation subtitle. The item card sits above the latest message and the page scrolls like the rest of the app."
+            }
+          ]
+        },
+        {
+          "area": "Supplier experience",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Supplier inbox parity — suppliers get the same Inbox as agencies: project rows that open the project view, item rows that open the full thread, and a Messages (N) badge in the navigation."
+            },
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "A \"Your shop\" card on the supplier home, with published and awaiting-review counts and a quick way into My Shop."
+            }
+          ]
+        },
+        {
+          "area": "Supplier profile",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Redesigned profile — a banner cover with a circular logo, the organisation name with an approved check and \"Approved Ballpark supplier · location\", click-to-edit About Us, and contact pills for website, Instagram, email and company number."
+            },
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Past projects — show up to four hero images of work you are proud of, each with an optional description. These are the same images producers see in Quick View."
+            }
+          ]
+        },
+        {
+          "area": "Projects",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Add an item to an active project — pick how it settles (against the balance or 50% upfront) and which supplier to reach out to, with an editable brief."
+            },
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "Projects page — Current and Completed as centred pills, a New project button in the hero, and a clearer empty state."
+            }
+          ]
+        },
+        {
+          "area": "Navigation & marketplace",
+          "items": [
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "Tidier navigation — the Shopfront tab is hidden for now on Profile and My Shop, and the supplier Projects tab is hidden while that view is reworked."
+            },
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "Marketplace — removed the \"[Supplier] Store\" link from supplier cards, and kept the marketplace cards a consistent size."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "v0.6.0",
       "name": "Bulk item management",
       "build": "v2.939",
