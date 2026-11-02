@@ -18,7 +18,10 @@ import { StatusPillComponent } from '../status-pill/status-pill.component';
   template: `
     <div class="bp-inboxcard__body">
       <header class="bp-inboxcard__head">
-        <h2 class="bp-card-title">Inbox</h2>
+        <div>
+          <h2 class="bp-card-title">Inbox</h2>
+          <p class="bp-meta mt-0.5">Latest producer enquiries</p>
+        </div>
         <a routerLink="/inbox" class="bp-inboxcard__viewall">View inbox</a>
       </header>
 

@@ -8,6 +8,7 @@ import { HomeLauncherComponent } from '../../shared/launcher/home-launcher.compo
 import { NextStep, NextStepsCardComponent } from '../../shared/launcher/next-steps-card.component';
 import { RecentProjectsCardComponent } from '../../shared/launcher/recent-projects-card.component';
 import { SupplierInboxCardComponent } from '../../shared/launcher/supplier-inbox-card.component';
+import { SupplierShopCardComponent } from '../../shared/launcher/supplier-shop-card.component';
 import { tilesForOrgType } from '../../shared/launcher/launcher-tiles';
 import { HomeSupplierStatsComponent } from './home-supplier-stats.component';
 import { heroTitle } from './hero-title';
@@ -30,7 +31,7 @@ interface ItemCounts {
 @Component({
   selector: 'app-home-agent',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [HomeLauncherComponent, RecentProjectsCardComponent, NextStepsCardComponent, HomeSupplierStatsComponent, SupplierInboxCardComponent],
+  imports: [HomeLauncherComponent, RecentProjectsCardComponent, NextStepsCardComponent, HomeSupplierStatsComponent, SupplierInboxCardComponent, SupplierShopCardComponent],
   host: { class: 'bp-home-agent block' },
   template: `
     <app-home-launcher
@@ -55,7 +56,10 @@ interface ItemCounts {
       @if (showCards() && !isSupplier()) {
         <app-recent-projects-card gridExtra />
       }
-      @if (showCards()) {
+      <!-- Suppliers: the "Your shop" summary card replaces Next steps (Liam 2026-11-02). -->
+      @if (isSupplier()) {
+        <app-supplier-shop-card gridExtra [published]="publishedListings()" [awaitingReview]="awaitingReview()" />
+      } @else if (showCards()) {
         <app-next-steps-card gridExtra [items]="nextSteps()" [note]="nextStepsNote()" />
       }
     </app-home-launcher>
@@ -108,26 +112,13 @@ export class HomeAgentComponent {
       supplier ? firstValueFrom(this.api.get<ItemCounts>('/api/store/items/counts')) : Promise.resolve(null),
   });
 
-  protected readonly nextSteps = computed<readonly NextStep[]>(() =>
-    this.isSupplier() ? this.supplierSteps() : AGENCY_STEPS,
-  );
+  /** Next steps is agency-only now — suppliers get the "Your shop" card. */
+  protected readonly nextSteps = computed<readonly NextStep[]>(() => AGENCY_STEPS);
   protected readonly nextStepsNote = computed(() => (this.isSupplier() ? '' : AGENCY_NOTE));
 
-  /** The supplier "what needs me" list: their shop, a coming-soon bulk import,
-   *  then the three status actions with live counts, each deep-linking into My
-   *  Shop pre-filtered. */
-  private readonly supplierSteps = computed<readonly NextStep[]>(() => {
-    const shop = `/suppliers/${this.auth.user()?.activeOrgId ?? ''}`;
-    const c = this.counts.value();
-    const steps: NextStep[] = [
-      { icon: 'store', label: 'My Shop', href: '/store', description: 'View and manage your shopfront' },
-      { icon: 'upload', label: 'Upload items from a file', comingSoon: true, description: 'Bulk-add products from a spreadsheet' },
-      { icon: 'circle-check', label: 'Ready to promote', href: shop, query: { tab: 'store', status: 'approved', active: 'inactive' }, count: c?.readyToPromote ?? 0, description: 'These are ready to promote to My Shop' },
-      { icon: 'triangle-alert', label: 'Needs attention', href: shop, query: { tab: 'store', status: 'rejected' }, count: c?.rejected ?? 0, description: 'Edit and resubmit these for approval' },
-      { icon: 'file-text', label: 'Drafts', href: shop, query: { tab: 'store', status: 'draft' }, count: c?.draft ?? 0, description: 'These need to be submitted for approval' },
-    ];
-    return steps;
-  });
+  /** "Your shop" card figures. */
+  protected readonly publishedListings = computed(() => this.supplierStats()?.publishedListings ?? 0);
+  protected readonly awaitingReview = computed(() => this.counts.value()?.pending ?? 0);
 }
 
 /** Agency Next steps — three quick links + the indicative-estimate disclaimer. */
