@@ -67,8 +67,9 @@ const WHATS_HOT = "What's Hot";
       <div class="bp-supplier-brandhead">
         <app-page-hero align="block" [eyebrow]="heroEyebrow()" [back]="heroBack()" [title]="sup.name" [subtitle]="sup.city ?? ''">
           <div hero-actions class="flex items-center gap-3">
-            @if (isOwner()) {
-              <!-- pV2-STORE-01 — owner manages their own shop here. -->
+            @if (isOwner() && tab() === 'store') {
+              <!-- pV2-STORE-01 — owner manages their own shop here. Only on the My Shop
+                   (store) tab, not Profile / Shopfront (Liam 2026-11-02). -->
               <a routerLink="/store/items/new" class="bp-btn-grad">
                 <lucide-icon name="plus" [size]="15" /> Add product
               </a>
