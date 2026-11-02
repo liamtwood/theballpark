@@ -539,12 +539,14 @@ async function getAgentInboxSummary(agencyOrgId) {
     let waitingAgent = 0, waitingSupplier = 0, itemCount = 0, confirmedWork = 0;
     for (const g of bySupplier.values()) {
       const seen = new Set();
+      const supplierItemNames = [];
       let wa = 0, ws = 0, n = 0, cw = 0, actionItemId = null;
       for (const it of g.items) {
         if (seen.has(it.id)) continue;
         seen.add(it.id);
         if (isDeclined(it.status)) continue;
         n++;
+        supplierItemNames.push(it.name);
         const w = itemWaitingOn(it);
         if (w === 'agent') { wa++; if (!actionItemId) actionItemId = it.id; }
         else if (w === 'supplier') ws++;
@@ -556,8 +558,9 @@ async function getAgentInboxSummary(agencyOrgId) {
       suppliers.push({
         name: g.name, itemCount: n, waitingAgent: wa, waitingSupplier: ws,
         actionRequired: wa > 0, actionItemId,
-        // Per-supplier agreed total — the "by supplier" view's cost (Liam 2026-11-02).
-        confirmedWork: Math.round(cw),
+        // Per-supplier agreed total + item names — the "by supplier" view's cost
+        // and sub-line (Liam 2026-11-02).
+        confirmedWork: Math.round(cw), itemNames: supplierItemNames,
         lastMessage: truncate(g.lastMessage, 240), lastMessageAt: g.lastMessageAt,
       });
       waitingAgent += wa; waitingSupplier += ws; itemCount += n; confirmedWork += cw;

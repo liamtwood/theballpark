@@ -171,12 +171,14 @@ import { lastActivity } from './inbox-status';
                       }
                     </div>
                     <div class="min-w-0 flex-1">
-                      <!-- Grouped by supplier → the SUPPLIER is the headline; project
-                           (+ client) is the context sub-line (Liam 2026-11-02). -->
-                      <div class="bp-card-title truncate">{{ r.supplier.name }}</div>
+                      <!-- Grouped by supplier → project is the headline; sub-line is
+                           'supplier · item · item' (that supplier's items) — Liam 2026-11-02. -->
+                      <div class="bp-card-title truncate">{{ r.projectName }}</div>
                       <div class="truncate text-sm text-secondary">
-                        <span class="font-semibold text-text">{{ r.projectName }}</span>
-                        @if (r.clientName) { <span> · {{ r.clientName }}</span> }
+                        <span class="font-semibold text-text">{{ r.supplier.name }}</span>
+                        @if (r.supplier.itemNames.length) {
+                          <span>{{ ' · ' + r.supplier.itemNames.join(' · ') }}</span>
+                        }
                       </div>
                     </div>
                     <span class="flex shrink-0 items-center gap-2" [title]="hoverText(r.supplier)">

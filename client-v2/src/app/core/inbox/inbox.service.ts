@@ -150,6 +150,8 @@ export interface InboxSummarySupplier extends InboxWaitingCounts {
   actionItemId: string | null;
   /** This supplier's agreed (booked / both-accepted) total — the "by supplier" card's cost. */
   confirmedWork: number;
+  /** This supplier's item names (non-declined) — the "by supplier" card's sub-line. */
+  itemNames: string[];
   lastMessage: string | null;
   lastMessageAt: string | null;
 }
