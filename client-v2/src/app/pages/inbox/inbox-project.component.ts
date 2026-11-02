@@ -5,8 +5,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom, map } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../core/auth/auth.service';
-import { PageConfigService } from '../../core/config/page-config.service';
-import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
 import { QuoteLine } from '../../core/projects/project.types';
 import { TERMINAL_STATUSES, gbp, dayLabel, sameDay } from './inbox-status';
@@ -35,7 +33,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, NgClass, LucideAngularModule, PageHeroComponent, InboxRailComponent, LinePreviewComponent, CustomizeDialogComponent, LineEditorComponent, AgentRailComponent, ToastModule, StatusPillComponent],
+  imports: [CurrencyPipe, DatePipe, NgClass, LucideAngularModule, InboxRailComponent, LinePreviewComponent, CustomizeDialogComponent, LineEditorComponent, AgentRailComponent, ToastModule, StatusPillComponent],
   // BE-00114 — own the MessageService/p-toast so error surfacing works on the
   // STANDALONE supplier route too (inbox/:projectId — not embedded in
   // project-detail, so no parent provider). Injecting a parent-only service here
@@ -44,12 +42,10 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
   host: { '[class]': 'hostClass()' },
   template: `
     <p-toast position="bottom-right" styleClass="bp-toast" />
-    @if (!embedded()) {
-      <!-- showBack ON for project view so the standalone supplier route has a Back
-           to the Messages landing; OFF in full thread, where the inline "All
-           messages" link is already the back (no redundant double-back) — Liam 2026-10-30. -->
-      <app-page-hero align="block" eyebrow="Messages" [back]="{ label: 'Back', href: '/inbox', history: true }" [showBack]="!fullThread()" title="Inbox" [subtitle]="heroSubtitle()" />
-    }
+    <!-- No hero on the standalone route — the page flows under the fixed nav like
+         every other page; the "Project inbox" / "All messages" heading below leads
+         the content (Liam 2026-11-02). -->
+
 
     <!-- Embedded: -mx-8 cancels bp-page-body's 32px side padding and px-6 matches
          the hero so the inbox lines up with the banner (like the Marketplace tab,
@@ -203,10 +199,9 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                    thread" view for long histories comes next). Standalone (the
                    supplier per-project inbox route) keeps the bounded inner scroll
                    since it's still viewport-fit (Liam 2026-10-29). -->
-              <div #msgScroll
-                   [class]="embedded()
-                     ? 'flex flex-col gap-3 bg-surface px-5 py-4'
-                     : 'flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-surface px-5 py-4'">
+              <!-- Both embedded and standalone FLOW now — no internal scroll; the
+                   page scrolls (Liam 2026-11-02). -->
+              <div #msgScroll class="flex flex-col gap-3 bg-surface px-5 py-4">
                 @if (selectedItem()) {
                 <!-- Compact view shows only the CURRENT round (from your last message
                      on); settled earlier messages collapse to this count, which opens
@@ -222,19 +217,9 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                   @if (showDaySeparator(i)) {
                     <div class="mx-auto my-1 rounded-full bg-fill px-3 py-0.5 bp-caption text-secondary">{{ dayLabel(m.createdAt, true) }}</div>
                   }
-                  <div class="flex flex-col" [class.items-end]="m.mine" [class.items-start]="!m.mine">
-                    <div class="bp-bubble" [class.bp-bubble--mine]="m.mine" [class.bp-bubble--general]="isGeneral(m)" [class.bp-blink]="blinkMsg() && last">
-                      <span class="bp-bubble__author">
-                        {{ m.author }}
-                        @if (isGeneral(m)) {
-                          <span class="bp-bubble__general">General</span>
-                        }
-                      </span>
-                      <span class="bp-bubble__body">{{ m.body }}</span>
-                    </div>
-                    <span class="bp-meta mt-1 px-1">{{ m.createdAt | date: 'shortTime' }}</span>
-                  </div>
-                  <!-- The item(s) this quote request covers, as attachments:
+                  <!-- Item card(s) render ABOVE the message bubble — the item is always
+                       above its message (Liam 2026-11-02).
+                       The item(s) this quote request covers, as attachments:
                        collapsed to a name bar, expanding in place to the SAME
                        preview card the Estimate rail renders. Fixed w-80 in both
                        states so expanding never changes the width. -->
@@ -292,6 +277,19 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                       }
                     </div>
                   }
+                  <!-- Message bubble AFTER the item card(s) — item always above (Liam 2026-11-02). -->
+                  <div class="flex flex-col" [class.items-end]="m.mine" [class.items-start]="!m.mine">
+                    <div class="bp-bubble" [class.bp-bubble--mine]="m.mine" [class.bp-bubble--general]="isGeneral(m)" [class.bp-blink]="blinkMsg() && last">
+                      <span class="bp-bubble__author">
+                        {{ m.author }}
+                        @if (isGeneral(m)) {
+                          <span class="bp-bubble__general">General</span>
+                        }
+                      </span>
+                      <span class="bp-bubble__body">{{ m.body }}</span>
+                    </div>
+                    <span class="bp-meta mt-1 px-1">{{ m.createdAt | date: 'shortTime' }}</span>
+                  </div>
                 }
                 } @else {
                   <!-- No conversation until an item is picked (Liam 2026-08-30). -->
@@ -425,7 +423,6 @@ export class InboxProjectComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
-  private readonly pageConfig = inject(PageConfigService);
   private readonly auth = inject(AuthService);
 
   /** Supplier (standalone page) or agency (embedded project Inbox tab). */
@@ -437,7 +434,8 @@ export class InboxProjectComponent {
 
   protected readonly isAgency = computed(() => this.viewer() === 'agency');
   protected readonly hostClass = computed(() =>
-    this.embedded() ? 'flex min-h-0 flex-1 flex-col' : 'block bp-vpfit'
+    // Standalone now FLOWS like every other page (was bp-vpfit) — Liam 2026-11-02.
+    this.embedded() ? 'flex min-h-0 flex-1 flex-col' : 'block'
   );
 
   private readonly routeProjectId = toSignal(
@@ -913,9 +911,6 @@ export class InboxProjectComponent {
       return next;
     });
   }
-
-  /** "<Project> conversations" — tracks the configurable event label. */
-  protected readonly heroSubtitle = computed(() => `${this.pageConfig.eventLabel()} conversations`);
 
   /** Tree-header label: the category name when there's more than one
    *  category, else "PROJECT ITEMS". */
