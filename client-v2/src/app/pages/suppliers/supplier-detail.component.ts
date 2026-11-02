@@ -17,7 +17,7 @@ import { StorefrontPanelComponent } from './storefront-panel.component';
 import { OrgProfileEditComponent } from '../settings/profile/org-profile-edit.component';
 import { WebsiteImportPanelComponent } from './website-import-panel.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
-import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
+import { TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { HScrollComponent } from '../../shared/hscroll/hscroll.component';
 import { ItemSelectionStore } from '../../shared/catalogue/item-selection.store';
 import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.component';
@@ -39,7 +39,6 @@ const WHATS_HOT = "What's Hot";
     RouterLink,
     LucideAngularModule,
     PageHeroComponent,
-    TabBandComponent,
     HScrollComponent,
     CatalogueGridComponent,
     CategoryStripComponent,
@@ -92,8 +91,19 @@ const WHATS_HOT = "What's Hot";
              Profile · Shopfront · My Shop and manages it in place; the platform admin
              adds AI Assist; agents/public get Shopfront · Shop. -->
         @if (tabs().length > 1) {
+          <!-- Project-nav pill style, matching Projects + the in-project tabs (Liam 2026-11-02). -->
           <div class="flex justify-center px-6 pt-4 pb-1">
-            <app-tab-band [tabs]="tabs()" [active]="tab()" (activeChange)="setTab($event)" />
+            <div class="bp-projnav" role="tablist" aria-label="Shop view">
+              @for (t of tabs(); track t.key) {
+                <button type="button" role="tab" class="bp-projnav-opt"
+                        [class.bp-projnav-opt--active]="tab() === t.key"
+                        [attr.aria-selected]="tab() === t.key"
+                        (click)="setTab(t.key)">
+                  @if (tab() === t.key) { <lucide-icon name="check" [size]="15" /> }
+                  <span>{{ t.label }}</span>
+                </button>
+              }
+            </div>
           </div>
         }
       </div>
