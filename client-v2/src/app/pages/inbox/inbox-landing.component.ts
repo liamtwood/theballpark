@@ -170,9 +170,11 @@ import { lastActivity } from './inbox-status';
                       }
                     </div>
                     <div class="min-w-0 flex-1">
-                      <div class="bp-card-title truncate">{{ r.projectName }}</div>
+                      <!-- Grouped by supplier → the SUPPLIER is the headline; project
+                           (+ client) is the context sub-line (Liam 2026-11-02). -->
+                      <div class="bp-card-title truncate">{{ r.supplier.name }}</div>
                       <div class="truncate text-sm text-secondary">
-                        <span class="font-semibold text-text">{{ r.supplier.name }}</span>
+                        <span class="font-semibold text-text">{{ r.projectName }}</span>
                         @if (r.clientName) { <span> · {{ r.clientName }}</span> }
                       </div>
                     </div>
