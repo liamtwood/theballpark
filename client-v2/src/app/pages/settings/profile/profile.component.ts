@@ -121,9 +121,11 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                   />
                   </div>
                   <!-- Identity: name + approved check, then "Approved Ballpark
-                       supplier · <pin> <city>". Indented (pl-4) to line up with
-                       the logo (left:16px inside the banner). -->
-                  <div class="mt-3 pl-4">
+                       supplier · <pin> <city>". Lifted up beside the logo (negative
+                       top margin into the banner's bottom reserve; left padding clears
+                       the 88px logo at left:16px) so it sits just under the banner to
+                       the right of the logo (Liam 2026-11-02). -->
+                  <div class="-mt-12 pl-28">
                     <div class="flex items-center gap-1.5">
                       <h3 class="bp-card-title">{{ org.name }}</h3>
                       <lucide-icon name="circle-check" [size]="20" class="bp-verified" />
@@ -138,16 +140,15 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                     </div>
                   </div>
                   <!-- About Us — the public description blurb (orgs.description),
-                       sitting under the identity label. -->
-                  <label class="mt-4 block">
-                    <span class="ed-label mb-1.5 block">About Us</span>
-                    <textarea class="ed-textarea" rows="5"
-                              placeholder="Tell customers about your company…"
-                              [disabled]="!store.canEdit()"
-                              [ngModel]="store.form().description"
-                              (ngModelChange)="store.patch({ description: $event })"
-                              (blur)="store.saveSection('about')"></textarea>
-                  </label>
+                       rendered as inline editable text: no label, no border; click
+                       into the paragraph to edit (Liam 2026-11-02). -->
+                  <textarea class="bp-about-edit bp-body mt-3 block w-full resize-none border-0 text-secondary focus:outline-none"
+                            rows="5"
+                            placeholder="Tell customers about your company…"
+                            [disabled]="!store.canEdit()"
+                            [ngModel]="store.form().description"
+                            (ngModelChange)="store.patch({ description: $event })"
+                            (blur)="store.saveSection('about')"></textarea>
                 </div>
 
                 <app-drawer [(open)]="store.coverDrawer" title="Cover image">

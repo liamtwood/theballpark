@@ -1033,6 +1033,18 @@ body {
 .bp-branding-media .bp-org-banner__logo img { border-radius: 50%; }
 /* Approved/verified check beside an org name (brand rose). */
 .bp-verified { color: var(--theme-accent); flex: none; }
+/* Inline-editable About Us: reads as text (no label/border); a faint fill on
+   hover/focus hints it's editable, with no horizontal layout shift. */
+.bp-about-edit {
+  background: transparent;
+  padding: 6px;
+  margin-inline: -6px;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+.bp-about-edit::placeholder { color: var(--color-text-muted); }
+.bp-about-edit:not(:disabled):hover,
+.bp-about-edit:focus { background: var(--color-fill); }
 .bp-org-banner__cover img {
   width: 100%;
   height: 100%;
