@@ -49,17 +49,19 @@ import { ProjectCardComponent } from './project-card.component';
                         (click)="bucket.set(t.key === 'completed' ? 'completed' : 'current')">
                   @if (bucket() === t.key) { <lucide-icon name="check" [size]="15" /> }
                   <span>{{ t.label }}</span>
+                  @if (t.badge != null) { <span class="ml-1.5 opacity-60">{{ t.badge }}</span> }
                 </button>
               }
             </div>
           </div>
         }
         @if (loader.isLoading()) {
-          <p class="bp-body-small text-secondary">Loading…</p>
+          <p class="mx-auto w-full max-w-[var(--workspace-max)] bp-body-small text-secondary">Loading…</p>
         } @else if (loader.error()) {
-          <p class="bp-body-small text-warn">Couldn't load your {{ labelPlural().toLowerCase() }}.</p>
+          <p class="mx-auto w-full max-w-[var(--workspace-max)] bp-body-small text-warn">Couldn't load your {{ labelPlural().toLowerCase() }}.</p>
         } @else if (visible().length === 0) {
-          <p class="bp-body-small text-secondary">{{ emptyCopy() }}</p>
+          <!-- Empty copy sits in the centred work column, aligned with the cards. -->
+          <p class="mx-auto w-full max-w-[var(--workspace-max)] bp-body-small text-secondary">{{ emptyCopy() }}</p>
         } @else {
           <!-- Two-wide card grid in the centred max-1068px column (1 → 2). -->
           <div class="mx-auto grid w-full max-w-[var(--workspace-max)] grid-cols-1 gap-6 sm:grid-cols-2">
