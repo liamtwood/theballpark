@@ -21,7 +21,7 @@ import { GalleryImage } from '../../core/media/media.types';
  *    (gated by `canEdit`); the gallery is editable.
  *  - view mode: ONLY the cover renders in the banner (NO logo overlay — the
  *    shopfront places the logo in its Company Information card); the gallery is
- *    read-only and titled "My portfolio". */
+ *    read-only and titled "Past projects" (per-photo captions shown when set). */
 @Component({
   selector: 'app-org-media',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -74,27 +74,32 @@ import { GalleryImage } from '../../core/media/media.types';
         <!-- Portfolio — photos as cards using the storefront subcat-card chrome
              (.bp-card--zoom), no surrounding container (pV2-MEDIA-01e QC). -->
         <section>
-          <h3 class="bp-edit-section-title">My portfolio</h3>
+          <h3 class="bp-edit-section-title">Past projects</h3>
           <div class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             @for (img of images(); track img.url) {
-              <div class="bp-card bp-card--zoom">
-                <img
-                  class="bp-item-card__img"
-                  [src]="img.url"
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  [style.object-position]="img.focalX + '% ' + img.focalY + '%'"
-                />
-                <app-unsplash-credit [attribution]="img.attribution" />
+              <div>
+                <div class="bp-card bp-card--zoom">
+                  <img
+                    class="bp-item-card__img"
+                    [src]="img.url"
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    [style.object-position]="img.focalX + '% ' + img.focalY + '%'"
+                  />
+                  <app-unsplash-credit [attribution]="img.attribution" />
+                </div>
+                @if (img.label) {
+                  <p class="bp-caption mt-1.5 truncate">{{ img.label }}</p>
+                }
               </div>
             }
           </div>
         </section>
       } @else {
         <div class="rounded-[var(--radius-lg)] border border-hairline bg-surface p-5 shadow-[var(--shadow-md)]">
-          <h3 class="bp-edit-section-title">Gallery</h3>
-          <p class="bp-caption mt-1">Add up to 5 photos — set one as the cover (used on your supplier card).</p>
+          <h3 class="bp-edit-section-title">Past projects</h3>
+          <p class="bp-caption mt-1">Four hero images of work you're proud of. These are the same images producers see in quick view.</p>
           <div class="mt-3">
             <app-image-gallery
               entityType="profile"
@@ -102,6 +107,8 @@ import { GalleryImage } from '../../core/media/media.types';
               [primaryUrl]="coverUrl()"
               [searchSeed]="name()"
               [editable]="canEdit()"
+              [maxSlots]="4"
+              [labels]="true"
               (imagesChange)="imagesChange.emit($event)"
               (primarySet)="primarySet.emit($event)"
             />

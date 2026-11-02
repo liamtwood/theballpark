@@ -59,6 +59,8 @@ const OrganisationUpdateSchema = z
           url: z.string().trim().min(1).max(1000),
           focalX: z.number().int().min(0).max(100).default(50),
           focalY: z.number().int().min(0).max(100).default(50),
+          // Optional per-photo caption (Past projects gallery, Liam 2026-11-02).
+          label: z.string().trim().max(120).optional().or(z.literal('')),
           attribution: z
             .object({
               photographerName: z.string().trim().max(200),

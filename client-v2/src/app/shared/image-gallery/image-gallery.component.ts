@@ -38,6 +38,7 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
   template: `
     <div
       class="grid"
+      [class.grid--labelled]="labels()"
       [style.grid-template-columns]="gridCols()"
       cdkDropList
       cdkDropListOrientation="mixed"
@@ -72,6 +73,21 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
               <lucide-icon name="trash-2" [size]="15" />
             </button>
           </div>
+          }
+          <!-- Optional per-photo caption (opt-in via [labels]). Commits on change
+               (blur) so it rides the consumer's save-on-blur, not every keystroke.
+               stopPropagation keeps typing/clicks from starting a tile drag. -->
+          @if (labels() && editable()) {
+            <input
+              class="cap"
+              type="text"
+              maxlength="120"
+              [value]="img.label ?? ''"
+              placeholder="Add a label"
+              (pointerdown)="$event.stopPropagation()"
+              (click)="$event.stopPropagation()"
+              (change)="setLabel(i, $any($event.target).value)"
+            />
           }
         </div>
       }
@@ -178,6 +194,26 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
       background: var(--theme-accent);
       color: var(--theme-accent-contrast);
     }
+    /* Per-photo caption input, pinned over the bottom of the tile. */
+    .cap {
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      bottom: 6px;
+      padding: 4px 8px;
+      border: 1px solid var(--color-border-hairline);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+      color: var(--color-text);
+      font-family: var(--font-body);
+      font-size: var(--text-xs);
+      line-height: 1.3;
+    }
+    .cap::placeholder { color: var(--color-text-muted); }
+    .cap:focus { outline: 2px solid var(--theme-accent); outline-offset: 0; }
+    /* In labelled galleries the caption owns the bottom, so the Cover badge
+       moves to the top-left (projects/item galleries are unaffected). */
+    .grid--labelled .badge { top: 6px; bottom: auto; }
     /* CDK drag chrome */
     .cdk-drag-preview {
       border-radius: 12px;
@@ -197,6 +233,9 @@ export class ImageGalleryComponent {
   readonly images = input<GalleryImage[]>([]);
   /** Default 5; consumer overrides (MEDIA.md §14). */
   readonly maxSlots = input<number>(5);
+  /** Opt-in per-photo caption input on each tile (Past projects gallery). Off
+   *  everywhere else so project/item galleries are unchanged. */
+  readonly labels = input<boolean>(false);
   /** The consumer's cover URL — the slot matching it shows the "Cover" badge. */
   readonly primaryUrl = input<string | null>(null);
   /** Seeds the picker's Find search (e.g. the project name). */
@@ -277,6 +316,16 @@ export class ImageGalleryComponent {
 
   protected remove(i: number): void {
     const next = this.slots().filter((_, idx) => idx !== i);
+    this.slots.set(next);
+    this.imagesChange.emit(next);
+  }
+
+  /** Set/clear a photo's caption (empty → undefined so it drops from the JSONB). */
+  protected setLabel(i: number, value: string): void {
+    const v = value.trim();
+    const cur = this.slots();
+    if ((cur[i]?.label ?? '') === v) return;
+    const next = cur.map((s, idx) => (idx === i ? { ...s, label: v || undefined } : s));
     this.slots.set(next);
     this.imagesChange.emit(next);
   }

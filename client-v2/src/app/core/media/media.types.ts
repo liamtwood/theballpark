@@ -36,6 +36,9 @@ export interface GalleryImage {
   /** 0–100 percent (object-position); 50/50 = centre. */
   focalX: number;
   focalY: number;
+  /** Optional caption (Past projects gallery, Liam 2026-11-02) — opt-in per
+   *  gallery via app-image-gallery's `labels` flag. */
+  label?: string;
   attribution?: { photographerName: string; photoUrl: string };
   /** Item images (0015) — the hero flag + display order; carried through the write
    *  contract so a non-first hero / reorder round-trips (audit M1). */
