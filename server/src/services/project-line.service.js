@@ -408,6 +408,7 @@ async function attachAcceptance(agencyOrgId, lines) {
   // (plain or action-bearing) and whether it post-dates the last action — so the
   // Running budget pill can show reply_needed/replied + bold, same as the inbox.
   const lastMsg = new Map(); // project_item_id → { at, from }
+  const supplierEngaged = new Set(); // items with any message from the supplier
   const mrows = await pool.query(
     `SELECT mr.project_item_id, m.from_org_id, m.created_at
        FROM message_relations mr
@@ -416,7 +417,10 @@ async function attachAcceptance(agencyOrgId, lines) {
       ORDER BY m.created_at ASC`,
     [ids]
   );
-  for (const row of mrows.rows) lastMsg.set(row.project_item_id, { at: row.created_at, from: row.from_org_id });
+  for (const row of mrows.rows) {
+    lastMsg.set(row.project_item_id, { at: row.created_at, from: row.from_org_id });
+    if (row.from_org_id !== agencyOrgId) supplierEngaged.add(row.project_item_id);
+  }
 
   for (const l of lines) {
     const state = mev.deriveLineState(byItem.get(l.id) ?? [], { briefed: true });
@@ -429,6 +433,8 @@ async function attachAcceptance(agencyOrgId, lines) {
     // reply_needed/replied only once pricing has started — a message strictly newer
     // than an EXISTING action; the initial brief keeps its deal code (Liam 2026-11-02).
     l.lastEventIsMessage = !!(mi && act && new Date(mi.at) > new Date(act));
+    // quote_requested vs to_agree on a briefed line (Liam 2026-11-02).
+    l.supplierEngaged = supplierEngaged.has(l.id);
   }
 }
 

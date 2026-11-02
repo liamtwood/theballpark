@@ -127,6 +127,7 @@ export interface SupplierInboxItem {
   sellerAccepted: boolean | null;
   lastMessageBy: 'buyer' | 'seller' | null;
   lastEventIsMessage: boolean;
+  supplierEngaged: boolean;
   price: number | null;
 }
 
@@ -141,6 +142,7 @@ export interface SupplierInboxLineItem {
   lastEventIsMessage: boolean;
   /** ISO timestamp of the last message on this item — the hover mini-table's date. */
   lastMessageAt: string | null;
+  supplierEngaged: boolean;
   price: number | null;
 }
 
@@ -296,6 +298,8 @@ export interface InboxThreadItem {
   /** ISO timestamp of the last message on the line — the rail shows it as a
    *  WhatsApp-style day/date label ("last response"). */
   lastMessageAt: string | null;
+  /** Has the supplier engaged (any message) — quote_requested vs to_agree. */
+  supplierEngaged: boolean;
 }
 
 export interface InboxBubble {

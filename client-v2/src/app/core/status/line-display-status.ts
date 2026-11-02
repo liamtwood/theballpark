@@ -19,7 +19,9 @@ export type LineDisplayCode =
   | 'booked' | 'declined'
   // Conversation-TURN codes (used when the last event on a line is a message
   // with NO price action) — Liam 2026-10-30.
-  | 'reply_needed' | 'replied';
+  | 'reply_needed' | 'replied'
+  // Pre-pricing: briefed but the supplier hasn't engaged yet — Liam 2026-11-02.
+  | 'quote_requested';
 
 export const LINE_DISPLAY_FALLBACK: Record<LineDisplayCode, string> = {
   to_agree: 'To agree',
@@ -32,6 +34,7 @@ export const LINE_DISPLAY_FALLBACK: Record<LineDisplayCode, string> = {
   declined: 'Declined',
   reply_needed: 'Reply needed',
   replied: 'Replied',
+  quote_requested: 'Quote requested',
 };
 
 /** The two inputs that carry the conversation TURN (who spoke last on the line),
@@ -46,6 +49,10 @@ export interface LineStatusInput {
   sellerAccepted?: boolean | null;
   lastMessageBy?: 'buyer' | 'seller' | null;
   lastEventIsMessage?: boolean | null;
+  /** Has the supplier engaged on the line yet (sent any message; a price action
+   *  already moves the deal code on). Before engagement a briefed line reads
+   *  "Quote requested"; after, "Agreeing cost" (Liam 2026-11-02). */
+  supplierEngaged?: boolean | null;
 }
 
 /** A line is TERMINAL (settled — no turn, never bold) when both sides have
@@ -95,7 +102,9 @@ export function lineDisplayCode(
   // adjusted_by_supplier, budget 'quoted'); the AGENCY countering → New cost.
   if (st === 'adjusted_by_supplier' || st === 'quoted') return 'quoted';
   if (st === 'adjusted_by_agent') return 'new_cost';
-  return 'to_agree';
+  // Pre-pricing (brief_sent / holding / none): "Quote requested" until the supplier
+  // engages, then "Agreeing cost" (Liam 2026-11-02).
+  return s.supplierEngaged ? 'to_agree' : 'quote_requested';
 }
 
 /** The per-supplier ROLLUP status — a coarser summary than the per-line

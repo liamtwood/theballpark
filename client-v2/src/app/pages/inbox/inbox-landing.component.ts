@@ -300,6 +300,7 @@ export class InboxLandingComponent {
       sellerAccepted: it.sellerAccepted,
       lastMessageBy: it.lastMessageBy,
       lastEventIsMessage: it.lastEventIsMessage,
+      supplierEngaged: it.supplierEngaged,
     };
   }
 

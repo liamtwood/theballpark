@@ -136,6 +136,9 @@ function toThreadItem(raw, state, line, turn) {
     // Timestamp of the last message on this line — the rail shows "last response"
     // as a WhatsApp-style day/date label (Liam 2026-10-31).
     lastMessageAt: turn?.lastMessageAt ?? null,
+    // Has the supplier engaged (any message) — drives quote_requested vs to_agree
+    // on a briefed line (Liam 2026-11-02).
+    supplierEngaged: turn?.supplierEngaged ?? false,
     priceRef: original == null ? null : Number(original),
     priceCurrent: revised == null ? null : Number(revised),
     unitPriceRef: raw.f_base == null ? null : Number(raw.f_base),
@@ -223,9 +226,12 @@ async function assembleThreads(viewer, callerOrgId, projectId) {
   // `messages` is created_at ASC, so the last write per item wins. lastFrom is
   // the sender org; lastAt lets us tell a message-only turn from an action.
   const msgByItem = new Map(); // project_item_id → { lastAt, lastFrom }
+  const supplierEngaged = new Set(); // items with any message from the supplier (non-agency)
   for (const m of messages) {
+    const fromSupplier = m.from_org_id !== agencyOrgId;
     for (const r of relsByMessage.get(m.id) ?? []) {
       msgByItem.set(r.projectItemId, { lastAt: m.created_at, lastFrom: m.from_org_id });
+      if (fromSupplier) supplierEngaged.add(r.projectItemId);
     }
   }
 
@@ -331,6 +337,7 @@ async function assembleThreads(viewer, callerOrgId, projectId) {
           // (Liam 2026-11-02 — a brief was reading as "Replied").
           lastEventIsMessage: !!(mi && lastAction && new Date(mi.lastAt) > new Date(lastAction)),
           lastMessageAt: mi ? mi.lastAt : null,
+          supplierEngaged: supplierEngaged.has(itemId),
         };
         items.push(toThreadItem(raw, state, line, turn));
       }
@@ -1045,6 +1052,7 @@ async function getSupplierInboxItems(supplierOrgId, limit = 6) {
           sellerAccepted: it.sellerAccepted,
           lastMessageBy: it.lastMessageBy,
           lastEventIsMessage: it.lastEventIsMessage,
+          supplierEngaged: it.supplierEngaged,
           price: it.priceCurrent ?? it.priceRef ?? null,
           waitingSupplier: itemWaitingOn(it) === 'supplier',
           lastMessageAt,
@@ -1098,6 +1106,7 @@ async function getSupplierInboxSummary(supplierOrgId) {
           lastMessageBy: it.lastMessageBy,
           lastEventIsMessage: it.lastEventIsMessage,
           lastMessageAt: it.lastMessageAt,
+          supplierEngaged: it.supplierEngaged,
           price: it.priceCurrent ?? it.priceRef ?? null,
         });
       }

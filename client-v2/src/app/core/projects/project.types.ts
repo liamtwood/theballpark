@@ -101,6 +101,8 @@ export interface QuoteLine {
    *  action — feeds the reply_needed/replied code + bold needsYou on the estimate. */
   lastMessageBy?: 'buyer' | 'seller' | null;
   lastEventIsMessage?: boolean;
+  /** Has the supplier engaged (any message) — quote_requested vs to_agree. */
+  supplierEngaged?: boolean;
   /** The ORIGINAL library item (the request) — the inbox brief renders this so
    *  it shows the library price/description, not the (revised) line. Null for
    *  custom lines (no catalogue backing). */
