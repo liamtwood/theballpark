@@ -143,6 +143,56 @@ router.get('/projects/:projectId/overview', async (req, res, next) => {
   }
 });
 
+// GET /api/inbox/projects/:projectId/active-add-context?itemId= — the "add an item
+// to an active project" dialog context (item owner supplier + existing suppliers).
+// Agency-only; org from JWT (the service verifies ownership).
+router.get('/projects/:projectId/active-add-context', async (req, res, next) => {
+  try {
+    if (!UUID.safeParse(req.params.projectId).success || !UUID.safeParse(req.query.itemId || '').success) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
+    if (req.user.org_type !== 'agency') return res.status(403).json({ error: 'Agency only' });
+    res.json(await inbox.getActiveAddContext(req.user.org_id, req.params.projectId, req.query.itemId));
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
+// POST /api/inbox/projects/:projectId/active-add — add a catalogue item to an active
+// project as a ballpark, routed to one supplier, with a settlement intent + brief.
+const ActiveAddSchema = z.object({
+  itemId: z.string().uuid(),
+  supplierOrgId: z.string().uuid(),
+  settlement: z.enum(['balance', 'deposit_50']),
+  message: z.string().trim().max(4000).optional(),
+});
+router.post('/projects/:projectId/active-add', canReply, async (req, res, next) => {
+  try {
+    if (!UUID.safeParse(req.params.projectId).success) {
+      return res.status(400).json({ error: 'Invalid project id' });
+    }
+    if (req.user.org_type !== 'agency') return res.status(403).json({ error: 'Agency only' });
+    const parsed = ActiveAddSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const result = await inbox.addItemToActiveProject({
+      agencyOrgId: req.user.org_id,
+      userId: req.user.id,
+      projectId: req.params.projectId,
+      itemId: parsed.data.itemId,
+      supplierOrgId: parsed.data.supplierOrgId,
+      settlement: parsed.data.settlement,
+      message: parsed.data.message,
+    });
+    res.status(201).json(result);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
 // POST /api/inbox/threads/:threadId/reply — the supplier replies in a
 // thread: a chat message and/or per-item actions. org from JWT; the service
 // verifies the thread is theirs (RP-INB1). Gated to inbox.reply.

@@ -148,6 +148,9 @@ export class AddToProjectDialogComponent {
   readonly item = input<AddToProjectItem | null>(null);
   readonly close = output<void>();
   readonly added = output<{ projectId: string; itemName: string }>();
+  /** Chosen project is already live → hand off to the active-add flow (pick a
+   *  supplier + settlement) instead of adding silently. */
+  readonly addToActive = output<{ projectId: string; item: AddToProjectItem }>();
 
   /** Resets to "new" whenever a different item opens the dialog. */
   protected readonly selected = linkedSignal<string | null, string>({
@@ -176,6 +179,12 @@ export class AddToProjectDialogComponent {
     const target = this.selected();
     if (target === 'new') {
       void this.router.navigate(['/projects/new']);
+      this.close.emit();
+      return;
+    }
+    // Live project → the active-add flow (pick supplier + settlement), not a silent add.
+    if (this.recent().find((p) => p.id === target)?.status === 'active') {
+      this.addToActive.emit({ projectId: target, item: it });
       this.close.emit();
       return;
     }

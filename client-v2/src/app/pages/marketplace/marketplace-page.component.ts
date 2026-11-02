@@ -3,6 +3,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { AddToProjectDialogComponent, AddToProjectItem } from './add-to-project-dialog.component';
+import { AddToActiveProjectDialogComponent } from './add-to-active-project-dialog.component';
 import { QuickViewDialogComponent, QuickAddEvent } from './quick-view-dialog.component';
 import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
@@ -31,6 +32,7 @@ import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.c
     SupplierGridComponent,
     ToastModule,
     AddToProjectDialogComponent,
+    AddToActiveProjectDialogComponent,
     QuickViewDialogComponent,
     BulkActionBarComponent,
   ],
@@ -146,6 +148,14 @@ import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.c
       [item]="pickItem()"
       (close)="pickItem.set(null)"
       (added)="onAdded($event)"
+      (addToActive)="activeAdd.set($event)"
+    />
+    <!-- Live project → pick a supplier + settlement for the new item. -->
+    <app-add-to-active-project-dialog
+      [item]="activeAdd()?.item ?? null"
+      [projectId]="activeAdd()?.projectId ?? null"
+      (close)="activeAdd.set(null)"
+      (added)="onAdded($event)"
     />
     <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
@@ -174,6 +184,9 @@ export class MarketplacePageComponent {
 
   /** The item whose "Add to project" picker is open (null = closed). */
   protected readonly pickItem = signal<AddToProjectItem | null>(null);
+
+  /** The live-project add-in-flight (item + project) — opens the active-add dialog. */
+  protected readonly activeAdd = signal<{ projectId: string; item: AddToProjectItem } | null>(null);
 
   /** Item click → Quick View dialog (replaces the right-rail selection). */
   protected openQuickView(itemId: string): void {

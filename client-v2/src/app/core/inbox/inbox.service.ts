@@ -69,6 +69,43 @@ export class InboxService {
   supplierInboxSummary(): Observable<SupplierInboxProject[]> {
     return this.api.get<SupplierInboxProject[]>('/api/inbox/supplier-summary');
   }
+
+  /** The "add an item to an active project" dialog context (item owner + existing
+   *  suppliers). Agency-only. */
+  activeAddContext(projectId: string, itemId: string): Observable<ActiveAddContext> {
+    return this.api.get<ActiveAddContext>(`/api/inbox/projects/${projectId}/active-add-context?itemId=${itemId}`);
+  }
+
+  /** Add a catalogue item to an active project, routed to one supplier with a
+   *  settlement intent + brief. Agency-only. */
+  addToActiveProject(projectId: string, body: ActiveAddBody): Observable<{ ok: boolean; lineId: string }> {
+    return this.api.post<{ ok: boolean; lineId: string }>(`/api/inbox/projects/${projectId}/active-add`, body);
+  }
+}
+
+/** One supplier option in the active-add dialog. */
+export interface ActiveAddSupplier {
+  orgId: string;
+  name: string;
+}
+
+/** The active-add dialog context. */
+export interface ActiveAddContext {
+  projectName: string | null;
+  itemName: string;
+  indicativePrice: number | null;
+  unit: string | null;
+  /** The item's own supplier — "start a new conversation" (tagged if already on the project). */
+  owner: { orgId: string; name: string; onProject: boolean };
+  /** Other existing suppliers on the project — "ask to quote". */
+  others: ActiveAddSupplier[];
+}
+
+export interface ActiveAddBody {
+  itemId: string;
+  supplierOrgId: string;
+  settlement: 'balance' | 'deposit_50';
+  message?: string;
 }
 
 /** Supplier home dashboard metrics. */

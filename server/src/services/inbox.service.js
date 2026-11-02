@@ -715,6 +715,79 @@ async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
   return { categories: results.length, threads: threadCount, results };
 }
 
+/** pV2-STORE-ADD-ACTIVE-01 — context for the "add an item to an ACTIVE project"
+ *  dialog: the item's OWNER supplier (and whether it's already on the project),
+ *  plus the project's OTHER existing suppliers ("ask to quote"). Agency-only; the
+ *  caller must own the project. Cross-org supplier names via supplier_directory. */
+async function getActiveAddContext(agencyOrgId, projectId, itemId) {
+  const proj = await pool.query(
+    `SELECT id, name FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+    [projectId, agencyOrgId]
+  );
+  if (!proj.rows.length) throw httpErr('Project not found', 404);
+
+  const itemRes = await pool.query(
+    `SELECT name, org_id AS owner_org_id, base_price, unit
+       FROM items WHERE id = $1 AND deleted_at IS NULL`,
+    [itemId]
+  );
+  if (!itemRes.rows.length) throw httpErr('Item not found', 404);
+  const ownerOrgId = itemRes.rows[0].owner_org_id;
+
+  const provRes = await pool.query(
+    `SELECT provider_org_id FROM project_providers
+      WHERE project_id = $1 AND deleted_at IS NULL`,
+    [projectId]
+  );
+  const providerIds = provRes.rows.map((r) => r.provider_org_id);
+  const onProject = new Set(providerIds);
+
+  const display = await fetchOrgDisplay('agency', [ownerOrgId, ...providerIds]);
+  const nameOf = (id) => display.get(id)?.name ?? 'Supplier';
+
+  return {
+    projectName: proj.rows[0].name ?? null,
+    itemName: itemRes.rows[0].name,
+    indicativePrice: itemRes.rows[0].base_price == null ? null : Number(itemRes.rows[0].base_price),
+    unit: itemRes.rows[0].unit ?? null,
+    owner: { orgId: ownerOrgId, name: nameOf(ownerOrgId), onProject: onProject.has(ownerOrgId) },
+    others: providerIds.filter((id) => id !== ownerOrgId).map((id) => ({ orgId: id, name: nameOf(id) })),
+  };
+}
+
+/** pV2-STORE-ADD-ACTIVE-01 — add a catalogue item to an ACTIVE project as a
+ *  ballpark, routed to ONE supplier: create the line, stamp the settlement intent
+ *  (balance | deposit_50 — no payments yet), ensure the engagement + post the
+ *  editable brief tagged to the line (opens/joins that supplier's thread).
+ *  Agency-only; the caller must own the project. */
+async function addItemToActiveProject({ agencyOrgId, userId, projectId, itemId, supplierOrgId, settlement, message }) {
+  const line = await projectLine.addItem(agencyOrgId, projectId, itemId);
+  if (!line) throw httpErr('Could not add item', 404);
+
+  await withTransaction(async (db) => {
+    await db.query(
+      `UPDATE project_items
+          SET attributes = COALESCE(attributes, '{}'::jsonb) || jsonb_build_object('settlement', $2::text),
+              updated_at = NOW()
+        WHERE id = $1`,
+      [line.id, settlement === 'deposit_50' ? 'deposit_50' : 'balance']
+    );
+    await ensureProvider(db, { agencyOrgId, projectId, providerOrgId: supplierOrgId });
+    const msg = await db.query(
+      `INSERT INTO messages (from_org_id, to_org_id, user_id, project_id, subject, body, status, next_action_by)
+       VALUES ($1, $2, $3, $4, $5, $6, 'sent', $2) RETURNING id`,
+      [agencyOrgId, supplierOrgId, userId || null, projectId, 'Quote request',
+       (message && String(message).trim()) || `We'd like your quote for ${line.name}.`]
+    );
+    await db.query(
+      `INSERT INTO message_relations (message_id, project_item_id) VALUES ($1, $2)`,
+      [msg.rows[0].id, line.id]
+    );
+  });
+
+  return { ok: true, lineId: line.id };
+}
+
 /** The resulting status + the event/overlay field payload for one action. */
 function actionPayload(action, side, { price, installCost, flatTotal, note }) {
   const status = mev.statusFor(action, side);
@@ -1045,4 +1118,5 @@ module.exports = {
   listSupplierProjects, sendOutreach, getSupplierThreads, getAgentThreads,
   getAgentInboxSummary, getProjectOverview, getAgentActionCount, getSupplierActionCount, getSupplierHomeStats,
   getSupplierInboxItems, getSupplierInboxSummary, reply, getLineConversation,
+  getActiveAddContext, addItemToActiveProject,
 };
