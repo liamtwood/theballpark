@@ -295,17 +295,19 @@ export class SupplierDetailComponent {
   // Items label is "My Shop" for the owner, "Shop" for admin/agents.
   protected readonly tabs = computed<TabBandTab[]>(() => {
     const items: TabBandTab = { key: 'store', label: this.isOwner() ? 'My Shop' : 'Shop' };
-    const shopfront: TabBandTab = { key: 'storefront', label: 'Shopfront' };
+    // Shopfront hidden for now — may return later (Liam 2026-11-02). The tab's
+    // content/route stay; it's just dropped from the tab band.
+    // const shopfront: TabBandTab = { key: 'storefront', label: 'Shopfront' };
     // AI Assist — the catalogue extractor. Platform admin (cross-org), OR platform
     // STAFF acting AS this org (own-org self-serve, for onboarding). A real supplier
     // owner doesn't see it yet (option ii — supplier self-onboarding comes later).
     const ai: TabBandTab[] = this.canAiAssist() ? [{ key: 'ai', label: 'AI Assist' }] : [];
     if (this.isPlatformAdmin()) {
-      return [{ key: 'profile', label: 'Profile' }, shopfront, items, ...ai];
+      return [{ key: 'profile', label: 'Profile' }, items, ...ai];
     }
     return this.isOwner()
-      ? [{ key: 'profile', label: 'Profile' }, shopfront, items, ...ai]
-      : [shopfront, items];
+      ? [{ key: 'profile', label: 'Profile' }, items, ...ai]
+      : [items];
   });
 
   /** Platform staff — home org is Ballpark, survives a context switch. */
@@ -326,12 +328,12 @@ export class SupplierDetailComponent {
     // Who has which tab: Profile = owner (acting-as) or platform admin; AI = admin only.
     const canProfile = this.isOwner() || this.isPlatformAdmin();
     const q = this.query().get('tab');
-    if (q === 'store' || q === 'storefront') return q;
-    if (q === 'ai') return this.canAiAssist() ? 'ai' : 'storefront';
-    if (q === 'profile') return canProfile ? 'profile' : 'storefront';
-    // Default landing: owner → My Shop (store); admin → Profile; agent/public → Shopfront.
+    if (q === 'store' || q === 'storefront') return q; // ?tab=storefront still resolves (tab hidden, Liam 2026-11-02)
+    if (q === 'ai') return this.canAiAssist() ? 'ai' : 'store';
+    if (q === 'profile') return canProfile ? 'profile' : 'store';
+    // Default landing (Shopfront hidden): owner → My Shop; admin → Profile; agent/public → Shop.
     if (this.isOwner()) return 'store';
-    return this.isPlatformAdmin() ? 'profile' : 'storefront';
+    return this.isPlatformAdmin() ? 'profile' : 'store';
   });
 
   /** Back walks the drill in reverse (QC): Store → Storefront (same route,
