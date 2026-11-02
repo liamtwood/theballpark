@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom, map } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { PageConfigService } from '../../core/config/page-config.service';
@@ -21,7 +22,7 @@ import { ProjectCardComponent } from './project-card.component';
 @Component({
   selector: 'app-projects-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PageHeroComponent, TabBandComponent, ProjectCardComponent],
+  imports: [PageHeroComponent, TabBandComponent, ProjectCardComponent, RouterLink, LucideAngularModule],
   // Flowing page (standard): whole page scrolls at the window edge under the fixed
   // nav; the hero scrolls with the content (Liam 2026-10-30).
   host: { class: 'block' },
@@ -33,7 +34,12 @@ import { ProjectCardComponent } from './project-card.component';
         <!-- Current/Completed filter lives in the work column, right-aligned so
              its right edge lines up with the rightmost project card. -->
         @if (!isSupplier()) {
-          <div class="mx-auto mb-4 flex w-full max-w-[var(--workspace-max)] justify-end">
+          <!-- New project CTA (same style as the My Shop "Add product" button) on
+               the left; Current/Completed tab-band right-aligned (Liam 2026-11-02). -->
+          <div class="mx-auto mb-4 flex w-full max-w-[var(--workspace-max)] items-center justify-between gap-3">
+            <a routerLink="/projects/new" class="bp-btn-grad">
+              <lucide-icon name="plus" [size]="15" /> New project
+            </a>
             <app-tab-band [tabs]="tabs()" [active]="bucket()" [compact]="true" (activeChange)="bucket.set($event === 'completed' ? 'completed' : 'current')" />
           </div>
         }
