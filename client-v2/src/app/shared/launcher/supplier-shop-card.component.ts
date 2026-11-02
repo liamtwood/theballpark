@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { LucideAngularModule } from 'lucide-angular';
 
 /** Supplier home "Your shop" card (Liam 2026-11-02) — a storefront summary + two
  *  actions, replacing the old Next-steps action list. Published + awaiting-review
@@ -7,21 +8,28 @@ import { RouterLink } from '@angular/router';
 @Component({
   selector: 'app-supplier-shop-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, LucideAngularModule],
   host: { class: 'bp-card bp-card--lifted' },
   template: `
     <div class="flex flex-col gap-3 p-6">
       <div>
-        <h2 class="bp-card-title">Your shop</h2>
+        <h2 class="bp-card-title flex items-center gap-2">
+          <lucide-icon name="shopping-bag" [size]="16" [strokeWidth]="1.75" />Your shop
+        </h2>
         <p class="mt-0.5 bp-body-small font-semibold text-text">Keep your storefront current</p>
       </div>
       <p class="bp-body-small text-secondary">
         You have {{ published() }} published listing{{ published() === 1 ? '' : 's' }} and
         {{ awaitingReview() }} awaiting review.
       </p>
+      <!-- Icons match the header nav (size 16); buttons share the Sign Out height. -->
       <div class="mt-1 flex flex-wrap gap-2">
-        <a routerLink="/store" class="bp-btn-grad">Open my shop</a>
-        <a routerLink="/marketplace" class="bp-btn-outline">Browse marketplace</a>
+        <a routerLink="/store" class="bp-btn-grad inline-flex items-center gap-2">
+          <lucide-icon name="shopping-bag" [size]="16" [strokeWidth]="1.75" />Open my shop
+        </a>
+        <a routerLink="/marketplace" class="bp-btn-outline inline-flex items-center gap-2">
+          <lucide-icon name="store" [size]="16" [strokeWidth]="1.75" />Browse marketplace
+        </a>
       </div>
     </div>
   `,

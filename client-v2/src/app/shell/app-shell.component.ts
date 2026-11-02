@@ -158,7 +158,7 @@ const SUPPLIER_NAV: readonly NavItem[] = [
   { label: 'Projects', path: '/projects-hub', icon: 'folder-open', exact: false },
   { label: 'Inbox', path: '/inbox', icon: 'messages-square', exact: false },
   { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
-  { label: 'My Shop', path: '/store', icon: 'package', exact: false },
+  { label: 'My Shop', path: '/store', icon: 'shopping-bag', exact: false },
   { label: 'Profile', path: '/settings/profile', icon: 'user-round', exact: false },
 ];
 
