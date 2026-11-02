@@ -284,6 +284,9 @@ export class ImageGalleryComponent {
   /** Fixed column count. 0 = responsive auto-fill (default); >0 = exactly N cols
    *  (item edit uses 2 for a 2-up square grid). */
   readonly columns = input<number>(0);
+  /** Min tile width (px) in the responsive auto-fill grid — larger = fewer,
+   *  bigger tiles per row. Default 120; Past projects bumps it. */
+  readonly minTile = input<number>(120);
 
   /** New ordered array after add / remove / reorder — consumer persists. */
   readonly imagesChange = output<GalleryImage[]>();
@@ -316,7 +319,9 @@ export class ImageGalleryComponent {
 
   /** Grid columns: fixed N when `columns` > 0, else responsive auto-fill. */
   protected readonly gridCols = computed(() =>
-    this.columns() > 0 ? `repeat(${this.columns()}, minmax(0, 1fr))` : 'repeat(auto-fill, minmax(120px, 1fr))',
+    this.columns() > 0
+      ? `repeat(${this.columns()}, minmax(0, 1fr))`
+      : `repeat(auto-fill, minmax(${this.minTile()}px, 1fr))`,
   );
 
   protected isPrimary(img: GalleryImage): boolean {

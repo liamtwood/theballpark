@@ -109,6 +109,7 @@ import { GalleryImage } from '../../core/media/media.types';
               [editable]="canEdit()"
               [maxSlots]="4"
               [labels]="true"
+              [minTile]="200"
               (imagesChange)="imagesChange.emit($event)"
               (primarySet)="primarySet.emit($event)"
             />
