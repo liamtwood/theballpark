@@ -11,14 +11,14 @@ import { RouterLink } from '@angular/router';
   host: { class: 'bp-card bp-card--lifted' },
   template: `
     <div class="flex flex-col gap-3 p-6">
-      <h2 class="bp-card-title">Your shop</h2>
       <div>
-        <div class="bp-body-small font-semibold text-text">Keep your storefront current</div>
-        <p class="bp-body-small mt-1 text-secondary">
-          You have {{ published() }} published listing{{ published() === 1 ? '' : 's' }} and
-          {{ awaitingReview() }} awaiting review.
-        </p>
+        <h2 class="bp-card-title">Your shop</h2>
+        <p class="mt-0.5 bp-body-small font-semibold text-text">Keep your storefront current</p>
       </div>
+      <p class="bp-body-small text-secondary">
+        You have {{ published() }} published listing{{ published() === 1 ? '' : 's' }} and
+        {{ awaitingReview() }} awaiting review.
+      </p>
       <div class="mt-1 flex flex-wrap gap-2">
         <a routerLink="/store" class="bp-btn-grad">Open my shop</a>
         <a routerLink="/marketplace" class="bp-btn-outline">Browse marketplace</a>
