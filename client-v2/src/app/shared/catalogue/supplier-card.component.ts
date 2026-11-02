@@ -56,10 +56,9 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
             <lucide-icon [name]="inQuote() ? 'check' : 'plus'" [size]="16" />
             {{ inQuote() ? 'Added to Quote' : 'Add to Quote' }}
           </button>
-        } @else {
-          <!-- Explicit shopfront link — stops the body's "filter to supplier" click. -->
-          <a [routerLink]="['/suppliers', supplier().id]" class="store-link mt-3 block" (click)="$event.stopPropagation()">{{ supplier().name }} Store</a>
         }
+        <!-- The "[Supplier] Store" shopfront link is removed while Shopfront is
+             hidden (Liam 2026-11-02); the card body still opens the supplier's items. -->
       </div>
     </div>
     <!-- Wishlist is a buyer (agency) action — hidden for suppliers/others. -->
