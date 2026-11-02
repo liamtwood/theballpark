@@ -104,18 +104,37 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                     <app-save-state-pill [state]="store.saveState()" [idleShowsSaved]="true" />
                   </div>
                   <div class="mt-4 bp-branding-media">
+                  <!-- org-media renders the cover banner + circular logo only; the
+                       identity (name + approved check + locality) is rendered below
+                       so we can add the check icon (Liam screenshot 2026-11-02). -->
                   <app-org-media
                     mode="edit"
                     show="banner"
                     [canEdit]="store.canEdit()"
-                    [name]="org.name"
-                    [subtitle]="roleLabel()"
+                    [name]="''"
+                    [subtitle]="''"
                     [coverUrl]="org.coverImageUrl"
                     [logoUrl]="org.logoUrl"
                     [images]="org.images"
                     (editCover)="store.coverDrawer.set(true)"
                     (editLogo)="store.logoDrawer.set(true)"
                   />
+                  </div>
+                  <!-- Identity: name + approved check, then "Approved Ballpark
+                       supplier · <pin> <city>". -->
+                  <div class="mt-3">
+                    <div class="flex items-center gap-1.5">
+                      <h3 class="text-lg font-semibold text-text">{{ org.name }}</h3>
+                      <lucide-icon name="badge-check" [size]="18" class="bp-verified" />
+                    </div>
+                    <div class="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-secondary">
+                      <span class="bp-body-small">Approved Ballpark {{ isSupplier() ? 'supplier' : 'agency' }}</span>
+                      @if (org.city) {
+                        <span class="bp-body-small">·</span>
+                        <lucide-icon name="map-pin" [size]="14" [strokeWidth]="1.75" />
+                        <span class="bp-body-small">{{ org.city }}</span>
+                      }
+                    </div>
                   </div>
                   <!-- About Us — the public description blurb (orgs.description),
                        sitting under the identity label. -->
@@ -309,11 +328,6 @@ export class ProfileComponent {
   // ── Profile / Shopfront tabs (suppliers only). ────────────────────────────
   protected readonly isSupplier = computed(() => this.auth.user()?.activeOrgType === 'supplier');
 
-  /** Identity label under the org name in the Branding banner. */
-  protected readonly roleLabel = computed(() => {
-    const t = this.auth.user()?.activeOrgType;
-    return t === 'supplier' ? 'Ballpark Supplier' : t === 'agency' ? 'Ballpark Agency' : '';
-  });
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   /** Tab lives in the URL (?tab=shopfront) so the Storefront hub's "My

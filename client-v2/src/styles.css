@@ -1031,6 +1031,8 @@ body {
 /* Circular logo on the profile branding banner (Liam 2026-11-02). */
 .bp-branding-media .bp-org-banner__logo,
 .bp-branding-media .bp-org-banner__logo img { border-radius: 50%; }
+/* Approved/verified check beside an org name (brand rose). */
+.bp-verified { color: var(--theme-accent); flex: none; }
 .bp-org-banner__cover img {
   width: 100%;
   height: 100%;
