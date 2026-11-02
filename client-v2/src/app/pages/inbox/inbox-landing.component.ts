@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { InboxService, InboxSummaryRow, InboxSummarySupplier, InboxWaitingCounts, SupplierInboxProject, SupplierInboxLineItem } from '../../core/inbox/inbox.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
+import { PageConfigService } from '../../core/config/page-config.service';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { supplierSummaryCode, lineDisplayCode, needsYou } from '../../core/status/line-display-status';
 import { lastActivity } from './inbox-status';
@@ -29,9 +30,9 @@ import { lastActivity } from './inbox-status';
   template: `
     <app-page-hero
       align="block"
-      eyebrow="Inbox"
-      title="Your conversations"
-      subtitle="Latest producer enquiries"
+      [eyebrow]="hero().eyebrow"
+      [title]="hero().title"
+      [subtitle]="hero().subtitle"
     />
 
     <div class="bp-page-body">
@@ -240,6 +241,11 @@ import { lastActivity } from './inbox-status';
 export class InboxLandingComponent {
   private readonly inbox = inject(InboxService);
   private readonly auth = inject(AuthService);
+  private readonly pageConfig = inject(PageConfigService);
+
+  /** Admin-configurable hero (Settings ▸ Pages ▸ Inbox) — workspace eyebrow,
+   *  "Inbox" title, per-org-type subtitle (Liam 2026-11-02). */
+  protected readonly hero = computed(() => this.pageConfig.pageHero('inbox'));
 
   /** Suppliers get their quote-request conversations (the gated supplier feed +
    *  the shared ProjectCard), not the agency /summary rollup. */

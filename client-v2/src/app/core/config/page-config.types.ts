@@ -23,7 +23,7 @@ export interface PageConfigPayload {
 
 /** The feature pages whose hero (eyebrow / title / subtitle) is admin-driven
  *  from /settings/pages. Home is separate (its title has modes). */
-export type PageKey = 'newProject' | 'projects' | 'marketplace' | 'profile' | 'project';
+export type PageKey = 'newProject' | 'projects' | 'marketplace' | 'profile' | 'project' | 'inbox';
 
 /** Per-project token values fed into the resolver when rendering a PROJECT
  *  page (the project detail hero). The component resolves these from the loaded
@@ -88,6 +88,13 @@ export const PAGE_HERO_DEFAULTS: Record<PageKey, Required<PageHeroOverride>> = {
     title: 'Your details',
     subtitle: 'Signed in as {email} · {orgType} account',
   },
+  // The Messages landing (Inbox). Workspace eyebrow like the home; per-org-type
+  // subtitle set in org_type_config (Liam 2026-11-02).
+  inbox: {
+    eyebrow: '{orgType} workspace',
+    title: 'Inbox',
+    subtitle: 'Your conversations, one thread per project.',
+  },
   // The project DETAIL hero (FR-00240): client name eyebrow / project name /
   // event-summary subtitle. Empty token segments drop from the ' · ' join.
   project: {
@@ -103,6 +110,7 @@ export const PAGE_META: readonly { key: PageKey; label: string }[] = [
   { key: 'projects', label: 'Projects' },
   { key: 'project', label: 'Project (detail)' },
   { key: 'marketplace', label: 'Marketplace' },
+  { key: 'inbox', label: 'Inbox' },
   { key: 'profile', label: 'Profile' },
 ];
 
