@@ -155,7 +155,8 @@ const AGENCY_NAV: readonly NavItem[] = [
 /** Supplier — incoming work + conversations + their storefront (no create). */
 const SUPPLIER_NAV: readonly NavItem[] = [
   { label: 'Home', path: '/home', icon: 'layout-grid', exact: true },
-  { label: 'Projects', path: '/projects-hub', icon: 'folder-open', exact: false },
+  // Projects tab hidden for suppliers for now; may return later (Liam 2026-11-02).
+  // { label: 'Projects', path: '/projects-hub', icon: 'folder-open', exact: false },
   { label: 'Inbox', path: '/inbox', icon: 'messages-square', exact: false },
   { label: 'Marketplace', path: '/marketplace', icon: 'store', exact: false },
   { label: 'My Shop', path: '/store', icon: 'shopping-bag', exact: false },
