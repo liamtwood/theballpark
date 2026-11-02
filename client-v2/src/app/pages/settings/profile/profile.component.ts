@@ -99,8 +99,8 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
               @if (store.profile.value(); as org) {
                 <div>
                 <div class="ed-card p-6">
-                  <div class="flex items-center justify-between">
-                    <h2 class="bp-card-title">Branding</h2>
+                  <!-- "Branding" title removed (Liam 2026-11-02); save pill stays top-right. -->
+                  <div class="flex justify-end">
                     <app-save-state-pill [state]="store.saveState()" [idleShowsSaved]="true" />
                   </div>
                   <div class="mt-4 bp-branding-media">
