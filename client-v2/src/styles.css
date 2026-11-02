@@ -1026,6 +1026,8 @@ body {
 }
 /* Empty cover shows the soft brand gradient (canonical edit placeholder). */
 .bp-org-banner__cover--empty { background: var(--theme-soft); }
+/* Profile Branding card — flatter cover so it reads as a banner (Liam 2026-11-02). */
+.bp-branding-media .bp-org-banner__cover { aspect-ratio: 16 / 5; }
 .bp-org-banner__cover img {
   width: 100%;
   height: 100%;

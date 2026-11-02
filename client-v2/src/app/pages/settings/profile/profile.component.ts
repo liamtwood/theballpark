@@ -93,33 +93,23 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
           <div class="flex flex-col gap-5">
             <!-- ── Details ─────────────────────────────────────────────── -->
             <div class="flex flex-col gap-5">
-              <!-- About Us — the public description blurb (orgs.description). -->
-              <div class="ed-card p-6">
-                <div class="flex items-center justify-between">
-                  <h2 class="bp-card-title">About Us</h2>
-                  <app-save-state-pill [state]="store.saveState()" [idleShowsSaved]="true" />
-                </div>
-                <textarea class="ed-textarea mt-4" rows="5"
-                          placeholder="Tell customers about your company…"
-                          [disabled]="!store.canEdit()"
-                          [ngModel]="store.form().description"
-                          (ngModelChange)="store.patch({ description: $event })"
-                          (blur)="store.saveSection('about')"></textarea>
-              </div>
-
-              <!-- Branding — cover + logo, under About Us. The drawers ride WITH
-                   it so their (empty) hosts don't add stray gaps. -->
+              <!-- Branding — cover banner + logo + name/role, with About Us moved
+                   in beneath the identity label (Liam 2026-11-02). The drawers ride
+                   WITH it so their (empty) hosts don't add stray gaps. -->
               @if (store.profile.value(); as org) {
                 <div>
                 <div class="ed-card p-6">
-                  <h2 class="bp-card-title">Branding</h2>
-                  <div class="mt-4">
+                  <div class="flex items-center justify-between">
+                    <h2 class="bp-card-title">Branding</h2>
+                    <app-save-state-pill [state]="store.saveState()" [idleShowsSaved]="true" />
+                  </div>
+                  <div class="mt-4 bp-branding-media">
                   <app-org-media
                     mode="edit"
                     show="banner"
                     [canEdit]="store.canEdit()"
                     [name]="org.name"
-                    [subtitle]="org.description ?? ''"
+                    [subtitle]="roleLabel()"
                     [coverUrl]="org.coverImageUrl"
                     [logoUrl]="org.logoUrl"
                     [images]="org.images"
@@ -127,6 +117,17 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                     (editLogo)="store.logoDrawer.set(true)"
                   />
                   </div>
+                  <!-- About Us — the public description blurb (orgs.description),
+                       sitting under the identity label. -->
+                  <label class="mt-4 block">
+                    <span class="ed-label mb-1.5 block">About Us</span>
+                    <textarea class="ed-textarea" rows="5"
+                              placeholder="Tell customers about your company…"
+                              [disabled]="!store.canEdit()"
+                              [ngModel]="store.form().description"
+                              (ngModelChange)="store.patch({ description: $event })"
+                              (blur)="store.saveSection('about')"></textarea>
+                  </label>
                 </div>
 
                 <app-drawer [(open)]="store.coverDrawer" title="Cover image">
@@ -307,6 +308,12 @@ export class ProfileComponent {
 
   // ── Profile / Shopfront tabs (suppliers only). ────────────────────────────
   protected readonly isSupplier = computed(() => this.auth.user()?.activeOrgType === 'supplier');
+
+  /** Identity label under the org name in the Branding banner. */
+  protected readonly roleLabel = computed(() => {
+    const t = this.auth.user()?.activeOrgType;
+    return t === 'supplier' ? 'Ballpark Supplier' : t === 'agency' ? 'Ballpark Agency' : '';
+  });
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   /** Tab lives in the URL (?tab=shopfront) so the Storefront hub's "My
