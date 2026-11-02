@@ -41,6 +41,7 @@ const PageConfigSchema = z
         project: PageHeroOverrideSchema.optional(),
         profile: PageHeroOverrideSchema.optional(),
         marketplace: PageHeroOverrideSchema.optional(),
+        inbox: PageHeroOverrideSchema.optional(),
       })
       .strip()
       .optional(),
