@@ -134,15 +134,16 @@ import { lastActivity } from './inbox-status';
                     </div>
                     <div class="min-w-0 flex-1">
                       <div class="bp-card-title truncate">{{ row.name }}</div>
-                      <!-- Client (semi-bold) then supplier names (·-joined); hover → mini table. -->
+                      <!-- Client (semi-bold) then ITEM names (·-joined); the suppliers
+                           live in the hover mini-table (Liam 2026-11-02). -->
                       <div class="truncate text-sm text-secondary"
                            (mouseenter)="showSuppliers($event, row)" (mouseleave)="hideSuppliers()">
                         @if (row.clientName) {
                           <span class="font-semibold text-text">{{ row.clientName }}</span>
                         }
-                        @if (row.suppliers.length) {
-                          <span>{{ (row.clientName ? ' · ' : '') + supplierNamesJoined(row) }}</span>
-                        } @else {
+                        @if (row.itemNames.length) {
+                          <span>{{ (row.clientName ? ' · ' : '') + row.itemNames.join(' · ') }}</span>
+                        } @else if (!row.suppliers.length) {
                           <span>No suppliers yet</span>
                         }
                       </div>
@@ -342,10 +343,6 @@ export class InboxLandingComponent {
       if (s.lastMessageAt && (!max || s.lastMessageAt > max)) max = s.lastMessageAt;
     }
     return max;
-  }
-  /** Supplier names for the sub-line (after the client name), joined by " · ". */
-  protected supplierNamesJoined(row: InboxSummaryRow): string {
-    return row.suppliers.map((s) => s.name).join(' · ');
   }
   protected readonly suppliersBubble = signal<{ suppliers: InboxSummarySupplier[]; x: number; y: number } | null>(null);
   protected showSuppliers(ev: MouseEvent, row: InboxSummaryRow): void {

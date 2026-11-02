@@ -161,6 +161,9 @@ export interface InboxSummaryRow extends InboxWaitingCounts {
   name: string;
   clientName: string | null;
   suppliers: InboxSummarySupplier[];
+  /** Project item names (deduped, non-declined) — the card sub-line (suppliers live
+   *  in the hover). */
+  itemNames: string[];
   /** Total £ of agreed (booked / both-accepted) lines on the project. */
   confirmedWork: number;
 }

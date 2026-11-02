@@ -524,6 +524,17 @@ async function getAgentInboxSummary(agencyOrgId) {
       }
     }
 
+    // Project-level item names (deduped, non-declined) for the card's sub-line —
+    // the suppliers themselves live in the hover mini-table (Liam 2026-11-02).
+    const itemNames = [];
+    const seenNames = new Set();
+    for (const t of threads) for (const it of t.items) {
+      if (seenNames.has(it.id)) continue;
+      seenNames.add(it.id);
+      if (isDeclined(it.status)) continue;
+      itemNames.push(it.name);
+    }
+
     const suppliers = [];
     let waitingAgent = 0, waitingSupplier = 0, itemCount = 0, confirmedWork = 0;
     for (const g of bySupplier.values()) {
@@ -554,7 +565,7 @@ async function getAgentInboxSummary(agencyOrgId) {
 
     out.push({
       id: p.id, name: project.name, clientName: project.clientName ?? null,
-      suppliers, itemCount, waitingAgent, waitingSupplier, actionRequired: waitingAgent > 0,
+      suppliers, itemNames, itemCount, waitingAgent, waitingSupplier, actionRequired: waitingAgent > 0,
       confirmedWork: Math.round(confirmedWork),
     });
   }
