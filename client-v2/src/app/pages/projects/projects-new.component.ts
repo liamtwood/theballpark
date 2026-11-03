@@ -262,7 +262,10 @@ export class ProjectsNewComponent {
       // eyebrow reads client_name).
       const clientName = this.client().trim() || (parsed.client ?? '').trim();
       if (clientName) detailPatch.clientName = clientName;
-      if (this.budget().trim()) detailPatch.projectBudget = Number(this.budget());
+      // Budget: the form field wins; otherwise fall back to the budget the
+      // parser pulled from the brief ("£45,000" → 45000) so it isn't dropped.
+      const budgetVal = this.budget().trim() ? Number(this.budget()) : parseMoney(parsed.budget);
+      if (budgetVal != null && !Number.isNaN(budgetVal)) detailPatch.projectBudget = budgetVal;
       if (Object.keys(detailPatch).length) {
         try {
           await firstValueFrom(this.projects.update(card.id, detailPatch));
@@ -271,9 +274,16 @@ export class ProjectsNewComponent {
         }
       }
 
-      // Land on the project detail (default tab). The tab bodies (Ballpark
-      // Cost / Marketplace) depend on the line cluster (S2) — until that's
-      // ported the hero is what renders; the project itself is saved.
+      // Auto-draft the estimate: match each briefed category to catalogue items
+      // and add the top picks (several Haiku calls — runs under the busy state).
+      try {
+        await firstValueFrom(this.projects.recommend(card.id));
+      } catch (recErr) {
+        console.warn('[ProjectsNew] recommend failed', recErr);
+      }
+
+      // Land on the project detail (default tab). The tab bodies render the
+      // drafted estimate (line cluster).
       await this.router.navigate(['/projects', card.id]);
     } catch (err) {
       console.warn('[ProjectsNew] brief → create failed', err);
@@ -291,4 +301,18 @@ export class ProjectsNewComponent {
       this.busy.set(false);
     }
   }
+}
+
+/** Parse a loose money string from the parsed brief ("£45,000", "£45k",
+ *  "Unknown") into a number, or null when there's no figure. */
+function parseMoney(s?: string | null): number | null {
+  if (!s) return null;
+  const t = s.toLowerCase().replace(/[, ]/g, '');
+  const m = t.match(/£?([\d.]+)\s*([km])?/);
+  if (!m) return null;
+  let n = parseFloat(m[1]);
+  if (Number.isNaN(n)) return null;
+  if (m[2] === 'k') n *= 1000;
+  else if (m[2] === 'm') n *= 1_000_000;
+  return Math.round(n);
 }

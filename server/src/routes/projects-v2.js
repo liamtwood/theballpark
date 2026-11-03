@@ -243,6 +243,17 @@ router.post('/:id/items/:lineId/parse-intent', (req, res) =>
   res.json({ reply: '', actions: [], suggestions: [] }));
 router.post('/:id/items/:lineId/question', (req, res) =>
   res.status(501).json({ error: 'Not available in this stage' }));
-router.post('/:id/recommend', (req, res) => res.json({ categories: [], totalAdded: 0 }));
+// Brief → recommended items: match each briefed category against the catalogue
+// and add the top picks to the project (ported from v1, rebuild-schema matcher).
+// org_id from the JWT (never the body). Each category is one Haiku round-trip.
+router.post('/:id/recommend', async (req, res, next) => {
+  try {
+    const result = await projects.recommend(req.user.org_id, req.params.id);
+    if (!result) return res.status(404).json({ error: 'Project not found' });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
 
 module.exports = router;

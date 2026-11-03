@@ -184,9 +184,11 @@ async function loadTaxonomy() {
     // category (e.g. the retired "Chairs" mid-level that sits inactive beside
     // the active "Seating"). Inactive rows in the vocabulary made the AI pick
     // "Chairs" over "Seating".
+    // REBUILD: categories are catalogue-only (no `namespace`); the rebuild table
+    // has no `is_active` either — a live category is just deleted_at IS NULL.
     `SELECT id, name, parent_id
        FROM categories
-      WHERE namespace = 'catalogue' AND is_active = true AND deleted_at IS NULL
+      WHERE deleted_at IS NULL
       ORDER BY sort_order ASC, name ASC`
   );
   const parents = cats.rows.filter(c => !c.parent_id);
@@ -695,17 +697,31 @@ async function matchItems(brief, categoryId, budgetEstimate, projectId) {
   if (!cat.rows.length) throw httpErr('category not found', 404);
   const categoryName = cat.rows[0].name;
 
+  // REBUILD: the catalogue is a single-parent tree and items live in leaf
+  // subcategories, so match the category AND all its descendants.
   const inCategory =
-    `(i.category_id = $1 OR i.category_id IN (SELECT id FROM categories WHERE parent_id = $1))`;
+    `i.category_id IN (
+       WITH RECURSIVE sub AS (
+         SELECT $1::uuid AS id
+         UNION ALL SELECT c.id FROM categories c JOIN sub ON c.parent_id = sub.id
+       ) SELECT id FROM sub
+     )`;
+  // Published = active + approved (the rebuild replaced items.is_active). Hero
+  // image comes from the images jsonb (items.image_url was dropped); there is no
+  // items.subcategory_id in the rebuild, so subcategory_name is null.
+  const published = `i.status = 'active' AND i.approval_status = 'approved' AND i.deleted_at IS NULL`;
+  const heroImg =
+    `(SELECT e->>'url' FROM jsonb_array_elements(i.images) e
+       ORDER BY (e->>'is_hero')::boolean DESC NULLS LAST, (e->>'sort_order')::int ASC NULLS LAST
+       LIMIT 1)`;
 
   const itemsRes = await pool.query(
     `SELECT i.id, i.name, i.description, i.base_price, i.org_id,
-            i.image_url, i.external_url, i.image_display,
-            sc.name AS subcategory_name, o.name AS supplier_name
+            ${heroImg} AS image_url, i.external_url, i.image_display,
+            NULL::text AS subcategory_name, o.name AS supplier_name
        FROM items i
-       LEFT JOIN categories sc ON sc.id = i.subcategory_id
        LEFT JOIN orgs_public o ON o.id = i.org_id
-      WHERE i.is_active = true AND ${inCategory}
+      WHERE ${published} AND ${inCategory}
       ORDER BY i.name`,
     [categoryId]
   );
@@ -716,7 +732,7 @@ async function matchItems(brief, categoryId, budgetEstimate, projectId) {
     `SELECT o.id, o.name, o.description, o.cover_image_url, o.logo_url, o.image_display,
             COUNT(i.id)::int AS item_count
        FROM items i JOIN orgs_public o ON o.id = i.org_id
-      WHERE i.is_active = true AND ${inCategory}
+      WHERE ${published} AND ${inCategory}
       GROUP BY o.id, o.name, o.description, o.cover_image_url, o.logo_url, o.image_display
       ORDER BY item_count DESC`,
     [categoryId]
@@ -865,7 +881,7 @@ Score items and propose if needed.`
       await pool.query(
         `UPDATE project_categories
             SET match_result_json = $1, updated_at = NOW()
-          WHERE project_id = $2 AND category_id = $3 AND is_active = true`,
+          WHERE project_id = $2 AND category_id = $3 AND deleted_at IS NULL`,
         [JSON.stringify(result), projectId, categoryId]
       );
     } catch (e) {
@@ -1485,9 +1501,11 @@ async function materializeProposedItem(body) {
   return withTransaction(async (client) => {
     await client.query("SELECT set_config('app.is_admin', 't', true)");
     const r = await client.query(
+      // REBUILD: items.is_active dropped — a not-yet-live item is status 'new'
+      // + approval_status 'pending' (hidden until the named supplier approves).
       `INSERT INTO items (org_id, category_id, name, description, base_price,
-                          is_active, approval_status)
-       VALUES ($1, $2, $3, $4, $5, false, 'pending')
+                          status, approval_status)
+       VALUES ($1, $2, $3, $4, $5, 'new', 'pending')
        ON CONFLICT (org_id, name) DO UPDATE SET
          category_id = EXCLUDED.category_id,
          description = EXCLUDED.description,

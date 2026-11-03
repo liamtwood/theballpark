@@ -309,20 +309,20 @@ async function updateDetail(orgId, id, patch) {
 /** AI_TO_DB maps the parser's category slugs → catalogue category NAMES.
  *  Shared by the create-from-brief scaffold and the dormant recommend() below.
  *  Defined here so create() can reference it; recommend() reuses the same map. */
+// REBUILD: map the parser's category slugs → the rebuild catalogue's top-level
+// category NAMES (dev/preview seed: AV, Catering, Floristry, Furniture, Graphics,
+// Prop Hire, Set Build, Venues). Slugs with no rebuild equivalent (photography,
+// staffing, h-and-s, logistics, entertainment, lighting) resolve to null → a
+// custom/uncategorised bucket, until those categories are seeded.
 const AI_TO_DB = {
-  'set-build': 'Stand Structure',
-  print: 'Graphics & Signage',
-  av: 'AV & Technology',
-  floral: 'Florals',
-  venues: 'Venue',
+  'set-build': 'Set Build',
+  print: 'Graphics',
+  av: 'AV',
+  floral: 'Floristry',
+  venues: 'Venues',
   catering: 'Catering',
-  photography: 'Photography',
-  staffing: 'Staffing',
-  'h-and-s': 'Health & Safety',
-  furniture: 'Furniture & Fixtures',
-  logistics: 'Logistics & Transport',
-  entertainment: 'Entertainment',
-  lighting: 'Lighting',
+  furniture: 'Furniture',
+  'prop-hire': 'Prop Hire',
 };
 
 /** Scaffold the per-category buckets from the AI-parsed brief (REBUILD: the
@@ -1354,8 +1354,10 @@ async function recommend(orgId, projectId) {
       const dbName = AI_TO_DB[c.categoryId];
       if (!dbName) return null;
       const catRow = await pool.query(
+        // REBUILD: categories are catalogue-only (no `namespace` column); a
+        // top-level category is simply parent_id IS NULL (matches scaffoldCategories).
         `SELECT id FROM categories
-          WHERE name = $1 AND namespace = 'catalogue' AND parent_id IS NULL
+          WHERE name = $1 AND parent_id IS NULL AND deleted_at IS NULL
           LIMIT 1`,
         [dbName]
       );
