@@ -1383,7 +1383,10 @@ async function recommend(orgId, projectId) {
     if (!m) continue;
     let added = 0;
     for (const it of m.picks) {
-      const line = await addItem(orgId, projectId, it.item_id);
+      // Add via the PORTED line layer (rebuild project_items shape) — the
+      // legacy local addItem targets dropped columns (supplier_org_id,
+      // items.image_url) and is not used by the rebuild quote.
+      const line = await projectLines.addItem(orgId, projectId, it.item_id);
       if (line) added += 1;
     }
     totalAdded += added;
