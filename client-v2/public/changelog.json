@@ -16,31 +16,31 @@
               "ref": "",
               "type": "new",
               "feature": "",
-              "text": "Two-axis line status — every line now shows both the deal state and whose turn it is. A line waiting on you reads \"Reply needed\"; one you have answered reads \"Replied\"; and whenever the other party made the last move, the status is shown in bold so it stands out at a glance."
+              "text": "Two-axis line status — deal state + whose turn (Reply needed / Replied); bold when the other party moved last."
             },
             {
               "ref": "",
               "type": "new",
               "feature": "",
-              "text": "Quote requested → Agreeing cost — a briefed line reads \"Quote requested\" until the supplier engages, then moves to \"Agreeing cost\", so you can see which enquiries a supplier has actually picked up."
+              "text": "\"Quote requested\" → \"Agreeing cost\" once the supplier engages."
             },
             {
               "ref": "",
               "type": "new",
               "feature": "",
-              "text": "Redesigned Inbox cards — full-width rows with a date circle that carries an action indicator (pink when it needs you, a tick once handled), the project name, a cost + status rollup, and a hover mini-table of the items. Agents can group the list by Project or by Supplier."
+              "text": "Redesigned Inbox cards — date circle + action indicator, cost + status rollup, hover item table, group by Project or Supplier."
             },
             {
               "ref": "",
               "type": "improved",
               "feature": "",
-              "text": "Conversation dates — conversations now group messages under day dividers (Today / Yesterday / weekday / date), and the inbox rail shows the date of the last response."
+              "text": "Day dividers in conversations; last-response date on the rail."
             },
             {
               "ref": "",
-              "type": "improved",
+              "type": "changed",
               "feature": "",
-              "text": "Messages is now the Inbox — renamed throughout, with a configurable hero and a per-organisation subtitle. The item card sits above the latest message and the page scrolls like the rest of the app."
+              "text": "Messages renamed to Inbox; configurable hero; item card above the latest message; standard page scroll."
             }
           ]
         },
@@ -51,13 +51,13 @@
               "ref": "",
               "type": "new",
               "feature": "",
-              "text": "Supplier inbox parity — suppliers get the same Inbox as agencies: project rows that open the project view, item rows that open the full thread, and a Messages (N) badge in the navigation."
+              "text": "Supplier Inbox parity — project/item rows and a Messages (N) nav badge."
             },
             {
               "ref": "",
               "type": "new",
               "feature": "",
-              "text": "A \"Your shop\" card on the supplier home, with published and awaiting-review counts and a quick way into My Shop."
+              "text": "\"Your shop\" card on the supplier home (published / awaiting-review counts)."
             }
           ]
         },
@@ -68,13 +68,13 @@
               "ref": "",
               "type": "new",
               "feature": "",
-              "text": "Redesigned profile — a banner cover with a circular logo, the organisation name with an approved check and \"Approved Ballpark supplier · location\", click-to-edit About Us, and contact pills for website, Instagram, email and company number."
+              "text": "Redesigned Branding — banner cover, circular logo, name + approved check + locality, inline About Us, contact pills."
             },
             {
               "ref": "",
               "type": "new",
               "feature": "",
-              "text": "Past projects — show up to four hero images of work you are proud of, each with an optional description. These are the same images producers see in Quick View."
+              "text": "Past projects — up to four hero images, each with an optional description."
             }
           ]
         },
@@ -85,13 +85,13 @@
               "ref": "",
               "type": "new",
               "feature": "",
-              "text": "Add an item to an active project — pick how it settles (against the balance or 50% upfront) and which supplier to reach out to, with an editable brief."
+              "text": "Add an item to an active project — settlement + supplier picker with an editable brief."
             },
             {
               "ref": "",
               "type": "improved",
               "feature": "",
-              "text": "Projects page — Current and Completed as centred pills, a New project button in the hero, and a clearer empty state."
+              "text": "Projects page — Current/Completed pills, New project in the hero, clearer empty state."
             }
           ]
         },
@@ -100,15 +100,15 @@
           "items": [
             {
               "ref": "",
-              "type": "improved",
+              "type": "changed",
               "feature": "",
-              "text": "Tidier navigation — the Shopfront tab is hidden for now on Profile and My Shop, and the supplier Projects tab is hidden while that view is reworked."
+              "text": "Shopfront tab hidden (Profile, My Shop); supplier Projects tab hidden."
             },
             {
               "ref": "",
               "type": "improved",
               "feature": "",
-              "text": "Marketplace — removed the \"[Supplier] Store\" link from supplier cards, and kept the marketplace cards a consistent size."
+              "text": "Removed the \"[Supplier] Store\" link from supplier cards; consistent card sizing."
             }
           ]
         }
