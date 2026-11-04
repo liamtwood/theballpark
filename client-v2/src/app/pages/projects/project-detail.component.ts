@@ -329,7 +329,7 @@ interface DetailForm {
           }
           @case ('final') {
             <div class="min-h-0 flex-1 bp-gutter">
-              <app-project-estimate [projectId]="p.id" [project]="p" view="final" (detailsSaved)="detail.reload()" />
+              <app-project-estimate [projectId]="p.id" [project]="p" view="final" (detailsSaved)="detail.reload()" (deleteRequested)="onDelete()" />
             </div>
           }
           @case ('reports') {
