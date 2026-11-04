@@ -183,13 +183,17 @@ function toBubble(m, viewer, myOrgId, counterpartyName, taggedItemIds) {
 async function assembleThreads(viewer, callerOrgId, projectId) {
   // The agency owns the project; derive it so we can tell the two sides apart
   // (sender === agency ⇒ buyer). Agency viewer: the caller IS the agency.
+  // Accept EITHER the raw UUID or the project's human ref in the URL (EP-00021 —
+  // no raw ids in URLs; resolve at the boundary, then pin the canonical id so
+  // every downstream query stays id-based).
   const projRow = await pool.query(
     `SELECT id, org_id, name, description, event_date, venue_name, client_name, currency
-       FROM projects WHERE id = $1 AND deleted_at IS NULL`,
+       FROM projects WHERE (id::text = $1 OR ref = $1) AND deleted_at IS NULL`,
     [projectId]
   );
   if (!projRow.rows.length) throw httpErr('Project not found', 404);
   const project = projRow.rows[0];
+  projectId = project.id;
   const agencyOrgId = project.org_id;
   if (viewer === 'agency' && agencyOrgId !== callerOrgId) throw httpErr('Project not found', 404);
 
@@ -509,7 +513,7 @@ function truncate(s, max) {
  *  line items are waiting on the agent vs the supplier. org from JWT. */
 async function getAgentInboxSummary(agencyOrgId) {
   const projs = await pool.query(
-    `SELECT p.id FROM projects p
+    `SELECT p.id, p.ref FROM projects p
       WHERE p.org_id = $1 AND p.deleted_at IS NULL
         AND COALESCE(p.status, 'draft') NOT IN ('completed', 'archived')
         AND EXISTS (SELECT 1 FROM project_providers pp
@@ -518,16 +522,19 @@ async function getAgentInboxSummary(agencyOrgId) {
     [agencyOrgId]
   );
 
-  const out = [];
-  for (const p of projs.rows) {
+  // Assemble every project's threads CONCURRENTLY — was a sequential await loop
+  // (projects × per-project queries serialised → slow inbox load). Order is
+  // preserved; empty-thread projects drop out in the filter below (perf, Liam
+  // 2026-11-04).
+  const out = (await Promise.all(projs.rows.map(async (p) => {
     const { project, threads } = await assembleThreads('agency', agencyOrgId, p.id);
-    if (!threads.length) continue;
+    if (!threads.length) return null;
 
     // Roll up per supplier (a supplier can span multiple category threads).
     const bySupplier = new Map();
     for (const t of threads) {
       let g = bySupplier.get(t.supplierOrgId);
-      if (!g) { g = { name: t.supplierName, items: [], lastMessage: null, lastMessageAt: null }; bySupplier.set(t.supplierOrgId, g); }
+      if (!g) { g = { orgId: t.supplierOrgId, name: t.supplierName, items: [], lastMessage: null, lastMessageAt: null }; bySupplier.set(t.supplierOrgId, g); }
       g.items.push(...t.items);
       const last = t.messages[t.messages.length - 1];
       if (last && (!g.lastMessageAt || new Date(last.createdAt) > new Date(g.lastMessageAt))) {
@@ -567,7 +574,7 @@ async function getAgentInboxSummary(agencyOrgId) {
         }
       }
       suppliers.push({
-        name: g.name, itemCount: n, waitingAgent: wa, waitingSupplier: ws,
+        orgId: g.orgId, name: g.name, itemCount: n, waitingAgent: wa, waitingSupplier: ws,
         actionRequired: wa > 0, actionItemId,
         // Per-supplier agreed total + item names — the "by supplier" view's cost
         // and sub-line (Liam 2026-11-02).
@@ -577,12 +584,12 @@ async function getAgentInboxSummary(agencyOrgId) {
       waitingAgent += wa; waitingSupplier += ws; itemCount += n; confirmedWork += cw;
     }
 
-    out.push({
-      id: p.id, name: project.name, clientName: project.clientName ?? null,
+    return {
+      id: p.id, ref: p.ref ?? null, name: project.name, clientName: project.clientName ?? null,
       suppliers, itemNames, itemCount, waitingAgent, waitingSupplier, actionRequired: waitingAgent > 0,
       confirmedWork: Math.round(confirmedWork),
-    });
-  }
+    };
+  }))).filter(Boolean);
   return out;
 }
 

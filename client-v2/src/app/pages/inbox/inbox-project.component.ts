@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, linkedSignal, resource, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, linkedSignal, output, resource, signal, viewChild } from '@angular/core';
 import { CurrencyPipe, DatePipe, Location, NgClass } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -62,10 +62,18 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
       } @else if (threads().length === 0) {
         <p class="bp-body-small text-secondary">No quote requests in this project yet.</p>
       } @else {
+        <!-- Full-thread-as-dialog (demo, Liam 2026-11-04): a centred overlay. The
+             conversation panel below lifts into a fixed, floating card over this
+             backdrop; the rail/assistant/heading drop. ?dialog=1 drives it so the
+             landing can open a single-item thread straight in the dialog. -->
+        @if (dialogThread()) {
+          <div class="fixed inset-0 z-40 bg-[color-mix(in_srgb,var(--color-text)_40%,transparent)]" (click)="exitFullThread()"></div>
+        }
         <!-- Heading row above the columns. Normal: "Project inbox" so the rail cards
              and conversation top-align under it. Full thread (Liam 2026-10-29): an
              "All messages" back link that drops the rail + assistant and gives the
-             picked conversation the full width. -->
+             picked conversation the full width. Hidden entirely in dialog mode. -->
+        @if (!dialogThread()) {
         @if (fullThread()) {
           <button type="button" class="mx-auto mb-3 flex w-full max-w-[var(--workspace-max)] items-center gap-1.5 px-1 bp-body-small text-secondary transition-colors hover:text-accent" (click)="exitFullThread()">
             <lucide-icon name="arrow-left" [size]="16" /> All messages
@@ -82,6 +90,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
             <h2 class="bp-card-title">Project inbox</h2>
           </div>
         }
+        }
         <!-- Standard workspace column: inbox rail | conversation | assistant
              (far-right). Centred to --workspace-max like every other page.
              Rails flank the conversation from lg (1024) like the Marketplace — on
@@ -89,10 +98,12 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
              3rd column comes in at xl. Below lg it stacks. Full thread = one column,
              just the conversation (Liam 2026-10-29). -->
         <div class="mx-auto grid min-h-0 w-full max-w-[var(--workspace-max)] flex-1 grid-cols-1 gap-6"
-             [ngClass]="fullThread() ? 'grid-cols-1' : (showAgent() ? 'lg:grid-cols-[280px_1fr] xl:grid-cols-[260px_1fr_320px]' : 'lg:grid-cols-[280px_1fr]')">
+             [ngClass]="dialogThread() ? 'grid-cols-1'
+                       : fullThread() ? 'grid-cols-1 lg:grid-cols-[1fr_300px]'
+                       : (showAgent() ? 'lg:grid-cols-[280px_1fr] xl:grid-cols-[260px_1fr_320px]' : 'lg:grid-cols-[280px_1fr]')">
           <!-- Left rail: project context card + thread cards + their items.
-               Dropped in full-thread mode (Liam 2026-10-29). -->
-          @if (!fullThread()) {
+               Dropped in full-thread + dialog mode (Liam 2026-10-29/11-04). -->
+          @if (!focused()) {
             <app-inbox-rail
               [project]="project()"
               [groups]="railGroups()"
@@ -103,9 +114,11 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
               (selectItem)="selectItem($event)" />
           }
 
-          <!-- Right pane: the selected item's category conversation. -->
+          <!-- Right pane: the selected item's category conversation. In dialog
+               mode this same panel lifts into a fixed, centred floating card. -->
           @if (selectedThread(); as t) {
-            <div class="flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-surface shadow-[var(--shadow-xs)]">
+            <div class="flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-surface"
+                 [ngClass]="dialogThread() ? 'fixed left-1/2 top-1/2 z-50 w-[min(94vw,920px)] max-h-[85vh] -translate-x-1/2 -translate-y-1/2 shadow-[var(--shadow-lg)]' : 'shadow-[var(--shadow-xs)]'">
               <!-- Header — project name with original/revised cost beneath
                    (no agency line / status pill / category·items; that
                    context lives in the rail card). -->
@@ -155,6 +168,13 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                     @if (headerStatusCode(); as code) {
                       <app-status-pill list="line_display_status" [code]="code" [strong]="headerNeedsYou()" />
                     }
+                    <!-- Dialog mode: a close X replaces the kebab (Customize /
+                         Assistant aren't offered in the focused dialog). -->
+                    @if (dialogThread()) {
+                      <button type="button" class="bp-itemprev-close shrink-0" title="Close" aria-label="Close" (click)="exitFullThread()">
+                        <lucide-icon name="x" [size]="18" />
+                      </button>
+                    } @else {
                     <!-- Kebab menu: Customize + Assistant. -->
                     <div class="relative flex shrink-0 items-center">
                     <button type="button" class="bp-itemprev-close shrink-0" title="More" aria-label="More" (click)="headerMenu.set(!headerMenu())">
@@ -174,6 +194,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                       </div>
                     }
                     </div>
+                    }
                   </div>
                 </div>
               </div>
@@ -210,12 +231,15 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                    since it's still viewport-fit (Liam 2026-10-29). -->
               <!-- Both embedded and standalone FLOW now — no internal scroll; the
                    page scrolls (Liam 2026-11-02). -->
-              <div #msgScroll class="flex flex-col gap-3 bg-surface px-5 py-4">
+              <!-- In the dialog the panel is height-bounded, so the messages get
+                   their own inner scroll (the page flow otherwise applies). -->
+              <div #msgScroll class="flex flex-col gap-3 bg-surface px-5 py-4"
+                   [ngClass]="dialogThread() ? 'min-h-0 flex-1 overflow-y-auto' : ''">
                 @if (selectedItem()) {
                 <!-- Compact view shows only the CURRENT round (from your last message
                      on); settled earlier messages collapse to this count, which opens
                      Full thread (Liam 2026-10-30). Hidden when already in full thread. -->
-                @if (!fullThread() && hiddenBeforeCount() > 0) {
+                @if (!focused() && hiddenBeforeCount() > 0) {
                   <button type="button" class="mx-auto mb-1 flex items-center gap-1.5 rounded-full border border-hairline bg-surface px-3 py-1 bp-caption text-secondary transition-colors hover:bg-fill" (click)="openFullThread()">
                     <lucide-icon name="chevron-up" [size]="13" />
                     {{ hiddenBeforeCount() }} earlier message{{ hiddenBeforeCount() === 1 ? '' : 's' }} — Full thread
@@ -372,7 +396,10 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                    thread lines up with the actions when both show (Liam 2026-10-30). -->
               @if (selectedItem(); as it) {
                 @let showClassic = showClassicActions() && !isTerminal(it.status);
-                @let showFull = embedded() && !fullThread();
+                <!-- Full thread shows on the project inbox (embedded tab OR the
+                     standalone agency page) whenever we're not already focused; the
+                     pref decides page vs dialog on click (Liam 2026-11-04). -->
+                @let showFull = !focused();
                 @if (showClassic || showFull) {
                   <div class="flex flex-wrap items-center gap-2 border-t border-hairline bg-surface px-4 py-2.5">
                     @if (showClassic) {
@@ -406,7 +433,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
           <!-- pV2-INTENT-01 — the reusable conversational assistant rail (xl only),
                acting on the selected line; hidden while the Customize builder owns
                the pane. -->
-          @if (showAgent() && !fullThread()) {
+          @if (showAgent() && !focused()) {
             <aside class="hidden min-h-0 xl:flex xl:flex-col">
               <app-agent-rail [context]="agentContext()!"
                               (quickAction)="onAgentQuick($event)"
@@ -416,12 +443,45 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                               (addQuestion)="onAgentAddQuestion($event)" (close)="toggleAssistant()" />
             </aside>
           }
+
+          <!-- Full-thread (page) context panel to the RIGHT of the conversation
+               (Liam 2026-11-04): a lead-supplier note, the line's price status, and
+               the indicative-estimate disclaimer. Full-width page only; the dialog
+               stays a single focused card. -->
+          @if (fullThread() && !dialogThread()) {
+            <aside class="flex flex-col gap-4 self-start rounded-[var(--radius-card)] border border-hairline bg-surface p-5 shadow-[var(--shadow-xs)]">
+              <!-- Lead-supplier note (static explainer copy — no lead-supplier /
+                   price-match feature behind it yet). -->
+              <div class="rounded-[var(--radius-card)] px-4 py-3 bg-[color-mix(in_srgb,var(--theme-accent)_14%,var(--color-surface))]">
+                <p class="bp-body-small text-text">Lead supplier for this section — they get first refusal to match the best price you're quoted.</p>
+              </div>
+              <!-- Price status for the selected line. -->
+              <div>
+                <h3 class="bp-card-title mb-1">Price</h3>
+                @if (selectedItem(); as it) {
+                  @if (it.status === 'booked' || (it.buyerAccepted && it.sellerAccepted)) {
+                    <p class="bp-body-small text-text">{{ (it.priceCurrent ?? it.priceRef ?? 0) | currency: 'GBP' : 'symbol' : '1.0-0' }} — confirmed</p>
+                  } @else {
+                    <p class="bp-body-small text-secondary">No confirmed price yet — the supplier can add one here.</p>
+                  }
+                } @else {
+                  <p class="bp-body-small text-secondary">No confirmed price yet — the supplier can add one here.</p>
+                }
+              </div>
+              <!-- Indicative-estimate disclaimer. -->
+              <p class="bp-caption text-muted">Ballpark estimates are indicative and subject to supplier confirmation, final scope, availability, delivery requirements and VAT.</p>
+            </aside>
+          }
         </div>
 
-        <!-- Indicative-estimate disclaimer, below the rails (Liam 2026-10-29). -->
-        <p class="bp-caption mx-auto mt-4 max-w-[var(--workspace-max)] px-4 text-center text-muted">
-          Ballpark estimates are indicative and subject to supplier confirmation, final scope, availability, delivery requirements and VAT.
-        </p>
+        <!-- Indicative-estimate disclaimer, below the rails (Liam 2026-10-29).
+             In full-thread it lives in the right context panel instead; hidden in
+             dialog mode (it would sit behind the backdrop). -->
+        @if (!focused()) {
+          <p class="bp-caption mx-auto mt-4 max-w-[var(--workspace-max)] px-4 text-center text-muted">
+            Ballpark estimates are indicative and subject to supplier confirmation, final scope, availability, delivery requirements and VAT.
+          </p>
+        }
       }
     </div>
   `,
@@ -440,8 +500,26 @@ export class InboxProjectComponent {
    *  reads it from the route. */
   readonly projectIdInput = input<string | null>(null, { alias: 'projectId' });
   readonly embedded = input(false);
+  /** Host this component AS the full-thread dialog without a route change — the
+   *  inbox landing mounts it over itself for a single-item thread so clicking a
+   *  card opens the dialog in place instead of navigating (Liam 2026-11-04). */
+  readonly forceDialog = input(false);
+  /** The counterparty thread to open on load (same effect as ?supplier=) — lets
+   *  the landing deep-link a supplier's thread into the hosted dialog. */
+  readonly supplierOrgId = input<string | null>(null);
+  /** Emitted when the hosted dialog is dismissed (backdrop / close ✕) so the
+   *  landing can tear it down. */
+  readonly close = output<void>();
 
-  protected readonly isAgency = computed(() => this.viewer() === 'agency');
+  /** Embedded (the project Inbox tab) is told its viewer explicitly; the
+   *  standalone /inbox/:projectId route serves BOTH sides, so derive the
+   *  viewer from the signed-in org type there (agency card → agency view,
+   *  supplier card → supplier view). */
+  protected readonly isAgency = computed(() =>
+    this.embedded()
+      ? this.viewer() === 'agency'
+      : this.auth.user()?.activeOrgType === 'agency'
+  );
   protected readonly hostClass = computed(() =>
     // Standalone now FLOWS like every other page (was bp-vpfit) — Liam 2026-11-02.
     this.embedded() ? 'flex min-h-0 flex-1 flex-col' : 'block'
@@ -451,7 +529,13 @@ export class InboxProjectComponent {
     this.route.paramMap.pipe(map((p) => p.get('projectId') ?? '')),
     { initialValue: '' }
   );
-  protected readonly projectId = computed(() => this.projectIdInput() || this.routeProjectId());
+  /** The key from the URL/input — a UUID or the project's human ref (EP-00021).
+   *  Drives the threads fetch; the service resolves ref→id. */
+  protected readonly fetchKey = computed(() => this.projectIdInput() || this.routeProjectId());
+  /** The CANONICAL project id: the resolved UUID once threads load, else the URL
+   *  key. Every id-based call (add question, components, line details, agent rail)
+   *  uses this so they always hit the UUID endpoints even when the URL is a ref. */
+  protected readonly projectId = computed(() => this.project()?.id ?? this.fetchKey());
 
   /** Deep-link: ?item=<lineId> selects that line on first load (from the
    *  Messages landing envelope). Honoured once, then normal selection takes over. */
@@ -469,7 +553,7 @@ export class InboxProjectComponent {
   );
 
   protected readonly threadsRes = resource({
-    params: () => this.projectId() || undefined,
+    params: () => this.fetchKey() || undefined,
     loader: ({ params }) => firstValueFrom(this.inbox.projectInbox(params)),
   });
   protected readonly project = computed<InboxProjectSummary | null>(() => this.threadsRes.value()?.project ?? null);
@@ -538,8 +622,8 @@ export class InboxProjectComponent {
             if (hit) return hit.id;
           }
         }
-        // ?supplier= → first item of that counterparty's thread.
-        const wantSup = this.wantSupplier();
+        // ?supplier= (or the supplierOrgId input) → first item of that counterparty's thread.
+        const wantSup = this.supplierOrgId() || this.wantSupplier();
         if (wantSup) {
           const t = ts.find((x) => (this.isAgency() ? x.supplierOrgId : x.agencyOrgId) === wantSup && x.items.length);
           if (t) return t.items[0].id;
@@ -848,7 +932,7 @@ export class InboxProjectComponent {
   /** What the conversation actually renders: the full history in Full thread, the
    *  compact current round otherwise. */
   protected readonly displayMessages = computed(() =>
-    this.fullThread() ? this.visibleMessages() : this.roundMessages()
+    this.focused() ? this.visibleMessages() : this.roundMessages()
   );
 
   /** A broadcast shown inside a filtered (item) view — gets the faded
@@ -987,17 +1071,39 @@ export class InboxProjectComponent {
     { initialValue: this.route.snapshot.queryParamMap.get('full') === '1' }
   );
   protected readonly fullThread = computed(() => this.fullParam());
-  /** Enter full-thread — push ?full=1 so browser back returns to this inbox view. */
+
+  /** Full-thread-as-DIALOG mode (demo), driven by ?dialog=1. Same conversation,
+   *  lifted into a centred overlay instead of taking the page. The agent Messages
+   *  landing opens a single-item thread straight here; the in-page "Full thread"
+   *  button opens it too when the demo pref is on (Liam 2026-11-04). */
+  private readonly dialogParam = toSignal(
+    this.route.queryParamMap.pipe(map((p) => p.get('dialog') === '1')),
+    { initialValue: this.route.snapshot.queryParamMap.get('dialog') === '1' }
+  );
+  protected readonly dialogThread = computed(() => this.dialogParam() || this.forceDialog());
+  /** "Focused" = full history + no rails — true for BOTH the full-thread page and
+   *  the full-thread dialog. Layout gates read this; only the dialog adds overlay
+   *  chrome (dialogThread). */
+  protected readonly focused = computed(() => this.fullThread() || this.dialogThread());
+
+  /** The demo preference (shared with the inbox landing checkbox) — Full thread
+   *  opens as a dialog when set, else as the in-page full-width page. */
+  private fullAsDialogPref(): boolean {
+    try { return localStorage.getItem('bp_inbox_full_dialog') === '1'; } catch { return false; }
+  }
+  /** Enter full-thread — ?dialog=1 (overlay) when the demo pref is on, else ?full=1
+   *  (page). Both merge so browser back returns to this inbox view. */
   protected openFullThread(): void {
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { full: 1 },
+      queryParams: this.fullAsDialogPref() ? { dialog: 1 } : { full: 1 },
       queryParamsHandling: 'merge',
     });
   }
-  /** "All messages" — go back to wherever you came from (Messages landing, or the
-   *  normal inbox if you opened Full thread from the tab). */
+  /** "All messages" / dialog close — the landing-hosted dialog tears down via the
+   *  close output (no route change); otherwise go back to wherever you came from. */
   protected exitFullThread(): void {
+    if (this.forceDialog()) { this.close.emit(); return; }
     this.location.back();
   }
   /** Project-view back → the Messages landing (history-aware, else route there). */

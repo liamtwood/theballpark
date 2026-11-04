@@ -7,6 +7,8 @@ import { InboxService, InboxSummaryRow, InboxSummarySupplier, InboxWaitingCounts
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
+import { CatalogueSearchComponent } from '../../shared/catalogue/catalogue-search.component';
+import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { supplierSummaryCode, lineDisplayCode, needsYou } from '../../core/status/line-display-status';
 import { lastActivity } from './inbox-status';
 
@@ -23,7 +25,7 @@ import { lastActivity } from './inbox-status';
 @Component({
   selector: 'app-inbox-landing',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, LucideAngularModule, PageHeroComponent, StatusPillComponent],
+  imports: [RouterLink, LucideAngularModule, PageHeroComponent, StatusPillComponent, CatalogueSearchComponent, TabBandComponent],
   // Flowing page (standard): whole page scrolls at the window edge under the fixed
   // nav; the hero scrolls with the content (Liam 2026-10-30).
   host: { class: 'block' },
@@ -101,27 +103,49 @@ import { lastActivity } from './inbox-status';
         } @else if ((rows.value() ?? []).length === 0) {
           <p class="bp-body-small text-secondary">No active conversations yet. Send a project out for quotes to start one.</p>
         } @else {
-          <!-- Group-by filter (agent): one row per project (default) or per supplier. -->
-          <div class="mx-auto mb-4 flex w-full max-w-[var(--workspace-max)] items-center justify-end gap-2">
-            <span class="bp-meta">Group by</span>
-            <div class="inline-flex rounded-full border border-hairline bg-fill p-0.5 text-sm">
-              <button type="button" class="rounded-full px-3 py-1 transition-colors"
-                      [class.bg-surface]="agentView() === 'project'" [class.font-semibold]="agentView() === 'project'"
-                      [class.text-text]="agentView() === 'project'" [class.text-secondary]="agentView() !== 'project'"
-                      (click)="agentView.set('project')">Project</button>
-              <button type="button" class="rounded-full px-3 py-1 transition-colors"
-                      [class.bg-surface]="agentView() === 'supplier'" [class.font-semibold]="agentView() === 'supplier'"
-                      [class.text-text]="agentView() === 'supplier'" [class.text-secondary]="agentView() !== 'supplier'"
-                      (click)="agentView.set('supplier')">Supplier</button>
+          <!-- Controls (marketplace pattern, Liam 2026-11-04): a prominent search +
+               a funnel icon. Group by and the full-thread-dialog demo toggle live
+               behind the funnel, off the always-on bar. -->
+          <div class="mx-auto mb-3 flex w-full max-w-[var(--workspace-max)] items-center gap-3">
+            <div class="min-w-0 flex-1">
+              <app-catalogue-search [large]="true" [value]="search()" [count]="filteredCount()" (valueChange)="search.set($event)" />
+            </div>
+            <div class="inline-flex items-center rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
+              <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="filtersOpen()"
+                      aria-label="Filter options" (click)="filtersOpen.set(!filtersOpen())">
+                <lucide-icon name="funnel-plus" [size]="15" />
+              </button>
             </div>
           </div>
+          @if (filtersOpen()) {
+            <div class="mx-auto mb-4 flex w-full max-w-[var(--workspace-max)] flex-wrap items-end gap-x-10 gap-y-3">
+              <div>
+                <span class="bp-field-label mb-1.5 block font-bold text-text">Group by</span>
+                <app-tab-band [tabs]="groupTabs" [active]="agentView()" [compact]="true" (activeChange)="agentView.set($any($event))" />
+              </div>
+              <!-- Mirror the Group by column (invisible label spacer + a 38px control
+                   box = the compact tab-band height) so the checkbox centres against
+                   the Project/Supplier band, not the taller label+band block. -->
+              <div class="flex flex-col">
+                <span class="bp-field-label invisible mb-1.5 block" aria-hidden="true">Group by</span>
+                <label class="flex h-[38px] cursor-pointer items-center gap-2 bp-body-small text-text">
+                  <input type="checkbox" class="h-4 w-4 cursor-pointer accent-[var(--theme-accent)]"
+                         [checked]="unreadOnly()" (change)="unreadOnly.set($any($event.target).checked)" />
+                  Unread
+                </label>
+              </div>
+            </div>
+          }
 
           <!-- Full-width rows — the SAME card as the supplier side (Liam 2026-11-02):
                date circle + action indicator · name over sub-line · cost + rollup status. -->
           <div class="mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-3">
             @if (agentView() === 'project') {
-              @for (row of rows.value(); track row.id) {
-                <a [routerLink]="['/projects', row.id]" [queryParams]="{ tab: 'inbox' }" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="row.name">
+              @if (filteredRows().length === 0) {
+                <p class="bp-body-small text-secondary">No projects match "{{ search() }}".</p>
+              }
+              @for (row of filteredRows(); track row.id) {
+                <a [routerLink]="['/inbox', row.ref ?? row.id]" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="row.name">
                   <div class="flex items-center gap-3 p-5">
                     <div class="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-fill px-1 text-center"
                          [style.background]="row.actionRequired ? 'var(--theme-accent)' : null"
@@ -134,7 +158,7 @@ import { lastActivity } from './inbox-status';
                       }
                     </div>
                     <div class="min-w-0 flex-1">
-                      <div class="bp-card-title truncate">{{ row.name }}</div>
+                      <div class="bp-card-title truncate">{{ row.name }}<span class="font-normal text-secondary"> · {{ row.itemNames.length }} item{{ row.itemNames.length === 1 ? '' : 's' }}</span></div>
                       <!-- Summary count 'X items for Y suppliers'; the suppliers live in
                            the hover mini-table (Liam 2026-11-02). -->
                       <div class="truncate text-sm text-secondary"
@@ -154,37 +178,72 @@ import { lastActivity } from './inbox-status';
                 </a>
               }
             } @else {
-              <!-- One row per supplier (flattened across projects). -->
-              @for (r of supplierRows(); track r.key) {
-                <a [routerLink]="['/projects', r.projectId]" [queryParams]="{ tab: 'inbox' }" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="r.supplier.name">
-                  <div class="flex items-center gap-3 p-5">
-                    <div class="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-fill px-1 text-center"
-                         [style.background]="r.supplier.actionRequired ? 'var(--theme-accent)' : null"
-                         [style.border-color]="r.supplier.actionRequired ? 'transparent' : null">
-                      <span class="bp-meta leading-tight" [style.color]="r.supplier.actionRequired ? 'var(--bp-text-on-gradient)' : null">{{ lastActivity(r.supplier.lastMessageAt) }}</span>
-                      @if (!r.supplier.actionRequired) {
-                        <span class="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-hairline bg-surface text-[var(--color-state-emerald)]">
-                          <lucide-icon name="check" [size]="12" [strokeWidth]="3" />
-                        </span>
-                      }
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <!-- Grouped by supplier → project is the headline; sub-line is
-                           'supplier · item · item' (that supplier's items) — Liam 2026-11-02. -->
-                      <div class="bp-card-title truncate">{{ r.projectName }}</div>
-                      <div class="truncate text-sm text-secondary">
-                        <span class="font-semibold text-text">{{ r.supplier.name }}</span>
-                        @if (r.supplier.itemNames.length) {
-                          <span>{{ ' · ' + r.supplier.itemNames.join(' · ') }}</span>
-                        }
-                      </div>
-                    </div>
-                    <span class="flex shrink-0 items-center gap-2" [title]="hoverText(r.supplier)">
-                      <span class="text-base font-semibold leading-none text-text">{{ money(r.supplier.confirmedWork) }}</span>
-                      <app-status-pill list="supplier_summary_status" [code]="summaryCode(r.supplier)" />
-                    </span>
+              <!-- Grouped by supplier: a collapsible banner per supplier (+ toggle)
+                   with its project cards grouped underneath (Liam 2026-11-04). -->
+              @if (supplierGroups().length === 0) {
+                <p class="bp-body-small text-secondary">No suppliers match "{{ search() }}".</p>
+              }
+              @for (g of supplierGroups(); track g.orgId) {
+                <div class="overflow-hidden rounded-[var(--radius-card)] bp-card bp-card--lifted px-4">
+                <button type="button" class="flex w-full items-center gap-3 py-4 text-left" (click)="toggleSupplier(g.orgId)">
+                  <!-- Supplier's aggregate date circle: newest activity across their
+                       projects + tick / action-pink, same chrome as the cards. -->
+                  <div class="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-fill px-1 text-center"
+                       [style.background]="g.actionRequired ? 'var(--theme-accent)' : null"
+                       [style.border-color]="g.actionRequired ? 'transparent' : null">
+                    <span class="bp-meta leading-tight" [style.color]="g.actionRequired ? 'var(--bp-text-on-gradient)' : null">{{ lastActivity(g.lastMessageAt) }}</span>
+                    @if (!g.actionRequired) {
+                      <span class="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-hairline bg-surface text-[var(--color-state-emerald)]">
+                        <lucide-icon name="check" [size]="12" [strokeWidth]="3" />
+                      </span>
+                    }
                   </div>
-                </a>
+                  <div class="min-w-0 flex-1">
+                    <div class="bp-list-title truncate" style="font-size: var(--text-xl)">{{ g.name }}<span class="font-normal text-secondary"> · {{ g.rows.length }} project{{ g.rows.length === 1 ? '' : 's' }}</span></div>
+                    <div class="truncate text-sm text-secondary">{{ projectNames(g) }}</div>
+                  </div>
+                  <span class="flex shrink-0 items-center gap-2" [title]="hoverText(g)">
+                    <span class="text-base font-semibold leading-none text-text">{{ money(g.confirmedWork) }}</span>
+                    <app-status-pill list="supplier_summary_status" [code]="summaryCode(g)" />
+                  </span>
+                  <lucide-icon [name]="isSupplierOpen(g.orgId) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
+                </button>
+                  @if (isSupplierOpen(g.orgId)) {
+                    @for (r of g.rows; track r.key) {
+                      <!-- Nested project row (indented) inside the supplier card —
+                           Running budget surround (Liam 2026-11-04). -->
+                      <a [routerLink]="['/inbox', r.projectRef ?? r.projectId]" [queryParams]="{ supplier: r.supplier.orgId }" class="block border-t border-hairline no-underline text-text transition-colors hover:bg-fill" [attr.aria-label]="r.supplier.name">
+                        <div class="flex items-center gap-3 py-3 pl-4">
+                          <div class="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-fill px-1 text-center"
+                               [style.background]="r.supplier.actionRequired ? 'var(--theme-accent)' : null"
+                               [style.border-color]="r.supplier.actionRequired ? 'transparent' : null">
+                            <span class="bp-meta leading-tight" [style.color]="r.supplier.actionRequired ? 'var(--bp-text-on-gradient)' : null">{{ lastActivity(r.supplier.lastMessageAt) }}</span>
+                            @if (!r.supplier.actionRequired) {
+                              <span class="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-hairline bg-surface text-[var(--color-state-emerald)]">
+                                <lucide-icon name="check" [size]="12" [strokeWidth]="3" />
+                              </span>
+                            }
+                          </div>
+                          <div class="min-w-0 flex-1">
+                            <!-- Project headline + this supplier's item count; sub-line
+                                 is 'supplier · item · item' (Liam 2026-11-04). -->
+                            <div class="bp-list-title truncate">{{ r.projectName }}<span class="font-normal text-secondary"> · {{ r.supplier.itemNames.length }} item{{ r.supplier.itemNames.length === 1 ? '' : 's' }}</span></div>
+                            <div class="truncate text-sm text-secondary">
+                              <span class="font-semibold text-text">{{ r.supplier.name }}</span>
+                              @if (r.supplier.itemNames.length) {
+                                <span>{{ ' · ' + r.supplier.itemNames.join(' · ') }}</span>
+                              }
+                            </div>
+                          </div>
+                          <span class="flex shrink-0 items-center gap-2" [title]="hoverText(r.supplier)">
+                            <span class="text-base font-semibold leading-none text-text">{{ money(r.supplier.confirmedWork) }}</span>
+                            <app-status-pill list="supplier_summary_status" [code]="summaryCode(r.supplier)" />
+                          </span>
+                        </div>
+                      </a>
+                    }
+                  }
+                </div>
               }
             }
           </div>
@@ -326,14 +385,114 @@ export class InboxLandingComponent {
   /** The project rows flattened to one entry per (project × supplier) for the
    *  "by supplier" view. */
   protected readonly supplierRows = computed(() => {
-    const out: { key: string; projectId: string; projectName: string; clientName: string | null; supplier: InboxSummarySupplier }[] = [];
+    const out: { key: string; projectId: string; projectRef: string | null; projectName: string; clientName: string | null; supplier: InboxSummarySupplier }[] = [];
     for (const row of this.rows.value() ?? []) {
       for (const s of row.suppliers) {
-        out.push({ key: `${row.id}|${s.name}`, projectId: row.id, projectName: row.name, clientName: row.clientName, supplier: s });
+        out.push({ key: `${row.id}|${s.name}`, projectId: row.id, projectRef: row.ref, projectName: row.name, clientName: row.clientName, supplier: s });
       }
     }
     return out;
   });
+
+  // ── Controls: search + funnel filter (Group by) ──
+  /** Live text filter over the cards (project / client / supplier / item names). */
+  protected readonly search = signal('');
+  /** The funnel panel (Group by) open state. */
+  protected readonly filtersOpen = signal(false);
+  /** "Unread" filter — no true read-state exists yet (read receipts are parked),
+   *  so this means "needs your action" (actionRequired), the same signal the nav
+   *  "Inbox (N)" badge counts. */
+  protected readonly unreadOnly = signal(false);
+  private readonly q = computed(() => this.search().trim().toLowerCase());
+
+  protected readonly groupTabs: TabBandTab[] = [
+    { key: 'project', label: 'Project' },
+    { key: 'supplier', label: 'Supplier' },
+  ];
+
+  /** Project cards filtered by the search text + the Unread (needs-you) filter. */
+  protected readonly filteredRows = computed(() => {
+    const q = this.q();
+    const unread = this.unreadOnly();
+    let rows = this.rows.value() ?? [];
+    if (unread) rows = rows.filter((r) => r.actionRequired);
+    if (!q) return rows;
+    return rows.filter((r) =>
+      (r.name?.toLowerCase().includes(q) ?? false)
+      || (r.clientName?.toLowerCase().includes(q) ?? false)
+      || r.suppliers.some((s) => s.name.toLowerCase().includes(q))
+      || r.itemNames.some((n) => n.toLowerCase().includes(q))
+    );
+  });
+  /** Supplier cards filtered by the search text + the Unread (needs-you) filter. */
+  protected readonly filteredSupplierRows = computed(() => {
+    const q = this.q();
+    const unread = this.unreadOnly();
+    let all = this.supplierRows();
+    if (unread) all = all.filter((x) => x.supplier.actionRequired);
+    if (!q) return all;
+    return all.filter((x) =>
+      x.projectName.toLowerCase().includes(q)
+      || (x.clientName?.toLowerCase().includes(q) ?? false)
+      || x.supplier.name.toLowerCase().includes(q)
+      || x.supplier.itemNames.some((n) => n.toLowerCase().includes(q))
+    );
+  });
+  /** The count shown in the search box — the current view's filtered card count. */
+  protected readonly filteredCount = computed(() =>
+    this.agentView() === 'project' ? this.filteredRows().length : this.filteredSupplierRows().length
+  );
+
+  /** Supplier view, grouped: one collapsible section per supplier (consolidated
+   *  across projects by org id), each holding that supplier's project cards. */
+  protected readonly supplierGroups = computed(() => {
+    const flat = this.filteredSupplierRows();
+    // The group carries the same InboxWaitingCounts shape as a supplier row
+    // (summed across its projects) so summaryCode/hoverText work on it directly.
+    const groups: { orgId: string; name: string; rows: typeof flat; lastMessageAt: string | null;
+                    itemCount: number; waitingAgent: number; waitingSupplier: number; actionRequired: boolean;
+                    confirmedWork: number }[] = [];
+    const index = new Map<string, number>();
+    for (const r of flat) {
+      let i = index.get(r.supplier.orgId);
+      if (i === undefined) {
+        i = groups.length;
+        index.set(r.supplier.orgId, i);
+        groups.push({ orgId: r.supplier.orgId, name: r.supplier.name, rows: [], lastMessageAt: null,
+                      itemCount: 0, waitingAgent: 0, waitingSupplier: 0, actionRequired: false, confirmedWork: 0 });
+      }
+      const g = groups[i];
+      g.rows.push(r);
+      g.itemCount += r.supplier.itemCount;
+      g.waitingAgent += r.supplier.waitingAgent;
+      g.waitingSupplier += r.supplier.waitingSupplier;
+      g.confirmedWork += r.supplier.confirmedWork;
+      if (r.supplier.actionRequired) g.actionRequired = true;
+      // Banner date circle: the supplier's newest activity across their projects.
+      if (r.supplier.lastMessageAt && (!g.lastMessageAt || r.supplier.lastMessageAt > g.lastMessageAt)) {
+        g.lastMessageAt = r.supplier.lastMessageAt;
+      }
+    }
+    return groups;
+  });
+  /** Which supplier groups are expanded (collapsed by default — click the + to
+   *  reveal that supplier's cards). */
+  private readonly expandedSuppliers = signal<ReadonlySet<string>>(new Set());
+  protected isSupplierOpen(orgId: string): boolean {
+    return this.expandedSuppliers().has(orgId);
+  }
+  protected toggleSupplier(orgId: string): void {
+    this.expandedSuppliers.update((s) => {
+      const n = new Set(s);
+      if (n.has(orgId)) n.delete(orgId); else n.add(orgId);
+      return n;
+    });
+  }
+  /** Supplier group sub-line: the project names joined by " · " (truncated in the
+   *  template), mirroring the card's item sub-line. */
+  protected projectNames(g: { rows: { projectName: string }[] }): string {
+    return g.rows.map((r) => r.projectName).join(' · ');
+  }
 
   // ── Agent card: date circle + per-supplier hover mini table ──
   /** The project's latest activity = the newest message across its suppliers —

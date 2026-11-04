@@ -111,9 +111,13 @@ const SendSchema = z.object({
 // (per category); an agency sees every supplier's threads on a project it
 // owns. org + role from JWT.
 const UUID = z.string().uuid();
+// EP-00021 — the conversation URL may carry the project's human ref instead of
+// the raw UUID; the service resolves ref→id. Only this (first) endpoint accepts a
+// ref: the client resolves to the canonical id and hits the rest with the UUID.
+const PROJECT_KEY = z.union([UUID, z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/)]);
 router.get('/projects/:projectId/threads', async (req, res, next) => {
   try {
-    if (!UUID.safeParse(req.params.projectId).success) {
+    if (!PROJECT_KEY.safeParse(req.params.projectId).success) {
       return res.status(400).json({ error: 'Invalid project id' });
     }
     const view =

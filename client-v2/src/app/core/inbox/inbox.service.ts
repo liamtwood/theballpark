@@ -184,6 +184,9 @@ export interface InboxWaitingCounts {
 /** One supplier on a project, with its own waiting rollup + latest message
  *  (for the envelope hover bubble). */
 export interface InboxSummarySupplier extends InboxWaitingCounts {
+  /** The supplier org's id — deep-links the "by supplier" card into that
+   *  counterparty's thread (?supplier=) on the project inbox / full-thread dialog. */
+  orgId: string;
   name: string;
   /** First line needing the agent — the inbox deep-link selects it. */
   actionItemId: string | null;
@@ -199,6 +202,8 @@ export interface InboxSummarySupplier extends InboxWaitingCounts {
  *  line items are waiting on each side (project totals). */
 export interface InboxSummaryRow extends InboxWaitingCounts {
   id: string;
+  /** Human project ref (EP-00021) — the value used in the /inbox/<ref> URL. */
+  ref: string | null;
   name: string;
   clientName: string | null;
   suppliers: InboxSummarySupplier[];
