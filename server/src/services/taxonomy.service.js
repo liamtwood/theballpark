@@ -662,6 +662,8 @@ Do THREE things:
 
 1. SCORE each item 1-10 against the brief. Consider: does the item TYPE match? Is the SCALE right? Could this supplier deliver? Is the PRICE reasonable for this brief? Also set a sensible QUANTITY for THIS event: scale consumables and seating by the guest count (≈1 glass / place-setting / chair per guest), size tables and furniture to the layout (e.g. round tables of ~8–10), and use 1 for a whole-venue or single hire. Default to 1 if unsure.
 
+PRIORITISE THE HEADLINE SERVICE. When the brief describes a per-head service — a meal (breakfast/lunch/dinner), a drinks or catering package, a per-guest ticket — the matching PER-HEAD item (unit 'per_guest'/'per_head', priced per guest) is the PRIMARY line and the main cost. ALWAYS score and include the best-fitting per-head item for that need (quantity ≈ guest count), even if supporting equipment or accessories (ovens, fridges, glassware, linens) also match — those supplement the headline, they don't replace it. Never return only accessories/equipment for a brief that asks for the meal/service itself.
+
 2. If no item scores 7+, pick the BEST-FIT SUPPLIER based on their other items and speciality.
 
 3. CREATE a proposed item for that supplier with an estimated price. Base the estimate on similar items in the catalogue (scale up/down), the budget hint if provided, and your knowledge of London event-production costs.
