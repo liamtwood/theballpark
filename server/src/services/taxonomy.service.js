@@ -660,7 +660,7 @@ const MATCH_SYSTEM = `You are an event production item matcher. You have a proje
 
 Do THREE things:
 
-1. SCORE each item 1-10 against the brief. Consider: does the item TYPE match? Is the SCALE right? Could this supplier deliver? Is the PRICE reasonable for this brief?
+1. SCORE each item 1-10 against the brief. Consider: does the item TYPE match? Is the SCALE right? Could this supplier deliver? Is the PRICE reasonable for this brief? Also set a sensible QUANTITY for THIS event: scale consumables and seating by the guest count (≈1 glass / place-setting / chair per guest), size tables and furniture to the layout (e.g. round tables of ~8–10), and use 1 for a whole-venue or single hire. Default to 1 if unsure.
 
 2. If no item scores 7+, pick the BEST-FIT SUPPLIER based on their other items and speciality.
 
@@ -671,7 +671,7 @@ Also return the search terms you used to match — this helps us understand your
 Return ONLY valid JSON, no markdown:
 {
   "search_terms": ["inflatable", "bespoke"],
-  "matched_items": [ { "item_id": "uuid", "score": 8, "reason": "one sentence" } ],
+  "matched_items": [ { "item_id": "uuid", "score": 8, "quantity": 200, "reason": "one sentence" } ],
   "closest_item": { "item_id": "uuid", "score": 6, "reason": "one sentence" },
   "suppliers_ranked": [ { "supplier_id": "uuid", "fit_reason": "short phrase" } ],
   "proposed_item": { "name": "...", "description": "...", "supplier_id": "uuid", "estimated_price": 15000, "confidence": 4, "reason": "one sentence" }
@@ -790,6 +790,8 @@ Score items and propose if needed.`
       image_url:        it.image_url || null, // NOT external_url — that's the product-page URL (pV2-STORE-EXTRACT-01), never an image
       image_display:    it.image_display || null,
       score:            Math.max(1, Math.min(10, Number(m.score) || 0)),
+      // Event-sized quantity suggested by the matcher (≥1); the add snaps it in.
+      quantity:         Math.max(1, Math.round(Number(m.quantity) || 1)),
       reason:           m.reason || ''
     };
   };

@@ -1311,6 +1311,10 @@ async function removeItem(orgId, projectId, lineId) {
 /** A starting set, not the whole catalogue — the human curates on the
  *  Estimate/Marketplace. Top N matched items (score-sorted) per category. */
 const RECOMMEND_PER_CATEGORY = 5;
+/** Single-choice categories — one hire fills the need (you book ONE venue), so
+ *  recommend proposes the single top pick, not a list that would sum (Liam
+ *  2026-11-04). The human can add alternatives from the marketplace. */
+const SINGLE_PICK = new Set(['Venues']);
 
 /** LOW end of a budget band (v1 lowOfBand) — "£15k–£20k" → 15000; null when
  *  unknown. Keeps the per-category budget conservative for the matcher. */
@@ -1367,7 +1371,8 @@ async function recommend(orgId, projectId) {
       const budget = lowOfBand(c.budgetEstimate);
       try {
         const m = await taxonomy.matchItems(catBrief, categoryId, budget, null);
-        return { dbName, picks: (m.matched_items || []).slice(0, RECOMMEND_PER_CATEGORY) };
+        const cap = SINGLE_PICK.has(dbName) ? 1 : RECOMMEND_PER_CATEGORY;
+        return { dbName, picks: (m.matched_items || []).slice(0, cap) };
       } catch (err) {
         return { dbName, picks: [], error: err.message };
       }
@@ -1386,7 +1391,7 @@ async function recommend(orgId, projectId) {
       // Add via the PORTED line layer (rebuild project_items shape) — the
       // legacy local addItem targets dropped columns (supplier_org_id,
       // items.image_url) and is not used by the rebuild quote.
-      const line = await projectLines.addItem(orgId, projectId, it.item_id);
+      const line = await projectLines.addItem(orgId, projectId, it.item_id, null, it.quantity ?? null);
       if (line) added += 1;
     }
     totalAdded += added;
