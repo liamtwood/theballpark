@@ -745,7 +745,9 @@ async function matchItems(brief, categoryId, budgetEstimate, projectId) {
   const client = getClient();
   const msg = await aiCreate(client,{
     model: HAIKU_MODEL,
-    max_tokens: 1600,
+    // Large categories (e.g. Catering = equipment + caterers, ~200 items) need a
+    // bigger budget or the scored JSON truncates → unparseable → 0 matches.
+    max_tokens: 4000,
     system: MATCH_SYSTEM,
     messages: [{
       role: 'user',
@@ -774,7 +776,11 @@ Score items and propose if needed.`
   });
 
   const parsed = parseJson(msg.content?.[0]?.text);
-  if (!parsed) throw httpErr('AI matcher returned an unparseable response', 502);
+  if (!parsed) {
+    console.error(`[matchItems] ${categoryName}: UNPARSEABLE — stop=${msg.stop_reason}, rawLen=${(msg.content?.[0]?.text || '').length}, scanned=${items.length}`);
+    throw httpErr('AI matcher returned an unparseable response', 502);
+  }
+  console.log(`[matchItems] ${categoryName}: scanned=${items.length} stop=${msg.stop_reason} matched_raw=${(parsed.matched_items || []).length}`);
 
   // Hydrate matched / closest items with real catalogue data.
   const hydrate = (m) => {
