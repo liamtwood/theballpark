@@ -115,6 +115,18 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
+// DELETE /:id — soft-delete a DRAFT project (org-scoped, draft-gated). Non-draft
+// or non-owned → 404 (the UI only offers delete on drafts). org_id is sacred: JWT.
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const ok = await projects.softDelete(req.user.org_id, req.params.id, req.user.id);
+    if (!ok) return res.status(404).json({ error: 'Project not found or not deletable (draft only)' });
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── Line cluster (pV2-PROJECTS-S2) — freeze + overlay ────────────────────
 // project_items (frozen requirement) + project_item_quotes (sparse overlay) +
 // project_item_matches (AI provenance). org_id is sacred: JWT only. A service

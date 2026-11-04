@@ -128,6 +128,11 @@ export class ProjectService {
     return this.api.put<ProjectDetail>(`/api/projects-v2/${id}`, patch);
   }
 
+  /** Soft-delete a DRAFT project (server gates to draft + the caller's org). */
+  deleteProject(id: string): Observable<void> {
+    return this.api.delete<void>(`/api/projects-v2/${id}`);
+  }
+
   // ── Project Quote (slice 2) — minimal add/remove ──────────────────────
   quoteItems(projectId: string): Observable<QuoteLine[]> {
     return this.api.get<QuoteLine[]>(`/api/projects-v2/${projectId}/items`);

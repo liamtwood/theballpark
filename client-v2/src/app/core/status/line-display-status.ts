@@ -21,7 +21,10 @@ export type LineDisplayCode =
   // with NO price action) — Liam 2026-10-30.
   | 'reply_needed' | 'replied'
   // Pre-pricing: briefed but the supplier hasn't engaged yet — Liam 2026-11-02.
-  | 'quote_requested';
+  | 'quote_requested'
+  // Pre-send: in the estimate but not yet sent to the supplier (status 'to_send',
+  // e.g. a recommended line) — nothing's been requested yet (Liam 2026-11-03).
+  | 'draft';
 
 export const LINE_DISPLAY_FALLBACK: Record<LineDisplayCode, string> = {
   to_agree: 'To agree',
@@ -35,6 +38,7 @@ export const LINE_DISPLAY_FALLBACK: Record<LineDisplayCode, string> = {
   reply_needed: 'Reply needed',
   replied: 'Replied',
   quote_requested: 'Quote requested',
+  draft: 'Draft',
 };
 
 /** The two inputs that carry the conversation TURN (who spoke last on the line),
@@ -89,6 +93,9 @@ export function lineDisplayCode(
   if (s.buyerAccepted && s.sellerAccepted) return 'all_confirmed';
   if (st === 'booked') return 'booked';
   if (st.startsWith('declined') || st === 'cancelled') return 'declined';
+  // 1b) Not sent yet — in the estimate cart, no outreach to the supplier. Shows
+  //     "Draft" (a recommended line starts here) until it's sent (Liam 2026-11-03).
+  if (st === 'to_send') return 'draft';
   // 2) If the LAST event on the line is a message-only (newer than the last
   //    price/accept action), the status IS the turn: you replied, or a reply is
   //    needed from you. (Bold — needsYou — is applied separately by the surface.)

@@ -9,6 +9,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { CodelistService } from '../../core/codelists/codelist.service';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { ProjectService } from '../../core/projects/project.service';
+import { ConfirmService } from '../../shared/confirm/confirm.service';
 import { EstimateBreakdown, ProjectDetail, ProjectUpdate } from '../../core/projects/project.types';
 import { GalleryImage, PickerResult } from '../../core/media/media.types';
 import { errorDetail } from '../../core/http-error';
@@ -124,6 +125,10 @@ interface DetailForm {
               <span class="bp-run-pill__vat">excl. VAT</span>
             </span>
           </div>
+          <!-- Delete is a DRAFT-only action (nothing's been sent); soft-delete. -->
+          <button hero-actions type="button" class="bp-btn-outline" (click)="onDelete()">
+            <lucide-icon name="trash-2" [size]="15" /> Delete
+          </button>
         </app-page-hero>
       } @else {
         <!-- Active hero ABOVE the tabs: cover + name + the four negotiation tiles
@@ -405,6 +410,29 @@ export class ProjectDetailComponent {
   private readonly codelists = inject(CodelistService);
   private readonly pageConfig = inject(PageConfigService);
   private readonly toast = inject(MessageService);
+  private readonly confirm = inject(ConfirmService);
+
+  /** Delete the DRAFT project (soft-delete). Confirm first; on success return to
+   *  the projects list. The server gates to draft + the caller's org, so this is
+   *  only ever offered on a draft. */
+  protected async onDelete(): Promise<void> {
+    const p = this.detail.value();
+    if (!p) return;
+    const ok = await this.confirm.ask({
+      title: 'Delete this draft?',
+      message: `“${p.name}” and its draft estimate will be removed. This can't be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await firstValueFrom(this.projects.deleteProject(p.id));
+      this.toast.add({ severity: 'success', summary: 'Draft deleted', life: 3000 });
+      await this.router.navigate(['/projects']);
+    } catch {
+      this.toast.add({ severity: 'error', summary: "Couldn't delete the project — please try again.", life: 5000 });
+    }
+  }
 
   private readonly params = toSignal(this.route.paramMap, { initialValue: this.route.snapshot.paramMap });
   private readonly query = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });

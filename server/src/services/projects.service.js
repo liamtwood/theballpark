@@ -1395,8 +1395,24 @@ async function recommend(orgId, projectId) {
   return { categories: results, totalAdded };
 }
 
+/** Soft-delete a DRAFT project the org owns (sets deleted_at + deleted_by).
+ *  Draft-gated: active/completed projects aren't deletable this way (they'd be
+ *  archived later). Org-scoped (org_id is sacred — never from the body). Returns
+ *  true when a row was soft-deleted, false otherwise (not found, not the org's,
+ *  already deleted, or not draft) — the route turns false into a 404. */
+async function softDelete(orgId, projectId, userId = null) {
+  const { rowCount } = await pool.query(
+    `UPDATE projects
+        SET deleted_at = NOW(), deleted_by = $3
+      WHERE id = $2 AND org_id = $1 AND deleted_at IS NULL
+        AND COALESCE(status, 'draft') = 'draft'`,
+    [orgId, projectId, userId]
+  );
+  return rowCount > 0;
+}
+
 module.exports = {
-  listForOrg, listClientNames, getDetail, updateDetail, create, previewNextRef,
+  listForOrg, listClientNames, getDetail, updateDetail, create, previewNextRef, softDelete,
   listItems, getEstimate, addItem, addCustomItem, saveComponents, listComponents, listComponentsForAgency, addQuestion, listMyComponents, removeItem, updateItem, updateLineDetails, setQuoteDescription, recommend,
   resolveStatus, DEFAULT_STATUS, toCard, linesByIds, emptyEstimate,
 };
