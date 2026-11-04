@@ -455,10 +455,13 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
           availability, delivery requirements and VAT.
         </p>
         }
-        <!-- Delete action wired later (Liam 2026-09-09). -->
-        <button type="button" class="shrink-0 inline-flex items-center gap-1.5 bp-body-small text-danger transition-colors hover:underline" title="Delete project">
-          <lucide-icon name="trash-2" [size]="14" /> Delete project
-        </button>
+        <!-- Delete is a DRAFT-only action (nothing's been sent); the parent owns
+             the confirm + soft-delete + navigation (Liam 2026-11-04). -->
+        @if (isDraftProject()) {
+          <button type="button" class="shrink-0 inline-flex items-center gap-1.5 bp-body-small text-danger transition-colors hover:underline" title="Delete project" (click)="deleteRequested.emit()">
+            <lucide-icon name="trash-2" [size]="14" /> Delete project
+          </button>
+        }
       </div>
       </div>
 
@@ -530,6 +533,9 @@ export class ProjectEstimateComponent {
   readonly view = input<'cart' | 'final'>('cart');
   /** "Go with this Ballpark" — jump to the Final Quote tab (cart). */
   readonly goToFinal = output<void>();
+  /** Draft-only "Delete project" — the parent (project-detail) owns the confirm,
+   *  soft-delete and navigation. */
+  readonly deleteRequested = output<void>();
   /** An event-details field was saved → host reloads its project resource. */
   readonly detailsSaved = output<void>();
 

@@ -125,10 +125,6 @@ interface DetailForm {
               <span class="bp-run-pill__vat">excl. VAT</span>
             </span>
           </div>
-          <!-- Delete is a DRAFT-only action (nothing's been sent); soft-delete. -->
-          <button hero-actions type="button" class="bp-btn-outline" (click)="onDelete()">
-            <lucide-icon name="trash-2" [size]="15" /> Delete
-          </button>
         </app-page-hero>
       } @else {
         <!-- Active hero ABOVE the tabs: cover + name + the four negotiation tiles
@@ -328,7 +324,7 @@ interface DetailForm {
           }
           @case ('estimate') {
             <div class="min-h-0 flex-1 bp-gutter">
-              <app-project-estimate [projectId]="p.id" [project]="p" (goToFinal)="goToTab('final')" (detailsSaved)="detail.reload()" />
+              <app-project-estimate [projectId]="p.id" [project]="p" (goToFinal)="goToTab('final')" (detailsSaved)="detail.reload()" (deleteRequested)="onDelete()" />
             </div>
           }
           @case ('final') {
