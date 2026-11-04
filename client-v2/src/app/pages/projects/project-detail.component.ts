@@ -496,6 +496,7 @@ export class ProjectDetailComponent {
       const n = this.overview.value()?.actionItems ?? 0;
       nav.push({ tab: 'inbox', label: n > 0 ? `Inbox (${n})` : 'Inbox' });
       nav.push({ tab: 'details', label: 'Details' });
+      nav.push({ tab: 'reports', label: 'Reports' });
     }
     return nav;
   });
@@ -506,6 +507,7 @@ export class ProjectDetailComponent {
     if (t === 'marketplace') return 'marketplace';
     if (t === 'details') return 'details';
     if (t === 'inbox') return 'inbox';
+    if (t === 'reports') return 'reports';
     return 'final';
   });
 
