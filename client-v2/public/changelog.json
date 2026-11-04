@@ -2,6 +2,68 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.8.0",
+      "name": "Brief → costed estimate",
+      "build": "v2.1046",
+      "date": "2026-11-04",
+      "datetime": "2026-11-04",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Estimating",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Turn a brief into a costed estimate — creating a project now auto-drafts a priced estimate, matching real catalogue items to each category (venue, furniture, catering…)."
+            },
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Event-sized quantities — each line is scaled to the event: ~1 glass/chair/place-setting per guest, tables to the layout, 1 for a whole-venue hire."
+            },
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "One venue per project — single-choice categories propose the single best option instead of a list that sums into the ballpark; add alternatives from the marketplace."
+            },
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "The meal is the headline — a per-head brief always pulls the core service (the dinner), with equipment and tableware supplementing it."
+            },
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "Budget pulled from the brief — the Budget guide now fills from the budget stated in the brief."
+            }
+          ]
+        },
+        {
+          "area": "Projects",
+          "items": [
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "\"Draft\" line status — a line that is in the estimate but not yet sent reads \"Draft\" (not \"Quote requested\") until you send it to the supplier."
+            },
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "",
+              "text": "Delete a draft project — soft-delete a draft from the Ballpark Cost page (drafts only; nothing has been sent)."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "v0.7.0",
       "name": "Supplier profiles & conversations",
       "build": "v2.1037",
