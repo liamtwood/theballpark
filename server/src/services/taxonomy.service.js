@@ -776,11 +776,7 @@ Score items and propose if needed.`
   });
 
   const parsed = parseJson(msg.content?.[0]?.text);
-  if (!parsed) {
-    console.error(`[matchItems] ${categoryName}: UNPARSEABLE — stop=${msg.stop_reason}, rawLen=${(msg.content?.[0]?.text || '').length}, scanned=${items.length}`);
-    throw httpErr('AI matcher returned an unparseable response', 502);
-  }
-  console.log(`[matchItems] ${categoryName}: scanned=${items.length} stop=${msg.stop_reason} matched_raw=${(parsed.matched_items || []).length}`);
+  if (!parsed) throw httpErr('AI matcher returned an unparseable response', 502);
 
   // Hydrate matched / closest items with real catalogue data.
   const hydrate = (m) => {
