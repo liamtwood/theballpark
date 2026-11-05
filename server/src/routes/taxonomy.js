@@ -18,6 +18,7 @@ const pool = require('../db/pool');
 const { requireActiveMembership } = require('../middleware/require-active-membership');
 const { assertOwnedByActiveOrg } = require('../lib/authz');
 const TaxonomyService = require('../services/taxonomy.service');
+const QuoteRequestService = require('../services/quote-request.service'); // BE-00112 — RFQ split out of taxonomy.service
 
 // BE-00099 — this router is now inside the authenticated v2 group (see
 // index.js). Item-mutating endpoints additionally require `item.create` AND
@@ -140,13 +141,13 @@ router.post('/request-quotes', async (req, res, next) => {
     // BE-00108 — RFQ is authorized BY the owned project (it creates supplier-owned
     // proposed items on the caller's behalf — see §1 decision A). Assert ownership.
     await assertOwnedByActiveOrg('projects', (req.body || {}).project_id, req.user.org_id, { isAdmin: req.user.is_admin });
-    res.json(await TaxonomyService.requestQuotes(req.body || {}));
+    res.json(await QuoteRequestService.requestQuotes(req.body || {}));
   } catch (err) { next(err); }
 });
 
 router.get('/quote-requests', async (req, res, next) => {
   try {
-    res.json(await TaxonomyService.listProjectQuoteRequests(req.query.projectId));
+    res.json(await QuoteRequestService.listProjectQuoteRequests(req.query.projectId));
   } catch (err) { next(err); }
 });
 
