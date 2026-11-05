@@ -88,6 +88,15 @@ function parseSections(text) {
         const text = dash >= 0 ? strip(rest.slice(dash + 1)) : strip(rest.replace(/\*\*.+?\*\*/, ''));
         area.items.push({ ref: cols[0].toUpperCase(), type: (cols[1] || 'new').toLowerCase(), feature, text });
       } else {
+        // Empty-ref guard (designer 2026-11-04): a bullet shaped like a ref'd
+        // feature — '·' columns AND a **bold** feature run — but whose first
+        // column isn't a valid REF (^[A-Z]{2}-\d+$) is an UNMINTED placeholder
+        // (e.g. EP-00XXX) that would otherwise fall through here and silently
+        // lose its ref + feature. Fail the generate so it can't ship (this is the
+        // v0.5.0 placeholder-ref recurrence guard).
+        if (body.includes('·') && /\*\*.+?\*\*/.test(body)) {
+          throw new Error(`[changelog] empty/placeholder ref in "${area.area}" — mint a real REF: ${body}`);
+        }
         const tm = /^(new|improved|fixed):\s*(.+)$/i.exec(body);
         area.items.push({ ref: '', type: (tm ? tm[1] : 'new').toLowerCase(), feature: '', text: strip(tm ? tm[2] : body) });
       }
