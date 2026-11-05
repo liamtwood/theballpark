@@ -10,7 +10,13 @@ async function getAll(orgId) {
       CASE WHEN f.type = 'item' THEN o.name ELSE NULL END as supplier_name,
       CASE WHEN f.type = 'item' THEN o.id ELSE NULL END as supplier_org_id
      FROM favourites f
-     LEFT JOIN orgs_public o ON (f.type = 'supplier' AND f.ref_id = o.id)
+     -- BE-00149 — a favourite always points at ANOTHER org's supplier (you
+     -- favourite other suppliers / their items, never your own org), so the
+     -- supplier name/cover is a CROSS-ORG read and MUST use supplier_directory
+     -- (owner-run, bypasses orgs RLS, active suppliers), NOT orgs_public
+     -- (security_invoker = own-org, which zeroes every favourited supplier under
+     -- the RLS flip → blank names/images). Same bite as BE-00147/00148.
+     LEFT JOIN supplier_directory o ON (f.type = 'supplier' AND f.ref_id = o.id)
                       OR (f.type = 'item' AND o.id = (SELECT org_id FROM items WHERE id = f.ref_id LIMIT 1))
      LEFT JOIN items i ON f.type = 'item' AND f.ref_id = i.id
      LEFT JOIN categories c ON i.category_id = c.id
