@@ -13,14 +13,14 @@ require('dotenv').config({
   path: require('path').resolve(__dirname, '../../.env'),
   override: true
 });
-const TaxonomyService = require('../src/services/taxonomy.service');
+const ClassificationService = require('../src/services/classification.service'); // BE-00112 — backfill moved here
 
 (async () => {
   const categoryId = process.argv[2] || undefined;
   console.log(`[backfill] starting${categoryId ? ' for category ' + categoryId : ' for all categories'}…`);
   const t0 = Date.now();
   try {
-    const out = await TaxonomyService.backfillSubcategories(categoryId);
+    const out = await ClassificationService.backfillSubcategories(categoryId);
     const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     console.log(`[backfill] done in ${elapsed}s`);
     console.log('  processed:', out.processed);

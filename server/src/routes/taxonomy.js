@@ -17,7 +17,8 @@ const router = require('express').Router();
 const pool = require('../db/pool');
 const { requireActiveMembership } = require('../middleware/require-active-membership');
 const { assertOwnedByActiveOrg } = require('../lib/authz');
-const TaxonomyService = require('../services/taxonomy.service');
+const TaxonomyService = require('../services/taxonomy.service'); // tree reader (getDimensions/categorySuppliers/eventTypes)
+const ClassificationService = require('../services/classification.service'); // BE-00112 — AI classification split out
 const QuoteRequestService = require('../services/quote-request.service'); // BE-00112 — RFQ split out of taxonomy.service
 const ProjectMatchService = require('../services/project-match.service'); // BE-00112 — match persistence split out
 const MatchingService = require('../services/matching.service'); // BE-00112 — matcher split out
@@ -42,7 +43,7 @@ router.post('/classify', requireItemCreate, async (req, res, next) => {
   try {
     const { itemId } = req.body || {};
     await assertItemInOrg(itemId, req.user.org_id);
-    res.json(await TaxonomyService.classifyItem(itemId));
+    res.json(await ClassificationService.classifyItem(itemId));
   } catch (err) { next(err); }
 });
 
@@ -50,7 +51,7 @@ router.post('/apply-classification', requireItemCreate, async (req, res, next) =
   try {
     const { itemId, category_id, subcategory_id, tag_ids } = req.body || {};
     await assertItemInOrg(itemId, req.user.org_id);
-    const out = await TaxonomyService.applyClassification(itemId, {
+    const out = await ClassificationService.applyClassification(itemId, {
       category_id, subcategory_id, tag_ids
     });
     res.json(out);
@@ -61,7 +62,7 @@ router.post('/dismiss-classification', requireItemCreate, async (req, res, next)
   try {
     const { itemId } = req.body || {};
     await assertItemInOrg(itemId, req.user.org_id);
-    res.json(await TaxonomyService.dismissClassification(itemId));
+    res.json(await ClassificationService.dismissClassification(itemId));
   } catch (err) { next(err); }
 });
 
@@ -70,7 +71,7 @@ router.post('/item-tags', requireItemCreate, async (req, res, next) => {
   try {
     const { itemId, tag_ids } = req.body || {};
     await assertItemInOrg(itemId, req.user.org_id);
-    res.json(await TaxonomyService.setItemTags(itemId, tag_ids));
+    res.json(await ClassificationService.setItemTags(itemId, tag_ids));
   } catch (err) { next(err); }
 });
 
@@ -175,7 +176,7 @@ router.post('/suggest-subcategory', requireItemCreate, async (req, res, next) =>
   try {
     const { itemId } = req.body || {};
     await assertItemInOrg(itemId, req.user.org_id);
-    res.json(await TaxonomyService.suggestSubcategory(itemId));
+    res.json(await ClassificationService.suggestSubcategory(itemId));
   } catch (err) { next(err); }
 });
 
@@ -183,7 +184,7 @@ router.post('/suggest-subcategory', requireItemCreate, async (req, res, next) =>
 router.post('/backfill', requireActiveMembership('admin.cross_org_view'), async (req, res, next) => {
   try {
     const { categoryId } = req.body || {};
-    res.json(await TaxonomyService.backfillSubcategories(categoryId));
+    res.json(await ClassificationService.backfillSubcategories(categoryId));
   } catch (err) { next(err); }
 });
 

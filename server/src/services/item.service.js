@@ -443,7 +443,7 @@ async function createForOrg({ data, orgId, defaultStatus, skipClassify = false }
   const tagNames = await syncItemTags(item.id, data.tags);
   if (tagNames !== undefined) item.tags = tagNames;
   if (!skipClassify) {
-    require('./taxonomy.service').classifyAndApply(item.id).catch((e) =>
+    require('./classification.service').classifyAndApply(item.id).catch((e) =>
       console.warn('[auto-classify] item', item.id, 'failed:', e.message)
     );
   }

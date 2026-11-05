@@ -15,7 +15,6 @@
 
 const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
-const taxonomy = require('./taxonomy.service');
 const matching = require('./matching.service'); // BE-00112 — matcher split out
 const projectLines = require('./project-line.service'); // S2 line layer (no back-require → no cycle)
 const { computeEstimate } = require('./estimate');
