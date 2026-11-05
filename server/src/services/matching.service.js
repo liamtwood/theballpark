@@ -83,12 +83,16 @@ async function matchItems(brief, categoryId, budgetEstimate, projectId) {
        ORDER BY (e->>'is_hero')::boolean DESC NULLS LAST, (e->>'sort_order')::int ASC NULLS LAST
        LIMIT 1)`;
 
+  // BE-00147 — the supplier name is a CROSS-ORG read, so it MUST go through
+  // supplier_directory (owner-run, bypasses orgs RLS, scoped to active suppliers),
+  // NOT orgs_public (security_invoker = own-org, which zeroes every cross-org row
+  // under the RLS flip → supplier_name null). Same trap the marketplace hit 3×.
   const itemsRes = await pool.query(
     `SELECT i.id, i.name, i.description, i.base_price, i.org_id,
             ${heroImg} AS image_url, i.external_url, i.image_display,
             NULL::text AS subcategory_name, o.name AS supplier_name
        FROM items i
-       LEFT JOIN orgs_public o ON o.id = i.org_id
+       LEFT JOIN supplier_directory o ON o.id = i.org_id
       WHERE ${published} AND ${inCategory}
       ORDER BY i.name`,
     [categoryId]
@@ -96,10 +100,14 @@ async function matchItems(brief, categoryId, budgetEstimate, projectId) {
   const items = itemsRes.rows;
   const itemById = new Map(items.map(i => [i.id, i]));
 
+  // BE-00147 — same cross-org rule: the supplier scan joins supplier_directory,
+  // not orgs_public. An INNER JOIN to orgs_public drops every cross-org supplier
+  // under RLS → suppliers_scanned=0 on preview/prod (confirmed on dev2: 4 suppliers
+  // present, app pool returned 0). supplier_directory is itself active-supplier-scoped.
   const supRes = await pool.query(
     `SELECT o.id, o.name, o.description, o.cover_image_url, o.logo_url, o.image_display,
             COUNT(i.id)::int AS item_count
-       FROM items i JOIN orgs_public o ON o.id = i.org_id
+       FROM items i JOIN supplier_directory o ON o.id = i.org_id
       WHERE ${published} AND ${inCategory}
       GROUP BY o.id, o.name, o.description, o.cover_image_url, o.logo_url, o.image_display
       ORDER BY item_count DESC`,
