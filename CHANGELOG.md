@@ -8,7 +8,71 @@ _Nothing pending — dev and preview are level._
 
 ---
 
-## ✅ On preview — current release `v0.4.1`
+## ✅ On preview — current release `v0.8.1`
+
+### v0.8.1 — Inbox landing + Reports · built from v2.1123 · 2026-11-05
+
+**Inbox**
+
+- [new] the agency inbox now has a search box and a Group-by funnel, with collapsible per-supplier cards and rollup banners so a project's conversations read at a glance. An Unread filter surfaces only the threads needing action, each row shows " · N items", and opening a thread brings up the full conversation in a dialog with a details panel. Project links use readable references.
+
+**Projects**
+
+- [new] the Reports tab is back on an active project, with the Ballpark and Statement-of-Work document creators.
+
+**Fixes**
+
+- BE-00144 · Internal · rebuild-env table gaps — brand config and coachmarks tables were missing on the isolated environments, so those surfaces failed to save; both added. · ✓
+- BE-00145 · Internal · inbox accessibility and the supplier search count — screen-reader labelling and the per-supplier "
+- BE-00146 · Internal · inbox supplier-engagement guard — a supplier can only open a thread for a project it is actually engaged on. · ✓
+
+### v0.6.0 — Bulk item management + marketplace polish · built from v2.937 · 2026-10-28
+
+**Catalogue & My Shop**
+
+- [new] select several items at once — in card, list or table view — and act on them in one pass: make active / inactive, submit for approval, approve / reject (admins), reclassify into another category, delete, or refresh their images. Available to suppliers on their own shop and to Ballpark admins across shops, with each action gated to who may perform it.
+- [new] filter a shop by whether an item has a photo (Any / Yes / No), and re-pull images for the ones missing them straight from the source listing — fixing imageless items without a full re-import.
+- [new] move an item (or a whole selection) into a different category from one dialog that opens on the item's current home; the category rail refreshes on the spot — no page reload — when items are reclassified or added.
+
+**Catalogue onboarding**
+
+- [new] analysing a supplier's website now persists, so you can start it, step away, and come back to the results rather than re-running it. Image pulls prioritise a listing's own product photos within the fetch budget.
+
+**Marketplace**
+
+- [new] each marketplace filter now carries a label above it — Price / Tier / Status / Active / Images — in the same style as an editable form field, with plain Any / Yes / No choices where it fits; the filter control and the single-supplier store header were tidied to match.
+
+**Workspace**
+
+- [new] every page header now shares a single hero style (the home greeting face), so the title and its label read identically across Home, Projects, Marketplace, Profile and My Shop.
+
+**Platform & security**
+
+- [changed] a Ballpark admin can no longer edit another organisation's items simply by being an admin. Admin reach is now read-only except for two narrow, column-scoped actions enforced at the database itself: moderation (approve / reject and soft-delete) and the image refresh (images only). Hardened by an end-of-arc security and Angular audit this cycle.
+
+### v0.5.0 — Rebuilt platform — first preview · built from v2.896
+
+**Platform**
+
+- [new] Ballpark rebuilt on a streamlined data model and promoted to its first fully-isolated preview environment: its own database, backend and frontend, with no shared infrastructure. Tenant isolation is enforced at the database itself (row-level security + a non-owner application role + per-request identity), hardened this cycle by a security audit — quote ownership pinned at the database, message parties made immutable, and supplier quote edits restricted to soft-delete.
+
+**Projects & Running budget**
+
+- [new] a project now has two views: a draft Ballpark quote (scope + indicative costs) and an active Running budget. The budget shows supplier-first cards grouped by supplier — a per-supplier status pill, item rows (item · quantity · quick view · status · cost · subtotal), and payment tiles (paid · outstanding · final 50%) once a line is agreed — with a Draft ⇄ Active selector, a Details tab, and your own costs alongside.
+- [new] agency ↔ supplier negotiation is tracked as a journal of events; each line's status reads "To agree" through "All confirmed", shown consistently in both the inbox and the Running budget from one shared source.
+
+**Project workspace**
+
+- [new] a running-ballpark pill shows the live total and item count; a chevron collapses the hero cover while the detail bar keeps the key stats and the project name.
+
+**Marketplace**
+
+- [new] the marketplace tab now scrolls at the window edge like the other tabs; Type (Items / Suppliers), filter and cart controls sit on one line above a full-width search, with the category rail aligned to the first row of cards.
+
+**Workspace & settings**
+
+- [new] a single-row app header (logo · navigation · account + Sign Out, pinned to the window edges); "Past projects" is now simply Projects throughout.
+- [new] the status-pill wording is now editable in Settings ▸ Codelists (`line_display_status`), with the line, provider and quote status lists seeded.
 
 ### v0.4.1 — Variant images · built from v2.655 · 2026-09-27
 

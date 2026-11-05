@@ -2,45 +2,21 @@
   "dev": [],
   "preview": [
     {
-      "version": "v0.8.0",
-      "name": "Brief → costed estimate",
-      "build": "v2.1046",
-      "date": "2026-11-04",
-      "datetime": "2026-11-04",
+      "version": "v0.8.1",
+      "name": "Inbox landing + Reports",
+      "build": "v2.1123",
+      "date": "2026-11-05",
+      "datetime": "2026-11-05",
       "env": "preview",
       "notes": [
         {
-          "area": "Estimating",
+          "area": "Inbox",
           "items": [
             {
-              "ref": "",
+              "ref": "FR-00250",
               "type": "new",
-              "feature": "",
-              "text": "Turn a brief into a costed estimate — creating a project now auto-drafts a priced estimate, matching real catalogue items to each category (venue, furniture, catering…)."
-            },
-            {
-              "ref": "",
-              "type": "new",
-              "feature": "",
-              "text": "Event-sized quantities — each line is scaled to the event: ~1 glass/chair/place-setting per guest, tables to the layout, 1 for a whole-venue hire."
-            },
-            {
-              "ref": "",
-              "type": "improved",
-              "feature": "",
-              "text": "One venue per project — single-choice categories propose the single best option instead of a list that sums into the ballpark; add alternatives from the marketplace."
-            },
-            {
-              "ref": "",
-              "type": "improved",
-              "feature": "",
-              "text": "The meal is the headline — a per-head brief always pulls the core service (the dinner), with equipment and tableware supplementing it."
-            },
-            {
-              "ref": "",
-              "type": "improved",
-              "feature": "",
-              "text": "Budget pulled from the brief — the Budget guide now fills from the budget stated in the brief."
+              "feature": "Inbox landing redesign",
+              "text": "the agency inbox now has a search box and a Group-by funnel, with collapsible per-supplier cards and rollup banners so a project's conversations read at a glance. An Unread filter surfaces only the threads needing action, each row shows \" · N items\", and opening a thread brings up the full conversation in a dialog with a details panel. Project links use readable references."
             }
           ]
         },
@@ -48,138 +24,42 @@
           "area": "Projects",
           "items": [
             {
-              "ref": "",
+              "ref": "FR-00251",
               "type": "new",
-              "feature": "",
-              "text": "\"Draft\" line status — a line that is in the estimate but not yet sent reads \"Draft\" (not \"Quote requested\") until you send it to the supplier."
-            },
-            {
-              "ref": "",
-              "type": "new",
-              "feature": "",
-              "text": "Delete a draft project — soft-delete a draft from the Ballpark Cost page (drafts only; nothing has been sent)."
+              "feature": "Reports on a live project",
+              "text": "the Reports tab is back on an active project, with the Ballpark and Statement-of-Work document creators."
             }
           ]
         }
-      ]
-    },
-    {
-      "version": "v0.7.0",
-      "name": "Supplier profiles & conversations",
-      "build": "v2.1037",
-      "date": "2026-11-02",
-      "datetime": "2026-11-02",
-      "env": "preview",
-      "notes": [
+      ],
+      "fixes": [
         {
-          "area": "Inbox & conversations",
-          "items": [
-            {
-              "ref": "",
-              "type": "new",
-              "feature": "",
-              "text": "Two-axis line status — deal state + whose turn (Reply needed / Replied); bold when the other party moved last."
-            },
-            {
-              "ref": "",
-              "type": "new",
-              "feature": "",
-              "text": "\"Quote requested\" → \"Agreeing cost\" once the supplier engages."
-            },
-            {
-              "ref": "",
-              "type": "new",
-              "feature": "",
-              "text": "Redesigned Inbox cards — date circle + action indicator, cost + status rollup, hover item table, group by Project or Supplier."
-            },
-            {
-              "ref": "",
-              "type": "improved",
-              "feature": "",
-              "text": "Day dividers in conversations; last-response date on the rail."
-            },
-            {
-              "ref": "",
-              "type": "changed",
-              "feature": "",
-              "text": "Messages renamed to Inbox; configurable hero; item card above the latest message; standard page scroll."
-            }
-          ]
+          "ref": "BE-00144",
+          "type": "Bug",
+          "reporter": "Internal",
+          "text": "rebuild-env table gaps — brand config and coachmarks tables were missing on the isolated environments, so those surfaces failed to save; both added.",
+          "done": true
         },
         {
-          "area": "Supplier experience",
-          "items": [
-            {
-              "ref": "",
-              "type": "new",
-              "feature": "",
-              "text": "Supplier Inbox parity — project/item rows and a Messages (N) nav badge."
-            },
-            {
-              "ref": "",
-              "type": "new",
-              "feature": "",
-              "text": "\"Your shop\" card on the supplier home (published / awaiting-review counts)."
-            }
-          ]
+          "ref": "BE-00145",
+          "type": "Bug",
+          "reporter": "Internal",
+          "text": "inbox accessibility and the supplier search count — screen-reader labelling and the per-supplier \"",
+          "done": false
         },
         {
-          "area": "Supplier profile",
-          "items": [
-            {
-              "ref": "",
-              "type": "new",
-              "feature": "",
-              "text": "Redesigned Branding — banner cover, circular logo, name + approved check + locality, inline About Us, contact pills."
-            },
-            {
-              "ref": "",
-              "type": "new",
-              "feature": "",
-              "text": "Past projects — up to four hero images, each with an optional description."
-            }
-          ]
-        },
-        {
-          "area": "Projects",
-          "items": [
-            {
-              "ref": "",
-              "type": "new",
-              "feature": "",
-              "text": "Add an item to an active project — settlement + supplier picker with an editable brief."
-            },
-            {
-              "ref": "",
-              "type": "improved",
-              "feature": "",
-              "text": "Projects page — Current/Completed pills, New project in the hero, clearer empty state."
-            }
-          ]
-        },
-        {
-          "area": "Navigation & marketplace",
-          "items": [
-            {
-              "ref": "",
-              "type": "changed",
-              "feature": "",
-              "text": "Shopfront tab hidden (Profile, My Shop); supplier Projects tab hidden."
-            },
-            {
-              "ref": "",
-              "type": "improved",
-              "feature": "",
-              "text": "Removed the \"[Supplier] Store\" link from supplier cards; consistent card sizing."
-            }
-          ]
+          "ref": "BE-00146",
+          "type": "Bug",
+          "reporter": "Internal",
+          "text": "inbox supplier-engagement guard — a supplier can only open a thread for a project it is actually engaged on.",
+          "done": true
         }
       ]
     },
     {
       "version": "v0.6.0",
-      "name": "Bulk item management",
-      "build": "v2.939",
+      "name": "Bulk item management + marketplace polish",
+      "build": "v2.937",
       "date": "2026-10-28",
       "datetime": "2026-10-28",
       "env": "preview",
@@ -188,22 +68,22 @@
           "area": "Catalogue & My Shop",
           "items": [
             {
-              "ref": "",
+              "ref": "EP-00027",
               "type": "new",
-              "feature": "",
-              "text": "Bulk item management — select several items at once (card, list or table view) and act on them in one pass: make active / inactive, submit for approval, approve / reject, reclassify, delete, or refresh their images. Available to suppliers on their own shop and to Ballpark admins across shops, each action gated to who may perform it."
+              "feature": "Bulk item management",
+              "text": "select several items at once — in card, list or table view — and act on them in one pass: make active / inactive, submit for approval, approve / reject (admins), reclassify into another category, delete, or refresh their images. Available to suppliers on their own shop and to Ballpark admins across shops, with each action gated to who may perform it."
             },
             {
-              "ref": "",
+              "ref": "FR-00252",
               "type": "new",
-              "feature": "",
-              "text": "Image filter + Refresh Images — filter a shop by whether an item has a photo (Any / Yes / No), and re-pull images for the ones missing them straight from the source listing, fixing imageless items without a full re-import."
+              "feature": "Image filter + Refresh Images",
+              "text": "filter a shop by whether an item has a photo (Any / Yes / No), and re-pull images for the ones missing them straight from the source listing — fixing imageless items without a full re-import."
             },
             {
-              "ref": "",
+              "ref": "FR-00253",
               "type": "new",
-              "feature": "",
-              "text": "Reclassify from the item — move an item (or a whole selection) into another category from one dialog that opens on its current home; the category rail refreshes on the spot when items are reclassified or added."
+              "feature": "Reclassify from the item",
+              "text": "move an item (or a whole selection) into a different category from one dialog that opens on the item's current home; the category rail refreshes on the spot — no page reload — when items are reclassified or added."
             }
           ]
         },
@@ -211,10 +91,10 @@
           "area": "Catalogue onboarding",
           "items": [
             {
-              "ref": "",
-              "type": "improved",
-              "feature": "",
-              "text": "Resume a website analysis — analysing a supplier's website now persists, so you can start it, step away, and come back to the results rather than re-running it. Image pulls prioritise a listing's own product photos within the fetch budget."
+              "ref": "FR-00254",
+              "type": "new",
+              "feature": "Resume a website analysis",
+              "text": "analysing a supplier's website now persists, so you can start it, step away, and come back to the results rather than re-running it. Image pulls prioritise a listing's own product photos within the fetch budget."
             }
           ]
         },
@@ -222,10 +102,10 @@
           "area": "Marketplace",
           "items": [
             {
-              "ref": "",
-              "type": "improved",
-              "feature": "",
-              "text": "Clearer filters — each marketplace filter now carries a label above it (Price / Tier / Status / Active / Images) in the same style as an editable form field, with plain Any / Yes / No choices where it fits."
+              "ref": "FR-00255",
+              "type": "new",
+              "feature": "Clearer filters",
+              "text": "each marketplace filter now carries a label above it — Price / Tier / Status / Active / Images — in the same style as an editable form field, with plain Any / Yes / No choices where it fits; the filter control and the single-supplier store header were tidied to match."
             }
           ]
         },
@@ -233,10 +113,10 @@
           "area": "Workspace",
           "items": [
             {
-              "ref": "",
-              "type": "improved",
-              "feature": "",
-              "text": "One hero style everywhere — every page header now shares a single hero style (the home greeting face), so the title and its label read identically across Home, Projects, Marketplace, Profile and My Shop."
+              "ref": "FR-00256",
+              "type": "new",
+              "feature": "One hero style everywhere",
+              "text": "every page header now shares a single hero style (the home greeting face), so the title and its label read identically across Home, Projects, Marketplace, Profile and My Shop."
             }
           ]
         },
@@ -245,9 +125,9 @@
           "items": [
             {
               "ref": "FR-00215",
-              "type": "improved",
-              "feature": "",
-              "text": "Cross-org write lockdown — a Ballpark admin can no longer edit another organisation's items simply by being an admin; admin reach is read-only except two narrow, column-scoped actions enforced at the database: moderation (approve / reject and soft-delete) and the image refresh (images only)."
+              "type": "changed",
+              "feature": "Cross-org write lockdown",
+              "text": "a Ballpark admin can no longer edit another organisation's items simply by being an admin. Admin reach is now read-only except for two narrow, column-scoped actions enforced at the database itself: moderation (approve / reject and soft-delete) and the image refresh (images only). Hardened by an end-of-arc security and Angular audit this cycle."
             }
           ]
         }
@@ -258,18 +138,18 @@
       "version": "v0.5.0",
       "name": "Rebuilt platform — first preview",
       "build": "v2.896",
-      "date": "2026-10-27",
-      "datetime": "2026-10-27",
+      "date": "",
+      "datetime": "",
       "env": "preview",
       "notes": [
         {
           "area": "Platform",
           "items": [
             {
-              "ref": "",
+              "ref": "EP-00025",
               "type": "new",
-              "feature": "",
-              "text": "Rebuilt platform & isolated environments — Ballpark rebuilt on a streamlined data model and promoted to its first fully-isolated preview: its own database, backend and frontend. Tenant isolation is enforced at the database (row-level security + a non-owner app role + per-request identity), hardened by a security audit."
+              "feature": "Rebuilt platform & isolated environments",
+              "text": "Ballpark rebuilt on a streamlined data model and promoted to its first fully-isolated preview environment: its own database, backend and frontend, with no shared infrastructure. Tenant isolation is enforced at the database itself (row-level security + a non-owner application role + per-request identity), hardened this cycle by a security audit — quote ownership pinned at the database, message parties made immutable, and supplier quote edits restricted to soft-delete."
             }
           ]
         },
@@ -277,16 +157,16 @@
           "area": "Projects & Running budget",
           "items": [
             {
-              "ref": "",
+              "ref": "EP-00026",
               "type": "new",
-              "feature": "",
-              "text": "Project delivery workspace — a project has two views: a draft Ballpark quote (scope + indicative costs) and an active Running budget with supplier-first cards, item rows, and payment tiles once a line is agreed."
+              "feature": "Project delivery workspace",
+              "text": "a project now has two views: a draft Ballpark quote (scope + indicative costs) and an active Running budget. The budget shows supplier-first cards grouped by supplier — a per-supplier status pill, item rows (item · quantity · quick view · status · cost · subtotal), and payment tiles (paid · outstanding · final 50%) once a line is agreed — with a Draft ⇄ Active selector, a Details tab, and your own costs alongside."
             },
             {
-              "ref": "",
+              "ref": "FR-00245",
               "type": "new",
-              "feature": "",
-              "text": "Per-line negotiation status — agency ↔ supplier negotiation is tracked as a journal of events; each line's status reads \"To agree\" through \"All confirmed\", shown consistently in the inbox and the Running budget from one shared source."
+              "feature": "Per-line negotiation status",
+              "text": "agency ↔ supplier negotiation is tracked as a journal of events; each line's status reads \"To agree\" through \"All confirmed\", shown consistently in both the inbox and the Running budget from one shared source."
             }
           ]
         },
@@ -294,10 +174,10 @@
           "area": "Project workspace",
           "items": [
             {
-              "ref": "",
+              "ref": "FR-00246",
               "type": "new",
-              "feature": "",
-              "text": "Project hero — a running-ballpark pill shows the live total and item count; a chevron collapses the cover while the detail bar keeps the key stats and the project name."
+              "feature": "Project hero",
+              "text": "a running-ballpark pill shows the live total and item count; a chevron collapses the hero cover while the detail bar keeps the key stats and the project name."
             }
           ]
         },
@@ -305,10 +185,10 @@
           "area": "Marketplace",
           "items": [
             {
-              "ref": "",
+              "ref": "FR-00247",
               "type": "new",
-              "feature": "",
-              "text": "In-project marketplace — the marketplace tab scrolls at the window edge like the other tabs; Type (Items / Suppliers), filter and cart controls sit on one line above a full-width search, with the category rail aligned to the first row of cards."
+              "feature": "In-project marketplace",
+              "text": "the marketplace tab now scrolls at the window edge like the other tabs; Type (Items / Suppliers), filter and cart controls sit on one line above a full-width search, with the category rail aligned to the first row of cards."
             }
           ]
         },
@@ -316,16 +196,16 @@
           "area": "Workspace & settings",
           "items": [
             {
-              "ref": "",
+              "ref": "FR-00248",
               "type": "new",
-              "feature": "",
-              "text": "Single-row header & Projects rename — a single-row app header (logo · navigation · account + Sign Out); \"Past projects\" is now simply Projects throughout."
+              "feature": "Single-row header & Projects rename",
+              "text": "a single-row app header (logo · navigation · account + Sign Out, pinned to the window edges); \"Past projects\" is now simply Projects throughout."
             },
             {
-              "ref": "",
+              "ref": "FR-00249",
               "type": "new",
-              "feature": "",
-              "text": "Editable status labels — the status-pill wording is now editable in Settings ▸ Codelists (line_display_status), with the line, provider and quote status lists seeded."
+              "feature": "Editable status labels",
+              "text": "the status-pill wording is now editable in Settings ▸ Codelists (`line_display_status`), with the line, provider and quote status lists seeded."
             }
           ]
         }
