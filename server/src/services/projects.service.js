@@ -16,6 +16,7 @@
 const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
 const taxonomy = require('./taxonomy.service');
+const matching = require('./matching.service'); // BE-00112 — matcher split out
 const projectLines = require('./project-line.service'); // S2 line layer (no back-require → no cycle)
 const { computeEstimate } = require('./estimate');
 const { lineTotalSql, isDeclinedSql, notDeclinedSql } = require('./line-total.util');
@@ -1370,7 +1371,7 @@ async function recommend(orgId, projectId) {
       const catBrief = (c.oneLiner || c.categoryLabel || dbName).trim();
       const budget = lowOfBand(c.budgetEstimate);
       try {
-        const m = await taxonomy.matchItems(catBrief, categoryId, budget, null);
+        const m = await matching.matchItems(catBrief, categoryId, budget, null);
         const cap = SINGLE_PICK.has(dbName) ? 1 : RECOMMEND_PER_CATEGORY;
         return { dbName, picks: (m.matched_items || []).slice(0, cap) };
       } catch (err) {

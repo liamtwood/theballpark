@@ -20,6 +20,7 @@ const { assertOwnedByActiveOrg } = require('../lib/authz');
 const TaxonomyService = require('../services/taxonomy.service');
 const QuoteRequestService = require('../services/quote-request.service'); // BE-00112 — RFQ split out of taxonomy.service
 const ProjectMatchService = require('../services/project-match.service'); // BE-00112 — match persistence split out
+const MatchingService = require('../services/matching.service'); // BE-00112 — matcher split out
 
 // BE-00099 — this router is now inside the authenticated v2 group (see
 // index.js). Item-mutating endpoints additionally require `item.create` AND
@@ -106,7 +107,7 @@ router.post('/match-items', async (req, res, next) => {
   try {
     const { brief, categoryId, budgetEstimate, projectId } = req.body || {};
     if (projectId) await assertOwnedByActiveOrg('projects', projectId, req.user.org_id, { isAdmin: req.user.is_admin });
-    res.json(await TaxonomyService.matchItems(brief, categoryId, budgetEstimate, projectId));
+    res.json(await MatchingService.matchItems(brief, categoryId, budgetEstimate, projectId));
   } catch (err) { next(err); }
 });
 
