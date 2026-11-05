@@ -19,6 +19,7 @@ const { requireActiveMembership } = require('../middleware/require-active-member
 const { assertOwnedByActiveOrg } = require('../lib/authz');
 const TaxonomyService = require('../services/taxonomy.service');
 const QuoteRequestService = require('../services/quote-request.service'); // BE-00112 — RFQ split out of taxonomy.service
+const ProjectMatchService = require('../services/project-match.service'); // BE-00112 — match persistence split out
 
 // BE-00099 — this router is now inside the authenticated v2 group (see
 // index.js). Item-mutating endpoints additionally require `item.create` AND
@@ -112,7 +113,7 @@ router.post('/match-items', async (req, res, next) => {
 router.post('/add-match', async (req, res, next) => {
   try {
     await assertOwnedByActiveOrg('projects', (req.body || {}).project_id, req.user.org_id, { isAdmin: req.user.is_admin });
-    res.json(await TaxonomyService.addMatchToProject(req.body || {}));
+    res.json(await ProjectMatchService.addMatchToProject(req.body || {}));
   } catch (err) { next(err); }
 });
 
@@ -120,7 +121,7 @@ router.post('/add-match', async (req, res, next) => {
 router.post('/remove-match', async (req, res, next) => {
   try {
     await assertOwnedByActiveOrg('projects', (req.body || {}).project_id, req.user.org_id, { isAdmin: req.user.is_admin });
-    res.json(await TaxonomyService.removeMatchFromProject(req.body || {}));
+    res.json(await ProjectMatchService.removeMatchFromProject(req.body || {}));
   } catch (err) { next(err); }
 });
 
@@ -128,7 +129,7 @@ router.post('/search-hint', async (req, res, next) => {
   try {
     const { projectId, categoryId, searchTerms, userHint } = req.body || {};
     if (projectId) await assertOwnedByActiveOrg('projects', projectId, req.user.org_id, { isAdmin: req.user.is_admin });
-    res.json(await TaxonomyService.saveSearchHint(projectId, categoryId, searchTerms, userHint));
+    res.json(await ProjectMatchService.saveSearchHint(projectId, categoryId, searchTerms, userHint));
   } catch (err) { next(err); }
 });
 
@@ -164,7 +165,7 @@ router.post('/materialize-proposed', async (req, res, next) => {
     const { projectId } = req.body || {};
     if (!projectId) { const e = new Error('projectId is required'); e.status = 400; throw e; }
     await assertOwnedByActiveOrg('projects', projectId, req.user.org_id, { isAdmin: req.user.is_admin });
-    res.json(await TaxonomyService.materializeProposedItem(req.body || {}));
+    res.json(await ProjectMatchService.materializeProposedItem(req.body || {}));
   } catch (err) { next(err); }
 });
 
