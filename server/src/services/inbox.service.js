@@ -196,6 +196,18 @@ async function assembleThreads(viewer, callerOrgId, projectId) {
   projectId = project.id;
   const agencyOrgId = project.org_id;
   if (viewer === 'agency' && agencyOrgId !== callerOrgId) throw httpErr('Project not found', 404);
+  // Symmetric supplier guard (defense-in-depth for the EP-00021 ref path): RLS
+  // already returns no row to a non-engaged supplier, but the agency path is
+  // guarded at the app layer too — so require an engagement here, same 404 (no
+  // oracle), so a ref/UUID can't surface another org's threads if RLS is ever off.
+  if (viewer === 'supplier') {
+    const eng = await pool.query(
+      `SELECT 1 FROM project_providers
+        WHERE project_id = $1 AND provider_org_id = $2 AND deleted_at IS NULL LIMIT 1`,
+      [projectId, callerOrgId]
+    );
+    if (!eng.rows.length) throw httpErr('Project not found', 404);
+  }
 
   const msgs = await pool.query(
     `SELECT id, from_org_id, to_org_id, user_id, subject, body, created_at

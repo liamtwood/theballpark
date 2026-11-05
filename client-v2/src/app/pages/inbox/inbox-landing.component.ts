@@ -112,16 +112,17 @@ import { lastActivity } from './inbox-status';
             </div>
             <div class="inline-flex items-center rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
               <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="filtersOpen()"
-                      aria-label="Filter options" (click)="filtersOpen.set(!filtersOpen())">
-                <lucide-icon name="funnel-plus" [size]="15" />
+                      aria-label="Filter options" aria-controls="inbox-filters"
+                      [attr.aria-expanded]="filtersOpen()" (click)="filtersOpen.set(!filtersOpen())">
+                <lucide-icon name="funnel-plus" [size]="15" aria-hidden="true" />
               </button>
             </div>
           </div>
           @if (filtersOpen()) {
-            <div class="mx-auto mb-4 flex w-full max-w-[var(--workspace-max)] flex-wrap items-end gap-x-10 gap-y-3">
+            <div id="inbox-filters" class="mx-auto mb-4 flex w-full max-w-[var(--workspace-max)] flex-wrap items-end gap-x-10 gap-y-3">
               <div>
                 <span class="bp-field-label mb-1.5 block font-bold text-text">Group by</span>
-                <app-tab-band [tabs]="groupTabs" [active]="agentView()" [compact]="true" (activeChange)="agentView.set($any($event))" />
+                <app-tab-band [tabs]="groupTabs" [active]="agentView()" [compact]="true" (activeChange)="agentView.set($event === 'supplier' ? 'supplier' : 'project')" />
               </div>
               <!-- Mirror the Group by column (invisible label spacer + a 38px control
                    box = the compact tab-band height) so the checkbox centres against
@@ -130,7 +131,7 @@ import { lastActivity } from './inbox-status';
                 <span class="bp-field-label invisible mb-1.5 block" aria-hidden="true">Group by</span>
                 <label class="flex h-[38px] cursor-pointer items-center gap-2 bp-body-small text-text">
                   <input type="checkbox" class="h-4 w-4 cursor-pointer accent-[var(--theme-accent)]"
-                         [checked]="unreadOnly()" (change)="unreadOnly.set($any($event.target).checked)" />
+                         [checked]="unreadOnly()" (change)="onUnreadChange($event)" />
                   Unread
                 </label>
               </div>
@@ -185,7 +186,9 @@ import { lastActivity } from './inbox-status';
               }
               @for (g of supplierGroups(); track g.orgId) {
                 <div class="overflow-hidden rounded-[var(--radius-card)] bp-card bp-card--lifted px-4">
-                <button type="button" class="flex w-full items-center gap-3 py-4 text-left" (click)="toggleSupplier(g.orgId)">
+                <button type="button" class="flex w-full items-center gap-3 py-4 text-left"
+                        [attr.aria-expanded]="isSupplierOpen(g.orgId)" [attr.aria-label]="'Toggle ' + g.name"
+                        (click)="toggleSupplier(g.orgId)">
                   <!-- Supplier's aggregate date circle: newest activity across their
                        projects + tick / action-pink, same chrome as the cards. -->
                   <div class="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-fill px-1 text-center"
@@ -206,7 +209,7 @@ import { lastActivity } from './inbox-status';
                     <span class="text-base font-semibold leading-none text-text">{{ money(g.confirmedWork) }}</span>
                     <app-status-pill list="supplier_summary_status" [code]="summaryCode(g)" />
                   </span>
-                  <lucide-icon [name]="isSupplierOpen(g.orgId) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
+                  <lucide-icon [name]="isSupplierOpen(g.orgId) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" aria-hidden="true" />
                 </button>
                   @if (isSupplierOpen(g.orgId)) {
                     @for (r of g.rows; track r.key) {
@@ -403,6 +406,9 @@ export class InboxLandingComponent {
    *  so this means "needs your action" (actionRequired), the same signal the nav
    *  "Inbox (N)" badge counts. */
   protected readonly unreadOnly = signal(false);
+  protected onUnreadChange(e: Event): void {
+    this.unreadOnly.set((e.target as HTMLInputElement).checked);
+  }
   private readonly q = computed(() => this.search().trim().toLowerCase());
 
   protected readonly groupTabs: TabBandTab[] = [
@@ -438,9 +444,10 @@ export class InboxLandingComponent {
       || x.supplier.itemNames.some((n) => n.toLowerCase().includes(q))
     );
   });
-  /** The count shown in the search box — the current view's filtered card count. */
+  /** The count shown in the search box — the current view's visible card count
+   *  (supplier view shows one card per supplier GROUP, not per project×supplier). */
   protected readonly filteredCount = computed(() =>
-    this.agentView() === 'project' ? this.filteredRows().length : this.filteredSupplierRows().length
+    this.agentView() === 'project' ? this.filteredRows().length : this.supplierGroups().length
   );
 
   /** Supplier view, grouped: one collapsible section per supplier (consolidated
