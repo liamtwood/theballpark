@@ -111,16 +111,23 @@ async function getDimensions(categoryId) {
  */
 async function categorySuppliers(categoryId) {
   const params = [];
-  let filter = 'i.is_active = true';
+  // BE-00148 — rebuild-correct the published filter: items.is_active was dropped
+  // in 0015; a live catalogue item is status='active' AND approval_status=
+  // 'approved' AND deleted_at IS NULL (matches matching.service `published`).
+  let filter = `i.status = 'active' AND i.approval_status = 'approved' AND i.deleted_at IS NULL`;
   if (categoryId) {
     params.push(categoryId);
     filter += ` AND (i.category_id = $1 OR i.category_id IN (SELECT id FROM categories WHERE parent_id = $1))`;
   }
+  // BE-00148 — cross-org supplier read MUST go through supplier_directory (owner-run,
+  // bypasses orgs RLS, scoped to active suppliers), NOT orgs_public (security_invoker
+  // = own-org, which zeroes every cross-org row under the RLS flip). Same bite as
+  // BE-00147 (matchItems) and the marketplace x3.
   const r = await pool.query(
     `SELECT o.id AS supplier_id, o.name AS supplier_name,
             o.description, o.city, COUNT(i.id)::int AS item_count
        FROM items i
-       JOIN orgs_public o ON o.id = i.org_id
+       JOIN supplier_directory o ON o.id = i.org_id
       WHERE ${filter}
       GROUP BY o.id, o.name, o.description, o.city
       ORDER BY item_count DESC, o.name ASC`,
