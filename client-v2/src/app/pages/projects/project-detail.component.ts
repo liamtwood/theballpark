@@ -188,7 +188,7 @@ interface DetailForm {
                  shared "Details saved" pill (app-save-state-pill). Overflow is
                  full-width so the scrollbar sits at the window edge; content is
                  centred in the workspace column. -->
-            <div class="min-h-0 flex-1 bp-gutter pt-4">
+            <div class="min-h-0 flex-1 bp-gutter -mt-6">
             <div class="mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-4">
               <app-completeness-card
                 [entity]="p"
@@ -323,20 +323,23 @@ interface DetailForm {
             </div>
           }
           @case ('estimate') {
-            <div class="min-h-0 flex-1 bp-gutter">
+            <div class="min-h-0 flex-1 bp-gutter -mt-6">
               <app-project-estimate [projectId]="p.id" [project]="p" (goToFinal)="goToTab('final')" (detailsSaved)="detail.reload()" (deleteRequested)="onDelete()" />
             </div>
           }
           @case ('final') {
-            <div class="min-h-0 flex-1 bp-gutter">
+            <!-- -mt-6 shaves most of bp-page-body's 32px top so the content sits
+                 the same distance under the tab band as the Marketplace tab
+                 (Liam 2026-11-06). Vertical only — no -mx-8 (not a full-bleed grid). -->
+            <div class="min-h-0 flex-1 bp-gutter -mt-6">
               <app-project-estimate [projectId]="p.id" [project]="p" view="final" (detailsSaved)="detail.reload()" (deleteRequested)="onDelete()" />
             </div>
           }
           @case ('reports') {
-            <div class="min-h-0 flex-1 bp-gutter">
+            <div class="min-h-0 flex-1 bp-gutter -mt-6">
               <!-- pV2-BUILDUP-04 — the client-facing documents (open as overlays);
                    styled to match the tab band. -->
-              <div class="flex justify-center pt-6">
+              <div class="flex justify-center">
                 <div class="bp-tab-band bp-tab-band--even">
                   <button type="button" class="bp-tab" (click)="docView.set(true)">
                     <lucide-icon name="file-text" [size]="16" [strokeWidth]="1.75" /> Ballpark

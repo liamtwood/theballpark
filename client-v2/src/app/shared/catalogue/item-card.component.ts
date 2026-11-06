@@ -231,17 +231,7 @@ import { AuthService } from '../../core/auth/auth.service';
     .bp-item-card__act--reject:hover:not(:disabled) {
       background: color-mix(in srgb, var(--color-danger-soft) 82%, var(--color-danger));
     }
-    .bp-qv-link {
-      display: inline-block;
-      background: none;
-      border: none;
-      padding: 0;
-      cursor: pointer;
-      font-family: var(--font-body);
-      font-size: var(--text-xs);
-      color: var(--theme-accent);
-    }
-    .bp-qv-link:hover { text-decoration: underline; }
+    /* .bp-qv-link promoted to global styles.css (shared with the estimate line) */
     /* Card type a touch smaller than the shared defaults (Liam 2026-10-29) —
        keeps the denser grid legible without crowding. Scoped to the card via
        :host so .bp-list-title / .bp-tag-chip / .bp-price-large / .bp-caption are

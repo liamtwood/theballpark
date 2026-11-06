@@ -50,7 +50,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
     <!-- Embedded: -mx-8 cancels bp-page-body's 32px side padding and px-6 matches
          the hero so the inbox lines up with the banner (like the Marketplace tab,
          Liam 2026-10-29). Standalone keeps the normal bp-page-body. -->
-    <div [class]="embedded() ? 'flex min-h-0 flex-1 flex-col px-6 pt-4 -mx-8' : 'bp-page-body'">
+    <div [class]="embedded() ? 'flex min-h-0 flex-1 flex-col px-6 -mt-6 -mx-8' : 'bp-page-body'">
       <!-- FIRST load only. isLoading() is also true while RELOADING, and every
            send/accept/decline reloads — so gating on it alone tore the whole pane
            down each time: the rail's collapse state reset and the compose input
@@ -78,16 +78,14 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
           <button type="button" class="mx-auto mb-3 flex w-full max-w-[var(--workspace-max)] items-center gap-1.5 px-1 bp-body-small text-secondary transition-colors hover:text-accent" (click)="exitFullThread()">
             <lucide-icon name="arrow-left" [size]="16" /> All messages
           </button>
-        } @else {
+        } @else if (!embedded()) {
+          <!-- Standalone route only: "All messages" back to the Messages landing.
+               The "Project inbox" title was removed (Liam 2026-11-06); embedded
+               renders no heading so the columns top-align like the other tabs. -->
           <div class="mx-auto mb-3 flex w-full max-w-[var(--workspace-max)] flex-col items-start gap-2 px-1">
-            <!-- Back to the Messages landing (standalone route only — the hero that
-                 used to carry it was removed, Liam 2026-11-02). -->
-            @if (!embedded()) {
-              <button type="button" class="flex shrink-0 items-center gap-1.5 bp-body-small text-secondary transition-colors hover:text-accent" (click)="backToMessages()">
-                <lucide-icon name="arrow-left" [size]="16" /> All messages
-              </button>
-            }
-            <h2 class="bp-card-title">Project inbox</h2>
+            <button type="button" class="flex shrink-0 items-center gap-1.5 bp-body-small text-secondary transition-colors hover:text-accent" (click)="backToMessages()">
+              <lucide-icon name="arrow-left" [size]="16" /> All messages
+            </button>
           </div>
         }
         }

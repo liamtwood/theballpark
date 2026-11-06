@@ -77,11 +77,18 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
       <!-- Editable event details — DRAFT only (in active they live on the Details
            tab, not the Running budget). Each field saves on blur; (saved) reloads. -->
       @if (isDraftProject()) {
-        <app-event-details-edit class="mt-4 block" [project]="project()" [projectId]="projectId()"
+        <!-- No top margin — event-details is the first element in draft Ballpark
+             cost, so it top-aligns with the other tabs (Liam 2026-11-06). -->
+        <app-event-details-edit class="block" [project]="project()" [projectId]="projectId()"
                                 [currency]="cur()" (saved)="detailsSaved.emit()" />
       }
 
-      <div class="mt-5"></div>
+      <!-- Separator below event-details — DRAFT only. In active (Running budget)
+           there's nothing above, so the spacer would be dead top padding that
+           pushes the list below the other tabs (Liam 2026-11-06). -->
+      @if (isDraftProject()) {
+        <div class="mt-5"></div>
+      }
 
       @if (lines.isLoading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
@@ -100,7 +107,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
              its category cards are light-gray, their items white. -->
         <!-- Draft: ONE white section container holding category cards. Active:
              no section wrapper — each supplier below is its own standalone card. -->
-        <div class="mt-5" [class.bp-card]="isDraftProject()" [class.bp-card--lifted]="isDraftProject()" [class.p-5]="isDraftProject()">
+        <div [class.mt-5]="!first || isDraftProject()" [class.bp-card]="isDraftProject()" [class.bp-card--lifted]="isDraftProject()" [class.p-5]="isDraftProject()">
         @if (isDraftProject()) {
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
@@ -129,7 +136,9 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         }
         }
         @if (!isFinal() || !isDraftProject() || isBoxOpen(section.label)) {
-        <div class="mt-3 flex flex-col gap-2.5">
+        <!-- mt-3 only separates the list from the DRAFT section header; active has
+             no header, so it would be dead top padding (Liam 2026-11-06). -->
+        <div class="flex flex-col gap-2.5" [class.mt-3]="isDraftProject()">
           @for (g of section.groups; track g.id) {
             @if (g.isCoverage) {
               <!-- Contingency / Insurance / Other — each its own item card
@@ -346,7 +355,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                         <span class="bp-list-title min-w-0 cursor-pointer truncate hover:underline" role="button" tabindex="0" (click)="selectLine(l)" (keydown.enter)="selectLine(l)">{{ l.name }}</span>
                       </span>
                       <span class="bp-body-small text-secondary">× {{ l.quantity }}</span>
-                      <button type="button" class="bp-pill bp-pill--accent justify-self-start" (click)="selectLine(l)" [attr.aria-label]="'Quick view ' + l.name">Quick view</button>
+                      <button type="button" class="bp-qv-link justify-self-start" (click)="selectLine(l)" [attr.aria-label]="'Quick view ' + l.name">Quick view</button>
                       <app-status-pill list="line_display_status" [code]="activeStatusCode(l)" style="justify-self: center" />
                       <span class="bp-body-small text-right tabular-nums text-secondary">{{ lineCostOf(l, mk) | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
