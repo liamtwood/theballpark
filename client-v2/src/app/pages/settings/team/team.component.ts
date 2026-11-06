@@ -32,7 +32,9 @@ interface InviteForm {
     @let me = auth.user();
 
     <app-page-hero align="block" [back]="{ label: 'Back', href: '/home' }" title="Team" [subtitle]="me?.activeOrgName ?? ''">
-      <p-button hero-actions label="+ Invite Team Member" size="small" (onClick)="openInvite()" />
+      <button hero-actions type="button" class="bp-btn-grad" (click)="openInvite()">
+        <lucide-icon name="circle-plus" [size]="15" /> Invite Team Member
+      </button>
     </app-page-hero>
 
     <div class="bp-page-body bp-page-body--workspace">

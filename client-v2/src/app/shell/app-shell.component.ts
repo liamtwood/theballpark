@@ -61,7 +61,9 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
           }
           @if (auth.isLoggedIn()) {
             <app-user-menu />
-            <button type="button" class="bp-btn-grad" (click)="signOut()">Sign Out</button>
+            <button type="button" class="bp-btn-grad" (click)="signOut()">
+              <lucide-icon name="log-out" [size]="15" /> Sign Out
+            </button>
           }
         </div>
       </div>

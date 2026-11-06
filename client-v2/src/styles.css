@@ -327,24 +327,9 @@
   scrollbar-gutter: stable;
 }
 
-/* Standard solid brand button (no gradient) — Message suppliers, Add item,
-   inbox Send, etc. */
-.bp-msg-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: var(--radius-pill);
-  background: var(--theme-accent);
-  color: var(--theme-accent-contrast, #fff);
-  font-family: var(--font-body);
-  font-size: var(--text-md);
-  font-weight: 500;
-  cursor: pointer;
-}
-.bp-msg-btn:hover { opacity: 0.92; }
-.bp-msg-btn:disabled { opacity: 0.5; cursor: default; }
+/* .bp-msg-btn / .bp-btn-sm folded into the unified button system (DESIGN.md §8
+   — see "Buttons" below). .bp-msg-btn is now a primary alias; .bp-btn-sm is
+   retired (call sites use .bp-btn-grad). Liam 2026-11-06. */
 
 /* Workspace edit-form field kit (the "ready to edit" rounded fields — one
    reference for the project Event details + About Project). */
@@ -638,40 +623,50 @@ body {
 }
 
 /* ═══ Buttons (DESIGN.md §8 — locked spec, defined ONCE here) ════════════
-   .bp-btn-outline — the quiet pill (Edit / Cancel).
-   .bp-btn-grad    — the vivid brand CTA (edit-form Save changes per the v1
-                     standard; landing/hero CTAs). Scarce on purpose. */
+   TWO fills, ONE box (Liam 2026-11-06 — "all buttons same style, primary =
+   pink, secondary = white"), sized to the inbox action row (.bp-act):
+     PRIMARY (pink)  = .bp-btn-grad / .bp-btn-accent / .bp-msg-btn / .bp-btn--primary
+     SECONDARY (white) = .bp-btn-outline / .bp-btn--secondary
+   Legacy names (grad/accent/msg-btn) are folded in here so every existing
+   button adopts the one look with no call-site churn. */
 .bp-btn-outline,
 .bp-btn-grad,
-.bp-btn-accent {
+.bp-btn-accent,
+.bp-msg-btn,
+.bp-btn--primary,
+.bp-btn--secondary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 12px 24px;
+  gap: 6px;
+  padding: 8px 14px;
   border-radius: var(--radius-pill);
   font-family: var(--font-body);
-  font-size: var(--text-md);
-  font-weight: 400;
+  font-size: var(--text-sm);
+  font-weight: 500;
   cursor: pointer;
   border: 1px solid transparent;
   transition: box-shadow 0.15s, transform 0.15s, background 0.15s;
 }
 
-.bp-btn-outline {
+.bp-btn-outline,
+.bp-btn--secondary {
   background: var(--color-surface);
   border-color: var(--color-border-hairline);
   color: var(--color-text);
   box-shadow: var(--shadow-xs);
 }
-.bp-btn-outline:hover {
+.bp-btn-outline:hover,
+.bp-btn--secondary:hover {
   box-shadow: var(--shadow-md);
 }
-.bp-btn-outline:focus-visible {
+.bp-btn-outline:focus-visible,
+.bp-btn--secondary:focus-visible {
   outline: 2px solid var(--theme-accent);
   outline-offset: 2px;
 }
-.bp-btn-outline:disabled {
+.bp-btn-outline:disabled,
+.bp-btn--secondary:disabled {
   opacity: 0.55;
   cursor: default;
   box-shadow: none;
@@ -680,30 +675,40 @@ body {
 /* Primary CTA — solid DARK PINK (--theme-accent, the same token as the rail
    count badges), app-wide (Liam 2026-09-21: off the rainbow gradient). Hover =
    a shade darker; the soft glow keeps the pink brand shadow. */
-.bp-btn-grad {
+.bp-btn-grad,
+.bp-msg-btn,
+.bp-btn--primary {
   background: var(--theme-accent);
   color: var(--theme-accent-contrast, #fff);
   box-shadow:
     0 2px 6px rgba(var(--bp-gradient-shadow-rgb), 0.2),
     0 1px 2px rgba(0, 0, 0, 0.06);
 }
-.bp-btn-grad:hover {
+.bp-btn-grad:hover,
+.bp-msg-btn:hover,
+.bp-btn--primary:hover {
   background: color-mix(in srgb, var(--theme-accent) 88%, #000);
   box-shadow:
     0 8px 20px rgba(var(--bp-gradient-shadow-rgb), 0.28),
     0 2px 6px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
 }
-.bp-btn-grad:active {
+.bp-btn-grad:active,
+.bp-msg-btn:active,
+.bp-btn--primary:active {
   transform: translateY(0);
 }
-.bp-btn-grad:disabled {
+.bp-btn-grad:disabled,
+.bp-msg-btn:disabled,
+.bp-btn--primary:disabled {
   opacity: 0.55;
   cursor: default;
   box-shadow: none;
   transform: none;
 }
-.bp-btn-grad:focus-visible {
+.bp-btn-grad:focus-visible,
+.bp-msg-btn:focus-visible,
+.bp-btn--primary:focus-visible {
   outline: 2px solid rgba(var(--bp-gradient-shadow-rgb), 1);
   outline-offset: 2px;
 }
@@ -750,12 +755,12 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 12px 24px;
+  gap: 6px;
+  padding: 8px 14px;
   border-radius: var(--radius-pill);
   font-family: var(--bp-font);
-  font-size: var(--text-md);
-  font-weight: 400;
+  font-size: var(--text-sm);
+  font-weight: 500;
   background: var(--color-danger);
   color: #fff;
   border: 1px solid transparent;
@@ -1144,25 +1149,14 @@ a.bp-contact-pill:hover { border-color: var(--theme-accent); }
   color: #fff;
   font-weight: 600;
 }
+/* Positioning only — the button LOOK comes from .bp-btn--secondary (rounded
+   pill, white). Liam 2026-11-06: use the shared button class + be rounded. */
 .bp-org-banner__cover-btn {
   position: absolute;
   top: 14px;
   right: 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 14px;
-  border-radius: var(--radius-input, 8px);
-  background: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border-hairline);
   box-shadow: 0 2px 8px var(--color-border-medium);
-  font-family: var(--bp-font);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  cursor: pointer;
 }
-.bp-org-banner__cover-btn:hover { background: var(--color-fill); }
 /* Square logo, straddling the cover's bottom-left corner. */
 .bp-org-banner__logo {
   position: absolute;

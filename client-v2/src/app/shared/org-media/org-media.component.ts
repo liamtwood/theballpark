@@ -35,7 +35,7 @@ import { GalleryImage } from '../../core/media/media.types';
             <img [src]="coverUrl()" alt="" />
           }
           @if (mode() === 'edit' && canEdit()) {
-            <button type="button" class="bp-org-banner__cover-btn" (click)="editCover.emit()">
+            <button type="button" class="bp-btn--secondary bp-org-banner__cover-btn" (click)="editCover.emit()">
               <lucide-icon name="upload" [size]="15" /> Upload Cover Photo
             </button>
           }

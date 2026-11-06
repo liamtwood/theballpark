@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../core/auth/auth.service';
 import { WordmarkComponent } from '../wordmark/wordmark.component';
 
@@ -9,7 +10,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
 @Component({
   selector: 'app-public-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [WordmarkComponent],
+  imports: [WordmarkComponent, LucideAngularModule],
   host: {
     class: 'fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between bg-transparent px-6',
   },
@@ -20,7 +21,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
       class="bp-btn-grad"
       (click)="auth.loginWithGoogle()"
     >
-      Sign In
+      <lucide-icon name="log-in" [size]="15" /> Sign In
     </button>
   `,
 })

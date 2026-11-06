@@ -26,6 +26,8 @@ import {
   UserRound,
   CirclePlus,
   ArrowUpRight,
+  LogIn,
+  LogOut,
   EllipsisVertical,
   Image,
   FolderKanban,
@@ -178,6 +180,8 @@ export const appConfig: ApplicationConfig = {
         Settings, X, FolderPlus, FolderOpen, FolderClock, FolderKanban, Percent, Inbox, Store, CircleUser, UserRound, ArrowLeft,
         // pV2 agent home — circle-plus tile icon + Next-steps card
         CirclePlus, ArrowUpRight,
+        // auth buttons — Sign in / Sign out
+        LogIn, LogOut,
         // pV2 inbox — header kebab menu
         EllipsisVertical,
         // pV2 live-project overview hero — cover action

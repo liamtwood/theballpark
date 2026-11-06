@@ -31,7 +31,7 @@ import { ProjectCardComponent } from './project-card.component';
       <!-- New project CTA top-right in the hero (Liam 2026-11-02). -->
       @if (!isSupplier()) {
         <a hero-actions routerLink="/projects/new" class="bp-btn-grad">
-          <lucide-icon name="plus" [size]="15" /> New project
+          <lucide-icon name="circle-plus" [size]="15" /> New project
         </a>
       }
     </app-page-hero>

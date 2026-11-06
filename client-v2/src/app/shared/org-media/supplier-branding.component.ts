@@ -26,7 +26,7 @@ import { MarkdownPipe } from '../markdown.pipe';
         <div class="bp-org-banner__cover" [class.bp-org-banner__cover--empty]="!coverUrl()">
           @if (coverUrl()) { <img [src]="coverUrl()" [alt]="name()" /> }
           @if (editable()) {
-            <button type="button" class="bp-org-banner__cover-btn" (click)="editCover.emit()">
+            <button type="button" class="bp-btn--secondary bp-org-banner__cover-btn" (click)="editCover.emit()">
               <lucide-icon name="upload" [size]="15" /> Upload Cover Photo
             </button>
           }

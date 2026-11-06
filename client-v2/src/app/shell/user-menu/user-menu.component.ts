@@ -87,10 +87,10 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
             </a>
             <button
               type="button"
-              class="w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md text-text hover:bg-fill"
+              class="bp-btn-grad mt-2"
               (click)="signOut(menu)"
             >
-              Sign out
+              <lucide-icon name="log-out" [size]="15" /> Sign out
             </button>
           </div>
         </div>

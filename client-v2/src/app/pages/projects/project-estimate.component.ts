@@ -120,7 +120,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                (replaces the per-category buttons). -->
           @if (section.label === 'Ballpark quote') {
             <button type="button" class="bp-msg-btn shrink-0" (click)="openAdd()">
-              <lucide-icon name="plus" [size]="16" /> Add line
+              <lucide-icon name="circle-plus" [size]="16" /> Add line
             </button>
           }
         </div>

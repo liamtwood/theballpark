@@ -157,10 +157,14 @@ import { LucideAngularModule } from 'lucide-angular';
         justify-content: flex-start;
         margin-bottom: 6px;
       }
+      /* Hero actions sit BOTTOM-right, aligned with the RIGHT EDGE of the
+         centred workspace column (so New project lines up with the rightmost
+         card of the grid below), not the band edge (Liam 2026-11-06). Same
+         inset formula as .bp-page-hero--contained. */
       :host(.bp-page-hero--align-block) .bp-page-hero__actions {
         position: absolute;
-        top: 28px;
-        right: 32px;
+        bottom: 0;
+        right: max(32px, calc((100% - var(--workspace-max)) / 2));
       }
 
       /* Type comes from .bp-page-title / .bp-page-subtitle (pV2-TYPE-01 —
@@ -192,6 +196,8 @@ import { LucideAngularModule } from 'lucide-angular';
         display: flex;
         align-items: center;
         gap: 8px;
+        /* Bottom-align with the base of the text block (Liam 2026-11-06). */
+        align-self: end;
       }
 
       /* Right-hand meta mirrors the left text block: same child classes, but

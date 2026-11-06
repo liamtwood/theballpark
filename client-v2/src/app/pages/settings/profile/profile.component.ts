@@ -305,22 +305,26 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
               <div class="ed-card p-6">
                 <h2 class="bp-card-title">Terms &amp; Conditions</h2>
                 <p class="bp-caption mt-2">Your standard Terms &amp; Conditions PDF — attached as Annex A on Statements of Work.</p>
-                <div class="mt-3 flex flex-wrap items-center gap-3">
-                  @if (org.termsPdfUrl) {
-                    <a [href]="org.termsPdfUrl" target="_blank" rel="noopener" class="flex items-center gap-2 bp-body-small text-text underline">
-                      <lucide-icon name="file-text" [size]="15" /> View current T&amp;Cs
-                    </a>
-                  } @else {
-                    <span class="bp-body-small text-secondary">No T&amp;Cs uploaded yet.</span>
-                  }
-                  @if (store.canEdit()) {
-                    <label class="bp-btn-outline flex cursor-pointer items-center gap-2">
-                      <lucide-icon name="upload" [size]="15" /> {{ store.savingTerms() ? 'Uploading…' : (org.termsPdfUrl ? 'Replace' : 'Upload PDF') }}
-                      <input type="file" accept="application/pdf" class="hidden" [disabled]="store.savingTerms()" (change)="onTermsFile($event)" />
-                    </label>
+                <div class="mt-3 flex flex-col gap-3">
+                  <div class="flex flex-wrap items-center gap-3">
                     @if (org.termsPdfUrl) {
-                      <button type="button" class="bp-body-small text-danger transition-colors hover:underline" (click)="store.removeTerms()">Remove</button>
+                      <a [href]="org.termsPdfUrl" target="_blank" rel="noopener" class="flex items-center gap-2 bp-body-small text-text underline">
+                        <lucide-icon name="file-text" [size]="15" /> View current T&amp;Cs
+                      </a>
+                    } @else {
+                      <span class="bp-body-small text-secondary">No T&amp;Cs uploaded yet.</span>
                     }
+                  </div>
+                  @if (store.canEdit()) {
+                    <div class="flex flex-wrap items-center gap-3">
+                      <label class="bp-btn-grad cursor-pointer">
+                        <lucide-icon name="upload" [size]="15" /> {{ store.savingTerms() ? 'Uploading…' : (org.termsPdfUrl ? 'Replace' : 'Upload PDF') }}
+                        <input type="file" accept="application/pdf" class="hidden" [disabled]="store.savingTerms()" (change)="onTermsFile($event)" />
+                      </label>
+                      @if (org.termsPdfUrl) {
+                        <button type="button" class="bp-body-small text-danger transition-colors hover:underline" (click)="store.removeTerms()">Remove</button>
+                      }
+                    </div>
                   }
                 </div>
               </div>
