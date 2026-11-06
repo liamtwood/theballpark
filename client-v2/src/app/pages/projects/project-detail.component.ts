@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, resource, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DialogModule } from 'primeng/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
@@ -26,6 +27,7 @@ import { SaveStatePillComponent } from '../../shared/save-state-pill/save-state-
 import { CompletenessConfig } from '../../shared/completeness/completeness.types';
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
+import { ProjectDetailsFieldsComponent } from './project-details-fields.component';
 import { QuoteDocumentComponent } from './quote-document.component';
 import { SowDocumentComponent } from './sow-document.component';
 import { InboxProjectComponent } from '../inbox/inbox-project.component';
@@ -75,6 +77,8 @@ interface DetailForm {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ToastModule,
+    DialogModule,
+    ProjectDetailsFieldsComponent,
     LucideAngularModule,
     CoachmarkComponent,
     PageHeroComponent,
@@ -170,7 +174,9 @@ interface DetailForm {
           <div class="bp-projnav" role="tablist" aria-label="Project view">
             @for (opt of projNav(); track opt.tab) {
               <button type="button" role="tab" class="bp-projnav-opt"
+                      [attr.data-tab]="opt.tab"
                       [class.bp-projnav-opt--active]="projNavActive() === opt.tab"
+                      [class.bp-projnav-opt--land]="justLanded() && opt.tab === 'details'"
                       [attr.aria-selected]="projNavActive() === opt.tab"
                       (click)="setTab(opt.tab)">
                 @if (projNavActive() === opt.tab) { <lucide-icon name="check" [size]="15" /> }
@@ -332,7 +338,15 @@ interface DetailForm {
                  the same distance under the tab band as the Marketplace tab
                  (Liam 2026-11-06). Vertical only — no -mx-8 (not a full-bleed grid). -->
             <div class="min-h-0 flex-1 bp-gutter -mt-6">
-              <app-project-estimate [projectId]="p.id" [project]="p" view="final" (detailsSaved)="detail.reload()" (deleteRequested)="onDelete()" />
+              @if (welcomeBuilding()) {
+                <!-- pV2-PROJ-UNIFY-01 — the ballpark builds while/after the confirm
+                     dialog; the list fills in when recommend finishes. -->
+                <div class="mx-auto mb-3 flex max-w-[var(--workspace-max)] items-center gap-3 rounded-[var(--radius-card)] border border-hairline bg-fill px-4 py-3">
+                  <lucide-icon name="sparkles" [size]="18" class="shrink-0 animate-pulse text-accent" />
+                  <span class="bp-body-small text-secondary">Finding items for your ballpark — the list fills in as suppliers are matched…</span>
+                </div>
+              }
+              <app-project-estimate [projectId]="p.id" [project]="p" view="final" [reloadToken]="estimateReloadToken()" (detailsSaved)="detail.reload()" (deleteRequested)="onDelete()" />
             </div>
           }
           @case ('reports') {
@@ -397,6 +411,54 @@ interface DetailForm {
       <div class="bp-page-body"><p class="bp-body-small text-warn">Couldn't load this {{ label().toLowerCase() }}.</p></div>
     }
 
+    <!-- pV2-PROJ-UNIFY-01 — welcome confirm dialog (create flow). Surfaces the
+         parsed details for a quick confirm/fix; on "Save & continue" the details
+         fly into the Details tab and the estimate builds below. -->
+    @if (detail.value(); as p) {
+      <p-dialog
+        header="Confirm your project details"
+        styleClass="bp-modal"
+        [visible]="welcomeOpen()"
+        (visibleChange)="welcomeOpen.set($event === true)"
+        [modal]="true"
+        [closable]="false"
+        [style]="{ width: '560px' }"
+      >
+        <p class="bp-body-small text-secondary">
+          We read these from your brief — fix anything that's off, then continue.
+          You can edit them any time on the Details tab.
+        </p>
+        <div class="mt-4">
+          <app-project-details-fields
+            [eventTypeOptions]="eventTypeOptions()"
+            [(name)]="wName"
+            [(client)]="wClient"
+            [(eventType)]="wEventType"
+            [(eventDate)]="wEventDate"
+            [(location)]="wLocation"
+            [(guests)]="wGuests"
+            [(budget)]="wBudget"
+          />
+        </div>
+        <div class="mt-6 flex items-center justify-end">
+          <button type="button" class="bp-btn-grad" [disabled]="savingWelcome()" (click)="saveWelcome()">
+            <lucide-icon name="check" [size]="15" /> {{ savingWelcome() ? 'Saving…' : 'Save & continue' }}
+          </button>
+        </div>
+      </p-dialog>
+    }
+
+    <!-- The details "fly" into the Details tab on confirm (pV2-PROJ-UNIFY-01).
+         The target delta (viewport centre → Details tab centre) is measured at
+         confirm time so it lands ON the tab at any width. -->
+    @if (flying()) {
+      <div class="bp-proj-fly" aria-hidden="true"
+           [style.--fly-dx.px]="flyTarget().dx" [style.--fly-dy.px]="flyTarget().dy">
+        <span class="bp-icon-block h-8 w-8"><lucide-icon name="file-text" [size]="16" /></span>
+        <span class="truncate text-sm font-medium">Event details</span>
+      </div>
+    }
+
     <!-- MessageService supplies aria-live by severity (audit F-10). -->
     <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
@@ -441,10 +503,8 @@ export class ProjectDetailComponent {
    *  the project's quote. */
   protected readonly tab = computed<Tab>(() => {
     const raw = this.query().get('tab');
-    let t: Tab = (TABS as string[]).includes(raw ?? '') ? (raw as Tab) : 'final';
-    // Draft hides About/Reports/Inbox — fall back to Ballpark Cost if the URL
-    // points at a hidden tab (e.g. an old bookmark, or before the status flips).
-    if (this.isDraft() && (t === 'details' || t === 'reports' || t === 'inbox')) t = 'final';
+    const t: Tab = (TABS as string[]).includes(raw ?? '') ? (raw as Tab) : 'final';
+    // pV2-PROJ-UNIFY-01 — all tabs available in every state (no draft redirect).
     return t;
   });
 
@@ -487,21 +547,18 @@ export class ProjectDetailComponent {
    *  Edit in marketplace = the catalogue browse. Inbox/Final-SOW/Reports are
    *  deferred until their stage lands (their @case + routes stay). */
   protected readonly projNav = computed<readonly { tab: Tab; label: string }[]>(() => {
-    const nav: { tab: Tab; label: string }[] = [
-      { tab: 'final', label: this.isDraft() ? 'Ballpark cost' : 'Running budget' },
-      { tab: 'marketplace', label: this.isDraft() ? 'Edit in marketplace' : 'Marketplace' },
+    // pV2-PROJ-UNIFY-01 — the FULL tab set shows always, draft included (one
+    // project view from creation; status no longer gates the nav). Inbox/Reports
+    // carry tasteful empty-states on a fresh project. Labels still status-aware
+    // (the "Running budget"/"Marketplace" relabel is deferred — Liam 2026-11-06).
+    const n = this.overview.value()?.actionItems ?? 0;
+    return [
+      { tab: 'final', label: 'Ballpark' },
+      { tab: 'marketplace', label: 'Marketplace' },
+      { tab: 'inbox', label: n > 0 ? `Inbox (${n})` : 'Inbox' },
+      { tab: 'details', label: 'Details' },
+      { tab: 'reports', label: 'Documents' },
     ];
-    // Active order (Liam 2026-10-22): Running budget · Marketplace · Inbox · Details.
-    // (Inbox/Details unlock once the project is Active.)
-    if (!this.isDraft()) {
-      // Inbox carries a count of items awaiting YOUR action ("unactioned") — e.g.
-      // "Inbox (3)" — so you see outstanding work without opening the tab (Liam).
-      const n = this.overview.value()?.actionItems ?? 0;
-      nav.push({ tab: 'inbox', label: n > 0 ? `Inbox (${n})` : 'Inbox' });
-      nav.push({ tab: 'details', label: 'Details' });
-      nav.push({ tab: 'reports', label: 'Reports' });
-    }
-    return nav;
   });
   /** Which switch option reads as selected — marketplace / inbox when on them,
    *  else the Ballpark cost side (covers the deferred/redirected tabs too). */
@@ -602,6 +659,113 @@ export class ProjectDetailComponent {
     loader: () => firstValueFrom(this.projects.clientNames()),
   });
   protected readonly clientNames = computed<string[]>(() => this.clientNamesRes.value() ?? []);
+
+  // ── pV2-PROJ-UNIFY-01 — create welcome flow ──────────────────────────────
+  /** The confirm/fix dialog (opened once on ?welcome=1 after create). */
+  protected readonly welcomeOpen = signal(false);
+  /** The details "fly to the Details tab" animation is playing. */
+  protected readonly flying = signal(false);
+  /** Brief highlight pulse on the Details tab when the flight lands. */
+  protected readonly justLanded = signal(false);
+  /** Flight delta (viewport centre → Details tab centre), measured at confirm. */
+  protected readonly flyTarget = signal<{ dx: number; dy: number }>({ dx: 90, dy: -300 });
+  /** recommend is building the ballpark (shown on the Ballpark cost tab). */
+  protected readonly welcomeBuilding = signal(false);
+  /** Bumped to force the estimate component to re-fetch its lines after recommend. */
+  protected readonly estimateReloadToken = signal(0);
+  /** Welcome-dialog fields (the add-project layout), seeded from the project. */
+  protected readonly wName = signal('');
+  protected readonly wClient = signal('');
+  protected readonly wEventType = signal('');
+  protected readonly wEventDate = signal('');
+  protected readonly wLocation = signal('');
+  protected readonly wGuests = signal('');
+  protected readonly wBudget = signal('');
+  protected readonly savingWelcome = signal(false);
+  private welcomeShown = false;
+  /** On ?welcome=1: open the confirm dialog once the project is loaded AND kick
+   *  off recommend so the ballpark builds while the dialog is up; when it
+   *  finishes, drop the building state and reload the estimate so items show. */
+  private readonly welcomeWatcher = effect(() => {
+    const wants = this.query().get('welcome') === '1';
+    const p = this.detail.value();
+    if (wants && p && !this.welcomeShown) {
+      this.welcomeShown = true;
+      // Seed the dialog from the created project (parsed values).
+      this.wName.set(p.name ?? '');
+      this.wClient.set(p.clientName ?? '');
+      this.wEventType.set(p.eventType ?? '');
+      this.wEventDate.set(p.eventDate ?? '');
+      this.wLocation.set(p.venueName ?? '');
+      this.wGuests.set(p.guestCount != null ? String(p.guestCount) : '');
+      this.wBudget.set(p.projectBudget != null ? String(p.projectBudget) : '');
+      this.welcomeOpen.set(true);
+      this.welcomeBuilding.set(true);
+      firstValueFrom(this.projects.recommend(p.id))
+        .catch((err) => console.warn('[ProjectDetail] recommend failed', err))
+        .finally(() => {
+          this.welcomeBuilding.set(false);
+          this.estimate.reload();
+          // Force the estimate component to re-fetch its own lines (it loaded
+          // empty before recommend wrote the items).
+          this.estimateReloadToken.update((t) => t + 1);
+        });
+    }
+  });
+
+  /** Save the confirmed details onto the project, then run the fly + landing. */
+  protected async saveWelcome(): Promise<void> {
+    const id = this.id();
+    if (id) {
+      this.savingWelcome.set(true);
+      const update: ProjectUpdate = {
+        name: this.wName().trim() || undefined,
+        clientName: this.wClient().trim() || undefined,
+        eventType: this.wEventType().trim() || undefined,
+        eventDate: this.wEventDate().trim() || undefined,
+        venueName: this.wLocation().trim() || undefined,
+        guestCount: this.wGuests().trim() ? Number(this.wGuests()) : undefined,
+        projectBudget: this.wBudget().trim() ? Number(this.wBudget()) : undefined,
+      };
+      try {
+        await firstValueFrom(this.projects.update(id, update));
+      } catch (err) {
+        console.warn('[ProjectDetail] welcome save failed', err);
+      } finally {
+        this.savingWelcome.set(false);
+      }
+    }
+    this.completeWelcome();
+  }
+
+  /** Dialog confirmed → fly the details into the Details tab (+ highlight it),
+   *  reload the estimate (recommend has been building meanwhile), and drop the
+   *  ?welcome param so a refresh doesn't re-open. */
+  protected completeWelcome(): void {
+    this.welcomeOpen.set(false);
+    // Measure the Details tab so the flight lands ON it (the tab band is visible
+    // behind the dialog, so the rect is valid now).
+    const tab = document.querySelector('.bp-projnav [data-tab="details"]') as HTMLElement | null;
+    if (tab) {
+      const r = tab.getBoundingClientRect();
+      this.flyTarget.set({
+        dx: r.left + r.width / 2 - window.innerWidth / 2,
+        dy: r.top + r.height / 2 - window.innerHeight / 2,
+      });
+    }
+    this.flying.set(true);
+    setTimeout(() => {
+      this.flying.set(false);
+      this.justLanded.set(true);
+      setTimeout(() => this.justLanded.set(false), 1400);
+    }, 560);
+    // The estimate reload is owned by the recommend .finally (above) so it lands
+    // once items exist; here we only refresh the saved detail fields.
+    this.detail.reload();
+    this.router
+      .navigate([], { relativeTo: this.route, queryParams: { welcome: null }, queryParamsHandling: 'merge' })
+      .catch(() => {});
+  }
 
   protected setTab(t: string): void {
     // Landing on Ballpark Cost → refresh the hero headline (lines/rates may have

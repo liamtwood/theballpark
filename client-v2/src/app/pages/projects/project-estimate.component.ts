@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, resource, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { MessageService } from 'primeng/api';
@@ -18,7 +18,6 @@ import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { acceptanceCode, LineDisplayCode, LineDisplayStatusService, supplierSummaryCode, SupplierSummaryCode } from '../../core/status/line-display-status';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { MessageSuppliersDialogComponent, MsgSupplierCategory } from './message-suppliers-dialog.component';
-import { EventDetailsEditComponent } from './event-details-edit.component';
 import { EstimateBreakdownComponent } from './estimate-breakdown.component';
 import { CustomLineDialogComponent, CustomLine, LineSupplier, ExistingPick } from './custom-line-dialog.component';
 import { OptionsPickerComponent } from './options-picker.component';
@@ -58,7 +57,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CurrencyPipe, LucideAngularModule, MessageSuppliersDialogComponent, EstimateItemRowComponent, RateInputComponent,
-    EventDetailsEditComponent, EstimateBreakdownComponent, CustomLineDialogComponent,
+    EstimateBreakdownComponent, CustomLineDialogComponent,
     OptionsPickerComponent, QuickViewDialogComponent, StatusPillComponent,
   ],
   host: { class: 'block' },
@@ -74,21 +73,9 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
       <div class="relative">
       <div class="mx-auto w-full max-w-[var(--workspace-max)]">
 
-      <!-- Editable event details — DRAFT only (in active they live on the Details
-           tab, not the Running budget). Each field saves on blur; (saved) reloads. -->
-      @if (isDraftProject()) {
-        <!-- No top margin — event-details is the first element in draft Ballpark
-             cost, so it top-aligns with the other tabs (Liam 2026-11-06). -->
-        <app-event-details-edit class="block" [project]="project()" [projectId]="projectId()"
-                                [currency]="cur()" (saved)="detailsSaved.emit()" />
-      }
-
-      <!-- Separator below event-details — DRAFT only. In active (Running budget)
-           there's nothing above, so the spacer would be dead top padding that
-           pushes the list below the other tabs (Liam 2026-11-06). -->
-      @if (isDraftProject()) {
-        <div class="mt-5"></div>
-      }
+      <!-- pV2-PROJ-UNIFY-01 (Stage 1): the draft event-details fold was deleted —
+           project details now live ONLY on the Details tab (surfaced once at
+           create via the confirm dialog). The estimate shows cost content only. -->
 
       @if (lines.isLoading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
@@ -295,9 +282,23 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                     <!-- Supplier label — draft only (in active the card IS the
                          supplier, so there's no sub-label). -->
                     @if (isDraftProject()) {
-                    <div class="flex items-center gap-2 px-3 pb-1 pt-2.5">
-                      <lucide-icon name="store" [size]="13" class="shrink-0 text-muted" />
-                      <span class="bp-meta truncate font-medium text-text">{{ sg.supplierName || 'Supplier' }}@if (sg.supplierCity) { · {{ sg.supplierCity }} }</span>
+                    <!-- Supplier = a soft-pink banner (Liam 2026-11-06): the supplier
+                         is the unit you negotiate with, so it reads as its own block —
+                         soft fill + a touch larger name, but below the category header. -->
+                    <div class="mt-2 flex items-center gap-2 rounded-[var(--radius-field)] px-3 py-2"
+                         style="background: var(--theme-soft)">
+                      <lucide-icon name="store" [size]="15" class="shrink-0" style="color: var(--theme-accent)" />
+                      <span class="truncate text-sm font-semibold" style="color: var(--theme-text)">{{ sg.supplierName || 'Supplier' }}</span>
+                      @if (sg.supplierCity) {
+                        <span class="truncate text-xs text-secondary">· {{ sg.supplierCity }}</span>
+                      }
+                      <!-- In-context add — the existing add flow, scoped to this row's
+                           category (Liam 2026-11-06). -->
+                      <button type="button" class="ml-auto shrink-0 rounded-md p-1 transition-opacity hover:opacity-70"
+                              (click)="openAdd({ id: g.id, name: g.name, iconName: g.iconName })"
+                              [attr.aria-label]="'Add an item to ' + g.name" title="Add item">
+                        <lucide-icon name="circle-plus" [size]="16" style="color: var(--theme-accent)" />
+                      </button>
                     </div>
                     }
                     <!-- Column headers (per supplier) — left-justified, aligned to
@@ -536,6 +537,15 @@ export class ProjectEstimateComponent {
   private readonly allCategories = resource({ loader: () => this.catalogue.categories() });
 
   readonly projectId = input.required<string>();
+  /** Bumped by the host to force a lines + totals reload (e.g. after the create
+   *  welcome flow's recommend finishes writing items — pV2-PROJ-UNIFY-01). */
+  readonly reloadToken = input(0);
+  private readonly reloadWatcher = effect(() => {
+    if (this.reloadToken() > 0) {
+      this.lines.reload();
+      this.est.reload();
+    }
+  });
   readonly project = input.required<ProjectDetail>();
   /** cart = editable "To Send" slice; final = everything + status badges +
    *  custom lines. Same layout, one switch. */
@@ -795,11 +805,24 @@ export class ProjectEstimateComponent {
           : bySupplier(g.items),
       };
     });
-    // The Fees section is always present on the Final Quote — the home for the
-    // agent's own costs (even before they've added any).
-    if (this.isFinal() && !mapped.some((g) => g.isProject)) {
+    // Order the category sections by the categories table's sort_order (Liam
+    // 2026-11-06), nulls + unknowns last; the Fees/own-costs bucket always last.
+    // Keyed by NAME (the group's category id can be the project_category row,
+    // not the catalogue category allCategories is keyed on).
+    const catSort = new Map((this.allCategories.value() ?? []).map((c) => [c.name, c.sortOrder]));
+    mapped.sort((a, b) => {
+      if (a.isProject !== b.isProject) return a.isProject ? 1 : -1;
+      const sa = catSort.get(a.name);
+      const sb = catSort.get(b.name);
+      return (sa == null ? Infinity : sa) - (sb == null ? Infinity : sb) || a.name.localeCompare(b.name);
+    });
+    // "Your own costs" is ALWAYS present at the end (draft + active, Liam
+    // 2026-11-06) — a standing home for the agency's own lines, with the agency
+    // as its one supplier row (so the per-row add is always there).
+    if (!mapped.some((g) => g.isProject)) {
       mapped.push({ id: '__none', name: 'Your own costs', items: [], isProject: true,
-        isCoverage: false, total: 0, iconName: 'wallet', count: 0, hasAgreed: false, agreedTotal: 0, summaryCode: '' as SupplierSummaryCode | '', supplierGroups: [] });
+        isCoverage: false, total: 0, iconName: 'wallet', count: 0, hasAgreed: false, agreedTotal: 0, summaryCode: '' as SupplierSummaryCode | '',
+        supplierGroups: [{ supplierId: '', supplierName: this.orgName(), supplierCity: null, items: [] }] });
     }
     return mapped;
   });

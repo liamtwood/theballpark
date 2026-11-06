@@ -6,29 +6,25 @@ import { MessageService } from 'primeng/api';
 import { LucideAngularModule } from 'lucide-angular';
 import { AiService } from '../../core/ai/ai.service';
 import { CodelistService } from '../../core/codelists/codelist.service';
-import { natoDate } from '../../shared/details-format';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { ProjectService } from '../../core/projects/project.service';
 import { parsedBriefToCreate } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
-import { SelectComponent } from '../../shared/select/select.component';
+import { ProjectDetailsFieldsComponent } from './project-details-fields.component';
 
-/** pV2-PROJECTS-03 (scoped — brief → project, no items) — /projects/new
- *  per add-project-1.png: Upload Brief OR Write Brief. The AI parses the
- *  brief into project fields (reusing the v1 /api/ai endpoints); we create
- *  the project (status draft) and land on the list. The "Your ballpark is
- *  ready" item accordion (add-project-2.png) is deferred. */
+/** pV2-PROJ-UNIFY-01 (Stage 1) — /projects/new.
+ *  Brief (upload/paste) + an OPTIONAL details form (fill ahead if you want).
+ *  Create parses the brief, creates the project (status draft), kicks off
+ *  recommend (fire-and-forget — it builds while you're on the project page), and
+ *  lands on the project with ?welcome=1 — where a confirm dialog surfaces the
+ *  details and animates them into the Details tab. Fast hand-off: we do NOT wait
+ *  for recommend here. */
 @Component({
   selector: 'app-projects-new',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ToastModule, LucideAngularModule, PageHeroComponent, SelectComponent],
+  imports: [ToastModule, LucideAngularModule, PageHeroComponent, ProjectDetailsFieldsComponent],
   providers: [MessageService],
-  // bp-vpfit: the PAGE never scrolls — the hero stays anchored and only the
-  // form body scrolls within itself (matches the catalogue pages). This keeps
-  // the scrollbar below the fixed header, not spanning it.
-  // Flowing page (standard): the whole page scrolls at the window edge under the
-  // fixed top nav — the hero scrolls with the content (Liam 2026-10-30).
   host: { class: 'block' },
   template: `
     <app-page-hero
@@ -38,16 +34,9 @@ import { SelectComponent } from '../../shared/select/select.component';
       [subtitle]="hero().subtitle"
     />
 
-    <!-- Full-width bp-page-body (NOT --workspace) so the scroll area spans the page
-         and the scrollbar sits at the window edge like the other vpfit pages; the
-         content centres itself in the workspace column inside (Liam 2026-10-30). -->
     <div class="bp-page-body">
-      <!-- Own the overflow so the body scrolls, not the whole page. -->
       <div class="min-h-0 flex-1 overflow-y-auto">
       @if (busy()) {
-        <!-- Simple loading state (S1): read the brief → set up the project. The
-             4-step "building your project" deck (deck slide 3) is dropped — its
-             item-match / ballpark steps are S2. -->
         <div class="mx-auto flex max-w-xl flex-col items-center gap-3 py-16 text-center">
           <span class="bp-icon-block h-11 w-11"><lucide-icon name="sparkles" [size]="20" class="animate-pulse text-accent" /></span>
           <h2 class="bp-page-title">Creating your {{ label().toLowerCase() }}…</h2>
@@ -55,13 +44,10 @@ import { SelectComponent } from '../../shared/select/select.component';
         </div>
       } @else {
         <div class="mx-auto grid w-full max-w-[var(--workspace-max)] grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
-          <!-- Left: the brief (upload + paste). Fills the column so it matches
-               the right side's full height (details + button + disclaimer). -->
+          <!-- Left: the brief (upload + paste). -->
           <div class="bp-card bp-card--lifted flex h-full flex-col p-6">
             <h2 class="bp-card-title">The brief</h2>
 
-            <!-- Standard light-gray container (bg-fill + hairline), matching the
-                 payment summary cards; border highlights on hover (Liam 2026-10-30). -->
             <label class="mt-4 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-[var(--radius-card)] border border-hairline bg-fill px-4 py-8 text-center transition-colors hover:border-accent">
               <input type="file" class="hidden" accept=".txt,.md,.csv,.rtf" (change)="onFile($event)" />
               <lucide-icon name="file-up" [size]="20" [strokeWidth]="1.75" class="text-accent" />
@@ -81,59 +67,30 @@ import { SelectComponent } from '../../shared/select/select.component';
             </label>
           </div>
 
-          <!-- Right: project details + submit. -->
+          <!-- Right: OPTIONAL project details (fill ahead, or confirm on the next
+               page). Any field left blank is taken from the parsed brief. -->
           <div class="flex flex-col gap-6">
             <div class="bp-card bp-card--lifted p-6">
-              <h2 class="bp-card-title">Project details</h2>
+              <div class="flex items-center justify-between">
+                <h2 class="bp-card-title">Project details</h2>
+                <span class="bp-caption text-secondary">Optional — we'll read these from the brief</span>
+              </div>
 
-              <!-- Ref hidden here — auto-assigned on create; managed in project
-                   Details later (Liam 2026-10-30). One field per row. -->
-              <div class="mt-4 flex flex-col gap-4">
-                <label class="block">
-                  <span class="ed-label mb-1.5 block">Project name</span>
-                  <input type="text" class="ed-input" [value]="name()" (input)="name.set($any($event.target).value)" />
-                </label>
-              </div>
-              <div class="mt-4 grid grid-cols-1 gap-4">
-                <label class="block">
-                  <span class="ed-label mb-1.5 block">Client</span>
-                  <input type="text" class="ed-input" [value]="client()" (input)="client.set($any($event.target).value)" />
-                </label>
-                <label class="block">
-                  <span class="ed-label mb-1.5 block">Event type</span>
-                  <app-select ariaLabel="Event type" placeholder="Select…" [options]="eventTypeOptions()" [value]="eventType()" (changed)="eventType.set($event)" />
-                </label>
-              </div>
-              <div class="mt-4 grid grid-cols-1 gap-4">
-                <label class="block">
-                  <span class="ed-label mb-1.5 block">Event date</span>
-                  <!-- NATO display + native OS picker: the transparent date input
-                       sits over the calendar icon; picking reformats to NATO. -->
-                  <div class="relative">
-                    <input type="text" class="ed-input pr-10" placeholder="e.g. 20-Aug-2026" title="Standard format: DD-Mmm-YYYY (free text like 'Q4' is fine too)" [value]="eventDate()" (input)="eventDate.set($any($event.target).value)" (blur)="onEventDateBlur()" />
-                    <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted"><lucide-icon name="calendar" [size]="16" /></span>
-                    <input type="date" aria-label="Pick event date" class="absolute right-0 top-0 h-full w-11 cursor-pointer opacity-0" (change)="onEventDatePicked($any($event.target).value)" />
-                  </div>
-                </label>
-                <label class="block">
-                  <span class="ed-label mb-1.5 block">Location</span>
-                  <input type="text" class="ed-input" placeholder="London" [value]="location()" (input)="location.set($any($event.target).value)" />
-                </label>
-              </div>
-              <!-- Guests + Budget side by side (Liam 2026-10-30). -->
-              <div class="mt-4 grid grid-cols-2 gap-4">
-                <label class="block">
-                  <span class="ed-label mb-1.5 block">Guests</span>
-                  <input type="number" min="0" class="ed-input" [value]="guests()" (input)="guests.set($any($event.target).value)" />
-                </label>
-                <label class="block">
-                  <span class="ed-label mb-1.5 block">Budget (£)</span>
-                  <input type="number" min="0" class="ed-input" [value]="budget()" (input)="budget.set($any($event.target).value)" />
-                </label>
+              <div class="mt-4">
+                <app-project-details-fields
+                  [eventTypeOptions]="eventTypeOptions()"
+                  [(name)]="name"
+                  [(client)]="client"
+                  [(eventType)]="eventType"
+                  [(eventDate)]="eventDate"
+                  [(location)]="location"
+                  [(guests)]="guests"
+                  [(budget)]="budget"
+                />
               </div>
             </div>
 
-            <button type="button" class="bp-msg-btn w-full justify-center" [disabled]="!canSubmit()" (click)="submit()">
+            <button type="button" class="bp-btn-grad w-full justify-center" [disabled]="!canSubmit()" (click)="submit()">
               <lucide-icon name="sparkles" [size]="16" />
               Create ballpark
             </button>
@@ -147,7 +104,6 @@ import { SelectComponent } from '../../shared/select/select.component';
       </div>
     </div>
 
-    <!-- MessageService supplies aria-live by severity (audit F-10). -->
     <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
 })
@@ -157,8 +113,7 @@ export class ProjectsNewComponent {
   private readonly codelists = inject(CodelistService);
   private readonly pageConfig = inject(PageConfigService);
 
-  /** Event type is a curated LOV (admins own it) — same list the project
-   *  detail's Event type dropdown reads. */
+  /** Event type is a curated LOV (admins own it). */
   private readonly eventTypeRes = resource({
     loader: () => this.codelists.list('project_type'),
   });
@@ -169,7 +124,6 @@ export class ProjectsNewComponent {
   private readonly toast = inject(MessageService);
 
   protected readonly label = computed(() => this.pageConfig.eventLabel());
-  /** Admin-driven hero (eyebrow / title / subtitle), tokens resolved. */
   protected readonly hero = computed(() => this.pageConfig.pageHero('newProject'));
 
   protected readonly briefText = signal('');
@@ -177,11 +131,6 @@ export class ProjectsNewComponent {
   private readonly file = signal<File | null>(null);
   protected readonly busy = signal(false);
 
-  /** Project-detail fields the user can fill directly (override the parsed
-   *  brief). All map to existing project attributes. */
-  /** The proposed next ref (server preview). Pre-fills the Ref field; the user
-   *  can override it. A proposal, not a reservation — the real ref is allocated
-   *  at create (and a blank field still auto-assigns). */
   private readonly nextRefRes = resource({
     loader: () => firstValueFrom(this.projects.nextRef()),
   });
@@ -194,28 +143,12 @@ export class ProjectsNewComponent {
   protected readonly guests = signal('');
   protected readonly budget = signal('');
 
-  /** Minimum brief length before the AI parse is worthwhile. */
   protected readonly MIN_BRIEF = 40;
   protected readonly briefLen = computed(() => this.briefText().trim().length);
 
   protected readonly canSubmit = computed(
     () => !this.busy() && (this.briefLen() >= this.MIN_BRIEF || !!this.file())
   );
-
-  /** Normalise the typed date to the standard NATO format on blur; free text
-   *  (e.g. "Q4"/"TBC") is left as-is. */
-  protected onEventDateBlur(): void {
-    const v = this.eventDate().trim();
-    if (v) this.eventDate.set(natoDate(v));
-  }
-
-  /** OS date picker → NATO. Build a LOCAL date from the yyyy-mm-dd parts so the
-   *  displayed day can't shift a day across time zones. */
-  protected onEventDatePicked(iso: string): void {
-    if (!iso) return;
-    const [y, m, d] = iso.split('-').map(Number);
-    this.eventDate.set(natoDate(new Date(y, m - 1, d).toDateString()));
-  }
 
   protected onFile(e: Event): void {
     const f = (e.target as HTMLInputElement).files?.[0] ?? null;
@@ -228,7 +161,7 @@ export class ProjectsNewComponent {
     this.busy.set(true);
     let projectId: string | null = null;
     try {
-      // Read the brief (extract text for uploads, then parse).
+      // Read + parse the brief (couple of seconds), then create.
       let text = this.briefText().trim();
       const f = this.file();
       if (f && !text) {
@@ -236,9 +169,7 @@ export class ProjectsNewComponent {
       }
       const parsed = await firstValueFrom(this.ai.parseBrief(text));
 
-      // Manual detail fields win over the parsed brief (both map to existing
-      // project attributes). Client + Budget aren't on the create schema, so
-      // they're PATCHed straight after (create-then-update — no backend change).
+      // Optional form fields win over the parsed brief; blanks fall back to the parse.
       const base = parsedBriefToCreate(parsed, text);
       const payload = {
         ...base,
@@ -249,22 +180,14 @@ export class ProjectsNewComponent {
         venueName: this.location().trim() || base.venueName,
         guestCount: this.guests().trim() ? Number(this.guests()) : base.guestCount,
       };
-      // create() also seeds project_settings (null rates) + scaffolds the
-      // project_categories brief buckets from the parsed brief, server-side in
-      // one transaction. Item matching (recommend) is S2 — not called here.
       const card = await firstValueFrom(this.projects.create(payload));
       projectId = card.id;
 
+      // Client + Budget aren't on the create schema — PATCH them in.
       const detailPatch: { clientName?: string; projectBudget?: number } = {};
-      // The create schema doesn't take clientName; PATCH it in. The AI often
-      // folds the client into the project NAME, so fall back to the parser's
-      // dedicated `client` field when the form field is empty (FR-00240 hero
-      // eyebrow reads client_name).
-      const clientName = this.client().trim() || (parsed.client ?? '').trim();
+      const clientName = this.client().trim() || ((parsed as { client?: string }).client ?? '').trim();
       if (clientName) detailPatch.clientName = clientName;
-      // Budget: the form field wins; otherwise fall back to the budget the
-      // parser pulled from the brief ("£45,000" → 45000) so it isn't dropped.
-      const budgetVal = this.budget().trim() ? Number(this.budget()) : parseMoney(parsed.budget);
+      const budgetVal = this.budget().trim() ? Number(this.budget()) : parseMoney((parsed as { budget?: string }).budget);
       if (budgetVal != null && !Number.isNaN(budgetVal)) detailPatch.projectBudget = budgetVal;
       if (Object.keys(detailPatch).length) {
         try {
@@ -274,22 +197,15 @@ export class ProjectsNewComponent {
         }
       }
 
-      // Auto-draft the estimate: match each briefed category to catalogue items
-      // and add the top picks (several Haiku calls — runs under the busy state).
-      try {
-        await firstValueFrom(this.projects.recommend(card.id));
-      } catch (recErr) {
-        console.warn('[ProjectsNew] recommend failed', recErr);
-      }
-
-      // Land on the project detail (default tab). The tab bodies render the
-      // drafted estimate (line cluster).
-      await this.router.navigate(['/projects', card.id]);
+      // recommend is owned by the project page's welcome flow (it kicks off on
+      // landing so it can show the building state AND reload the estimate when it
+      // finishes — a fire-and-forget here loses completion across navigation).
+      // Land immediately; ?welcome=1 drives the confirm dialog + animation + build.
+      await this.router.navigate(['/projects', card.id], { queryParams: { welcome: 1 } });
     } catch (err) {
       console.warn('[ProjectsNew] brief → create failed', err);
       if (projectId) {
-        // Created, but a post-create step threw — take them into the project.
-        await this.router.navigate(['/projects', projectId]);
+        await this.router.navigate(['/projects', projectId], { queryParams: { welcome: 1 } });
         return;
       }
       this.toast.add({
@@ -303,8 +219,7 @@ export class ProjectsNewComponent {
   }
 }
 
-/** Parse a loose money string from the parsed brief ("£45,000", "£45k",
- *  "Unknown") into a number, or null when there's no figure. */
+/** Parse a loose money string ("£45,000", "£45k", "Unknown") into a number. */
 function parseMoney(s?: string | null): number | null {
   if (!s) return null;
   const t = s.toLowerCase().replace(/[, ]/g, '');

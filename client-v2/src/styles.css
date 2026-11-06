@@ -896,6 +896,43 @@ body {
 .bp-projnav-opt:focus,
 .bp-projnav-opt:focus-visible { outline: none; box-shadow: none; }
 
+/* pV2-PROJ-UNIFY-01 — the create welcome details "fly" into the Details tab,
+   then the Details tab pulses on arrival. */
+.bp-proj-fly {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 1200;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-hairline);
+  box-shadow: var(--shadow-md);
+  color: var(--color-text);
+  animation: bp-proj-fly 540ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes bp-proj-fly {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  65% { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--fly-dx, 90px)), calc(-50% + var(--fly-dy, -300px))) scale(0.4); opacity: 0; }
+}
+.bp-projnav-opt--land { animation: bp-projnav-land 1.2s ease-out 1; }
+@keyframes bp-projnav-land {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  30% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-accent) 45%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bp-proj-fly { animation: bp-proj-fly-fade 200ms linear forwards; }
+  @keyframes bp-proj-fly-fade {
+    0% { transform: translate(-50%, -50%); opacity: 1; }
+    100% { transform: translate(-50%, -50%); opacity: 0; }
+  }
+}
+
 /* Left category rail rows. */
 .bp-catstrip-row {
   display: flex;
