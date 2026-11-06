@@ -40,6 +40,43 @@ table (Draft / Ready / Shipped / Done), see `prompts/backlog.md`.
 
 ## Shipped
 
+### 2026-11-05 — BE-00112: taxonomy.service god-service decomposed + cross-org `orgs_public` sweep
+
+On `rebuild/org-slice`. Broke the 1,691-line `taxonomy.service.js` (BE-00112,
+~4.8× the readability line) into **five single-responsibility modules** on a
+cycle-free DAG, then swept the cross-org supplier-read bug class it exposed.
+
+- **Decomposition (5 modules):** `taxonomy.service.js` → **163-line pure tree
+  reader** (loadTaxonomy / loadChildren / getDimensions / categorySuppliers /
+  eventTypes). Split out: `classification.service.js` (589 — AI classify/apply/
+  tags/suggest/backfill), `matching.service.js` (270 — brief→item matcher),
+  `quote-request.service.js` (567 — RFQ; `requestQuotes` now a ~70-line
+  orchestrator over named steps, Layer 3), `project-match.service.js` (201 —
+  Brief-tab match persistence). Deps: classification→taxonomy; matching→
+  project-match; both AI users→`ai.service.callHaikuJson`.
+- **AI client unified:** matching + classification dropped taxonomy's private
+  Anthropic/Haiku client (getClient/aiCreate/parseJson/HAIKU_MODEL — a duplicate
+  of `callHaikuJson`) and now call the shared one (same model, maxRetries:8, 503
+  mapping, JSON/fence parse). One Definition. Dead `notifyQuoteRequestSuppliers`
+  removed.
+- **Cross-org `orgs_public` sweep** (the bite = `orgs_public` is own-org under
+  RLS, so a cross-org supplier read zeroes on the flip; fix = the owner-run
+  `supplier_directory` definer view): **BE-00147** `matchItems`, **BE-00148**
+  `categorySuppliers` (+ rebuild-correct `is_active`→`status`/`approval_status`),
+  **BE-00149** `favourite.service.getAll`. `marketplace.js` / `marketplace-suppliers.js`
+  already used `supplier_directory` (stale comments only). No cross-org
+  `orgs_public` reads remain in runtime code.
+- **QC (live surfaces, Liam):** new-project **recommend** drafts cross-org
+  supplier lines WITH names (Rocket Food / Yahire / Unique Venues across
+  Catering/Furniture/Venues); admin **category Suppliers** list correct; admin
+  **Suspend/Activate** works. Classification / RFQ / favourites paths are
+  DORMANT on the v2dev rebuild (their tables/columns aren't in the slice yet) —
+  verified by module-load + validation + wiring, not e2e.
+- Commits `d695afc8` `8d072546` `be4eef86` `687ca7b6` `c7249149` `e223ffc6`
+  `e183ec60`. Ship report: `prompts/BE-00112-taxonomy-decomposition-shipped.md`.
+  Tracker BE-00112/00147/00148/00149 = done (BE-00112 pending chat audit +
+  `AUDIT_LEDGER` behemoth-line update: `taxonomy.service` 1614→163).
+
 ### 2026-09 — CATCH-UP: arcs the log skipped (≈ v2.34 → v2.376)
 
 This log fell far behind (it jumped from v2.08 to BUILDUP-01, then stopped). The
