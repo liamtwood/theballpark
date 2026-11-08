@@ -587,6 +587,16 @@ When a question lands on something already built, the reasoning goes here.
   compare (per-supplier acceptance — `attachAcceptance` currently merges all threads — and "pick this quote")
   is deferred design work (WS2-adjacent). Cost: hidden in the add dialog (supplier prices it); the line editor is
   unchanged — a cost typed there goes to the supplier as a "match this" starting price.
+- **2026-11-08 — invite a supplier who isn't on Ballpark (spec `pV2-INVITE-SUPPLIER-01`).** Top "Add line" gains a
+  ⋯ menu: My own costs (today's flow, locked) · Invite a new supplier. Liam's calls: (1) a REAL `orgs` row,
+  `type='supplier'`, `status='pending'` (already allowed by 0002) — not an agency-private contact record, because
+  the 0033 FK, banners, add flow and later send all just work against an org id and nothing re-points on join;
+  `supplier_directory` is active-only, so a pending org stays out of the marketplace for free. (2) Lines HOLD
+  until the supplier joins — no anonymous `/brief/:token` quoting yet. (3) ONE pending org per supplier, shared
+  across agencies (dedupe by invite email) — so joining never leaves duplicate orgs; agencies still see nothing of
+  each other. (4) Its own ship. Proposed (confirm at build start): an `org_invites` link table (supplier org ×
+  inviting agency × project) — the agency's only read path to a pending org it invited (via a
+  security-definer contact fn mirroring `org_contact`) and the hook for the "they joined" notification.
 
 - **Supplier edits save in place today.** `updateLineDetails` writes name/description/cost(→`base_price`)/
   unit/install straight onto `project_items`. So `project_items` is NOT static today; the redesign freezes it
