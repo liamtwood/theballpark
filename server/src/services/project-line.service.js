@@ -185,7 +185,10 @@ function quoteLineJoin(overlayFrom) {
          i.install_unit AS i_install_unit,
          -- Catalogue lines: the item owner. Custom lines: the supplier asked to
          -- cost it (0033; NULL = the agent's own line).
-         COALESCE(i.org_id, pi0.requested_provider_org_id) AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
+         COALESCE(i.org_id, pi0.requested_provider_org_id) AS supplier_id,
+         COALESCE(o.name, ic.name) AS supplier_name, COALESCE(o.city, ic.city) AS supplier_city,
+         -- pV2-INVITE-SUPPLIER-01: 'active' (directory) | 'pending' (invited, not joined).
+         COALESCE(ic.status, CASE WHEN o.id IS NOT NULL THEN 'active' END) AS supplier_status,
          EXISTS (SELECT 1 FROM items ci WHERE ci.parent_item_id = pi0.item_id AND ci.deleted_at IS NULL) AS has_options,
          -- pV2-PROJECTS-S3: real send-state. A line is OUT FOR QUOTE once it's
          -- briefed (a message_relation exists on any project message about it);
@@ -203,7 +206,13 @@ function quoteLineJoin(overlayFrom) {
     -- returns NULL for another org's supplier → the UI showed "Supplier"). The
     -- directory is owner-run + security_barrier and exposes only marketplace-card
     -- columns for ACTIVE suppliers (0019).
-    LEFT JOIN supplier_directory o ON o.id = COALESCE(i.org_id, pi0.requested_provider_org_id)`;
+    LEFT JOIN supplier_directory o ON o.id = COALESCE(i.org_id, pi0.requested_provider_org_id)
+    -- pV2-INVITE-SUPPLIER-01: a PENDING supplier the agency invited isn't in the
+    -- directory (active-only) and orgs RLS hides it — read it through the gated
+    -- definer (0034; returns a row only when the caller's org has an invite).
+    -- Only probed for a custom line routed to an org the directory doesn't list.
+    LEFT JOIN LATERAL public.invited_supplier_contact(pi0.requested_provider_org_id) ic
+           ON o.id IS NULL AND pi0.requested_provider_org_id IS NOT NULL`;
 }
 const QUOTE_LINE_JOIN = quoteLineJoin(RESOLVED_FROM);
 
@@ -243,6 +252,8 @@ function toQuoteLine(row) {
     supplierId: row.supplier_id ?? null, // the catalogue owner; engagement is S3
     supplierName: row.supplier_name ?? null, // from supplier_directory (cross-org)
     supplierCity: row.supplier_city ?? null, // locality via the directory
+    // pV2-INVITE-SUPPLIER-01: 'pending' = invited, not joined → Invited pill + send held.
+    supplierStatus: row.supplier_status ?? null,
     supplierCurrency: row.currency ?? null, // the frozen line currency (travels with price)
     // pV2-PROJECTS-S3: derived send-state. Briefed → out_for_quote (read-only in
     // the estimate, managed in the inbox); unbriefed → to_send (editable cart).
@@ -600,7 +611,15 @@ async function addCustomItem(orgId, projectId, body) {
     if (body.supplierOrgId) {
       if (!pcid) throw httpErr('A line for a supplier needs a category', 400);
       if (body.supplierOrgId === orgId) throw httpErr('Unknown supplier', 400);
-      const sup = await client.query(`SELECT 1 FROM supplier_directory WHERE id = $1`, [body.supplierOrgId]);
+      // pV2-INVITE-SUPPLIER-01: OR a pending supplier THIS agency invited (an
+      // org_invites row from the caller's org — the gated definer checks it).
+      const sup = await client.query(
+        `SELECT 1 FROM supplier_directory WHERE id = $1
+         UNION ALL
+         SELECT 1 FROM public.invited_supplier_contact($1) WHERE status = 'pending'
+         LIMIT 1`,
+        [body.supplierOrgId]
+      );
       if (!sup.rows.length) throw httpErr('Unknown supplier', 400);
       requestedProvider = body.supplierOrgId;
     }
@@ -749,7 +768,27 @@ async function removeItem(orgId, projectId, lineId) {
   return r.rows.length > 0;
 }
 
+/** pV2-INVITE-SUPPLIER-01 — the project's category BUCKETS (project_categories
+ *  rows; id = the bucket id lines group on) for the invite dialog's Category
+ *  picker. Own-org only (null = not the org's project). */
+async function listProjectCategories(orgId, projectId) {
+  const owns = await pool.query(
+    `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+    [projectId, orgId]
+  );
+  if (!owns.rows.length) return null;
+  const r = await pool.query(
+    `SELECT pc.id, COALESCE(c.name, 'Category') AS name, c.icon_name
+       FROM project_categories pc LEFT JOIN categories c ON c.id = pc.category_id
+      WHERE pc.project_id = $1 AND pc.deleted_at IS NULL
+      ORDER BY c.sort_order NULLS LAST, c.name`,
+    [projectId]
+  );
+  return r.rows.map((x) => ({ id: x.id, name: x.name, iconName: x.icon_name || null }));
+}
+
 module.exports = {
+  listProjectCategories,
   listItems, getEstimate, listBallparkTotals, addItem, addCustomItem,
   updateItem, updateLineDetails, setQuoteDescription, removeItem,
   lineById, lineByIdForProvider, toQuoteLine,

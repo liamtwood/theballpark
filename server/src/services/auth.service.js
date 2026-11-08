@@ -56,9 +56,15 @@ async function upsertUserFromGoogle(profile) {
       [userId, sub, displayName, avatarUrl]
     );
     // pV2-03 — accept any pending invites on first sign-in: invited → active.
+    // pV2-INVITE-SUPPLIER-01: EXCEPT a seat on a PENDING org (an agency-invited
+    // supplier) — that one is accepted explicitly on the accept screen
+    // (POST /api/onboarding/accept-supplier-invite), which also activates the org
+    // and notifies the inviting agencies. Auto-flipping it here would leave an
+    // active seat on a pending org and skip both.
     await pool.query(
-      `UPDATE user_orgs SET status = 'active', joined_at = NOW(), updated_at = NOW()
-        WHERE user_id = $1 AND status = 'invited' AND deleted_at IS NULL`,
+      `UPDATE user_orgs uo SET status = 'active', joined_at = NOW(), updated_at = NOW()
+        WHERE uo.user_id = $1 AND uo.status = 'invited' AND uo.deleted_at IS NULL
+          AND NOT EXISTS (SELECT 1 FROM orgs o WHERE o.id = uo.org_id AND o.status = 'pending')`,
       [userId]
     );
     // Land the user in an org: default_org_id, else their first membership.

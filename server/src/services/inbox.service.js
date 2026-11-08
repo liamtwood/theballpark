@@ -678,6 +678,23 @@ async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
   if (proj.rows[0].org_id !== agencyOrgId) throw httpErr('Project not found', 404);
   const wasDraft = (proj.rows[0].status ?? 'draft') === 'draft';
 
+  // pV2-INVITE-SUPPLIER-01 — defence in depth behind the disabled UI: an
+  // invited supplier that hasn't joined (orgs.status 'pending') can't be briefed
+  // (no one to read it; a project_providers row would also grant it project
+  // READ). The gated definer only answers for suppliers THIS agency invited.
+  const allSupplierIds = [...new Set(roster.flatMap((e) => e.supplierIds || []).filter(Boolean))];
+  if (allSupplierIds.length) {
+    const pending = await pool.query(
+      `SELECT c.name FROM unnest($1::uuid[]) AS s(id)
+         CROSS JOIN LATERAL public.invited_supplier_contact(s.id) c
+        WHERE c.status = 'pending'`,
+      [allSupplierIds]
+    );
+    if (pending.rows.length) {
+      throw httpErr(`${pending.rows[0].name} hasn't joined yet`, 400);
+    }
+  }
+
   const results = [];
   let threadCount = 0;
   await withTransaction(async (client) => {

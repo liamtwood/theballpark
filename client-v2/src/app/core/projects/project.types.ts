@@ -44,6 +44,16 @@ export interface PriceTier {
   price: number;
 }
 
+/** pV2-INVITE-SUPPLIER-01 — a project_categories bucket (id lines group on). */
+export interface ProjectCategoryBucket { id: string; name: string; iconName: string | null; }
+
+/** pV2-INVITE-SUPPLIER-01 — POST /suppliers/invite result (same shape for a fresh
+ *  invite and a silent reuse). */
+export interface SupplierInviteResult {
+  supplier: { id: string; name: string; status: 'pending' };
+  categoryId: string;
+}
+
 export interface QuoteLine {
   id: string;
   itemId: string;
@@ -88,6 +98,9 @@ export interface QuoteLine {
   supplierId: string | null;
   supplierName: string | null;
   supplierCity: string | null;
+  /** pV2-INVITE-SUPPLIER-01: 'active' (on Ballpark) | 'pending' (invited, not
+   *  joined — Invited pill, send held) | null (agent's own line). */
+  supplierStatus?: 'active' | 'pending' | null;
   /** Coarse send-state (pV2-CART-01): to_send (in cart) → out_for_quote →
    *  quoted → booked / declined. Cart shows to_send; Final shows all + badge. */
   status: QuoteLineStatus;

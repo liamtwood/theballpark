@@ -95,4 +95,37 @@ router.post('/create-org', authWriteLimit, authenticate, async (req, res, next) 
   } catch (err) { next(err); }
 });
 
+// pV2-INVITE-SUPPLIER-01 — the accept screen. An agency-invited supplier holds an
+// `invited` OWNER seat on a PENDING supplier org (auth.service no longer
+// auto-activates those), so they arrive here orgless. Both routes key on the JWT
+// user id only; the service runs them on the bootstrap path (the invited user
+// has no current org for RLS to scope by).
+const supplierInvites = require('../services/supplier-invite.service');
+const { AcceptSupplierInviteSchema } = require('../schemas/supplier-invite.schema');
+const { authReadLimit } = require('../middleware/rate-limits');
+
+// GET /api/onboarding/supplier-invites — the caller's outstanding invites.
+router.get('/supplier-invites', authReadLimit, authenticate, async (req, res, next) => {
+  try {
+    res.json(await supplierInvites.listMyInvites(req.user.id));
+  } catch (err) { next(err); }
+});
+
+// POST /api/onboarding/accept-supplier-invite — { supplierOrgId }. Seat + org →
+// active, every inviting agency stamped + notified; refreshes the session cookie
+// so the JWT's org claim carries the newly-active supplier org.
+router.post('/accept-supplier-invite', authWriteLimit, authenticate, async (req, res, next) => {
+  try {
+    const parsed = AcceptSupplierInviteSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const out = await supplierInvites.acceptInvite(req.user.id, parsed.data.supplierOrgId);
+    if (!out) return res.status(404).json({ error: 'Invite not found' });
+    const sessionUser = await buildSession(req.user.id, out.supplierOrgId);
+    signSessionCookie(res, sessionUser);
+    res.json(sessionUser);
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

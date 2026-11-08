@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -8,7 +8,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '../../core/auth/auth.service';
 import { errorDetail } from '../../core/http-error';
-import { OnboardingService } from '../../core/onboarding.service';
+import { OnboardingService, SupplierInvite } from '../../core/onboarding.service';
 import { defaultOrgName } from './org-name-default';
 
 /** Typed onboarding form. */
@@ -29,6 +29,25 @@ interface OnboardingForm {
   providers: [MessageService],
   host: { class: 'flex min-h-screen items-center justify-center px-6' },
   template: `
+    @if (invite(); as inv) {
+    <!-- pV2-INVITE-SUPPLIER-01 — an agency invited this user's business. Accept
+         activates the pending supplier org + their owner seat, then lands on the
+         profile (they own and can correct everything the agency typed). -->
+    <article class="w-full max-w-lg rounded-2xl bg-surface-alt p-8 shadow-sm">
+      <h1 class="text-2xl font-semibold tracking-tight">You've been invited</h1>
+      <p class="mt-2 text-md text-secondary">
+        {{ agencyLine(inv) }} invited you to join Ballpark as <strong class="text-text">{{ inv.businessName }}</strong>.
+      </p>
+      <p class="mt-2 text-sm text-secondary">
+        Accept to see what they'd like you to quote. You can check and edit your business details next.
+      </p>
+      <p-button label="Accept invite →" styleClass="w-full" class="mt-6 block"
+                [disabled]="inFlight()" (onClick)="accept(inv)" />
+      <button type="button" class="mt-3 w-full text-center text-sm text-secondary hover:underline" (click)="declined.set(true)">
+        This isn't my business — set up a different organisation
+      </button>
+    </article>
+    } @else {
     <article class="w-full max-w-lg rounded-2xl bg-surface-alt p-8 shadow-sm">
       <h1 class="text-2xl font-semibold tracking-tight">Set up your organisation</h1>
       <p class="mt-1 text-md text-secondary">
@@ -81,6 +100,7 @@ interface OnboardingForm {
         />
       </form>
     </article>
+    }
 
     <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
@@ -105,6 +125,13 @@ export class OnboardingComponent {
   private readonly toast = inject(MessageService);
 
   protected readonly inFlight = signal(false);
+  /** pV2-INVITE-SUPPLIER-01 — outstanding supplier invites (first one shown). */
+  // Non-blocking: the create-org form shows until (and unless) an invite loads;
+  // a failed load just leaves the ordinary form (hasValue() guards the read).
+  private readonly invites = resource({ loader: () => firstValueFrom(this.onboarding.supplierInvites()) });
+  protected readonly declined = signal(false);
+  protected readonly invite = computed<SupplierInvite | null>(() =>
+    this.declined() || !this.invites.hasValue() ? null : this.invites.value()[0] ?? null);
 
   protected readonly form = new FormGroup<OnboardingForm>({
     orgType: new FormControl<'agency' | 'supplier'>('agency', { nonNullable: true }),
@@ -129,6 +156,26 @@ export class OnboardingComponent {
     this.form.controls.orgName.setValue(
       defaultOrgName(u?.displayName ?? null, u?.email ?? null, this.form.controls.orgType.value)
     );
+  }
+
+  protected agencyLine(inv: SupplierInvite): string {
+    const a = inv.agencies;
+    if (!a.length) return 'An agency';
+    return a.length === 1 ? a[0] : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
+  }
+
+  /** Accept → the server re-signs the cookie into the supplier org; hard reload
+   *  onto the profile so the app re-bootstraps with the new session. */
+  protected async accept(inv: SupplierInvite): Promise<void> {
+    if (this.inFlight()) return;
+    this.inFlight.set(true);
+    try {
+      await firstValueFrom(this.onboarding.acceptSupplierInvite(inv.supplierOrgId));
+      window.location.href = '/settings/profile';
+    } catch (e) {
+      this.toast.add({ severity: 'error', summary: 'Could not accept the invite', detail: errorDetail(e), life: 4000 });
+      this.inFlight.set(false);
+    }
   }
 
   protected async submit(): Promise<void> {

@@ -15,17 +15,21 @@ import { EstimateItemRowComponent } from './estimate-item-row.component';
 import { RateInputComponent } from './rate-input.component';
 import { InboxService, OutreachRosterEntry } from '../../core/inbox/inbox.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
-import { acceptanceCode, LineDisplayCode, LineDisplayStatusService, supplierSummaryCode, SupplierSummaryCode } from '../../core/status/line-display-status';
+import { acceptanceCode, LineDisplayCode, LineDisplayStatusService, supplierInviteCode, supplierSummaryCode, SupplierSummaryCode } from '../../core/status/line-display-status';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { MessageSuppliersDialogComponent, MsgSupplierCategory } from './message-suppliers-dialog.component';
 import { EstimateBreakdownComponent } from './estimate-breakdown.component';
 import { CustomLineDialogComponent, CustomLine, LineSupplier, ExistingPick } from './custom-line-dialog.component';
 import { OptionsPickerComponent } from './options-picker.component';
+import { InviteSupplierDialogComponent, InvitedSupplier } from './invite-supplier-dialog.component';
+import { ProjectCategoryBucket } from '../../core/projects/project.types';
 
 interface SupplierGroup {
   supplierId: string;
   supplierName: string | null;
   supplierCity: string | null;
+  /** pV2-INVITE-SUPPLIER-01: 'pending' = invited, not joined (Invited pill). */
+  supplierStatus?: 'active' | 'pending' | null;
   items: QuoteLine[];
 }
 /** Sub-group a category's items by supplier, in first-appearance order — each
@@ -37,7 +41,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
     const key = l.supplierId ?? '';
     let g = idx.get(key);
     if (!g) {
-      g = { supplierId: key, supplierName: l.supplierName ?? null, supplierCity: l.supplierCity ?? null, items: [] };
+      g = { supplierId: key, supplierName: l.supplierName ?? null, supplierCity: l.supplierCity ?? null, supplierStatus: l.supplierStatus ?? null, items: [] };
       idx.set(key, g);
       out.push(g);
     }
@@ -58,7 +62,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
   imports: [
     CurrencyPipe, LucideAngularModule, MessageSuppliersDialogComponent, EstimateItemRowComponent, RateInputComponent,
     EstimateBreakdownComponent, CustomLineDialogComponent,
-    OptionsPickerComponent, QuickViewDialogComponent, StatusPillComponent,
+    OptionsPickerComponent, QuickViewDialogComponent, StatusPillComponent, InviteSupplierDialogComponent,
   ],
   host: { class: 'block' },
   template: `
@@ -113,9 +117,26 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
           <!-- Single section-level add — on the right, opposite the header
                (replaces the per-category buttons). -->
           @if (section.label === 'Ballpark quote') {
-            <button type="button" class="bp-msg-btn shrink-0" (click)="openAdd()">
-              <lucide-icon name="circle-plus" [size]="16" /> Add line
-            </button>
+            <!-- pV2-INVITE-SUPPLIER-01: Add line opens a small menu (same overlay
+                 menu as the inbox thread kebab): My own costs = the unchanged
+                 openAdd() · Invite a new supplier. -->
+            <div class="relative shrink-0">
+              <button type="button" class="bp-msg-btn" aria-haspopup="menu" [attr.aria-expanded]="addMenu()" (click)="addMenu.set(!addMenu())">
+                <lucide-icon name="circle-plus" [size]="16" /> Add line
+                <lucide-icon name="ellipsis" [size]="16" />
+              </button>
+              @if (addMenu()) {
+                <div class="fixed inset-0 z-20" (click)="addMenu.set(false)"></div>
+                <div role="menu" class="absolute right-0 top-full z-30 mt-1 min-w-[13rem] overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-surface py-1 shadow-[var(--shadow-md)]">
+                  <button type="button" role="menuitem" class="flex w-full items-center gap-2 px-3 py-2 text-left bp-body-small hover:bg-fill" (click)="addMenu.set(false); openAdd()">
+                    <lucide-icon name="wallet" [size]="15" /> My own costs
+                  </button>
+                  <button type="button" role="menuitem" class="flex w-full items-center gap-2 px-3 py-2 text-left bp-body-small hover:bg-fill" (click)="addMenu.set(false); openInvite()">
+                    <lucide-icon name="user-plus" [size]="15" /> Invite a new supplier
+                  </button>
+                </div>
+              }
+            </div>
           }
         </div>
         @if (section.label === 'Ballpark quote') {
@@ -291,6 +312,13 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       <span class="truncate text-sm font-semibold" style="color: var(--theme-text)">{{ sg.supplierName || 'Supplier' }}</span>
                       @if (sg.supplierCity) {
                         <span class="truncate text-xs text-secondary">· {{ sg.supplierCity }}</span>
+                      }
+                      <!-- pV2-INVITE-SUPPLIER-01: invited, not joined yet — the pill is
+                           the display of orgs.status 'pending'; lines can be added,
+                           Send holds until they join. -->
+                      @if (inviteCode(sg.supplierStatus); as ic) {
+                        <app-status-pill class="inline-flex shrink-0" list="supplier_summary_status" [code]="ic"
+                                         [attr.title]="'Waiting for ' + (sg.supplierName || 'them') + ' to join'" />
                       }
                       <!-- In-context add — the existing add flow, scoped to this row's
                            category (Liam 2026-11-06). -->
@@ -498,6 +526,15 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         [forSupplier]="pendingForSupplier()"
         (add)="addCustom($event)"
         (cancel)="adding.set(false)" />
+    }
+
+    <!-- pV2-INVITE-SUPPLIER-01 — invite a supplier who isn't on Ballpark. -->
+    @if (inviting()) {
+      <app-invite-supplier-dialog
+        [projectId]="projectId()"
+        [categories]="inviteCategories()"
+        (invited)="onInvited($event)"
+        (cancel)="inviting.set(false)" />
     }
 
     <!-- "Who quotes what" step (Final view Message Suppliers). -->
@@ -770,7 +807,7 @@ export class ProjectEstimateComponent {
           hasAgreed: items.some((l) => l.bothAccepted),
           agreedTotal: items.reduce((s, l) => s + (l.bothAccepted && !isDeclined(l) ? lineCost(l) : 0), 0) * (isProject ? 1 : this.marginMarkup()),
           summaryCode,
-          supplierGroups: [{ supplierId: sg.supplierId || '', supplierName: null, supplierCity: null, items }],
+          supplierGroups: [{ supplierId: sg.supplierId || '', supplierName: null, supplierCity: null, items }] as SupplierGroup[],
         };
       });
     }
@@ -806,6 +843,24 @@ export class ProjectEstimateComponent {
           : bySupplier(g.items),
       };
     });
+    // pV2-INVITE-SUPPLIER-01 — a just-invited (or "Use them") supplier gets its
+    // banner in the picked category straight away, before it has any lines
+    // (banners otherwise derive from lines). Merged, never duplicated; once a
+    // line exists the real group carries it.
+    for (const seed of this.seededBanners()) {
+      let g = mapped.find((x) => x.id === seed.categoryId);
+      if (!g) {
+        const bucket = this.inviteCategories().find((c) => c.id === seed.categoryId);
+        g = { id: seed.categoryId, name: bucket?.name ?? 'Category', items: [], isProject: false,
+          isCoverage: false, total: 0, iconName: bucket?.iconName ?? null, count: 0, hasAgreed: false,
+          agreedTotal: 0, summaryCode: '' as SupplierSummaryCode | '', supplierGroups: [] };
+        mapped.push(g);
+      }
+      if (!g.supplierGroups.some((sg) => sg.supplierId === seed.supplierId)) {
+        g.supplierGroups.push({ supplierId: seed.supplierId, supplierName: seed.supplierName, supplierCity: null,
+          supplierStatus: seed.pending ? 'pending' : 'active', items: [] });
+      }
+    }
     // Order the category sections by the categories table's sort_order (Liam
     // 2026-11-06), nulls + unknowns last; the Fees/own-costs bucket always last.
     // Keyed by NAME (the group's category id can be the project_category row,
@@ -823,7 +878,7 @@ export class ProjectEstimateComponent {
     if (!mapped.some((g) => g.isProject)) {
       mapped.push({ id: '__none', name: 'Your own costs', items: [], isProject: true,
         isCoverage: false, total: 0, iconName: 'wallet', count: 0, hasAgreed: false, agreedTotal: 0, summaryCode: '' as SupplierSummaryCode | '',
-        supplierGroups: [{ supplierId: '', supplierName: this.orgName(), supplierCity: null, items: [] }] });
+        supplierGroups: [{ supplierId: '', supplierName: this.orgName(), supplierCity: null, items: [] }] as SupplierGroup[] });
     }
     return mapped;
   });
@@ -992,6 +1047,38 @@ export class ProjectEstimateComponent {
   /** The supplier the pending "new" lines are routed to (supplier banner "+"). */
   protected readonly pendingForSupplier = signal<LineSupplier | null>(null);
 
+  // ── pV2-INVITE-SUPPLIER-01 — Add line menu + invite a new supplier ────────
+  protected readonly addMenu = signal(false);
+  protected readonly inviting = signal(false);
+  /** The project's category buckets (invite dialog picker + seeded banners). */
+  protected readonly inviteCategories = signal<ProjectCategoryBucket[]>([]);
+  /** Banners seeded by an invite / "Use them" before they have any lines. */
+  protected readonly seededBanners = signal<InvitedSupplier[]>([]);
+  protected inviteCode(status: string | null | undefined): 'invited' | null {
+    return supplierInviteCode(status);
+  }
+  protected async openInvite(): Promise<void> {
+    try {
+      this.inviteCategories.set(await firstValueFrom(this.projects.projectCategories(this.projectId())));
+    } catch (err) {
+      this.toast.add({ severity: 'error', summary: "Couldn't load the project's categories.", detail: errorDetail(err), life: 4000 });
+      return;
+    }
+    this.inviting.set(true);
+  }
+  protected onInvited(s: InvitedSupplier): void {
+    this.inviting.set(false);
+    this.seededBanners.update((xs) => [...xs.filter((x) => !(x.supplierId === s.supplierId && x.categoryId === s.categoryId)), s]);
+    // Make sure the target category is expanded so the new banner is visible.
+    this.collapsed.update((set) => { const next = new Set(set); next.delete(s.categoryId); return next; });
+    this.toast.add({
+      severity: 'success',
+      summary: s.pending ? `Invite sent to ${s.supplierName}` : `${s.supplierName} added`,
+      detail: s.pending ? 'Add lines for them with the + on their banner. You can send once they join.' : undefined,
+      life: 5000,
+    });
+  }
+
   /** Banner headline: the server client total. Custom lines are real
    *  project_items now (pV2-CUSTOMS-01), already in the cascade. */
   protected readonly bannerTotal = computed(() => this.bd().clientTotal);
@@ -1142,6 +1229,9 @@ export class ProjectEstimateComponent {
     const byCat = new Map<string, MsgSupplierCategory>();
     for (const l of this.rows()) {
       if (l.status !== 'to_send' || !l.categoryId || !l.supplierId) continue;
+      // pV2-INVITE-SUPPLIER-01: an invited supplier that hasn't joined can't be
+      // briefed — its lines stay on hold (the server refuses too).
+      if (l.supplierStatus === 'pending') continue;
       let c = byCat.get(l.categoryId);
       if (!c) {
         c = { categoryId: l.categoryId, categoryName: l.categoryName ?? 'Category', suppliers: [] };
@@ -1159,8 +1249,22 @@ export class ProjectEstimateComponent {
   });
 
   /** Open the "who quotes what" dialog (nothing to send → toast instead). */
+  /** Names of invited suppliers (not joined) that have unsent lines. */
+  protected readonly heldSuppliers = computed(() => [...new Set(this.rows()
+    .filter((l) => l.status === 'to_send' && l.supplierStatus === 'pending')
+    .map((l) => l.supplierName || 'An invited supplier'))]);
+
   protected messageSuppliers(): void {
     if (this.sending()) return;
+    const held = this.heldSuppliers();
+    if (held.length) {
+      this.toast.add({
+        severity: 'info',
+        summary: `Waiting for ${held.join(', ')} to join`,
+        detail: 'Their lines stay on hold and are skipped until they accept the invite.',
+        life: 5000,
+      });
+    }
     if (!this.messagingCategories().length) {
       this.toast.add({ severity: 'warn', summary: 'Nothing to send — no unsent items with a supplier.', life: 4000 });
       return;

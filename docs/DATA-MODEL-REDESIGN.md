@@ -367,7 +367,8 @@ price/status history lives in `message_events`.
 `selection_type` (v1 pick-one-of-similar, e.g. 50" vs 100" TV; dormant, cheap to keep), `quantity`, `unit`,
 `currency`, `base_price` (catalogue reference, frozen), `variant` jsonb, `installed` bool,
 `install_description`/`install_cost`/`install_unit`, `image_url`, `status`,
-`requested_provider_org_id → orgs` (nullable; 0033 — see decision log 2026-11-08), + audit.
+`requested_provider_org_id → orgs` (nullable; 0033 — see decision log 2026-11-08; may point at a PENDING
+supplier org an agency invited — 0034 `org_invites`), + audit.
 - **`requested_provider_org_id`** (custom lines only): the supplier the agency asked to COST this line (added
   from that supplier's banner). Intent, NOT engagement and NOT ownership — no `project_providers` row until send
   (that row grants supplier READ on the project, 0023). Estimate supplier = `COALESCE(items.org_id, this)`;
@@ -597,6 +598,26 @@ When a question lands on something already built, the reasoning goes here.
   each other. (4) Its own ship. Proposed (confirm at build start): an `org_invites` link table (supplier org ×
   inviting agency × project) — the agency's only read path to a pending org it invited (via a
   security-definer contact fn mirroring `org_contact`) and the hook for the "they joined" notification.
+- **2026-11-08 — `org_invites` LOCKED at build start (rebuild `0034`; Liam + designer session sign-off).**
+  Liam asked whether we could skip the table and just create the org ("hope it gets filled") — we could
+  (pending org + invited seat need no schema change; the contact gate could key on routed lines and
+  notify only `user_orgs.invited_by_user_id`), but that notifies only the FIRST inviting agency. The
+  designer's fan-out point (several agencies may invite the same supplier; accept must stamp + notify
+  + unlock ALL of them) tipped it to the table. Shape: `id`, `supplier_org_id`, `agency_org_id`,
+  `project_id` (`ON DELETE SET NULL`, provenance = first project, never re-pointed), `invited_by_user_id`,
+  `accepted_at`, audit + soft-delete; **UNIQUE(supplier_org_id, agency_org_id)** (re-invite from another
+  project reuses the row). **No `email` column** — the address is the invited seat's `users` stub (SSOT; a
+  copy drifts and is extra agency-readable PII). `accepted_at IS NULL` = outstanding; if decline/revoke
+  ever lands, add `declined_at`/`revoked_at`, don't overload the null. RLS: agency + supplier members READ
+  their side; WRITE only on the bootstrap path (owner pool, inside the txn that creates the pending org).
+  Read path: `invited_supplier_contact(target)` (definer, gate = an `org_invites` row from the caller's
+  org, pinned search_path, no PUBLIC execute). **Invited pill = the DISPLAY of `orgs.status='pending'`**
+  (value `invited` on `supplier_summary_status`, derived client-side by `supplierInviteCode`) — not a
+  second stored state. Build findings: (a) the email→pending-org dedupe is a cross-agency read → bootstrap
+  pool, never RLS (it would silently miss and mint duplicates); (b) `orgs` UPDATE has no admin escape
+  (FR-00215), so accept flips the org AS the now-active owner (`app.current_org_id` = the supplier org),
+  not via the bootstrap flag; (c) the pV2-03 sign-in auto-accept now SKIPS seats on pending orgs — those
+  go through the accept screen so the org activates and the agencies are notified.
 
 - **Supplier edits save in place today.** `updateLineDetails` writes name/description/cost(→`base_price`)/
   unit/install straight onto `project_items`. So `project_items` is NOT static today; the redesign freezes it

@@ -29,6 +29,8 @@ import {
   LogIn,
   LogOut,
   EllipsisVertical,
+  Ellipsis,
+  UserPlus,
   Image,
   FolderKanban,
   FolderOpen,
@@ -184,6 +186,8 @@ export const appConfig: ApplicationConfig = {
         LogIn, LogOut,
         // pV2 inbox — header kebab menu
         EllipsisVertical,
+        // pV2-INVITE-SUPPLIER-01 — estimate Add line menu (⋯ + Invite a new supplier)
+        Ellipsis, UserPlus,
         // pV2 live-project overview hero — cover action
         Image,
         // Profile: section edit lifecycle

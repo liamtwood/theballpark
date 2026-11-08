@@ -64,4 +64,17 @@ const apiLimit = rateLimit({
   message: { error: 'Too many requests; slow down and try again shortly.' },
 });
 
-module.exports = { authWriteLimit, authReadLimit, oauthLimit, aiLimit, briefLimit, apiLimit };
+/** pV2-INVITE-SUPPLIER-01 — inviting a supplier mints an org + emails an
+ *  arbitrary address, so it's an abuse surface (mass org creation / spam). Per
+ *  authenticated USER (not IP — an office shares one), 20/hour; mounted after
+ *  authenticate so req.user is set. Falls back to the IP key if it isn't. */
+const supplierInviteLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req.user && req.user.id ? `u:${req.user.id}` : rateLimit.ipKeyGenerator(req.ip)),
+  message: { error: 'Too many invites; try again later.' },
+});
+
+module.exports = { authWriteLimit, authReadLimit, oauthLimit, aiLimit, briefLimit, apiLimit, supplierInviteLimit };

@@ -59,4 +59,31 @@ describe('pV2-SECURITY-RLS-01 coverage: every granted base table has a policy', 
     }
     assert.equal(missing.length, 0, `granted tables with NO policy (deny-all): ${missing.join(', ')}`);
   });
+
+  // pV2-INVITE-SUPPLIER-01 — the cross-org READ escapes are SECURITY DEFINER
+  // functions (address_locality, org_contact, invited_supplier_contact). Each
+  // bypasses RLS, so each must (1) pin search_path and (2) for the cross-org
+  // display fns, NOT be PUBLIC-executable (only web_app_user, with the gate
+  // inside). Asserted over the catalogue, not a hand-list, so a new definer that
+  // forgets either fails here.
+  test('security-definer functions pin search_path; cross-org fns not PUBLIC', async (t) => {
+    if (!DB_URL) { t.skip('no DB URL'); return; }
+    if (!roleExists) { t.skip('web_app_user not created yet — run migrate-rls.js first'); return; }
+    const defs = (await pool.query(`
+      SELECT p.proname,
+             has_function_privilege('public', p.oid, 'EXECUTE') AS pub,
+             coalesce(array_to_string(p.proconfig, ','), '') AS cfg
+        FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'public' AND p.prosecdef
+         AND has_function_privilege('web_app_user', p.oid, 'EXECUTE')`)).rows;
+    const unpinned = defs.filter((d) => !/search_path=/.test(d.cfg)).map((d) => d.proname);
+    assert.equal(unpinned.length, 0, `definers without a pinned search_path: ${unpinned.join(', ')}`);
+    const crossOrg = defs.filter((d) => /_contact$|^address_locality$/.test(d.proname));
+    const leaky = crossOrg.filter((d) => d.pub).map((d) => d.proname);
+    assert.equal(leaky.length, 0, `cross-org definers executable by PUBLIC: ${leaky.join(', ')}`);
+    if (crossOrg.length) {
+      assert.ok(crossOrg.some((d) => d.proname === 'invited_supplier_contact') || !defs.length,
+        'invited_supplier_contact present (0034 applied)');
+    }
+  });
 });

@@ -121,7 +121,15 @@ export function lineDisplayCode(
  *  lineDisplayCode, shown on the Running budget supplier cards and the Messages
  *  landing. Codelist: `supplier_summary_status` (ballpark/editable). Action wins,
  *  else awaiting, else all confirmed (Liam 2026-10-29). */
-export type SupplierSummaryCode = 'action_required' | 'awaiting_supplier' | 'all_confirmed';
+export type SupplierSummaryCode = 'action_required' | 'awaiting_supplier' | 'all_confirmed' | 'invited';
+
+/** pV2-INVITE-SUPPLIER-01 — the Invited pill is the DISPLAY of the supplier
+ *  org's ONE stored state (orgs.status 'pending' → QuoteLine.supplierStatus),
+ *  not a parallel state: derive it here, never store it. Same list
+ *  (`supplier_summary_status`), code `invited`. */
+export function supplierInviteCode(supplierStatus: string | null | undefined): 'invited' | null {
+  return supplierStatus === 'pending' ? 'invited' : null;
+}
 export function supplierSummaryCode(hasAction: boolean, hasAwaiting: boolean): SupplierSummaryCode {
   if (hasAction) return 'action_required';
   if (hasAwaiting) return 'awaiting_supplier';

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../api.service';
-import { EstimateBreakdown, ProjectCard, ProjectCreatePayload, ProjectDetail, ProjectUpdate, QuoteLine } from './project.types';
+import { EstimateBreakdown, ProjectCard, ProjectCategoryBucket, ProjectCreatePayload, ProjectDetail, ProjectUpdate, QuoteLine, SupplierInviteResult } from './project.types';
 
 /** pV2-BUILDUP-02 — a supplier's reusable component (the derived library). */
 export interface MyComponent {
@@ -154,6 +154,21 @@ export class ProjectService {
     quantity?: number,
   ): Observable<QuoteLine> {
     return this.api.post<QuoteLine>(`/api/projects-v2/${projectId}/items`, { itemId, variant, quantity });
+  }
+
+  /** pV2-INVITE-SUPPLIER-01 — the project's category buckets (invite dialog). */
+  projectCategories(projectId: string): Observable<ProjectCategoryBucket[]> {
+    return this.api.get<ProjectCategoryBucket[]>(`/api/projects-v2/${projectId}/categories`);
+  }
+
+  /** pV2-INVITE-SUPPLIER-01 — invite a supplier who isn't on Ballpark (creates or
+   *  silently reuses a pending supplier org). 409 { existingSupplier } when the
+   *  email / website / name matches a supplier already on Ballpark. */
+  inviteSupplier(projectId: string, body: {
+    businessName: string; contactName?: string | null; email: string;
+    website?: string | null; categoryId: string;
+  }): Observable<SupplierInviteResult> {
+    return this.api.post<SupplierInviteResult>(`/api/projects-v2/${projectId}/suppliers/invite`, body);
   }
 
   /** pV2-CUSTOMS-01 — add a custom (ad-hoc) line with no catalogue backing. */

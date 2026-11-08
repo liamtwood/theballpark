@@ -25,6 +25,9 @@ const { ProjectCreateSchema, ProjectUpdateSchema } = require('../schemas/project
 const {
   ItemAddSchema, CustomItemSchema, ItemPatchSchema, LineDetailsSchema, QuoteDescriptionSchema,
 } = require('../schemas/project-line.schema');
+const supplierInvites = require('../services/supplier-invite.service');
+const { SupplierInviteSchema } = require('../schemas/supplier-invite.schema');
+const { supplierInviteLimit } = require('../middleware/rate-limits');
 
 // Validate UUID path slots up front (audit M1). Without this a malformed id
 // reaches Postgres and surfaces as a 500 with a DB-shaped message (wrong status
@@ -143,6 +146,18 @@ router.get('/:id/items', async (req, res, next) => {
   }
 });
 
+// GET /:id/categories — pV2-INVITE-SUPPLIER-01: the project's category buckets
+// (the invite dialog's Category picker). Own-org only.
+router.get('/:id/categories', async (req, res, next) => {
+  try {
+    const list = await lines.listProjectCategories(req.user.org_id, req.params.id);
+    if (list === null) return res.status(404).json({ error: 'Project not found' });
+    res.json(list);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /:id/estimate — the server-computed estimate cascade (the ONE formula).
 router.get('/:id/estimate', async (req, res, next) => {
   try {
@@ -182,6 +197,32 @@ router.post('/:id/items/custom', async (req, res, next) => {
     if (line === null) return res.status(404).json({ error: 'Project not found' });
     res.status(201).json(line);
   } catch (err) {
+    next(err);
+  }
+});
+
+// POST /:id/suppliers/invite — pV2-INVITE-SUPPLIER-01. Agency invites a supplier
+// who isn't on Ballpark: creates (or silently reuses) a PENDING supplier org +
+// invited owner seat + org_invites link. Agency-only; per-user rate-limited
+// (abuse surface: mints orgs + emails arbitrary addresses). 409
+// { existingSupplier } for an ACTIVE supplier match → the client offers "Use them".
+router.post('/:id/suppliers/invite', supplierInviteLimit, async (req, res, next) => {
+  try {
+    if (req.user.org_type !== 'agency') return res.status(403).json({ error: 'Agency only' });
+    const parsed = SupplierInviteSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const out = await supplierInvites.inviteSupplier({
+      agencyOrgId: req.user.org_id, userId: req.user.id, projectId: req.params.id, ...parsed.data,
+    });
+    if (out === null) return res.status(404).json({ error: 'Project not found' });
+    res.status(201).json(out);
+  } catch (err) {
+    if (err.status === 409 && err.existingSupplier) {
+      return res.status(409).json({ error: err.message, existingSupplier: err.existingSupplier });
+    }
+    if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
   }
 });
