@@ -106,7 +106,7 @@ const blankRow = (): GridRow => ({ id: ROW_UID++, description: '', cost: null, q
               </label>
               <div class="grid grid-cols-2 gap-3">
                 <label class="block">
-                  <span class="bp-field-label mb-1 block pl-3">Cost £ <span class="text-muted">(optional)</span></span>
+                  <span class="bp-field-label mb-1 block pl-3">Cost £</span>
                   <input type="number" class="bp-input-field" placeholder="TBC" [(ngModel)]="form.cost" />
                 </label>
                 <label class="block">
@@ -115,8 +115,8 @@ const blankRow = (): GridRow => ({ id: ROW_UID++, description: '', cost: null, q
                 </label>
               </div>
               <label class="block">
-                <span class="bp-field-label mb-1 block pl-3">Notes (optional)</span>
-                <input class="bp-input-field" placeholder="Any additional details" [(ngModel)]="form.notes" />
+                <span class="bp-field-label mb-1 block pl-3">Description</span>
+                <input class="bp-input-field" placeholder="Size, colour, spec…" [(ngModel)]="form.notes" />
               </label>
             </div>
             <button type="button" class="bp-btn-grad mt-5 w-full" [disabled]="!form.description.trim()" (click)="submitSingle()">Add Line Item</button>

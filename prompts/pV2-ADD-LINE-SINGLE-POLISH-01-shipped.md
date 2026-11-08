@@ -24,3 +24,10 @@
 ## Iteration 2 (QC, 2026-11-08)
 - Added a 4px gap (`mb-1`) under each label. Labels are inline `<span>`s, so they also needed
   `block` for the margin to apply. :4202 hot-reloaded cleanly.
+
+## Iteration 3 (QC, 2026-11-08)
+- "Notes (optional)" → **Description** (matches the supplier-side label on item-edit and the
+  inbox line card); placeholder "Size, colour, spec…". Dropped "(optional)" from Cost £ too.
+- Held pending Liam's model call: coachmark copy + routing supplier-context custom lines to
+  that supplier. Today a custom line has `item_id = NULL` → no derivable supplier; the dialog's
+  Single mode sends `supplierOrgId: null` and `addCustomItem` never stores a supplier.
