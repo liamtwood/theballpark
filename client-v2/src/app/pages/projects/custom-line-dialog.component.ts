@@ -101,21 +101,21 @@ const blankRow = (): GridRow => ({ id: ROW_UID++, description: '', cost: null, q
           @if (mode() === 'single') {
             <div class="mt-4 flex flex-col gap-3">
               <label class="block">
-                <span class="bp-field-label">Item <span class="bp-tag-chip ml-1 bg-warn-soft text-warn">New</span></span>
+                <span class="bp-field-label pl-3">Item</span>
                 <input class="bp-input-field" placeholder="New item name" [(ngModel)]="form.description" autocomplete="off" />
               </label>
               <div class="grid grid-cols-2 gap-3">
                 <label class="block">
-                  <span class="bp-field-label">Cost £ <span class="text-muted">(optional)</span></span>
+                  <span class="bp-field-label pl-3">Cost £ <span class="text-muted">(optional)</span></span>
                   <input type="number" class="bp-input-field" placeholder="TBC" [(ngModel)]="form.cost" />
                 </label>
                 <label class="block">
-                  <span class="bp-field-label">Qty</span>
+                  <span class="bp-field-label pl-3">Qty</span>
                   <input type="number" class="bp-input-field" placeholder="1" [(ngModel)]="form.quantity" />
                 </label>
               </div>
               <label class="block">
-                <span class="bp-field-label">Notes (optional)</span>
+                <span class="bp-field-label pl-3">Notes (optional)</span>
                 <input class="bp-input-field" placeholder="Any additional details" [(ngModel)]="form.notes" />
               </label>
             </div>
