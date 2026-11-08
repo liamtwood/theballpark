@@ -20,3 +20,7 @@
 
 ## Verified
 `ng build --configuration development` clean. Visual QC: Liam.
+
+## Iteration 2 (QC, 2026-11-08)
+- Added a 4px gap (`mb-1`) under each label. Labels are inline `<span>`s, so they also needed
+  `block` for the margin to apply. :4202 hot-reloaded cleanly.
