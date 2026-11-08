@@ -23,7 +23,7 @@ import { StatusPillComponent } from '../../shared/status-pill/status-pill.compon
   imports: [CurrencyPipe, FormsModule, RouterLink, LucideAngularModule, StatusPillComponent],
   host: { class: 'bp-card bp-card--lifted' },
   template: `
-    <a [routerLink]="[linkBase(), project().id]" class="block no-underline text-text" [attr.aria-label]="project().name">
+    <a [routerLink]="[linkBase(), project().ref ?? project().id]" class="block no-underline text-text" [attr.aria-label]="project().name">
       @let proj = project();
       <!-- Plain card (no cover image, Liam 2026-09-09): name + client, status
            pill, ballpark figure, then venue + head count. -->

@@ -180,15 +180,18 @@ function toDetail(row) {
  *  this org / soft-deleted — the route turns that into a 404. REBUILD:
  *  client_name is a plain column (clients table retired); budget + rate
  *  overrides come from the project_settings 1:1 satellite. */
-async function getDetail(orgId, id) {
+async function getDetail(orgId, idOrRef) {
+  // EP-00021 — the URL carries a human ref (e.g. "WA-001") OR the UUID; resolve
+  // either. p.id::text avoids a uuid=text cast and never matches a ref; refs are
+  // never UUID-shaped so the two branches don't collide. Still org-scoped.
   const r = await pool.query(
     `SELECT p.*,
             ps.project_budget, ps.margin_pct, ps.contingency_pct,
             ps.vat_pct, ps.insurance_pct
        FROM projects p
        LEFT JOIN project_settings ps ON ps.project_id = p.id
-      WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
-    [id, orgId]
+      WHERE (p.id::text = $1 OR p.ref = $1) AND p.org_id = $2 AND p.deleted_at IS NULL`,
+    [idOrRef, orgId]
   );
   return r.rows.length ? toDetail(r.rows[0]) : null;
 }

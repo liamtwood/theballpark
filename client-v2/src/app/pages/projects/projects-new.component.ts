@@ -201,7 +201,8 @@ export class ProjectsNewComponent {
       // landing so it can show the building state AND reload the estimate when it
       // finishes — a fire-and-forget here loses completion across navigation).
       // Land immediately; ?welcome=1 drives the confirm dialog + animation + build.
-      await this.router.navigate(['/projects', card.id], { queryParams: { welcome: 1 } });
+      // Human ref in the URL (EP-00021), falling back to the id.
+      await this.router.navigate(['/projects', card.ref ?? card.id], { queryParams: { welcome: 1 } });
     } catch (err) {
       console.warn('[ProjectsNew] brief → create failed', err);
       if (projectId) {

@@ -572,6 +572,7 @@ export class ProjectDetailComponent {
   });
 
   protected readonly detail = resource<ProjectDetail, string>({
+    // EP-00021 — the URL param is a ref OR the UUID; getDetail resolves either.
     params: () => this.id(),
     loader: async ({ params }) => {
       const d = await firstValueFrom(this.projects.getDetail(params));
@@ -580,18 +581,23 @@ export class ProjectDetailComponent {
     },
   });
 
+  /** The CANONICAL project id (UUID), resolved from the loaded detail. Everything
+   *  except the detail load (overview/estimate/mutations) keys off this, never
+   *  the URL param — state stays id-based (EP-00021). Undefined until loaded. */
+  protected readonly pid = computed(() => this.detail.value()?.id);
+
   /** The server-computed cascade — the hero's "Ballpark / Project Total"
    *  headline reads its `projectTotal`. Reloaded after an estimate-affecting
    *  edit (rates / lines) so the headline stays live. */
-  protected readonly estimate = resource<EstimateBreakdown, string>({
-    params: () => this.id(),
-    loader: ({ params }) => firstValueFrom(this.projects.estimate(params, 'all')),
+  protected readonly estimate = resource<EstimateBreakdown, string | undefined>({
+    params: () => this.pid(),
+    loader: ({ params }) => firstValueFrom(this.projects.estimate(params!, 'all')),
   });
 
   /** Live-project overview metrics (confirmed / agreed / open threads) — only
    *  fetched once the project is Active (the cover hero's tiles). */
   protected readonly overview = resource({
-    params: () => (this.isDraft() ? undefined : this.id() || undefined),
+    params: () => (this.isDraft() ? undefined : this.pid()),
     loader: ({ params }) => firstValueFrom(this.inbox.projectOverview(params)),
   });
 
@@ -715,7 +721,7 @@ export class ProjectDetailComponent {
 
   /** Save the confirmed details onto the project, then run the fly + landing. */
   protected async saveWelcome(): Promise<void> {
-    const id = this.id();
+    const id = this.pid();
     if (id) {
       this.savingWelcome.set(true);
       const update: ProjectUpdate = {
@@ -905,7 +911,7 @@ export class ProjectDetailComponent {
   /** Save-on-blur (always-editable fields): persist the section, flash the
    *  "Details saved" pill — no edit-mode toggle, no toast. */
   protected async saveSection(section: Section): Promise<void> {
-    const id = this.id();
+    const id = this.pid();
     if (!id) return;
     this.detailState.set('saving');
     try {
@@ -978,7 +984,7 @@ export class ProjectDetailComponent {
   }
 
   private async saveMedia(patch: ProjectUpdate, summary = 'Image updated.'): Promise<void> {
-    const id = this.id();
+    const id = this.pid();
     if (!id) return;
     try {
       const fresh = await firstValueFrom(this.projects.update(id, patch));
