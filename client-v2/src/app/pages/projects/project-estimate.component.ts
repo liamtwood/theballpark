@@ -295,7 +295,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       <!-- In-context add — the existing add flow, scoped to this row's
                            category (Liam 2026-11-06). -->
                       <button type="button" class="ml-auto shrink-0 rounded-md p-1 transition-opacity hover:opacity-70"
-                              (click)="openAdd({ id: g.id, name: g.name, iconName: g.iconName })"
+                              (click)="openAdd({ id: g.id, name: g.name, iconName: g.iconName }, sg.supplierId ? { id: sg.supplierId, name: sg.supplierName } : null)"
                               [attr.aria-label]="'Add an item to ' + g.name" title="Add item">
                         <lucide-icon name="circle-plus" [size]="16" style="color: var(--theme-accent)" />
                       </button>
@@ -495,6 +495,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         [categoryIcon]="pendingCategoryIcon()"
         [suppliers]="pendingSuppliers()"
         [existingLines]="pendingExisting()"
+        [forSupplier]="pendingForSupplier()"
         (add)="addCustom($event)"
         (cancel)="adding.set(false)" />
     }
@@ -988,6 +989,8 @@ export class ProjectEstimateComponent {
   /** Explore: the supplier+category lines already in the quote (pre-loaded so
    *  the dialog reflects current state; reconciled on submit). */
   protected readonly pendingExisting = signal<ExistingPick[]>([]);
+  /** The supplier the pending "new" lines are routed to (supplier banner "+"). */
+  protected readonly pendingForSupplier = signal<LineSupplier | null>(null);
 
   /** Banner headline: the server client total. Custom lines are real
    *  project_items now (pV2-CUSTOMS-01), already in the cascade. */
@@ -997,8 +1000,11 @@ export class ProjectEstimateComponent {
    *  was clicked (the dialog owns the form). */
   /** "Add Your Own Line Item" → the NEW flow: agent-owned custom lines, no
    *  supplier, no browse rail (Form/Grid only). */
-  protected openAdd(group?: { id: string; name: string; iconName?: string | null }): void {
+  protected openAdd(group?: { id: string; name: string; iconName?: string | null }, forSupplier: LineSupplier | null = null): void {
     this.dialogVariant.set('new');
+    // pV2-ADD-LINE-SUPPLIER-01: from a supplier banner "+" → route the new
+    // lines to that supplier to cost; otherwise the agent's own lines.
+    this.pendingForSupplier.set(forSupplier);
     // '__none' is groupByCategory's synthetic Uncategorised bucket — send NULL,
     // not the fake id (it isn't a UUID; the server would 400).
     this.pendingCategoryId.set(group && group.id !== '__none' ? group.id : null);

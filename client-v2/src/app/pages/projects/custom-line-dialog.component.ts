@@ -5,6 +5,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { CatalogueItem, sizedImage } from '../../shared/catalogue/catalogue.types';
 import { ShuttleComponent, ShuttleItem, ShuttlePick } from '../../shared/shuttle/shuttle.component';
+import { CoachmarkComponent } from '../../shared/coachmark/coachmark.component';
 
 /** A supplier available to tag a line to. */
 export interface LineSupplier { id: string; name: string | null; }
@@ -66,7 +67,7 @@ const blankRow = (): GridRow => ({ id: ROW_UID++, description: '', cost: null, q
 @Component({
   selector: 'app-custom-line-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, FormsModule, LucideAngularModule, ShuttleComponent],
+  imports: [DecimalPipe, FormsModule, LucideAngularModule, ShuttleComponent, CoachmarkComponent],
   host: { class: 'contents' },
   template: `
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" (click)="cancel.emit()">
@@ -90,6 +91,19 @@ const blankRow = (): GridRow => ({ id: ROW_UID++, description: '', cost: null, q
           <lucide-icon [name]="categoryIcon() || 'folder-open'" [size]="24" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
           <span class="bp-list-title truncate text-[length:var(--text-xl)]">{{ categoryName() || 'Category' }}</span>
         </div>
+        @if (costedBySupplier()) {
+          <!-- pV2-ADD-LINE-SUPPLIER-01: added in a supplier's context → the line is
+               routed to that supplier, who costs it (no agent Cost field). -->
+          <div class="mt-1.5 flex items-center gap-1.5 bp-body-small text-secondary">
+            <lucide-icon name="store" [size]="14" class="shrink-0" style="color: var(--theme-accent)" />
+            <span class="truncate">For {{ forSupplier()!.name || 'this supplier' }} to cost</span>
+          </div>
+          <div class="mt-3 flex justify-center">
+            <app-coachmark page="add-line-item" name="supplier-intro" tail="up"
+                           [vars]="{ supplier: forSupplier()!.name || 'this supplier' }"
+                           defaultText="Add an item you want {supplier} to provide that you can't find in their store. They'll price it for you. Description is shared with the supplier: add size, colour or spec." />
+          </div>
+        }
 
         @if (variant() === 'new') {
           <!-- ── NEW: type agent-owned lines (Form / Grid) ─────────────────── -->
@@ -104,11 +118,13 @@ const blankRow = (): GridRow => ({ id: ROW_UID++, description: '', cost: null, q
                 <span class="bp-field-label mb-1 block pl-3">Item</span>
                 <input class="bp-input-field" placeholder="New item name" [(ngModel)]="form.description" autocomplete="off" />
               </label>
-              <div class="grid grid-cols-2 gap-3">
-                <label class="block">
-                  <span class="bp-field-label mb-1 block pl-3">Cost £</span>
-                  <input type="number" class="bp-input-field" placeholder="TBC" [(ngModel)]="form.cost" />
-                </label>
+              <div class="grid gap-3" [class.grid-cols-2]="!costedBySupplier()">
+                @if (!costedBySupplier()) {
+                  <label class="block">
+                    <span class="bp-field-label mb-1 block pl-3">Cost £</span>
+                    <input type="number" class="bp-input-field" placeholder="TBC" [(ngModel)]="form.cost" />
+                  </label>
+                }
                 <label class="block">
                   <span class="bp-field-label mb-1 block pl-3">Qty</span>
                   <input type="number" class="bp-input-field" placeholder="1" [(ngModel)]="form.quantity" />
@@ -122,13 +138,19 @@ const blankRow = (): GridRow => ({ id: ROW_UID++, description: '', cost: null, q
             <button type="button" class="bp-btn-grad mt-5 w-full" [disabled]="!form.description.trim()" (click)="submitSingle()">Add Line Item</button>
           } @else {
             <div class="mt-3 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
-              <div class="grid grid-cols-[1fr_100px_70px_32px] items-center gap-2 border-b border-hairline bg-fill px-3 py-2 bp-field-label">
-                <span>Item</span><span class="text-center">Cost £</span><span class="text-right">Qty</span><span></span>
+              <div class="grid items-center gap-2 border-b border-hairline bg-fill px-3 py-2 bp-field-label"
+                   [class]="costedBySupplier() ? 'grid-cols-[1fr_70px_32px]' : 'grid-cols-[1fr_100px_70px_32px]'">
+                <span>Item</span>
+                @if (!costedBySupplier()) { <span class="text-center">Cost £</span> }
+                <span class="text-right">Qty</span><span></span>
               </div>
               @for (row of rows(); track row.id) {
-                <div class="relative grid grid-cols-[1fr_100px_70px_32px] items-center gap-2 border-b border-hairline px-3 py-1.5 last:border-b-0">
+                <div class="relative grid items-center gap-2 border-b border-hairline px-3 py-1.5 last:border-b-0"
+                     [class]="costedBySupplier() ? 'grid-cols-[1fr_70px_32px]' : 'grid-cols-[1fr_100px_70px_32px]'">
                   <input class="bp-input-field w-full" placeholder="New item" [ngModel]="row.description" (ngModelChange)="onRowName(row, $event)" autocomplete="off" />
-                  <input type="number" class="bp-input-field text-right" placeholder="—" [ngModel]="row.cost" (ngModelChange)="row.cost = $event" />
+                  @if (!costedBySupplier()) {
+                    <input type="number" class="bp-input-field text-right" placeholder="—" [ngModel]="row.cost" (ngModelChange)="row.cost = $event" />
+                  }
                   <input type="number" class="bp-input-field text-right" [ngModel]="row.qty" (ngModelChange)="row.qty = $event" />
                   <button type="button" class="rounded-md p-1 text-muted hover:text-danger" aria-label="Remove row" (click)="removeRow(row.id)">
                     <lucide-icon name="trash-2" [size]="15" />
@@ -140,7 +162,7 @@ const blankRow = (): GridRow => ({ id: ROW_UID++, description: '', cost: null, q
               <button type="button" class="bp-body-small inline-flex items-center gap-1 text-secondary hover:text-text" (click)="addRow()">
                 <lucide-icon name="plus" [size]="14" /> Add row
               </button>
-              <span class="bp-meta">{{ filledCount() }} item{{ filledCount() === 1 ? '' : 's' }} · £{{ gridTotal() | number: '1.0-0' }}</span>
+              <span class="bp-meta">{{ filledCount() }} item{{ filledCount() === 1 ? '' : 's' }}@if (!costedBySupplier()) { · £{{ gridTotal() | number: '1.0-0' }}}</span>
             </div>
             <button type="button" class="bp-btn-grad mt-4 w-full" [disabled]="!filledCount()" (click)="submitGrid()">Add {{ filledCount() }} Line Item{{ filledCount() === 1 ? '' : 's' }}</button>
           }
@@ -174,6 +196,11 @@ export class CustomLineDialogComponent implements OnInit {
   readonly variant = input<'new' | 'explore'>('new');
   /** Existing quote lines for this supplier+category (explore) — pre-loaded. */
   readonly existingLines = input<ExistingPick[]>([]);
+  /** pV2-ADD-LINE-SUPPLIER-01 — opened from a supplier's banner "+": the new
+   *  lines are routed to this supplier to cost (Cost hidden). null = the agent's
+   *  own lines (top "Add line" / Your own costs), unchanged. */
+  readonly forSupplier = input<LineSupplier | null>(null);
+  protected readonly costedBySupplier = computed(() => this.variant() === 'new' && !!this.forSupplier());
   readonly add = output<CustomLine[]>();
   readonly cancel = output<void>();
 
@@ -260,10 +287,10 @@ export class CustomLineDialogComponent implements OnInit {
       categoryId: this.categoryId(),
       category: this.categoryName().trim(),
       description: f.description.trim(),
-      cost: Number(f.cost) || 0,
+      cost: this.costedBySupplier() ? 0 : Number(f.cost) || 0,
       quantity: Math.max(1, Number(f.quantity) || 1),
       unit: null, install: false, notes: f.notes.trim(),
-      supplierOrgId: null, itemId: null, lineId: null,
+      supplierOrgId: this.forSupplier()?.id ?? null, itemId: null, lineId: null,
     }]);
   }
 
@@ -284,7 +311,7 @@ export class CustomLineDialogComponent implements OnInit {
   }
   protected submitGrid(): void {
     const cat = this.categoryName().trim();
-    const supplierOrgId = this.supplierId();
+    const supplierOrgId = this.forSupplier()?.id ?? this.supplierId();
     const lines: CustomLine[] = this.rows()
       .filter((r) => r.description.trim())
       .map((r) => ({
@@ -292,7 +319,7 @@ export class CustomLineDialogComponent implements OnInit {
         categoryId: this.categoryId(),
         category: cat,
         description: r.description.trim(),
-        cost: Number(r.cost) || 0,
+        cost: this.costedBySupplier() ? 0 : Number(r.cost) || 0,
         quantity: Math.max(1, Number(r.qty) || 1),
         unit: r.unit, install: false, notes: '',
         supplierOrgId, itemId: r.itemId, lineId: r.lineId,

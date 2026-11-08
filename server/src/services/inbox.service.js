@@ -699,9 +699,16 @@ async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
         // Items in the bucket NOT yet briefed to THIS supplier (idempotent
         // re-send: a later add is briefed; already-sent items are not re-sent).
         const items = await client.query(
+          // pV2-ADD-LINE-SUPPLIER-01: ONLY this supplier's lines — the catalogue
+          // owner, or (custom) the supplier asked to cost it (0033). Previously the
+          // whole category bucket went to every picked supplier, so messaging B
+          // also briefed A's lines. A supplier-less line (NULL) never matches →
+          // never swept into a send (one supplier per line for now).
           `SELECT pi.id FROM project_items pi
+             LEFT JOIN items i ON i.id = pi.item_id
             WHERE pi.project_id = $1 AND pi.project_category_id = $2
               AND pi.parent_id IS NULL AND pi.deleted_at IS NULL
+              AND COALESCE(i.org_id, pi.requested_provider_org_id) = $4
               AND NOT EXISTS (
                 SELECT 1 FROM message_relations mr
                   JOIN messages m ON m.id = mr.message_id AND m.deleted_at IS NULL

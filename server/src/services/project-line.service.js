@@ -183,7 +183,9 @@ function quoteLineJoin(overlayFrom) {
          i.attributes -> 'price_tiers' AS price_tiers,
          i.install_cost AS i_install_cost, i.install_description AS i_install_description,
          i.install_unit AS i_install_unit,
-         i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
+         -- Catalogue lines: the item owner. Custom lines: the supplier asked to
+         -- cost it (0033; NULL = the agent's own line).
+         COALESCE(i.org_id, pi0.requested_provider_org_id) AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
          EXISTS (SELECT 1 FROM items ci WHERE ci.parent_item_id = pi0.item_id AND ci.deleted_at IS NULL) AS has_options,
          -- pV2-PROJECTS-S3: real send-state. A line is OUT FOR QUOTE once it's
          -- briefed (a message_relation exists on any project message about it);
@@ -201,7 +203,7 @@ function quoteLineJoin(overlayFrom) {
     -- returns NULL for another org's supplier → the UI showed "Supplier"). The
     -- directory is owner-run + security_barrier and exposes only marketplace-card
     -- columns for ACTIVE suppliers (0019).
-    LEFT JOIN supplier_directory o ON o.id = i.org_id`;
+    LEFT JOIN supplier_directory o ON o.id = COALESCE(i.org_id, pi0.requested_provider_org_id)`;
 }
 const QUOTE_LINE_JOIN = quoteLineJoin(RESOLVED_FROM);
 
@@ -558,6 +560,12 @@ async function addItem(orgId, projectId, itemId, variant = null, quantity = null
   });
 }
 
+function httpErr(message, status) {
+  const e = new Error(message);
+  e.status = status;
+  return e;
+}
+
 /** Add a custom (ad-hoc) line — a project_items row with NO catalogue backing
  *  (item_id NULL → is_custom derived). All its data lives on the row; a
  *  project_item_matches row records source 'custom'. `categoryId` is a
@@ -580,18 +588,36 @@ async function addCustomItem(orgId, projectId, body) {
       );
       pcid = pc.rows[0]?.id ?? null;
     }
+    // pV2-ADD-LINE-SUPPLIER-01 — added from a supplier's banner: record WHICH
+    // supplier should cost it (requested_provider_org_id, 0033). Intent only — no
+    // project_providers row until send (that row grants the supplier READ on the
+    // project, 0023). The body id is never trusted as-is: it must be a listed
+    // ACTIVE supplier (supplier_directory) and not the caller's org. Needs a
+    // category (outreach briefs per category). The add dialog sends no cost; any
+    // stray one is dropped so the supplier prices it. No supplier = the
+    // agent-owned line, unchanged.
+    let requestedProvider = null;
+    if (body.supplierOrgId) {
+      if (!pcid) throw httpErr('A line for a supplier needs a category', 400);
+      if (body.supplierOrgId === orgId) throw httpErr('Unknown supplier', 400);
+      const sup = await client.query(`SELECT 1 FROM supplier_directory WHERE id = $1`, [body.supplierOrgId]);
+      if (!sup.rows.length) throw httpErr('Unknown supplier', 400);
+      requestedProvider = body.supplierOrgId;
+    }
     const qty = Math.max(1, Math.round(Number(body.quantity) || 1));
+    const cost = requestedProvider || body.cost == null ? null : Number(body.cost);
     const ins = await client.query(
       `INSERT INTO project_items
          (org_id, project_id, project_category_id, item_id, name, description,
-          base_price, unit, quantity, installed, install_cost, install_unit, status)
-       VALUES ($1,$2,$3,NULL,$4,$5,$6,$7,$8,$9,$10,$11,'active')
+          base_price, unit, quantity, installed, install_cost, install_unit, status,
+          requested_provider_org_id)
+       VALUES ($1,$2,$3,NULL,$4,$5,$6,$7,$8,$9,$10,$11,'active',$12)
        RETURNING id`,
       [orgId, projectId, pcid, body.name, body.description || null,
-       body.cost == null ? null : Number(body.cost), body.unit || null, qty,
+       cost, body.unit || null, qty,
        body.installed == null ? false : !!body.installed,
        body.installCost == null ? null : Number(body.installCost),
-       body.installUnit || null]
+       body.installUnit || null, requestedProvider]
     );
     const rowId = ins.rows[0].id;
     await client.query(

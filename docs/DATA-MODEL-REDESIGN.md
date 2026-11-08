@@ -366,7 +366,12 @@ price/status history lives in `message_events`.
 `kind`/`parent_id` (dormant — buildup shelved), `name`, `description`, `attributes` jsonb (cloned),
 `selection_type` (v1 pick-one-of-similar, e.g. 50" vs 100" TV; dormant, cheap to keep), `quantity`, `unit`,
 `currency`, `base_price` (catalogue reference, frozen), `variant` jsonb, `installed` bool,
-`install_description`/`install_cost`/`install_unit`, `image_url`, `status`, + audit.
+`install_description`/`install_cost`/`install_unit`, `image_url`, `status`,
+`requested_provider_org_id → orgs` (nullable; 0033 — see decision log 2026-11-08), + audit.
+- **`requested_provider_org_id`** (custom lines only): the supplier the agency asked to COST this line (added
+  from that supplier's banner). Intent, NOT engagement and NOT ownership — no `project_providers` row until send
+  (that row grants supplier READ on the project, 0023). Estimate supplier = `COALESCE(items.org_id, this)`;
+  `sendOutreach` briefs a line only to its own supplier; editable until briefed, frozen after.
 - **Dropped vs today:** `is_custom` (derive = `item_id IS NULL`); `margin_pct` (→ FR-00230);
   `price_ref`/`price_current`/`flat_total`/`supplier_org_id`/`logical_line_id` (→ quote / providers);
   `source`/`ai_*` (→ matches).
@@ -566,6 +571,22 @@ cross-cutting items (send paths B/C/D · `org_id` on project children).
 
 The *why* behind the locked shapes (recorded as the questions were asked, 2026-10-01/02).
 When a question lands on something already built, the reasoning goes here.
+
+- **2026-11-08 — supplier-costed custom lines (`project_items.requested_provider_org_id`, 0033).** Liam wants a
+  line added from a supplier's banner to go to THAT supplier to cost. Agent-owned lines (top "Add line" / Your
+  own costs, FK NULL) stay exactly as they are — locked; they let the agent (or system) add now and find a
+  supplier later. Considered + REJECTED: creating `project_providers` + an empty provider quote row at add —
+  a live provider row grants the supplier READ on the project + categories and lists it in their projects (0023,
+  `listSupplierProjects`), leaking an unsent draft. Considered: `attributes` JSON (precedent:
+  `attributes.settlement`) — rejected for no FK/type integrity. Chosen: an additive nullable FK on the line —
+  pure intent; engagement still only at send. It is not the dropped `supplier_org_id` (that was engagement
+  state); not ownership (`org_id` = agency owns the line; the supplier only ever writes its own quote row after
+  send). Rules: editable until briefed, frozen after (the engagement tables then record who it went to); one
+  supplier per line for now — `sendOutreach` briefs a line only to its own supplier and never sweeps
+  supplier-less lines (it used to send the whole category bucket to every picked supplier). Multi-supplier
+  compare (per-supplier acceptance — `attachAcceptance` currently merges all threads — and "pick this quote")
+  is deferred design work (WS2-adjacent). Cost: hidden in the add dialog (supplier prices it); the line editor is
+  unchanged — a cost typed there goes to the supplier as a "match this" starting price.
 
 - **Supplier edits save in place today.** `updateLineDetails` writes name/description/cost(→`base_price`)/
   unit/install straight onto `project_items`. So `project_items` is NOT static today; the redesign freezes it
