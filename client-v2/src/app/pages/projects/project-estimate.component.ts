@@ -320,13 +320,26 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                         <app-status-pill class="inline-flex shrink-0" list="supplier_summary_status" [code]="ic"
                                          [attr.title]="'Waiting for ' + (sg.supplierName || 'them') + ' to join'" />
                       }
-                      <!-- In-context add — the existing add flow, scoped to this row's
-                           category (Liam 2026-11-06). -->
-                      <button type="button" class="ml-auto shrink-0 rounded-md p-1 transition-opacity hover:opacity-70"
-                              (click)="openAdd({ id: g.id, name: g.name, iconName: g.iconName }, sg.supplierId ? { id: sg.supplierId, name: sg.supplierName } : null)"
-                              [attr.aria-label]="'Add an item to ' + g.name" title="Add item">
-                        <lucide-icon name="circle-plus" [size]="16" style="color: var(--theme-accent)" />
-                      </button>
+                      <!-- Per-supplier actions (Liam 2026-11-06): message THIS
+                           supplier (scoped send) + add in-context. The agency
+                           "Your own costs" row has no message (no one to send to). -->
+                      <span class="ml-auto flex shrink-0 items-center gap-1">
+                        @if (sg.supplierId) {
+                          <!-- pV2-INVITE-SUPPLIER-01: held until an invited supplier joins. -->
+                          <button type="button" class="rounded-md p-1 transition-opacity hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-40"
+                                  [disabled]="sg.supplierStatus === 'pending'"
+                                  (click)="messageOneSupplier(sg.supplierId, g.id)"
+                                  [attr.aria-label]="'Message ' + (sg.supplierName || 'this supplier')"
+                                  [attr.title]="sg.supplierStatus === 'pending' ? 'Waiting for ' + (sg.supplierName || 'them') + ' to join' : 'Message this supplier'">
+                            <lucide-icon name="send" [size]="16" style="color: var(--theme-accent)" />
+                          </button>
+                        }
+                        <button type="button" class="rounded-md p-1 transition-opacity hover:opacity-70"
+                                (click)="openAdd({ id: g.id, name: g.name, iconName: g.iconName }, sg.supplierId ? { id: sg.supplierId, name: sg.supplierName } : null)"
+                                [attr.aria-label]="'Add an item to ' + g.name" title="Add item">
+                          <lucide-icon name="circle-plus" [size]="16" style="color: var(--theme-accent)" />
+                        </button>
+                      </span>
                     </div>
                     }
                     <!-- Column headers (per supplier) — left-justified, aligned to
@@ -542,7 +555,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
       <app-message-suppliers-dialog
         [categories]="messagingCategories()"
         (send)="onSendBriefs($event)"
-        (cancel)="messagingOpen.set(false)" />
+        (cancel)="messagingOpen.set(false); msgScope.set(null)" />
     }
 
     <!-- pV2-BUILDUP-03 — pick an item's options → they add as quote lines. -->
@@ -1105,7 +1118,7 @@ export class ProjectEstimateComponent {
    *  existing Inbox conversation (tab=inbox&supplier=<orgId>), where further
    *  requirements are discussed. g.id is the supplier org id. */
   protected openSupplierInbox(g: { id: string }): void {
-    this.router.navigate(['/projects', this.projectId()], {
+    this.router.navigate(['/projects', this.project().ref ?? this.projectId()], {
       queryParams: { tab: 'inbox', supplier: g.id },
     });
   }
@@ -1222,13 +1235,19 @@ export class ProjectEstimateComponent {
   // ── Message suppliers (Final view) ────────────────────────────────────
   protected readonly sending = signal(false);
   protected readonly messagingOpen = signal(false);
+  /** When set, the message dialog is scoped to ONE supplier in ONE category
+   *  (the per-supplier "message" icon on a supplier banner). */
+  protected readonly msgScope = signal<{ supplierId: string; categoryId: string } | null>(null);
 
   /** The still-to-send lines grouped by category → suppliers (with item
-   *  counts, majority first) — feeds the "who quotes what" dialog. */
+   *  counts, majority first) — feeds the "who quotes what" dialog. Narrowed to a
+   *  single supplier+category when msgScope is set. */
   protected readonly messagingCategories = computed<MsgSupplierCategory[]>(() => {
+    const scope = this.msgScope();
     const byCat = new Map<string, MsgSupplierCategory>();
     for (const l of this.rows()) {
       if (l.status !== 'to_send' || !l.categoryId || !l.supplierId) continue;
+      if (scope && (l.supplierId !== scope.supplierId || l.categoryId !== scope.categoryId)) continue;
       // pV2-INVITE-SUPPLIER-01: an invited supplier that hasn't joined can't be
       // briefed — its lines stay on hold (the server refuses too).
       if (l.supplierStatus === 'pending') continue;
@@ -1256,6 +1275,7 @@ export class ProjectEstimateComponent {
 
   protected messageSuppliers(): void {
     if (this.sending()) return;
+    this.msgScope.set(null);
     const held = this.heldSuppliers();
     if (held.length) {
       this.toast.add({
@@ -1272,10 +1292,25 @@ export class ProjectEstimateComponent {
     this.messagingOpen.set(true);
   }
 
+  /** Per-supplier "message" icon on a supplier banner → the SAME send dialog,
+   *  scoped to this supplier's unsent items in this category (Liam 2026-11-06 —
+   *  Message Suppliers, by supplier). A slice of the WS2 per-supplier send. */
+  protected messageOneSupplier(supplierId: string | null, categoryId: string): void {
+    if (this.sending() || !supplierId) return;
+    this.msgScope.set({ supplierId, categoryId });
+    if (!this.messagingCategories().length) {
+      this.msgScope.set(null);
+      this.toast.add({ severity: 'warn', summary: 'Nothing to send for this supplier yet.', life: 4000 });
+      return;
+    }
+    this.messagingOpen.set(true);
+  }
+
   /** Dialog confirmed with the chosen roster → send the briefs. On success the
    *  lines flip to out_for_quote (server-derived) — reload. */
   protected async onSendBriefs(roster: OutreachRosterEntry[]): Promise<void> {
     this.messagingOpen.set(false);
+    this.msgScope.set(null);
     if (!roster.length || this.sending()) return;
     this.sending.set(true);
     try {
@@ -1292,7 +1327,7 @@ export class ProjectEstimateComponent {
       // tabs appear, then land on the live Overview (About); the Inbox tab sits
       // right beside it with an attention badge for the replies to come.
       this.detailsSaved.emit();
-      void this.router.navigate(['/projects', this.projectId()], { queryParams: { tab: 'details' } });
+      void this.router.navigate(['/projects', this.project().ref ?? this.projectId()], { queryParams: { tab: 'details' } });
     } catch (err) {
       this.toast.add({ severity: 'error', summary: "Couldn't send the brief — please try again.", detail: errorDetail(err), life: 5000 });
     } finally {
