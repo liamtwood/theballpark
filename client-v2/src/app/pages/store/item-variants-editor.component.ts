@@ -5,7 +5,7 @@ import { DrawerComponent } from '../../shared/drawer/drawer.component';
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
 import { PickerResult, PickerTab } from '../../core/media/media.types';
 
-interface ValState { value: string; mode: VariantMode; amount: string; imageUrl: string | null; }
+interface ValState { value: string; mode: VariantMode; amount: string; imageUrl: string | null; description: string; }
 interface DimState { name: string; values: ValState[]; }
 
 /** pV2-STORE-VARIANTS-UPCHARGE-01 / IMAGE-VARIANTS-01 — edit an item's variants.
@@ -26,11 +26,11 @@ interface DimState { name: string; values: ValState[]; }
                    (input)="renameDim(di, $any($event.target).value)" />
             <button type="button" class="shrink-0 text-muted hover:text-text" (click)="removeDim(di)" aria-label="Remove dimension"><lucide-icon name="trash-2" [size]="15" /></button>
           </div>
-          <div class="mt-2 grid grid-cols-[1fr_7.5rem_6rem_44px_28px] items-center gap-2">
+          <div class="mt-2 grid grid-cols-[1fr_7.5rem_6rem_28px_28px] items-center gap-2">
             <span class="bp-caption text-muted">Value</span>
             <span class="bp-caption text-muted">Pricing</span>
             <span class="bp-caption text-muted">Amount £</span>
-            <span class="bp-caption text-muted">Image</span><span></span>
+            <span></span><span></span>
             @for (v of d.values; track $index; let vi = $index) {
               <input class="bp-input-field" placeholder="e.g. A4" [value]="v.value" (input)="setValue(di, vi, $any($event.target).value)" />
               <select class="bp-input-field" [value]="v.mode" (change)="setMode(di, vi, $any($event.target).value)">
@@ -41,9 +41,13 @@ interface DimState { name: string; values: ValState[]; }
               <input type="number" class="bp-input-field" [placeholder]="v.mode === 'none' ? 'Free' : '0.00'"
                      [disabled]="v.mode === 'none'" [value]="v.amount"
                      (input)="setAmount(di, vi, $any($event.target).value)" />
-              <button type="button" class="bp-variant-img" (click)="openPicker(di, vi)"
-                      [title]="v.imageUrl ? 'Change image' : 'Add an image for this option'" aria-label="Variant image">
-                @if (v.imageUrl) { <img [src]="v.imageUrl" alt="" /> } @else { <lucide-icon name="image" [size]="16" /> }
+              <!-- pV2-STORE-VARIANT-DESC-01 — edit icon: opens the drawer for this value's
+                   IMAGE + DESCRIPTION. Goes accent once the option has either, so you can
+                   see which options are filled in. -->
+              <button type="button" class="bp-variant-editico" [class.bp-variant-editico--set]="v.imageUrl || v.description.trim()"
+                      (click)="openPicker(di, vi)"
+                      [title]="'Edit this option — image &amp; description'" aria-label="Edit option">
+                <lucide-icon name="square-pen" [size]="16" />
               </button>
               <button type="button" class="text-muted hover:text-text" (click)="removeValue(di, vi)" aria-label="Remove value"><lucide-icon name="x" [size]="15" /></button>
             }
@@ -54,37 +58,52 @@ interface DimState { name: string; values: ValState[]; }
       <button type="button" class="bp-btn-outline bp-body-small self-start" (click)="addDim()">
         <lucide-icon name="plus" [size]="14" /> Add dimension
       </button>
-      <p class="bp-caption text-secondary">No cost = free choice (e.g. colour). Upcharge adds to the price; Cost sets it. Add an image per value and it becomes the main photo when a buyer picks it.</p>
+      <p class="bp-caption text-secondary">No cost = free choice (e.g. colour). Upcharge adds to the price; Cost sets it. Use Edit to give a value an image (it becomes the main photo when a buyer picks it) and a description (shown under the choices in Quick View).</p>
     </div>
 
-    <app-drawer [(open)]="drawerOpen" title="Variant image">
-      <app-image-picker
-        entityType="item"
-        [enabledTabs]="imageTabs"
-        [focalStep]="false"
-        [searchSeed]="pickSeed()"
-        [currentImageUrl]="pickCurrentUrl()"
-        previewAspect="4/3"
-        (chosen)="onPickImage($event)"
-        (removed)="onRemoveImage()"
-        (cancelled)="drawerOpen.set(false)"
-      />
+    <app-drawer [(open)]="drawerOpen" [title]="editTitle()">
+      <div class="flex flex-col gap-5">
+        <div class="flex flex-col gap-1.5">
+          <span class="bp-field-label">Image</span>
+          <app-image-picker
+            entityType="item"
+            [enabledTabs]="imageTabs"
+            [focalStep]="false"
+            [searchSeed]="pickSeed()"
+            [currentImageUrl]="pickCurrentUrl()"
+            previewAspect="4/3"
+            (chosen)="onPickImage($event)"
+            (removed)="onRemoveImage()"
+            (cancelled)="drawerOpen.set(false)"
+          />
+        </div>
+
+        <!-- Description (pV2-STORE-VARIANT-DESC-01) — below the image selector; same
+             field styling as the item's own Description. Supporting copy shown under the
+             choice boxes in Quick View when the buyer picks this option. Live-saves on
+             input, so picking an image (which closes the drawer) never loses it. -->
+        <div class="flex flex-col">
+          <label class="bp-field-label">Description</label>
+          <textarea class="bp-store-textarea mt-1" rows="4"
+                    placeholder="Supporting copy for this option (optional) — supports **bold**, *italic*, • bullets. Shown when a buyer picks it."
+                    [value]="pickDescription()" (input)="setPickDescription($any($event.target).value)"></textarea>
+        </div>
+      </div>
     </app-drawer>
   `,
   styles: [
     `
-      .bp-variant-img {
-        width: 40px; height: 40px;
-        display: flex; align-items: center; justify-content: center;
-        border: 1px solid var(--color-border-hairline);
-        border-radius: 8px;
-        background: var(--color-surface);
+      /* pV2-STORE-VARIANT-DESC-01 — the per-value edit icon (opens image + copy). */
+      .bp-variant-editico {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 28px; height: 28px;
         color: var(--color-text-secondary);
-        overflow: hidden;
         cursor: pointer;
+        transition: color 0.12s ease;
       }
-      .bp-variant-img:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
-      .bp-variant-img img { width: 100%; height: 100%; object-fit: cover; }
+      .bp-variant-editico:hover { color: var(--theme-accent); }
+      /* Accent once the option has an image and/or a description (at-a-glance "set"). */
+      .bp-variant-editico--set { color: var(--theme-accent); }
     `,
   ],
 })
@@ -106,6 +125,21 @@ export class ItemVariantsEditorComponent {
     const p = this.picking(); if (!p) return null;
     return this.dims()[p.di]?.values[p.vi]?.imageUrl ?? null;
   });
+  /** The drawer edits one option (image + description). Title names the value when set. */
+  protected readonly editTitle = computed(() => {
+    const p = this.picking(); if (!p) return 'Edit option';
+    const name = this.dims()[p.di]?.values[p.vi]?.value?.trim();
+    return name ? `Edit “${name}”` : 'Edit option';
+  });
+  /** This option's description (bound in the drawer; live-saved on input). */
+  protected readonly pickDescription = computed(() => {
+    const p = this.picking(); if (!p) return '';
+    return this.dims()[p.di]?.values[p.vi]?.description ?? '';
+  });
+  protected setPickDescription(description: string): void {
+    const p = this.picking();
+    if (p) this.patchVal(p.di, p.vi, (v) => ({ ...v, description }));
+  }
 
   constructor() {
     effect(() => {
@@ -113,14 +147,14 @@ export class ItemVariantsEditorComponent {
       this.hydrating = true;
       this.dims.set((m?.dimensions ?? []).map((d) => ({
         name: d.name,
-        values: d.values.map((v) => ({ value: v.value, mode: v.mode, amount: v.amount ? String(v.amount) : '', imageUrl: v.imageUrl ?? null })),
+        values: d.values.map((v) => ({ value: v.value, mode: v.mode, amount: v.amount ? String(v.amount) : '', imageUrl: v.imageUrl ?? null, description: v.description ?? '' })),
       })));
       this.hydrating = false;
     });
   }
 
   protected addDim(): void {
-    this.dims.update((ds) => [...ds, { name: '', values: [{ value: '', mode: 'none', amount: '', imageUrl: null }] }]);
+    this.dims.update((ds) => [...ds, { name: '', values: [{ value: '', mode: 'none', amount: '', imageUrl: null, description: '' }] }]);
     this.emit();
   }
   protected removeDim(i: number): void { this.dims.update((ds) => ds.filter((_, x) => x !== i)); this.emit(); }
@@ -129,7 +163,7 @@ export class ItemVariantsEditorComponent {
     this.emit();
   }
   protected addValue(i: number): void {
-    this.dims.update((ds) => ds.map((d, x) => (x === i ? { ...d, values: [...d.values, { value: '', mode: 'none', amount: '', imageUrl: null }] } : d)));
+    this.dims.update((ds) => ds.map((d, x) => (x === i ? { ...d, values: [...d.values, { value: '', mode: 'none', amount: '', imageUrl: null, description: '' }] } : d)));
     this.emit();
   }
   protected removeValue(i: number, vi: number): void {
@@ -174,6 +208,7 @@ export class ItemVariantsEditorComponent {
             mode: v.mode,
             amount: v.mode === 'none' || v.amount.trim() === '' ? 0 : Number(v.amount) || 0,
             ...(v.imageUrl ? { imageUrl: v.imageUrl } : {}),
+            ...(v.description.trim() ? { description: v.description.trim() } : {}),
           })),
       }))
       .filter((d) => d.values.length);

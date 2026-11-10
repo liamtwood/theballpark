@@ -36,7 +36,19 @@ Liam QC'd variants ("great even with 1 option, even the no-cost is great") and d
 - **Read surface** (`item-attribute-cards.component.ts`): removed the "Choose your option" `<select>` (+ FormsModule); the variant picker owns choice/price on the surfaces that have it.
 - The separate BUILDUP child-item options picker (`project-estimate` / `options-picker`) is unrelated and untouched.
 
+## Iteration 3 (2026-11-10) — per-variant-value description (pV2-STORE-VARIANT-DESC-01)
+
+Liam: a variant value already carries a label + image; add a **description** with markup, shown in Quick View under the choice boxes, revealing on pick. QC'd good.
+
+- **Model** (`variants.util.ts`): `VariantValue` gains `description?: string | null`; the normalizer reads `o.description`; new `selectedDescriptions(matrix, selected)` helper (mirrors `selectedImage`) returns the picked values' non-empty descriptions.
+- **Quick View** (`item-variant-picker.component.ts`): after the choice rows, renders each picked value's description via the shared `| md` pipe (`[innerHTML]`, `.bp-variant-desc`). Safe — MarkdownPipe HTML-escapes first.
+- **Authoring** (`item-variants-editor.component.ts`): the per-value trigger is now an **icon-only** pencil (`square-pen`, `--set` accent when an image or description is present) opening the value drawer — **Image** section, then **Description** below (`bp-store-textarea`, same as the item description field). No save button (draft commits with the dialog's Done). `ValState.description` threads through add/hydrate/emit (emitted only when non-empty).
+- **Blank-line markdown** (`markdown.pipe.ts`): a blank line between content now emits a `<br>` spacer (leading/trailing blanks dropped), so an empty row renders as a visible gap.
+- Storage unchanged (`attributes.variants` JSONB, server `.passthrough()`) — no migration.
+- Build — ✓ `ng build` clean. QC — ✓ Liam (2026-11-10).
+
 ## Notes / follow-ups
 
 - base_price vs matrix: the item's `base_price` (quick-view "From £…") still comes from the cheapest combo at read time; not recomputed on edit here.
 - Ties into the image → option tagging design (pV2 image `optionTags: [{dim,value}]`) — the same dimension/value vocabulary the picker will tag against.
+- **Parked** (Backlog, 2026-11-10): per-variant tier + tag so variants feed search/autocreate — decide roll-up (into `i.tier` + `item_tags`) vs first-class searchable entities first.

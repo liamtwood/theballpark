@@ -20,6 +20,10 @@ export interface VariantValue {
   /** pV2-STORE-IMAGE-VARIANTS-01 — an image for this value (e.g. the orange chair),
    *  shown as the hero when the buyer picks it. */
   imageUrl?: string | null;
+  /** pV2-STORE-VARIANT-DESC-01 — optional supporting copy for this value, shown
+   *  under the choice boxes in Quick View when the buyer picks it. Supports the
+   *  MarkdownPipe subset (bold/italic/bullets); rendered via `| md`. */
+  description?: string | null;
 }
 export interface VariantDimension { name: string; values: VariantValue[]; }
 export interface VariantMatrix { dimensions: VariantDimension[]; }
@@ -41,11 +45,11 @@ export function normalizeVariants(raw: unknown): VariantMatrix | null {
     const name = String(dim.name ?? '');
     const rawVals = Array.isArray(dim.values) ? dim.values : [];
     const values: VariantValue[] = rawVals.map((v) => {
-      // Current shape: {value, mode, amount, imageUrl?}.
+      // Current shape: {value, mode, amount, imageUrl?, description?}.
       if (v && typeof v === 'object' && 'mode' in (v as object)) {
-        const o = v as { value?: unknown; mode?: unknown; amount?: unknown; imageUrl?: unknown };
+        const o = v as { value?: unknown; mode?: unknown; amount?: unknown; imageUrl?: unknown; description?: unknown };
         const mode = (o.mode === 'absolute' || o.mode === 'upcharge') ? o.mode : 'none';
-        return { value: String(o.value ?? ''), mode: mode as VariantMode, amount: Number(o.amount) || 0, imageUrl: o.imageUrl ? String(o.imageUrl) : null };
+        return { value: String(o.value ?? ''), mode: mode as VariantMode, amount: Number(o.amount) || 0, imageUrl: o.imageUrl ? String(o.imageUrl) : null, description: o.description ? String(o.description) : null };
       }
       // Earlier upcharge shape: {value, upcharge}.
       if (v && typeof v === 'object' && 'value' in (v as object)) {
@@ -112,6 +116,24 @@ export function selectedImage(m: VariantMatrix | null, selected: Record<string, 
     if (hit?.imageUrl) img = hit.imageUrl;
   }
   return img;
+}
+
+/** pV2-STORE-VARIANT-DESC-01 — the descriptions of the currently SELECTED values
+ *  (one per dimension that has a chosen value carrying copy), in dimension order.
+ *  Mirrors `selectedImage`: reveals on pick, so Quick View shows the context for the
+ *  buyer's choice under the choice boxes. The `value` label is returned alongside so a
+ *  multi-dimension item can disambiguate which choice each note belongs to. */
+export function selectedDescriptions(
+  m: VariantMatrix | null,
+  selected: Record<string, string>,
+): { value: string; description: string }[] {
+  if (!m) return [];
+  const out: { value: string; description: string }[] = [];
+  for (const d of m.dimensions) {
+    const hit = d.values.find((x) => x.value === selected[d.name]);
+    if (hit?.description && hit.description.trim()) out.push({ value: hit.value, description: hit.description });
+  }
+  return out;
 }
 
 /** Any value in the matrix carries an image? (drives whether hero-swap is possible.) */

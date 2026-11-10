@@ -1,11 +1,15 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
 /** pV2-BUILDUP-04 — a minimal, SAFE markdown→HTML renderer for user-entered
- *  item text (description / services / details): bold, italic, and bullet
- *  lists. It HTML-escapes the source first and only ever emits
+ *  item text (description / services / details): bold, italic, bullet lists,
+ *  and blank-line spacers. It HTML-escapes the source first and only ever emits
  *  <strong>/<em>/<ul>/<li>/<p>/<br> — so binding the result with [innerHTML]
  *  stays safe under Angular's default sanitizer (we NEVER bypassSecurityTrust,
  *  so injected markup can't smuggle scripts/handlers through).
+ *
+ *  Each non-empty line is its own paragraph; a blank line BETWEEN content emits a
+ *  <br> spacer (one per blank line), so an empty row renders as an empty row.
+ *  Leading/trailing blank lines are dropped.
  *
  *  Not a full markdown engine (no links/tables/headings-with-#) — deliberately
  *  the small formatting subset v1 supported. `heading` mode (Details) renders a
@@ -22,21 +26,29 @@ export class MarkdownPipe implements PipeTransform {
         .replace(/_([^_]+)_/g, '<em>$1</em>');
     let html = '';
     let inList = false;
+    let pendingGaps = 0;    // blank lines seen since the last content — flushed before the next
+    let hasContent = false; // so leading (and trailing) blank lines are dropped
     const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
+    const flushGaps = () => { for (; pendingGaps > 0; pendingGaps--) html += '<br>'; };
     for (const raw of src.split('\n')) {
       const line = raw.trimEnd();
       const bullet = line.match(/^\s*[•\-*]\s+(.*)$/);
       if (bullet) {
+        flushGaps();
         if (!inList) { html += '<ul class="bp-md-list">'; inList = true; }
         html += `<li>${inline(bullet[1])}</li>`;
+        hasContent = true;
       } else if (line.trim() === '') {
         closeList();
+        if (hasContent) pendingGaps++; // a blank line → one <br> spacer (emitted before next content)
       } else {
         closeList();
+        flushGaps();
         // In Details, a non-bulleted line is a category sub-heading (bold).
         html += mode === 'heading'
           ? `<p class="bp-md-heading">${inline(line)}</p>`
           : `<p>${inline(line)}</p>`;
+        hasContent = true;
       }
     }
     closeList();

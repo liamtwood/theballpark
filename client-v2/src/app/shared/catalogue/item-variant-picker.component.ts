@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { TooltipModule } from 'primeng/tooltip';
-import { VariantMatrix, VariantValue, normalizeVariants, computeUnitPrice, minUnitPrice, hasPricing, selectedImage } from './variants.util';
+import { VariantMatrix, VariantValue, normalizeVariants, computeUnitPrice, minUnitPrice, hasPricing, selectedImage, selectedDescriptions } from './variants.util';
+import { MarkdownPipe } from '../markdown.pipe';
 
 /** The resolved selection emitted to the host (for add-to-quote wiring). */
 export interface VariantSelection { values: Record<string, string>; price: number; }
@@ -16,7 +17,7 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
 @Component({
   selector: 'app-item-variant-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, TooltipModule],
+  imports: [CurrencyPipe, TooltipModule, MarkdownPipe],
   template: `
     @if (dimensions().length) {
       <div class="bp-variant-picker">
@@ -36,6 +37,18 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
                 >{{ v.value }}</button>
               }
             </div>
+          </div>
+        }
+
+        <!-- pV2-STORE-VARIANT-DESC-01 — supporting copy for the picked value(s), under
+             the choice boxes. Reveals on pick (mirrors the hero-image swap); markdown
+             via the safe md pipe. Multi-dimension items stack one note per picked value
+             (tracked by value). -->
+        @if (descriptions().length) {
+          <div class="bp-variant-desc">
+            @for (d of descriptions(); track d.value) {
+              <div class="bp-variant-desc__item bp-md bp-body-small text-secondary" [innerHTML]="d.description | md"></div>
+            }
           </div>
         }
 
@@ -82,6 +95,10 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
         color: var(--theme-accent-contrast, #fff);
       }
       .bp-variant-price { display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.15rem; }
+      /* pV2-STORE-VARIANT-DESC-01 — the picked value's supporting copy, under the rows. */
+      .bp-variant-desc { display: flex; flex-direction: column; gap: 0.4rem; }
+      .bp-variant-desc__item.bp-md :first-child { margin-top: 0; }
+      .bp-variant-desc__item.bp-md :last-child { margin-bottom: 0; }
     `,
   ],
 })
@@ -103,6 +120,8 @@ export class ItemVariantPickerComponent {
   protected readonly dimensions = computed(() => this.matrix()?.dimensions ?? []);
   /** Any value affects the price → show the price line. */
   protected readonly hasPricing = computed(() => hasPricing(this.matrix()));
+  /** pV2-STORE-VARIANT-DESC-01 — descriptions of the currently selected value(s). */
+  protected readonly descriptions = computed(() => selectedDescriptions(this.matrix(), this.selected()));
 
   /** The chosen value per dimension (empty until the visitor picks). */
   protected readonly selected = signal<Record<string, string>>({});
