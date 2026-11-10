@@ -45,7 +45,8 @@ export interface PriceTier {
 }
 
 /** pV2-INVITE-SUPPLIER-01 — a project_categories bucket (id lines group on). */
-export interface ProjectCategoryBucket { id: string; name: string; iconName: string | null; }
+/** id = the project section (bucket) id, null when the catalogue category is not in the project yet. */
+export interface ProjectCategoryBucket { id: string | null; catalogueId: string; name: string; iconName: string | null; }
 
 /** pV2-INVITE-SUPPLIER-01 — POST /suppliers/invite result (same shape for a fresh
  *  invite and a silent reuse). */

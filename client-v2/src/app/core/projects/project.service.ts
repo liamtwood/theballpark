@@ -171,6 +171,11 @@ export class ProjectService {
     return this.api.post<SupplierInviteResult>(`/api/projects-v2/${projectId}/suppliers/invite`, body);
   }
 
+  /** Add a catalogue category to the project as a section (idempotent). */
+  ensureProjectCategory(projectId: string, categoryId: string): Observable<ProjectCategoryBucket> {
+    return this.api.post<ProjectCategoryBucket>(`/api/projects-v2/${projectId}/categories`, { categoryId });
+  }
+
   /** Send (or re-send) the invite email to an invited supplier, listing the
    *  lines put against them — the banner Send while they haven't joined. */
   sendSupplierInvite(projectId: string, supplierId: string): Observable<{ sent: boolean; lines: number; supplierName: string }> {

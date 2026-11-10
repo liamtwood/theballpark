@@ -864,9 +864,8 @@ export class ProjectEstimateComponent {
     for (const seed of this.seededBanners()) {
       let g = mapped.find((x) => x.id === seed.categoryId);
       if (!g) {
-        const bucket = this.inviteCategories().find((c) => c.id === seed.categoryId);
-        g = { id: seed.categoryId, name: bucket?.name ?? 'Category', items: [], isProject: false,
-          isCoverage: false, total: 0, iconName: bucket?.iconName ?? null, count: 0, hasAgreed: false,
+        g = { id: seed.categoryId, name: seed.categoryName || 'Category', items: [], isProject: false,
+          isCoverage: false, total: 0, iconName: seed.categoryIcon ?? null, count: 0, hasAgreed: false,
           agreedTotal: 0, summaryCode: '' as SupplierSummaryCode | '', supplierGroups: [] };
         mapped.push(g);
       }
@@ -1086,8 +1085,7 @@ export class ProjectEstimateComponent {
     // Make sure the target category is expanded so the new banner is visible.
     this.collapsed.update((set) => { const next = new Set(set); next.delete(s.categoryId); return next; });
     // Next → straight into Add Line Item for this supplier (Liam 2026-11-10).
-    const bucket = this.inviteCategories().find((c) => c.id === s.categoryId);
-    this.openAdd({ id: s.categoryId, name: bucket?.name ?? '', iconName: bucket?.iconName ?? null },
+    this.openAdd({ id: s.categoryId, name: s.categoryName, iconName: s.categoryIcon },
       { id: s.supplierId, name: s.supplierName });
   }
 

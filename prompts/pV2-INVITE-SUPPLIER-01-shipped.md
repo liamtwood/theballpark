@@ -157,6 +157,17 @@ The walk ran against my branch's API on :3011 → dev2, with throwaway fixtures 
 - **Next → Add Line Item.** The dialog button now reads **Next**. On success (including "Use them"), the estimate opens Add Line Item already set to that supplier and category (Cost hidden, supplier coachmark). The "added" message is gone because the dialog replaces it.
 - `ng build` is clean and :3002 health is OK.
 
+## Iteration 4 — any category (Liam 2026-11-10)
+**Ask:** "let them add any category; right now they can only select ones already in the project."
+- `GET /projects-v2/:id/categories` now returns every top-level catalogue category as `{ id: bucketId|null, catalogueId, name, iconName }`, where `id` is null when the category isn't in the project yet.
+- **New:** `POST /projects-v2/:id/categories { categoryId }` → `ensureProjectCategory`.
+  - checks the project belongs to the caller's org and the category is a top-level catalogue category (400 otherwise)
+  - reuses `resolveProjectCategory` (idempotent, so concurrent requests don't create duplicate sections)
+  - returns the section
+- **Dialog:** the picker values are catalogue ids. On Next or "Use them", a category missing from the project gets its section first, then the invite and Add Line Item proceed. `InvitedSupplier` now carries the category name and icon, so the new section's banner and the add dialog are named.
+- **Limit:** the catalogue has only 8 top-level categories on dev2. Lighting, Staffing, Photography, Entertainment, Logistics and H&S don't exist yet, so they can't be picked (see iteration 3 on the unnamed AI sections).
+- Verified: `ng build` clean, :3002 health OK, the list SQL run on dev2 for Summer Rooftop returns 8 categories (3 not in the project, `id` null).
+
 ## QC notes
 (Liam fills this in)
 

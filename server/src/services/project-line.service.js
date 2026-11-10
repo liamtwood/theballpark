@@ -777,19 +777,44 @@ async function listProjectCategories(orgId, projectId) {
     [projectId, orgId]
   );
   if (!owns.rows.length) return null;
+  // Every top-level catalogue category (Liam 2026-11-10: don't restrict the
+  // picker to the project's sections), with the project's bucket id when it
+  // already has one (id NULL = not in the project yet → ensureProjectCategory).
+  // Unnamed custom buckets (category_id NULL) aren't offered.
   const r = await pool.query(
-    `SELECT pc.id, COALESCE(c.name, 'Category') AS name, c.icon_name
-       FROM project_categories pc LEFT JOIN categories c ON c.id = pc.category_id
-      WHERE pc.project_id = $1 AND pc.deleted_at IS NULL
-        AND pc.category_id IS NOT NULL  -- unnamed custom buckets can't be picked
+    `SELECT pc.id, c.id AS catalogue_id, c.name, c.icon_name
+       FROM categories c
+       LEFT JOIN project_categories pc
+              ON pc.category_id = c.id AND pc.project_id = $1 AND pc.deleted_at IS NULL
+      WHERE c.parent_id IS NULL AND c.deleted_at IS NULL
       ORDER BY c.sort_order NULLS LAST, c.name`,
     [projectId]
   );
-  return r.rows.map((x) => ({ id: x.id, name: x.name, iconName: x.icon_name || null }));
+  return r.rows.map((x) => ({ id: x.id || null, catalogueId: x.catalogue_id, name: x.name, iconName: x.icon_name || null }));
+}
+
+/** Add a catalogue category to the project as a section (idempotent) and
+ *  return its bucket — the invite dialog's pick of a category the project
+ *  doesn't have yet. Null = not the org's project; 400 = unknown category. */
+async function ensureProjectCategory(orgId, projectId, catalogueId) {
+  return withTransaction(async (client) => {
+    const owns = await client.query(
+      `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+      [projectId, orgId]
+    );
+    if (!owns.rows.length) return null;
+    const cat = await client.query(
+      `SELECT id, name, icon_name FROM categories WHERE id = $1 AND parent_id IS NULL AND deleted_at IS NULL`,
+      [catalogueId]
+    );
+    if (!cat.rows.length) throw httpErr('Unknown category', 400);
+    const id = await resolveProjectCategory(client, projectId, catalogueId);
+    return { id, catalogueId, name: cat.rows[0].name, iconName: cat.rows[0].icon_name || null };
+  });
 }
 
 module.exports = {
-  listProjectCategories,
+  listProjectCategories, ensureProjectCategory,
   listItems, getEstimate, listBallparkTotals, addItem, addCustomItem,
   updateItem, updateLineDetails, setQuoteDescription, removeItem,
   lineById, lineByIdForProvider, toQuoteLine,

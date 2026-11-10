@@ -159,6 +159,21 @@ router.get('/:id/categories', async (req, res, next) => {
   }
 });
 
+// POST /:id/categories — { categoryId: <catalogue top-level id> } → add it to
+// the project as a section (idempotent) and return the bucket. Own-org only.
+router.post('/:id/categories', async (req, res, next) => {
+  try {
+    const parsed = z.object({ categoryId: z.string().uuid() }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
+    const bucket = await lines.ensureProjectCategory(req.user.org_id, req.params.id, parsed.data.categoryId);
+    if (bucket === null) return res.status(404).json({ error: 'Project not found' });
+    res.status(201).json(bucket);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
 // GET /:id/estimate — the server-computed estimate cascade (the ONE formula).
 router.get('/:id/estimate', async (req, res, next) => {
   try {

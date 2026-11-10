@@ -13,6 +13,8 @@ export interface InvitedSupplier {
   supplierId: string;
   supplierName: string;
   categoryId: string;
+  categoryName: string;
+  categoryIcon: string | null;
   /** false = an ACTIVE supplier the agency chose to "Use" instead of inviting. */
   pending: boolean;
 }
@@ -96,12 +98,11 @@ export class InviteSupplierDialogComponent {
 
   readonly projectId = input.required<string>();
   readonly categories = input<ProjectCategoryBucket[]>([]);
-  /** Pre-pick (e.g. the only bucket). */
-  readonly initialCategoryId = input<string | null>(null);
   readonly invited = output<InvitedSupplier>();
   readonly cancel = output<void>();
 
   protected form = { businessName: '', contactName: '', email: '', website: '' };
+  /** The picked CATALOGUE category id (any category, Liam 2026-11-10). */
   protected readonly categoryId = signal<string>('');
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -109,13 +110,16 @@ export class InviteSupplierDialogComponent {
   protected readonly existing = signal<{ id: string; name: string } | null>(null);
 
   protected readonly categoryOptions = computed<SelectOption[]>(() =>
-    this.categories().map((c) => ({ value: c.id, label: c.name })));
+    this.categories().map((c) => ({ value: c.catalogueId, label: c.name })));
 
-  constructor() {
-    queueMicrotask(() => {
-      const only = this.categories().length === 1 ? this.categories()[0].id : null;
-      this.categoryId.set(this.initialCategoryId() ?? only ?? '');
-    });
+  /** The picked category's project section — added to the project first when
+   *  it isn't there yet. */
+  private async pickedBucket(): Promise<{ id: string; name: string; iconName: string | null }> {
+    const c = this.categories().find((x) => x.catalogueId === this.categoryId());
+    if (!c) throw new Error('Pick a category');
+    if (c.id) return { id: c.id, name: c.name, iconName: c.iconName };
+    const b = await firstValueFrom(this.projects.ensureProjectCategory(this.projectId(), c.catalogueId));
+    return { id: b.id!, name: b.name, iconName: b.iconName };
   }
 
   protected canSubmit(): boolean {
@@ -130,14 +134,16 @@ export class InviteSupplierDialogComponent {
     this.busy.set(true);
     this.error.set(null);
     try {
+      const bucket = await this.pickedBucket();
       const res = await firstValueFrom(this.projects.inviteSupplier(this.projectId(), {
         businessName: this.form.businessName.trim(),
         contactName: this.form.contactName.trim() || null,
         email: this.form.email.trim(),
         website: this.form.website.trim() || null,
-        categoryId: this.categoryId(),
+        categoryId: bucket.id,
       }));
-      this.invited.emit({ supplierId: res.supplier.id, supplierName: res.supplier.name, categoryId: res.categoryId, pending: true });
+      this.invited.emit({ supplierId: res.supplier.id, supplierName: res.supplier.name, categoryId: res.categoryId,
+        categoryName: bucket.name, categoryIcon: bucket.iconName, pending: true });
     } catch (e) {
       const ex = e instanceof HttpErrorResponse && e.status === 409
         ? (e.error?.existingSupplier as { id: string; name: string } | undefined)
@@ -149,7 +155,16 @@ export class InviteSupplierDialogComponent {
     }
   }
 
-  protected useExisting(ex: { id: string; name: string }): void {
-    this.invited.emit({ supplierId: ex.id, supplierName: ex.name, categoryId: this.categoryId(), pending: false });
+  protected async useExisting(ex: { id: string; name: string }): Promise<void> {
+    this.busy.set(true);
+    try {
+      const bucket = await this.pickedBucket();
+      this.invited.emit({ supplierId: ex.id, supplierName: ex.name, categoryId: bucket.id,
+        categoryName: bucket.name, categoryIcon: bucket.iconName, pending: false });
+    } catch (e) {
+      this.error.set(errorDetail(e) || "Couldn't add the supplier — please try again.");
+    } finally {
+      this.busy.set(false);
+    }
   }
 }
