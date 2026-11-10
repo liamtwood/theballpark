@@ -152,6 +152,11 @@ The walk ran against my branch's API on :3011 → dev2, with throwaway fixtures 
 - **Unchanged:** after they accept, the agency gets the "joined" email and sends the brief as normal (no auto-brief).
 - **Verified:** `ng build` is clean; :3002 health is OK after reload; the route is mounted (401 unauthenticated). **Not exercised end to end:** emails stay off on dev (`SUPPLIER_INVITE_EMAILS_ENABLED` unset), so Liam's QC sees the toast but receives no email.
 
+## Iteration 3 — QC fixes (Liam 2026-11-10)
+- **The category picker showed "Category" repeatedly.** These were unnamed custom buckets (`project_categories.category_id` NULL, 0 lines). Summer Rooftop has 4. `listProjectCategories` now leaves them out. Their origin is still open: they look like leftovers from agent "new section" adds whose lines were deleted. The buckets themselves were not cleaned up.
+- **Next → Add Line Item.** The dialog button now reads **Next**. On success (including "Use them"), the estimate opens Add Line Item already set to that supplier and category (Cost hidden, supplier coachmark). The "added" message is gone because the dialog replaces it.
+- `ng build` is clean and :3002 health is OK.
+
 ## QC notes
 (Liam fills this in)
 

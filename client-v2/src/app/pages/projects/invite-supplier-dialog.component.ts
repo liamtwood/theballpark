@@ -84,7 +84,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             <p class="bp-body-small mt-3 text-danger">{{ error() }}</p>
           }
           <button type="button" class="bp-btn-grad mt-5 w-full" [disabled]="!canSubmit()" (click)="submit()">
-            {{ busy() ? 'Adding…' : 'Add supplier' }}
+            {{ busy() ? 'Adding…' : 'Next' }}
           </button>
         }
       </div>

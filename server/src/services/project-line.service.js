@@ -781,6 +781,7 @@ async function listProjectCategories(orgId, projectId) {
     `SELECT pc.id, COALESCE(c.name, 'Category') AS name, c.icon_name
        FROM project_categories pc LEFT JOIN categories c ON c.id = pc.category_id
       WHERE pc.project_id = $1 AND pc.deleted_at IS NULL
+        AND pc.category_id IS NOT NULL  -- unnamed custom buckets can't be picked
       ORDER BY c.sort_order NULLS LAST, c.name`,
     [projectId]
   );

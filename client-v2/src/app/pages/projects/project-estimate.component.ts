@@ -1085,12 +1085,10 @@ export class ProjectEstimateComponent {
     this.seededBanners.update((xs) => [...xs.filter((x) => !(x.supplierId === s.supplierId && x.categoryId === s.categoryId)), s]);
     // Make sure the target category is expanded so the new banner is visible.
     this.collapsed.update((set) => { const next = new Set(set); next.delete(s.categoryId); return next; });
-    this.toast.add({
-      severity: 'success',
-      summary: `${s.supplierName} added`,
-      detail: s.pending ? 'Add lines for them with the + on their banner, then Send to email the invite.' : undefined,
-      life: 5000,
-    });
+    // Next → straight into Add Line Item for this supplier (Liam 2026-11-10).
+    const bucket = this.inviteCategories().find((c) => c.id === s.categoryId);
+    this.openAdd({ id: s.categoryId, name: bucket?.name ?? '', iconName: bucket?.iconName ?? null },
+      { id: s.supplierId, name: s.supplierName });
   }
 
   /** Banner headline: the server client total. Custom lines are real
