@@ -54,7 +54,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           </div>
         } @else {
           <p class="bp-body-small mt-2 text-secondary">
-            We'll email them an invite — your lines for them stay on hold until they join.
+            Add your lines for them first. The invite is emailed when you press Send on their banner.
           </p>
           <div class="mt-4 flex flex-col gap-3">
             <label class="block">
@@ -84,7 +84,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             <p class="bp-body-small mt-3 text-danger">{{ error() }}</p>
           }
           <button type="button" class="bp-btn-grad mt-5 w-full" [disabled]="!canSubmit()" (click)="submit()">
-            {{ busy() ? 'Sending invite…' : 'Send invite' }}
+            {{ busy() ? 'Adding…' : 'Add supplier' }}
           </button>
         }
       </div>
@@ -143,7 +143,7 @@ export class InviteSupplierDialogComponent {
         ? (e.error?.existingSupplier as { id: string; name: string } | undefined)
         : undefined;
       if (ex) this.existing.set(ex);
-      else this.error.set(errorDetail(e) || "Couldn't send the invite — please try again.");
+      else this.error.set(errorDetail(e) || "Couldn't add the supplier — please try again.");
     } finally {
       this.busy.set(false);
     }

@@ -154,20 +154,66 @@ async function inviteSupplier({ agencyOrgId, userId, projectId, businessName, co
   console.log(`[supplier-invite] agency=${agencyOrgId} supplier=${result.supplier.id} ` +
     `${result.created ? 'created' : 'reused'} link=${result.newLink ? 'new' : 'existing'} to=${maskEmail(result.inviteEmail)}`);
 
-  // ── 4. Invite email — only when THIS agency's link is new (no re-spam) ────
-  if (result.newLink && result.inviteEmail) {
-    sendInviteEmail({
-      to: result.inviteEmail,
-      agencyName: proj.rows[0].agency_name,
-      businessName: result.supplier.name,
-    });
-  }
+  // ── 4. No email here (Liam 2026-11-10): the agency adds its lines first; the
+  //       invite goes out when it clicks Send on the banner (sendInvite below).
 
   // Identical shape for fresh vs reused (no enumeration oracle).
   return {
     supplier: { id: result.supplier.id, name: result.supplier.name, status: 'pending' },
     categoryId,
   };
+}
+
+/**
+ * Send (or re-send) the invite email to a supplier this agency invited and who
+ * hasn't joined yet — the banner Send for an invited supplier. The email lists
+ * the lines the agency has put against them in this project. Briefing proper
+ * happens after they accept (the agency gets a "joined" email, then sends).
+ * Returns null (404) when the project isn't the caller's.
+ */
+async function sendInvite({ agencyOrgId, projectId, supplierOrgId }) {
+  const proj = await pool.query(
+    `SELECT p.id, p.name, o.name AS agency_name
+       FROM projects p JOIN orgs o ON o.id = p.org_id
+      WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
+    [projectId, agencyOrgId]
+  );
+  if (!proj.rows.length) return null;
+  const lines = await pool.query(
+    `SELECT name FROM project_items
+      WHERE project_id = $1 AND requested_provider_org_id = $2
+        AND parent_id IS NULL AND deleted_at IS NULL
+      ORDER BY created_at`,
+    [projectId, supplierOrgId]
+  );
+  if (!lines.rows.length) throw httpErr('Add at least one line for them first', 400);
+
+  // Cross-tenant read of the pending org's invited owner — bootstrap path,
+  // gated on THIS agency's org_invites link (no link → generic 404-ish 400).
+  const target = await withBootstrapTransaction(async (db) => {
+    const r = await db.query(
+      `SELECT o.name, u.email
+         FROM org_invites oi
+         JOIN orgs o ON o.id = oi.supplier_org_id AND o.deleted_at IS NULL AND o.status = 'pending'
+         JOIN user_orgs uo ON uo.org_id = o.id AND uo.role = 'owner' AND uo.status = 'invited' AND uo.deleted_at IS NULL
+         JOIN users u ON u.id = uo.user_id AND u.deleted_at IS NULL
+        WHERE oi.supplier_org_id = $1 AND oi.agency_org_id = $2 AND oi.deleted_at IS NULL
+        ORDER BY uo.created_at ASC LIMIT 1`,
+      [supplierOrgId, agencyOrgId]
+    );
+    return r.rows[0] || null;
+  });
+  if (!target) throw httpErr('No outstanding invite for that supplier', 400);
+
+  console.log(`[supplier-invite] send agency=${agencyOrgId} supplier=${supplierOrgId} ` +
+    `lines=${lines.rows.length} to=${maskEmail(target.email)}`);
+  sendInviteEmail({
+    to: target.email,
+    agencyName: proj.rows[0].agency_name,
+    businessName: target.name,
+    lineNames: lines.rows.map((l) => l.name),
+  });
+  return { sent: true, lines: lines.rows.length, supplierName: target.name };
 }
 
 const APP_URL = () => process.env.WEB_BASE_URL || process.env.PUBLIC_APP_URL || 'http://localhost:4201';
@@ -179,13 +225,15 @@ function escHtml(s) {
 }
 
 /** Fire-and-forget, gated by SUPPLIER_INVITE_EMAILS_ENABLED (mirrors QUOTE_REQUEST_EMAILS_ENABLED). */
-function sendInviteEmail({ to, agencyName, businessName }) {
+function sendInviteEmail({ to, agencyName, businessName, lineNames = [] }) {
   if (process.env.SUPPLIER_INVITE_EMAILS_ENABLED !== 'true') return;
   const link = `${APP_URL()}/`;
   const subject = `${agencyName} invited you to quote on Ballpark`;
   const text = `${agencyName} would like ${businessName} to quote for an event on Ballpark.\n\n` +
+    (lineNames.length ? `They'd like a price for:\n${lineNames.map((n) => `- ${n}`).join('\n')}\n\n` : '') +
     `Sign in with this email address to accept: ${link}\n`;
   const html = `<p>${escHtml(agencyName)} would like <strong>${escHtml(businessName)}</strong> to quote for an event on Ballpark.</p>` +
+    (lineNames.length ? `<p>They'd like a price for:</p><ul>${lineNames.map((n) => `<li>${escHtml(n)}</li>`).join('')}</ul>` : '') +
     `<p><a href="${escHtml(link)}">Sign in with this email address</a> to accept the invite.</p>`;
   sendEmail({ to, subject, text, html }).catch((e) =>
     console.error('[supplier-invite] invite email failed', maskEmail(to), e.message));
@@ -277,4 +325,4 @@ async function acceptInvite(userId, supplierOrgId) {
   return { supplierOrgId };
 }
 
-module.exports = { inviteSupplier, listMyInvites, acceptInvite, websiteHost };
+module.exports = { inviteSupplier, sendInvite, listMyInvites, acceptInvite, websiteHost };

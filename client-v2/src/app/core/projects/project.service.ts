@@ -171,6 +171,13 @@ export class ProjectService {
     return this.api.post<SupplierInviteResult>(`/api/projects-v2/${projectId}/suppliers/invite`, body);
   }
 
+  /** Send (or re-send) the invite email to an invited supplier, listing the
+   *  lines put against them — the banner Send while they haven't joined. */
+  sendSupplierInvite(projectId: string, supplierId: string): Observable<{ sent: boolean; lines: number; supplierName: string }> {
+    return this.api.post<{ sent: boolean; lines: number; supplierName: string }>(
+      `/api/projects-v2/${projectId}/suppliers/${supplierId}/send-invite`, {});
+  }
+
   /** pV2-CUSTOMS-01 — add a custom (ad-hoc) line with no catalogue backing. */
   addCustomItem(projectId: string, body: {
     categoryId: string | null; name: string; description?: string | null;

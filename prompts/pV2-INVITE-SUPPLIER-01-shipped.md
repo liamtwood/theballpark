@@ -138,6 +138,20 @@ The walk ran against my branch's API on :3011 → dev2, with throwaway fixtures 
 ### Test fixtures on dev2
 **What:** The verification used "ZZ Invite Test Agency A/B" (ids `e1000000-0000-4000-8000-0000000000{a1,b1}`) with users, projects and a category bucket. These were deleted after the run (see the session report).
 
+## Iteration 2 — invite on Send (Liam 2026-11-10)
+**Ask:** "leave as is, just don't send the invite; the invite gets sent once they click Send (then hopefully they've added all the items they need)."
+- `inviteSupplier` no longer emails. It still creates or reuses the pending org, the invited seat and the `org_invites` link. The dialog copy is now "Add supplier" ("Add your lines for them first...").
+- **New:** `POST /api/projects-v2/:id/suppliers/:supplierId/send-invite` calls `sendInvite`.
+  - agency-only, `supplierInviteLimit`, uuid params
+  - project ownership checked on the RLS pool
+  - 400 if no lines are put against the supplier
+  - the pending owner email is read on the bootstrap path, gated on THIS agency's `org_invites` link (400 if no outstanding invite)
+  - the email lists the line names; budget and prices are never included; the address is masked in logs
+  - re-sendable, so the agency can add more lines and send again
+- **Banner Send** is no longer disabled for an invited supplier. It calls `sendInvite`, and the toast reads "Invite sent to X, with N lines". Message Suppliers still skips invited suppliers and points to their banner Send.
+- **Unchanged:** after they accept, the agency gets the "joined" email and sends the brief as normal (no auto-brief).
+- **Verified:** `ng build` is clean; :3002 health is OK after reload; the route is mounted (401 unauthenticated). **Not exercised end to end:** emails stay off on dev (`SUPPLIER_INVITE_EMAILS_ENABLED` unset), so Liam's QC sees the toast but receives no email.
+
 ## QC notes
 (Liam fills this in)
 

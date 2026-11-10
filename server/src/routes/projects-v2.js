@@ -39,6 +39,7 @@ const uuidParam = (label) => (req, res, next, val) =>
 router.param('id', uuidParam('project id'));
 router.param('lineId', uuidParam('line id'));
 router.param('itemId', uuidParam('line id'));
+router.param('supplierId', uuidParam('supplier id'));
 
 // GET / — org-scoped project list. org_id is sacred: JWT only.
 router.get('/', async (req, res, next) => {
@@ -222,6 +223,23 @@ router.post('/:id/suppliers/invite', supplierInviteLimit, async (req, res, next)
     if (err.status === 409 && err.existingSupplier) {
       return res.status(409).json({ error: err.message, existingSupplier: err.existingSupplier });
     }
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
+// POST /:id/suppliers/:supplierId/send-invite — the banner Send for an invited
+// supplier who hasn't joined (Liam 2026-11-10: lines first, invite on Send).
+// Emails the invite listing the lines put against them. Same limiter as invite.
+router.post('/:id/suppliers/:supplierId/send-invite', supplierInviteLimit, async (req, res, next) => {
+  try {
+    if (req.user.org_type !== 'agency') return res.status(403).json({ error: 'Agency only' });
+    const out = await supplierInvites.sendInvite({
+      agencyOrgId: req.user.org_id, projectId: req.params.id, supplierOrgId: req.params.supplierId,
+    });
+    if (out === null) return res.status(404).json({ error: 'Project not found' });
+    res.json(out);
+  } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
   }

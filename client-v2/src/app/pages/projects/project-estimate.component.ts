@@ -325,12 +325,13 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                            "Your own costs" row has no message (no one to send to). -->
                       <span class="ml-auto flex shrink-0 items-center gap-1">
                         @if (sg.supplierId) {
-                          <!-- pV2-INVITE-SUPPLIER-01: held until an invited supplier joins. -->
+                          <!-- Invited, not joined (Liam 2026-11-10): Send emails the
+                               invite listing their lines; the brief follows once they join. -->
                           <button type="button" class="rounded-md p-1 transition-opacity hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-40"
-                                  [disabled]="sg.supplierStatus === 'pending'"
-                                  (click)="messageOneSupplier(sg.supplierId, g.id)"
-                                  [attr.aria-label]="'Message ' + (sg.supplierName || 'this supplier')"
-                                  [attr.title]="sg.supplierStatus === 'pending' ? 'Waiting for ' + (sg.supplierName || 'them') + ' to join' : 'Message this supplier'">
+                                  [disabled]="sending()"
+                                  (click)="sg.supplierStatus === 'pending' ? sendInvite(sg.supplierId, sg.supplierName) : messageOneSupplier(sg.supplierId, g.id)"
+                                  [attr.aria-label]="(sg.supplierStatus === 'pending' ? 'Send invite to ' : 'Message ') + (sg.supplierName || 'this supplier')"
+                                  [attr.title]="sg.supplierStatus === 'pending' ? 'Send the invite with these lines' : 'Message this supplier'">
                             <lucide-icon name="send" [size]="16" style="color: var(--theme-accent)" />
                           </button>
                         }
@@ -1086,8 +1087,8 @@ export class ProjectEstimateComponent {
     this.collapsed.update((set) => { const next = new Set(set); next.delete(s.categoryId); return next; });
     this.toast.add({
       severity: 'success',
-      summary: s.pending ? `Invite sent to ${s.supplierName}` : `${s.supplierName} added`,
-      detail: s.pending ? 'Add lines for them with the + on their banner. You can send once they join.' : undefined,
+      summary: `${s.supplierName} added`,
+      detail: s.pending ? 'Add lines for them with the + on their banner, then Send to email the invite.' : undefined,
       life: 5000,
     });
   }
@@ -1281,7 +1282,7 @@ export class ProjectEstimateComponent {
       this.toast.add({
         severity: 'info',
         summary: `Waiting for ${held.join(', ')} to join`,
-        detail: 'Their lines stay on hold and are skipped until they accept the invite.',
+        detail: 'Their lines are skipped here. Use Send on their banner to email the invite.',
         life: 5000,
       });
     }
@@ -1304,6 +1305,26 @@ export class ProjectEstimateComponent {
       return;
     }
     this.messagingOpen.set(true);
+  }
+
+  /** Banner Send for an invited supplier (not joined): email the invite with the
+   *  lines put against them. Re-sendable after adding more. */
+  protected async sendInvite(supplierId: string | null, supplierName: string | null): Promise<void> {
+    if (this.sending() || !supplierId) return;
+    this.sending.set(true);
+    try {
+      const res = await firstValueFrom(this.projects.sendSupplierInvite(this.projectId(), supplierId));
+      this.toast.add({
+        severity: 'success',
+        summary: `Invite sent to ${res.supplierName}`,
+        detail: `With ${res.lines} ${res.lines === 1 ? 'line' : 'lines'}. You'll get an email when they join, then send the brief.`,
+        life: 6000,
+      });
+    } catch (err) {
+      this.toast.add({ severity: 'error', summary: `Couldn't send the invite to ${supplierName || 'this supplier'}.`, detail: errorDetail(err), life: 5000 });
+    } finally {
+      this.sending.set(false);
+    }
   }
 
   /** Dialog confirmed with the chosen roster → send the briefs. On success the
