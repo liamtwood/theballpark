@@ -29,6 +29,8 @@ export interface StoreItem {
   unit: string | null;
   /** v0.2.0 unit-driven: platter pack size (how many guests one unit serves). */
   serves: number | null;
+  /** v0.2.0 unit-driven: time granularity (time_unit codelist) when unit = time. */
+  time_unit: string | null;
   lead_time_days: number | null;
   /** Derived hero (image_url column dropped — server computes from images[hero]). */
   image_url: string | null;
@@ -75,6 +77,8 @@ export interface StoreItemWrite {
   currency?: string | null;
   unit?: string | null;
   serves?: number | null;
+  /** v0.2.0 unit-driven: time granularity (time_unit codelist) when unit = time. */
+  time_unit?: string | null;
   lead_time_days?: number | null;
   image_url?: string | null;
   images?: GalleryImage[];

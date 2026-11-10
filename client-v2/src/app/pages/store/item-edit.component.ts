@@ -34,6 +34,8 @@ interface ItemForm {
   subcategory_id: string;      // the DEEPEST chosen node (subcat or sub-subcat)
   unit: string;                // item_unit code (each / per_guest / platter / time / size)
   serves: string;              // v0.2.0 unit-driven: pack size when unit = platter
+  time_unit: string;           // v0.2.0 unit-driven: time granularity (time_unit codelist) when unit = time
+  size: string;                // v0.2.0 unit-driven: descriptive size (→ attributes.size) when unit = size
   base_price: string;          // "Ballpark cost"
   install_cost: string;        // installation cost (separate line)
   install_unit: string;        // how install_cost applies (per_item/order/percentage)
@@ -110,6 +112,14 @@ const WHATS_HOT = "What's Hot";
                     @if (form().unit === 'platter') {
                       <!-- v0.2.0 unit-driven: platter reveals the serves field (guests per unit). -->
                       <app-edit-field label="Serves (guests per unit)" type="number" density="page" [editing]="editing()" [value]="form().serves" (valueChange)="patch({ serves: $event })" />
+                    }
+                    @if (form().unit === 'time') {
+                      <!-- v0.2.0 unit-driven: time reveals the time-unit picker (hour/day/…). -->
+                      <app-edit-field label="Time unit" type="select" density="page" [options]="timeUnitOptions()" [editing]="editing()" [value]="form().time_unit" (valueChange)="patch({ time_unit: $event })" />
+                    }
+                    @if (form().unit === 'size') {
+                      <!-- v0.2.0 unit-driven: size reveals the size picker (small…xlarge; → attributes.size). -->
+                      <app-edit-field label="Size" type="select" density="page" [options]="sizeOptions()" [editing]="editing()" [value]="form().size" (valueChange)="patch({ size: $event })" />
                     }
                   </div>
                 </div>
@@ -489,7 +499,7 @@ export class ItemEditComponent {
   protected readonly deleting = signal(false);
 
   protected readonly form = signal<ItemForm>({
-    name: '', category_id: '', subcategory_id: '', unit: '', serves: '', base_price: '', install_cost: '', install_unit: '',
+    name: '', category_id: '', subcategory_id: '', unit: '', serves: '', time_unit: '', size: '', base_price: '', install_cost: '', install_unit: '',
     install_description: '', location_coverage: '', lead_time_days: '', description: '', tier: '', tags: [],
   });
   protected readonly imageUrl = signal<string | null>(null);
@@ -578,8 +588,8 @@ export class ItemEditComponent {
    *  groups, `options`, `price_tiers`) — keeps _source + anything else untouched. */
   private strippedRawAttributes(): Record<string, unknown> {
     const { dimensions: _legacy, specifications: _s, features: _f, style: _st,
-      measurements: _m, materials: _mt, options: _o, price_tiers: _pt, variants: _v, ...rest } = this.rawAttributes();
-    void _legacy; void _s; void _f; void _st; void _m; void _mt; void _o; void _pt; void _v;
+      measurements: _m, materials: _mt, options: _o, price_tiers: _pt, variants: _v, size: _sz, ...rest } = this.rawAttributes();
+    void _legacy; void _s; void _f; void _st; void _m; void _mt; void _o; void _pt; void _v; void _sz;
     return rest;
   }
 
@@ -708,6 +718,13 @@ export class ItemEditComponent {
   private readonly unitsRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/item_unit/values');
   protected readonly unitOptions = computed<EditFieldOption[]>(() => (this.unitsRes.value() ?? []).map((u) => ({ label: u.label, value: u.code })));
 
+  // v0.2.0 unit-driven reveals (item_unit.meta.needs): time → time_unit picker,
+  // size → size picker. Both ballpark codelists; lists admin-editable in Settings.
+  private readonly timeUnitsRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/time_unit/values');
+  protected readonly timeUnitOptions = computed<EditFieldOption[]>(() => (this.timeUnitsRes.value() ?? []).map((u) => ({ label: u.label, value: u.code })));
+  private readonly sizesRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/size/values');
+  protected readonly sizeOptions = computed<EditFieldOption[]>(() => (this.sizesRes.value() ?? []).map((u) => ({ label: u.label, value: u.code })));
+
   // pV2-STORE-WHATS-HOT-01 — item quality/merchandising tier (tier codelist:
   // budget…luxury + bronze/silver/gold). '—' clears it (tier is optional).
   private readonly tiersRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/tier/values');
@@ -776,6 +793,8 @@ export class ItemEditComponent {
         subcategory_id: '',
         unit: item.unit ?? '',
         serves: item.serves != null ? String(item.serves) : '',
+        time_unit: item.time_unit ?? '',
+        size: ((item.attributes as Record<string, unknown> | null)?.['size'] as string) ?? '',
         base_price: base != null ? String(base) : '',
         install_cost: install != null ? String(install) : '',
         install_unit: item.install_unit ?? '',
@@ -934,6 +953,7 @@ export class ItemEditComponent {
       category_id: f.subcategory_id || f.category_id,
       unit: f.unit || null,
       serves: f.unit === 'platter' && f.serves !== '' ? Number(f.serves) : null,
+      time_unit: f.unit === 'time' && f.time_unit !== '' ? f.time_unit : null,
       description: f.description.trim() || null,
       base_price: f.base_price === '' ? null : Number(f.base_price),
       install_cost: f.install_cost === '' ? null : Number(f.install_cost),
@@ -953,6 +973,9 @@ export class ItemEditComponent {
         // pV2-STORE-VARIANTS-EDIT-01 — write the matrix only when present, so
         // non-variant items keep a clean attributes bag (no empty `variants` key).
         ...(this.variantsState() ? { variants: this.variantsState() } : {}),
+        // v0.2.0 unit-driven: size is a descriptive label living in attributes
+        // (never a column — item_unit.meta.needs = 'size'). Only when unit = size.
+        ...(f.unit === 'size' && f.size ? { size: f.size } : {}),
       },
       ...(status === 'approved' ? {} : { approval_status: status }),
     };
