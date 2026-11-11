@@ -131,8 +131,11 @@ import { AuthService } from '../../core/auth/auth.service';
              quickViewOnly (marketplace/shopfront browse) suppresses ALL manage
              affordances — those surfaces are view-only; edit lives in the Shop. -->
         <!-- Owner action order (Liam QC 2026-10-28): Edit → Duplicate → Activate →
-             Reclassify → Delete. -->
-        <div class="mt-3 flex items-center gap-2">
+             Reclassify → Delete. Borderless icons, evenly spaced AND centered in
+             the card (Liam 2026-11-10). -mx-3.5 cancels the body's px-3.5 so the
+             row uses the FULL card width (the icons were cramped inside the padding);
+             space-evenly then spreads them with equal edge margins = centred. -->
+        <div class="-mx-3.5 mt-3 flex items-center justify-evenly">
           <!-- Approved items are editable too now (photos locked in the editor). -->
           <a
             [routerLink]="editLink()"
@@ -194,6 +197,9 @@ import { AuthService } from '../../core/auth/auth.service';
     </div>
   `,
   styles: `
+    /* Borderless icon buttons (Liam 2026-11-10) — no chrome; the moderation
+       soft-fill modifiers below re-assert their own border-color + background,
+       so the transparent (not none) border keeps those outlines intact. */
     .bp-item-card__act {
       display: inline-flex;
       align-items: center;
@@ -201,9 +207,9 @@ import { AuthService } from '../../core/auth/auth.service';
       width: 36px;
       height: 36px;
       flex: none;
-      border: 1px solid var(--color-border-hairline);
+      border: 1px solid transparent;
       border-radius: var(--radius-input, 8px);
-      background: var(--color-surface);
+      background: transparent;
       color: var(--color-text-secondary, var(--color-text));
       cursor: pointer;
     }
