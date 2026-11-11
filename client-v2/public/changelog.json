@@ -2,6 +2,83 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.9.0",
+      "name": "Invite suppliers & unified projects",
+      "build": "v2.1156",
+      "date": "2026-11-10",
+      "datetime": "2026-11-10",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Projects",
+          "items": [
+            {
+              "ref": "pV2-PROJ-UNIFY-01",
+              "type": "new",
+              "feature": "Unified project & create flow",
+              "text": "one unified project view with a cleaner create flow — the estimate, suppliers and documents live together from the start."
+            },
+            {
+              "ref": "pV2-INVITE-SUPPLIER-01",
+              "type": "new",
+              "feature": "Invite a supplier",
+              "text": "invite a supplier who isn't on Ballpark yet straight from the estimate, put lines against them, and send the invite once they join — every invite doubles as marketplace acquisition."
+            },
+            {
+              "ref": "EP-00021",
+              "type": "improved",
+              "feature": "Readable project links",
+              "text": "project web addresses now use a readable reference instead of a raw database id."
+            },
+            {
+              "ref": "",
+              "type": "new",
+              "feature": "Message a supplier",
+              "text": "each supplier banner has a message icon to open that supplier's conversation directly from the estimate."
+            }
+          ]
+        },
+        {
+          "area": "Marketplace",
+          "items": [
+            {
+              "ref": "pV2-STORE-QUICKVIEW-LAYOUT2-01",
+              "type": "new",
+              "feature": "Quick View layouts",
+              "text": "a wider two-column Quick View with a 1/2 layout picker — a bigger item view, and a brand-page supplier profile with a Past projects gallery. Flip between layouts to compare."
+            },
+            {
+              "ref": "pV2-STORE-VARIANT-DESC-01",
+              "type": "new",
+              "feature": "Variant descriptions",
+              "text": "each variant option can carry its own description (with light formatting), revealed under the choices in Quick View when a buyer picks it."
+            },
+            {
+              "ref": "pV2-STORE-UNIT-DRIVEN-01",
+              "type": "new",
+              "feature": "Time & size units",
+              "text": "time-priced items now ask for the time unit (hour, half day, day…) and size items for a size (small–XLarge), so the price reads in the right unit."
+            },
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "Item card polish",
+              "text": "the item management icons are cleaner and evenly spaced across each card."
+            }
+          ]
+        }
+      ],
+      "fixes": [
+        {
+          "ref": "BE-00147",
+          "type": "Bug",
+          "reporter": "Internal",
+          "text": "marketplace supplier reads (matching, taxonomy, favourites) now resolve through the supplier directory, so cross-org supplier names and cities show correctly.",
+          "done": true
+        }
+      ]
+    },
+    {
       "version": "v0.8.1",
       "name": "Inbox landing + Reports",
       "build": "v2.1123",
