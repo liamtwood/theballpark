@@ -21,6 +21,68 @@ import { MarkdownPipe } from '../../shared/markdown.pipe';
   imports: [LucideAngularModule, ImageCarouselComponent, MarkdownPipe],
   template: `
     @if (detail.value(); as s) {
+      @if (wide()) {
+        <!-- LAYOUT 2 — brand page (Liam 2026-11-10): cinematic cover + large logo,
+             bold name, website, about, and a tiled "Their work" gallery grid. -->
+        <div class="bp-sp2">
+          <div class="bp-sp2-cover" [class.bp-sp2-cover--empty]="!coverSrc()">
+            @if (coverSrc(); as cover) {
+              <img class="bp-sp2-cover__img" [src]="cover" [alt]="s.name" loading="eager" />
+            }
+          </div>
+
+          <!-- Identity row: logo with the name to its right, city under the name. -->
+          <div class="bp-sp2-id">
+            <div class="bp-sp2-logo">
+              @if (logoSrc(); as logo) {
+                <img class="bp-sp2-logo__img" [src]="logo" [alt]="s.name + ' logo'" loading="eager" />
+              } @else {
+                <span class="bp-sp2-logo__mono">{{ monogram() }}</span>
+              }
+            </div>
+            <div class="min-w-0">
+              <h2 class="bp-sp2-name">{{ s.name }}</h2>
+              @if (s.city) {
+                <div class="mt-0.5 flex items-center gap-1 text-secondary">
+                  <lucide-icon name="map-pin" [size]="14" [strokeWidth]="1.75" />
+                  <span class="bp-body-small">{{ s.city }}</span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="bp-sp2-body">
+            <!-- LEFT — website + about. -->
+            <div class="bp-sp2-info min-w-0">
+              @if (websiteHref(); as href) {
+                <a class="bp-sp-web self-start" [href]="href" target="_blank" rel="noopener noreferrer">
+                  <lucide-icon name="globe" [size]="15" />
+                  <span>{{ websiteLabel() }}</span>
+                  <lucide-icon name="external-link" [size]="14" />
+                </a>
+              }
+              @if (s.description) {
+                <div class="bp-md bp-body text-secondary" [class.mt-3]="websiteHref()" [innerHTML]="s.description | md"></div>
+              }
+            </div>
+
+            <!-- RIGHT — Past projects (half-size shots, vertical shuttle). Hover shows
+                 the project's caption (label), else the supplier name. -->
+            <div class="bp-sp2-side min-w-0">
+              @if (galleryShots().length) {
+                <span class="bp-qv-spec__label">Past projects</span>
+                <div class="bp-sp2-scroller">
+                  @for (shot of galleryShots(); track shot.url) {
+                    <div class="bp-sp2-shot" [title]="shot.label || s.name">
+                      <img [src]="shot.url" [alt]="shot.label || (s.name + ' project')" loading="lazy" />
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      } @else {
       <div class="flex flex-col gap-4">
         <!-- Cover + overlapping logo. The logo always has a ground (ring + fill) so a
              sparse supplier still reads; the no-cover case falls back to a neutral band. -->
@@ -69,6 +131,7 @@ import { MarkdownPipe } from '../../shared/markdown.pipe';
           }
         </div>
       </div>
+      }
     } @else if (detail.error()) {
       <div class="bp-sp-state text-secondary">
         <lucide-icon name="store" [size]="22" [strokeWidth]="1.5" />
@@ -155,6 +218,80 @@ import { MarkdownPipe } from '../../shared/markdown.pipe';
       padding: 48px 0;
       justify-content: center;
     }
+
+    /* ── Layout 2 brand page (Liam 2026-11-10) ─────────────────────────────── */
+    .bp-sp2 { display: flex; flex-direction: column; gap: 1rem; }
+    .bp-sp2-cover {
+      position: relative;
+      width: 100%;
+      /* Banner strip (Liam 2026-11-10) — a capped height, clamped to the viewport so
+         the cover never takes the whole fold; object-fit:cover crops to the band. */
+      height: clamp(110px, 20vh, 170px);
+      border-radius: var(--radius-lg);
+      background: var(--color-fill);
+    }
+    .bp-sp2-cover__img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-lg); display: block; }
+    .bp-sp2-cover--empty { background: var(--color-fill); }
+    /* Identity row: logo + (name / city). The logo pulls up to overlap the banner. */
+    .bp-sp2-id { display: flex; align-items: center; gap: 0.9rem; padding-left: 4px; }
+    .bp-sp2-logo {
+      flex: none;
+      margin-top: -44px;
+      position: relative;
+      z-index: 1;
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      background: var(--color-surface);
+      border: 4px solid var(--color-surface);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .bp-sp2-logo__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .bp-sp2-logo__mono {
+      font-family: var(--font-display, var(--font-body));
+      font-size: 2rem;
+      font-weight: 600;
+      color: var(--color-text);
+      text-transform: uppercase;
+    }
+    .bp-sp2-name {
+      font-family: var(--font-display, var(--font-body));
+      font-size: var(--text-2xl, 1.5rem);
+      font-weight: 600;
+      line-height: var(--leading-tight, 1.2);
+      color: var(--color-text);
+      margin: 0;
+    }
+    /* Two columns (like the item view): identity left, Past projects + about right. */
+    .bp-sp2-body { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
+    .bp-sp2-info { display: flex; flex-direction: column; }
+    .bp-sp2-side { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+    /* Vertical shuttle — half-size shots, two across, the rest scroll vertically. */
+    .bp-sp2-scroller {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+      max-height: 360px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .bp-sp2-shot {
+      flex: none;
+      width: 100%;
+      aspect-ratio: 3 / 2;
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      background: var(--color-fill);
+    }
+    .bp-sp2-shot img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.25s ease; }
+    .bp-sp2-shot:hover img { transform: scale(1.04); }
+    @media (max-width: 720px) {
+      .bp-sp2-body { grid-template-columns: 1fr; }
+    }
   `,
 })
 export class SupplierProfilePaneComponent {
@@ -162,6 +299,10 @@ export class SupplierProfilePaneComponent {
 
   /** The supplier whose storefront profile to show. */
   readonly supplierId = input.required<string>();
+  /** Quick View layout 2 (wide dialog) — render the richer brand-page variant
+   *  (cinematic cover, large logo, bold name, tiled work gallery) instead of the
+   *  narrow single-column pane. Liam 2026-11-10. */
+  readonly wide = input<boolean>(false);
 
   /** Storefront projection (cached per id in the service). Reloads when the id
    *  changes — opening the Quick View on a different item re-fetches its supplier. */
@@ -185,6 +326,14 @@ export class SupplierProfilePaneComponent {
   /** Gallery image urls for "Past projects" (spaces encoded like the logo). */
   protected readonly gallery = computed(() =>
     (this.detail.value()?.images ?? []).map((g) => g.url.trim().replace(/ /g, '%20')).filter((u) => !!u)
+  );
+
+  /** Past-projects shots WITH their caption (label) — the layout-2 grid shows a
+   *  hover title (the project's caption, else the supplier name). */
+  protected readonly galleryShots = computed(() =>
+    (this.detail.value()?.images ?? [])
+      .map((g) => ({ url: g.url.trim().replace(/ /g, '%20'), label: (g.label ?? '').trim() }))
+      .filter((s) => !!s.url)
   );
 
   /** A safe absolute href for the website link (prefix https:// when the stored

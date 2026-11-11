@@ -537,6 +537,7 @@ router.get('/items', async (req, res, next) => {
               -- v2dev: city lives in the address satellite, surfaced on supplier_directory
               -- via the address_locality definer (city/country only).
               i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
+              o.logo_url AS supplier_logo_url,
               c.name AS category_name,
               (i.org_id = $1) AS owned_by_active_org,
               COUNT(*) OVER() AS total
@@ -572,6 +573,7 @@ router.get('/items', async (req, res, next) => {
       supplierId: row.supplier_id,
       supplierName: row.supplier_name,
       supplierCity: row.supplier_city,
+      supplierLogoUrl: row.supplier_logo_url ?? null,
       categoryName: row.category_name,
       ownedByActiveOrg: !!row.owned_by_active_org,
       approvalStatus: row.approval_status,

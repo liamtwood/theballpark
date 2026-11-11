@@ -45,6 +45,9 @@ export interface CatalogueItem {
   supplierName: string;
   /** Supplier's city — the item card's pin row (pV2-CARDS-01, image 2). */
   supplierCity: string | null;
+  /** Supplier's logo (supplier_directory.logo_url) — the Quick View header badge.
+   *  Optional: only the marketplace list projection carries it. */
+  supplierLogoUrl?: string | null;
   /** The item's category name — one home node at any depth (0015); this is the
    *  card's tag chip. (`subcategory*` are legacy-optional — the axis was dropped;
    *  the server no longer sends them, consumers fall back to categoryName.) */
