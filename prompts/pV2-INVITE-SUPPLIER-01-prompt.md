@@ -87,5 +87,34 @@ Every invite is also supplier acquisition for the marketplace.
   Send works.
 - RLS coverage test extended for `org_invites` + `invited_supplier_contact`.
 
+## Addendum — 2026-11-10: "Add outside supplier" (dialog merges invite + request + send)
+
+**Decision (Liam, 2026-11-10):** collapse the two-step flow (invite → bounce into Add Line → send on banner)
+into ONE dialog. The invite IS supplier acquisition for the marketplace, and the first request rides along.
+
+**Dialog** (`invite-supplier-dialog.component.ts`, reworked — no new server work):
+- Retitled **"Add outside supplier"** / subtitle *"Invite a supplier to join the Ballpark Marketplace and quote
+  for this project."*
+- Fields: **Company name\***, **Email\***, **Category\***, **"What would you like quoted?"** (`bp-store-textarea`,
+  optional). Dropped Contact name + Website from the UI (still sent as `null` — the server body is unchanged).
+- Actions: **Cancel · Save · Send invitation** (both disabled until name + valid email + category).
+  - **Save** → provision the pending marketplace org + banner + request line; hold (nothing "sent"). Lands back on
+    the estimate so they can add more items, send later.
+  - **Send invitation** → same, then the existing `sendSupplierInvite`. **No notifications yet**, so the email leg
+    is a no-op; the dialog carries an honest note: *"Email invitations are pending sender-domain setup."*
+- `InvitedSupplier` emit payload gains `quoteText` + `send`; "Use them" (409 active match) carries the same brief
+  and the pressed Save/Send intent.
+- **Coach tip** (`app-coachmark page="add-outside-supplier" name="intro"`) INSIDE the dialog — the menu item that
+  opens it is transient, so the dialog is where the teach lands (mirrors `custom-line-dialog`'s in-dialog coachmark).
+
+**Request brief → a custom line** (`onInvited` in `project-estimate.component.ts`): the brief becomes a custom line
+(`addCustomItem`, name "Quote request", `cost:null`) tagged to the supplier via `supplierOrgId` — the "add item"
+half of the merge, reusing the built pV2-ADD-LINE-SUPPLIER-01 path (accepts a pending org the agency invited). No
+separate pending-supplier message object exists yet; when notifications/inbox-for-pending land, this can move to a
+true thread seed. Entry menu item renamed **"Invite a new supplier" → "Add outside supplier"**.
+
+**Claim flow (future, when notifications are hooked up):** the pending org is pre-provisioned at invite, so the
+invited user just picks a password to claim the org that already exists — request waiting, no duplicate.
+
 ## Ship report
 `prompts/pV2-INVITE-SUPPLIER-01-shipped.md` per `docs/CLAUDE.md` (API audit checklist for all three routes).

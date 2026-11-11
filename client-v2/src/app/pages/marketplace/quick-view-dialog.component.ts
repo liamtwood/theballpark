@@ -252,6 +252,13 @@ function readStoredLayout(): 1 | 2 {
                   </div>
 
                   <div class="bp-qv2__side">
+                    <!-- No variants → the picker renders nothing, so show the base
+                         price on the right so it's always present (Liam 2026-11-11). -->
+                    <!-- Standing base price shows unless PRICED variants own the price
+                         (free-choice dimensions like a menu picker don't — Liam 2026-11-11). -->
+                    @if (!hasVariants() && it.basePrice !== null) {
+                      <div class="bp-price-large">From {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-2' }}</div>
+                    }
                     <app-item-variant-picker [attributes]="it.attributes ?? null" [basePrice]="it.basePrice"
                                              (selectionChange)="chosenCombo.set($event)" (imageChange)="onVariantImage($event)" />
                     @if (showAdd()) {

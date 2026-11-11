@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, OnDestroy, computed, effect, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -6,11 +6,13 @@ import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { CategoryInfo, CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { ProjectService, MyComponent, ComponentInput } from '../../core/projects/project.service';
 import { StoreItemService } from '../../core/store/store-item.service';
+import { ApiService } from '../../core/api.service';
 import { QuoteLine } from '../../core/projects/project.types';
 import { ItemizedRow, quoteLineToCatalogueItem, revisedFromParts } from './quote-line.util';
 import { ItemPreviewComponent } from '../marketplace/rail/item-preview.component';
 import { ShuttleComponent, ShuttleItem, ShuttlePick } from '../../shared/shuttle/shuttle.component';
 import { RateInputComponent } from './rate-input.component';
+import { estimateSubtotal, estimateLineTotal } from './estimate-total.util';
 
 interface Row {
   id: string | null;
@@ -28,8 +30,6 @@ interface Row {
 }
 let RUID = 0;
 
-/** Common component units (labour + materials) for the unit pick-list. */
-const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 'sheet', 'length', 'm', 'kg', 'litre', 'roll', 'pack', 'box', 'hire', 'job', 'lot'];
 
 /** pV2-BUILDUP-02 — the supplier "Customize" dialog. Builds a line up from child
  *  components, grouped by category. LEFT = the supplier's reusable components.
@@ -68,12 +68,19 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
           </button>
         </div>
         <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-          <span><span class="bp-caption">Upgrades</span> <span class="bp-body-small ml-1 text-secondary tabular-nums">£{{ costTotal() | number: '1.0-0' }}</span></span>
-          <span><span class="bp-caption">Revised</span> <span class="bp-price-large ml-1 tabular-nums">£{{ withMargin() | number: '1.0-0' }}</span></span>
+          @if (itemMode()) {
+            <!-- Margin ignored for now (assumed built into the component costs):
+                 one total, no margin control. -->
+            <span><span class="bp-caption">Total</span> <span class="bp-price-large ml-1 tabular-nums">£{{ withMargin() | number: '1.0-0' }}</span></span>
+          } @else {
+            <span><span class="bp-caption">Upgrades</span> <span class="bp-body-small ml-1 text-secondary tabular-nums">£{{ costTotal() | number: '1.0-0' }}</span></span>
+            <span><span class="bp-caption">Revised</span> <span class="bp-price-large ml-1 tabular-nums">£{{ withMargin() | number: '1.0-0' }}</span></span>
+          }
         </div>
       </div>
-      <div class="grid grid-cols-1 gap-5" [class]="showRightRail() ? 'lg:grid-cols-[1fr_320px]' : ''">
-          <!-- CENTRE: the editable estimate, grouped by category. -->
+      <div class="grid grid-cols-1 gap-5">
+          <!-- The editable estimate, grouped by category — full width. The
+               selected-component editor pops as a dialog (below), not a right rail. -->
           <div class="relative min-w-0">
 
             <!-- Customize demo — the RUNNING steps show one bubble at the top of
@@ -95,6 +102,13 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
             <!-- One card per category (Final-Quote card). The Extras/margin card
                  is hidden for now (cardGroups filters it). -->
             @for (grp of cardGroups(); track grp.categoryId ?? '__extras') {
+              @if (grp.categoryId === feesCategoryId() && subtotalBeforeFees() > 0) {
+                <!-- Subtotal above Fees — project-quote styling (bp-list-title + bp-amount). -->
+                <div class="mb-3 flex items-center justify-between px-3 py-2.5">
+                  <span class="bp-list-title">Subtotal</span>
+                  <span class="bp-amount text-text tabular-nums">£{{ subtotalBeforeFees() | number: '1.0-0' }}</span>
+                </div>
+              }
               <!-- overflow:visible (inline — beats .bp-card's overflow:hidden) so
                    the coachmark anchored to a row isn't clipped by the card. -->
               <div class="mb-3 bp-card" style="overflow: visible">
@@ -109,14 +123,14 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                 @if (isCatOpen(grp.isExtras ? '__extras' : grp.categoryId)) {
                 <div class="border-t border-hairline">
                   @if (grp.isExtras || grp.rows.length || isBaseCat(grp.categoryId)) {
-                    <div class="grid grid-cols-[108px_1fr_78px_104px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline bg-fill px-2.5 py-2 bp-field-label">
-                      <span>Category</span><span>Item</span><span class="text-center">Cost £</span><span class="text-center">Qty</span><span>Unit</span><span class="text-center">Total</span><span class="text-center" title="Include">Inc</span><span></span>
+                    <div class="grid grid-cols-[108px_1fr_78px_104px_104px_84px_52px] items-center gap-1.5 border-b border-hairline bg-fill px-2.5 py-2 bp-field-label">
+                      <span>Category</span><span>Item</span><span class="text-center">Cost £</span><span class="text-center">Qty</span><span>Unit</span><span class="text-center">Total</span><span></span>
                     </div>
                   }
                   @if (isBaseCat(grp.categoryId)) {
                     <!-- The item itself — row-0, a "project component": editable
                          cost/qty/unit + Inc; can't be removed or re-categorised. -->
-                    <div class="relative grid cursor-pointer grid-cols-[108px_1fr_78px_104px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline px-2.5 py-1" [class.bg-fill]="parentSelected()" (click)="selectParent()">
+                    <div class="relative grid cursor-pointer grid-cols-[108px_1fr_78px_104px_104px_84px_52px] items-center gap-1.5 border-b border-hairline px-2.5 py-1" [class.bg-fill]="parentSelected()" (click)="selectParent()">
                       <!-- Opt-in coachmark, anchored to (and pointing at) the Base row. -->
                       @if (coachPhase() === 'ask') {
                         <div class="pointer-events-none absolute bottom-full left-1/2 z-40 -translate-x-1/2 pb-1.5" (click)="$event.stopPropagation()">
@@ -133,21 +147,24 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                       <span class="px-2 bp-body-small font-medium text-text truncate">{{ parentName() || 'Original item' }}</span>
                       <input type="number" class="bp-input-field text-center tabular-nums" [ngModel]="baseRate()" (ngModelChange)="baseRate.set($event)" (click)="$event.stopPropagation()" />
                       <span class="justify-self-center" (click)="$event.stopPropagation()">
-                        <app-rate-input [value]="baseQty() || 1" [min]="1" label="base quantity" (rateCommit)="baseQty.set($event)" />
+                        <app-rate-input [value]="baseQty() || 1" [min]="0" [stepBy]="0.5" label="base quantity" (rateCommit)="baseQty.set($event)" />
                       </span>
                       <select class="bp-input-field bp-select" [ngModel]="baseUnitDraft()" (ngModelChange)="baseUnitDraft.set($event || null)" (click)="$event.stopPropagation()">
                         <option [ngValue]="null">—</option>
-                        @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
+                        @for (g of unitGroups(); track g.label) {
+                          <optgroup [label]="g.label">
+                            @for (u of g.items; track u.code) { <option [ngValue]="u.code">{{ u.label }}</option> }
+                          </optgroup>
+                        }
                       </select>
-                      <span class="text-center tabular-nums bp-body-small" [class.text-muted]="!includeBase()" [class.text-text]="includeBase()">£{{ baseCost() | number: '1.0-0' }}</span>
-                      <input type="checkbox" class="justify-self-center" [checked]="includeBase()" (change)="includeBase.set($any($event.target).checked)" (click)="$event.stopPropagation()" title="Include the item's base price (off = rebuild from parts)" />
+                      <span class="text-center tabular-nums bp-body-small text-text">£{{ baseCost() | number: '1.0-0' }}</span>
                       <span></span>
                     </div>
                   }
                   @if (grp.isExtras) {
                     <!-- Margin as a grid row (same format as a component row):
                          Extra · Margin · % (in the Cost column) · Total. -->
-                    <div class="grid grid-cols-[108px_1fr_78px_104px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline px-2.5 py-1">
+                    <div class="grid grid-cols-[108px_1fr_78px_104px_104px_84px_52px] items-center gap-1.5 border-b border-hairline px-2.5 py-1">
                       <span class="px-2 bp-body-small text-secondary">Extra</span>
                       <span class="px-2 bp-body-small font-medium text-text">Margin</span>
                       <input type="number" min="0" max="100" step="1" class="bp-input-field text-center tabular-nums" [ngModel]="margin()" (ngModelChange)="margin.set($event)" />
@@ -155,27 +172,34 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                       <span class="text-center bp-body-small text-muted">%</span>
                       <span class="text-center tabular-nums bp-body-small text-text">£{{ marginAmount() | number: '1.0-0' }}</span>
                       <span></span>
-                      <span></span>
                     </div>
                   }
                   @for (r of grp.rows; track r._k) {
-                    <div class="grid cursor-pointer grid-cols-[108px_1fr_78px_104px_68px_84px_30px_24px] items-center gap-1.5 border-b border-hairline px-2.5 py-1" [class.bg-fill]="r._k === selectedRowK()" (click)="selectRow(r)">
+                    <div class="grid grid-cols-[108px_1fr_78px_104px_104px_84px_52px] items-center gap-1.5 border-b border-hairline px-2.5 py-1" [class.bg-fill]="r._k === selectedRowK()">
                       <select class="bp-input-field bp-select" [ngModel]="r.categoryId" (ngModelChange)="setCategory(r, $event)">
                         <option [ngValue]="null">—</option>
                         @for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
                       </select>
-                      <input class="bp-input-field" [class.bp-demo-hl]="demoHl(r, 'name')" placeholder="Component" [ngModel]="r.name" (ngModelChange)="r.name = $event" autocomplete="off" />
-                      <input type="number" class="bp-input-field text-center tabular-nums" [class.bp-demo-hl]="demoHl(r, 'cost')" placeholder="—" [ngModel]="r.cost" (ngModelChange)="r.cost = $event" />
+                      <input class="bp-input-field" [class.bp-demo-hl]="demoHl(r, 'name')" placeholder="Component" [ngModel]="r.name" (ngModelChange)="r.name = $event; rows.set([...rows()])" autocomplete="off" />
+                      <input type="number" class="bp-input-field text-center tabular-nums" [class.bp-demo-hl]="demoHl(r, 'cost')" [placeholder]="r.unit === '%' ? '%' : '—'" [ngModel]="r.cost" (ngModelChange)="r.cost = $event; rows.set([...rows()])" />
                       <span class="justify-self-center" [class.bp-demo-hl]="demoHl(r, 'qty')" (click)="$event.stopPropagation()">
-                        <app-rate-input [value]="r.qty || 1" [min]="1" label="quantity" (rateCommit)="r.qty = $event; rows.set([...rows()])" />
+                        @if (r.unit === '%') { <span class="bp-body-small text-muted">—</span> }
+                        @else { <app-rate-input [value]="r.qty || 1" [min]="0" [stepBy]="0.5" label="quantity" (rateCommit)="r.qty = $event; rows.set([...rows()])" /> }
                       </span>
-                      <select class="bp-input-field bp-select" [class.bp-demo-hl]="demoHl(r, 'unit')" [ngModel]="r.unit" (ngModelChange)="r.unit = $event || null">
+                      <select class="bp-input-field bp-select" [class.bp-demo-hl]="demoHl(r, 'unit')" [ngModel]="r.unit" (ngModelChange)="r.unit = ($event || null); rows.set([...rows()])">
                         <option [ngValue]="null">—</option>
-                        @for (u of units; track u) { <option [ngValue]="u">{{ u }}</option> }
+                        <option [ngValue]="'%'">% of subtotal</option>
+                        @for (g of unitGroups(); track g.label) {
+                          <optgroup [label]="g.label">
+                            @for (u of g.items; track u.code) { <option [ngValue]="u.code">{{ u.label }}</option> }
+                          </optgroup>
+                        }
                       </select>
                       <span class="text-center tabular-nums bp-body-small" [class.text-muted]="!r.included || !r.name.trim()" [class.text-text]="r.included && r.name.trim()">{{ r.name.trim() && r.cost != null ? ('£' + (lineTotal(r) | number: '1.0-0')) : '—' }}</span>
-                      <input type="checkbox" class="justify-self-center" [class.bp-demo-hl]="demoHl(r, 'inc')" [ngModel]="r.included" (ngModelChange)="r.included = $event" />
-                      <button type="button" class="rounded-md p-1 text-muted hover:text-danger" [class.bp-demo-hl]="demoHl(r, 'remove')" aria-label="Remove" (click)="removeRow(r)"><lucide-icon name="trash-2" [size]="14" /></button>
+                      <span class="flex items-center justify-end gap-0.5">
+                        <button type="button" class="rounded-md p-1 text-muted hover:text-text" aria-label="Edit details" title="Edit details" (click)="selectRow(r)"><lucide-icon name="pencil" [size]="14" /></button>
+                        <button type="button" class="rounded-md p-1 text-muted hover:text-danger" [class.bp-demo-hl]="demoHl(r, 'remove')" aria-label="Remove" (click)="removeRow(r)"><lucide-icon name="trash-2" [size]="14" /></button>
+                      </span>
                     </div>
                   }
                   <!-- Per-card footer: Explore (category-scoped) + Add. Hidden in
@@ -201,7 +225,11 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                      no Save/Send (it never authors the supplier's buildup). -->
                 <button type="button" class="bp-btn-outline flex-1" (click)="cancel.emit()">Close</button>
               } @else if (itemMode()) {
-                <button type="button" class="bp-btn-grad flex-1" [disabled]="saving() || !loaded()" (click)="save(false)">{{ saving() ? 'Saving…' : 'Save options' }}</button>
+                <!-- No Save button — the estimate autosaves on a debounce. -->
+                <div class="flex-1 flex items-center gap-1.5 text-sm opacity-70">
+                  <lucide-icon [name]="saving() ? 'loader' : 'circle-check'" [size]="14" [class.animate-spin]="saving()" />
+                  {{ saving() ? 'Saving…' : 'All changes saved' }}
+                </div>
               } @else {
                 <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="cancel.emit()">Cancel</button>
                 <button type="button" class="bp-btn-outline flex-1" [class.bp-demo-hl]="demoField() === 'save'" [disabled]="saving() || !loaded()" (click)="save(false)">{{ saving() ? 'Saving…' : 'Save draft' }}</button>
@@ -216,7 +244,9 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
                card (editable in place when the item header is selected). Absent
                entirely when there's nothing to show — the estimate goes full-width. -->
           @if (showRightRail()) {
-          <div class="min-w-0">
+          <!-- Selected-component editor — a centred dialog (was the right rail). -->
+          <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" (click)="selectedRowK.set(null)">
+          <div class="w-full max-w-md" (click)="$event.stopPropagation()">
             @if (selectedRow(); as sr) {
               <div class="bp-card p-4">
                 <div class="mb-3 flex items-start justify-between gap-2">
@@ -286,6 +316,7 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
               }
             }
           </div>
+          </div>
           }
         </div>
     </div>
@@ -341,11 +372,25 @@ const UNITS = ['day', 'hour', 'week', 'night', 'head', 'cover', 'each', 'unit', 
     }
   `,
 })
-export class CustomizeDialogComponent implements OnInit {
+export class CustomizeDialogComponent implements OnInit, OnDestroy {
   private readonly catalogue = inject(CatalogueService);
   private readonly projects = inject(ProjectService);
   private readonly store = inject(StoreItemService);
-  protected readonly units = UNITS;
+  private readonly api = inject(ApiService);
+  // Build-up component units come from the SAME item codelists (Liam 2026-11-11):
+  // the simple item units (each / per guest / platter) plus the TIME granularities
+  // (time_unit) and SIZES (size) — the two unit-driven axes items expose. The
+  // abstract 'time'/'size' item_unit entries are dropped: a component picks the
+  // concrete granularity/size (e.g. 'day', 'large').
+  private readonly unitsRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/item_unit/values');
+  private readonly timeUnitsRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/time_unit/values');
+  private readonly sizesRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/size/values');
+  // Grouped for the <optgroup> hierarchy: Unit · Time · Size (Liam 2026-11-11).
+  protected readonly unitGroups = computed(() => [
+    { label: 'Unit', items: (this.unitsRes.value() ?? []).filter((u) => u.code !== 'time' && u.code !== 'size') },
+    { label: 'Time', items: this.timeUnitsRes.value() ?? [] },
+    { label: 'Size', items: this.sizesRes.value() ?? [] },
+  ].filter((g) => g.items.length));
 
   // Project mode (default): customize a project line. Item mode: build up a
   // catalogue item — pass [itemId] instead of projectId/lineId.
@@ -452,6 +497,44 @@ export class CustomizeDialogComponent implements OnInit {
    *  Revised price = cost + this margin, derived live (no Apply step). */
   protected readonly margin = signal<number | null>(0);
 
+  // ── Autosave (item mode only) ──────────────────────────────────────────────
+  // The item-editor estimate has no Save button: edits persist on a debounce
+  // (Liam 2026-11-11). Project mode keeps its explicit Save-draft / Send-cost
+  // flow — a supplier proposal is a deliberate act, not a keystroke.
+  private _autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Content signature of the last-persisted state (null until first load
+   *  settles). Excludes row ids, so the post-save id-stamp can't re-trigger. */
+  private _lastSavedKey: string | null = null;
+  /** Fingerprint the editable content (NOT ids) so we only save on real edits. */
+  private autosaveKey(): string {
+    const body = this.rows()
+      .filter((r) => r.name.trim())
+      .map((r) => [r.name.trim(), r.cost, r.qty, r.unit, r.categoryId, r.included, r.description ?? '',
+        r.image ? r.image.length + ':' + r.image.slice(0, 48) : '']);
+    return JSON.stringify([body, this.parentName().trim(), this.parentDesc().trim(), this.parentServices().trim()]);
+  }
+  private readonly _autosave = effect(() => {
+    const key = this.autosaveKey();   // tracks rows + parent name/desc/services
+    const busy = this.saving();        // re-evaluate once an in-flight save ends
+    if (!this.itemMode() || !this.loaded()) return;
+    if (this._lastSavedKey === null) { this._lastSavedKey = key; return; } // settle initial load
+    if (busy || key === this._lastSavedKey) return;
+    if (this._autosaveTimer) clearTimeout(this._autosaveTimer);
+    this._autosaveTimer = setTimeout(() => this.flushAutosave(), 700);
+  });
+  private flushAutosave(): void {
+    this._autosaveTimer = null;
+    if (!this.itemMode() || !this.loaded() || this.saving()) return;
+    if (this.autosaveKey() === this._lastSavedKey) return;
+    this.save(false);
+  }
+  ngOnDestroy(): void {
+    if (this._autosaveTimer) { clearTimeout(this._autosaveTimer); this._autosaveTimer = null; }
+    // Persist a pending edit on close — buildComponents() captures rows
+    // synchronously, so the request completes even as this dialog tears down.
+    if (this.itemMode() && this.loaded() && !this.saving() && this.autosaveKey() !== this._lastSavedKey) this.save(false);
+  }
+
   /** Left-rail category filter (null = all). */
   protected readonly catFilter = signal<string | null>(null);
   protected readonly filteredComponents = computed(() => {
@@ -481,13 +564,18 @@ export class CustomizeDialogComponent implements OnInit {
       let g = idx.get(r.categoryId);
       if (!g) { g = { categoryId: r.categoryId, rows: [], total: 0 }; idx.set(r.categoryId, g); groups.push(g); }
       g.rows.push(r);
-      if (r.name.trim() && r.included) g.total += (Number(r.cost) || 0) * Math.max(1, Number(r.qty) || 1);
+      if (r.name.trim() && r.included) g.total += this.lineTotal(r);
     }
     return groups;
   });
   protected filledCount(): number { return this.rows().filter((r) => r.name.trim() && r.included).length; }
+  /** The £ base percentage lines compute against — the sum of the fixed-£
+   *  component lines only (% lines and the item base excluded). Option 1. */
+  protected readonly componentsSubtotal = computed(() =>
+    estimateSubtotal(this.rows().filter((r) => r.name.trim()))
+  );
   protected readonly costTotal = computed(() =>
-    this.rows().reduce((s, r) => s + (r.name.trim() && r.included ? (Number(r.cost) || 0) * Math.max(1, Number(r.qty) || 1) : 0), 0)
+    this.rows().reduce((s, r) => s + (r.name.trim() && r.included ? this.lineTotal(r) : 0), 0)
   );
   /** Revised (client) price = rolled-up cost + the line margin. Derived live. */
   /** Include the item's own base price in the revised total (default on).
@@ -550,7 +638,11 @@ export class CustomizeDialogComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    void this.catalogue.categories().then((cs) => this.categories.set(cs)).catch(() => {});
+    // Component categories = the children of the top-level "Component" category
+    // (Liam 2026-11-11): Provisions / Materials / Labor / Insurance, etc. — a
+    // dedicated cost-group taxonomy, admin-editable in Settings ▸ Categories,
+    // kept out of the buyer-facing catalogue. Falls back to empty if absent.
+    void this.catalogue.componentCategories().then((cs) => this.categories.set(cs)).catch(() => {});
     this.projects.listMyComponents().subscribe({ next: (cs) => this.myComponents.set(cs), error: () => {} });
     const load$ = this.itemMode()
       ? this.store.getComponents(this.itemId()!)
@@ -561,7 +653,9 @@ export class CustomizeDialogComponent implements OnInit {
         const rows = res.components.map((c) => this.rowFrom(c));
         this.rows.set(rows.length ? rows : [this.blank()]);
         // Line margin: the saved value, else the supplier org default, else 20%.
-        this.margin.set(res.marginPct ?? res.defaultMarginPct ?? 20);
+        // Margin is ignored in item mode for now (assumed built into the
+        // component costs) — force 0, no control. Project mode keeps its seed.
+        this.margin.set(this.itemMode() ? 0 : (res.marginPct ?? res.defaultMarginPct ?? 20));
         // The parent item's editable name + description + services.
         this.parentName.set(res.parentName || this.itemName());
         this.parentDesc.set(res.parentDescription ?? '');
@@ -589,7 +683,9 @@ export class CustomizeDialogComponent implements OnInit {
       description: c.description ?? null, image: c.image_url ?? null,
     });
   }
-  protected lineTotal(r: Row): number { return (Number(r.cost) || 0) * Math.max(1, Number(r.qty) || 1); }
+  /** A row's £ total. A % row (unit='%') takes its cost as a percentage of the
+   *  fixed-£ components subtotal (option 1); otherwise cost × qty. */
+  protected lineTotal(r: Row): number { return estimateLineTotal(r, this.componentsSubtotal()); }
   private blank(): Row {
     return this.mk({ id: null, name: '', cost: null, qty: 1, unit: null, categoryId: this.lastCategory(), included: true, description: null, image: null });
   }
@@ -625,6 +721,18 @@ export class CustomizeDialogComponent implements OnInit {
   /** The cards actually rendered — Extras (margin editor + uncategorised) is
    *  HIDDEN for now (Liam 2026-08-31); margin still applies at its default. */
   protected readonly cardGroups = computed(() => this.displayGroups().filter((g) => !g.isExtras));
+  /** The "Fees" cost-group (the overhead card). A Subtotal is drawn above it so
+   *  fees read as applied on top of the component subtotal (project-quote style). */
+  protected readonly feesCategoryId = computed(() =>
+    this.categories().find((c) => c.name.trim().toLowerCase() === 'fees')?.id ?? null
+  );
+  private readonly feesTotal = computed(() => {
+    const id = this.feesCategoryId();
+    if (id == null) return 0;
+    return this.rows().reduce((s, r) => s + (r.name.trim() && r.categoryId === id ? this.lineTotal(r) : 0), 0);
+  });
+  /** Everything above the Fees card = total − fees. */
+  protected readonly subtotalBeforeFees = computed(() => this.withMargin() - this.feesTotal());
   /** `{key}` substitutions for the Customize teaching coachmark — the specific
    *  item's numbers, so the bubble explains the base with real values. */
   protected readonly coachVars = computed(() => ({
@@ -792,7 +900,7 @@ export class CustomizeDialogComponent implements OnInit {
         name: r.name.trim(),
         cost: r.cost == null ? null : Number(r.cost),
         unit: r.unit || null,
-        quantity: Math.max(1, Number(r.qty) || 1),
+        quantity: (Number(r.qty) || 1),
         kind: 'estimate',
         included: r.included,
         description: r.description,
@@ -835,6 +943,7 @@ export class CustomizeDialogComponent implements OnInit {
    *  the header's revised refreshes (no proposal message). Stays open. */
   protected save(close: boolean): void {
     if (this.saving() || !this.loaded()) return; // never reconcile before load
+    const savedKey = this.autosaveKey(); // snapshot what we're about to persist
     const components = this.buildComponents();
     this.saving.set(true);
     // Item mode persists to the catalogue item (no price/margin — item-level);
@@ -845,6 +954,7 @@ export class CustomizeDialogComponent implements OnInit {
     save$.subscribe({
       next: (cs) => {
         this.saving.set(false);
+        this._lastSavedKey = savedKey; // mark this content persisted (autosave)
         if (close) { this.saved.emit(); return; }
         // Save (stay open): keep the on-screen ORDER — don't re-sort from the
         // server's created_at (that jumps new rows to the bottom). Just stamp

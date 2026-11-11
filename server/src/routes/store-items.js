@@ -73,6 +73,7 @@ const ItemComponentsSchema = z.object({
     categoryId: z.string().uuid().nullish(),
     name: z.string().trim().min(1),
     cost: z.number().nonnegative().nullish(),
+    quantity: z.number().nonnegative().nullish(),
     unit: z.string().nullish(),
     kind: z.string().max(20).nullish(),
     description: z.string().nullish(),
@@ -95,15 +96,17 @@ router.post('/:id/components', async (req, res, next) => {
   try {
     const parsed = ItemComponentsSchema.safeParse(req.body);
     if (!parsed.success) {
+      console.warn('[store.components] 400 id=%s %s', req.params.id, JSON.stringify(z.flattenError(parsed.error).fieldErrors));
       return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
     }
     const rows = await ItemService.saveComponents(
       req.user.org_id, req.params.id, parsed.data.components,
       parsed.data.parentName, parsed.data.parentDescription, parsed.data.parentServices
     );
-    if (rows === null) return res.status(404).json({ error: 'Not found' });
+    if (rows === null) { console.warn('[store.components] 404 id=%s', req.params.id); return res.status(404).json({ error: 'Not found' }); }
+    console.log('[store.components] OK id=%s saved=%s', req.params.id, rows.length);
     res.status(201).json(rows);
-  } catch (err) { next(err); }
+  } catch (err) { console.error('[store.components] ERR id=%s %s', req.params.id, err && (err.stack || err.message || err)); next(err); }
 });
 
 router.get('/:id', async (req, res, next) => {

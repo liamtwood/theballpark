@@ -26,6 +26,9 @@ import { DrawerComponent } from '../../shared/drawer/drawer.component';
 import { ItemApprovalPanelComponent } from './item-approval-panel.component';
 import { ItemEditActionsComponent } from './item-edit-actions.component';
 import { ItemVariantsEditorComponent } from './item-variants-editor.component';
+import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
+import { estimateTotal } from '../projects/estimate-total.util';
+import { DecimalPipe } from '@angular/common';
 import { VariantMatrix, normalizeVariants } from '../../shared/catalogue/variants.util';
 
 interface ItemForm {
@@ -63,7 +66,7 @@ const WHATS_HOT = "What's Hot";
     FormsModule, LucideAngularModule, ToastModule, DialogModule, PageHeroComponent, EditFieldComponent,
     ImageGalleryComponent, ImagePickerComponent, DrawerComponent, ItemApprovalPanelComponent,
     ItemEditActionsComponent, ItemAttributeCardsComponent, SaveStatePillComponent,
-    ItemVariantsEditorComponent,
+    ItemVariantsEditorComponent, CustomizeDialogComponent, DecimalPipe,
   ],
   providers: [MessageService],
   template: `
@@ -105,9 +108,32 @@ const WHATS_HOT = "What's Hot";
                   <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="form().description" (ngModelChange)="patch({ description: $event })" [readonly]="!editing()" placeholder="Describe the product…"></textarea>
                 </div>
                 <div class="bp-qv-spec">
-                  <span class="bp-qv-spec__label"><lucide-icon name="wallet" [size]="13" /> Cost</span>
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="bp-qv-spec__label"><lucide-icon name="wallet" [size]="13" /> Cost</span>
+                    @if (isEdit) {
+                      <div class="flex items-center gap-2">
+                        @if (estimateTotal() !== null) {
+                          <span class="bp-body-small tabular-nums text-secondary">Estimate £{{ estimateTotal() | number: '1.0-0' }}</span>
+                        }
+                        <button type="button"
+                                class="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-input)] text-muted transition-colors hover:bg-fill hover:text-[var(--theme-accent)]"
+                                title="Build up the cost from components" aria-label="Open cost build-up" (click)="customizeOpen.set(true)">
+                          <lucide-icon name="layers" [size]="16" />
+                        </button>
+                      </div>
+                    }
+                  </div>
                   <div class="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <app-edit-field [label]="'Ballpark Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
+                    <div class="flex items-end gap-1">
+                      <app-edit-field class="flex-1" [label]="'Ballpark Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
+                      @if (estimateTotal() !== null && editing()) {
+                        <button type="button"
+                                class="mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-input)] text-muted transition-colors hover:bg-fill hover:text-[var(--theme-accent)]"
+                                title="Use the estimate as the Ballpark Cost" aria-label="Use the estimate as the Ballpark Cost" (click)="useEstimate()">
+                          <lucide-icon name="layers-plus" [size]="16" />
+                        </button>
+                      }
+                    </div>
                     <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="editing()" [value]="form().unit" (valueChange)="patch({ unit: $event })" />
                     @if (form().unit === 'platter') {
                       <!-- v0.2.0 unit-driven: platter reveals the serves field (guests per unit). -->
@@ -451,6 +477,33 @@ const WHATS_HOT = "What's Hot";
       </ng-template>
     </p-dialog>
 
+    <!-- pV2-BUILDUP-03 — cost build-up / estimate (item mode) as a full-screen
+         overlay; the panel runs off itemId and provides its own close (cancel). -->
+    @if (customizeOpen() && itemId) {
+      <div class="fixed inset-0 z-50 flex flex-col overflow-hidden bg-surface">
+        <div class="relative shrink-0">
+          <app-page-hero align="block" [title]="'Estimate for ' + (form().name || 'this item')" subtitle="Cost build-up" />
+          <button type="button" (click)="customizeOpen.set(false)" aria-label="Close estimate"
+                  class="absolute right-6 top-6 inline-flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-fill hover:text-text">
+            <lucide-icon name="x" [size]="20" />
+          </button>
+        </div>
+        <div class="min-h-0 flex-1 overflow-y-auto">
+          <div class="bp-page-body--workspace pb-12">
+          <!-- Estimate = the component build-up ONLY. The item's base price is
+               deliberately NOT fed in (that caused an entered Ballpark Cost to
+               inflate the estimate); base/add-ons come later. The user copies the
+               estimate into Ballpark Cost via the Use button (one-shot, not linked). -->
+          <app-customize-dialog
+            [itemId]="itemId"
+            [itemName]="form().name"
+            (cancel)="closeEstimate()"
+            (saved)="closeEstimate()" />
+          </div>
+        </div>
+      </div>
+    }
+
     <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
 })
@@ -466,6 +519,32 @@ export class ItemEditComponent {
 
   protected readonly itemId = this.route.snapshot.paramMap.get('id');
   protected readonly isEdit = !!this.itemId;
+
+  // pV2-BUILDUP-03 — the "Cost build-up / estimate" composition editor. The panel
+  // (app-customize-dialog) runs in ITEM mode off itemId (loads/saves the item's own
+  // components); re-exposed via an icon on the Cost row (Liam 2026-11-11).
+  protected readonly customizeOpen = signal(false);
+  /** The item's own cost build-up, loaded so the estimate total shows inline next
+   *  to the build-up icon. Reloads when the panel closes (it autosaves). */
+  private readonly estimateReload = signal(0);
+  private readonly componentsRes = resource({
+    params: () => (this.isEdit && this.itemId ? { id: this.itemId, r: this.estimateReload() } : undefined),
+    loader: ({ params }) => firstValueFrom(this.store.getComponents(params.id)),
+  });
+  /** The %-aware roll-up of the item's components (null when there's no build-up). */
+  protected readonly estimateTotal = computed(() => {
+    const comps = this.componentsRes.value()?.components ?? [];
+    if (!comps.length) return null;
+    return estimateTotal(comps.map((c) => ({ cost: c.base_price, qty: c.quantity, unit: c.unit })));
+  });
+  /** Close the build-up panel and refresh the inline estimate total. */
+  protected closeEstimate(): void { this.customizeOpen.set(false); this.estimateReload.update((v) => v + 1); }
+  /** Copy the current estimate into Ballpark Cost (one-shot — NOT a live link).
+   *  patch() debounce-saves it like any field edit. */
+  protected useEstimate(): void {
+    const t = this.estimateTotal();
+    if (t != null) this.patch({ base_price: String(Math.round(t * 100) / 100) });
+  }
 
   /** pV2-ADMIN-ORG-ITEM-CREATE-01 — admin editing ANOTHER org's item, scoped by
    *  the /admin/orgs/:orgId/items route param. When set, load/save go through the

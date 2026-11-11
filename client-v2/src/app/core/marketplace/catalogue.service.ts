@@ -93,6 +93,13 @@ export class CatalogueService {
     return this.cached(url, () => this.api.get<CategoryInfo[]>(url));
   }
 
+  /** pV2-BUILDUP-03 — cost-group categories (the active children of the top-level
+   *  "Component" category) for the build-up/estimate panel. No item-count filter,
+   *  so empty cost-groups still show. */
+  componentCategories(): Promise<CategoryInfo[]> {
+    return this.cached('/api/marketplace/component-categories', () => this.api.get<CategoryInfo[]>('/api/marketplace/component-categories'));
+  }
+
   /** One page of the suppliers browse (pV2-06d — same envelope). */
   suppliers(query: { cat?: string | null; q?: string | null; offset?: number }): Promise<Paginated<CatalogueSupplier>> {
     const params = new URLSearchParams();

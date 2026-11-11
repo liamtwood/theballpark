@@ -1,69 +1,59 @@
-# pV2-BUILDUP-03 — item options (Final Quote picker) + composition UI shelved
+# pV2-BUILDUP-03 — Item cost build-up / estimate — SHIPPED
 
-**Shipped:** 2026-08-27, chip `[Dev v2] v2.66`
-**Commit:** `<pending>`
+**Date:** 2026-11-11 · **Branch:** `rebuild/org-slice` → preview
 
-Item-level **options** (an item's child items the agent can pick into the Final
-Quote), built on the existing recursive line-item model — then, on customer
-feedback ("too complicated"), the **entire supplier-facing composition UI
-(Customize + Options) was removed from the UI while keeping all the code** for a
-later re-enable. Also fixes a component-library leak into the marketplace and
-reverts the inbox brief card to the project item.
+The supplier item editor gains a **cost build-up / estimate**: compose an item's cost
+from component lines (grouped by cost-group category), roll it up, and pull the result
+into the Ballpark Cost. Revived from the shelved composition UI, rebuilt for item mode.
 
-## What landed
+## What shipped
 
-### Item options — pick an item's options into the Final Quote
-- A supplier item can carry **options** = child `items` (`parent_item_id` set).
-  New public read `GET /api/marketplace/items/:id/options` (agent isn't the
-  owner, so the owner-scoped store endpoint returned empty — the bug that
-  motivated the public route).
-- New **`app-options-picker`**: a simple checklist (checkbox · name · cost · qty)
-  off that endpoint. Picking adds each option as a real quote line via
-  `addCustomItem`, linked to its parent line.
-- New additive column **`project_items.option_of_line_id`** (all 3 schemas,
-  recorded in `migrate-schemas.js`): the parent quote line a picked option
-  belongs to. Distinct from `parent_id` (the private cost-buildup children,
-  excluded from totals) — an option is a **visible, counted, on-PDF** line.
-- **Final Quote nests options under their parent line** (indented sub-rows) and
-  the right-rail **item card lists them** (`estimate-preview-rail` gained
-  `options`/`cur` inputs). Options keep their **own unit** (Wine £15/head, Fridge
-  £120/week) — never folded into the parent's rate. Category totals + banner roll
-  the options in (they're `parent_id IS NULL`, so already in the cascade).
+- **Estimate panel** (shared `customize-dialog` in item mode) opened from a `layers`
+  icon on the Cost row. Full-screen, content centred in the `--workspace-max` column.
+- **Autosave** — no Save button; edits persist on a ~700 ms debounce and flush on close.
+  Item-mode margin is forced 0 and shown as a single built-in **Total** (no margin UI —
+  margin is assumed built into the component costs).
+- **Component lines**: fractional qty; a hierarchical **Unit** picklist (item_unit +
+  time_unit + size as optgroups); category from the **Component** cost-group tree
+  (Provisions / Materials / Labor / Transport / Fees …); per-line **image + description**
+  edited in a dialog (opened by a pencil icon beside the trash — the old right-rail is gone).
+- **`%` lines** — a line's Unit can be **"% of subtotal"**: its cost is read as a
+  percentage of the fixed-£ components subtotal (option 1). Qty hidden for % lines.
+- **Subtotal above Fees** — project-quote styling (`bp-list-title` + `bp-amount`),
+  shown above the Fees cost-group (`total − fees`).
+- **Inline estimate on the item** — the Cost row shows **"Estimate £X"**; a `layers-plus`
+  icon beside the Ballpark Cost field copies the estimate into the cost (one-shot, NOT a
+  live link). The item's base price is deliberately **not** fed into the estimate
+  (that inflated it); add-ons come later.
+- **Quick View** — standing base price shows unless **priced** variants own the price
+  (free-choice dimensions like a menu picker no longer suppress it). The variant picker
+  **auto-selects the first value** of each dimension so Quick View opens pre-configured.
+- Shared `estimate-total.util.ts` is the ONE definition of the %-aware roll-up, used by
+  both the dialog and the item editor (no duplicated math).
+- **"Platter" → "Package (serves N)"** unit label (code stays `platter`).
 
-### Components/options never appear in the marketplace
-- `kind='component'` items (the private cost-buildup library) AND any
-  `parent_item_id IS NOT NULL` child (options/components) are excluded from:
-  the marketplace browse (`/api/marketplace/items`), the single public item
-  (`/api/marketplace/items/:id`), and the store list + category counts
-  (`item.service.getAll` / `countsByCategory`).
-- Data fix: **Carpenter, Metalworker, Seamster** (Ballpark's Supplier) were
-  saved as draft items (`kind=NULL`) but are labour components like Woodworker —
-  retagged `kind='component'` (migration
-  `tag_ballpark_supplier_trade_items_as_components`) so they drop out of the shop.
+## Key fixes (root causes)
 
-### Composition UI removed (client: "too complicated") — code kept
-- **Removed entry points** (each a commented stub for one-line re-enable):
-  - Inbox **Customize** button (header toggle + per-item action) —
-    `inbox-project.component.ts`.
-  - Final Quote **Options** button (the `list-checks` step icon) —
-    `estimate-item-row.component.ts`.
-  - Library item **Options & build-up** section — `item-edit.component.ts`.
-- **Kept on disk, dormant:** `customize-dialog.component.ts`,
-  `options-picker.component.ts`, all endpoints, the nesting/display code. The
-  dialog mounts stay in dead template branches (no button to trigger them), so
-  imports still resolve and nothing renders.
-- **Explore More** on the Final Quote is untouched (kept).
+- **Save only persisted the first batch** — the UPDATE path wrote `kind` (`'estimate'`)
+  into `items.type`, which only accepts `variant|addon|component` → constraint violation
+  rolled back every re-save. Now both INSERT and UPDATE write `type='component'`.
+- **First save 23505** — `items_org_name_uidx` spanned the whole table; a component +
+  its library clone collide. Scoped it to top-level catalogue items
+  (`parent_item_id IS NULL AND type <> 'component'`). (migration 0037)
 
-### Inbox brief card → project item (revert)
-- The brief attachment + collapsed label now render the **project item**
-  (`asPreview` / `line.name`), not the library item (`asRequested` / `libName`).
-  The library-vs-project split was part of the shelved negotiation flow.
+## Migrations (ride the promote via `run.js`)
 
-## Notes / follow-ups
-- With the supplier UI gone, new item options must be seeded via DB (as the
-  current Dinner/Airstream options were).
-- A couple of data-gated bits (inbox "Customizations £X" total, nested option
-  sub-rows) are dormant — nothing can create composition data via the UI now.
-- `migrate-schemas.js` still carries the pre-existing broken
-  `uq_project_items_*` reconciliation to fix before the next preview promote
-  (unchanged by this ship).
+- `0036_item_component_quantity.sql` — `items.quantity` (component qty persistence).
+- `0037_item_name_uidx_scope.sql` — scope the per-supplier name dedupe index.
+- `0038_item_unit_package_label.sql` — relabel `platter` → "Package (serves N)".
+
+## Also in this ship
+
+- **pV2-INVITE-SUPPLIER-01** — "Add outside supplier" dialog (merge invite + first
+  request + Save/Send) and the estimate Add-line menu wording. Built earlier; compiles.
+
+## QC
+
+Liam QC'd on localhost :4202 (dev2) — build-up, save, autosave, %, subtotal, inline
+estimate + copy, Quick View price + auto-select, menus-as-variants (markdown renders).
+Signed off ("qc complete, looks great").

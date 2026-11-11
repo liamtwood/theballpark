@@ -130,6 +130,26 @@ router.get('/categories', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// pV2-BUILDUP-03 — cost-group categories for the build-up/estimate panel: the
+// ACTIVE children of the top-level "Component" category (by name), with NO
+// item-count filter (components are child items, so these always count 0 and the
+// browse rail would hide them). Any active member. CategoryInfo shape.
+router.get('/component-categories', async (_req, res, next) => {
+  try {
+    const r = await pool.query(
+      `SELECT ch.id, ch.name, ch.tagline, ch.icon_name, ch.status, ch.sort_order
+         FROM categories parent
+         JOIN categories ch ON ch.parent_id = parent.id AND ch.deleted_at IS NULL AND ch.status = 'active'
+        WHERE parent.parent_id IS NULL AND parent.deleted_at IS NULL AND lower(parent.name) = 'component'
+        ORDER BY ch.sort_order NULLS LAST, ch.name`
+    );
+    res.json(r.rows.map((c) => ({
+      id: c.id, name: c.name, tagline: c.tagline, iconName: c.icon_name,
+      isActive: c.status === 'active', sortOrder: c.sort_order, count: 0,
+    })));
+  } catch (err) { next(err); }
+});
+
 // GET /api/marketplace/categories/all — curation list (incl. inactive).
 // Platform admins only: same admin.cross_org_view gate as page settings —
 // categories are org_type-agnostic platform data.

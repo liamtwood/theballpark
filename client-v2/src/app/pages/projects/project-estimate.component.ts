@@ -119,7 +119,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
           @if (section.label === 'Ballpark quote') {
             <!-- pV2-INVITE-SUPPLIER-01: Add line opens a small menu (same overlay
                  menu as the inbox thread kebab): My own costs = the unchanged
-                 openAdd() · Invite a new supplier. -->
+                 openAdd() · Add outside supplier (invite + request + send). -->
             <div class="relative shrink-0">
               <button type="button" class="bp-msg-btn" aria-haspopup="menu" [attr.aria-expanded]="addMenu()" (click)="addMenu.set(!addMenu())">
                 <lucide-icon name="circle-plus" [size]="16" /> Add line
@@ -132,7 +132,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                     <lucide-icon name="wallet" [size]="15" /> My own costs
                   </button>
                   <button type="button" role="menuitem" class="flex w-full items-center gap-2 px-3 py-2 text-left bp-body-small hover:bg-fill" (click)="addMenu.set(false); openInvite()">
-                    <lucide-icon name="user-plus" [size]="15" /> Invite a new supplier
+                    <lucide-icon name="user-plus" [size]="15" /> Add outside supplier
                   </button>
                 </div>
               }
@@ -1079,14 +1079,29 @@ export class ProjectEstimateComponent {
     }
     this.inviting.set(true);
   }
-  protected onInvited(s: InvitedSupplier): void {
+  /** The dialog MERGES invite + first request + send (Liam 2026-11-10): seed the
+   *  banner, turn the "what would you like quoted?" brief into a request line
+   *  under the supplier, then fire the invite if they pressed Send (a no-op until
+   *  notifications land). Save leaves them on the estimate to add more lines. */
+  protected async onInvited(s: InvitedSupplier): Promise<void> {
     this.inviting.set(false);
     this.seededBanners.update((xs) => [...xs.filter((x) => !(x.supplierId === s.supplierId && x.categoryId === s.categoryId)), s]);
     // Make sure the target category is expanded so the new banner is visible.
     this.collapsed.update((set) => { const next = new Set(set); next.delete(s.categoryId); return next; });
-    // Next → straight into Add Line Item for this supplier (Liam 2026-11-10).
-    this.openAdd({ id: s.categoryId, name: s.categoryName, iconName: s.categoryIcon },
-      { id: s.supplierId, name: s.supplierName });
+    const brief = s.quoteText.trim();
+    if (brief) {
+      try {
+        await firstValueFrom(this.projects.addCustomItem(this.projectId(), {
+          categoryId: s.categoryId, name: 'Quote request', description: brief,
+          cost: null, supplierOrgId: s.supplierId,
+        }));
+        this.lines.reload();
+        this.est.reload();
+      } catch (err) {
+        this.toast.add({ severity: 'error', summary: "Couldn't save the quote request — add it from the supplier's banner.", detail: errorDetail(err), life: 5000 });
+      }
+    }
+    if (s.send) await this.sendInvite(s.supplierId, s.supplierName);
   }
 
   /** Banner headline: the server client total. Custom lines are real

@@ -308,19 +308,23 @@ async function duplicate(id) {
 // An item's buildup is CHILD items (parent_item_id = this item, type='component').
 const toItemComponent = (c) => ({
   id: c.id, name: c.name, base_price: c.base_price, unit: c.unit,
-  quantity: 1, category_id: c.category_id, kind: c.type,
+  quantity: c.quantity == null ? 1 : Number(c.quantity), category_id: c.category_id, kind: c.type,
   selection_type: 'selected', description: c.description, image_url: heroFromImages(c.images),
 });
 
 async function listComponents(orgId, itemId) {
   const own = await pool.query(
-    `SELECT name, description, install_description FROM items
-      WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+    // Seed the estimate margin from the SUPPLIER PROFILE default (orgs.default_
+    // margin_pct); null falls back to the client's 20% floor. Items have no
+    // per-item margin, so marginPct stays null (the org default drives it).
+    `SELECT i.name, i.description, i.install_description, o.default_margin_pct
+       FROM items i JOIN orgs o ON o.id = i.org_id
+      WHERE i.id = $1 AND i.org_id = $2 AND i.deleted_at IS NULL`,
     [itemId, orgId]
   );
   if (!own.rows.length) return null;
   const r = await pool.query(
-    `SELECT id, name, base_price, unit, category_id, type, description, images
+    `SELECT id, name, base_price, unit, quantity, category_id, type, description, images
        FROM items WHERE parent_item_id = $1 AND deleted_at IS NULL ORDER BY created_at`,
     [itemId]
   );
@@ -330,7 +334,7 @@ async function listComponents(orgId, itemId) {
     parentDescription: own.rows[0].description,
     parentServices: own.rows[0].install_description,
     marginPct: null,
-    defaultMarginPct: null,
+    defaultMarginPct: own.rows[0].default_margin_pct == null ? null : Number(own.rows[0].default_margin_pct),
   };
 }
 
@@ -352,18 +356,19 @@ async function saveComponents(orgId, itemId, components, parentName, parentDescr
       const nm = String(c.name || '').trim();
       if (!nm) continue;
       const cost = c.cost == null ? null : Number(c.cost);
+      const qty = c.quantity == null ? null : Number(c.quantity);
       const img = c.image ? JSON.stringify([{ url: c.image, is_hero: true, sort_order: 0 }]) : '[]';
       if (c.id && keep.has(c.id)) {
         await client.query(
-          `UPDATE items SET name=$2, base_price=$3, unit=$4, category_id=$5, type=$6, description=$7, images=$8::jsonb
+          `UPDATE items SET name=$2, base_price=$3, unit=$4, category_id=$5, type=$6, description=$7, images=$8::jsonb, quantity=$10
             WHERE id=$1 AND parent_item_id=$9`,
-          [c.id, nm, cost, c.unit || null, c.categoryId || null, c.kind || 'component', c.description || null, img, itemId]
+          [c.id, nm, cost, c.unit || null, c.categoryId || null, 'component', c.description || null, img, itemId, qty]
         );
       } else {
         await client.query(
-          `INSERT INTO items (org_id, parent_item_id, category_id, name, description, unit, base_price, type, images, status, approval_status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, 'component', $8::jsonb, 'active', 'approved')`,
-          [orgId, itemId, c.categoryId || null, nm, c.description || null, c.unit || null, cost, img]
+          `INSERT INTO items (org_id, parent_item_id, category_id, name, description, unit, base_price, quantity, type, images, status, approval_status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'component', $9::jsonb, 'active', 'approved')`,
+          [orgId, itemId, c.categoryId || null, nm, c.description || null, c.unit || null, cost, qty, img]
         );
       }
       // Clone-up to the library (INSERT-ONLY, deduped by name).
@@ -395,7 +400,7 @@ async function saveComponents(orgId, itemId, components, parentName, parentDescr
 
 async function listOptions(itemId) {
   const r = await pool.query(
-    `SELECT id, name, base_price, unit, category_id, type, description, images
+    `SELECT id, name, base_price, unit, quantity, category_id, type, description, images
        FROM items WHERE parent_item_id = $1 AND deleted_at IS NULL ORDER BY created_at`,
     [itemId]
   );

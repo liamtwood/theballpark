@@ -138,8 +138,16 @@ export class ItemVariantPickerComponent {
   protected readonly minPrice = computed(() => minUnitPrice(this.basePrice(), this.matrix()));
 
   constructor() {
-    // Reset picks whenever the item changes.
-    effect(() => { this.matrix(); this.selected.set({}); });
+    // Auto-select the FIRST value of each dimension whenever the item changes
+    // (Liam 2026-11-11) — Quick View opens pre-configured with a default pick
+    // (its description/image/price), rather than an empty "Select options" state.
+    effect(() => {
+      const def: Record<string, string> = {};
+      for (const d of (this.matrix()?.dimensions ?? [])) {
+        if (d.values?.length) def[d.name] = d.values[0].value;
+      }
+      this.selected.set(def);
+    });
     // Emit the full selection + configured price once every dimension is chosen.
     effect(() => {
       if (!this.allChosen()) { this.selectionChange.emit(null); return; }
