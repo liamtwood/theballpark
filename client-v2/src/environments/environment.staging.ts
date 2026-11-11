@@ -2,8 +2,8 @@ export const environment = {
   production: false,
   // Client-facing release (per promote) + the source dev build it was cut from.
   // Set by the release runbook (pV2-RELEASE-SEQUENCE-01) at each promote.
-  release: 'v0.9.0',
-  build: 'v2.1156',
-  versionChip: 'Preview v0.9.0',
+  release: 'v0.9.1',
+  build: 'v2.1157',
+  versionChip: 'Preview v0.9.1',
   turnstileSiteKey: '0x4AAAAAADdwdzIjm6NbpAXD',
 };

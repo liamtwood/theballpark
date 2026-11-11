@@ -2,6 +2,24 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.9.1",
+      "name": "Create project fix",
+      "build": "v2.1157",
+      "date": "2026-11-11",
+      "datetime": "2026-11-11",
+      "env": "preview",
+      "notes": [],
+      "fixes": [
+        {
+          "ref": "BE-00150",
+          "type": "Bug",
+          "reporter": "Internal",
+          "text": "creating a project could hang on the loading screen — the project page's data fetch was rejecting the new human-readable project reference in the URL. Fixed; create now lands on the ballpark reliably.",
+          "done": true
+        }
+      ]
+    },
+    {
       "version": "v0.9.0",
       "name": "Invite suppliers & unified projects",
       "build": "v2.1156",
