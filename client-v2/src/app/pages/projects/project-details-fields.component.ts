@@ -18,7 +18,7 @@ import { SelectComponent, SelectOption } from '../../shared/select/select.compon
         <input type="text" class="ed-input" [value]="name()" (input)="name.set($any($event.target).value)" />
       </label>
     </div>
-    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div class="mt-4 grid grid-cols-1 gap-4">
       <label class="block">
         <span class="ed-label mb-1.5 block">Client</span>
         <input type="text" class="ed-input" [value]="client()" (input)="client.set($any($event.target).value)" />
@@ -28,7 +28,7 @@ import { SelectComponent, SelectOption } from '../../shared/select/select.compon
         <app-select ariaLabel="Event type" placeholder="Select…" [options]="eventTypeOptions()" [value]="eventType()" (changed)="eventType.set($event)" />
       </label>
     </div>
-    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div class="mt-4 grid grid-cols-1 gap-4">
       <label class="block">
         <span class="ed-label mb-1.5 block">Event date</span>
         <div class="relative">
