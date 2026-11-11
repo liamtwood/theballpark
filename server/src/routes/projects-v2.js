@@ -36,7 +36,16 @@ const { supplierInviteLimit } = require('../middleware/rate-limits');
 const UUID = z.string().uuid();
 const uuidParam = (label) => (req, res, next, val) =>
   UUID.safeParse(val).success ? next() : res.status(400).json({ error: `Invalid ${label}` });
-router.param('id', uuidParam('project id'));
+// EP-00021 — the project `:id` slot is a human REF (e.g. "EV-020") OR a UUID;
+// getDetail/updateDetail resolve either safely (p.id::text = $1 OR p.ref = $1),
+// so a ref MUST pass this guard. It was UUID-only, so every ref-based project URL
+// 400'd before the handler → the page's detail fetch failed and the project page
+// hung on its loading state (BE: "create sits at loading"). lineId/itemId/
+// supplierId stay strict UUIDs (they feed uuid casts / row lookups).
+const PROJECT_REF = /^[A-Za-z]{1,12}-\d{1,8}$/;
+router.param('id', (req, res, next, val) =>
+  (UUID.safeParse(val).success || PROJECT_REF.test(val))
+    ? next() : res.status(400).json({ error: 'Invalid project id' }));
 router.param('lineId', uuidParam('line id'));
 router.param('itemId', uuidParam('line id'));
 router.param('supplierId', uuidParam('supplier id'));

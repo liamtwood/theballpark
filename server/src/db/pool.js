@@ -35,6 +35,14 @@ const pool = new Pool({
   // firing next to anything else — Liam's "search is very slow the first
   // time", 2026-06-12) the second one paid a cold TCP+TLS connect.
   min: 2,
+  // request-context pins ONE client per request for its whole duration, so a
+  // burst of slow requests (e.g. AI calls) can check out several at once. Give
+  // headroom above the pg default of 10, and — critically — FAIL FAST when the
+  // pool is momentarily exhausted instead of hanging pool.connect() forever
+  // (BE: "create sits at loading" — a wedged connect in request-context never
+  // reaches the route, so the request hangs with nothing logged).
+  max: 20,
+  connectionTimeoutMillis: 10000,
 });
 
 // Pre-establish the warm pair at boot — `min` only prevents reaping; it

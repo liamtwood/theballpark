@@ -73,7 +73,11 @@ async function callHaikuJson({ system, user, maxTokens = 2000 }) {
     throw err;
   }
   const Anthropic = require('@anthropic-ai/sdk');
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 8 });
+  // maxRetries + a hard per-request timeout so a transient 429/529 overload fails
+  // FAST (≤ ~a minute) instead of hanging the synchronous create/recommend flow
+  // for many minutes of exponential backoff (BE: "create sits at loading"). 2
+  // retries still rides out a single blip; the timeout caps the worst case.
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 2, timeout: 45_000 });
 
   let message;
   try {
@@ -86,8 +90,12 @@ async function callHaikuJson({ system, user, maxTokens = 2000 }) {
   } catch (e) {
     const status = e && e.status;
     const type = e && e.error && e.error.error && e.error.error.type;
+    const name = e && e.name;
+    // Overload / rate-limit / timeout / connection drop → a clean 503 the client
+    // surfaces as "busy, try again", never an open-ended hang.
     if (status === 429 || status === 529 || (status >= 500 && status < 600)
-        || type === 'overloaded_error' || type === 'rate_limit_error') {
+        || type === 'overloaded_error' || type === 'rate_limit_error'
+        || name === 'APIConnectionTimeoutError' || name === 'APIConnectionError') {
       const err = new Error('The AI service is busy right now — please try again in a moment.');
       err.status = 503;
       throw err;
