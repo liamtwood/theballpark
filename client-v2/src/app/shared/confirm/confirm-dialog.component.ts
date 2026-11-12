@@ -20,7 +20,7 @@ import { ModalComponent } from '../modal/modal.component';
     >
       <div modalHeader>
         @if (svc.options(); as o) {
-          <div class="bp-modal__icon"><lucide-icon [name]="o.icon ?? 'trash-2'" [size]="20" /></div>
+          <div class="bp-modal__icon" [class.bp-modal__icon--accent]="o.danger === false"><lucide-icon [name]="o.icon ?? 'trash-2'" [size]="20" /></div>
           <h2 class="bp-card-title">{{ o.title }}</h2>
           @if (o.message) {
             <p class="bp-body mt-2 text-secondary">{{ o.message }}</p>

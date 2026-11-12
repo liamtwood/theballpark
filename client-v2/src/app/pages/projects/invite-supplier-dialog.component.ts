@@ -102,7 +102,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         <button modalFooter type="button" class="bp-btn--primary" (click)="useExisting(ex)">Use them</button>
       }
       @if (!existing()) {
-        <button modalFooter type="button" class="bp-btn--secondary" (click)="cancel.emit()">Cancel</button>
+        <button modalFooter type="button" class="bp-btn--secondary mr-auto" (click)="cancel.emit()">Cancel</button>
       }
       @if (!existing()) {
         <button modalFooter type="button" class="bp-btn--secondary" [disabled]="!canSubmit()" (click)="submit(false)">

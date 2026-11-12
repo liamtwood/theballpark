@@ -117,6 +117,38 @@ removed `hasCover`, `projectTokens`, `projectHero`, `ballparkTotalStr`,
 `ballparkItemCount` and the `PageHeroComponent` import (only the dropped draft
 page-hero used them).
 
+## Iteration — Details tab removed entirely (Liam 2026-11-12)
+
+The Details tab was already HIDDEN from the nav (edited via the hero's "Edit details"
+dialog). Per Liam ("remove entirely, we will add back if we need") the whole tab is
+now **gone** — not just hidden:
+
+- **Template:** dropped the `@case ('details')` block (the completeness card, the
+  Event/Logistics/Financials/SoW field cards, **and** the cover-image + gallery
+  editor cards), the welcome "fly-into-the-Details-tab" animation, and the
+  `--land` pulse.
+- **Routing:** `'details'` removed from the `Tab` union + `TABS` + `projNavActive`;
+  a stale `?tab=details` deep link now falls through to the Ballpark view.
+- **Dead code culled (addresses the arch audit's duplication + size findings):** the
+  tab was the sole consumer of `form`/`patch`/`saveSection`/`buildPatch`/`detailState`/
+  `snapshots`/`snapshot`/`restore`/`editingFlags`/`editing*`/`completenessConfig`/
+  `handleCompletenessAction`/`onEventDate*`/`onBudgetBlur`/`saveImages`/`setPrimary`/
+  `cur`/`tierOptions`/`tierSelectOptions`/`statusSelectOptions`/`eventTypeSelectOptions`/
+  `clientNames*`/`flying`/`justLanded`/`flyTarget`, plus the `toForm`/`DetailForm`/
+  `Section`/`nullable`/`numOrNull`/`asTier` helpers. `saveMedia` + the detail loader
+  were decoupled from `form` (the detail resource is now the single source of truth).
+  Removed imports: `FormsModule`, `SelectComponent`, `ImageGalleryComponent`,
+  `EntityIconComponent`, `CompletenessCardComponent`, `SaveStatePillComponent`,
+  `natoDate`, `GalleryImage`, plus the orphaned `bp-proj-fly`/`bp-projnav-land` CSS.
+  **project-detail.component.ts: ~1030 → 582 lines; its lazy chunk 587 → 533 kB.**
+- **KEPT:** the hero's image editor still works — the `<app-drawer>` image picker is
+  mounted at page level and reached via the hero's "change image" entry
+  (`imgDrawer`/`onPick`/`onRemoveImage`/`saveMedia`).
+- **Heads-up (the one real loss):** the project **gallery** editor (multi-image
+  add/reorder/set-as-cover) lived ONLY in the Details tab and is gone with it. Cover
+  image is still editable via the hero; gallery editing would need re-homing if wanted
+  back.
+
 ## Status
 
 Compiles clean on dev2 (:4202). Awaiting Liam's QC on localhost before commit.

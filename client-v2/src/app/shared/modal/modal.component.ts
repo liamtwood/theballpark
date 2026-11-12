@@ -16,6 +16,12 @@ import { DialogModule } from 'primeng/dialog';
  *                      button reads **Cancel** in an editor dialog, **Close** in a
  *                      viewer; primary = `bp-btn--primary`, secondary =
  *                      `bp-btn--secondary`, destructive = `bp-btn-danger`.
+ *                      NG8011 GOTCHA: named-slot projection drops nodes nested in a
+ *                      MULTI-root `@if`. Each conditional footer button must be its
+ *                      OWN single-root `@if` (one projected node per branch), never
+ *                      several buttons inside one `@if`. A left-aligned button (e.g.
+ *                      a Cancel anchored away from the forward actions) takes
+ *                      `mr-auto` — the footer flex is `justify-end`.
  *
  *  Visibility is driven by the host (`[open]` + `(close)`); the parent either mounts
  *  it conditionally or toggles `open`. X / escape / backdrop all emit `close`. */

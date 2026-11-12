@@ -53,8 +53,18 @@ scrolls, hero arrows, footer Add, dividers, markdown. "Looks great."
 - The right-column scroll cap is the image height (360px floor). On a very short/wide image
   the detail scroll area is small; the floor keeps it usable. Tunable if needed.
 
-## QC notes
-(Liam)
+## Iteration — design/arch audit fixes (2026-11-12)
+
+- **Mobile responsive bug (arch-moderate) fixed.** The cap was an inline
+  `[style.max-height.px]`, which beat the `@media (max-width:720px)` single-column
+  rule (inline always wins over a stylesheet media query) — so on a phone the detail
+  column still scrolled internally instead of flowing below the image. Switched to a
+  CSS variable: `[style.--qv-side-max.px]` sets the var, `.bp-qv2__side` reads
+  `max-height: var(--qv-side-max, 66vh)`, and the `<720px` rule's `max-height: none`
+  now overrides it. Desktop cap unchanged.
+- **Cap value — Liam's call:** keep the image-height cap (left column shows in full,
+  no scroll; the detail scrolls beside it). The audit's "too cramped, floor to ~66vh"
+  suggestion was declined — the compact image-height shape is the intended look.
 
 ## Chat audit
 (chat)

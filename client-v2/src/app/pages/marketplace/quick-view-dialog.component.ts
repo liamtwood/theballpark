@@ -156,7 +156,7 @@ type Pane = 'item' | 'supplier';
 
                 <!-- RIGHT: all the detail — capped to the image column's height so
                      the image shows in full and the detail scrolls beside it. -->
-                <div class="bp-qv2__side" [style.max-height.px]="sideMaxH()">
+                <div class="bp-qv2__side" [style.--qv-side-max.px]="sideMaxH()">
                   <h2 class="bp-qv2__name">{{ it.name }}</h2>
                   @if (it.description) {
                     <div class="bp-md bp-body text-secondary" [innerHTML]="it.description | md"></div>
@@ -311,7 +311,11 @@ type Pane = 'item' | 'supplier';
         display: flex;
         flex-direction: column;
         gap: 1rem;
-        max-height: 66vh;
+        /* Caps to the image column's height (set inline as --qv-side-max) so the
+           image shows in full and the detail scrolls beside it; 66vh fallback.
+           A CSS var (not an inline max-height) so the <720px rule below can drop
+           the cap — an inline max-height would beat the media query. */
+        max-height: var(--qv-side-max, 66vh);
         overflow-y: auto;
         padding-right: 6px;
       }

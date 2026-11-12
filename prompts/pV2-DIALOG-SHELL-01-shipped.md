@@ -73,6 +73,22 @@ add outside supplier, edit details) + confirm — chrome, separators, buttons, l
 - DESIGN.md is now out of date vs the code (gradient flattened; `app-modal` now real; the
   `ed-*` field standard). A DESIGN.md reconcile is owed.
 
+## Iteration — design/arch audit fixes (2026-11-12)
+
+- **`modalFooter` NG8011 gotcha documented on the shell.** Added the "one projected
+  node per single-root `@if`" rule (and the `mr-auto` left-align convention) to
+  `app-modal`'s `[modalFooter]` JSDoc so the next consumer doesn't rediscover it.
+- **Confirm icon themes by the `danger` flag.** `.bp-modal__icon` was hardcoded
+  danger-red; a non-destructive confirm (`danger === false`) now gets
+  `.bp-modal__icon--accent` (theme-soft bg + `--theme-accent`), so a neutral
+  "are you sure?" no longer reads as an alarm. Destructive confirms unchanged.
+- **invite-supplier footer** — Cancel + Save were two identical adjacent secondaries.
+  Cancel now takes `mr-auto` (anchored left as the dismiss; Save + Send group right),
+  resolving the ambiguity within the existing two-tier button system.
+- **Not done (Liam to decide):** the shared `bp-btn--secondary` 10%-opacity border
+  (<3:1 contrast). Strengthening it touches every secondary button app-wide, so it's
+  parked pending a call.
+
 ## QC notes
 (Liam)
 

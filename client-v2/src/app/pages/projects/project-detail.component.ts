@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, resource, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { ModalComponent } from '../../shared/modal/modal.component';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -12,18 +11,11 @@ import { PageConfigService } from '../../core/config/page-config.service';
 import { ProjectService } from '../../core/projects/project.service';
 import { ConfirmService } from '../../shared/confirm/confirm.service';
 import { EstimateBreakdown, ProjectDetail, ProjectUpdate } from '../../core/projects/project.types';
-import { GalleryImage, PickerResult } from '../../core/media/media.types';
+import { PickerResult } from '../../core/media/media.types';
 import { errorDetail } from '../../core/http-error';
 import { EditFieldOption } from '../../shared/edit-field/edit-field.component';
-import { SelectComponent, SelectOption } from '../../shared/select/select.component';
-import { natoDate } from '../../shared/details-format';
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
-import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.component';
-import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.component';
-import { CompletenessCardComponent } from '../../shared/completeness/completeness-card.component';
-import { SaveStatePillComponent } from '../../shared/save-state-pill/save-state-pill.component';
-import { CompletenessConfig } from '../../shared/completeness/completeness.types';
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
 import { ProjectDetailsFieldsComponent } from './project-details-fields.component';
@@ -34,36 +26,8 @@ import { ProjectOverviewHeroComponent } from './project-overview-hero.component'
 import { InboxService } from '../../core/inbox/inbox.service';
 import { CoachmarkComponent } from '../../shared/coachmark/coachmark.component';
 
-type Tab = 'marketplace' | 'estimate' | 'final' | 'reports' | 'details' | 'inbox';
-const TABS: Tab[] = ['marketplace', 'estimate', 'final', 'reports', 'details', 'inbox'];
-
-/** The editable Details sections (v1 parity + per-project Financials). */
-type Section = 'event' | 'type' | 'logistics' | 'financials' | 'sow';
-
-/** The editable detail form (strings — edit-field's surface). Ref, Status
- *  and Client are read-only (rendered from the loaded detail, not here). */
-interface DetailForm {
-  name: string;
-  status: string;
-  description: string;
-  clientName: string;
-  clientCompanyNumber: string;
-  clientAddress: string;
-  eventType: string;
-  eventDate: string;
-  venueName: string;
-  venueCity: string;
-  guestCount: string;
-  durationDays: string;
-  tier: string;
-  budget: string;
-  marginPct: string;
-  contingencyPct: string;
-  vatPct: string;
-  sowTimeline: string;
-  sowPaymentTerms: string;
-  sowSpecialTerms: string;
-}
+type Tab = 'marketplace' | 'estimate' | 'final' | 'reports' | 'inbox';
+const TABS: Tab[] = ['marketplace', 'estimate', 'final', 'reports', 'inbox'];
 
 /** pV2-PROJECTS-02 (slice 1) — /projects/:id inside-project view: hero +
  *  three-tab band (Marketplace / Estimate / Project Details). This slice
@@ -80,20 +44,14 @@ interface DetailForm {
     ProjectDetailsFieldsComponent,
     LucideAngularModule,
     CoachmarkComponent,
-    SelectComponent,
-    CompletenessCardComponent,
     DrawerComponent,
     ImagePickerComponent,
-    ImageGalleryComponent,
-    EntityIconComponent,
     ProjectMarketplaceComponent,
     ProjectEstimateComponent,
     QuoteDocumentComponent,
     SowDocumentComponent,
     InboxProjectComponent,
     ProjectOverviewHeroComponent,
-    FormsModule,
-    SaveStatePillComponent,
   ],
   providers: [MessageService],
   // EVERY tab now flows and scrolls at the window edge — one page scrollbar, no
@@ -149,7 +107,6 @@ interface DetailForm {
               <button type="button" role="tab" class="bp-projnav-opt"
                       [attr.data-tab]="opt.tab"
                       [class.bp-projnav-opt--active]="projNavActive() === opt.tab"
-                      [class.bp-projnav-opt--land]="justLanded() && opt.tab === 'details'"
                       [attr.aria-selected]="projNavActive() === opt.tab"
                       (click)="setTab(opt.tab)">
                 @if (projNavActive() === opt.tab) { <lucide-icon name="check" [size]="15" /> }
@@ -162,145 +119,6 @@ interface DetailForm {
 
       <div class="bp-page-body">
         @switch (tab()) {
-          @case ('details') {
-            <!-- Ready-to-edit rounded fields; each field saves on blur with the
-                 shared "Details saved" pill (app-save-state-pill). Overflow is
-                 full-width so the scrollbar sits at the window edge; content is
-                 centred in the workspace column. -->
-            <div class="min-h-0 flex-1 bp-gutter -mt-6">
-            <div class="mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-4">
-              <app-completeness-card
-                [entity]="p"
-                [config]="completenessConfig"
-                title="Project completeness"
-                entityLabel="project"
-                (actionClicked)="handleCompletenessAction($event)"
-              />
-
-              <!-- Event details -->
-              <div #companySection class="ed-card shrink-0 p-6">
-                <div class="flex items-center justify-between">
-                  <h2 class="bp-card-title">Event details</h2>
-                  <app-save-state-pill [state]="detailState()" />
-                </div>
-                <div class="mt-4 flex flex-col gap-4">
-                  <!-- Project status (Draft ⇄ Active) — the manual mode switch; sits first. -->
-                  <label class="block w-[calc(11ch+2.5rem)]"><span class="ed-label mb-1.5 block">Status</span>
-                    <app-select ariaLabel="Project status" [options]="statusSelectOptions" [value]="form().status" (changed)="patch({ status: $event }); saveSection('event')" />
-                  </label>
-                  <!-- Ref + Event name + Company number + Client on one line;
-                       Ref and Company number share a width. -->
-                  <div class="flex flex-wrap items-start gap-x-5 gap-y-4">
-                    <label class="block w-[calc(11ch+2.5rem)]"><span class="ed-label mb-1.5 block">Ref</span><input class="ed-input" [value]="p.ref ?? '—'" disabled /></label>
-                    <label class="block min-w-[12rem] flex-1"><span class="ed-label mb-1.5 block">Event name</span><input class="ed-input" [ngModel]="form().name" (ngModelChange)="patch({ name: $event })" (blur)="saveSection('event')" /></label>
-                    <label class="block w-[calc(11ch+2.5rem)]"><span class="ed-label mb-1.5 block">Client company no.</span><input class="ed-input" [ngModel]="form().clientCompanyNumber" (ngModelChange)="patch({ clientCompanyNumber: $event })" (blur)="saveSection('event')" /></label>
-                    <label class="block min-w-[12rem] flex-1"><span class="ed-label mb-1.5 block">Client</span><input class="ed-input" [ngModel]="form().clientName" (ngModelChange)="patch({ clientName: $event })" (blur)="saveSection('event')" /></label>
-                  </div>
-                  <label class="block"><span class="ed-label mb-1.5 block">Client address</span><textarea class="ed-textarea" rows="2" [ngModel]="form().clientAddress" (ngModelChange)="patch({ clientAddress: $event })" (blur)="saveSection('event')"></textarea></label>
-                  <label class="block"><span class="ed-label mb-1.5 block">Description</span><textarea class="ed-textarea" rows="3" placeholder="Project overview — seeded from the brief; shown on the quote document." [ngModel]="form().description" (ngModelChange)="patch({ description: $event })" (blur)="saveSection('event')"></textarea></label>
-                </div>
-              </div>
-
-              <!-- Event Logistics — type & tier + date / duration / guests -->
-              <div class="ed-card shrink-0 p-6">
-                <div class="flex items-center justify-between">
-                  <h2 class="bp-card-title">Event Logistics</h2>
-                  <app-save-state-pill [state]="detailState()" />
-                </div>
-                <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
-                  <label class="block"><span class="ed-label mb-1.5 block">Event type</span>
-                    <app-select ariaLabel="Event type" [options]="eventTypeSelectOptions()" [value]="form().eventType" (changed)="patch({ eventType: $event }); saveSection('type')" />
-                  </label>
-                  <label class="block"><span class="ed-label mb-1.5 block">Tier</span>
-                    <app-select ariaLabel="Tier" [options]="tierSelectOptions" [value]="form().tier" (changed)="patch({ tier: $event }); saveSection('type')" />
-                  </label>
-                </div>
-                <div class="mt-4 flex flex-wrap gap-x-5 gap-y-4">
-                  <label class="block w-[calc(12ch+2.5rem)]"><span class="ed-label mb-1.5 block">Event date</span>
-                    <!-- NATO display + native OS picker: the transparent date input
-                         sits over the calendar icon; picking reformats to NATO. -->
-                    <div class="relative">
-                      <input class="ed-input pr-10" type="text" placeholder="e.g. 20-Aug-2026" title="Standard format: DD-Mmm-YYYY (free text like 'TBC' / 'Q4' is fine too)" [ngModel]="form().eventDate" (ngModelChange)="patch({ eventDate: $event })" (blur)="onEventDateBlur()" />
-                      <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" style="color: var(--color-text-secondary);"><lucide-icon name="calendar" [size]="16" /></span>
-                      <input type="date" aria-label="Pick event date" class="absolute right-0 top-0 h-full w-11 cursor-pointer opacity-0" (change)="onEventDatePicked($any($event.target).value)" />
-                    </div>
-                  </label>
-                  <label class="block w-[calc(12ch+2.5rem)]"><span class="ed-label mb-1.5 block">Duration (days)</span><input class="ed-input" type="number" [ngModel]="form().durationDays" (ngModelChange)="patch({ durationDays: $event })" (blur)="saveSection('logistics')" /></label>
-                  <label class="block w-[calc(12ch+2.5rem)]"><span class="ed-label mb-1.5 block">Guest count</span><input class="ed-input" type="number" [ngModel]="form().guestCount" (ngModelChange)="patch({ guestCount: $event })" (blur)="saveSection('logistics')" /></label>
-                </div>
-                <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
-                  <label class="block"><span class="ed-label mb-1.5 block">Venue</span><input class="ed-input" [ngModel]="form().venueName" (ngModelChange)="patch({ venueName: $event })" (blur)="saveSection('event')" /></label>
-                  <label class="block"><span class="ed-label mb-1.5 block">City</span><input class="ed-input" [ngModel]="form().venueCity" (ngModelChange)="patch({ venueCity: $event })" (blur)="saveSection('event')" /></label>
-                </div>
-              </div>
-
-              <!-- Financials -->
-              <div class="ed-card shrink-0 p-6">
-                <div class="flex items-center justify-between">
-                  <h2 class="bp-card-title">Financials</h2>
-                  <app-save-state-pill [state]="detailState()" />
-                </div>
-                <div class="mt-4 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <label class="block"><span class="ed-label mb-1.5 block">Budget ({{ cur() === 'USD' ? '$' : cur() === 'EUR' ? '€' : '£' }})</span><input class="ed-input" type="text" inputmode="numeric" [ngModel]="form().budget" (ngModelChange)="patch({ budget: $event })" (blur)="onBudgetBlur()" /></label>
-                  <label class="block"><span class="ed-label mb-1.5 block">Margin (%)</span><input class="ed-input" type="number" [ngModel]="form().marginPct" (ngModelChange)="patch({ marginPct: $event })" (blur)="saveSection('financials')" /></label>
-                  <label class="block"><span class="ed-label mb-1.5 block">Contingency (%)</span><input class="ed-input" type="number" [ngModel]="form().contingencyPct" (ngModelChange)="patch({ contingencyPct: $event })" (blur)="saveSection('financials')" /></label>
-                  <label class="block"><span class="ed-label mb-1.5 block">VAT (%)</span><input class="ed-input" type="number" [ngModel]="form().vatPct" (ngModelChange)="patch({ vatPct: $event })" (blur)="saveSection('financials')" /></label>
-                </div>
-              </div>
-
-              <!-- Statement of Work -->
-              <div class="ed-card shrink-0 p-6">
-                <div class="flex items-center justify-between">
-                  <h2 class="bp-card-title">Statement of Work</h2>
-                  <app-save-state-pill [state]="detailState()" />
-                </div>
-                <div class="mt-4 flex flex-col gap-4">
-                  <label class="block"><span class="ed-label mb-1.5 block">Timeline</span><textarea class="ed-textarea" rows="4" placeholder="One milestone per line, e.g. 'Install 20.08.26'." [ngModel]="form().sowTimeline" (ngModelChange)="patch({ sowTimeline: $event })" (blur)="saveSection('sow')"></textarea></label>
-                  <label class="block"><span class="ed-label mb-1.5 block">Payment Terms</span><textarea class="ed-textarea" rows="3" placeholder="e.g. 50% on signature, 50% on completion." [ngModel]="form().sowPaymentTerms" (ngModelChange)="patch({ sowPaymentTerms: $event })" (blur)="saveSection('sow')"></textarea></label>
-                  <label class="block"><span class="ed-label mb-1.5 block">Special Terms</span><textarea class="ed-textarea" rows="3" placeholder="Anything bespoke to this project (default: N/A)." [ngModel]="form().sowSpecialTerms" (ngModelChange)="patch({ sowSpecialTerms: $event })" (blur)="saveSection('sow')"></textarea></label>
-                </div>
-              </div>
-
-              <!-- Image -->
-              <div class="ed-card shrink-0 p-6">
-                <h2 class="bp-card-title">Image</h2>
-                <div class="mt-3 flex flex-col items-start gap-3">
-                  <div class="bp-media-preview">
-                    @if (p.coverUrl) {
-                      <img [src]="p.coverUrl" alt="" [style.object-position]="p.coverFocalX + '% ' + p.coverFocalY + '%'" />
-                    } @else if (p.iconName) {
-                      <app-entity-icon [name]="p.iconName" [color]="p.iconColor" [size]="36" />
-                    } @else {
-                      <span class="bp-caption">No image</span>
-                    }
-                  </div>
-                  <button type="button" class="bp-btn-outline" (click)="imgDrawer.set(true)">
-                    <lucide-icon name="square-pen" [size]="16" /> Edit
-                  </button>
-                </div>
-                @if (p.unsplashPhotographerName) {
-                  <p class="bp-caption mt-2">Photo by {{ p.unsplashPhotographerName }} on Unsplash</p>
-                }
-              </div>
-
-              <!-- Gallery -->
-              <div #mediaSection class="ed-card shrink-0 p-6">
-                <h2 class="bp-card-title">Gallery</h2>
-                <p class="bp-caption mt-1">Add up to 5 photos — hover one to reorder, set it as the cover, or remove it.</p>
-                <div class="mt-3">
-                  <app-image-gallery
-                    entityType="project"
-                    [images]="p.images"
-                    [primaryUrl]="p.coverUrl"
-                    [searchSeed]="p.name"
-                    (imagesChange)="saveImages($event)"
-                    (primarySet)="setPrimary($event)"
-                  />
-                </div>
-              </div>
-            </div>
-            </div>
-          }
           @case ('estimate') {
             <div class="min-h-0 flex-1 bp-gutter -mt-6">
               <app-project-estimate [projectId]="p.id" [project]="p" (goToFinal)="goToTab('final')" (detailsSaved)="detail.reload()" (deleteRequested)="onDelete()" />
@@ -386,9 +204,9 @@ interface DetailForm {
 
     <!-- pV2-PROJ-UNIFY-01 — the create-flow project-details dialog, shared by two
          entries: the WELCOME confirm (opened once on ?welcome=1 — surfaces the
-         parsed details, forced confirm, flies into the Details tab on save) and
-         the EDIT entry (the hero's "Edit details" button — closable, saves in
-         place with no fly). Same form fields + w* model; mode branches the chrome. -->
+         parsed details, forced confirm) and the EDIT entry (the hero's "Edit
+         details" button — closable). Same fields + w* model; mode branches the
+         chrome and the save path. -->
     @if (detail.value()) {
       <app-modal
         [open]="welcomeOpen()"
@@ -427,16 +245,6 @@ interface DetailForm {
       </app-modal>
     }
 
-    <!-- The details "fly" into the Details tab on confirm (pV2-PROJ-UNIFY-01).
-         The target delta (viewport centre → Details tab centre) is measured at
-         confirm time so it lands ON the tab at any width. -->
-    @if (flying()) {
-      <div class="bp-proj-fly" aria-hidden="true"
-           [style.--fly-dx.px]="flyTarget().dx" [style.--fly-dy.px]="flyTarget().dy">
-        <span class="bp-icon-block h-8 w-8"><lucide-icon name="file-text" [size]="16" /></span>
-        <span class="truncate text-sm font-medium">Event details</span>
-      </div>
-    }
 
     <!-- MessageService supplies aria-live by severity (audit F-10). -->
     <p-toast position="bottom-right" styleClass="bp-toast" />
@@ -523,7 +331,6 @@ export class ProjectDetailComponent {
   protected readonly projNavActive = computed<Tab>(() => {
     const t = this.tab();
     if (t === 'marketplace') return 'marketplace';
-    if (t === 'details') return 'details';
     if (t === 'inbox') return 'inbox';
     if (t === 'reports') return 'reports';
     return 'final';
@@ -532,11 +339,7 @@ export class ProjectDetailComponent {
   protected readonly detail = resource<ProjectDetail, string>({
     // EP-00021 — the URL param is a ref OR the UUID; getDetail resolves either.
     params: () => this.id(),
-    loader: async ({ params }) => {
-      const d = await firstValueFrom(this.projects.getDetail(params));
-      this.form.set(toForm(d));
-      return d;
-    },
+    loader: ({ params }) => firstValueFrom(this.projects.getDetail(params)),
   });
 
   /** The CANONICAL project id (UUID), resolved from the loaded detail. Everything
@@ -559,57 +362,20 @@ export class ProjectDetailComponent {
     loader: ({ params }) => firstValueFrom(this.inbox.projectOverview(params)),
   });
 
-  protected readonly form = signal<DetailForm>(toForm(null));
-  protected readonly editingEvent = signal(false);
-  protected readonly editingType = signal(false);
-  protected readonly editingLogistics = signal(false);
-  protected readonly editingFinancials = signal(false);
-  protected readonly editingSow = signal(false);
   protected readonly saving = signal(false);
-  /** Save-on-blur pill state for the always-editable About Project fields. */
-  protected readonly detailState = signal<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  /** The project's currency (for the Budget field symbol). */
-  protected readonly cur = computed(() => this.detail.value()?.currency || 'GBP');
-  /** Image-picker drawer (pV2-MEDIA-01b). */
+  /** Image-picker drawer (pV2-MEDIA-01b) — the hero's "change image" entry. */
   protected readonly imgDrawer = signal(false);
   /** pV2-BUILDUP-04 — Final Quote → client-facing document overlays. */
   protected readonly docView = signal(false);
   protected readonly sowView = signal(false);
-  private snapshots: Partial<Record<Section, DetailForm>> = {};
 
-  protected readonly tierOptions: EditFieldOption[] = [
-    { label: 'Starter', value: 'starter' },
-    { label: 'Professional', value: 'professional' },
-    { label: 'Premium', value: 'premium' },
-  ];
-  /** app-select options — a leading "—" (none) row keeps the native clear. */
-  protected readonly tierSelectOptions: SelectOption[] = [
-    { value: '', label: '—' },
-    ...this.tierOptions,
-  ];
-  /** Project status — editable Draft ⇄ Active (the manual mode switch). */
-  protected readonly statusSelectOptions: SelectOption[] = [
-    { value: 'draft', label: 'Draft' },
-    { value: 'active', label: 'Active' },
-  ];
-
-  // Status shows as a pill (hero + Event details, v1 parity); transitions
-  // get a dedicated allowed_next_codes control later, not a free dropdown.
+  // The event-type codelist feeds the shared details dialog's picker.
   private readonly eventTypeRes = resource({
     loader: () => this.codelists.list('project_type'),
   });
   protected readonly eventTypeOptions = computed<EditFieldOption[]>(
     () => this.eventTypeRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
   );
-  protected readonly eventTypeSelectOptions = computed<SelectOption[]>(
-    () => [{ value: '', label: '—' }, ...this.eventTypeOptions()],
-  );
-
-  /** Distinct client names this org has used — the Client field's type-ahead. */
-  private readonly clientNamesRes = resource({
-    loader: () => firstValueFrom(this.projects.clientNames()),
-  });
-  protected readonly clientNames = computed<string[]>(() => this.clientNamesRes.value() ?? []);
 
   // ── pV2-PROJ-UNIFY-01 — create welcome flow ──────────────────────────────
   /** The project-details dialog (shared: the create-flow welcome confirm + the
@@ -623,14 +389,8 @@ export class ProjectDetailComponent {
   protected readonly detailsDialogSubtitle = computed(() =>
     this.detailsMode() === 'edit'
       ? ''
-      : "We read these from your brief — fix anything that's off, then continue. You can edit them any time on the Details tab."
+      : "We read these from your brief — fix anything that's off, then continue. You can edit them any time with Edit details on the project."
   );
-  /** The details "fly to the Details tab" animation is playing. */
-  protected readonly flying = signal(false);
-  /** Brief highlight pulse on the Details tab when the flight lands. */
-  protected readonly justLanded = signal(false);
-  /** Flight delta (viewport centre → Details tab centre), measured at confirm. */
-  protected readonly flyTarget = signal<{ dx: number; dy: number }>({ dx: 90, dy: -300 });
   /** recommend is building the ballpark (shown on the Ballpark cost tab). */
   protected readonly welcomeBuilding = signal(false);
   /** Bumped to force the estimate component to re-fetch its lines after recommend. */
@@ -744,29 +504,11 @@ export class ProjectDetailComponent {
     this.completeWelcome();
   }
 
-  /** Dialog confirmed → fly the details into the Details tab (+ highlight it),
-   *  reload the estimate (recommend has been building meanwhile), and drop the
-   *  ?welcome param so a refresh doesn't re-open. */
+  /** Dialog confirmed → close, refresh the saved detail fields (the estimate
+   *  reload is owned by the recommend `.finally` above, so it lands once items
+   *  exist), and drop the ?welcome param so a refresh doesn't re-open. */
   protected completeWelcome(): void {
     this.welcomeOpen.set(false);
-    // Measure the Details tab so the flight lands ON it (the tab band is visible
-    // behind the dialog, so the rect is valid now).
-    const tab = document.querySelector('.bp-projnav [data-tab="details"]') as HTMLElement | null;
-    if (tab) {
-      const r = tab.getBoundingClientRect();
-      this.flyTarget.set({
-        dx: r.left + r.width / 2 - window.innerWidth / 2,
-        dy: r.top + r.height / 2 - window.innerHeight / 2,
-      });
-    }
-    this.flying.set(true);
-    setTimeout(() => {
-      this.flying.set(false);
-      this.justLanded.set(true);
-      setTimeout(() => this.justLanded.set(false), 1400);
-    }, 560);
-    // The estimate reload is owned by the recommend .finally (above) so it lands
-    // once items exist; here we only refresh the saved detail fields.
     this.detail.reload();
     this.router
       .navigate([], { relativeTo: this.route, queryParams: { welcome: null }, queryParamsHandling: 'merge' })
@@ -787,137 +529,6 @@ export class ProjectDetailComponent {
     this.router
       .navigate([], { relativeTo: this.route, queryParams: { tab }, queryParamsHandling: 'merge' })
       .catch((err) => console.warn('[ProjectDetail] nav failed', err));
-  }
-
-  protected patch(p: Partial<DetailForm>): void {
-    this.form.update((f) => ({ ...f, ...p }));
-  }
-
-  /** Native OS picker → NATO, then save. Build a LOCAL date from the yyyy-mm-dd
-   *  parts so the UTC-parsed ISO never shifts the day across a timezone boundary. */
-  protected onEventDatePicked(iso: string): void {
-    if (!iso) return;
-    const [y, m, d] = iso.split('-').map(Number);
-    this.patch({ eventDate: natoDate(new Date(y, m - 1, d).toDateString()) });
-    void this.saveSection('logistics');
-  }
-
-  /** Normalise the typed date to NATO on blur (free text like "TBC"/"Q4" is left
-   *  as-is), then save. */
-  protected onEventDateBlur(): void {
-    const v = this.form().eventDate.trim();
-    if (v) this.patch({ eventDate: natoDate(v) });
-    void this.saveSection('logistics');
-  }
-
-  protected snapshot(section: Section): void {
-    this.snapshots[section] = { ...this.form() };
-  }
-
-  protected restore(section: Section): void {
-    const snap = this.snapshots[section];
-    if (snap) this.form.set({ ...snap });
-  }
-
-  private readonly editingFlags: Record<Section, ReturnType<typeof signal<boolean>>> = {
-    event: this.editingEvent,
-    type: this.editingType,
-    logistics: this.editingLogistics,
-    financials: this.editingFinancials,
-    sow: this.editingSow,
-  };
-
-  /** Weighted "% complete" over the project's key fields — mirrors the Profile
-   *  completeness card. Each unmet item deep-links into its edit section. */
-  protected readonly completenessConfig: CompletenessConfig<ProjectDetail> = [
-    { weight: 15, label: 'Add a cover image', action: 'image', done: (p) => !!p.coverUrl || !!p.iconName },
-    { weight: 10, label: 'Add the client', action: 'event', done: (p) => !!p.clientName },
-    { weight: 10, label: 'Set the event type', action: 'type', done: (p) => !!p.eventType },
-    { weight: 15, label: 'Set the event date', action: 'logistics', done: (p) => !!p.eventDate },
-    { weight: 10, label: 'Add the venue', action: 'event', done: (p) => !!p.venueName },
-    { weight: 10, label: 'Add the venue city', action: 'event', done: (p) => !!p.venueCity },
-    { weight: 10, label: 'Set the guest count', action: 'logistics', done: (p) => p.guestCount != null },
-    { weight: 5, label: 'Set the duration', action: 'logistics', done: (p) => p.durationDays != null },
-    { weight: 15, label: 'Set the budget', action: 'financials', done: (p) => p.projectBudget != null },
-    { weight: 10, label: 'Set margin, contingency & VAT', action: 'financials',
-      done: (p) => p.defaultMarginPct != null && p.defaultContingencyPct != null && p.defaultVatPct != null },
-  ];
-
-  /** Deep-link a completeness suggestion into its editor: open the image
-   *  drawer, else snapshot + open the matching edit section. */
-  protected handleCompletenessAction(action: string): void {
-    if (action === 'image') {
-      this.imgDrawer.set(true);
-      return;
-    }
-    const flag = this.editingFlags[action as Section];
-    if (flag) {
-      this.snapshot(action as Section);
-      flag.set(true);
-    }
-  }
-
-  /** Per-section save (audit 02-F-2 lesson) — only the edited section's
-   *  fields travel. Match v1's three sections. */
-  /** Build a section's ProjectUpdate patch from the current form state. */
-  private buildPatch(section: Section): ProjectUpdate {
-    const f = this.form();
-    return section === 'event'
-      ? {
-          name: f.name.trim() || undefined,
-          status: (f.status || 'draft') as ProjectUpdate['status'],
-          description: nullable(f.description),
-          clientName: nullable(f.clientName),
-          clientCompanyNumber: nullable(f.clientCompanyNumber),
-          clientAddress: nullable(f.clientAddress),
-          venueName: nullable(f.venueName),
-          venueCity: nullable(f.venueCity),
-        }
-      : section === 'type'
-        ? { eventType: nullable(f.eventType), tier: asTier(f.tier) }
-        : section === 'logistics'
-          ? {
-              eventDate: nullable(f.eventDate),
-              durationDays: numOrNull(f.durationDays),
-              guestCount: numOrNull(f.guestCount),
-            }
-          : section === 'financials'
-            ? {
-                projectBudget: numOrNull(f.budget.replace(/,/g, '')),
-                defaultMarginPct: numOrNull(f.marginPct),
-                defaultContingencyPct: numOrNull(f.contingencyPct),
-                defaultVatPct: numOrNull(f.vatPct),
-              }
-            : {
-                sowTimeline: nullable(f.sowTimeline),
-                sowPaymentTerms: nullable(f.sowPaymentTerms),
-                sowSpecialTerms: nullable(f.sowSpecialTerms),
-              };
-  }
-
-  /** Budget blur — reflect thousands commas in the box, then save. */
-  protected onBudgetBlur(): void {
-    const n = numOrNull(this.form().budget.replace(/,/g, ''));
-    this.patch({ budget: n != null ? n.toLocaleString('en-GB') : '' });
-    void this.saveSection('financials');
-  }
-
-  /** Save-on-blur (always-editable fields): persist the section, flash the
-   *  "Details saved" pill — no edit-mode toggle, no toast. */
-  protected async saveSection(section: Section): Promise<void> {
-    const id = this.pid();
-    if (!id) return;
-    this.detailState.set('saving');
-    try {
-      const fresh = await firstValueFrom(this.projects.update(id, this.buildPatch(section)));
-      this.form.set(toForm(fresh));
-      this.detail.set(fresh);
-      if (section === 'event') this.clientNamesRes.reload();
-      this.detailState.set('saved');
-    } catch (err) {
-      console.warn('[ProjectDetail] save failed', err);
-      this.detailState.set('error');
-    }
   }
 
   /** Map a picker result → ProjectUpdate (image clears icon + vice-versa) and
@@ -955,35 +566,12 @@ export class ProjectDetailComponent {
     });
   }
 
-  /** pV2-MEDIA-01c — gallery edits (add / remove / reorder) persist the array. */
-  protected saveImages(images: GalleryImage[]): Promise<void> {
-    return this.saveMedia({ images }, 'Gallery updated.');
-  }
-
-  /** "Set as cover" — copy the chosen gallery photo into the cover_* columns
-   *  (MEDIA.md §12); clears any icon fallback so the photo wins. */
-  protected setPrimary(img: GalleryImage): Promise<void> {
-    return this.saveMedia(
-      {
-        coverImageUrl: img.url,
-        coverFocalX: img.focalX,
-        coverFocalY: img.focalY,
-        unsplashPhotographerName: img.attribution?.photographerName ?? null,
-        unsplashPhotoUrl: img.attribution?.photoUrl ?? null,
-        iconName: null,
-        iconColor: null,
-      },
-      'Cover updated.'
-    );
-  }
-
   private async saveMedia(patch: ProjectUpdate, summary = 'Image updated.'): Promise<void> {
     const id = this.pid();
     if (!id) return;
     try {
       const fresh = await firstValueFrom(this.projects.update(id, patch));
       this.detail.set(fresh);
-      this.form.set(toForm(fresh));
       this.toast.add({ severity: 'success', summary, life: 3000 });
     } catch (err) {
       this.toast.add({ severity: 'error', summary: "Couldn't update the image.", detail: errorDetail(err), life: 5000 });
@@ -991,38 +579,3 @@ export class ProjectDetailComponent {
   }
 }
 
-function nullable(v: string): string | null {
-  return v.trim() || null;
-}
-function numOrNull(v: string): number | null {
-  const n = Number(v);
-  return v.trim() === '' || Number.isNaN(n) ? null : n;
-}
-function asTier(v: string): ProjectUpdate['tier'] {
-  return (['starter', 'professional', 'premium'] as const).find((t) => t === v) ?? null;
-}
-
-function toForm(d: ProjectDetail | null): DetailForm {
-  return {
-    name: d?.name ?? '',
-    status: d?.status ?? 'draft',
-    description: d?.description ?? '',
-    clientName: d?.clientName ?? '',
-    clientCompanyNumber: d?.clientCompanyNumber ?? '',
-    clientAddress: d?.clientAddress ?? '',
-    eventType: d?.eventType ?? '',
-    eventDate: d?.eventDate ?? '',
-    venueName: d?.venueName ?? '',
-    venueCity: d?.venueCity ?? '',
-    guestCount: d?.guestCount != null ? String(d.guestCount) : '',
-    durationDays: d?.durationDays != null ? String(d.durationDays) : '',
-    tier: d?.tier ?? '',
-    budget: d?.projectBudget != null ? d.projectBudget.toLocaleString('en-GB') : '',
-    marginPct: d?.defaultMarginPct != null ? String(d.defaultMarginPct) : '',
-    contingencyPct: d?.defaultContingencyPct != null ? String(d.defaultContingencyPct) : '',
-    vatPct: d?.defaultVatPct != null ? String(d.defaultVatPct) : '',
-    sowTimeline: d?.sowTimeline ?? '',
-    sowPaymentTerms: d?.sowPaymentTerms ?? '',
-    sowSpecialTerms: d?.sowSpecialTerms ?? '',
-  };
-}
