@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, i
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
+import { ModalComponent } from '../../shared/modal/modal.component';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { CatalogueItem, sizedImage } from '../../shared/catalogue/catalogue.types';
 import { ShuttleComponent, ShuttleItem, ShuttlePick } from '../../shared/shuttle/shuttle.component';
@@ -67,123 +68,108 @@ const blankRow = (): GridRow => ({ id: ROW_UID++, description: '', cost: null, q
 @Component({
   selector: 'app-custom-line-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, FormsModule, LucideAngularModule, ShuttleComponent, CoachmarkComponent],
+  imports: [DecimalPipe, FormsModule, ModalComponent, LucideAngularModule, ShuttleComponent, CoachmarkComponent],
   host: { class: 'contents' },
   template: `
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" (click)="cancel.emit()">
-      <div class="bp-card w-full p-6"
-           [class.max-w-md]="variant() === 'new' && mode() === 'single'"
-           [class.max-w-2xl]="variant() === 'new' && mode() === 'grid'"
-           [class.max-w-4xl]="variant() === 'explore'"
-           (click)="$event.stopPropagation()">
-        <div class="flex items-start justify-between">
-          <h3 class="bp-card-title text-lg">
-            {{ variant() === 'explore' ? ('More From ' + (supplierName() || 'Supplier')) : ('Add Line Item' + (mode() === 'grid' ? 's' : '')) }}
-          </h3>
-          <button type="button" class="text-muted hover:text-text" aria-label="Close" (click)="cancel.emit()">
-            <lucide-icon name="x" [size]="18" />
-          </button>
+    <app-modal [title]="headerTitle()" [width]="dialogWidth()" (close)="cancel.emit()">
+      @if (costedBySupplier()) {
+        <!-- pV2-ADD-LINE-SUPPLIER-01: added in a supplier's context → the line is
+             routed to that supplier, who costs it (no agent Cost field). -->
+        <div class="flex items-center gap-1.5 bp-body-small text-secondary">
+          <lucide-icon name="store" [size]="14" class="shrink-0" style="color: var(--theme-accent)" />
+          <span class="truncate">For {{ forSupplier()!.name || 'this supplier' }} to cost</span>
+        </div>
+        <div class="mt-3 flex justify-center">
+          <app-coachmark page="add-line-item" name="supplier-intro" tail="up"
+                         [vars]="{ supplier: forSupplier()!.name || 'this supplier' }"
+                         defaultText="Add an item you want {supplier} to provide that you can't find in their store. They'll price it for you. Description is shared with the supplier: add size, colour or spec." />
+        </div>
+      }
+
+      @if (variant() === 'new') {
+        <!-- ── NEW: type agent-owned lines (Form / Grid) ─────────────────── -->
+        <div class="inline-flex overflow-hidden rounded-[var(--radius-field)] border border-hairline" [class.mt-4]="costedBySupplier()">
+          <button type="button" class="px-3 py-1.5 text-md" [class.bg-text]="mode() === 'single'" [class.text-surface]="mode() === 'single'" (click)="mode.set('single')">Single</button>
+          <button type="button" class="px-3 py-1.5 text-md" [class.bg-text]="mode() === 'grid'" [class.text-surface]="mode() === 'grid'" (click)="mode.set('grid')">Grid</button>
         </div>
 
-        <!-- Category never changes — show it as the page's category treatment
-             (icon + title) rather than a form field. -->
-        <div class="mt-3 flex items-center gap-2.5">
-          <lucide-icon [name]="categoryIcon() || 'folder-open'" [size]="24" [strokeWidth]="1.5" class="shrink-0 text-[var(--theme-accent)]" />
-          <span class="bp-list-title truncate text-[length:var(--text-xl)]">{{ categoryName() || 'Category' }}</span>
-        </div>
-        @if (costedBySupplier()) {
-          <!-- pV2-ADD-LINE-SUPPLIER-01: added in a supplier's context → the line is
-               routed to that supplier, who costs it (no agent Cost field). -->
-          <div class="mt-1.5 flex items-center gap-1.5 bp-body-small text-secondary">
-            <lucide-icon name="store" [size]="14" class="shrink-0" style="color: var(--theme-accent)" />
-            <span class="truncate">For {{ forSupplier()!.name || 'this supplier' }} to cost</span>
-          </div>
-          <div class="mt-3 flex justify-center">
-            <app-coachmark page="add-line-item" name="supplier-intro" tail="up"
-                           [vars]="{ supplier: forSupplier()!.name || 'this supplier' }"
-                           defaultText="Add an item you want {supplier} to provide that you can't find in their store. They'll price it for you. Description is shared with the supplier: add size, colour or spec." />
-          </div>
-        }
-
-        @if (variant() === 'new') {
-          <!-- ── NEW: type agent-owned lines (Form / Grid) ─────────────────── -->
-          <div class="mt-4 inline-flex overflow-hidden rounded-[var(--radius-field)] border border-hairline">
-            <button type="button" class="px-3 py-1.5 text-md" [class.bg-text]="mode() === 'single'" [class.text-surface]="mode() === 'single'" (click)="mode.set('single')">Single</button>
-            <button type="button" class="px-3 py-1.5 text-md" [class.bg-text]="mode() === 'grid'" [class.text-surface]="mode() === 'grid'" (click)="mode.set('grid')">Grid</button>
-          </div>
-
-          @if (mode() === 'single') {
-            <div class="mt-4 flex flex-col gap-3">
-              <label class="block">
-                <span class="bp-field-label mb-1 block pl-3">Item</span>
-                <input class="bp-input-field" placeholder="New item name" [(ngModel)]="form.description" autocomplete="off" />
-              </label>
-              <div class="grid gap-3" [class.grid-cols-2]="!costedBySupplier()">
-                @if (!costedBySupplier()) {
-                  <label class="block">
-                    <span class="bp-field-label mb-1 block pl-3">Cost £</span>
-                    <input type="number" class="bp-input-field" placeholder="TBC" [(ngModel)]="form.cost" />
-                  </label>
-                }
+        @if (mode() === 'single') {
+          <div class="mt-4 flex flex-col gap-4">
+            <label class="block">
+              <span class="ed-label mb-1.5 block">Item</span>
+              <input class="ed-input" placeholder="New item name" [(ngModel)]="form.description" autocomplete="off" />
+            </label>
+            <div class="grid gap-4" [class.grid-cols-2]="!costedBySupplier()">
+              @if (!costedBySupplier()) {
                 <label class="block">
-                  <span class="bp-field-label mb-1 block pl-3">Qty</span>
-                  <input type="number" class="bp-input-field" placeholder="1" [(ngModel)]="form.quantity" />
+                  <span class="ed-label mb-1.5 block">Cost £</span>
+                  <input type="number" class="ed-input" placeholder="TBC" [(ngModel)]="form.cost" />
                 </label>
-              </div>
+              }
               <label class="block">
-                <span class="bp-field-label mb-1 block pl-3">Description</span>
-                <input class="bp-input-field" placeholder="Size, colour, spec…" [(ngModel)]="form.notes" />
+                <span class="ed-label mb-1.5 block">Qty</span>
+                <input type="number" class="ed-input" placeholder="1" [(ngModel)]="form.quantity" />
               </label>
             </div>
-            <button type="button" class="bp-btn-grad mt-5 w-full" [disabled]="!form.description.trim()" (click)="submitSingle()">Add Line Item</button>
-          } @else {
-            <div class="mt-3 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
-              <div class="grid items-center gap-2 border-b border-hairline bg-fill px-3 py-2 bp-field-label"
-                   [class]="costedBySupplier() ? 'grid-cols-[1fr_70px_32px]' : 'grid-cols-[1fr_100px_70px_32px]'">
-                <span>Item</span>
-                @if (!costedBySupplier()) { <span class="text-center">Cost £</span> }
-                <span class="text-right">Qty</span><span></span>
-              </div>
-              @for (row of rows(); track row.id) {
-                <div class="relative grid items-center gap-2 border-b border-hairline px-3 py-1.5 last:border-b-0"
-                     [class]="costedBySupplier() ? 'grid-cols-[1fr_70px_32px]' : 'grid-cols-[1fr_100px_70px_32px]'">
-                  <input class="bp-input-field w-full" placeholder="New item" [ngModel]="row.description" (ngModelChange)="onRowName(row, $event)" autocomplete="off" />
-                  @if (!costedBySupplier()) {
-                    <input type="number" class="bp-input-field text-right" placeholder="—" [ngModel]="row.cost" (ngModelChange)="row.cost = $event" />
-                  }
-                  <input type="number" class="bp-input-field text-right" [ngModel]="row.qty" (ngModelChange)="row.qty = $event" />
-                  <button type="button" class="rounded-md p-1 text-muted hover:text-danger" aria-label="Remove row" (click)="removeRow(row.id)">
-                    <lucide-icon name="trash-2" [size]="15" />
-                  </button>
-                </div>
-              }
-            </div>
-            <div class="mt-2 flex items-center justify-between">
-              <button type="button" class="bp-body-small inline-flex items-center gap-1 text-secondary hover:text-text" (click)="addRow()">
-                <lucide-icon name="plus" [size]="14" /> Add row
-              </button>
-              <span class="bp-meta">{{ filledCount() }} item{{ filledCount() === 1 ? '' : 's' }}@if (!costedBySupplier()) { · £{{ gridTotal() | number: '1.0-0' }}}</span>
-            </div>
-            <button type="button" class="bp-btn-grad mt-4 w-full" [disabled]="!filledCount()" (click)="submitGrid()">Add {{ filledCount() }} Line Item{{ filledCount() === 1 ? '' : 's' }}</button>
-          }
+            <label class="block">
+              <span class="ed-label mb-1.5 block">Description</span>
+              <input class="ed-input" placeholder="Size, colour, spec…" [(ngModel)]="form.notes" />
+            </label>
+          </div>
         } @else {
-          <!-- ── EXPLORE: the shared shuttle (browse left → picks right) ── -->
-          <app-shuttle class="mt-4 block"
-            [available]="railShuttle()"
-            [picks]="pickShuttle()"
-            [pickedIds]="pickedIds()"
-            [showThumbs]="true"
-            leftPlaceholder="Filter items…"
-            rightTitle="Added items"
-            [emptyLeft]="railItems().length ? 'No items match.' : 'No catalogue items in this category.'"
-            emptyRight="Click items on the left to add them here."
-            (add)="onShuttleAdd($event)"
-            (remove)="removePick(+$event)"
-            (qtyChange)="onShuttleQty($event)" />
-          <button type="button" class="bp-btn-grad mt-3 w-full" (click)="submitGrid()">Save</button>
+          <div class="mt-3 overflow-hidden rounded-[var(--radius-card)] border border-hairline">
+            <div class="grid items-center gap-2 border-b border-hairline bg-fill px-3 py-2 bp-field-label"
+                 [class]="costedBySupplier() ? 'grid-cols-[1fr_70px_32px]' : 'grid-cols-[1fr_100px_70px_32px]'">
+              <span>Item</span>
+              @if (!costedBySupplier()) { <span class="text-center">Cost £</span> }
+              <span class="text-right">Qty</span><span></span>
+            </div>
+            @for (row of rows(); track row.id) {
+              <div class="relative grid items-center gap-2 border-b border-hairline px-3 py-1.5 last:border-b-0"
+                   [class]="costedBySupplier() ? 'grid-cols-[1fr_70px_32px]' : 'grid-cols-[1fr_100px_70px_32px]'">
+                <input class="bp-input-field w-full" placeholder="New item" [ngModel]="row.description" (ngModelChange)="onRowName(row, $event)" autocomplete="off" />
+                @if (!costedBySupplier()) {
+                  <input type="number" class="bp-input-field text-right" placeholder="—" [ngModel]="row.cost" (ngModelChange)="row.cost = $event" />
+                }
+                <input type="number" class="bp-input-field text-right" [ngModel]="row.qty" (ngModelChange)="row.qty = $event" />
+                <button type="button" class="rounded-md p-1 text-muted hover:text-danger" aria-label="Remove row" (click)="removeRow(row.id)">
+                  <lucide-icon name="trash-2" [size]="15" />
+                </button>
+              </div>
+            }
+          </div>
+          <div class="mt-2 flex items-center justify-between">
+            <button type="button" class="bp-body-small inline-flex items-center gap-1 text-secondary hover:text-text" (click)="addRow()">
+              <lucide-icon name="plus" [size]="14" /> Add row
+            </button>
+            <span class="bp-meta">{{ filledCount() }} item{{ filledCount() === 1 ? '' : 's' }}@if (!costedBySupplier()) { · £{{ gridTotal() | number: '1.0-0' }}}</span>
+          </div>
         }
-      </div>
-    </div>
+      } @else {
+        <!-- ── EXPLORE: the shared shuttle (browse left → picks right) ── -->
+        <app-shuttle class="block" [class.mt-4]="costedBySupplier()"
+          [available]="railShuttle()"
+          [picks]="pickShuttle()"
+          [pickedIds]="pickedIds()"
+          [showThumbs]="true"
+          leftPlaceholder="Filter items…"
+          rightTitle="Added items"
+          [emptyLeft]="railItems().length ? 'No items match.' : 'No catalogue items in this category.'"
+          emptyRight="Click items on the left to add them here."
+          (add)="onShuttleAdd($event)"
+          (remove)="removePick(+$event)"
+          (qtyChange)="onShuttleQty($event)" />
+      }
+
+      <button modalFooter type="button" class="bp-btn--secondary" (click)="cancel.emit()">Cancel</button>
+      @if (variant() === 'explore') {
+        <button modalFooter type="button" class="bp-btn--primary" (click)="submitGrid()">Save</button>
+      } @else if (mode() === 'single') {
+        <button modalFooter type="button" class="bp-btn--primary" [disabled]="!form.description.trim()" (click)="submitSingle()">Add</button>
+      } @else {
+        <button modalFooter type="button" class="bp-btn--primary" [disabled]="!filledCount()" (click)="submitGrid()">Add {{ filledCount() }}</button>
+      }
+    </app-modal>
   `,
 })
 export class CustomLineDialogComponent implements OnInit {
@@ -203,6 +189,16 @@ export class CustomLineDialogComponent implements OnInit {
   protected readonly costedBySupplier = computed(() => this.variant() === 'new' && !!this.forSupplier());
   readonly add = output<CustomLine[]>();
   readonly cancel = output<void>();
+
+  /** Dialog title + width track the variant/mode (explore is the wide shuttle). */
+  protected readonly headerTitle = computed(() =>
+    this.variant() === 'explore'
+      ? 'More From ' + (this.supplierName() || 'Supplier')
+      : 'Add Line Item' + (this.mode() === 'grid' ? 's' : '')
+  );
+  protected readonly dialogWidth = computed(() =>
+    this.variant() === 'explore' ? '880px' : this.mode() === 'grid' ? '680px' : '460px'
+  );
 
   protected readonly mode = signal<'single' | 'grid'>('single');
   protected readonly supplierId = signal<string | null>(null);

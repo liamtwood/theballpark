@@ -11,11 +11,11 @@ import {
 } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { Router } from '@angular/router';
-import { DialogModule } from 'primeng/dialog';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { ProjectCard } from '../../core/projects/project.types';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
+import { ModalComponent } from '../../shared/modal/modal.component';
 
 /** The item being placed — enough for the title + the add call. */
 export interface AddToProjectItem {
@@ -32,31 +32,20 @@ export interface AddToProjectItem {
 @Component({
   selector: 'app-add-to-project-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DialogModule, StatusPillComponent],
+  imports: [CurrencyPipe, ModalComponent, StatusPillComponent],
   template: `
-    <p-dialog
-      [visible]="!!item()"
-      (visibleChange)="onVisible($event)"
-      styleClass="bp-modal"
-      [closable]="true"
-      [closeOnEscape]="true"
-      [dismissableMask]="true"
-      [modal]="true"
-      [style]="{ width: '460px' }"
-    >
-      <ng-template pTemplate="header">
-        @if (item(); as it) {
-          <div>
-            <h2 class="bp-card-title">Add {{ it.name }}</h2>
-            <p class="bp-body mt-1 text-secondary">
-              @if (it.basePrice !== null) {
-                Indicative {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}{{ it.unit ? ' per ' + it.unit : '' }}.
-              }
-              Choose where this should go.
-            </p>
-          </div>
-        }
-      </ng-template>
+    <app-modal [open]="!!item()" (close)="close.emit()" width="460px">
+      @if (item(); as it) {
+        <div modalHeader>
+          <h2 class="bp-card-title">Add {{ it.name }}</h2>
+          <p class="bp-body mt-1 text-secondary">
+            @if (it.basePrice !== null) {
+              Indicative {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}{{ it.unit ? ' per ' + it.unit : '' }}.
+            }
+            Choose where this should go.
+          </p>
+        </div>
+      }
 
       <div class="flex flex-col gap-2 py-1">
         <!-- New project -->
@@ -84,13 +73,11 @@ export interface AddToProjectItem {
         }
       </div>
 
-      <ng-template pTemplate="footer">
-        <button type="button" class="bp-btn-outline" (click)="close.emit()">Cancel</button>
-        <button type="button" class="bp-btn-grad" [disabled]="busy()" (click)="confirm()">
-          {{ selected() === 'new' ? 'Start new project' : busy() ? 'Adding…' : 'Add to project' }}
-        </button>
-      </ng-template>
-    </p-dialog>
+      <button modalFooter type="button" class="bp-btn--secondary" (click)="close.emit()">Cancel</button>
+      <button modalFooter type="button" class="bp-btn--primary" [disabled]="busy()" (click)="confirm()">
+        {{ selected() === 'new' ? 'Start new project' : busy() ? 'Adding…' : 'Add to project' }}
+      </button>
+    </app-modal>
   `,
   styles: [
     `
@@ -168,10 +155,6 @@ export class AddToProjectDialogComponent {
       .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
       .slice(0, 3)
   );
-
-  protected onVisible(visible: boolean): void {
-    if (!visible) this.close.emit();
-  }
 
   protected async confirm(): Promise<void> {
     const it = this.item();

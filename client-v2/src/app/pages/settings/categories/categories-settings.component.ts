@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DialogModule } from 'primeng/dialog';
+import { ModalComponent } from '../../../shared/modal/modal.component';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { CatalogueService } from '../../../core/marketplace/catalogue.service';
@@ -22,7 +22,7 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
 @Component({
   selector: 'app-categories-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, DialogModule, SelectComponent, LucideAngularModule, PageHeroComponent],
+  imports: [FormsModule, ModalComponent, SelectComponent, LucideAngularModule, PageHeroComponent],
   host: { class: 'block' },
   template: `
     <app-page-hero
@@ -133,42 +133,26 @@ type Row = { node: TaxNode; depth: number; add?: undefined } | { add: true; pare
     </div>
 
     <!-- Tagline editor — a roomy dialog (taglines run long + edit poorly inline). -->
-    <p-dialog
-      [visible]="!!taglineNode()"
-      (visibleChange)="onTaglineVisible($event)"
-      styleClass="bp-modal"
-      [closable]="false"
-      [closeOnEscape]="true"
-      [dismissableMask]="true"
-      [modal]="true"
-      [style]="{ width: '480px' }"
-    >
-      <ng-template pTemplate="header">
-        <div>
-          <div class="bp-modal__icon"><lucide-icon name="square-pen" [size]="20" /></div>
-          <h2 class="bp-card-title">Edit tagline</h2>
-          @if (taglineNode(); as n) {
-            <p class="bp-body mt-2 text-secondary">{{ n.cat.name }} — shown on the card and chip.</p>
-          }
-        </div>
-      </ng-template>
-      <ng-template pTemplate="content">
-        <textarea
-          class="ed-input"
-          rows="3"
-          maxlength="120"
-          style="width:100%; resize:vertical;"
-          aria-label="Tagline"
-          placeholder="A short line shown on the category card / chip"
-          [ngModel]="taglineDraft()"
-          (ngModelChange)="taglineDraft.set($event)"
-        ></textarea>
-      </ng-template>
-      <ng-template pTemplate="footer">
-        <button type="button" class="bp-btn-outline" (click)="closeTagline()">Cancel</button>
-        <button type="button" class="bp-btn-grad" (click)="saveTagline()">Save</button>
-      </ng-template>
-    </p-dialog>
+    <app-modal [open]="!!taglineNode()" (close)="closeTagline()" width="480px" [closable]="false">
+      <div modalHeader>
+        <div class="bp-modal__icon"><lucide-icon name="square-pen" [size]="20" /></div>
+        <h2 class="bp-card-title">Edit tagline</h2>
+        @if (taglineNode(); as n) {
+          <p class="bp-body mt-2 text-secondary">{{ n.cat.name }} — shown on the card and chip.</p>
+        }
+      </div>
+      <textarea
+        class="ed-textarea"
+        rows="3"
+        maxlength="120"
+        aria-label="Tagline"
+        placeholder="A short line shown on the category card / chip"
+        [ngModel]="taglineDraft()"
+        (ngModelChange)="taglineDraft.set($event)"
+      ></textarea>
+      <button modalFooter type="button" class="bp-btn--secondary" (click)="closeTagline()">Cancel</button>
+      <button modalFooter type="button" class="bp-btn--primary" (click)="saveTagline()">Save</button>
+    </app-modal>
   `,
 })
 export class CategoriesSettingsComponent {
@@ -281,7 +265,6 @@ export class CategoriesSettingsComponent {
     this.taglineNode.set(node);
   }
   protected closeTagline(): void { this.taglineNode.set(null); }
-  protected onTaglineVisible(visible: boolean): void { if (!visible) this.closeTagline(); }
   protected saveTagline(): void {
     const node = this.taglineNode();
     if (!node) return;

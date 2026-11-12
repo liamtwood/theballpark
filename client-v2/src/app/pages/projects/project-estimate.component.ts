@@ -15,7 +15,7 @@ import { EstimateItemRowComponent } from './estimate-item-row.component';
 import { RateInputComponent } from './rate-input.component';
 import { InboxService, OutreachRosterEntry } from '../../core/inbox/inbox.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
-import { acceptanceCode, LineDisplayCode, LineDisplayStatusService, supplierInviteCode, supplierSummaryCode, SupplierSummaryCode } from '../../core/status/line-display-status';
+import { LineDisplayStatusService, supplierInviteCode, supplierSummaryCode, SupplierSummaryCode } from '../../core/status/line-display-status';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { MessageSuppliersDialogComponent, MsgSupplierCategory } from './message-suppliers-dialog.component';
 import { EstimateBreakdownComponent } from './estimate-breakdown.component';
@@ -96,10 +96,10 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         @for (section of sections(); track section.label; let first = $first) {
         <!-- Each section is ONE white container (matches Event Description);
              its category cards are light-gray, their items white. -->
-        <!-- Draft: ONE white section container holding category cards. Active:
-             no section wrapper — each supplier below is its own standalone card. -->
-        <div [class.mt-5]="!first || isDraftProject()" [class.bp-card]="isDraftProject()" [class.bp-card--lifted]="isDraftProject()" [class.p-5]="isDraftProject()">
-        @if (isDraftProject()) {
+        <!-- ONE white section container holding category cards — draft AND active
+             (pV2-PROJ-ONEVIEW-01, Liam 2026-11-12): active no longer restructures;
+             it renders the same layout as draft and only reveals status/payment. -->
+        <div class="mt-5 bp-card bp-card--lifted p-5">
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
             @if (isFinal()) {
@@ -142,11 +142,8 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
         @if (section.label === 'Ballpark quote') {
           <div class="mt-4 border-t border-hairline"></div>
         }
-        }
-        @if (!isFinal() || !isDraftProject() || isBoxOpen(section.label)) {
-        <!-- mt-3 only separates the list from the DRAFT section header; active has
-             no header, so it would be dead top padding (Liam 2026-11-06). -->
-        <div class="flex flex-col gap-2.5" [class.mt-3]="isDraftProject()">
+        @if (!isFinal() || isBoxOpen(section.label)) {
+        <div class="mt-3 flex flex-col gap-2.5">
           @for (g of section.groups; track g.id) {
             @if (g.isCoverage) {
               <!-- Contingency / Insurance / Other — each its own item card
@@ -195,21 +192,14 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
             } @else {
             <!-- Category card — name + cat total, a chevron that expands the
                  items underneath (icon + fill removed, Liam 2026-10-21). -->
-            <div class="overflow-hidden rounded-[var(--radius-card)]" [class.bp-card]="!isDraftProject()" [class.bp-card--lifted]="!isDraftProject()" [class.px-5]="!isDraftProject()" [class.py-2]="!isDraftProject()">
-              <!-- Header: a top ROW (number · icon · name · subtle "+" add · chevron),
-                   all vertically centered; then the supplier's summary status pill
-                   on its OWN row below, left-aligned under the number (Liam
-                   2026-10-26). Not one big <button> so the + action doesn't nest
-                   buttons; the name and chevron each toggle the card. -->
+            <div class="overflow-hidden rounded-[var(--radius-card)]">
+              <!-- Header: a top ROW (name · subtle "+" add · chevron), all vertically
+                   centered; then the supplier's summary status pill on its OWN row
+                   below (Liam 2026-10-26). Not one big <button> so the + action
+                   doesn't nest buttons; the name and chevron each toggle the card.
+                   One layout for draft + active (pV2-PROJ-ONEVIEW-01). -->
               <div class="p-3">
                 <div class="flex w-full items-center gap-3.5">
-                  @if (!isDraftProject()) {
-                    <!-- Active: number (suppliers only) + supplier glyph. -->
-                    @if (!g.isProject) {
-                      <span class="bp-list-title shrink-0 text-secondary" style="font-size: var(--text-xl)">{{ $index + 1 }}.</span>
-                    }
-                    <lucide-icon [name]="g.iconName || 'building-2'" [size]="24" [strokeWidth]="1.75" class="shrink-0 text-[var(--theme-accent)]" />
-                  }
                   <!-- Card-level add (+ icons) is gated OFF for now (SHOW_CARD_ADD,
                        Liam 2026-10-26): a custom line can't yet be attributed to a
                        supplier in active (see docs/audits), and draft adds go via the
@@ -219,8 +209,7 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                        catalogue) + plain + (add new item). -->
                   <span class="flex min-w-0 flex-1 items-center gap-1.5">
                     <button type="button" class="min-w-0 text-left" (click)="toggle(g.id)">
-                      <span class="bp-list-title block truncate"
-                            [style.font-size]="isDraftProject() ? 'var(--text-lg)' : 'var(--text-xl)'">{{ g.name }}</span>
+                      <span class="bp-list-title block truncate" style="font-size: var(--text-lg)">{{ g.name }}</span>
                     </button>
                     @if (SHOW_CARD_ADD) {
                       @if (isDraftProject() && !g.isProject) {
@@ -245,24 +234,17 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       }
                     }
                   </span>
-                  @if (isDraftProject()) {
-                    <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
-                  }
-                  @if (!isDraftProject() && !g.isProject) {
-                    <!-- Top-level "Add item" → this supplier's inbox conversation (the
-                         + beside the name adds a line directly via the dialog). -->
-                    <button type="button" class="bp-msg-btn shrink-0" (click)="openSupplierInbox(g)">
-                      <lucide-icon name="message-square" [size]="16" /> Add item
-                    </button>
-                  }
+                  <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
                   <button type="button" class="shrink-0" (click)="toggle(g.id)"
                           [attr.aria-label]="isOpen(g.id) ? 'Collapse' : 'Expand'">
                     <lucide-icon [name]="isOpen(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="text-muted" />
                   </button>
                 </div>
-                @if (!isDraftProject() && g.summaryCode) {
-                  <!-- Per-supplier rollup status (supplier_summary_status codelist;
-                       text + colour editable in Settings ▸ Codelists). -->
+                @if (g.summaryCode) {
+                  <!-- Per-supplier rollup status — self-gates on summaryCode, which is
+                       empty in draft and set once sent, so it appears on send without a
+                       status branch (pV2-PROJ-ONEVIEW-01). Codelist text + colour
+                       editable in Settings ▸ Codelists. -->
                   <app-status-pill class="mt-2 inline-flex" list="supplier_summary_status" [code]="g.summaryCode" />
                 }
               </div>
@@ -298,14 +280,11 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                   <!-- Hard-cost lines display the marked-up price (margin baked
                        in); Fees are shown raw. -->
                   @let mk = g.isProject ? 1 : marginMarkup();
-                  @if (isDraftProject()) {
                   @for (sg of g.supplierGroups; track sg.supplierId) {
-                    <!-- Supplier label — draft only (in active the card IS the
-                         supplier, so there's no sub-label). -->
-                    @if (isDraftProject()) {
                     <!-- Supplier = a soft-pink banner (Liam 2026-11-06): the supplier
                          is the unit you negotiate with, so it reads as its own block —
-                         soft fill + a touch larger name, but below the category header. -->
+                         soft fill + a touch larger name, below the category header. One
+                         layout for draft + active (pV2-PROJ-ONEVIEW-01). -->
                     <div class="mt-2 flex items-center gap-2 rounded-[var(--radius-field)] px-3 py-2"
                          style="background: var(--theme-soft)">
                       <lucide-icon name="store" [size]="15" class="shrink-0" style="color: var(--theme-accent)" />
@@ -342,7 +321,6 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                         </button>
                       </span>
                     </div>
-                    }
                     <!-- Column headers (per supplier) — left-justified, aligned to
                          every row via .bp-estimate-grid. -->
                     <div class="bp-estimate-grid border-b border-hairline px-3 py-2">
@@ -376,41 +354,6 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                       }
                     }
                   }
-                  } @else {
-                  <!-- ACTIVE supplier card: Item | Qty | Quick view | Status | Cost
-                       (read-only budget view), then a Subtotal row below the items.
-                       mt-4 gives vertical padding before the column headers. -->
-                  <div class="mt-4 grid grid-cols-[minmax(0,1fr)_64px_110px_150px_90px] items-center gap-3 border-b border-hairline px-3 py-2">
-                    <span class="bp-estimate-th">Item</span>
-                    <span class="bp-estimate-th">Qty</span>
-                    <span class="bp-estimate-th">Quick view</span>
-                    <span class="bp-estimate-th">Status</span>
-                    <span class="bp-estimate-th text-right">Cost</span>
-                  </div>
-                  @for (l of g.items; track l.id) {
-                    <div class="grid grid-cols-[minmax(0,1fr)_64px_110px_150px_90px] items-center gap-3 border-b border-hairline px-3 py-3">
-                      <span class="flex min-w-0 items-center gap-3">
-                        @if (l.imageUrl) {
-                          <img [src]="l.imageUrl" alt="" role="button" tabindex="0" class="h-14 w-14 shrink-0 cursor-pointer rounded-full object-cover" (click)="selectLine(l)" (keydown.enter)="selectLine(l)" />
-                        } @else {
-                          <span class="bp-icon-block h-14 w-14 shrink-0 cursor-pointer !rounded-full" role="button" tabindex="0" (click)="selectLine(l)" (keydown.enter)="selectLine(l)"><lucide-icon name="store" [size]="20" /></span>
-                        }
-                        <span class="bp-list-title min-w-0 cursor-pointer truncate hover:underline" role="button" tabindex="0" (click)="selectLine(l)" (keydown.enter)="selectLine(l)">{{ l.name }}</span>
-                      </span>
-                      <span class="bp-body-small text-secondary">× {{ l.quantity }}</span>
-                      <button type="button" class="bp-qv-link justify-self-start" (click)="selectLine(l)" [attr.aria-label]="'Quick view ' + l.name">Quick view</button>
-                      <app-status-pill list="line_display_status" [code]="activeStatusCode(l)" style="justify-self: center" />
-                      <span class="bp-body-small text-right tabular-nums text-secondary">{{ lineCostOf(l, mk) | currency: cur() : 'symbol' : '1.0-0' }}</span>
-                    </div>
-                  }
-                  <!-- Subtotal — below all the items. -->
-                  <div class="grid grid-cols-[minmax(0,1fr)_64px_110px_140px_90px] items-center gap-3 px-3 py-3">
-                    <span class="bp-list-title">Subtotal</span>
-                    <span></span><span></span><span></span>
-                    <span class="bp-amount text-right text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
-                  </div>
-                  }
-
                   <!-- Per-category add removed (Liam 2026-10-21) — a single
                        "Add line" now lives in the Ballpark quote section header. -->
                 </div>
@@ -467,6 +410,12 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
             <p class="bp-caption text-secondary">Project Total, excluding VAT</p>
             <p class="bp-amount-hero mt-0.5 text-text">{{ bd().projectTotal | currency: cur() : 'symbol' : '1.0-0' }}</p>
           </div>
+          <!-- Send stays reachable after the project goes live (Liam 2026-11-12):
+               message more suppliers / re-open the roster. No "makes this live"
+               caption — it already is. The draft send lives in the section box above. -->
+          <button type="button" class="bp-msg-btn mt-4" [disabled]="sending()" (click)="messageSuppliers()">
+            <lucide-icon name="users" [size]="16" /> Message suppliers
+          </button>
         </div>
 
         <p class="bp-caption mt-4">Indicative — based on marketplace base prices. Final supplier quotes and the priced rollup land with checkout.</p>
@@ -484,20 +433,6 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
             </button>
           </div>
         }
-      }
-
-      @if (!isDraftProject()) {
-      <!-- Assumptions + Risks (styling now; content wired later). -->
-      <div class="mt-6 grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
-        <div class="bp-card bp-card--lifted p-6">
-          <h2 class="bp-card-title">Assumptions</h2>
-          <p class="bp-body-small mt-2 italic text-secondary">Coming soon</p>
-        </div>
-        <div class="bp-card bp-card--lifted p-6">
-          <h2 class="bp-card-title">Risks that could move the price</h2>
-          <p class="bp-body-small mt-2 italic text-secondary">Coming soon</p>
-        </div>
-      </div>
       }
 
       <div class="mt-6 flex items-start justify-between gap-4">
@@ -765,18 +700,6 @@ export class ProjectEstimateComponent {
    *  the client-facing Project Costs. Fees are never marked up. */
   protected readonly marginMarkup = computed(() => 1 + (this.bd().marginPct || 0) / 100);
 
-  /** The DERIVED pill code for a line — agency view, so buyer = "you". Uses the
-   *  ONE shared `acceptanceCode` deriver (project.types carries buyer/seller/
-   *  bothAccepted from the server's deriveLineState); the editable label comes
-   *  from `line_display_status` via LineDisplayStatusService. */
-  protected activeStatusCode(l: QuoteLine): LineDisplayCode {
-    return acceptanceCode(l, 'buyer') ?? (l.status === 'declined' ? 'declined' : 'to_agree');
-  }
-  protected activeStatusLabel(l: QuoteLine): string {
-    return this.lineDisplay.label(this.activeStatusCode(l));
-  }
-  /** Displayed line cost (hard costs marked up, own lines raw — via mk). */
-  protected lineCostOf(l: QuoteLine, mk: number): number { return lineCost(l) * mk; }
 
   /** Per-supplier summary status for the active card header — SAME label/tone
    *  rules as the Messages tab (inbox-landing pillLabel/pillClass): Action
@@ -1126,15 +1049,6 @@ export class ProjectEstimateComponent {
     this.adding.set(true);
   }
 
-  /** Active supplier card "Add item" (top-level button) → open that supplier's
-   *  existing Inbox conversation (tab=inbox&supplier=<orgId>), where further
-   *  requirements are discussed. g.id is the supplier org id. */
-  protected openSupplierInbox(g: { id: string }): void {
-    this.router.navigate(['/projects', this.project().ref ?? this.projectId()], {
-      queryParams: { tab: 'inbox', supplier: g.id },
-    });
-  }
-
   /** Feature flag — the per-card add "+" icons (draft per-category, active
    *  circle-+ / plain +). OFF for now: a custom line can't be attributed to a
    *  supplier in the current model (see the status/line audit). Flip to true
@@ -1355,11 +1269,12 @@ export class ProjectEstimateComponent {
       this.lines.reload();
       this.est.reload();
       // First send flips the project Draft → Active (server-side), unlocking the
-      // About / Inbox / Reports tabs — tell the host to reload its detail so the
-      // tabs appear, then land on the live Overview (About); the Inbox tab sits
-      // right beside it with an attention badge for the replies to come.
+      // Inbox / Documents tabs — tell the host to reload its detail so the tabs
+      // appear and this view re-renders into its Active form IN PLACE. We stay on
+      // Ballpark (Liam 2026-11-12): the lines you just sent flip to out-for-quote
+      // with status badges right here, so there's no jarring hop to Details; the
+      // Inbox tab appears in the band with its attention badge for the replies.
       this.detailsSaved.emit();
-      void this.router.navigate(['/projects', this.project().ref ?? this.projectId()], { queryParams: { tab: 'details' } });
     } catch (err) {
       this.toast.add({ severity: 'error', summary: "Couldn't send the brief — please try again.", detail: errorDetail(err), life: 5000 });
     } finally {

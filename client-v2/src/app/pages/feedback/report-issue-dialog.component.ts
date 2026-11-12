@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, model, output, resource, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { DialogModule } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 import { FeedbackService, MyIssue } from '../../core/feedback/feedback.service';
 import { SelectComponent, SelectOption } from '../../shared/select/select.component';
 import { errorDetail } from '../../core/http-error';
+import { ModalComponent } from '../../shared/modal/modal.component';
 
 /** pV2-WHATSNEW-REDESIGN-01 Part B — "Report an issue" dialog. Writes to the
  *  feedback subsystem via the SECURED POST /api/feedback (submitted_by +
@@ -12,42 +12,35 @@ import { errorDetail } from '../../core/http-error';
 @Component({
   selector: 'app-report-issue-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DialogModule, SelectComponent],
+  imports: [ModalComponent, SelectComponent],
   template: `
-    <p-dialog
-      [visible]="open()"
-      (visibleChange)="onVisible($event)"
-      styleClass="bp-modal"
-      [closable]="true"
-      [closeOnEscape]="true"
-      [dismissableMask]="true"
-      [modal]="true"
-      [style]="{ width: '560px', maxWidth: '94vw' }"
+    <app-modal
+      [open]="open()"
+      (close)="close()"
+      title="Report an issue"
+      width="560px"
+      maxWidth="94vw"
     >
-      <ng-template pTemplate="header">
-        <h2 class="bp-card-title">Report an issue</h2>
-      </ng-template>
-
       <div class="flex flex-col gap-4">
         <div>
-          <span class="bp-field-label mb-1.5 block">Type</span>
+          <span class="ed-label mb-1.5 block">Type</span>
           <app-select ariaLabel="Issue type" [options]="typeOptions" [value]="type()" (changed)="type.set($any($event))" />
         </div>
 
         <div>
-          <span class="bp-field-label mb-1.5 block">Page / area</span>
+          <span class="ed-label mb-1.5 block">Page / area</span>
           <app-select ariaLabel="Area" [options]="areaOptions()" [value]="areaId() ?? ''" (changed)="areaId.set($event || null)" />
         </div>
 
         <div>
-          <span class="bp-field-label mb-1.5 block">Title</span>
+          <span class="ed-label mb-1.5 block">Title</span>
           <input class="ed-input" type="text" [value]="title()" (input)="title.set($any($event.target).value)"
                  placeholder="Short summary" maxlength="255" />
         </div>
 
         <div>
-          <span class="bp-field-label mb-1.5 block">Details</span>
-          <textarea class="ed-input min-h-[110px]" [value]="details()" (input)="details.set($any($event.target).value)"
+          <span class="ed-label mb-1.5 block">Details</span>
+          <textarea class="ed-textarea min-h-[110px]" [value]="details()" (input)="details.set($any($event.target).value)"
                     placeholder="What happened, and what did you expect?" maxlength="8000"></textarea>
         </div>
 
@@ -56,13 +49,11 @@ import { errorDetail } from '../../core/http-error';
         }
       </div>
 
-      <ng-template pTemplate="footer">
-        <button type="button" class="bp-btn-outline" (click)="close()">Cancel</button>
-        <button type="button" class="bp-btn-accent" [disabled]="!canSubmit() || submitting()" (click)="submit()">
-          {{ submitting() ? 'Sending…' : 'Report issue' }}
-        </button>
-      </ng-template>
-    </p-dialog>
+      <button modalFooter type="button" class="bp-btn--secondary" (click)="close()">Cancel</button>
+      <button modalFooter type="button" class="bp-btn--primary" [disabled]="!canSubmit() || submitting()" (click)="submit()">
+        {{ submitting() ? 'Sending…' : 'Report issue' }}
+      </button>
+    </app-modal>
   `,
 })
 export class ReportIssueDialogComponent {

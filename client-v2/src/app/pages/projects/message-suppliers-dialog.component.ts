@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { OutreachRosterEntry } from '../../core/inbox/inbox.service';
+import { ModalComponent } from '../../shared/modal/modal.component';
 
 /** One supplier's stake in a category (item count decides the default primary). */
 export interface MsgSupplierOption {
@@ -23,65 +24,56 @@ export interface MsgSupplierCategory {
 @Component({
   selector: 'app-message-suppliers-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, ModalComponent],
   host: { class: 'block' },
   template: `
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" (click)="cancel.emit()">
-      <div class="bp-card flex max-h-[85vh] w-full max-w-lg flex-col p-6" (click)="$event.stopPropagation()">
-        <div class="flex items-start justify-between">
-          <h3 class="bp-card-title text-lg">Who should we ask to quote?</h3>
-          <button type="button" class="text-muted hover:text-text" aria-label="Close" (click)="cancel.emit()">
-            <lucide-icon name="x" [size]="18" />
-          </button>
-        </div>
-        <p class="bp-body-small mt-1 text-secondary">
-          Check the suppliers you want to quote each category. One keeps quotes comparable;
-          add more to compare.
-        </p>
-
-        <div class="mt-4 flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
-          @for (c of categories(); track c.categoryId) {
-            <div class="bp-card p-3.5">
-              <div class="flex items-center justify-between gap-2">
-                <span class="bp-list-title truncate">{{ c.categoryName }}</span>
-                @if (c.suppliers.length === 1) {
-                  <span class="bp-pill bp-pill--success"><lucide-icon name="check" [size]="12" /> 1 supplier</span>
-                } @else {
-                  <span class="bp-pill bp-pill--warn">{{ c.suppliers.length }} suppliers</span>
-                }
-              </div>
-
+    <app-modal
+      title="Who should we ask to quote?"
+      subtitle="Check the suppliers you want to quote each category. One keeps quotes comparable; add more to compare."
+      width="512px"
+      (close)="cancel.emit()"
+    >
+      <div class="flex flex-col gap-2.5" style="max-height: 60vh; overflow-y: auto">
+        @for (c of categories(); track c.categoryId) {
+          <div class="bp-card p-3.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="bp-list-title truncate">{{ c.categoryName }}</span>
               @if (c.suppliers.length === 1) {
-                <div class="bp-meta mt-1">
-                  {{ c.suppliers[0].supplierName }}@if (c.suppliers[0].supplierCity) { · {{ c.suppliers[0].supplierCity }} }
-                  · {{ c.suppliers[0].count }} item{{ c.suppliers[0].count === 1 ? '' : 's' }}
-                </div>
+                <span class="bp-pill bp-pill--success"><lucide-icon name="check" [size]="12" /> 1 supplier</span>
               } @else {
-                <div class="mt-2 flex flex-col gap-1.5">
-                  @for (s of c.suppliers; track s.supplierId) {
-                    <label class="flex cursor-pointer items-center gap-2.5">
-                      <input type="checkbox" class="bp-check"
-                             [checked]="isSelected(c.categoryId, s.supplierId)"
-                             (change)="toggleSupplier(c.categoryId, s.supplierId)" />
-                      <span class="bp-body-small text-text">{{ s.supplierName }}@if (s.supplierCity) { · {{ s.supplierCity }} }</span>
-                      <span class="bp-meta">{{ s.count }} item{{ s.count === 1 ? '' : 's' }}</span>
-                    </label>
-                  }
-                </div>
+                <span class="bp-pill bp-pill--warn">{{ c.suppliers.length }} suppliers</span>
               }
             </div>
-          }
-        </div>
 
-        <div class="mt-4 border-t border-hairline pt-4">
-          <button type="button" class="bp-btn-grad w-full" (click)="send.emit(buildRoster())">
-            <lucide-icon name="send" [size]="16" />
-            Send {{ threadCount() }} brief{{ threadCount() === 1 ? '' : 's' }}
-          </button>
-          <p class="bp-caption mt-2 text-center">This will spend 1 Ball.</p>
-        </div>
+            @if (c.suppliers.length === 1) {
+              <div class="bp-meta mt-1">
+                {{ c.suppliers[0].supplierName }}@if (c.suppliers[0].supplierCity) { · {{ c.suppliers[0].supplierCity }} }
+                · {{ c.suppliers[0].count }} item{{ c.suppliers[0].count === 1 ? '' : 's' }}
+              </div>
+            } @else {
+              <div class="mt-2 flex flex-col gap-1.5">
+                @for (s of c.suppliers; track s.supplierId) {
+                  <label class="flex cursor-pointer items-center gap-2.5">
+                    <input type="checkbox" class="bp-check"
+                           [checked]="isSelected(c.categoryId, s.supplierId)"
+                           (change)="toggleSupplier(c.categoryId, s.supplierId)" />
+                    <span class="bp-body-small text-text">{{ s.supplierName }}@if (s.supplierCity) { · {{ s.supplierCity }} }</span>
+                    <span class="bp-meta">{{ s.count }} item{{ s.count === 1 ? '' : 's' }}</span>
+                  </label>
+                }
+              </div>
+            }
+          </div>
+        }
       </div>
-    </div>
+
+      <span modalFooter class="bp-caption mr-auto">This will spend 1 Ball.</span>
+      <button modalFooter type="button" class="bp-btn--secondary" (click)="cancel.emit()">Cancel</button>
+      <button modalFooter type="button" class="bp-btn--primary" (click)="send.emit(buildRoster())">
+        <lucide-icon name="send" [size]="16" />
+        Send {{ threadCount() }} brief{{ threadCount() === 1 ? '' : 's' }}
+      </button>
+    </app-modal>
   `,
   styles: [
     `

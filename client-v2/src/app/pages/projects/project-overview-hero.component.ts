@@ -43,8 +43,8 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
 
         <!-- Cover actions -->
         <div class="ovh-actions absolute right-4 top-4 flex flex-wrap items-center gap-2">
-          <button type="button" class="bp-cover-btn" (click)="buildCover.emit()">
-            <lucide-icon name="sparkles" [size]="15" /> Build cover from your items
+          <button type="button" class="bp-cover-btn" (click)="editDetails.emit()">
+            <lucide-icon name="pencil" [size]="15" /> Edit details
           </button>
           <button type="button" class="bp-cover-btn" (click)="changeImage.emit()">
             <lucide-icon name="image" [size]="15" /> Change image
@@ -135,7 +135,9 @@ export class ProjectOverviewHeroComponent {
   readonly collapsed = input<boolean>(false);
 
   readonly changeImage = output<void>();
-  readonly buildCover = output<void>();
+  /** Open the project-details dialog (the create-flow form) to edit name/client/
+   *  event/date/venue/guests/budget in place. */
+  readonly editDetails = output<void>();
 
   /** Minimise the stats pill to just the project name (chevron). Session-only. */
   protected readonly minimised = signal(false);

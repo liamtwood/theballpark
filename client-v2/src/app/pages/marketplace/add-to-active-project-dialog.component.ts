@@ -11,10 +11,10 @@ import {
 } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DialogModule } from 'primeng/dialog';
 import { firstValueFrom } from 'rxjs';
 import { InboxService, ActiveAddContext } from '../../core/inbox/inbox.service';
 import { AddToProjectItem } from './add-to-project-dialog.component';
+import { ModalComponent } from '../../shared/modal/modal.component';
 
 /** pV2-STORE-ADD-ACTIVE-01 — adding an item to an ALREADY-LIVE project. The project
  *  is active, so the new line needs a supplier behind it: pick who prices it (the
@@ -25,29 +25,18 @@ import { AddToProjectItem } from './add-to-project-dialog.component';
 @Component({
   selector: 'app-add-to-active-project-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, FormsModule, DialogModule],
+  imports: [CurrencyPipe, FormsModule, ModalComponent],
   template: `
-    <p-dialog
-      [visible]="!!item() && !!projectId()"
-      (visibleChange)="onVisible($event)"
-      styleClass="bp-modal"
-      [closable]="true"
-      [closeOnEscape]="true"
-      [dismissableMask]="true"
-      [modal]="true"
-      [style]="{ width: '520px' }"
-    >
-      <ng-template pTemplate="header">
-        @if (item(); as it) {
-          <div>
-            <h2 class="bp-card-title">Add {{ it.name }}</h2>
-            <p class="bp-body-small mt-1 text-secondary">
-              This project is already live, so a new item needs a supplier behind it.
-              Choose who prices it — the cost stays a ballpark until it's agreed and paid.
-            </p>
-          </div>
-        }
-      </ng-template>
+    <app-modal [open]="!!item() && !!projectId()" (close)="close.emit()" width="520px">
+      @if (item(); as it) {
+        <div modalHeader>
+          <h2 class="bp-card-title">Add {{ it.name }}</h2>
+          <p class="bp-body-small mt-1 text-secondary">
+            This project is already live, so a new item needs a supplier behind it.
+            Choose who prices it — the cost stays a ballpark until it's agreed and paid.
+          </p>
+        </div>
+      }
 
       @if (ctx.isLoading()) {
         <p class="bp-body-small py-2 text-secondary">Loading…</p>
@@ -114,13 +103,11 @@ import { AddToProjectItem } from './add-to-project-dialog.component';
         </div>
       }
 
-      <ng-template pTemplate="footer">
-        <button type="button" class="bp-btn-outline" (click)="close.emit()">Cancel</button>
-        <button type="button" class="bp-btn-grad" [disabled]="busy() || !supplier()" (click)="confirm()">
-          {{ busy() ? 'Adding…' : 'Add as ballpark and message' }}
-        </button>
-      </ng-template>
-    </p-dialog>
+      <button modalFooter type="button" class="bp-btn--secondary" (click)="close.emit()">Cancel</button>
+      <button modalFooter type="button" class="bp-btn--primary" [disabled]="busy() || !supplier()" (click)="confirm()">
+        {{ busy() ? 'Adding…' : 'Add as ballpark and message' }}
+      </button>
+    </app-modal>
   `,
   styles: [
     `
@@ -202,10 +189,6 @@ export class AddToActiveProjectDialogComponent {
     computation: (c) =>
       c ? `We'd like to add "${c.itemName}" to ${c.projectName ?? 'the project'}. Could you confirm availability and a price for this item?` : '',
   });
-
-  protected onVisible(visible: boolean): void {
-    if (!visible) this.close.emit();
-  }
 
   protected async confirm(): Promise<void> {
     const it = this.item();

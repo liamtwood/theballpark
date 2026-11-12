@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output, si
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
+import { ModalComponent } from '../../shared/modal/modal.component';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { ProjectCategoryBucket } from '../../core/projects/project.types';
@@ -39,82 +40,81 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 @Component({
   selector: 'app-invite-supplier-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, LucideAngularModule, SelectComponent, CoachmarkComponent],
+  imports: [FormsModule, ModalComponent, LucideAngularModule, SelectComponent, CoachmarkComponent],
   host: { class: 'contents' },
   template: `
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" (click)="cancel.emit()">
-      <div class="bp-card w-full max-w-md p-6" (click)="$event.stopPropagation()">
-        <div class="flex items-start justify-between">
-          <h3 class="bp-card-title text-lg">Add outside supplier</h3>
-          <button type="button" class="text-muted hover:text-text" aria-label="Close" (click)="cancel.emit()">
-            <lucide-icon name="x" [size]="18" />
-          </button>
+    <app-modal
+      title="Add outside supplier"
+      width="440px"
+      (close)="cancel.emit()"
+    >
+      @if (existing(); as ex) {
+        <div class="flex items-start gap-3 rounded-[var(--radius-field)] px-3 py-3" style="background: var(--theme-soft)">
+          <lucide-icon name="store" [size]="18" class="mt-0.5 shrink-0" style="color: var(--theme-accent)" />
+          <div class="min-w-0">
+            <p class="bp-list-title" style="color: var(--theme-text)">Already on Ballpark: {{ ex.name }}</p>
+            <p class="bp-body-small mt-1 text-secondary">Add their banner to this category and put your request against them.</p>
+          </div>
+        </div>
+      } @else {
+        <div class="flex justify-center">
+          <app-coachmark page="add-outside-supplier" name="intro" tail="up"
+                         defaultText="Invite a supplier who isn't on Ballpark yet — they'll join the Marketplace, with your quote request waiting in their inbox. Send now, or Save to add more items first." />
         </div>
 
-        @if (existing(); as ex) {
-          <div class="mt-4 flex items-start gap-3 rounded-[var(--radius-field)] px-3 py-3" style="background: var(--theme-soft)">
-            <lucide-icon name="store" [size]="18" class="mt-0.5 shrink-0" style="color: var(--theme-accent)" />
-            <div class="min-w-0">
-              <p class="bp-list-title" style="color: var(--theme-text)">Already on Ballpark: {{ ex.name }}</p>
-              <p class="bp-body-small mt-1 text-secondary">Add their banner to this category and put your request against them.</p>
-            </div>
+        <div class="mt-4 flex flex-col gap-4">
+          <label class="block">
+            <span class="ed-label mb-1.5 block">Company name</span>
+            <input class="ed-input" placeholder="e.g. Fern &amp; Stem Floristry" maxlength="100" [(ngModel)]="form.businessName" autocomplete="off" />
+          </label>
+          <label class="block">
+            <span class="ed-label mb-1.5 block">Email address</span>
+            <input type="email" class="ed-input" placeholder="supplier@example.com" maxlength="254" [(ngModel)]="form.email" autocomplete="off" />
+          </label>
+          <div class="block">
+            <span class="ed-label mb-1.5 block">Category</span>
+            <app-select ariaLabel="Category" [options]="categoryOptions()" [value]="categoryId()"
+                        [placeholder]="categories().length ? 'Pick a category' : 'No categories on this project yet'"
+                        (changed)="categoryId.set($event)" />
           </div>
-          <div class="mt-5 flex gap-2.5">
-            <button type="button" class="bp-btn-cancel flex-1" (click)="existing.set(null)">Back</button>
-            <button type="button" class="bp-btn-grad flex-1" (click)="useExisting(ex)">Use them</button>
-          </div>
-        } @else {
-          <p class="bp-body-small mt-2 text-secondary">
-            Invite a supplier to join the Ballpark Marketplace and quote for this project.
-          </p>
+          <label class="block">
+            <span class="ed-label mb-1.5 block">What would you like quoted?</span>
+            <textarea class="ed-textarea" rows="3" maxlength="2000"
+                      placeholder="Items, quantities and any requirements" [(ngModel)]="form.quoteText"></textarea>
+          </label>
+        </div>
 
-          <div class="mt-3 flex justify-center">
-            <app-coachmark page="add-outside-supplier" name="intro" tail="up"
-                           defaultText="Invite a supplier who isn't on Ballpark yet — they'll join the Marketplace, with your quote request waiting in their inbox. Send now, or Save to add more items first." />
-          </div>
-
-          <div class="mt-4 flex flex-col gap-3">
-            <label class="block">
-              <span class="bp-field-label mb-1 block pl-3">Company name</span>
-              <input class="bp-input-field" placeholder="e.g. Fern &amp; Stem Floristry" maxlength="100" [(ngModel)]="form.businessName" autocomplete="off" />
-            </label>
-            <label class="block">
-              <span class="bp-field-label mb-1 block pl-3">Email address</span>
-              <input type="email" class="bp-input-field" placeholder="supplier@example.com" maxlength="254" [(ngModel)]="form.email" autocomplete="off" />
-            </label>
-            <div class="block">
-              <span class="bp-field-label mb-1 block pl-3">Category</span>
-              <app-select ariaLabel="Category" [options]="categoryOptions()" [value]="categoryId()"
-                          [placeholder]="categories().length ? 'Pick a category' : 'No categories on this project yet'"
-                          (changed)="categoryId.set($event)" />
-            </div>
-            <label class="block">
-              <span class="bp-field-label mb-1 block pl-3">What would you like quoted?</span>
-              <textarea class="bp-store-textarea mt-1" rows="3" maxlength="2000"
-                        placeholder="Items, quantities and any requirements" [(ngModel)]="form.quoteText"></textarea>
-            </label>
-          </div>
-
-          @if (error()) {
-            <p class="bp-body-small mt-3 text-danger">{{ error() }}</p>
-          }
-
-          <p class="bp-caption mt-4 rounded-[var(--radius-field)] px-3 py-2 text-secondary" style="background: var(--color-fill)">
-            Email invitations are pending sender-domain setup.
-          </p>
-
-          <div class="mt-4 flex gap-2.5">
-            <button type="button" class="bp-btn-cancel flex-1" (click)="cancel.emit()">Cancel</button>
-            <button type="button" class="bp-btn-outline flex-1" [disabled]="!canSubmit()" (click)="submit(false)">
-              {{ busy() && pendingSend() === false ? 'Saving…' : 'Save' }}
-            </button>
-            <button type="button" class="bp-btn-grad flex-1" [disabled]="!canSubmit()" (click)="submit(true)">
-              {{ busy() && pendingSend() === true ? 'Sending…' : 'Send invitation' }}
-            </button>
-          </div>
+        @if (error()) {
+          <p class="bp-body-small mt-3 text-danger">{{ error() }}</p>
         }
-      </div>
-    </div>
+
+        <p class="bp-caption mt-4 rounded-[var(--radius-field)] px-3 py-2 text-secondary" style="background: var(--color-fill)">
+          Email invitations are pending sender-domain setup.
+        </p>
+      }
+
+      <!-- One modalFooter node per button (each @if single-root) so named-slot
+           projection works — a multi-root @if would mis-slot (NG8011). -->
+      @if (existing()) {
+        <button modalFooter type="button" class="bp-btn--secondary" (click)="existing.set(null)">Back</button>
+      }
+      @if (existing(); as ex) {
+        <button modalFooter type="button" class="bp-btn--primary" (click)="useExisting(ex)">Use them</button>
+      }
+      @if (!existing()) {
+        <button modalFooter type="button" class="bp-btn--secondary" (click)="cancel.emit()">Cancel</button>
+      }
+      @if (!existing()) {
+        <button modalFooter type="button" class="bp-btn--secondary" [disabled]="!canSubmit()" (click)="submit(false)">
+          {{ busy() && pendingSend() === false ? 'Saving…' : 'Save' }}
+        </button>
+      }
+      @if (!existing()) {
+        <button modalFooter type="button" class="bp-btn--primary" [disabled]="!canSubmit()" (click)="submit(true)">
+          {{ busy() && pendingSend() === true ? 'Sending…' : 'Send' }}
+        </button>
+      }
+    </app-modal>
   `,
 })
 export class InviteSupplierDialogComponent {

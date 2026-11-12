@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, resource, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DialogModule } from 'primeng/dialog';
+import { ModalComponent } from '../../shared/modal/modal.component';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
@@ -17,7 +17,6 @@ import { errorDetail } from '../../core/http-error';
 import { EditFieldOption } from '../../shared/edit-field/edit-field.component';
 import { SelectComponent, SelectOption } from '../../shared/select/select.component';
 import { natoDate } from '../../shared/details-format';
-import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
 import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.component';
@@ -77,11 +76,10 @@ interface DetailForm {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ToastModule,
-    DialogModule,
+    ModalComponent,
     ProjectDetailsFieldsComponent,
     LucideAngularModule,
     CoachmarkComponent,
-    PageHeroComponent,
     SelectComponent,
     CompletenessCardComponent,
     DrawerComponent,
@@ -105,48 +103,23 @@ interface DetailForm {
   host: { class: 'block' },
   template: `
     @if (detail.value(); as p) {
-      @if (isDraft()) {
-        <!-- FR-00240 — client eyebrow / project title / event-summary subtitle,
-             all page-config-driven + token-resolved (configurable in
-             /settings/pages; default eyebrow {clientName}). Back reads "Back" +
-             history-aware (standard), top-left above the title. Right-hand
-             Ballpark meta (BALLPARK / total / Exc. VAT) mirrors the live hero's
-             working total — wired in S2 now the line cluster feeds the estimate. -->
-        <app-page-hero [eyebrow]="projectHero().eyebrow" [dense]="true" [contained]="true"
-                       [back]="{ label: 'Back', href: '/projects', history: true }"
-                       [title]="projectHero().title" [subtitle]="projectHero().subtitle">
-          <!-- Running-ballpark pill (replaces the old BALLPARK / total / Exc. VAT
-               meta, Liam 2026-10-26): dot + label + total on the left, item-count
-               aside on the right. -->
-          <div hero-actions class="bp-run-pill">
-            <span class="bp-run-pill__dot"></span>
-            <span class="bp-run-pill__main">
-              <span class="bp-run-pill__label">Running ballpark</span>
-              <span class="bp-run-pill__amount">{{ ballparkTotalStr() }}</span>
-            </span>
-            <span class="bp-run-pill__aside">
-              <span class="bp-run-pill__count">{{ ballparkItemCount() }} item{{ ballparkItemCount() === 1 ? '' : 's' }}</span>
-              <span class="bp-run-pill__vat">excl. VAT</span>
-            </span>
-          </div>
-        </app-page-hero>
-      } @else {
-        <!-- Active hero ABOVE the tabs: cover + name + the four negotiation tiles
-             (Working ballpark / Confirmed so far / Agreed items / Open threads). -->
-        <div class="shrink-0 bp-gutter px-6 pt-4">
-          <div class="mx-auto w-full max-w-[var(--workspace-max)]">
-            <app-project-overview-hero
-              [project]="p"
-              [collapsed]="heroCollapsed()"
-              [workingTotal]="estimate.value()?.projectTotal ?? 0"
-              [overview]="overview.value() ?? null"
-              [currency]="p.currency || 'GBP'"
-              [label]="label()"
-              (changeImage)="imgDrawer.set(true)"
-              (buildCover)="onBuildCover()" />
-          </div>
+      <!-- ONE hero across Draft ⇄ Active (Liam 2026-11-12): the overview hero
+           (cover + name + the four negotiation tiles) renders in every mode. No
+           image/status branch — keep it simple; the tiles self-reveal their
+           numbers once the project goes live. -->
+      <div class="shrink-0 bp-gutter px-6 pt-4">
+        <div class="mx-auto w-full max-w-[var(--workspace-max)]">
+          <app-project-overview-hero
+            [project]="p"
+            [collapsed]="heroCollapsed()"
+            [workingTotal]="estimate.value()?.projectTotal ?? 0"
+            [overview]="overview.value() ?? null"
+            [currency]="p.currency || 'GBP'"
+            [label]="label()"
+            (changeImage)="imgDrawer.set(true)"
+            (editDetails)="openEditDetails()" />
         </div>
-      }
+      </div>
 
       <!-- Tabs sit just above the tab content (Liam 2026-08-28). Coachmarks
            overlay ABOVE the band in their own layer (absolute → no layout shift
@@ -411,41 +384,47 @@ interface DetailForm {
       <div class="bp-page-body"><p class="bp-body-small text-warn">Couldn't load this {{ label().toLowerCase() }}.</p></div>
     }
 
-    <!-- pV2-PROJ-UNIFY-01 — welcome confirm dialog (create flow). Surfaces the
-         parsed details for a quick confirm/fix; on "Save & continue" the details
-         fly into the Details tab and the estimate builds below. -->
-    @if (detail.value(); as p) {
-      <p-dialog
-        header="Confirm your project details"
-        styleClass="bp-modal"
-        [visible]="welcomeOpen()"
-        (visibleChange)="welcomeOpen.set($event === true)"
-        [modal]="true"
-        [closable]="false"
-        [style]="{ width: '560px' }"
+    <!-- pV2-PROJ-UNIFY-01 — the create-flow project-details dialog, shared by two
+         entries: the WELCOME confirm (opened once on ?welcome=1 — surfaces the
+         parsed details, forced confirm, flies into the Details tab on save) and
+         the EDIT entry (the hero's "Edit details" button — closable, saves in
+         place with no fly). Same form fields + w* model; mode branches the chrome. -->
+    @if (detail.value()) {
+      <app-modal
+        [open]="welcomeOpen()"
+        (close)="welcomeOpen.set(false)"
+        [title]="detailsMode() === 'edit' ? 'Edit project details' : 'Confirm your project details'"
+        [subtitle]="detailsDialogSubtitle()"
+        width="560px"
+        [closable]="detailsMode() === 'edit'"
+        [dismissable]="detailsMode() === 'edit'"
       >
-        <p class="bp-body-small text-secondary">
-          We read these from your brief — fix anything that's off, then continue.
-          You can edit them any time on the Details tab.
-        </p>
-        <div class="mt-4">
-          <app-project-details-fields
-            [eventTypeOptions]="eventTypeOptions()"
-            [(name)]="wName"
-            [(client)]="wClient"
-            [(eventType)]="wEventType"
-            [(eventDate)]="wEventDate"
-            [(location)]="wLocation"
-            [(guests)]="wGuests"
-            [(budget)]="wBudget"
-          />
-        </div>
-        <div class="mt-6 flex items-center justify-end">
-          <button type="button" class="bp-btn-grad" [disabled]="savingWelcome()" (click)="saveWelcome()">
-            <lucide-icon name="check" [size]="15" /> {{ savingWelcome() ? 'Saving…' : 'Save & continue' }}
+        <app-project-details-fields
+          [eventTypeOptions]="eventTypeOptions()"
+          [showFinancials]="detailsMode() === 'edit'"
+          [(name)]="wName"
+          [(client)]="wClient"
+          [(eventType)]="wEventType"
+          [(eventDate)]="wEventDate"
+          [(location)]="wLocation"
+          [(guests)]="wGuests"
+          [(budget)]="wBudget"
+          [(margin)]="wMargin"
+          [(contingency)]="wContingency"
+          [(vat)]="wVat"
+          [(currency)]="wCurrency"
+        />
+
+        @if (detailsMode() === 'edit') {
+          <button modalFooter type="button" class="bp-btn--secondary" [disabled]="savingWelcome()" (click)="welcomeOpen.set(false)">
+            Cancel
           </button>
-        </div>
-      </p-dialog>
+        }
+        <button modalFooter type="button" class="bp-btn--primary" [disabled]="savingWelcome()" (click)="saveWelcome()">
+          <lucide-icon name="check" [size]="15" />
+          {{ savingWelcome() ? 'Saving…' : detailsMode() === 'edit' ? 'Save' : 'Save & continue' }}
+        </button>
+      </app-modal>
     }
 
     <!-- The details "fly" into the Details tab on confirm (pV2-PROJ-UNIFY-01).
@@ -519,29 +498,6 @@ export class ProjectDetailComponent {
    *  Marketplace — About Project (event details already live on Ballpark Cost),
    *  Reports and Inbox unlock once it goes Active (sent to suppliers). */
   protected readonly isDraft = computed(() => (this.detail.value()?.status ?? 'draft') === 'draft');
-  /** FR-00240 — the project token context fed to the page-config hero resolver.
-   *  eventType is resolved CODE → project_type LABEL here (the service only
-   *  substitutes). The hero (eyebrow {clientName} / title {projectName} /
-   *  subtitle event-summary) is page-config-driven + configurable in
-   *  /settings/pages; empty segments drop from the ' · ' join. */
-  private readonly projectTokens = computed(() => {
-    const p = this.detail.value();
-    if (!p) return null;
-    const typeLabel = p.eventType
-      ? (this.eventTypeOptions().find((o) => o.value === p.eventType)?.label ?? p.eventType)
-      : null;
-    return {
-      clientName: p.clientName,
-      projectName: p.name,
-      eventType: typeLabel,
-      location: p.venueName, // venue CITY once venue_address_id is wired (FR-00239)
-      eventDate: p.eventDate,
-      guestCount: p.guestCount,
-    };
-  });
-  protected readonly projectHero = computed(() =>
-    this.pageConfig.pageHero('project', this.projectTokens())
-  );
   /** The compact 2-way project nav (Liam's v2 design). Ballpark cost = the
    *  estimate/running-ballpark view ('final'; event details fold in here);
    *  Edit in marketplace = the catalogue browse. Inbox/Final-SOW/Reports are
@@ -552,11 +508,13 @@ export class ProjectDetailComponent {
     // carry tasteful empty-states on a fresh project. Labels still status-aware
     // (the "Running budget"/"Marketplace" relabel is deferred — Liam 2026-11-06).
     const n = this.overview.value()?.actionItems ?? 0;
+    // Details tab is HIDDEN from the nav (Liam 2026-11-12) — project details are
+    // edited via the hero's "Edit details" dialog now. The 'details' @case + route
+    // stay for the welcome-flow landing and any deep link.
     return [
       { tab: 'final', label: 'Ballpark' },
       { tab: 'marketplace', label: 'Marketplace' },
       { tab: 'inbox', label: n > 0 ? `Inbox (${n})` : 'Inbox' },
-      { tab: 'details', label: 'Details' },
       { tab: 'reports', label: 'Documents' },
     ];
   });
@@ -612,19 +570,6 @@ export class ProjectDetailComponent {
   protected readonly detailState = signal<'idle' | 'saving' | 'saved' | 'error'>('idle');
   /** The project's currency (for the Budget field symbol). */
   protected readonly cur = computed(() => this.detail.value()?.currency || 'GBP');
-  /** The draft hero's right-hand Ballpark total — the running estimate
-   *  (projectTotal, exc. VAT) in the project currency, no decimals (mirrors the
-   *  live hero's `workingTotal | currency:…:'1.0-0'`). Shows £0 until lines are
-   *  added — the running ballpark starts at zero. */
-  protected readonly ballparkTotalStr = computed(() =>
-    new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: this.cur(),
-      maximumFractionDigits: 0,
-    }).format(this.estimate.value()?.projectTotal ?? 0)
-  );
-  /** Items added to the running ballpark — shown in the hero pill. */
-  protected readonly ballparkItemCount = computed(() => this.estimate.value()?.itemCount ?? 0);
   /** Image-picker drawer (pV2-MEDIA-01b). */
   protected readonly imgDrawer = signal(false);
   /** pV2-BUILDUP-04 — Final Quote → client-facing document overlays. */
@@ -667,8 +612,19 @@ export class ProjectDetailComponent {
   protected readonly clientNames = computed<string[]>(() => this.clientNamesRes.value() ?? []);
 
   // ── pV2-PROJ-UNIFY-01 — create welcome flow ──────────────────────────────
-  /** The confirm/fix dialog (opened once on ?welcome=1 after create). */
+  /** The project-details dialog (shared: the create-flow welcome confirm + the
+   *  hero "Edit details" entry). Visibility is one signal; `detailsMode` picks
+   *  the chrome + the save path. */
   protected readonly welcomeOpen = signal(false);
+  /** 'welcome' = create-flow confirm (forced, flies to Details on save);
+   *  'edit' = in-place edit from the hero (closable, saves without the fly). */
+  protected readonly detailsMode = signal<'welcome' | 'edit'>('welcome');
+  /** Dialog subtitle — the welcome confirm explains the parsed brief; edit has none. */
+  protected readonly detailsDialogSubtitle = computed(() =>
+    this.detailsMode() === 'edit'
+      ? ''
+      : "We read these from your brief — fix anything that's off, then continue. You can edit them any time on the Details tab."
+  );
   /** The details "fly to the Details tab" animation is playing. */
   protected readonly flying = signal(false);
   /** Brief highlight pulse on the Details tab when the flight lands. */
@@ -687,6 +643,11 @@ export class ProjectDetailComponent {
   protected readonly wLocation = signal('');
   protected readonly wGuests = signal('');
   protected readonly wBudget = signal('');
+  /** Financial defaults — edit-dialog only (seeded in openEditDetails). */
+  protected readonly wMargin = signal('');
+  protected readonly wContingency = signal('');
+  protected readonly wVat = signal('');
+  protected readonly wCurrency = signal('GBP');
   protected readonly savingWelcome = signal(false);
   private welcomeShown = false;
   /** On ?welcome=1: open the confirm dialog once the project is loaded AND kick
@@ -697,6 +658,7 @@ export class ProjectDetailComponent {
     const p = this.detail.value();
     if (wants && p && !this.welcomeShown) {
       this.welcomeShown = true;
+      this.detailsMode.set('welcome');
       // Seed the dialog from the created project (parsed values).
       this.wName.set(p.name ?? '');
       this.wClient.set(p.clientName ?? '');
@@ -719,7 +681,28 @@ export class ProjectDetailComponent {
     }
   });
 
-  /** Save the confirmed details onto the project, then run the fly + landing. */
+  /** Open the shared details dialog in EDIT mode (the hero's "Edit details"),
+   *  seeded from the current project. Saves in place — no fly, no ?welcome. */
+  protected openEditDetails(): void {
+    const p = this.detail.value();
+    if (!p) return;
+    this.detailsMode.set('edit');
+    this.wName.set(p.name ?? '');
+    this.wClient.set(p.clientName ?? '');
+    this.wEventType.set(p.eventType ?? '');
+    this.wEventDate.set(p.eventDate ?? '');
+    this.wLocation.set(p.venueName ?? '');
+    this.wGuests.set(p.guestCount != null ? String(p.guestCount) : '');
+    this.wBudget.set(p.projectBudget != null ? String(p.projectBudget) : '');
+    this.wMargin.set(p.defaultMarginPct != null ? String(p.defaultMarginPct) : '');
+    this.wContingency.set(p.defaultContingencyPct != null ? String(p.defaultContingencyPct) : '');
+    this.wVat.set(p.defaultVatPct != null ? String(p.defaultVatPct) : '');
+    this.wCurrency.set(p.currency || 'GBP');
+    this.welcomeOpen.set(true);
+  }
+
+  /** Save the dialog's details onto the project. Welcome mode then flies into the
+   *  Details tab; edit mode just refreshes the detail and closes. */
   protected async saveWelcome(): Promise<void> {
     const id = this.pid();
     if (id) {
@@ -733,13 +716,30 @@ export class ProjectDetailComponent {
         guestCount: this.wGuests().trim() ? Number(this.wGuests()) : undefined,
         projectBudget: this.wBudget().trim() ? Number(this.wBudget()) : undefined,
       };
+      // Financial defaults only come from the EDIT dialog (welcome never shows
+      // them). Blank clears to null (inherit the org default); a value overrides.
+      if (this.detailsMode() === 'edit') {
+        const numOrNull = (s: string) => (s.trim() ? Number(s) : null);
+        update.currency = this.wCurrency() || 'GBP';
+        update.defaultMarginPct = numOrNull(this.wMargin());
+        update.defaultContingencyPct = numOrNull(this.wContingency());
+        update.defaultVatPct = numOrNull(this.wVat());
+      }
       try {
         await firstValueFrom(this.projects.update(id, update));
       } catch (err) {
-        console.warn('[ProjectDetail] welcome save failed', err);
+        console.warn('[ProjectDetail] details save failed', err);
       } finally {
         this.savingWelcome.set(false);
       }
+    }
+    if (this.detailsMode() === 'edit') {
+      // In-place edit: refresh the saved fields (hero + Details tab) and close.
+      // The estimate re-reads too — guest count / event type feed line pricing.
+      this.welcomeOpen.set(false);
+      this.detail.reload();
+      this.estimate.reload();
+      return;
     }
     this.completeWelcome();
   }
@@ -900,12 +900,6 @@ export class ProjectDetailComponent {
     const n = numOrNull(this.form().budget.replace(/,/g, ''));
     this.patch({ budget: n != null ? n.toLocaleString('en-GB') : '' });
     void this.saveSection('financials');
-  }
-
-  /** "Build cover from your items" — compose a cover from the project's item
-   *  images. Not built yet. */
-  protected onBuildCover(): void {
-    this.toast.add({ severity: 'info', summary: 'Build cover from your items is coming soon.', life: 4000 });
   }
 
   /** Save-on-blur (always-editable fields): persist the section, flash the

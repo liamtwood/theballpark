@@ -6,7 +6,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ToastModule } from 'primeng/toast';
-import { DialogModule } from 'primeng/dialog';
+import { ModalComponent } from '../../shared/modal/modal.component';
 import { MessageService } from 'primeng/api';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -63,7 +63,7 @@ const WHATS_HOT = "What's Hot";
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   imports: [
-    FormsModule, LucideAngularModule, ToastModule, DialogModule, PageHeroComponent, EditFieldComponent,
+    FormsModule, LucideAngularModule, ToastModule, ModalComponent, PageHeroComponent, EditFieldComponent,
     ImageGalleryComponent, ImagePickerComponent, DrawerComponent, ItemApprovalPanelComponent,
     ItemEditActionsComponent, ItemAttributeCardsComponent, SaveStatePillComponent,
     ItemVariantsEditorComponent, CustomizeDialogComponent, DecimalPipe,
@@ -438,10 +438,7 @@ const WHATS_HOT = "What's Hot";
     <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — Volume pricing add/edit (Ballpark dialog,
          bp-modal — same styling as the quick-view dialog). Edits a draft; Done
          commits, Cancel discards. -->
-    <p-dialog [visible]="volumeDialogOpen()" (visibleChange)="onVolumeVisible($event)"
-      styleClass="bp-modal" [modal]="true" [closable]="true" [dismissableMask]="true"
-      [style]="{ width: '540px', maxWidth: '94vw' }">
-      <ng-template pTemplate="header"><h2 class="bp-card-title">Volume pricing</h2></ng-template>
+    <app-modal title="Volume pricing" [open]="volumeDialogOpen()" (close)="cancelVolumeDialog()" width="540px" maxWidth="94vw">
       <div class="flex flex-col gap-2">
         <div class="grid grid-cols-[1fr_1fr_1fr_28px] gap-2">
           <span class="bp-caption text-muted">Min qty</span>
@@ -456,26 +453,19 @@ const WHATS_HOT = "What's Hot";
             <button type="button" class="text-muted hover:text-text" (click)="removeDraftTier($index)" aria-label="Remove tier"><lucide-icon name="trash-2" [size]="16" /></button>
           </div>
         }
-        <button type="button" class="bp-btn-outline bp-body-small self-start" (click)="addDraftTier()"><lucide-icon name="plus" [size]="14" /> Add tier</button>
+        <button type="button" class="bp-btn--secondary bp-body-small self-start" (click)="addDraftTier()"><lucide-icon name="plus" [size]="14" /> Add tier</button>
       </div>
-      <ng-template pTemplate="footer">
-        <button type="button" class="bp-btn-outline" (click)="cancelVolumeDialog()">Cancel</button>
-        <button type="button" class="bp-btn-grad" (click)="saveVolumeDialog()">Done</button>
-      </ng-template>
-    </p-dialog>
+      <button modalFooter type="button" class="bp-btn--secondary" (click)="cancelVolumeDialog()">Cancel</button>
+      <button modalFooter type="button" class="bp-btn--primary" (click)="saveVolumeDialog()">Done</button>
+    </app-modal>
 
     <!-- Variants (multi-dimension matrix) — draft edited in the dialog, committed on
          Done (same pattern as Options/Volume). Wider — the combo table needs room. -->
-    <p-dialog [visible]="variantsDialogOpen()" (visibleChange)="onVariantsVisible($event)"
-      styleClass="bp-modal" [modal]="true" [closable]="true" [dismissableMask]="true"
-      [style]="{ width: '760px', maxWidth: '96vw' }">
-      <ng-template pTemplate="header"><h2 class="bp-card-title">Variants</h2></ng-template>
+    <app-modal title="Variants" [open]="variantsDialogOpen()" (close)="cancelVariantsDialog()" width="760px" maxWidth="96vw">
       <app-item-variants-editor [variants]="variantsSeed()" (variantsChange)="variantsDraft.set($event)" />
-      <ng-template pTemplate="footer">
-        <button type="button" class="bp-btn-outline" (click)="cancelVariantsDialog()">Cancel</button>
-        <button type="button" class="bp-btn-grad" (click)="saveVariantsDialog()">Done</button>
-      </ng-template>
-    </p-dialog>
+      <button modalFooter type="button" class="bp-btn--secondary" (click)="cancelVariantsDialog()">Cancel</button>
+      <button modalFooter type="button" class="bp-btn--primary" (click)="saveVariantsDialog()">Done</button>
+    </app-modal>
 
     <!-- pV2-BUILDUP-03 — cost build-up / estimate (item mode) as a full-screen
          overlay; the panel runs off itemId and provides its own close (cancel). -->
@@ -628,7 +618,6 @@ export class ItemEditComponent {
   protected openVariantsDialog(): void { this.variantsSeed.set(this.variantsState()); this.variantsDraft.set(this.variantsState()); this.variantsDialogOpen.set(true); }
   protected cancelVariantsDialog(): void { this.variantsDialogOpen.set(false); }
   protected saveVariantsDialog(): void { this.variantsState.set(this.variantsDraft()); this.variantsDialogOpen.set(false); this.scheduleSave(); }
-  protected onVariantsVisible(v: boolean): void { if (!v) this.cancelVariantsDialog(); }
 
   /** Rows with BOTH a label and a value, for one group — what saves on submit. */
   protected filledFor(key: string): { label: string; value: string }[] {
@@ -949,7 +938,6 @@ export class ItemEditComponent {
   protected openVolumeDialog(): void { this.volumeDraft.set(this.priceTiers().map((t) => ({ ...t }))); this.volumeDialogOpen.set(true); }
   protected cancelVolumeDialog(): void { this.volumeDialogOpen.set(false); }
   protected saveVolumeDialog(): void { this.priceTiers.set(this.volumeDraft().map((t) => ({ ...t }))); this.volumeDialogOpen.set(false); this.scheduleSave(); }
-  protected onVolumeVisible(v: boolean): void { if (!v) this.cancelVolumeDialog(); }
   protected addDraftTier(): void { this.volumeDraft.update((d) => [...d, { min: '', max: '', price: '' }]); }
   protected removeDraftTier(i: number): void { this.volumeDraft.update((d) => d.filter((_, x) => x !== i)); }
   protected patchDraftTier(i: number, key: 'min' | 'max' | 'price', val: string): void {

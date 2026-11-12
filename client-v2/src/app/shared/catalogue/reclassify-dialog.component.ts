@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { DialogModule } from 'primeng/dialog';
 import { ApiService } from '../../core/api.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { CategoryInfo } from './catalogue.types';
 import { SelectComponent, SelectOption } from '../select/select.component';
+import { ModalComponent } from '../modal/modal.component';
 
 /** pV2-ITEM-BULK-ACTIONS-01 — the bulk Reclassify picker. Reuses the established
  *  Category ▸ Subcategory ▸ Sub-subcategory cascade (the same /marketplace/categories
@@ -15,25 +15,13 @@ import { SelectComponent, SelectOption } from '../select/select.component';
 @Component({
   selector: 'app-reclassify-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DialogModule, SelectComponent],
+  imports: [ModalComponent, SelectComponent],
   template: `
-    <p-dialog
-      [visible]="open()"
-      (visibleChange)="onVisible($event)"
-      (onShow)="onShow()"
-      styleClass="bp-modal"
-      [closable]="true"
-      [closeOnEscape]="true"
-      [dismissableMask]="true"
-      [modal]="true"
-      [style]="{ width: '460px' }"
-    >
-      <ng-template pTemplate="header">
-        <div>
-          <h2 class="bp-card-title">Reclassify {{ count() }} {{ count() === 1 ? 'item' : 'items' }}</h2>
-          <p class="bp-body mt-1 text-secondary">Pick the category. Choosing a subcategory files them deeper.</p>
-        </div>
-      </ng-template>
+    <app-modal [open]="open()" (close)="close.emit()" (shown)="onShow()" width="460px">
+      <div modalHeader>
+        <h2 class="bp-card-title">Reclassify {{ count() }} {{ count() === 1 ? 'item' : 'items' }}</h2>
+        <p class="bp-body mt-1 text-secondary">Pick the category. Choosing a subcategory files them deeper.</p>
+      </div>
 
       <div class="flex flex-col gap-3 py-1">
         <div>
@@ -60,13 +48,11 @@ import { SelectComponent, SelectOption } from '../select/select.component';
         }
       </div>
 
-      <ng-template pTemplate="footer">
-        <button type="button" class="bp-btn-outline" (click)="close.emit()">Cancel</button>
-        <button type="button" class="bp-btn-grad" [disabled]="!deepestId()" (click)="apply()">
-          Reclassify
-        </button>
-      </ng-template>
-    </p-dialog>
+      <button modalFooter type="button" class="bp-btn--secondary" (click)="close.emit()">Cancel</button>
+      <button modalFooter type="button" class="bp-btn--primary" [disabled]="!deepestId()" (click)="apply()">
+        Reclassify
+      </button>
+    </app-modal>
   `,
 })
 export class ReclassifyDialogComponent {
@@ -108,13 +94,9 @@ export class ReclassifyDialogComponent {
   /** The deepest explicit pick — what reclassify writes. */
   protected readonly deepestId = computed(() => this.subSubId() || this.subId() || this.categoryId());
 
-  protected onVisible(v: boolean): void {
-    if (!v) this.close.emit();
-  }
-
-  /** p-dialog (onShow) fires reliably when the dialog becomes visible — the
-   *  [visible] input alone does NOT emit (visibleChange), so the category load +
-   *  seed must happen here, not in onVisible (that's why the picker was empty). */
+  /** app-modal (shown) forwards p-dialog onShow — fires reliably when the dialog
+   *  becomes visible, so the category load + seed happen here (the [open] input
+   *  alone wouldn't signal the open edge). */
   protected async onShow(): Promise<void> {
     await this.ensureLoaded();
     await this.seedFromItem();

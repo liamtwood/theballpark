@@ -2,8 +2,6 @@ import { ChangeDetectionStrategy, Component, inject, resource, signal } from '@a
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
-import { ButtonModule } from 'primeng/button';
-import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -11,6 +9,7 @@ import { errorDetail } from '../../../core/http-error';
 import { TeamMember, TeamService } from '../../../core/team/team.service';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 import { TeamMemberRowComponent } from './team-member-row.component';
+import { ModalComponent } from '../../../shared/modal/modal.component';
 
 /** Typed invite form. */
 interface InviteForm {
@@ -25,7 +24,7 @@ interface InviteForm {
 @Component({
   selector: 'app-team',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, ButtonModule, DialogModule, LucideAngularModule, ToastModule, PageHeroComponent, TeamMemberRowComponent],
+  imports: [ReactiveFormsModule, ModalComponent, LucideAngularModule, ToastModule, PageHeroComponent, TeamMemberRowComponent],
   providers: [MessageService],
   host: { class: 'block' },
   template: `
@@ -57,67 +56,56 @@ interface InviteForm {
       }
     </div>
 
-    <!-- Invite modal — ESC + backdrop dismiss = Cancel (DIALOGS.md rule 5;
-         audit 02-F-2 — was Cancel-only, inconsistent with the remove confirm). -->
-    <p-dialog header="Invite a team member" styleClass="bp-modal" [visible]="inviteOpen()" (visibleChange)="inviteOpen.set($event === true)" [modal]="true" [closeOnEscape]="true" [dismissableMask]="true" [style]="{ width: '380px' }">
-      <form class="flex flex-col gap-3" [formGroup]="inviteForm" (ngSubmit)="submitInvite()">
-        <label class="text-sm font-medium text-secondary">
-          Email *
-          <input type="email" formControlName="email" class="mt-1 w-full rounded-lg border border-hairline px-3 py-2 text-md" placeholder="name@company.com" />
+    <!-- Invite modal — ESC + backdrop dismiss = Cancel (DIALOGS.md rule 5). -->
+    <app-modal title="Invite a team member" [open]="inviteOpen()" (close)="inviteOpen.set(false)" width="380px">
+      <form class="flex flex-col gap-4" [formGroup]="inviteForm" (ngSubmit)="submitInvite()">
+        <label class="block">
+          <span class="ed-label mb-1.5 block">Email *</span>
+          <input type="email" formControlName="email" class="ed-input" placeholder="name@company.com" />
         </label>
-        <label class="text-sm font-medium text-secondary">
-          Name
-          <input type="text" formControlName="displayName" class="mt-1 w-full rounded-lg border border-hairline px-3 py-2 text-md" />
+        <label class="block">
+          <span class="ed-label mb-1.5 block">Name</span>
+          <input type="text" formControlName="displayName" class="ed-input" />
         </label>
-        <label class="text-sm font-medium text-secondary">
-          Job title
-          <input type="text" formControlName="jobTitle" class="mt-1 w-full rounded-lg border border-hairline px-3 py-2 text-md" />
+        <label class="block">
+          <span class="ed-label mb-1.5 block">Job title</span>
+          <input type="text" formControlName="jobTitle" class="ed-input" />
         </label>
         <label class="flex items-center gap-2 text-md text-secondary">
           <input type="checkbox" formControlName="isAdmin" class="rounded border-medium" />
           Make admin
         </label>
-        <div class="mt-2 flex justify-end gap-2">
-          <p-button label="Cancel" severity="secondary" [text]="true" size="small" (onClick)="inviteOpen.set(false)" />
-          <p-button label="Invite" size="small" type="submit" [disabled]="inviteForm.invalid || inviting()" />
-        </div>
       </form>
-    </p-dialog>
 
-    <!-- Remove confirmation — the DIALOGS.md locked confirm template +
-         the FIRST .bp-btn-danger consumer (the pairing rule holds from
-         day one). ESC + backdrop dismiss = Cancel per the interaction
-         table. -->
-    <p-dialog
-      styleClass="bp-modal bp-modal--confirm"
-      [visible]="removeTarget() !== null"
-      (visibleChange)="!$event && removeTarget.set(null)"
-      [modal]="true"
+      <button modalFooter type="button" class="bp-btn--secondary" (click)="inviteOpen.set(false)">Cancel</button>
+      <button modalFooter type="button" class="bp-btn--primary" [disabled]="inviteForm.invalid || inviting()" (click)="submitInvite()">Invite</button>
+    </app-modal>
+
+    <!-- Remove confirmation — the locked confirm template + bp-btn-danger
+         (the pairing rule holds). ESC + backdrop dismiss = Cancel. -->
+    <app-modal
+      variantClass="bp-modal--confirm"
+      [open]="removeTarget() !== null"
+      (close)="removeTarget.set(null)"
       [closable]="false"
-      [closeOnEscape]="true"
-      [dismissableMask]="true"
-      [style]="{ width: '420px' }"
+      width="420px"
     >
-      <ng-template pTemplate="header">
-        <div>
-          <div class="bp-modal__icon">
-            <lucide-icon name="trash-2" [size]="20" />
-          </div>
-          <h2 class="bp-card-title">Remove {{ removeTarget()?.displayName ?? removeTarget()?.email }}?</h2>
+      <div modalHeader>
+        <div class="bp-modal__icon">
+          <lucide-icon name="trash-2" [size]="20" />
         </div>
-      </ng-template>
+        <h2 class="bp-card-title">Remove {{ removeTarget()?.displayName ?? removeTarget()?.email }}?</h2>
+      </div>
       @if (removeTarget(); as t) {
         <p class="bp-body text-secondary">
           They'll lose access to this org. Reversible — you can re-invite them by email.
         </p>
       }
-      <ng-template pTemplate="footer">
-        <button type="button" class="bp-btn-outline" (click)="removeTarget.set(null)">Cancel</button>
-        @if (removeTarget(); as t) {
-          <button type="button" class="bp-btn-danger" (click)="doRemove(t)">Remove</button>
-        }
-      </ng-template>
-    </p-dialog>
+      <button modalFooter type="button" class="bp-btn--secondary" (click)="removeTarget.set(null)">Cancel</button>
+      @if (removeTarget(); as t) {
+        <button modalFooter type="button" class="bp-btn-danger" (click)="doRemove(t)">Remove</button>
+      }
+    </app-modal>
 
     <!-- MessageService supplies aria-live by severity (polite success/info,
          assertive error) — no explicit role needed (audit F-10). -->
