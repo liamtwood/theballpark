@@ -26,7 +26,8 @@ Documents tab + uploads + proposals are **deferred to a later release**; this sh
    + supplier T&C into a **draft**.
 4. Supplier reviews → **confirms** (accepts the terms, incl. the **agency-set** deposit %) → **Ready to sign**.
    If the supplier won't proceed → **declined** (terminal).
-5. Supplier **signs**; Agency reviews (to change anything, edit the fields → regenerate; else **signs**) → **executed**.
+5. Supplier **signs**; Agency reviews (to change anything, edit the draft fields **in place** — an edit
+   after supplier-sign **clears the stale signature** and drops back to draft; else **signs**) → **executed**.
 6. Deposit collected via **Stripe Connect — WS6, later** (this build captures the %, no money moves).
 
 ## Document structure (sections → source)
@@ -63,7 +64,14 @@ parties, Effective Date, Annex A) — not agency-editable. Verbatim text in `doc
 - **The SOW row** = `project_documents` with `type='sow'` (build this table now, SOW-rows only;
   the later Documents release is additive):
   - identity: `id`, `org_id` (agency, RLS), `project_id`, `supplier_org_id` (+ `project_provider_id`)
-  - versioning: `root_document_id`, `version`, `is_current`
+  - **No versioning columns** (dropped, Liam 2026-11-13) — **no `root_document_id` / `version` /
+    `is_current`**. Instead: **multiple independent SOW rows** per `(project, supplier)`. A row is
+    **mutable while not `executed`** (edit draft fields → **regenerate in place, no new row**; an edit
+    after supplier-sign clears the stale signature and drops back to draft). At **`executed` it freezes**
+    (`content_snapshot` + server-side write-rejection). To change an executed SOW you **create a NEW
+    SOW** (pre-filled from the last if wanted); the old executed row **stays as the immutable record,
+    never deleted**. **"Current SOW for a supplier" = the latest non-`declined` row** (derived from
+    `created_at` + `status`; **no `is_current` flag, no `supersedes_document_id` in v1**).
   - **the five editable fields** (agency sets at Create, editable until `supplier_signed`, N/A allowed):
     `timeline`, `design`, `services`, `special_terms` (text) + **`deposit_pct`** (numeric; **agency-set**)
   - **`content_snapshot`** (jsonb) — the fully-resolved rendered doc (5 fields + resolved parties +
@@ -71,9 +79,9 @@ parties, Effective Date, Annex A) — not agency-editable. Verbatim text in `doc
     truth for "executed,"** independent of the deferred Puppeteer PDF. Field writes are **rejected
     server-side once `status` ≥ `supplier_signed`.**
   - sign state: `status`, `supplier_signed_at/by`, `agency_signed_at/by`
-  - `pdf_url` (a later Puppeteer render **of** `content_snapshot`, per version — not the record of
-    truth), audit cols
-- **Line link:** `project_items.sow_root_id` (one item → one SOW).
+  - `pdf_url` (a later Puppeteer render **of** `content_snapshot` — not the record of truth), audit cols
+- **Line link:** `project_items.sow_document_id` (renamed from `sow_root_id`) — one item → one SOW;
+  items **re-point** to the new row when a new SOW is created.
 - **New item fields (FR-00227):** `items.render_included` (bool), `items.render_amendment_rounds` (int).
 - **Reused as-is:** `items.install_description` (Services), `orgs.terms_pdf_url` (Annex A, read from
   the **supplier** org), the line-pricing SSOT (totals).
@@ -87,10 +95,13 @@ parties, Effective Date, Annex A) — not agency-editable. Verbatim text in `doc
 `ready_to_sign` → `supplier_signed` → `agency_signed` / **executed**. Terminal **`declined`** — supplier
 confirms-then-won't-sign, or declines outright (distinct from **re-opening a single item**, which drops
 that item back to negotiation, FR-00228). A `sow_status` codelist drives the pill colour (Settings ▸ Codelists).
-**Edit-before-generate:** all editing is on the **fields (the form)**, before Create/regenerate — the
-rendered SOW is review-only + sign, never edited inline. **No `changes_requested`, no redraft action:**
-to change, **edit the fields → regenerate** (a new version; re-sign if already signed), or **re-open an
-item** (a material change, FR-00228) which drops it back to negotiation and re-drafts on re-resolve.
+**Edit-before-generate:** all editing is on the **fields (the form)** — the rendered SOW is review-only
++ sign, never edited inline. **No `changes_requested`, no redraft action, no versioning.** To change:
+- **before `executed`** — **edit the draft fields → regenerate in place** (same row; an edit after
+  supplier-sign clears the stale signature and drops back to draft), or **re-open an item** (a material
+  change, FR-00228) which drops that item back to negotiation and re-drafts on re-resolve.
+- **after `executed`** — the row is frozen; create a **NEW SOW** (optionally pre-filled from the last).
+  The executed row is the permanent immutable record.
 
 ## Signing
 
@@ -140,10 +151,14 @@ conversations combined into one." The SOW header carries status · total · the 
 - Parties show all three from existing fields; Annex A is the **supplier's** T&C; Services pulls each
   item's `install_description`.
 - Boilerplate renders with merge fields filled (deposit %, parties, net days).
-- Supplier confirm (+ deposit %) → Ready to sign → two-sided in-app sign → executed. No test-mode,
-  no redraft button. Edit-fields-then-regenerate + item re-open are the revise paths (never inline doc edits).
-- 3% platform fee shown; no money moves. `project_documents`/`sow_root_id`/render fields migrated
-  (rebuild migration), `sow_status` codelist seeded.
+- Supplier confirm (deposit % is agency-set) → Ready to sign → two-sided in-app sign → executed. No
+  test-mode, no redraft button, no versioning. Revise = edit-draft-in-place (pre-sign) / new SOW
+  (post-execution) / item re-open (never inline doc edits).
+- Multiple independent SOW rows per `(project, supplier)`; "current" = latest non-`declined` (derived).
+  Executed rows freeze (`content_snapshot` + write-rejection) and are never deleted.
+- 3% platform fee shown; no money moves. `project_documents` (no versioning cols) /
+  `project_items.sow_document_id` / render fields migrated (rebuild migration), `sow_status` codelist
+  seeded (incl. `declined`).
 
 ## Deferred (not this build)
 
@@ -159,4 +174,6 @@ conversations combined into one." The SOW header carries status · total · the 
   engagement form at Create; supplier confirm = acceptance.
 - ~~`install_description` live vs snapshot~~ **RESOLVED** — **snapshotted** into `content_snapshot` at
   generate; the executed doc is immutable, `pdf_url` is a later render of the snapshot.
+- ~~Versioning model~~ **RESOLVED (Liam, 2026-11-13)** — **no version columns**; multiple independent
+  rows, freeze-at-executed, new-SOW-to-change, "current" derived from `created_at` + `status`.
 - Mint the FR/EP ref; surface in What's New.
