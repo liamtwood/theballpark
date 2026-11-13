@@ -78,10 +78,15 @@ The SSOT plan governs (Liam ruled 2026-11-13); the earlier flat single-table fra
   - **`parties_snapshot`** + **`terms_snapshot`** (jsonb) — **frozen at issue** (resolved **server-side**:
     parties via `org_contact`/`supplier_directory`, terms = Annex A ref + boilerplate merge values).
   - `issued_at` (freeze point), audit cols.
-  - **No versioning** (Liam): no `version` / `supersedes_document_id` / `is_current` / `root_document_id`.
-    **Multiple independent rows** per `(project, supplier)`; **"current" = latest non-`declined`** (derived
-    from `created_at` + `status`). Change an executed SOW = **create a new row**; the old executed row is the
-    permanent immutable record, never deleted.
+  - **No version int / `is_current` / `root_document_id`** — but **`supersedes_document_id`** (nullable self-FK)
+    is **kept**, because Liam's three lifecycle cases need it: **(1)** a SOW never executed → `declined`/abandoned;
+    **(2) change order** to a signed SOW → a **new** SOW with `supersedes_document_id` **set** to the old;
+    **(3) more work** → a **new independent** SOW, `supersedes_document_id` **null**. Cases 2 and 3 can't be told
+    apart by `created_at`, hence the pointer. **"Superseded" is derived** (a doc that has a successor) — no status
+    value, no version. **"Current" is plural** — a supplier may hold several concurrent valid SOWs (case 3):
+    **current = non-`declined` AND non-superseded**. The old executed row is the permanent immutable record,
+    never deleted. ⚠️ Supersession is **same-org-chain-scoped** (audit B4): the "superseded" derivation and the
+    change-order write path both require the successor to be the agency's own, same `(project, provider)`.
 - **`project_document_lines`** (child, frozen at issue) — the §3 item-set as **real rows** (a draft re-derives
   live from the supplier's agreed quotes; these populate at `ready_to_sign`): `project_item_id` (provenance) ·
   name · spec · qty · unit · unit_price · line_total · currency · source · price_notes (AI, frozen) ·
@@ -97,8 +102,11 @@ The SSOT plan governs (Liam ruled 2026-11-13); the earlier flat single-table fra
   per-line render defaults a SOW line freezes from.
 - **Reused as-is:** `items.install_description` (seeds the Services section), the supplier's `orgs.terms_pdf_url`
   (Annex A, resolved server-side), the line-pricing SSOT (totals).
-- **No `project_items.sow_document_id`** — dropped. Draft membership derives live and freezes into
-  `project_document_lines` at issue; a stored back-link is redundant.
+- **`project_items.sow_document_id`** (additive nullable FK on `project_items`, `0020`) — **which current SOW a
+  live requirement is on** (NULL = not yet on a SOW). Needed because case 3 splits a supplier's agreed items
+  across several live SOWs, so membership can't derive from "all agreed items". Re-points on a change order (2),
+  only new items land on a more-work SOW (3); freezes into `project_document_lines` at issue. RLS-neutral — the
+  row's `org_id` still governs `project_items` visibility (audit-confirmed).
 - **Services** section seeds from the supplier's items' `install_description`; the other four engagement
   sections are manual (blank / N/A). No AI (the AI layer only pre-fills these sections later).
 
@@ -118,8 +126,10 @@ never edited inline. **No `changes_requested`, no redraft action, no versioning.
   (FR-00228) which drops that item back to negotiation and re-drafts on re-resolve.
 - **after issue, pre-`executed`** — an edit **clears any signature and drops back to `draft`** (can't sign a
   moving doc).
-- **after `executed`** — the row is frozen (DB-enforced); create a **NEW SOW** (optionally pre-filled from the
-  last). The executed row is the permanent immutable record.
+- **after `executed`** — the row is frozen (DB-enforced); create a **NEW SOW**. If it **replaces** the signed one
+  (a **change order**, case 2) set `supersedes_document_id` → the old (which becomes derived-"superseded"); if it's
+  **more work** alongside it (case 3) leave `supersedes_document_id` null (both stay "current"). The executed row
+  is always the permanent immutable record.
 
 ## Signing
 
@@ -189,9 +199,10 @@ conversations combined into one." The SOW header carries status · total · the 
   columns are **write-rejected DB-side** post-sign; executed rows are never deleted.
 - Supplier confirm/sign via the **SECURITY DEFINER** only (no direct supplier write); signatures append-only;
   RLS coverage test ships with `0039` and gates the land.
-- 3% platform fee shown; no money moves. The **3-table cluster** (`project_documents` + `_lines` +
-  `_signatures`, no versioning cols) + `items.render_*` migrated (`0039`); `document_type` / `sow_status`
-  (incl. `declined`) / `signatory_role` codelists seeded.
+- 3% platform fee shown; no money moves. The **3-table cluster** (`project_documents` incl.
+  `supersedes_document_id`, no version int/is_current, + `_lines` + `_signatures`) + `project_items.sow_document_id`
+  + `items.render_*` migrated (`0039`); `document_type` / `sow_status` (incl. `declined`) / `signatory_role`
+  codelists seeded.
 
 ## Deferred (not this build)
 
@@ -207,8 +218,9 @@ conversations combined into one." The SOW header carries status · total · the 
   engagement form at Create; supplier confirm = acceptance.
 - ~~`install_description` live vs snapshot~~ **RESOLVED** — a draft re-derives live; frozen into
   `project_document_lines` + `content` at **issue** (`ready_to_sign`); executed is immutable.
-- ~~Versioning model~~ **RESOLVED (Liam, 2026-11-13)** — **no version columns**; multiple independent
-  rows, freeze-at-issue, new-SOW-to-change, "current" derived from `created_at` + `status`.
+- ~~Versioning model~~ **RESOLVED (Liam, 2026-11-13)** — no version int / is_current; **`supersedes_document_id`
+  kept** for the 3 lifecycle cases (change-order vs more-work); "superseded" derived; "current" plural
+  (non-declined AND non-superseded), same-org-scoped (audit B4).
 - ~~Flat single-table vs 3-table plan~~ **RESOLVED (Liam, 2026-11-13)** — the **3-table SSOT plan governs**
   (`project_documents` + `_lines` + `_signatures`); the flat framing is superseded.
 - Mint the FR/EP ref; surface in What's New.

@@ -6,7 +6,7 @@ org_id pinned by RLS not the app, coverage test. Spec: `prompts/pV2-SOW-01-promp
 
 **Verdict:** shape is right (matches 0023 conventions). **Does not land** until the two ⚠️ write paths are
 built as a gated SECURITY DEFINER, the post-sign freeze is DB-enforced, and a coverage test ships. Admin-write
-is *not* a 0039 blocker (see F-ADMIN). Findings below; blockers are B1–B3.
+is *not* a 0039 blocker (see F-ADMIN). Findings below; blockers are B1–B4.
 
 ---
 
@@ -86,6 +86,29 @@ simpler (b): a **`BEFORE UPDATE` trigger** that `raise`s if any frozen column (`
 status-machine transitions the functions perform. (b) is least-disruptive and belt-and-braces for both parties.
 This is the one genuinely new requirement vs 0023 — the inbox has no freeze-after-sign concept.
 
+### B4 · `supersedes_document_id` must be **same-org-scoped** (added with the lifecycle 3-cases, 2026-11-13)
+`supersedes_document_id` is a nullable self-FK that enforces existence but **not org**. "Superseded" is derived
+("a doc with a successor"), and that derivation drives the **"current" set** (current = non-declined AND
+non-superseded). So if the derivation counts *any* successor, **org B can insert its own document `S` with
+`S.supersedes_document_id = <org A's doc>`** (the `_all with check` only constrains `S.org_id = B`, not the
+pointer's target) and thereby make org A's live SOW compute as superseded — it vanishes from A's current list.
+That's a cross-tenant **visibility/integrity** attack, not a read leak (RLS still blocks reading the foreign row),
+but it's real. Close it on **both** sides:
+- **Derivation:** a doc is superseded iff a successor exists with `successor.supersedes_document_id = doc.id`
+  **AND `successor.org_id = doc.org_id`** (ideally same `project_id` + `project_provider_id` too — supersession
+  is within one engagement chain).
+- **Write path:** the change-order creator validates the predecessor is the agency's **own**, same
+  `(project, provider)` — in the definer/service that mints the successor (a `CHECK` can't do a subquery; a FK
+  can't check org). A `BEFORE INSERT/UPDATE` trigger is the DB-enforced option.
+The coverage test (S3) adds a case: org B cannot hide org A's doc via a cross-org supersedes pointer.
+
+**`project_items.sow_document_id` (reinstated) — RLS unchanged, confirmed.** The additive nullable FK does **not**
+alter `project_items` visibility: no new policy, so the row's `org_id` (`_all`) + the 0023 message-relation
+`provider_read` still govern. A supplier reading a briefed item now sees the `sow_document_id` value, but can read
+the referenced SOW only if engaged (the documents `provider_read`) — the uuid itself leaks nothing (they're a
+party to it). Minor integrity note (same class as B4, lower impact as it drives no cross-tenant derivation): the
+service should set `sow_document_id` only to a same-`project` doc.
+
 ---
 
 ## Strong recommendations (defense-in-depth, align to 0023)
@@ -115,9 +138,9 @@ This is the one genuinely new requirement vs 0023 — the inbox has no freeze-af
 - **org_id pinned via `project_providers`** in the supplier read predicates ✓ (`pp.org_id = d.org_id`, exactly
   0023's audit-M1 pin). The child-row `org_id` is set server-side by the definer (B2); the agency `_all` path is
   parent-pinned, matching the 0020/0018 sibling convention.
-- **`project_items.sow_document_id` dropped — AGREED.** In the 3-table model draft membership derives live from
-  the supplier's agreed quotes and freezes into `project_document_lines` at issue; a stored back-link on the live
-  line is redundant.
+- **`project_items.sow_document_id` reinstated — RLS unchanged (see B4 block).** Case 3 (more-work SOW) splits a
+  supplier's agreed items across several live SOWs, so membership can't derive from "all agreed items"; the live
+  link is needed. Visibility unaffected — confirmed above.
 - **`content_snapshot` → the plan's shape — AGREED.** `content` (editable narrative sections) + `parties_snapshot`
   + `terms_snapshot` jsonb + frozen `project_document_lines` rows. Freeze on **issue** (ready_to_sign), not create.
 
