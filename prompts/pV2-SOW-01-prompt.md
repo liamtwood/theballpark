@@ -24,7 +24,8 @@ Documents tab + uploads + proposals are **deferred to a later release**; this sh
    Timeline · Design (Concept & Design sign-off) · Services · Payment % (deposit) · Special terms.
 3. Click **Create SOW** (per supplier) → assembles boilerplate + parties + project details + items
    + supplier T&C into a **draft**.
-4. Supplier reviews → **confirms** → **Ready to sign**.
+4. Supplier reviews → **confirms** (accepts the terms, incl. the **agency-set** deposit %) → **Ready to sign**.
+   If the supplier won't proceed → **declined** (terminal).
 5. Supplier **signs**; Agency reviews (to change anything, edit the fields → regenerate; else **signs**) → **executed**.
 6. Deposit collected via **Stripe Connect — WS6, later** (this build captures the %, no money moves).
 
@@ -63,21 +64,29 @@ parties, Effective Date, Annex A) — not agency-editable. Verbatim text in `doc
   the later Documents release is additive):
   - identity: `id`, `org_id` (agency, RLS), `project_id`, `supplier_org_id` (+ `project_provider_id`)
   - versioning: `root_document_id`, `version`, `is_current`
-  - **the five editable fields** (pre-filled at Create, editable until signed, N/A allowed):
-    `timeline`, `design`, `services`, `special_terms` (text) + **`deposit_pct`** (numeric)
+  - **the five editable fields** (agency sets at Create, editable until `supplier_signed`, N/A allowed):
+    `timeline`, `design`, `services`, `special_terms` (text) + **`deposit_pct`** (numeric; **agency-set**)
+  - **`content_snapshot`** (jsonb) — the fully-resolved rendered doc (5 fields + resolved parties +
+    line items/totals + boilerplate merge values), frozen **hard at sign**. This is the **source of
+    truth for "executed,"** independent of the deferred Puppeteer PDF. Field writes are **rejected
+    server-side once `status` ≥ `supplier_signed`.**
   - sign state: `status`, `supplier_signed_at/by`, `agency_signed_at/by`
-  - `pdf_url` (the frozen artifact per version), audit cols
+  - `pdf_url` (a later Puppeteer render **of** `content_snapshot`, per version — not the record of
+    truth), audit cols
 - **Line link:** `project_items.sow_root_id` (one item → one SOW).
 - **New item fields (FR-00227):** `items.render_included` (bool), `items.render_amendment_rounds` (int).
 - **Reused as-is:** `items.install_description` (Services), `orgs.terms_pdf_url` (Annex A, read from
   the **supplier** org), the line-pricing SSOT (totals).
-- **Services** pre-fills from the supplier's items' `install_description`; the other four fields are
-  manual (blank/N/A default). No AI.
+- **Services** pre-fills from the supplier's items' `install_description`, **snapshotted into
+  `content_snapshot` at generate (not live-read at render)** so the executed doc is immutable; the
+  other four fields are manual (blank/N/A default). No AI.
 
 ## Status machine
 
-`draft` (editable) → supplier **confirms** (+ `deposit_pct`) → `ready_to_sign` → `supplier_signed`
-→ `agency_signed` / **executed**. A `sow_status` codelist drives the pill colour (Settings ▸ Codelists).
+`draft` (editable) → supplier **confirms** (accepts; `deposit_pct` is already **agency-set**) →
+`ready_to_sign` → `supplier_signed` → `agency_signed` / **executed**. Terminal **`declined`** — supplier
+confirms-then-won't-sign, or declines outright (distinct from **re-opening a single item**, which drops
+that item back to negotiation, FR-00228). A `sow_status` codelist drives the pill colour (Settings ▸ Codelists).
 **Edit-before-generate:** all editing is on the **fields (the form)**, before Create/regenerate — the
 rendered SOW is review-only + sign, never edited inline. **No `changes_requested`, no redraft action:**
 to change, **edit the fields → regenerate** (a new version; re-sign if already signed), or **re-open an
@@ -91,12 +100,27 @@ item** (a material change, FR-00228) which drops it back to negotiation and re-d
 
 ## Payment
 
-- `deposit_pct` = the **supplier-set** deposit (binding figure, human choice — not inferred), fills the
-  boilerplate schedule's percentage and its complement.
+- `deposit_pct` = the **agency-set** deposit — the SOW **creator** (the agency) sets Payment % on the
+  engagement form at Create (binding figure, human choice — not inferred). The supplier's **confirm is
+  acceptance, not setting.** It fills the boilerplate schedule's percentage and its complement.
 - **3% Ballpark platform fee** of contract value — fixed, shown on the SOW ("Ballpark platform fee: 3%").
 - Money movement (the 50/50 Stripe collection, supplier payout, the application fee) = **WS6, Stripe
   Connect** (this boilerplate commits WS6 to **Connect**, not Checkout). This build shows the terms +
   captures `deposit_pct`; nothing charges.
+
+## Security (RLS) — the cross-org read surface
+
+- `project_documents` is **agency-org-scoped** via RLS on `org_id`; the supplier reads **their own**
+  SOW through the inbox's engagement-scoped `*_provider_read` pattern (not a blanket grant).
+- The cross-org fields — **supplier name / address + `orgs.terms_pdf_url`** — resolve **server-side**
+  via `supplier_directory` / a SECURITY DEFINER view. The **Angular component never reaches the
+  supplier org directly** (own-org RLS zeroes cross-org — the [[project_supplier_directory_pattern]]
+  that has bitten the marketplace 3×).
+- `terms_pdf_url` **file access is engagement-scoped, not just row-scoped**: a supplier's T&C PDF is
+  served only to parties on an actual SOW/engagement with that supplier — seeing the directory row is
+  not enough to fetch the file.
+- (Chat/designer runs the acquisition-grade RLS pass on this surface before build — the inbox got the
+  same.)
 
 ## Options panel
 
@@ -131,8 +155,8 @@ conversations combined into one." The SOW header carries status · total · the 
 
 ## Concerns / open
 
-- Confirm whether the supplier can set `deposit_pct` at the engagement-details step (total is known
-  once items are agreed) — assumed yes.
-- `install_description` read live from the catalogue item via `line.item_id` vs snapshot on the line —
-  build decision (version fidelity).
+- ~~`deposit_pct` owner~~ **RESOLVED (Liam, 2026-11-13)** — the **agency** (SOW creator) sets it on the
+  engagement form at Create; supplier confirm = acceptance.
+- ~~`install_description` live vs snapshot~~ **RESOLVED** — **snapshotted** into `content_snapshot` at
+  generate; the executed doc is immutable, `pdf_url` is a later render of the snapshot.
 - Mint the FR/EP ref; surface in What's New.
