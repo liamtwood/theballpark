@@ -1,6 +1,6 @@
 # pV2-SOW-01 — Per-supplier Statement of Work (v1, no AI)
 
-**Status:** Draft (chat/designer — for Liam review before build)
+**Status:** Reconciled to as-built `0039` — RLS land-gate **MET** 2026-11-13 (coverage 22/22); awaiting FR/EP mint + Liam sign-off
 **Ref:** FR-00XXX / EP-00XXX (mint on the tracker before ship)
 **Workstream:** WS3 (auto-SOW) merged with the SOW-generator part of WS4. The generic
 Documents tab + uploads + proposals are **deferred to a later release**; this ships the SOW only.
@@ -194,9 +194,10 @@ conversations combined into one." The SOW header carries status · total · the 
 - Supplier confirm (deposit % is agency-set) → Ready to sign → two-sided in-app sign → executed. No
   test-mode, no redraft button, no versioning. Revise = edit-draft-in-place (pre-sign) / new SOW
   (post-execution) / item re-open (never inline doc edits).
-- Multiple independent SOW rows per `(project, supplier)`; "current" = latest non-`declined` (derived).
-  Doc freezes at **issue** (`ready_to_sign`: lines + `parties_snapshot` + `terms_snapshot`) and the frozen
-  columns are **write-rejected DB-side** post-sign; executed rows are never deleted.
+- Multiple independent SOW rows per `(project, supplier)`; **"current" is plural** — non-`declined` AND
+  non-superseded (derived, **same-org/engagement-scoped**, audit B4). Doc freezes at **issue**
+  (`ready_to_sign`: lines + `parties_snapshot` + `terms_snapshot`) and the frozen columns are
+  **write-rejected DB-side** post-sign; executed rows are never deleted.
 - Supplier confirm/sign via the **SECURITY DEFINER** only (no direct supplier write); signatures append-only;
   RLS coverage test ships with `0039` and gates the land.
 - 3% platform fee shown; no money moves. The **3-table cluster** (`project_documents` incl.

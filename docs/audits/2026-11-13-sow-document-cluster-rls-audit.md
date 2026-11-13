@@ -8,6 +8,17 @@ org_id pinned by RLS not the app, coverage test. Spec: `prompts/pV2-SOW-01-promp
 built as a gated SECURITY DEFINER, the post-sign freeze is DB-enforced, and a coverage test ships. Admin-write
 is *not* a 0039 blocker (see F-ADMIN). Findings below; blockers are B1–B4.
 
+> **LAND-GATE MET — 2026-11-13 (CC, `ballpark-v2-dev`).** `0039` applied; all four blockers built:
+> **B1/B2** `document_confirm` + `document_sign` SECURITY DEFINERs (supplier has no direct write);
+> **B3** post-sign freeze trigger (column-scoped); **B4** supersedes same-org/engagement guard as a
+> SECURITY INVOKER `BEFORE INSERT/UPDATE` trigger. Strong recs built too: **S1** signatures + lines
+> SELECT-only grants, **S2** `deleted_at` on the provider reads. **S3** coverage test
+> `server/db/rebuild/tests/0039_document_cluster.test.js` runs as `web_app_user`, **22/22 PASS** — incl.
+> cross-supplier isolation, no direct supplier/agency write, definer rejects non-engaged + out-of-sequence,
+> frozen-column reject, and the B4 case (agency2 superseding agency1's doc → invisible → not found → rejected).
+> **Service-layer gates (parties/terms server-side via `org_contact`/`supplier_directory`; `terms_pdf_url`
+> engagement-scoped file access) land in Phase 1 and are NOT yet audited — re-audit owed when the service code is up.**
+
 ---
 
 ## The two ⚠️ spots — settled
