@@ -59,55 +59,77 @@ parties, Effective Date, Annex A) — not agency-editable. Verbatim text in `doc
   **End client** → `project.clientName` (+ `clientCompanyNumber` / `clientAddress`). Contract is
   Agency↔Supplier; the end client is **named context**, not a signatory.
 
-## Data model
+## Data model — the **3-table document cluster** (per `DATA-MODEL-REDESIGN` §"Document cluster — LOCKED"; migration `0039`)
 
-- **The SOW row** = `project_documents` with `type='sow'` (build this table now, SOW-rows only;
-  the later Documents release is additive):
-  - identity: `id`, `org_id` (agency, RLS), `project_id`, `supplier_org_id` (+ `project_provider_id`)
-  - **No versioning columns** (dropped, Liam 2026-11-13) — **no `root_document_id` / `version` /
-    `is_current`**. Instead: **multiple independent SOW rows** per `(project, supplier)`. A row is
-    **mutable while not `executed`** (edit draft fields → **regenerate in place, no new row**; an edit
-    after supplier-sign clears the stale signature and drops back to draft). At **`executed` it freezes**
-    (`content_snapshot` + server-side write-rejection). To change an executed SOW you **create a NEW
-    SOW** (pre-filled from the last if wanted); the old executed row **stays as the immutable record,
-    never deleted**. **"Current SOW for a supplier" = the latest non-`declined` row** (derived from
-    `created_at` + `status`; **no `is_current` flag, no `supersedes_document_id` in v1**).
-  - **the five editable fields** (agency sets at Create, editable until `supplier_signed`, N/A allowed):
-    `timeline`, `design`, `services`, `special_terms` (text) + **`deposit_pct`** (numeric; **agency-set**)
-  - **`content_snapshot`** (jsonb) — the fully-resolved rendered doc (5 fields + resolved parties +
-    line items/totals + boilerplate merge values), frozen **hard at sign**. This is the **source of
-    truth for "executed,"** independent of the deferred Puppeteer PDF. Field writes are **rejected
-    server-side once `status` ≥ `supplier_signed`.**
-  - sign state: `status`, `supplier_signed_at/by`, `agency_signed_at/by`
-  - `pdf_url` (a later Puppeteer render **of** `content_snapshot` — not the record of truth), audit cols
-- **Line link:** `project_items.sow_document_id` (renamed from `sow_root_id`) — one item → one SOW;
-  items **re-point** to the new row when a new SOW is created.
-- **New item fields (FR-00227):** `items.render_included` (bool), `items.render_amendment_rounds` (int).
-- **Reused as-is:** `items.install_description` (Services), `orgs.terms_pdf_url` (Annex A, read from
-  the **supplier** org), the line-pricing SSOT (totals).
-- **Services** pre-fills from the supplier's items' `install_description`, **snapshotted into
-  `content_snapshot` at generate (not live-read at render)** so the executed doc is immutable; the
-  other four fields are manual (blank/N/A default). No AI.
+The SSOT plan governs (Liam ruled 2026-11-13); the earlier flat single-table framing is superseded. A SOW is a
+**frozen issuance of the live quotes** — the same live-vs-frozen split used across the rebuild.
+
+- **`project_documents`** — the SOW object (`type='sow'`; build now, SOW-rows only, Documents-release additive):
+  - identity: `id`, `ref`, `name`, `description`, `org_id` (**agency, sacred**, RLS), `project_id`,
+    `project_provider_id` (the supplier engagement; NULL = agency→client, reserved), `supplier_org_id`,
+    `project_category_id` (reserved).
+  - `status` (`sow_status` codelist), `type` (`document_type` codelist), `deposit_pct` (numeric,
+    **agency-set**; the structured SSOT WS6 reads — also rendered inside `content.payment_schedule`).
+  - **`content`** (jsonb) — **ordered narrative sections** `[{name, content, order}]`. The five engagement
+    fields (Timeline · Design · Services · Payment schedule · Special terms) **live here as sections**, plus
+    supplier-added sections; `"NA"` is explicit. (This replaces the flat `timeline/design/services/...` columns
+    — the plan: "moving the flat `sow_*` cols → this jsonb **is** most of the build.")
+  - **`presentation`** (jsonb) — the Options panel (theme / header / footer + SOW body toggles).
+  - **`parties_snapshot`** + **`terms_snapshot`** (jsonb) — **frozen at issue** (resolved **server-side**:
+    parties via `org_contact`/`supplier_directory`, terms = Annex A ref + boilerplate merge values).
+  - `issued_at` (freeze point), audit cols.
+  - **No versioning** (Liam): no `version` / `supersedes_document_id` / `is_current` / `root_document_id`.
+    **Multiple independent rows** per `(project, supplier)`; **"current" = latest non-`declined`** (derived
+    from `created_at` + `status`). Change an executed SOW = **create a new row**; the old executed row is the
+    permanent immutable record, never deleted.
+- **`project_document_lines`** (child, frozen at issue) — the §3 item-set as **real rows** (a draft re-derives
+  live from the supplier's agreed quotes; these populate at `ready_to_sign`): `project_item_id` (provenance) ·
+  name · spec · qty · unit · unit_price · line_total · currency · source · price_notes (AI, frozen) ·
+  `render_included` / `amendment_rounds` (FR-00227, frozen from the catalogue item) · quote_description · audit.
+- **`project_document_signatures`** (child, **append-only**) — exactly the two parties: `signer_org_id` /
+  `signer_user_id` · `role` (`signatory_role` codelist: agency | supplier | **client**) · name · title ·
+  `signed_at`. `unique(document_id, role)`. **Written only by the sign SECURITY DEFINER**, never a direct INSERT
+  (the external-client role is reserved for agency→client, not written in v1).
+- **Freeze on ISSUE, not create.** At `ready_to_sign` the lines + `parties_snapshot` + `terms_snapshot` populate
+  and the doc freezes; a pre-issue draft is fully regeneratable. Post-sign the frozen columns are
+  **write-rejected DB-side** (trigger / definer-only — see Security). An edit before issue drops back to draft.
+- **New item fields (FR-00227):** `items.render_included` (bool), `items.render_amendment_rounds` (int) — the
+  per-line render defaults a SOW line freezes from.
+- **Reused as-is:** `items.install_description` (seeds the Services section), the supplier's `orgs.terms_pdf_url`
+  (Annex A, resolved server-side), the line-pricing SSOT (totals).
+- **No `project_items.sow_document_id`** — dropped. Draft membership derives live and freezes into
+  `project_document_lines` at issue; a stored back-link is redundant.
+- **Services** section seeds from the supplier's items' `install_description`; the other four engagement
+  sections are manual (blank / N/A). No AI (the AI layer only pre-fills these sections later).
 
 ## Status machine
 
-`draft` (editable) → supplier **confirms** (accepts; `deposit_pct` is already **agency-set**) →
-`ready_to_sign` → `supplier_signed` → `agency_signed` / **executed**. Terminal **`declined`** — supplier
-confirms-then-won't-sign, or declines outright (distinct from **re-opening a single item**, which drops
-that item back to negotiation, FR-00228). A `sow_status` codelist drives the pill colour (Settings ▸ Codelists).
-**Edit-before-generate:** all editing is on the **fields (the form)** — the rendered SOW is review-only
-+ sign, never edited inline. **No `changes_requested`, no redraft action, no versioning.** To change:
-- **before `executed`** — **edit the draft fields → regenerate in place** (same row; an edit after
-  supplier-sign clears the stale signature and drops back to draft), or **re-open an item** (a material
-  change, FR-00228) which drops that item back to negotiation and re-drafts on re-resolve.
-- **after `executed`** — the row is frozen; create a **NEW SOW** (optionally pre-filled from the last).
-  The executed row is the permanent immutable record.
+`draft` (editable, re-derives live) → supplier **confirms** (accepts; `deposit_pct` is already
+**agency-set**) → **`ready_to_sign`** (the **freeze point** — lines + `parties_snapshot` + `terms_snapshot`
+populate) → supplier signs → **`supplier_signed`** → agency signs → **`executed`**. Terminal **`declined`**
+— supplier confirms-then-won't-sign, or declines outright (distinct from **re-opening a single item**, which
+drops that item back to negotiation, FR-00228). No `agency_signed` status — the agency's signature flips
+`supplier_signed` → `executed`; both signature rows live in `project_document_signatures`. A `sow_status`
+codelist drives the pill colour (Settings ▸ Codelists).
+
+**Edit-before-generate:** all editing is on the **fields (the form)** — the rendered SOW is review-only + sign,
+never edited inline. **No `changes_requested`, no redraft action, no versioning.** To change:
+- **pre-issue (`draft`)** — edit the fields → the draft regenerates live (same row), or **re-open an item**
+  (FR-00228) which drops that item back to negotiation and re-drafts on re-resolve.
+- **after issue, pre-`executed`** — an edit **clears any signature and drops back to `draft`** (can't sign a
+  moving doc).
+- **after `executed`** — the row is frozen (DB-enforced); create a **NEW SOW** (optionally pre-filled from the
+  last). The executed row is the permanent immutable record.
 
 ## Signing
 
 - **Two-sided in-app sign** — "Sign as <Agency>" / supplier signs in their inbox. **No test-mode
   simulate.** Supplier signs first (after confirm), then Agency. The deeper e-sign integration
   (DocuSign-style) is a later concern; the in-app sign is this build.
+- **One write path:** both parties' confirm/sign go through a gated **SECURITY DEFINER** (`document_confirm` /
+  `document_sign`, `org_contact`-shaped) that validates engagement + role + status and writes the signature
+  row + flips status atomically. The supplier has **no direct UPDATE/INSERT** on the document or signatures.
+  See the Security section + `docs/audits/2026-11-13-sow-document-cluster-rls-audit.md`.
 
 ## Payment
 
@@ -121,17 +143,25 @@ that item back to negotiation, FR-00228). A `sow_status` codelist drives the pil
 
 ## Security (RLS) — the cross-org read surface
 
-- `project_documents` is **agency-org-scoped** via RLS on `org_id`; the supplier reads **their own**
-  SOW through the inbox's engagement-scoped `*_provider_read` pattern (not a blanket grant).
-- The cross-org fields — **supplier name / address + `orgs.terms_pdf_url`** — resolve **server-side**
-  via `supplier_directory` / a SECURITY DEFINER view. The **Angular component never reaches the
-  supplier org directly** (own-org RLS zeroes cross-org — the [[project_supplier_directory_pattern]]
-  that has bitten the marketplace 3×).
-- `terms_pdf_url` **file access is engagement-scoped, not just row-scoped**: a supplier's T&C PDF is
-  served only to parties on an actual SOW/engagement with that supplier — seeing the directory row is
-  not enough to fetch the file.
-- (Chat/designer runs the acquisition-grade RLS pass on this surface before build — the inbox got the
-  same.)
+Audited acquisition-grade — full per-line review in `docs/audits/2026-11-13-sow-document-cluster-rls-audit.md`
+(migration `0039`). Summary:
+- All three tables are **agency-org-scoped** (`org_id = app_current_org()`); the engaged supplier gets a
+  **read-only** widening via `project_providers` (the 0023 inbox `*_provider_read` pattern), with
+  **`org_id` pinned** by the engagement row (`pp.org_id = d.org_id`), not trusted from the app.
+- **Supplier writes go through a gated SECURITY DEFINER only** — no supplier UPDATE/INSERT policy. The function
+  validates engagement + role + current status, writes the signature, flips status (append-only, atomic). This
+  is why "field writes rejected once `status ≥ supplier_signed`" holds; the **post-sign freeze is DB-enforced**
+  (a `BEFORE UPDATE` trigger / definer-only writes), not left to the service.
+- **Cross-org fields** — supplier name/address + `orgs.terms_pdf_url` — resolve **server-side** via
+  `org_contact`/`supplier_directory` (the **Angular component never reaches the supplier org**; own-org RLS
+  zeroes cross-org — [[project_supplier_directory_pattern]], bit the marketplace 3×). `parties_snapshot` /
+  `terms_snapshot` are frozen from these at issue.
+- `terms_pdf_url` **file access is engagement-scoped** (enforced at the storage/signed-URL layer): a supplier's
+  T&C PDF is served only to parties on an actual engagement, not any org that can see the directory row.
+- **Signatures are append-only at the privilege layer** (no UPDATE/DELETE grant); a **coverage test** ships with
+  `0039` (the inbox bar) and gates the land.
+- Admin-write (`app_is_admin()` in `with check`) matches the 0018/0020 sibling convention — the FR-00215
+  project-cluster escape, closed cluster-wide before launch, **not** special-cased here.
 
 ## Options panel
 
@@ -155,10 +185,13 @@ conversations combined into one." The SOW header carries status · total · the 
   test-mode, no redraft button, no versioning. Revise = edit-draft-in-place (pre-sign) / new SOW
   (post-execution) / item re-open (never inline doc edits).
 - Multiple independent SOW rows per `(project, supplier)`; "current" = latest non-`declined` (derived).
-  Executed rows freeze (`content_snapshot` + write-rejection) and are never deleted.
-- 3% platform fee shown; no money moves. `project_documents` (no versioning cols) /
-  `project_items.sow_document_id` / render fields migrated (rebuild migration), `sow_status` codelist
-  seeded (incl. `declined`).
+  Doc freezes at **issue** (`ready_to_sign`: lines + `parties_snapshot` + `terms_snapshot`) and the frozen
+  columns are **write-rejected DB-side** post-sign; executed rows are never deleted.
+- Supplier confirm/sign via the **SECURITY DEFINER** only (no direct supplier write); signatures append-only;
+  RLS coverage test ships with `0039` and gates the land.
+- 3% platform fee shown; no money moves. The **3-table cluster** (`project_documents` + `_lines` +
+  `_signatures`, no versioning cols) + `items.render_*` migrated (`0039`); `document_type` / `sow_status`
+  (incl. `declined`) / `signatory_role` codelists seeded.
 
 ## Deferred (not this build)
 
@@ -172,8 +205,10 @@ conversations combined into one." The SOW header carries status · total · the 
 
 - ~~`deposit_pct` owner~~ **RESOLVED (Liam, 2026-11-13)** — the **agency** (SOW creator) sets it on the
   engagement form at Create; supplier confirm = acceptance.
-- ~~`install_description` live vs snapshot~~ **RESOLVED** — **snapshotted** into `content_snapshot` at
-  generate; the executed doc is immutable, `pdf_url` is a later render of the snapshot.
+- ~~`install_description` live vs snapshot~~ **RESOLVED** — a draft re-derives live; frozen into
+  `project_document_lines` + `content` at **issue** (`ready_to_sign`); executed is immutable.
 - ~~Versioning model~~ **RESOLVED (Liam, 2026-11-13)** — **no version columns**; multiple independent
-  rows, freeze-at-executed, new-SOW-to-change, "current" derived from `created_at` + `status`.
+  rows, freeze-at-issue, new-SOW-to-change, "current" derived from `created_at` + `status`.
+- ~~Flat single-table vs 3-table plan~~ **RESOLVED (Liam, 2026-11-13)** — the **3-table SSOT plan governs**
+  (`project_documents` + `_lines` + `_signatures`); the flat framing is superseded.
 - Mint the FR/EP ref; surface in What's New.
