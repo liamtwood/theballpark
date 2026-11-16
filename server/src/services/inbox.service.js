@@ -187,7 +187,7 @@ async function assembleThreads(viewer, callerOrgId, projectId) {
   // no raw ids in URLs; resolve at the boundary, then pin the canonical id so
   // every downstream query stays id-based).
   const projRow = await pool.query(
-    `SELECT id, org_id, name, description, event_date, venue_name, client_name, currency
+    `SELECT id, org_id, name, description, event_date, venue_name, client_name, currency, cover
        FROM projects WHERE (id::text = $1 OR ref = $1) AND deleted_at IS NULL`,
     [projectId]
   );
@@ -400,6 +400,10 @@ async function assembleThreads(viewer, callerOrgId, projectId) {
   const summary = {
     id: projectId,
     name: project.name ?? null,
+    description: project.description ?? null,
+    coverUrl: (project.cover || {}).imageUrl ?? null,
+    coverFocalX: (project.cover || {}).focalX ?? 50,
+    coverFocalY: (project.cover || {}).focalY ?? 50,
     clientName: project.client_name ?? null,
     eventDate: project.event_date ?? null,
     location: project.venue_name ?? null,

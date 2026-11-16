@@ -243,6 +243,10 @@ export interface InboxReplyResult {
 export interface InboxProjectSummary {
   id: string;
   name: string | null;
+  description: string | null;
+  coverUrl: string | null;
+  coverFocalX: number;
+  coverFocalY: number;
   clientName: string | null;
   eventDate: string | null;
   location: string | null;

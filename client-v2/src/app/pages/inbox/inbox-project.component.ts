@@ -6,7 +6,7 @@ import { firstValueFrom, map } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../core/auth/auth.service';
 import { InboxBubble, InboxProjectSummary, InboxService, InboxThread, InboxThreadItem } from '../../core/inbox/inbox.service';
-import { QuoteLine } from '../../core/projects/project.types';
+import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
 import { TERMINAL_STATUSES, gbp, dayLabel, sameDay } from './inbox-status';
 import { lineDisplayCode, needsYou } from '../../core/status/line-display-status';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
@@ -22,6 +22,7 @@ import { CustomizeDialogComponent } from '../projects/customize-dialog.component
 import { ProjectService } from '../../core/projects/project.service';
 import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.component';
 import { SowPanelComponent } from './sow-panel.component';
+import { ProjectOverviewHeroComponent } from '../projects/project-overview-hero.component';
 
 /** pV2-INBOX-01/03 — the per-project conversation surface, viewer-aware.
  *  Supplier (standalone /inbox/:projectId): the left rail is THEIR items
@@ -34,7 +35,7 @@ import { SowPanelComponent } from './sow-panel.component';
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, NgClass, LucideAngularModule, InboxRailComponent, LinePreviewComponent, CustomizeDialogComponent, LineEditorComponent, AgentRailComponent, ToastModule, StatusPillComponent, SowPanelComponent],
+  imports: [CurrencyPipe, DatePipe, NgClass, LucideAngularModule, InboxRailComponent, LinePreviewComponent, CustomizeDialogComponent, LineEditorComponent, AgentRailComponent, ToastModule, StatusPillComponent, SowPanelComponent, ProjectOverviewHeroComponent],
   // BE-00114 — own the MessageService/p-toast so error surfacing works on the
   // STANDALONE supplier route too (inbox/:projectId — not embedded in
   // project-detail, so no parent provider). Injecting a parent-only service here
@@ -88,6 +89,12 @@ import { SowPanelComponent } from './sow-panel.component';
               <lucide-icon name="arrow-left" [size]="16" /> All messages
             </button>
           </div>
+          <!-- Supplier hero: the project cover/name/date (read-only, no agency stats). -->
+          @if (heroProject(); as hp) {
+            <div class="mx-auto mb-4 w-full max-w-[var(--workspace-max)] px-1">
+              <app-project-overview-hero [project]="hp" [canEdit]="false" [showStats]="false" />
+            </div>
+          }
         }
         }
         <!-- Standard workspace column: inbox rail | conversation | assistant
@@ -562,6 +569,12 @@ export class InboxProjectComponent {
   });
   protected readonly project = computed<InboxProjectSummary | null>(() => this.threadsRes.value()?.project ?? null);
   protected readonly threads = computed<InboxThread[]>(() => this.threadsRes.value()?.threads ?? []);
+  // Supplier hero — a minimal ProjectDetail from the inbox project summary.
+  protected readonly heroProject = computed<ProjectDetail | null>(() => {
+    const p = this.threadsRes.value()?.project;
+    if (!p) return null;
+    return { id: p.id, name: p.name, description: p.description, coverUrl: p.coverUrl, coverFocalX: p.coverFocalX, coverFocalY: p.coverFocalY, eventDate: p.eventDate } as unknown as ProjectDetail;
+  });
   protected readonly singleCategory = computed(() => this.threads().length <= 1);
 
   /** One rail card per thread. Agency view labels by supplier; supplier
