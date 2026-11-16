@@ -234,16 +234,28 @@ a mismatch, so a forged role can't sign; `createDraft` checks party membership i
 engagement guard backstops; `updateDraft` leans on author `_all` and maps the freeze trigger to a 409. Routes inherit
 the audited chain (global `requestContext` pin → v2 `authenticate` + `requireActiveMembership`), same as inbox.
 
-## S-READ · SOW reads rely on RLS **alone** — no app-layer party predicate (two-layer gap). Severity **MEDIUM** (HIGH on any un-flipped connection)
-`listForProject` is `WHERE project_id = $1` with **no org/party filter** (deliberate — `org_id = :me` would drop
-counterparty-authored docs, which is most of them); `getById` is `WHERE id = $1`. Both rely **entirely** on the RLS
-policies to scope the visible set. But `request-context.js` pins the GUCs **without** a `SET ROLE web_app_user`, and
-dev's `DATABASE_URL` is the **schema owner**, which **bypasses RLS** (that file says so, lines 11–13; corroborated
-by CC's smoke needing an explicit `SET ROLE web_app_user` to exercise the policies). **Where the connection role is
-the owner** — confirm `ballpark-v2-dev`'s live role — these two endpoints return **every party's SOWs on a project,
-and any SOW by id, to any authenticated active user of any org**: RLS only bites once the role flips to
-`web_app_user`. Even once it flips, the finding stands as the missing second layer (below) — SOW's read isolation
-must not hang on that single control.
+## S-READ · SOW reads lacked the app-layer party predicate (two-layer gap). Severity **LOW** (defense-in-depth) — **RESOLVED `2c54a75f`**
+> **Severity corrected 2026-11-16 (CC primary evidence).** My "possible live exposure" framing rested on a **stale**
+> `request-context.js` comment (lines 11–13, "DATABASE_URL still the schema owner → bypasses RLS"). CC queried the
+> live connection via the app's own `DATABASE_URL`: `current_user = web_app_user`, `is_superuser = off`,
+> `bypassrls = false` — so **RLS was enforced on `ballpark-v2-dev`** and this was **never a live exposure**, purely
+> defense-in-depth. (The isolated v2dev env flipped the role; the code comment predates that — see nit below.)
+> I couldn't get this evidence myself (Supabase MCP down this session); CC could. Finding downgraded to LOW and the
+> belt landed anyway — correct call, since SOW's read isolation shouldn't ride a single control.
+
+`listForProject` was `WHERE project_id = $1` and `getById` `WHERE id = $1` — **no app-layer party filter**, relying
+**entirely** on the RLS policies (deliberate: `org_id = :me` would drop counterparty-authored docs). RLS *did* scope
+them (role = `web_app_user`), so no rows leaked — but, unlike the inbox sibling (which carries a party predicate on
+its reads: `$2 IN (m.from_org_id, m.to_org_id)`, `WHERE p.org_id=$1`), SOW's read isolation hung on the **single**
+role-flip control. Two-layer enforcement says don't do that.
+
+**Fix (`2c54a75f`) — verified correct.** Both reads now carry `( d.org_id = $2 OR d.project_provider_id IN (SELECT id
+FROM project_providers WHERE deleted_at IS NULL AND $2 IN (org_id, provider_org_id)) )` with `$2 = req.user.org_id` —
+**author OR a party to the doc's engagement**, mirroring `counterparty_read` exactly (NOT `org_id = :me`, so
+counterparty-authored docs are preserved). The belt equals the RLS-visible set (the engagement guard keeps owner+pp
+consistent), so it never over- or under-exposes. Smoke now 14/14, incl. two cases that prove the **belt** specifically:
+under the admin escape (`is_admin=t` opens `_all`, standing in for any non-enforcing role) a non-party gets nothing
+from both reads while a real party still sees the SOW. `resolveParties` unused `viewer` param dropped.
 - The audited sibling **inbox.service does not do this** — it carries an app-layer party predicate on its reads
   (`WHERE project_id=$1 AND $2 IN (m.from_org_id, m.to_org_id)`, `WHERE p.org_id=$1`, `WHERE pp.provider_org_id=$1`),
   so it is tenant-scoped at the app layer **and** by RLS. SOW's reads are the one surface whose isolation hangs on a
@@ -264,6 +276,10 @@ must not hang on that single control.
   smoke 11/11 prove it); this is the missing app-layer belt.
 
 ## Nits
-- `resolveParties(viewer, …)` — the `viewer` param is unused (`getById` passes `org_type` but it's ignored). Drop or use.
+- `resolveParties(viewer, …)` — the `viewer` param is unused. **Fixed `2c54a75f`.**
+- **Stale comment in `middleware/request-context.js` (lines 11–15)** — says `DATABASE_URL` is "still the schema OWNER
+  … the owner bypasses RLS", but on `ballpark-v2-dev` the role is already `web_app_user` (RLS enforced). This stale
+  note is what led me to over-state S-READ as a possible live exposure. Worth a one-line correction (small BE) so the
+  next auditor isn't misled; confirm the same for preview/prod roles while there.
 - Deferred (ride the structured-lines enhancement, re-audit then): parties/terms snapshot resolution, line
   materialization (must run **before** the first signature), engagement-scoped file access.
