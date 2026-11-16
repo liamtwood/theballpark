@@ -283,3 +283,43 @@ from both reads while a real party still sees the SOW. `resolveParties` unused `
   next auditor isn't misled; confirm the same for preview/prod roles while there.
 - Deferred (ride the structured-lines enhancement, re-audit then): parties/terms snapshot resolution, line
   materialization (must run **before** the first signature), engagement-scoped file access.
+
+---
+
+## Parties resolver re-audit — `0042_sow_parties_definer.sql` + `sow.service.parties` (2026-11-16) — CLEARED
+
+The first of the deferred cross-org pieces, landed early (CC, applied `ballpark-v2-dev`). Surfaced via
+`GET /api/sow/:id/parties`. **Verdict: CLEARED — no findings.** It is the `org_contact`/`supplier_directory`
+definer pattern done correctly, and it is genuinely **two-layer**.
+
+- **Definer gate (`0042:29`), fail-closed.** `sow_parties(p_project_provider_id uuid)` is `security definer`,
+  `stable`, `set search_path = public, pg_temp`, `revoke all from public` + `grant execute to web_app_user`.
+  The only gate is `app_current_org() in (pp.org_id, pp.provider_org_id)` — reads the **session GUC**, never a
+  param. `app_current_org()` is `nullif(current_setting('app.current_org_id', true), '')::uuid` (0001:11), so an
+  unset **or** empty-string GUC → NULL → `NULL in (...)` is never true → **no rows**. A non-party (incl. a dropped
+  GUC on a pooled conn) gets nothing. Role is derived by position (`o.id = pp.org_id → 'agency'`), so party-TYPE is
+  correct regardless of who authored the SOW — consistent with the bidirectional model.
+- **Service gate (`sow.service.js:277-282`), independent.** The `id → project_provider_id` lookup runs on the
+  request-pinned `web_app_user` client, so `project_documents` RLS applies: a non-party gets 0 rows → **404 "SOW not
+  found"**, never reaching the definer and not leaking existence (same 404 as truly-missing). The client **never**
+  supplies `project_provider_id` — it is derived from the RLS-gated doc, so there is no arbitrary-pp_id
+  confused-deputy; and even if one reached the definer, the definer's own membership gate blocks it. Two independent
+  reasons it's safe.
+- **Data scope — product-appropriate.** Returns name, company_number, vat_number, registered address, country for
+  **both** parties, scoped to the deal. For a contract's Parties block both sides legitimately need the
+  counterparty's registered legal identity; company_number + registered address are public-record (Companies House),
+  VAT is on every invoice. No email/phone/internal fields. Not over-exposed.
+
+**Notes (not findings):**
+- All object refs inside the definer are schema-qualified (`public.project_providers/orgs/addresses/app_current_org`),
+  so `search_path` manipulation can't redirect them — the gate is doubly safe.
+- **New definer, not a widening of `org_contact`** — the right call: one purpose-built definer = one gate = one audit
+  surface, easier to reason about than overloading the shared resolver. Matches "each definer a known escape."
+- **Standing assumption (already covered):** like every definer in this cluster, the cross-org read works *because*
+  the function owner bypasses RLS while `web_app_user` callers do not. If the function were owned by `web_app_user`
+  it would fail **closed** (own-org only) — safe direction, functional bug not a hole. The complement — confirming
+  the *connection* role is `web_app_user` on preview/prod — is the pre-launch gate already logged (memory
+  `project_security_acquisition_grade`); nothing new here.
+
+**Still deferred** (re-audit when built): terms snapshot resolution, line materialization (**before** first
+signature), engagement-scoped file access (`terms_pdf_url` + agency attachment).
