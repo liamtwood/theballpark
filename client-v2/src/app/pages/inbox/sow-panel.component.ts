@@ -1,12 +1,10 @@
 // pV2-SOW-01 (Phase 2) — the SOW at the top of a per-supplier inbox thread.
-// Rendered as section CARDS with pill headers (+ ⊕ to add a row): Timeline and
-// Fees & Payment as TABLES, Services & Goods as a row LIST. Each row has N/A and
-// a pencil to edit its prose. Content-authored, pre-filled from the project +
-// the supplier's items; boilerplate hidden. The supplier (author) edits while
-// draft; the agency signs first, the supplier counter-signs.
-//
-// Edits use a LOCAL working copy (edited) so inline typing doesn't round-trip
-// per keystroke; save() PATCHes the whole content on blur / discrete actions.
+// Rendered as section cards with pink pill headers: Timeline and Fees & Payment
+// show as clean read-only TABLES (edited in a dialog via the pencil); Services &
+// Goods is a row list with per-row pencil/N/A. Boilerplate hidden. Content
+// pre-filled from the project + the supplier's items. Author (supplier) edits
+// while draft; the agency signs first, the supplier counter-signs.
+// Edits use a local working copy (edited); save() PATCHes on change.
 
 import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, resource, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -41,60 +39,52 @@ import { errorDetail } from '../../core/http-error';
     @if (current(); as s) {
       <div class="mt-3 flex flex-col gap-3">
 
-        <!-- Section 3 — Timeline (table) -->
+        <!-- Section 3 — Timeline -->
         <div class="bp-card">
           <div class="bp-sow-head">
             <span class="bp-card-title">Section 3 · Timeline</span>
-            <div class="flex items-center gap-3">
-              @if (editable()) { <label class="bp-caption flex items-center gap-1"><input type="checkbox" class="accent-[var(--theme-accent)]"[checked]="isSectionNa('timeline')" (change)="toggleSectionNa('timeline', $any($event.target).checked)" /> N/A</label> }
-              @if (editable() && !isSectionNa('timeline')) { <button type="button" class="bp-sow-add" title="Add date" (click)="addTimeline()"><lucide-icon name="circle-plus" [size]="20" /></button> }
-            </div>
+            @if (editable()) {
+              <div class="flex items-center gap-3">
+                <label class="bp-caption flex items-center gap-1"><input type="checkbox" class="accent-[var(--theme-accent)]" [checked]="isSectionNa('timeline')" (change)="toggleSectionNa('timeline', $any($event.target).checked)" /> N/A</label>
+                @if (!isSectionNa('timeline')) { <button type="button" class="bp-sow-icon" title="Edit timeline" (click)="tableDialog.set('timeline')"><lucide-icon name="pencil" [size]="16" /></button> }
+              </div>
+            }
           </div>
           <div class="p-4 pt-3">
             @if (isSectionNa('timeline')) { <span class="bp-body-small text-muted italic">N/A</span> }
-            @else if (timeline().length || editable()) {
-              <table class="w-full bp-body-small">
-                <thead><tr class="text-muted text-left"><th class="font-normal pb-1">Date</th><th class="font-normal pb-1">To</th><th class="font-normal pb-1">From</th><th class="font-normal pb-1">Details</th><th></th></tr></thead>
-                <tbody>
-                  @for (e of timeline(); track $index) {
-                    <tr>
-                      @if (editable()) {
-                        <td class="pr-2 py-0.5"><input class="ed-input w-full" [ngModel]="e.date" (ngModelChange)="mutTimeline($index,'date',$event)" (change)="save()" /></td>
-                        <td class="pr-2 py-0.5"><input class="ed-input w-full" [ngModel]="e.to" (ngModelChange)="mutTimeline($index,'to',$event)" (change)="save()" /></td>
-                        <td class="pr-2 py-0.5"><input class="ed-input w-full" [ngModel]="e.from" (ngModelChange)="mutTimeline($index,'from',$event)" (change)="save()" /></td>
-                        <td class="pr-2 py-0.5"><input class="ed-input w-full" [ngModel]="e.details" (ngModelChange)="mutTimeline($index,'details',$event)" (change)="save()" /></td>
-                        <td class="py-0.5 text-right"><button type="button" class="bp-act bp-act--transparent" (click)="removeTimeline($index)"><lucide-icon name="trash-2" [size]="14" /></button></td>
-                      } @else {
-                        <td class="font-semibold pr-3 py-0.5">{{ e.date || '—' }}</td><td class="pr-3 py-0.5">{{ e.to }}</td><td class="pr-3 py-0.5">{{ e.from }}</td><td class="py-0.5">{{ e.details }}</td><td></td>
-                      }
-                    </tr>
-                  }
-                </tbody>
-              </table>
-              @if (!timeline().length && !editable()) { <span class="bp-body-small text-muted italic">N/A</span> }
+            @else if (timeline().length) {
+              <div class="overflow-hidden rounded-md border border-hairline">
+                <div class="grid grid-cols-[110px_64px_64px_minmax(0,1fr)] gap-x-4 border-b border-hairline bg-fill px-3 py-2">
+                  <span class="bp-table-column-header">Date</span><span class="bp-table-column-header">To</span><span class="bp-table-column-header">From</span><span class="bp-table-column-header">Details</span>
+                </div>
+                @for (e of timeline(); track $index) {
+                  <div class="grid grid-cols-[110px_64px_64px_minmax(0,1fr)] gap-x-4 border-b border-hairline last:border-0 px-3 py-1.5 bp-body-small">
+                    <span class="font-semibold">{{ e.date || '—' }}</span><span>{{ e.to }}</span><span>{{ e.from }}</span><span>{{ e.details }}</span>
+                  </div>
+                }
+              </div>
             } @else { <span class="bp-body-small text-muted italic">N/A</span> }
           </div>
         </div>
 
-        <!-- Section 4 — Services & Goods (rows) -->
+        <!-- Section 4 — Services & Goods -->
         <div class="bp-card">
           <div class="bp-sow-head">
             <span class="bp-card-title">Section 4 · Services &amp; Goods</span>
-            @if (editable()) { <button type="button" class="bp-sow-add" title="Add section" (click)="addService()"><lucide-icon name="circle-plus" [size]="20" /></button> }
+            @if (editable()) { <button type="button" class="bp-sow-icon" title="Add item" (click)="addService()"><lucide-icon name="circle-plus" [size]="20" /></button> }
           </div>
           <div class="px-4 py-1">
             @for (sec of services(); track $index) {
               <div class="flex items-start justify-between gap-2 border-b border-hairline py-2.5 last:border-0 group">
                 <div class="min-w-0 flex-1">
-                  @if (editable()) {
-                    <input class="ed-input font-semibold" [ngModel]="sec.name" (ngModelChange)="mutServiceName($index,$event)" (change)="save()" />
-                  } @else { <div class="bp-card-title">{{ sec.name }}</div> }
+                  @if (editable()) { <input class="ed-input font-semibold" [ngModel]="sec.name" (ngModelChange)="mutServiceName($index,$event)" (change)="save()" /> }
+                  @else { <div class="bp-card-title">{{ sec.name }}</div> }
                   @if (sec.na) { <div class="bp-caption text-muted italic mt-1">N/A</div> }
                   @else if (sec.content) { <div class="bp-body-small text-secondary mt-1" [innerHTML]="sec.content | md"></div> }
-                  </div>
+                </div>
                 @if (editable()) {
                   <div class="flex shrink-0 items-center gap-2 opacity-0 group-hover:opacity-100">
-                    <label class="bp-caption flex items-center gap-1 text-muted"><input type="checkbox" class="accent-[var(--theme-accent)]"[checked]="!!sec.na" (change)="toggleServiceNa($index, $any($event.target).checked)" /> N/A</label>
+                    <label class="bp-caption flex items-center gap-1 text-muted"><input type="checkbox" class="accent-[var(--theme-accent)]" [checked]="!!sec.na" (change)="toggleServiceNa($index, $any($event.target).checked)" /> N/A</label>
                     @if (!sec.na) { <button type="button" class="bp-act bp-act--transparent" title="Edit" (click)="openEditService($index)"><lucide-icon name="pencil" [size]="15" /></button> }
                     <button type="button" class="bp-act bp-act--transparent" title="Remove" (click)="removeService($index)"><lucide-icon name="trash-2" [size]="14" /></button>
                   </div>
@@ -104,40 +94,33 @@ import { errorDetail } from '../../core/http-error';
           </div>
         </div>
 
-        <!-- Section 5 — Fees & Payment (table) -->
+        <!-- Section 5 — Fees & Payment -->
         <div class="bp-card">
           <div class="bp-sow-head">
             <span class="bp-card-title">Section 5 · Fees &amp; Payment</span>
-            <div class="flex items-center gap-3">
-              @if (editable()) { <label class="bp-caption flex items-center gap-1"><input type="checkbox" class="accent-[var(--theme-accent)]"[checked]="isSectionNa('payment')" (change)="toggleSectionNa('payment', $any($event.target).checked)" /> N/A</label> }
-              @if (editable() && !isSectionNa('payment')) { <button type="button" class="bp-sow-add" title="Add row" (click)="addPayment()"><lucide-icon name="circle-plus" [size]="20" /></button> }
-            </div>
+            @if (editable()) {
+              <div class="flex items-center gap-3">
+                <label class="bp-caption flex items-center gap-1"><input type="checkbox" class="accent-[var(--theme-accent)]" [checked]="isSectionNa('payment')" (change)="toggleSectionNa('payment', $any($event.target).checked)" /> N/A</label>
+                @if (!isSectionNa('payment')) { <button type="button" class="bp-sow-icon" title="Edit payment" (click)="tableDialog.set('payment')"><lucide-icon name="pencil" [size]="16" /></button> }
+              </div>
+            }
           </div>
           <div class="p-4 pt-3">
             @if (isSectionNa('payment')) { <span class="bp-body-small text-muted italic">N/A</span> }
             @else {
-            <table class="w-full bp-body-small">
-              <thead><tr class="text-muted text-left"><th class="font-normal pb-1">Date</th><th class="font-normal pb-1">Grace</th><th class="font-normal pb-1">Amount</th><th class="font-normal pb-1">Refundable</th><th class="font-normal pb-1">Details</th><th></th></tr></thead>
-              <tbody>
+              <div class="overflow-hidden rounded-md border border-hairline">
+                <div class="grid grid-cols-[110px_90px_90px_110px_minmax(0,1fr)] gap-x-4 border-b border-hairline bg-fill px-3 py-2">
+                  <span class="bp-table-column-header">Date</span><span class="bp-table-column-header">Grace</span><span class="bp-table-column-header">Amount</span><span class="bp-table-column-header">Refundable</span><span class="bp-table-column-header">Details</span>
+                </div>
                 @for (r of payment(); track $index) {
-                  <tr>
-                    @if (editable()) {
-                      <td class="pr-2 py-0.5"><input class="ed-input w-24" [ngModel]="r.date" (ngModelChange)="mutPay($index,'date',$event)" (change)="save()" /></td>
-                      <td class="pr-2 py-0.5"><input class="ed-input w-20" [ngModel]="r.grace" (ngModelChange)="mutPay($index,'grace',$event)" (change)="save()" /></td>
-                      <td class="pr-2 py-0.5"><input class="ed-input w-16" [ngModel]="r.amount" (ngModelChange)="mutPay($index,'amount',$event)" (change)="save()" /></td>
-                      <td class="pr-2 py-0.5"><select class="ed-input" [ngModel]="r.refundable" (ngModelChange)="mutPay($index,'refundable',$event); save()"><option value="yes">Yes</option><option value="no">No</option><option value="partial">Partial</option><option value="na">N/A</option></select></td>
-                      <td class="pr-2 py-0.5"><input class="ed-input w-full" [ngModel]="r.details" (ngModelChange)="mutPay($index,'details',$event)" (change)="save()" /></td>
-                      <td class="py-0.5 text-right"><button type="button" class="bp-act bp-act--transparent" (click)="removePayment($index)"><lucide-icon name="trash-2" [size]="14" /></button></td>
-                    } @else {
-                      <td class="font-semibold pr-3 py-0.5">{{ r.date || '—' }}</td><td class="pr-3 py-0.5">{{ r.grace }}</td><td class="font-semibold pr-3 py-0.5">{{ r.amount }}</td><td class="pr-3 py-0.5">{{ refundableLabel(r.refundable) }}</td><td class="py-0.5">{{ r.details }}</td><td></td>
-                    }
-                  </tr>
+                  <div class="grid grid-cols-[110px_90px_90px_110px_minmax(0,1fr)] gap-x-4 border-b border-hairline last:border-0 px-3 py-1.5 bp-body-small">
+                    <span class="font-semibold">{{ r.date || '—' }}</span><span>{{ r.grace }}</span><span class="font-semibold">{{ r.amount }}</span><span>{{ refundableLabel(r.refundable) }}</span><span>{{ r.details }}</span>
+                  </div>
                 }
-              </tbody>
-            </table>
-            <p class="bp-caption text-muted mt-2">Ballpark platform fee: {{ s.platformFeePct ?? 3 }}%</p>
+              </div>
+              <p class="bp-caption text-muted mt-2">Ballpark platform fee: {{ s.platformFeePct ?? 3 }}%</p>
             }
-            <!-- Special Terms (own N/A + pencil) -->
+            <!-- Special Terms -->
             <div class="mt-2 flex items-start justify-between gap-2 border-t border-hairline pt-2 group">
               <div class="min-w-0 flex-1">
                 <div class="bp-card-title">Special Terms</div>
@@ -146,7 +129,7 @@ import { errorDetail } from '../../core/http-error';
               </div>
               @if (editable()) {
                 <div class="flex shrink-0 items-center gap-2 opacity-0 group-hover:opacity-100">
-                  <label class="bp-caption flex items-center gap-1 text-muted"><input type="checkbox" class="accent-[var(--theme-accent)]"[checked]="!!special().na" (change)="toggleSpecialNa($any($event.target).checked)" /> N/A</label>
+                  <label class="bp-caption flex items-center gap-1 text-muted"><input type="checkbox" class="accent-[var(--theme-accent)]" [checked]="!!special().na" (change)="toggleSpecialNa($any($event.target).checked)" /> N/A</label>
                   @if (!special().na) { <button type="button" class="bp-act bp-act--transparent" title="Edit" (click)="openEditSpecial()"><lucide-icon name="pencil" [size]="15" /></button> }
                 </div>
               }
@@ -189,6 +172,45 @@ import { errorDetail } from '../../core/http-error';
 
     @if (error()) { <p class="bp-body-small text-danger mt-2">{{ error() }}</p> }
 
+    <!-- table edit dialog (timeline / payment) -->
+    <app-modal [open]="!!tableDialog()" [title]="tableDialog() === 'payment' ? 'Edit Fees & Payment' : 'Edit Timeline'" [width]="'720px'" (close)="tableDialog.set(null)">
+      @if (tableDialog() === 'timeline') {
+        <table class="w-full bp-body-small">
+          <thead><tr class="text-muted text-left"><th class="font-normal pb-1">Date</th><th class="font-normal pb-1">To</th><th class="font-normal pb-1">From</th><th class="font-normal pb-1">Details</th><th></th></tr></thead>
+          <tbody>
+            @for (e of timeline(); track $index) {
+              <tr>
+                <td class="pr-2 py-0.5"><input class="ed-input w-24" [ngModel]="e.date" (ngModelChange)="mutTimeline($index,'date',$event)" (change)="save()" /></td>
+                <td class="pr-2 py-0.5"><input class="ed-input w-16" [ngModel]="e.to" (ngModelChange)="mutTimeline($index,'to',$event)" (change)="save()" /></td>
+                <td class="pr-2 py-0.5"><input class="ed-input w-16" [ngModel]="e.from" (ngModelChange)="mutTimeline($index,'from',$event)" (change)="save()" /></td>
+                <td class="pr-2 py-0.5"><input class="ed-input w-full" [ngModel]="e.details" (ngModelChange)="mutTimeline($index,'details',$event)" (change)="save()" /></td>
+                <td class="py-0.5 text-right"><button type="button" class="bp-act bp-act--transparent" (click)="removeTimeline($index)"><lucide-icon name="trash-2" [size]="14" /></button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <button type="button" class="bp-act bp-act--outline mt-2" (click)="addTimeline()">+ Add date</button>
+      } @else if (tableDialog() === 'payment') {
+        <table class="w-full bp-body-small">
+          <thead><tr class="text-muted text-left"><th class="font-normal pb-1">Date</th><th class="font-normal pb-1">Grace</th><th class="font-normal pb-1">Amount</th><th class="font-normal pb-1">Refundable</th><th class="font-normal pb-1">Details</th><th></th></tr></thead>
+          <tbody>
+            @for (r of payment(); track $index) {
+              <tr>
+                <td class="pr-2 py-0.5"><input class="ed-input w-24" [ngModel]="r.date" (ngModelChange)="mutPay($index,'date',$event)" (change)="save()" /></td>
+                <td class="pr-2 py-0.5"><input class="ed-input w-20" [ngModel]="r.grace" (ngModelChange)="mutPay($index,'grace',$event)" (change)="save()" /></td>
+                <td class="pr-2 py-0.5"><input class="ed-input w-20" [ngModel]="r.amount" (ngModelChange)="mutPay($index,'amount',$event)" (change)="save()" /></td>
+                <td class="pr-2 py-0.5"><select class="ed-input" [ngModel]="r.refundable" (ngModelChange)="mutPay($index,'refundable',$event); save()"><option value="yes">Yes</option><option value="no">No</option><option value="partial">Partial</option><option value="na">N/A</option></select></td>
+                <td class="pr-2 py-0.5"><input class="ed-input w-full" [ngModel]="r.details" (ngModelChange)="mutPay($index,'details',$event)" (change)="save()" /></td>
+                <td class="py-0.5 text-right"><button type="button" class="bp-act bp-act--transparent" (click)="removePayment($index)"><lucide-icon name="trash-2" [size]="14" /></button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <button type="button" class="bp-act bp-act--outline mt-2" (click)="addPayment()">+ Add row</button>
+      }
+      <button modalFooter type="button" class="bp-btn--primary" (click)="tableDialog.set(null)">Done</button>
+    </app-modal>
+
     <!-- prose edit dialog -->
     <app-modal [open]="editOpen()" [title]="'Edit ' + editLabel()" (close)="editOpen.set(false)">
       <textarea class="ed-textarea min-h-40 w-full" [ngModel]="editText()" (ngModelChange)="editText.set($event)" placeholder="Markdown supported"></textarea>
@@ -208,7 +230,7 @@ import { errorDetail } from '../../core/http-error';
   `,
   styles: [`
     .bp-sow-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: color-mix(in srgb, var(--theme-accent) 13%, var(--color-surface)); border-radius: 9999px; margin: 0.4rem 0.4rem 0.1rem; padding: 0.45rem 1.1rem; }
-    .bp-sow-add { color: var(--theme-accent); display: inline-flex; align-items: center; justify-content: center; line-height: 0; }
+    .bp-sow-icon { color: var(--theme-accent); display: inline-flex; align-items: center; justify-content: center; line-height: 0; }
     table th { font-size: 0.72rem; }
   `],
 })
@@ -245,6 +267,7 @@ export class SowPanelComponent {
   protected readonly extra = computed<SowSubSection[]>(() => this.edited().extra ?? []);
   protected readonly special = computed<SowSubSection>(() => this.edited().specialTerms ?? { name: 'Special Terms', content: null });
 
+  protected readonly tableDialog = signal<'timeline' | 'payment' | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
 
@@ -252,23 +275,23 @@ export class SowPanelComponent {
 
   private mut(fn: (c: SowContent) => SowContent): void { this.edited.update((c) => fn({ ...c })); }
 
-  // timeline
   mutTimeline(i: number, f: keyof SowTimelineEntry, v: string): void { this.mut((c) => ({ ...c, timeline: { ...c.timeline, entries: this.timeline().map((e, idx) => (idx === i ? { ...e, [f]: v } : e)) } })); }
   addTimeline(): void { this.mut((c) => ({ ...c, timeline: { ...c.timeline, entries: [...this.timeline(), { date: null, to: null, from: null, details: null }] } })); this.save(); }
   removeTimeline(i: number): void { this.mut((c) => ({ ...c, timeline: { ...c.timeline, entries: this.timeline().filter((_, idx) => idx !== i) } })); this.save(); }
 
-  // services
   mutServiceName(i: number, name: string): void { this.mut((c) => ({ ...c, services: this.services().map((x, idx) => (idx === i ? { ...x, name } : x)) })); }
   toggleServiceNa(i: number, na: boolean): void { this.mut((c) => ({ ...c, services: this.services().map((x, idx) => (idx === i ? { ...x, na } : x)) })); this.save(); }
   addService(): void { this.mut((c) => ({ ...c, services: [...this.services(), { name: 'New item', content: null }] })); this.save(); }
   removeService(i: number): void { this.mut((c) => ({ ...c, services: this.services().filter((_, idx) => idx !== i) })); this.save(); }
 
-  // payment
   mutPay(i: number, f: keyof SowPaymentRow, v: string): void { this.mut((c) => ({ ...c, payment: { ...c.payment, rows: this.payment().map((r, idx) => (idx === i ? ({ ...r, [f]: v } as SowPaymentRow) : r)) } })); }
   addPayment(): void { this.mut((c) => ({ ...c, payment: { ...c.payment, rows: [...this.payment(), { date: null, grace: null, amount: null, refundable: 'na', details: null }] } })); this.save(); }
   removePayment(i: number): void { this.mut((c) => ({ ...c, payment: { ...c.payment, rows: this.payment().filter((_, idx) => idx !== i) } })); this.save(); }
 
-  // section-level N/A (timeline / payment)
+  mutExtraName(i: number, name: string): void { this.mut((c) => ({ ...c, extra: this.extra().map((x, idx) => (idx === i ? { ...x, name } : x)) })); }
+  addExtra(): void { this.mut((c) => ({ ...c, extra: [...this.extra(), { name: 'New section', content: '' }] })); this.save(); }
+  removeExtra(i: number): void { this.mut((c) => ({ ...c, extra: this.extra().filter((_, idx) => idx !== i) })); this.save(); }
+
   isSectionNa(which: 'timeline' | 'payment'): boolean { const s = this.edited()[which] as { na?: boolean } | undefined; return !!s?.na; }
   toggleSectionNa(which: 'timeline' | 'payment', na: boolean): void {
     this.mut((c) => (which === 'timeline' ? { ...c, timeline: { entries: c.timeline?.entries ?? [], na } } : { ...c, payment: { rows: c.payment?.rows ?? [], na } }));
@@ -276,11 +299,6 @@ export class SowPanelComponent {
   }
   toggleSpecialNa(na: boolean): void { this.mut((c) => ({ ...c, specialTerms: { name: 'Special Terms', content: this.special().content, na } })); this.save(); }
   openEditSpecial(): void { this.editTarget = { kind: 'special' }; this.editLabel.set('Special Terms'); this.editText.set(this.special().content ?? ''); this.editOpen.set(true); }
-
-  // extra
-  mutExtraName(i: number, name: string): void { this.mut((c) => ({ ...c, extra: this.extra().map((x, idx) => (idx === i ? { ...x, name } : x)) })); }
-  addExtra(): void { this.mut((c) => ({ ...c, extra: [...this.extra(), { name: 'New section', content: '' }] })); this.save(); }
-  removeExtra(i: number): void { this.mut((c) => ({ ...c, extra: this.extra().filter((_, idx) => idx !== i) })); this.save(); }
 
   async save(): Promise<void> {
     const cur = this.current();
@@ -311,7 +329,7 @@ export class SowPanelComponent {
     }
   }
 
-  // prose edit dialog (services / extra content)
+  // prose edit dialog (services / special / extra)
   protected readonly editOpen = signal(false);
   protected readonly editLabel = signal('');
   protected readonly editText = signal('');
