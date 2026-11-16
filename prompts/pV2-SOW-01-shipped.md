@@ -181,6 +181,16 @@ deferred); end-to-end authenticated HTTP verification lands with Phase 2 (the cl
 no committed service-level test yet (the DB gate covers the RLS/definer; a service test needs the
 app pool/ALS harness). FR/EP ref to mint at ship.
 
+### Fix — S-READ: two-layer read isolation (designer audit 775386df)
+The reads (`listForProject`, `getById`) originally leaned on RLS alone. Added the app-layer party
+predicate (mirroring `counterparty_read`: author OR a party to the doc's engagement — **not** an
+`org_id=:me` filter) so SOW isolation no longer hangs on a single DB role-flip control, matching
+`inbox.service`'s belt. Severity was **defense-in-depth, not a live exposure**: the app connects as
+`web_app_user` (`is_superuser=off`, `bypassrls=false`, verified), so RLS was already enforced. Smoke
+extended to **14/14** — the belt now proves a non-party gets nothing from both reads even with RLS
+opened (admin escape standing in for a non-enforcing role), while a party still sees the SOW. The
+unused `viewer` param on `resolveParties` was dropped (audit nit).
+
 ## QC notes
 (Liam fills this in)
 

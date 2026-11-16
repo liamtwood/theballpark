@@ -61,7 +61,7 @@ function toSowDto(row) {
 // ── cross-org party display (names only — org_contact/supplier_directory expose
 //    name/logo/city, which is enough for the SOW parties header; full legal
 //    address cross-org is a later widening, flagged in the ship notes) ─────────
-async function resolveParties(viewer, agencyOrgId, supplierOrgId) {
+async function resolveParties(agencyOrgId, supplierOrgId) {
   // The caller reads its OWN org directly (own-org RLS); the counterparty via the
   // audited directory for its direction.
   const out = { agency: null, supplier: null };
@@ -125,27 +125,45 @@ async function createDraft({ orgId, userId, projectProviderId, name, content, de
 // No org_id filter — RLS (author _all + counterparty_read) defines the visible
 // set, so the caller sees both the SOWs it authored AND the counterparty-authored
 // ones on its engagements. Filtering org_id=:me here would drop the latter.
-async function listForProject(projectId) {
+async function listForProject(projectId, viewerOrgId) {
+  // TWO-LAYER isolation: RLS scopes the rows, AND we mirror the counterparty_read
+  // predicate at the app layer (as inbox.service does on its reads) so SOW
+  // visibility never hangs on the single DB role-flip control. This is NOT an
+  // org_id=:me filter (that would drop counterparty-authored docs) — it is
+  // "author OR a party to the doc's engagement", exactly the RLS policy's shape.
   const r = await pool.query(
-    `SELECT * FROM project_documents
-      WHERE project_id = $1 AND deleted_at IS NULL
-      ORDER BY created_at DESC`,
-    [projectId]
+    `SELECT d.* FROM project_documents d
+      WHERE d.project_id = $1 AND d.deleted_at IS NULL
+        AND ( d.org_id = $2
+           OR d.project_provider_id IN (SELECT id FROM project_providers
+                                         WHERE deleted_at IS NULL AND $2 IN (org_id, provider_org_id)) )
+      ORDER BY d.created_at DESC`,
+    [projectId, viewerOrgId]
   );
   return r.rows.map(toSowDto);
 }
 
 // ── one SOW, as a render payload (doc + parties + signatures + the fee line) ──
-async function getById(id, viewerOrgType) {
-  const r = await pool.query('SELECT * FROM project_documents WHERE id = $1 AND deleted_at IS NULL', [id]);
-  if (!r.rows[0]) throw httpErr('SOW not found', 404); // RLS-filtered → not visible
+async function getById(id, viewerOrgId) {
+  // Same two-layer belt as listForProject: RLS + the app-layer party predicate,
+  // so a single id-fetch can't return a SOW to a non-party even if the DB role
+  // ever stops enforcing RLS.
+  const r = await pool.query(
+    `SELECT d.* FROM project_documents d
+      WHERE d.id = $1 AND d.deleted_at IS NULL
+        AND ( d.org_id = $2
+           OR d.project_provider_id IN (SELECT id FROM project_providers
+                                         WHERE deleted_at IS NULL AND $2 IN (org_id, provider_org_id)) )`,
+    [id, viewerOrgId]
+  );
+  if (!r.rows[0]) throw httpErr('SOW not found', 404); // not visible to this caller
   const row = r.rows[0];
   // Parties: agency = the engagement's org side; supplier = the provider side
   // (supplier_org_id is denormalised to it). Resolve both names.
   const pp = await pool.query('SELECT org_id FROM project_providers WHERE id = $1', [row.project_provider_id]);
   const agencyOrgId = pp.rows[0] ? pp.rows[0].org_id : null;
   const [parties, signatures] = await Promise.all([
-    resolveParties(viewerOrgType, agencyOrgId, row.supplier_org_id),
+    resolveParties(agencyOrgId, row.supplier_org_id),
     signaturesFor(id),
   ]);
   return { ...toSowDto(row), parties, signatures, platformFeePct: PLATFORM_FEE_PCT };

@@ -55,7 +55,7 @@ router.get('/', async (req, res, next) => {
     if (!UUID.safeParse(req.query.projectId || '').success) {
       return res.status(400).json({ error: 'projectId (uuid) is required' });
     }
-    res.json(await sow.listForProject(req.query.projectId));
+    res.json(await sow.listForProject(req.query.projectId, req.user.org_id));
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
@@ -66,7 +66,7 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     if (!UUID.safeParse(req.params.id).success) return res.status(400).json({ error: 'Invalid SOW id' });
-    res.json(await sow.getById(req.params.id, req.user.org_type));
+    res.json(await sow.getById(req.params.id, req.user.org_id));
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
