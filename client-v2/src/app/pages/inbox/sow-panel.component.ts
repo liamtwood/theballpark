@@ -130,7 +130,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
                   @if (editable()) { <input class="bp-sow-cell font-semibold" [ngModel]="sec.name" (ngModelChange)="mutServiceName($index,$event)" (change)="save()" /> }
                   @else { <div class="bp-card-title">{{ sec.name }}</div> }
                   @if (sec.na) { <div class="bp-caption text-muted italic mt-1">N/A</div> }
-                  @else if (sec.content) { <div class="bp-body-small text-secondary mt-1" [innerHTML]="sec.content | md"></div> }
+                  @else if (sec.content) { <div class="bp-md bp-body-small text-secondary mt-1" [innerHTML]="sec.content | md"></div> }
                 </div>
                 @if (editable()) {
                   <div class="flex shrink-0 items-center gap-2 opacity-0 group-hover:opacity-100">
@@ -215,7 +215,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
               <div class="min-w-0 flex-1">
                 <div class="bp-card-title">Special Terms</div>
                 @if (special().na) { <div class="bp-caption text-muted italic mt-1">N/A</div> }
-                @else if (special().content) { <div class="bp-body-small text-secondary mt-1" [innerHTML]="special().content | md"></div> }
+                @else if (special().content) { <div class="bp-md bp-body-small text-secondary mt-1" [innerHTML]="special().content | md"></div> }
               </div>
               @if (editable()) {
                 <div class="flex shrink-0 items-center gap-2 opacity-0 group-hover:opacity-100">
@@ -240,7 +240,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
                 </div>
               }
             </div>
-            <div class="p-4 pt-2 bp-body-small" [innerHTML]="(ex.content || '') | md"></div>
+            <div class="bp-md p-4 pt-2 bp-body-small" [innerHTML]="(ex.content || '') | md"></div>
           </div>
         }
         @if (editable()) { <button type="button" class="bp-act bp-act--outline self-start" (click)="addExtra()">+ Add section</button> }
