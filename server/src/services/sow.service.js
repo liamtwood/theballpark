@@ -99,14 +99,18 @@ async function signaturesFor(documentId) {
 // The caller picks the engagement (projectProviderId) they're authoring for; we
 // derive project_id + the supplier party from it. org_id = the caller. The DB
 // engagement guard backstops that the caller is actually a party to it.
-async function createDraft({ orgId, userId, projectProviderId, name, content, depositPct }) {
-  // Resolve the engagement under RLS — the caller must be a party to see it.
+async function createDraft({ orgId, orgType, userId, projectId, supplierOrgId, name, content, depositPct }) {
+  // Resolve the engagement from (project, supplier party) — UNIQUE(project,
+  // provider) makes it exact, so the client never needs the raw engagement PK.
+  // The supplier author IS the caller; an agency author names the supplier.
+  const supplierParty = orgType === 'supplier' ? orgId : supplierOrgId;
+  if (!supplierParty) throw httpErr('supplierOrgId is required when the agency authors', 400);
   const pp = await pool.query(
     `SELECT id, project_id, org_id, provider_org_id FROM project_providers
-      WHERE id = $1 AND deleted_at IS NULL`,
-    [projectProviderId]
+      WHERE project_id = $1 AND provider_org_id = $2 AND deleted_at IS NULL`,
+    [projectId, supplierParty]
   );
-  if (!pp.rows[0]) throw httpErr('Engagement not found', 404);
+  if (!pp.rows[0]) throw httpErr('No engagement for this project + supplier', 404);
   const eng = pp.rows[0];
   if (orgId !== eng.org_id && orgId !== eng.provider_org_id) {
     throw httpErr('Not a party to this engagement', 403);

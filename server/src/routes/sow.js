@@ -22,7 +22,8 @@ const Section = z.object({
 
 // POST /api/sow — create a draft SOW for an engagement (the caller is the author).
 const CreateSchema = z.object({
-  projectProviderId: z.string().uuid(),
+  projectId: z.string().uuid(),
+  supplierOrgId: z.string().uuid().optional(), // only when the agency authors
   name: z.string().trim().min(1).max(200),
   content: z.array(Section).optional(),
   depositPct: z.number().min(0).max(100).optional(),
@@ -35,8 +36,10 @@ router.post('/', async (req, res, next) => {
     }
     const result = await sow.createDraft({
       orgId: req.user.org_id,
+      orgType: req.user.org_type,
       userId: req.user.id,
-      projectProviderId: parsed.data.projectProviderId,
+      projectId: parsed.data.projectId,
+      supplierOrgId: parsed.data.supplierOrgId,
       name: parsed.data.name,
       content: parsed.data.content,
       depositPct: parsed.data.depositPct,

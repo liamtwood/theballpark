@@ -21,6 +21,7 @@ import { LineEditorComponent, LineEdit } from '../projects/line-editor.component
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
 import { ProjectService } from '../../core/projects/project.service';
 import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.component';
+import { SowPanelComponent } from './sow-panel.component';
 
 /** pV2-INBOX-01/03 — the per-project conversation surface, viewer-aware.
  *  Supplier (standalone /inbox/:projectId): the left rail is THEIR items
@@ -33,7 +34,7 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
 @Component({
   selector: 'app-inbox-project',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, NgClass, LucideAngularModule, InboxRailComponent, LinePreviewComponent, CustomizeDialogComponent, LineEditorComponent, AgentRailComponent, ToastModule, StatusPillComponent],
+  imports: [CurrencyPipe, DatePipe, NgClass, LucideAngularModule, InboxRailComponent, LinePreviewComponent, CustomizeDialogComponent, LineEditorComponent, AgentRailComponent, ToastModule, StatusPillComponent, SowPanelComponent],
   // BE-00114 — own the MessageService/p-toast so error surfacing works on the
   // STANDALONE supplier route too (inbox/:projectId — not embedded in
   // project-detail, so no parent provider). Injecting a parent-only service here
@@ -218,6 +219,11 @@ import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.com
                     (cancel)="customizing.set(null)" />
                 </div>
               } @else {
+
+              <!-- pV2-SOW-01 — the per-supplier SOW sits at the top of the thread. -->
+              <div class="border-b border-hairline px-5 py-4">
+                <app-sow-panel [thread]="t" [viewer]="isAgency() ? 'agency' : 'supplier'" />
+              </div>
 
               <!-- Bubbles — on the page (parchment) ground so the white
                    agency bubbles read as cards; "You" stays gradient. In a

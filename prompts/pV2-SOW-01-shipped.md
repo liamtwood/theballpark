@@ -191,6 +191,30 @@ extended to **14/14** — the belt now proves a non-party gets nothing from both
 opened (admin escape standing in for a non-enforcing role), while a party still sees the SOW. The
 unused `viewer` param on `resolveParties` was dropped (audit nit).
 
+## Iteration 4 — Phase 2 client UI (first pass for QC), 2026-11-16
+
+**Shipped:** the SOW panel at the top of the per-supplier inbox thread (Angular 21, standalone,
+signals, zoneless).
+- `client-v2/src/app/core/sow/sow.types.ts` + `sow.service.ts` — ApiService-backed client for `/api/sow`.
+- `client-v2/src/app/pages/inbox/sow-panel.component.ts` (`app-sow-panel`) — mounted at the top of
+  the thread in `inbox-project.component.ts`. Viewer-aware: the **supplier authors**, the **agency
+  signs first**, the **supplier counter-signs**.
+- Flow: supplier **Create** → edit (title + ordered content sections + deposit %) → agency **Sign** →
+  supplier **Counter-sign** → **Executed**. Status via `app-status-pill` (`sow_status` codelist); sign
+  via `app-modal` (name + title); content rendered via the `md` pipe; `bp-act--green` sign button.
+
+**Server tweak:** `POST /api/sow` now takes `{ projectId, supplierOrgId? }` (not the raw engagement
+PK) and resolves the engagement from `(project, supplier party)` — the client has `projectId` +
+`supplierOrgId`, never `projectProviderId`.
+
+**First pass — deliberately lean for QC:** renders `content[]` sections inline (not the full-screen
+`sow-document.component` overlay, which renders from `ProjectDetail`, not our `content[]`); no
+signature-detail list yet (the status pill conveys state); structured catalogue-pull lines still
+deferred. These are the obvious next polish passes once Liam reacts.
+
+**Verified:** Angular bundle compiles clean (dev server `:4202`); backend gated routes 401 (`:3002`).
+Liam QCs the live UI (per feedback — visuals aren't screenshot-verified here).
+
 ## QC notes
 (Liam fills this in)
 
