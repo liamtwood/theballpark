@@ -60,7 +60,7 @@ import { errorDetail } from '../../core/http-error';
                       <input class="ed-input w-full" [ngModel]="e.to" (ngModelChange)="mutTimeline($index,'to',$event)" (change)="save()" />
                       <input class="ed-input w-full" [ngModel]="e.from" (ngModelChange)="mutTimeline($index,'from',$event)" (change)="save()" />
                       <input class="ed-input w-full" [ngModel]="e.details" (ngModelChange)="mutTimeline($index,'details',$event)" (change)="save()" />
-                      <button type="button" class="bp-act bp-act--transparent justify-self-end" title="Remove" (click)="removeTimeline($index)"><lucide-icon name="trash-2" [size]="14" /></button>
+                      <button type="button" class="bp-sow-ibtn justify-self-end" title="Remove" (click)="removeTimeline($index)"><lucide-icon name="trash-2" [size]="14" /></button>
                     } @else {
                       <span class="font-semibold">{{ e.date || '—' }}</span><span>{{ e.to }}</span><span>{{ e.from }}</span><span>{{ e.details }}</span><span></span>
                     }
@@ -90,8 +90,8 @@ import { errorDetail } from '../../core/http-error';
                 @if (editable()) {
                   <div class="flex shrink-0 items-center gap-2 opacity-0 group-hover:opacity-100">
                     <label class="bp-caption flex items-center gap-1 text-muted"><input type="checkbox" class="accent-[var(--theme-accent)]" [checked]="!!sec.na" (change)="toggleServiceNa($index, $any($event.target).checked)" /> N/A</label>
-                    @if (!sec.na) { <button type="button" class="bp-act bp-act--transparent" title="Edit" (click)="openEditService($index)"><lucide-icon name="pencil" [size]="15" /></button> }
-                    <button type="button" class="bp-act bp-act--transparent" title="Remove" (click)="removeService($index)"><lucide-icon name="trash-2" [size]="14" /></button>
+                    @if (!sec.na) { <button type="button" class="bp-sow-ibtn" title="Edit" (click)="openEditService($index)"><lucide-icon name="pencil" [size]="15" /></button> }
+                    <button type="button" class="bp-sow-ibtn" title="Remove" (click)="removeService($index)"><lucide-icon name="trash-2" [size]="14" /></button>
                   </div>
                 }
               </div>
@@ -121,7 +121,7 @@ import { errorDetail } from '../../core/http-error';
                       <input class="ed-input w-full" [ngModel]="r.amount" (ngModelChange)="mutPay($index,'amount',$event)" (change)="save()" />
                       <select class="ed-input" [ngModel]="r.refundable" (ngModelChange)="mutPay($index,'refundable',$event); save()"><option value="yes">Yes</option><option value="no">No</option><option value="partial">Partial</option><option value="na">N/A</option></select>
                       <input class="ed-input w-full" [ngModel]="r.details" (ngModelChange)="mutPay($index,'details',$event)" (change)="save()" />
-                      <button type="button" class="bp-act bp-act--transparent justify-self-end" title="Remove" (click)="removePayment($index)"><lucide-icon name="trash-2" [size]="14" /></button>
+                      <button type="button" class="bp-sow-ibtn justify-self-end" title="Remove" (click)="removePayment($index)"><lucide-icon name="trash-2" [size]="14" /></button>
                     } @else {
                       <span class="font-semibold">{{ r.date || '—' }}</span><span>{{ r.grace }}</span><span class="font-semibold">{{ r.amount }}</span><span>{{ refundableLabel(r.refundable) }}</span><span>{{ r.details }}</span><span></span>
                     }
@@ -140,7 +140,7 @@ import { errorDetail } from '../../core/http-error';
               @if (editable()) {
                 <div class="flex shrink-0 items-center gap-2 opacity-0 group-hover:opacity-100">
                   <label class="bp-caption flex items-center gap-1 text-muted"><input type="checkbox" class="accent-[var(--theme-accent)]" [checked]="!!special().na" (change)="toggleSpecialNa($any($event.target).checked)" /> N/A</label>
-                  @if (!special().na) { <button type="button" class="bp-act bp-act--transparent" title="Edit" (click)="openEditSpecial()"><lucide-icon name="pencil" [size]="15" /></button> }
+                  @if (!special().na) { <button type="button" class="bp-sow-ibtn" title="Edit" (click)="openEditSpecial()"><lucide-icon name="pencil" [size]="15" /></button> }
                 </div>
               }
             </div>
@@ -155,8 +155,8 @@ import { errorDetail } from '../../core/http-error';
               @else { <span class="bp-card-title">{{ ex.name || 'Section' }}</span> }
               @if (editable()) {
                 <div class="flex items-center gap-2">
-                  <button type="button" class="bp-act bp-act--transparent" title="Edit" (click)="openEditExtra($index)"><lucide-icon name="pencil" [size]="15" /></button>
-                  <button type="button" class="bp-act bp-act--transparent" title="Remove" (click)="removeExtra($index)"><lucide-icon name="trash-2" [size]="14" /></button>
+                  <button type="button" class="bp-sow-ibtn" title="Edit" (click)="openEditExtra($index)"><lucide-icon name="pencil" [size]="15" /></button>
+                  <button type="button" class="bp-sow-ibtn" title="Remove" (click)="removeExtra($index)"><lucide-icon name="trash-2" [size]="14" /></button>
                 </div>
               }
             </div>
@@ -202,6 +202,8 @@ import { errorDetail } from '../../core/http-error';
   styles: [`
     .bp-sow-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: color-mix(in srgb, var(--theme-accent) 13%, var(--color-surface)); border-radius: 9999px; margin: 0.4rem 0.4rem 0.1rem; padding: 0.45rem 1.1rem; }
     .bp-sow-icon { color: var(--theme-accent); display: inline-flex; align-items: center; justify-content: center; line-height: 0; }
+    .bp-sow-ibtn { color: var(--color-text-secondary); display: inline-flex; align-items: center; justify-content: center; line-height: 0; padding: 2px; }
+    .bp-sow-ibtn:hover { color: var(--color-text); }
     table th { font-size: 0.72rem; }
   `],
 })
