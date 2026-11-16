@@ -17,6 +17,7 @@ import { ModalComponent } from '../../shared/modal/modal.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { errorDetail } from '../../core/http-error';
+import { CodelistService } from '../../core/codelists/codelist.service';
 
 @Component({
   selector: 'app-sow-panel',
@@ -41,7 +42,7 @@ import { errorDetail } from '../../core/http-error';
         <!-- Section 1 — Standard Intro (boilerplate) -->
         <div class="bp-card">
           <div class="bp-sow-head"><span class="bp-card-title">Section 1 · Standard Intro</span></div>
-          <div class="p-4 pt-3 bp-body-small text-secondary">{{ introText }}</div>
+          <div class="p-4 pt-3 bp-body-small text-secondary whitespace-pre-line">{{ bp('intro') }}</div>
         </div>
 
         <!-- Section 2 — Parties -->
@@ -122,6 +123,7 @@ import { errorDetail } from '../../core/http-error';
           <div class="p-4 pt-3">
             @if (isSectionNa('payment')) { <span class="bp-body-small text-muted italic">N/A</span> }
             @else {
+              <p class="bp-body-small text-secondary mb-2 whitespace-pre-line">{{ bp('payment_schedule') }}</p>
               <div class="bp-caption text-muted mb-1">Payment schedule</div>
               <div class="overflow-hidden rounded-md border border-hairline">
                 <div class="grid grid-cols-[110px_90px_90px_110px_minmax(0,1fr)_32px] items-center gap-x-4 border-b border-hairline bg-fill px-3 py-2">
@@ -184,7 +186,7 @@ import { errorDetail } from '../../core/http-error';
         <div class="bp-card">
           <div class="bp-sow-head"><span class="bp-card-title">Section 6 · Signature</span></div>
           <div class="p-4 pt-3">
-            <p class="bp-body-small text-secondary">{{ conclusionText }}</p>
+            <p class="bp-body-small text-secondary whitespace-pre-line">{{ bp('conclusion') }}</p>
             <div class="mt-3 flex flex-wrap items-end gap-8 bp-body-small">
               <div><div class="bp-caption text-muted">Agency</div><div class="font-semibold">{{ s.status === 'counterparty_signed' || s.status === 'executed' ? 'Signed' : 'Awaiting signature' }}</div></div>
               <div><div class="bp-caption text-muted">Supplier</div><div class="font-semibold">{{ s.status === 'executed' ? 'Signed' : 'Awaiting signature' }}</div></div>
@@ -276,9 +278,24 @@ export class SowPanelComponent {
   protected readonly extra = computed<SowSubSection[]>(() => this.edited().extra ?? []);
   protected readonly special = computed<SowSubSection>(() => this.edited().specialTerms ?? { name: 'Special Terms', content: null });
 
-  // Boilerplate (fixed) copy — shown but not editable.
-  protected readonly introText = 'This Statement of Work sets out the goods and services to be delivered, the timeline, and the fee and payment terms agreed between the parties below.';
-  protected readonly conclusionText = 'By signing below, both parties agree to the terms of this Statement of Work.';
+  // Boilerplate (fixed) copy — shown but not editable (verbatim from the SOW spec).
+  protected readonly introText =
+    'This Statement of Work ("SOW") is entered into directly between the Agency and the Supplier named below in connection with the project described. It was generated using cost data and scope details submitted through the Ballpark platform (www.theballpark.ai — operated by The Ballpark AI Ltd, "Ballpark").\n\n' +
+    'Ballpark is a technology platform that connects Agencies with Suppliers and provides ballpark cost estimates, booking tools and payment facilitation. Ballpark is not a party to this SOW, does not provide the Services or Deliverables described in it, and is not responsible for their delivery. See "Role of Ballpark" in Annex A for full detail.';
+  protected readonly paymentBoilerplate =
+    '50% of the Fee is invoiced and taken via Stripe upon signature of this SOW by both the Agency and the Supplier. The remaining 50% is invoiced on completion of the Services, payable within [30] days. Funds are collected and released by Ballpark acting solely as a payment facilitator on the Supplier’s behalf.';
+  protected readonly conclusionText =
+    'This Statement of Work is entered into on the Effective Date pursuant to the Supplier’s standard terms of purchase set out in Annex A. Any terms and conditions on the Agency’s form of purchase order are void and have no legal effect unless otherwise agreed. Each party warrants that they have all right, title and interest to bind the applicable entity on whose behalf they are signing.';
+
+  // Boilerplate copy lives in the `sow_boilerplate` reference codelist (meta.text),
+  // editable in Settings ▸ Codelists; the constants above are the fallback.
+  private readonly codelistSvc = inject(CodelistService);
+  private readonly boilerplateRes = resource({ loader: () => this.codelistSvc.list('sow_boilerplate') });
+  protected bp(code: 'intro' | 'payment_schedule' | 'conclusion'): string {
+    const text = this.boilerplateRes.value()?.find((x) => x.code === code)?.meta?.['text'];
+    if (typeof text === 'string' && text.trim()) return text;
+    return code === 'intro' ? this.introText : code === 'payment_schedule' ? this.paymentBoilerplate : this.conclusionText;
+  }
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
