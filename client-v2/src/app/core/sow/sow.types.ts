@@ -1,42 +1,39 @@
 // pV2-SOW-01 (Phase 2) — client types for the SOW document (server /api/sow).
-// content is the STRUCTURED SOW: fixed sections (prose blocks + payment fields)
-// plus a free-form `extra` list. Boilerplate (intro/parties/schedule/signature)
-// is not stored — it's fixed and hidden in the display.
+// The SOW body is a set of sections rendered as cards with pill headers:
+//  • Timeline  — a table of dated entries (Date / To / From / Details)
+//  • Services & Goods — a list of sub-sections (Scope, Design, Included Services…)
+//  • Fees & Payment — a table of payment rows (Date / Grace / Amount / Refundable / Details)
+// Boilerplate (intro/parties/schedule/signature) is fixed and hidden.
 
 export type SowRefundable = 'yes' | 'no' | 'partial' | 'na';
 
-export interface SowPaymentRow {
-  pct: number | null;
-  dateLabel: string | null; // "SOW date" / "Event date" / a specific date
-  graceDays: number | null;
-  refundable: SowRefundable | null;
-  description: string | null;
-}
-
-export interface SowExtraSection {
-  name: string;
-  content: string;
-}
-
-/** A dated timeline entry (Timeline is a structured, repeating field). */
 export interface SowTimelineEntry {
   date: string | null;
-  note: string | null;
+  to: string | null;
+  from: string | null;
+  details: string | null;
 }
 
-/** The structured SOW body. Prose fields are plain strings; `na` lists the
- *  section keys the author has explicitly marked N/A (the N/A checkbox). */
+export interface SowPaymentRow {
+  date: string | null;
+  grace: string | null;
+  amount: string | null; // e.g. "50%"
+  refundable: SowRefundable | null;
+  details: string | null;
+}
+
+/** A row in Services & Goods (or a custom Add-section). na = marked N/A. */
+export interface SowSubSection {
+  name: string;
+  content: string | null;
+  na?: boolean;
+}
+
 export interface SowContent {
-  timeline?: { entries: SowTimelineEntry[] };
-  projectDetails?: string | null; // location · date · duration (from the project)
-  conceptDesign?: string | null;
-  bespokeRender?: string | null;
-  includedServices?: string | null; // from each item's install description
-  scope?: string | null; // the item menu(s) + price
-  payment?: { deposit: SowPaymentRow; final: SowPaymentRow };
-  specialTerms?: string | null;
-  na?: string[]; // section keys marked N/A (timeline, conceptDesign, deposit, …)
-  extra?: SowExtraSection[];
+  timeline?: { na?: boolean; entries: SowTimelineEntry[] };
+  services?: SowSubSection[];
+  payment?: { na?: boolean; rows: SowPaymentRow[] };
+  extra?: SowSubSection[];
 }
 
 export interface SowPartyRef {
@@ -68,7 +65,7 @@ export interface Sow {
   depositPct: number | null;
   projectId: string;
   projectProviderId: string;
-  orgId: string; // the author org
+  orgId: string;
   supplierOrgId: string;
   supersedesDocumentId: string | null;
   issuedAt: string | null;
