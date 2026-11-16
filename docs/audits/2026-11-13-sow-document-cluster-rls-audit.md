@@ -221,3 +221,49 @@ When the service code lands, re-audit: **snapshot resolution + line materializat
 (`terms_pdf_url` + any agency-supplied attachment) · **engagement-scoped SOW aggregation** — the model's biggest
 practical risk: every reader that filters `project_documents.org_id = :me` now **misses counterparty-authored docs**,
 so all SOW listing/"current-set" derivation must go engagement-scoped. CC flags it in the shipped file.
+
+---
+
+# Phase-1 service re-audit — `sow.service.js` + `routes/sow.js` (843f8a2b), 2026-11-16
+
+Walked the **content-authored v1** service (structured-lines / catalogue-pull deferred, so parties/terms snapshot
+resolution + line materialization + file access ride the later enhancement and re-audit then). **Clean on:** `org_id`
+sacred (routes pass `req.user.org_id`, never the body); Zod on every body + UUID params; the sign path passes
+`org_type` only as a **label** — `document_sign` re-derives the party from the session GUC + engagement and rejects
+a mismatch, so a forged role can't sign; `createDraft` checks party membership in the app layer **and** the
+engagement guard backstops; `updateDraft` leans on author `_all` and maps the freeze trigger to a 409. Routes inherit
+the audited chain (global `requestContext` pin → v2 `authenticate` + `requireActiveMembership`), same as inbox.
+
+## S-READ · SOW reads rely on RLS **alone** — no app-layer party predicate (two-layer gap). Severity **MEDIUM** (HIGH on any un-flipped connection)
+`listForProject` is `WHERE project_id = $1` with **no org/party filter** (deliberate — `org_id = :me` would drop
+counterparty-authored docs, which is most of them); `getById` is `WHERE id = $1`. Both rely **entirely** on the RLS
+policies to scope the visible set. But `request-context.js` pins the GUCs **without** a `SET ROLE web_app_user`, and
+dev's `DATABASE_URL` is the **schema owner**, which **bypasses RLS** (that file says so, lines 11–13; corroborated
+by CC's smoke needing an explicit `SET ROLE web_app_user` to exercise the policies). **Where the connection role is
+the owner** — confirm `ballpark-v2-dev`'s live role — these two endpoints return **every party's SOWs on a project,
+and any SOW by id, to any authenticated active user of any org**: RLS only bites once the role flips to
+`web_app_user`. Even once it flips, the finding stands as the missing second layer (below) — SOW's read isolation
+must not hang on that single control.
+- The audited sibling **inbox.service does not do this** — it carries an app-layer party predicate on its reads
+  (`WHERE project_id=$1 AND $2 IN (m.from_org_id, m.to_org_id)`, `WHERE p.org_id=$1`, `WHERE pp.provider_org_id=$1`),
+  so it is tenant-scoped at the app layer **and** by RLS. SOW's reads are the one surface whose isolation hangs on a
+  **single** control (the role flip) — exactly what the two-layer enforcement standard (inbox precedent) prevents.
+- **FIX — mirror the RLS policy at the app layer, don't `org_id`-filter (preserves counterparty visibility):**
+  ```
+  listForProject(projectId, viewerOrgId):
+    WHERE project_id = $1 AND deleted_at IS NULL
+      AND ( org_id = $2                                             -- author (mirrors _all)
+         OR project_provider_id IN (SELECT id FROM project_providers
+                                     WHERE deleted_at IS NULL
+                                       AND $2 IN (org_id, provider_org_id)) )  -- counterparty (mirrors counterparty_read)
+  getById: fold the same predicate into the WHERE, or after fetch assert viewer == author OR a party to
+           project_provider_id (else 404).
+  ```
+  Restores two-layer isolation (so SOW isn't breached by a single misconfigured/forgotten role flip) and closes the
+  live dev-QC exposure. **Not a DDL issue** — the 0040 policies are correct under `web_app_user` (31/31 + the service
+  smoke 11/11 prove it); this is the missing app-layer belt.
+
+## Nits
+- `resolveParties(viewer, …)` — the `viewer` param is unused (`getById` passes `org_type` but it's ignored). Drop or use.
+- Deferred (ride the structured-lines enhancement, re-audit then): parties/terms snapshot resolution, line
+  materialization (must run **before** the first signature), engagement-scoped file access.
