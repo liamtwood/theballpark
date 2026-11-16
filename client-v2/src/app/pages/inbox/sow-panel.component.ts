@@ -82,7 +82,7 @@ import { errorDetail } from '../../core/http-error';
             @for (sec of services(); track $index) {
               <div class="flex items-start justify-between gap-2 border-b border-hairline py-2.5 last:border-0 group">
                 <div class="min-w-0 flex-1">
-                  @if (editable()) { <input class="ed-input font-semibold" [ngModel]="sec.name" (ngModelChange)="mutServiceName($index,$event)" (change)="save()" /> }
+                  @if (editable()) { <input class="bp-sow-cell font-semibold" [ngModel]="sec.name" (ngModelChange)="mutServiceName($index,$event)" (change)="save()" /> }
                   @else { <div class="bp-card-title">{{ sec.name }}</div> }
                   @if (sec.na) { <div class="bp-caption text-muted italic mt-1">N/A</div> }
                   @else if (sec.content) { <div class="bp-body-small text-secondary mt-1" [innerHTML]="sec.content | md"></div> }
@@ -151,7 +151,7 @@ import { errorDetail } from '../../core/http-error';
         @for (ex of extra(); track $index) {
           <div class="bp-card">
             <div class="bp-sow-head">
-              @if (editable()) { <input class="ed-input font-semibold flex-1" [ngModel]="ex.name" (ngModelChange)="mutExtraName($index,$event)" (change)="save()" /> }
+              @if (editable()) { <input class="bp-sow-cell font-semibold flex-1" [ngModel]="ex.name" (ngModelChange)="mutExtraName($index,$event)" (change)="save()" /> }
               @else { <span class="bp-card-title">{{ ex.name || 'Section' }}</span> }
               @if (editable()) {
                 <div class="flex items-center gap-2">
