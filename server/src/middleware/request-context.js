@@ -8,9 +8,11 @@
 // / app.is_admin (no per-read BEGIN/COMMIT). `RESET ALL` + release on response
 // end so no org context leaks to the next request reusing that connection.
 //
-// NB: with DATABASE_URL still the schema OWNER, these GUCs change NO behaviour
-// yet — the owner bypasses RLS. This is the plumbing the §1 policies enforce on
-// once the role flips to web_app_user. AUD-01: mounted GLOBALLY (index.js) right
+// NB: DATABASE_URL connects as web_app_user (is_superuser=off, bypassrls=false —
+// verified on ballpark-v2-dev 2026-11-16), so these GUCs are LOAD-BEARING: the §1
+// RLS policies enforce against them on every query. (This previously said the
+// connection was still the schema owner — stale since the v2dev role flip; an owner
+// connection bypasses RLS and would make these GUCs cosmetic.) AUD-01: mounted GLOBALLY (index.js) right
 // after `attachUser`, so ANY authenticated route — gated or not — carries its org
 // GUC. Unauthenticated requests (no req.user) fall straight through.
 const { als } = require('../db/request-context');
