@@ -12,7 +12,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { SowService } from '../../core/sow/sow.service';
 import { Sow, SowContent, SowPaymentRow, SowPrefill, SowSubSection, SowTimelineEntry } from '../../core/sow/sow.types';
-import { InboxThread } from '../../core/inbox/inbox.service';
+import { InboxThread, InboxProjectSummary } from '../../core/inbox/inbox.service';
 import { ModalComponent } from '../../shared/modal/modal.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { MarkdownPipe } from '../../shared/markdown.pipe';
@@ -45,12 +45,41 @@ import { CodelistService } from '../../core/codelists/codelist.service';
           <div class="p-4 pt-3 bp-body-small text-secondary whitespace-pre-line">{{ bp('intro') }}</div>
         </div>
 
-        <!-- Section 2 — Parties -->
+        <!-- Section 2 — Parties & Project -->
         <div class="bp-card">
-          <div class="bp-sow-head"><span class="bp-card-title">Section 2 · Parties</span></div>
-          <div class="p-4 pt-3 bp-body-small">
-            <div><span class="text-muted">Agency</span> · <strong>{{ thread().agencyName || '—' }}</strong></div>
-            <div class="mt-1"><span class="text-muted">Supplier</span> · <strong>{{ thread().supplierName || '—' }}</strong></div>
+          <div class="bp-sow-head"><span class="bp-card-title">Section 2 · Parties &amp; Project</span></div>
+          <div class="p-4 pt-3 flex flex-col gap-3">
+            <!-- SOW Parties -->
+            <div>
+              <div class="bp-caption text-muted mb-1">SOW Parties</div>
+              <div class="overflow-hidden rounded-md border border-hairline">
+                <div class="grid grid-cols-[150px_minmax(0,1fr)] gap-x-4 border-b border-hairline bg-fill px-3 py-2">
+                  <span class="bp-table-column-header">Party</span><span class="bp-table-column-header">Details</span>
+                </div>
+                <div class="grid grid-cols-[150px_minmax(0,1fr)] gap-x-4 border-b border-hairline px-3 py-1.5 bp-body-small">
+                  <span class="font-semibold">Agency (Buyer)</span>
+                  <span>{{ thread().agencyName || '—' }}<span class="text-muted"> · company no., jurisdiction &amp; registered address (from profile)</span></span>
+                </div>
+                <div class="grid grid-cols-[150px_minmax(0,1fr)] gap-x-4 px-3 py-1.5 bp-body-small">
+                  <span class="font-semibold">Supplier</span>
+                  <span>{{ thread().supplierName || '—' }}<span class="text-muted"> · company no., jurisdiction &amp; registered address (from profile)</span></span>
+                </div>
+              </div>
+            </div>
+            <!-- Project Details -->
+            <div>
+              <div class="bp-caption text-muted mb-1">Project Details</div>
+              <div class="overflow-hidden rounded-md border border-hairline">
+                <div class="grid grid-cols-[160px_minmax(0,1fr)] gap-x-4 border-b border-hairline bg-fill px-3 py-2">
+                  <span class="bp-table-column-header">Field</span><span class="bp-table-column-header">Value</span>
+                </div>
+                @for (row of projectDetailRows(); track row.label) {
+                  <div class="grid grid-cols-[160px_minmax(0,1fr)] gap-x-4 border-b border-hairline last:border-0 px-3 py-1.5 bp-body-small">
+                    <span class="font-semibold">{{ row.label }}</span><span>{{ row.value || '—' }}</span>
+                  </div>
+                }
+              </div>
+            </div>
           </div>
         </div>
 
@@ -248,6 +277,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
 export class SowPanelComponent {
   readonly thread = input.required<InboxThread>();
   readonly viewer = input.required<'agency' | 'supplier'>();
+  readonly project = input<InboxProjectSummary | null>(null);
 
   private readonly sowSvc = inject(SowService);
 
@@ -296,6 +326,22 @@ export class SowPanelComponent {
     if (typeof text === 'string' && text.trim()) return text;
     return code === 'intro' ? this.introText : code === 'payment_schedule' ? this.paymentBoilerplate : this.conclusionText;
   }
+
+  // Section 2 · Project Details (auto-populated from the project / thread / SOW).
+  protected readonly projectDetailRows = computed(() => {
+    const t = this.thread();
+    const p = this.project();
+    const executed = this.current()?.status === 'executed';
+    return [
+      { label: 'Ballpark Reference', value: t?.refCode ?? null },
+      { label: 'Effective Date', value: executed ? 'Signed' : 'On signing by both parties' },
+      { label: 'SOW Version', value: 'V1' },
+      { label: 'Project Title', value: t?.projectName ?? p?.name ?? null },
+      { label: 'Event Date(s)', value: p?.eventDate ?? null },
+      { label: 'Venue / Location', value: p?.location ?? null },
+      { label: 'Category', value: t?.categoryName ?? null },
+    ];
+  });
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);

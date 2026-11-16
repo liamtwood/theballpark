@@ -127,7 +127,7 @@ import { Sow } from '../../core/sow/sow.types';
           <!-- SOW selected from the rail: the Statement of Work takes the right pane. -->
           @if (sowThread(); as st) {
             <div class="flex min-h-0 flex-col overflow-y-auto rounded-[var(--radius-card)] border border-hairline bg-surface p-5 shadow-[var(--shadow-xs)]">
-              <app-sow-panel [thread]="st" [viewer]="isAgency() ? 'agency' : 'supplier'" />
+              <app-sow-panel [thread]="st" [viewer]="isAgency() ? 'agency' : 'supplier'" [project]="project()" />
             </div>
           } @else if (selectedThread(); as t) {
             <div class="flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-surface"
