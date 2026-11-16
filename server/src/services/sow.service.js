@@ -44,7 +44,7 @@ function toSowDto(row) {
     description: row.description || null,
     type: row.type,
     status: row.status,
-    content: row.content ?? [],
+    content: row.content ?? {},
     presentation: row.presentation ?? {},
     depositPct: row.deposit_pct != null ? Number(row.deposit_pct) : null,
     projectId: row.project_id,
@@ -120,7 +120,7 @@ async function createDraft({ orgId, orgType, userId, projectId, supplierOrgId, n
        (org_id, project_id, project_provider_id, supplier_org_id, name, type, status, content, deposit_pct, created_by, updated_by)
      VALUES ($1,$2,$3,$4,$5,'sow','draft',$6::jsonb,$7,$8,$8)
      RETURNING *`,
-    [orgId, eng.project_id, eng.id, eng.provider_org_id, name, JSON.stringify(content ?? []), depositPct ?? null, userId ?? null]
+    [orgId, eng.project_id, eng.id, eng.provider_org_id, name, JSON.stringify(content ?? {}), depositPct ?? null, userId ?? null]
   );
   return toSowDto(r.rows[0]);
 }
@@ -218,4 +218,58 @@ async function sign({ id, orgType, name, title }) {
   }
 }
 
-module.exports = { createDraft, listForProject, getById, updateDraft, sign, PLATFORM_FEE_PCT };
+// ── prefill the author's SOW from the project + the supplier's engagement items ─
+// Read server-side as the caller (own-org): project details for "Project Details",
+// and the supplier's quoted items (+ their catalogue install_description) for
+// "Scope" and "Included Services". The client turns this into the structured
+// content the supplier edits; it is NOT stored until they save, so no cross-org
+// snapshot is involved (the authored content is what the counterparty later reads).
+async function prefill({ orgId, orgType, projectId }) {
+  const pr = await pool.query(
+    `SELECT name, venue_name, event_date, duration_days, guest_count
+       FROM projects WHERE id = $1 AND deleted_at IS NULL`,
+    [projectId]
+  );
+  const p = pr.rows[0] || null;
+
+  let items = [];
+  const supplierParty = orgType === 'supplier' ? orgId : null;
+  if (supplierParty) {
+    const pp = await pool.query(
+      `SELECT id FROM project_providers
+        WHERE project_id = $1 AND provider_org_id = $2 AND deleted_at IS NULL`,
+      [projectId, supplierParty]
+    );
+    if (pp.rows[0]) {
+      const r = await pool.query(
+        `SELECT pi.id,
+                COALESCE(q.name, pi.name)              AS name,
+                COALESCE(q.description, pi.description) AS description,
+                i.install_description,
+                COALESCE(q.price_current, pi.base_price) AS price
+           FROM project_item_quotes q
+           JOIN project_items pi ON pi.id = q.project_item_id AND pi.deleted_at IS NULL
+           LEFT JOIN items i ON i.id = pi.item_id
+          WHERE q.project_provider_id = $1 AND q.deleted_at IS NULL
+          ORDER BY pi.created_at`,
+        [pp.rows[0].id]
+      );
+      items = r.rows.map((x) => ({
+        id: x.id,
+        name: x.name,
+        description: x.description,
+        installDescription: x.install_description,
+        price: x.price != null ? Number(x.price) : null,
+      }));
+    }
+  }
+
+  return {
+    project: p
+      ? { name: p.name, venueName: p.venue_name, eventDate: p.event_date, durationDays: p.duration_days, guestCount: p.guest_count }
+      : null,
+    items,
+  };
+}
+
+module.exports = { createDraft, listForProject, getById, updateDraft, sign, prefill, PLATFORM_FEE_PCT };

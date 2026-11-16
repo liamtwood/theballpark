@@ -13,19 +13,16 @@ const sow = require('../services/sow.service');
 
 const UUID = z.string().uuid();
 
-// An ordered narrative section the author writes the SOW into.
-const Section = z.object({
-  name: z.string().trim().max(200),
-  content: z.string().max(20000),
-  order: z.number().int().nonnegative(),
-});
+// content is the structured SOW document (jsonb) the author fills — a flexible
+// object (fixed sections + fields + a free-form `extra` list). Stored opaquely.
+const Content = z.record(z.string(), z.unknown());
 
 // POST /api/sow — create a draft SOW for an engagement (the caller is the author).
 const CreateSchema = z.object({
   projectId: z.string().uuid(),
   supplierOrgId: z.string().uuid().optional(), // only when the agency authors
   name: z.string().trim().min(1).max(200),
-  content: z.array(Section).optional(),
+  content: Content.optional(),
   depositPct: z.number().min(0).max(100).optional(),
 });
 router.post('/', async (req, res, next) => {
@@ -65,6 +62,20 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// GET /api/sow/prefill?projectId= — suggested content for a NEW SOW, from the
+// project + the supplier's engagement items. Must be declared before '/:id'.
+router.get('/prefill', async (req, res, next) => {
+  try {
+    if (!UUID.safeParse(req.query.projectId || '').success) {
+      return res.status(400).json({ error: 'projectId (uuid) is required' });
+    }
+    res.json(await sow.prefill({ orgId: req.user.org_id, orgType: req.user.org_type, projectId: req.query.projectId }));
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
 // GET /api/sow/:id — one SOW as a render payload (doc + parties + signatures + fee).
 router.get('/:id', async (req, res, next) => {
   try {
@@ -81,7 +92,7 @@ router.get('/:id', async (req, res, next) => {
 const UpdateSchema = z
   .object({
     name: z.string().trim().min(1).max(200).optional(),
-    content: z.array(Section).optional(),
+    content: Content.optional(),
     depositPct: z.number().min(0).max(100).optional(),
     presentation: z.record(z.string(), z.any()).optional(),
   })

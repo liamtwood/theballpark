@@ -215,6 +215,24 @@ deferred. These are the obvious next polish passes once Liam reacts.
 **Verified:** Angular bundle compiles clean (dev server `:4202`); backend gated routes 401 (`:3002`).
 Liam QCs the live UI (per feedback — visuals aren't screenshot-verified here).
 
+## Iteration 5 — structured SOW document view, 2026-11-16
+
+Reworked the panel into the **document** Liam specced (QC walkthrough): boilerplate hidden
+(Intro/Parties/Payment-schedule/Signature), sections as a two-column layout (heading left, fields
+right), **N/A** where there's no data, and **hover → edit dialog** for prose blocks with **inline
+fields** for the payment rows.
+- Sections: Timeline · Services & Goods (Project Details [from project], Concept & Design [N/A],
+  Bespoke Render [N/A], Included Services [from each item's install description], Scope [item menus]) ·
+  Fee & Payment (**Deposit / Final** rows — %, date, grace, refundable, note — + Special Terms) · **+ Add section**.
+- **Pre-filled** from `GET /api/sow/prefill` (project venue/date/duration/guests + the supplier's
+  quoted items' description + install_description). Deposit/Final default 50/50 (SOW date · grace 3 /
+  Event date · grace 7).
+- `POST /api/sow` takes `{projectId, supplierOrgId?}`; content storage switched from a sections array
+  to the **structured object** (jsonb — no DDL).
+
+Verified: Angular compiles clean (`:4202`); prefill SQL validated against the live schema; backend 401.
+Still to do after QC: SOW as a left-rail node (currently top-of-thread); signature detail; the T&C annex.
+
 ## QC notes
 (Liam fills this in)
 

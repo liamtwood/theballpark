@@ -1,11 +1,34 @@
 // pV2-SOW-01 (Phase 2) — client types for the SOW document (server /api/sow).
-// Mirrors the server DTO (sow.service.js toSowDto). content is the authored,
-// ordered narrative the supplier writes the SOW into.
+// content is the STRUCTURED SOW: fixed sections (prose blocks + payment fields)
+// plus a free-form `extra` list. Boilerplate (intro/parties/schedule/signature)
+// is not stored — it's fixed and hidden in the display.
 
-export interface SowSection {
+export type SowRefundable = 'yes' | 'no' | 'partial' | 'na';
+
+export interface SowPaymentRow {
+  pct: number | null;
+  dateLabel: string | null; // "SOW date" / "Event date" / a specific date
+  graceDays: number | null;
+  refundable: SowRefundable | null;
+  description: string | null;
+}
+
+export interface SowExtraSection {
   name: string;
   content: string;
-  order: number;
+}
+
+/** The structured SOW body. Every prose field is null = N/A (shown as "N/A"). */
+export interface SowContent {
+  timeline?: string | null;
+  projectDetails?: string | null; // location · date · duration (from the project)
+  conceptDesign?: string | null;
+  bespokeRender?: string | null;
+  includedServices?: string | null; // from each item's install description
+  scope?: string | null; // the item menu(s) + price
+  payment?: { deposit: SowPaymentRow; final: SowPaymentRow };
+  specialTerms?: string | null;
+  extra?: SowExtraSection[];
 }
 
 export interface SowPartyRef {
@@ -32,7 +55,7 @@ export interface Sow {
   description: string | null;
   type: string;
   status: SowStatus | string;
-  content: SowSection[];
+  content: SowContent;
   presentation: Record<string, unknown>;
   depositPct: number | null;
   projectId: string;
@@ -43,7 +66,6 @@ export interface Sow {
   issuedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  // present on GET /:id (render payload)
   parties?: { agency: SowPartyRef | null; supplier: SowPartyRef | null };
   signatures?: SowSignature[];
   platformFeePct?: number;
@@ -51,15 +73,15 @@ export interface Sow {
 
 export interface SowCreate {
   projectId: string;
-  supplierOrgId?: string; // only when the agency authors
+  supplierOrgId?: string;
   name: string;
-  content?: SowSection[];
+  content?: SowContent;
   depositPct?: number;
 }
 
 export interface SowUpdate {
   name?: string;
-  content?: SowSection[];
+  content?: SowContent;
   depositPct?: number;
   presentation?: Record<string, unknown>;
 }
@@ -67,4 +89,23 @@ export interface SowUpdate {
 export interface SowSign {
   name: string;
   title?: string;
+}
+
+// ── prefill (GET /api/sow/prefill) ───────────────────────────────────────────
+export interface SowPrefillItem {
+  id: string;
+  name: string;
+  description: string | null;
+  installDescription: string | null;
+  price: number | null;
+}
+export interface SowPrefill {
+  project: {
+    name: string;
+    venueName: string | null;
+    eventDate: string | null;
+    durationDays: number | null;
+    guestCount: number | null;
+  } | null;
+  items: SowPrefillItem[];
 }
