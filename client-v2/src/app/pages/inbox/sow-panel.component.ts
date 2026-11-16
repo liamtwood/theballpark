@@ -281,7 +281,7 @@ export class SowPanelComponent {
 
   mutServiceName(i: number, name: string): void { this.mut((c) => ({ ...c, services: this.services().map((x, idx) => (idx === i ? { ...x, name } : x)) })); }
   toggleServiceNa(i: number, na: boolean): void { this.mut((c) => ({ ...c, services: this.services().map((x, idx) => (idx === i ? { ...x, na } : x)) })); this.save(); }
-  addService(): void { this.mut((c) => ({ ...c, services: [...this.services(), { name: 'New item', content: null }] })); this.save(); }
+  addService(): void { this.mut((c) => ({ ...c, services: [...this.services(), { name: 'New section', content: null }] })); this.save(); }
   removeService(i: number): void { this.mut((c) => ({ ...c, services: this.services().filter((_, idx) => idx !== i) })); this.save(); }
 
   mutPay(i: number, f: keyof SowPaymentRow, v: string): void { this.mut((c) => ({ ...c, payment: { ...c.payment, rows: this.payment().map((r, idx) => (idx === i ? ({ ...r, [f]: v } as SowPaymentRow) : r)) } })); }
@@ -374,7 +374,14 @@ function buildInitial(pre: SowPrefill): SowContent {
   const projectDetails = p
     ? [p.venueName ? `**Location:** ${p.venueName}` : null, p.eventDate ? `**Date:** ${p.eventDate}` : null, p.durationDays ? `**Duration:** ${p.durationDays} day(s)` : null, p.guestCount ? `**Guests:** ${p.guestCount}` : null].filter(Boolean).join('  \n') || null
     : null;
-  const scope = pre.items.length ? pre.items.map((it) => `**${it.name}**${it.price != null ? ` — £${it.price}` : ''}${it.description ? `  \n${it.description}` : ''}`).join('\n\n') : null;
+  const scope = pre.items.length
+    ? pre.items.map((it) => {
+        const parts = [`**${it.name}**${it.price != null ? ` — £${it.price}` : ''}`];
+        if (it.description) parts.push(it.description);
+        if (it.installDescription) parts.push(`_Includes:_ ${it.installDescription}`);
+        return parts.join('  \n');
+      }).join('\n\n')
+    : null;
   const includedServices = pre.items.map((it) => it.installDescription).filter((x): x is string => !!x && !!x.trim()).join('  \n') || null;
   return {
     timeline: { entries: p?.eventDate ? [{ date: p.eventDate, to: null, from: null, details: null }] : [] },
