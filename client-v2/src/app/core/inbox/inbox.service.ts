@@ -242,6 +242,8 @@ export interface InboxReplyResult {
 
 export interface InboxProjectSummary {
   id: string;
+  /** Human project ref (EP-00021), e.g. "ev-01" — shown as the Ballpark Reference. */
+  ref: string | null;
   name: string | null;
   description: string | null;
   coverUrl: string | null;

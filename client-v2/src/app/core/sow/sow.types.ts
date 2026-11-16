@@ -44,9 +44,11 @@ export interface SowProductionItem {
 }
 
 /** Author-set overlay on one derived item row, stored on the SOW and merged
- *  over the live thread facts (source + price note only; keyed by itemId). */
+ *  over the live thread facts (spec / source / price note; keyed by itemId —
+ *  Item/Qty/Total stay the agreed deal facts, read-only). */
 export interface SowItemOverride {
   itemId: string;
+  spec?: string | null;
   source: string | null;
   priceNotes: string | null;
 }
@@ -55,6 +57,10 @@ export interface SowContent {
   timeline?: { na?: boolean; entries: SowTimelineEntry[] };
   services?: SowSubSection[];
   itemOverrides?: SowItemOverride[]; // Section 4 · author overlay on derived items
+  /** Section 2 · author overrides on the live-derived Parties / Project Details
+   *  (live value shown by default; an edit replaces it). */
+  partyOverrides?: { agency: string | null; supplier: string | null };
+  projectDetailOverrides?: Record<string, string>; // keyed by field label
   payment?: { na?: boolean; rows: SowPaymentRow[] };
   specialTerms?: SowSubSection; // under Fees & Payment
   extra?: SowSubSection[];

@@ -56,13 +56,15 @@ import { CodelistService } from '../../core/codelists/codelist.service';
                 <div class="grid grid-cols-[150px_minmax(0,1fr)] gap-x-4 border-b border-hairline bg-fill px-3 py-2">
                   <span class="bp-table-column-header">Party</span><span class="bp-table-column-header">Details</span>
                 </div>
-                <div class="grid grid-cols-[150px_minmax(0,1fr)] gap-x-4 border-b border-hairline px-3 py-1.5 bp-body-small">
+                <div class="grid grid-cols-[150px_minmax(0,1fr)] items-start gap-x-4 border-b border-hairline px-3 py-1.5 bp-body-small">
                   <span class="font-semibold">Agency (Buyer)</span>
-                  <span>{{ partyLine('agency') }}</span>
+                  @if (editable()) { <input class="bp-sow-cell" [ngModel]="partyValue('agency')" (ngModelChange)="mutParty('agency',$event)" (change)="save()" /> }
+                  @else { <span>{{ partyValue('agency') }}</span> }
                 </div>
-                <div class="grid grid-cols-[150px_minmax(0,1fr)] gap-x-4 px-3 py-1.5 bp-body-small">
+                <div class="grid grid-cols-[150px_minmax(0,1fr)] items-start gap-x-4 px-3 py-1.5 bp-body-small">
                   <span class="font-semibold">Supplier</span>
-                  <span>{{ partyLine('supplier') }}</span>
+                  @if (editable()) { <input class="bp-sow-cell" [ngModel]="partyValue('supplier')" (ngModelChange)="mutParty('supplier',$event)" (change)="save()" /> }
+                  @else { <span>{{ partyValue('supplier') }}</span> }
                 </div>
               </div>
             </div>
@@ -74,8 +76,10 @@ import { CodelistService } from '../../core/codelists/codelist.service';
                   <span class="bp-table-column-header">Field</span><span class="bp-table-column-header">Value</span>
                 </div>
                 @for (row of projectDetailRows(); track row.label) {
-                  <div class="grid grid-cols-[160px_minmax(0,1fr)] gap-x-4 border-b border-hairline last:border-0 px-3 py-1.5 bp-body-small">
-                    <span class="font-semibold">{{ row.label }}</span><span>{{ row.value || '—' }}</span>
+                  <div class="grid grid-cols-[160px_minmax(0,1fr)] items-start gap-x-4 border-b border-hairline last:border-0 px-3 py-1.5 bp-body-small">
+                    <span class="font-semibold">{{ row.label }}</span>
+                    @if (editable()) { <input class="bp-sow-cell" [ngModel]="row.value" (ngModelChange)="mutDetail(row.label,$event)" (change)="save()" /> }
+                    @else { <span>{{ row.value || '—' }}</span> }
                   </div>
                 }
               </div>
@@ -153,7 +157,8 @@ import { CodelistService } from '../../core/codelists/codelist.service';
                 @for (it of items(); track it.itemId) {
                   <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_48px_minmax(0,1.3fr)_90px] items-start gap-x-3 border-b border-hairline last:border-0 px-3 py-1.5 bp-body-small">
                     <span class="font-semibold">{{ it.item }}</span>
-                    <span class="text-secondary">{{ it.spec }}</span>
+                    @if (editable()) { <input class="bp-sow-cell text-secondary" [ngModel]="it.spec" (ngModelChange)="mutItem(it.itemId,'spec',$event)" (change)="save()" /> }
+                    @else { <span class="text-secondary">{{ it.spec }}</span> }
                     <span class="text-center">{{ it.qty }}</span>
                     @if (editable()) {
                       <input class="bp-sow-cell" [ngModel]="it.source" (ngModelChange)="mutItem(it.itemId,'source',$event)" (change)="save()" />
@@ -353,7 +358,7 @@ export class SowPanelComponent {
         return {
           itemId: key,
           item: it.name,
-          spec: it.description,
+          spec: o?.spec ?? it.description,
           qty: it.quantity,
           source: o?.source ?? 'This Supplier — own design',
           priceNotes: o?.priceNotes ?? null,
@@ -384,13 +389,15 @@ export class SowPanelComponent {
     return code === 'intro' ? this.introText : code === 'payment_schedule' ? this.paymentBoilerplate : this.conclusionText;
   }
 
-  // Section 2 · Project Details (auto-populated from the project / thread / SOW).
+  // Section 2 · Project Details — auto-populated from the project / thread, each
+  // value editable (an edit stores an override by field label; see mutDetail).
   protected readonly projectDetailRows = computed(() => {
     const t = this.thread();
     const p = this.project();
     const executed = this.current()?.status === 'executed';
-    return [
-      { label: 'Ballpark Reference', value: t?.projectId ?? p?.id ?? null },
+    const ov = this.edited().projectDetailOverrides ?? {};
+    const base = [
+      { label: 'Ballpark Reference', value: p?.ref ?? t?.refCode ?? null },
       { label: 'Effective Date', value: executed ? 'Signed' : 'On signing by both parties' },
       { label: 'SOW Version', value: 'V1' },
       { label: 'Project Title', value: t?.projectName ?? p?.name ?? null },
@@ -398,14 +405,19 @@ export class SowPanelComponent {
       { label: 'Venue / Location', value: p?.location ?? null },
       { label: 'Category', value: t?.categoryName ?? null },
     ];
+    return base.map((r) => ({ label: r.label, value: ov[r.label] ?? r.value }));
   });
+  mutDetail(label: string, v: string): void {
+    this.mut((c) => ({ ...c, projectDetailOverrides: { ...(c.projectDetailOverrides ?? {}), [label]: v } }));
+  }
 
-  // Section 2 · SOW Parties — legal details resolved cross-org (gated definer).
+  // Section 2 · SOW Parties — legal details resolved cross-org (gated definer),
+  // shown by default; an edit stores an override per party (mutParty).
   private readonly partiesRes = resource({
     params: () => this.current()?.id,
     loader: ({ params }) => firstValueFrom(this.sowSvc.partiesFor(params)),
   });
-  protected partyLine(role: 'agency' | 'supplier'): string {
+  private partyLine(role: 'agency' | 'supplier'): string {
     const p = (this.partiesRes.value() as SowParties | undefined)?.[role] ?? null;
     const fallbackName = (role === 'agency' ? this.thread().agencyName : this.thread().supplierName) ?? '—';
     if (!p) return fallbackName;
@@ -414,6 +426,13 @@ export class SowPanelComponent {
     if (p.companyNumber) bits.push(`under Company Number ${p.companyNumber}`);
     if (p.address) bits.push(`whose principal place of business is at ${p.address}`);
     return bits.length ? `${p.name || fallbackName}, ${bits.join(' ')}.` : (p.name || fallbackName);
+  }
+  /** The displayed party detail — the author's override if set, else the live line. */
+  protected partyValue(role: 'agency' | 'supplier'): string {
+    return this.edited().partyOverrides?.[role] ?? this.partyLine(role);
+  }
+  mutParty(role: 'agency' | 'supplier', v: string): void {
+    this.mut((c) => ({ ...c, partyOverrides: { agency: null, supplier: null, ...(c.partyOverrides ?? {}), [role]: v } }));
   }
 
   protected readonly busy = signal(false);
@@ -442,7 +461,7 @@ export class SowPanelComponent {
 
   // Items are derived (no add/remove). The author may only overlay source + a
   // price note per row; the overlay is keyed by itemId and merged in items().
-  mutItem(itemId: string, f: 'source' | 'priceNotes', v: string): void {
+  mutItem(itemId: string, f: 'spec' | 'source' | 'priceNotes', v: string): void {
     this.mut((c) => {
       const list = (c.itemOverrides ?? []).slice();
       const i = list.findIndex((o) => o.itemId === itemId);
