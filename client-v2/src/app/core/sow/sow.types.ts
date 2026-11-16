@@ -33,6 +33,7 @@ export interface SowContent {
   timeline?: { na?: boolean; entries: SowTimelineEntry[] };
   services?: SowSubSection[];
   payment?: { na?: boolean; rows: SowPaymentRow[] };
+  specialTerms?: SowSubSection; // under Fees & Payment
   extra?: SowSubSection[];
 }
 

@@ -10,6 +10,7 @@
 
 import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, resource, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { SowService } from '../../core/sow/sow.service';
 import { Sow, SowContent, SowPaymentRow, SowPrefill, SowSubSection, SowTimelineEntry } from '../../core/sow/sow.types';
@@ -22,7 +23,7 @@ import { errorDetail } from '../../core/http-error';
 @Component({
   selector: 'app-sow-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ModalComponent, StatusPillComponent, MarkdownPipe],
+  imports: [FormsModule, LucideAngularModule, ModalComponent, StatusPillComponent, MarkdownPipe],
   template: `
     <div class="flex items-center justify-between gap-3">
       <div class="flex items-center gap-2.5">
@@ -44,10 +45,14 @@ import { errorDetail } from '../../core/http-error';
         <div class="bp-card">
           <div class="bp-sow-head">
             <span class="bp-card-title">Section 3 · Timeline</span>
-            @if (editable()) { <button type="button" class="bp-sow-add" title="Add date" (click)="addTimeline()">+</button> }
+            <div class="flex items-center gap-3">
+              @if (editable()) { <label class="bp-caption flex items-center gap-1"><input type="checkbox" [checked]="isSectionNa('timeline')" (change)="toggleSectionNa('timeline', $any($event.target).checked)" /> N/A</label> }
+              @if (editable() && !isSectionNa('timeline')) { <button type="button" class="bp-sow-add" title="Add date" (click)="addTimeline()"><lucide-icon name="circle-plus" [size]="20" /></button> }
+            </div>
           </div>
           <div class="p-4 pt-3">
-            @if (timeline().length || editable()) {
+            @if (isSectionNa('timeline')) { <span class="bp-body-small text-muted italic">N/A</span> }
+            @else if (timeline().length || editable()) {
               <table class="w-full bp-body-small">
                 <thead><tr class="text-muted text-left"><th class="font-normal pb-1">Date</th><th class="font-normal pb-1">To</th><th class="font-normal pb-1">From</th><th class="font-normal pb-1">Details</th><th></th></tr></thead>
                 <tbody>
@@ -58,7 +63,7 @@ import { errorDetail } from '../../core/http-error';
                         <td class="pr-2 py-0.5"><input class="bp-sow-input w-full" [ngModel]="e.to" (ngModelChange)="mutTimeline($index,'to',$event)" (change)="save()" /></td>
                         <td class="pr-2 py-0.5"><input class="bp-sow-input w-full" [ngModel]="e.from" (ngModelChange)="mutTimeline($index,'from',$event)" (change)="save()" /></td>
                         <td class="pr-2 py-0.5"><input class="bp-sow-input w-full" [ngModel]="e.details" (ngModelChange)="mutTimeline($index,'details',$event)" (change)="save()" /></td>
-                        <td class="py-0.5 text-right"><button type="button" class="bp-act bp-act--transparent" (click)="removeTimeline($index)">✕</button></td>
+                        <td class="py-0.5 text-right"><button type="button" class="bp-act bp-act--transparent" (click)="removeTimeline($index)"><lucide-icon name="trash-2" [size]="14" /></button></td>
                       } @else {
                         <td class="font-semibold pr-3 py-0.5">{{ e.date || '—' }}</td><td class="pr-3 py-0.5">{{ e.to }}</td><td class="pr-3 py-0.5">{{ e.from }}</td><td class="py-0.5">{{ e.details }}</td><td></td>
                       }
@@ -75,7 +80,7 @@ import { errorDetail } from '../../core/http-error';
         <div class="bp-card">
           <div class="bp-sow-head">
             <span class="bp-card-title">Section 4 · Services &amp; Goods</span>
-            @if (editable()) { <button type="button" class="bp-sow-add" title="Add section" (click)="addService()">+</button> }
+            @if (editable()) { <button type="button" class="bp-sow-add" title="Add section" (click)="addService()"><lucide-icon name="circle-plus" [size]="20" /></button> }
           </div>
           <div class="px-4 py-1">
             @for (sec of services(); track $index) {
@@ -86,13 +91,13 @@ import { errorDetail } from '../../core/http-error';
                   } @else { <div class="bp-card-title">{{ sec.name }}</div> }
                   @if (sec.na) { <div class="bp-caption text-muted italic mt-1">N/A</div> }
                   @else if (sec.content) { <div class="bp-body-small text-secondary mt-1" [innerHTML]="sec.content | md"></div> }
-                  @else { <div class="bp-caption text-muted mt-1">—</div> }
+                  @else if (editable()) { <div class="bp-caption text-muted mt-1">Click the pencil to add…</div> }
                 </div>
                 @if (editable()) {
                   <div class="flex shrink-0 items-center gap-2 opacity-0 group-hover:opacity-100">
                     <label class="bp-caption flex items-center gap-1 text-muted"><input type="checkbox" [checked]="!!sec.na" (change)="toggleServiceNa($index, $any($event.target).checked)" /> N/A</label>
-                    @if (!sec.na) { <button type="button" class="bp-act bp-act--transparent" title="Edit" (click)="openEditService($index)">✎</button> }
-                    <button type="button" class="bp-act bp-act--transparent" title="Remove" (click)="removeService($index)">✕</button>
+                    @if (!sec.na) { <button type="button" class="bp-act bp-act--transparent" title="Edit" (click)="openEditService($index)"><lucide-icon name="pencil" [size]="15" /></button> }
+                    <button type="button" class="bp-act bp-act--transparent" title="Remove" (click)="removeService($index)"><lucide-icon name="trash-2" [size]="14" /></button>
                   </div>
                 }
               </div>
@@ -104,9 +109,14 @@ import { errorDetail } from '../../core/http-error';
         <div class="bp-card">
           <div class="bp-sow-head">
             <span class="bp-card-title">Section 5 · Fees &amp; Payment</span>
-            @if (editable()) { <button type="button" class="bp-sow-add" title="Add row" (click)="addPayment()">+</button> }
+            <div class="flex items-center gap-3">
+              @if (editable()) { <label class="bp-caption flex items-center gap-1"><input type="checkbox" [checked]="isSectionNa('payment')" (change)="toggleSectionNa('payment', $any($event.target).checked)" /> N/A</label> }
+              @if (editable() && !isSectionNa('payment')) { <button type="button" class="bp-sow-add" title="Add row" (click)="addPayment()"><lucide-icon name="circle-plus" [size]="20" /></button> }
+            </div>
           </div>
           <div class="p-4 pt-3">
+            @if (isSectionNa('payment')) { <span class="bp-body-small text-muted italic">N/A</span> }
+            @else {
             <table class="w-full bp-body-small">
               <thead><tr class="text-muted text-left"><th class="font-normal pb-1">Date</th><th class="font-normal pb-1">Grace</th><th class="font-normal pb-1">Amount</th><th class="font-normal pb-1">Refundable</th><th class="font-normal pb-1">Details</th><th></th></tr></thead>
               <tbody>
@@ -118,7 +128,7 @@ import { errorDetail } from '../../core/http-error';
                       <td class="pr-2 py-0.5"><input class="bp-sow-input w-16" [ngModel]="r.amount" (ngModelChange)="mutPay($index,'amount',$event)" (change)="save()" /></td>
                       <td class="pr-2 py-0.5"><select class="bp-sow-input" [ngModel]="r.refundable" (ngModelChange)="mutPay($index,'refundable',$event); save()"><option value="yes">Yes</option><option value="no">No</option><option value="partial">Partial</option><option value="na">N/A</option></select></td>
                       <td class="pr-2 py-0.5"><input class="bp-sow-input w-full" [ngModel]="r.details" (ngModelChange)="mutPay($index,'details',$event)" (change)="save()" /></td>
-                      <td class="py-0.5 text-right"><button type="button" class="bp-act bp-act--transparent" (click)="removePayment($index)">✕</button></td>
+                      <td class="py-0.5 text-right"><button type="button" class="bp-act bp-act--transparent" (click)="removePayment($index)"><lucide-icon name="trash-2" [size]="14" /></button></td>
                     } @else {
                       <td class="font-semibold pr-3 py-0.5">{{ r.date || '—' }}</td><td class="pr-3 py-0.5">{{ r.grace }}</td><td class="font-semibold pr-3 py-0.5">{{ r.amount }}</td><td class="pr-3 py-0.5">{{ refundableLabel(r.refundable) }}</td><td class="py-0.5">{{ r.details }}</td><td></td>
                     }
@@ -127,6 +137,22 @@ import { errorDetail } from '../../core/http-error';
               </tbody>
             </table>
             <p class="bp-caption text-muted mt-2">Ballpark platform fee: {{ s.platformFeePct ?? 3 }}%</p>
+            }
+            <!-- Special Terms (own N/A + pencil) -->
+            <div class="mt-2 flex items-start justify-between gap-2 border-t border-hairline pt-2 group">
+              <div class="min-w-0 flex-1">
+                <div class="bp-card-title">Special Terms</div>
+                @if (special().na) { <div class="bp-caption text-muted italic mt-1">N/A</div> }
+                @else if (special().content) { <div class="bp-body-small text-secondary mt-1" [innerHTML]="special().content | md"></div> }
+                @else if (editable()) { <div class="bp-caption text-muted mt-1">Click the pencil to add…</div> }
+              </div>
+              @if (editable()) {
+                <div class="flex shrink-0 items-center gap-2 opacity-0 group-hover:opacity-100">
+                  <label class="bp-caption flex items-center gap-1 text-muted"><input type="checkbox" [checked]="!!special().na" (change)="toggleSpecialNa($any($event.target).checked)" /> N/A</label>
+                  @if (!special().na) { <button type="button" class="bp-act bp-act--transparent" title="Edit" (click)="openEditSpecial()"><lucide-icon name="pencil" [size]="15" /></button> }
+                </div>
+              }
+            </div>
           </div>
         </div>
 
@@ -138,8 +164,8 @@ import { errorDetail } from '../../core/http-error';
               @else { <span class="bp-card-title">{{ ex.name || 'Section' }}</span> }
               @if (editable()) {
                 <div class="flex items-center gap-2">
-                  <button type="button" class="bp-act bp-act--transparent" title="Edit" (click)="openEditExtra($index)">✎</button>
-                  <button type="button" class="bp-act bp-act--transparent" title="Remove" (click)="removeExtra($index)">✕</button>
+                  <button type="button" class="bp-act bp-act--transparent" title="Edit" (click)="openEditExtra($index)"><lucide-icon name="pencil" [size]="15" /></button>
+                  <button type="button" class="bp-act bp-act--transparent" title="Remove" (click)="removeExtra($index)"><lucide-icon name="trash-2" [size]="14" /></button>
                 </div>
               }
             </div>
@@ -183,8 +209,8 @@ import { errorDetail } from '../../core/http-error';
     </app-modal>
   `,
   styles: [`
-    .bp-sow-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: var(--color-fill); border-top-left-radius: var(--radius-card); border-top-right-radius: var(--radius-card); padding: 0.4rem 1rem; }
-    .bp-sow-add { width: 1.5rem; height: 1.5rem; border-radius: 9999px; border: 1.5px solid var(--theme-accent, var(--color-primary, #c54382)); color: var(--theme-accent, var(--color-primary, #c54382)); display: inline-flex; align-items: center; justify-content: center; font-weight: 600; line-height: 1; }
+    .bp-sow-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: color-mix(in srgb, var(--theme-accent) 13%, var(--color-surface)); border-radius: 9999px; margin: 0.4rem 0.4rem 0.1rem; padding: 0.45rem 1.1rem; }
+    .bp-sow-add { color: var(--theme-accent); display: inline-flex; align-items: center; justify-content: center; line-height: 0; }
     .bp-sow-input { border: 1px solid var(--color-hairline); border-radius: var(--radius-sm, 0.5rem); background: var(--color-surface); padding: 0.3rem 0.5rem; font: inherit; color: inherit; }
     table th { font-size: 0.72rem; }
   `],
@@ -220,6 +246,7 @@ export class SowPanelComponent {
   protected readonly services = computed<SowSubSection[]>(() => this.edited().services ?? []);
   protected readonly payment = computed<SowPaymentRow[]>(() => this.edited().payment?.rows ?? []);
   protected readonly extra = computed<SowSubSection[]>(() => this.edited().extra ?? []);
+  protected readonly special = computed<SowSubSection>(() => this.edited().specialTerms ?? { name: 'Special Terms', content: null });
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -243,6 +270,15 @@ export class SowPanelComponent {
   mutPay(i: number, f: keyof SowPaymentRow, v: string): void { this.mut((c) => ({ ...c, payment: { ...c.payment, rows: this.payment().map((r, idx) => (idx === i ? ({ ...r, [f]: v } as SowPaymentRow) : r)) } })); }
   addPayment(): void { this.mut((c) => ({ ...c, payment: { ...c.payment, rows: [...this.payment(), { date: null, grace: null, amount: null, refundable: 'na', details: null }] } })); this.save(); }
   removePayment(i: number): void { this.mut((c) => ({ ...c, payment: { ...c.payment, rows: this.payment().filter((_, idx) => idx !== i) } })); this.save(); }
+
+  // section-level N/A (timeline / payment)
+  isSectionNa(which: 'timeline' | 'payment'): boolean { const s = this.edited()[which] as { na?: boolean } | undefined; return !!s?.na; }
+  toggleSectionNa(which: 'timeline' | 'payment', na: boolean): void {
+    this.mut((c) => (which === 'timeline' ? { ...c, timeline: { entries: c.timeline?.entries ?? [], na } } : { ...c, payment: { rows: c.payment?.rows ?? [], na } }));
+    this.save();
+  }
+  toggleSpecialNa(na: boolean): void { this.mut((c) => ({ ...c, specialTerms: { name: 'Special Terms', content: this.special().content, na } })); this.save(); }
+  openEditSpecial(): void { this.editTarget = { kind: 'special' }; this.editLabel.set('Special Terms'); this.editText.set(this.special().content ?? ''); this.editOpen.set(true); }
 
   // extra
   mutExtraName(i: number, name: string): void { this.mut((c) => ({ ...c, extra: this.extra().map((x, idx) => (idx === i ? { ...x, name } : x)) })); }
@@ -282,7 +318,7 @@ export class SowPanelComponent {
   protected readonly editOpen = signal(false);
   protected readonly editLabel = signal('');
   protected readonly editText = signal('');
-  private editTarget: { kind: 'service' | 'extra'; i: number } | null = null;
+  private editTarget: { kind: 'service' | 'extra'; i: number } | { kind: 'special' } | null = null;
   openEditService(i: number): void { this.editTarget = { kind: 'service', i }; this.editLabel.set(this.services()[i]?.name ?? 'Section'); this.editText.set(this.services()[i]?.content ?? ''); this.editOpen.set(true); }
   openEditExtra(i: number): void { this.editTarget = { kind: 'extra', i }; this.editLabel.set(this.extra()[i]?.name ?? 'Section'); this.editText.set(this.extra()[i]?.content ?? ''); this.editOpen.set(true); }
   async saveEdit(): Promise<void> {
@@ -290,6 +326,7 @@ export class SowPanelComponent {
     if (!t) return;
     const val = this.editText().trim() || null;
     if (t.kind === 'service') { this.mut((c) => ({ ...c, services: this.services().map((x, idx) => (idx === t.i ? { ...x, content: val, na: false } : x)) })); }
+    else if (t.kind === 'special') { this.mut((c) => ({ ...c, specialTerms: { name: 'Special Terms', content: val, na: false } })); }
     else { this.mut((c) => ({ ...c, extra: this.extra().map((x, idx) => (idx === t.i ? { ...x, content: val ?? '' } : x)) })); }
     this.editOpen.set(false);
     await this.save();
@@ -332,7 +369,6 @@ function buildInitial(pre: SowPrefill): SowContent {
       { name: 'Concept & Design', content: null, na: true },
       { name: 'Bespoke Render', content: null, na: true },
       { name: 'Included Services', content: includedServices, na: !includedServices },
-      { name: 'Special Terms', content: null, na: true },
     ],
     payment: {
       rows: [
@@ -340,6 +376,7 @@ function buildInitial(pre: SowPrefill): SowContent {
         { date: 'Event date', grace: '7 days', amount: '50%', refundable: 'na', details: null },
       ],
     },
+    specialTerms: { name: 'Special Terms', content: null, na: true },
     extra: [],
   };
 }
