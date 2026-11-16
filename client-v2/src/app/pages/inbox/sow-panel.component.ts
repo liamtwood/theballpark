@@ -30,7 +30,6 @@ import { errorDetail } from '../../core/http-error';
       </div>
       <div class="flex items-center gap-2">
         @if (canCreate()) { <button type="button" class="bp-act bp-act--primary" [disabled]="busy()" (click)="create()">{{ busy() ? 'Creating…' : 'Create SOW' }}</button> }
-        @if (canSign()) { <button type="button" class="bp-act bp-act--green" (click)="openSign()">{{ signLabel() }}</button> }
       </div>
     </div>
 
@@ -39,10 +38,25 @@ import { errorDetail } from '../../core/http-error';
     @if (current(); as s) {
       <div class="mt-3 flex flex-col gap-3">
 
-        <!-- Section 3 — Timeline -->
+        <!-- Section 1 — Standard Intro (boilerplate) -->
+        <div class="bp-card">
+          <div class="bp-sow-head"><span class="bp-card-title">Section 1 · Standard Intro</span></div>
+          <div class="p-4 pt-3 bp-body-small text-secondary">{{ introText }}</div>
+        </div>
+
+        <!-- Section 2 — Parties -->
+        <div class="bp-card">
+          <div class="bp-sow-head"><span class="bp-card-title">Section 2 · Parties</span></div>
+          <div class="p-4 pt-3 bp-body-small">
+            <div><span class="text-muted">Agency</span> · <strong>{{ thread().agencyName || '—' }}</strong></div>
+            <div class="mt-1"><span class="text-muted">Supplier</span> · <strong>{{ thread().supplierName || '—' }}</strong></div>
+          </div>
+        </div>
+
+        <!-- Section 3 — Project Milestones -->
         <div class="bp-card">
           <div class="bp-sow-head">
-            <span class="bp-card-title">Section 3 · Timeline</span>
+            <span class="bp-card-title">Section 3 · Project Milestones</span>
             @if (editable()) { <label class="bp-caption flex items-center gap-1"><input type="checkbox" class="accent-[var(--theme-accent)]" [checked]="isSectionNa('timeline')" (change)="toggleSectionNa('timeline', $any($event.target).checked)" /> N/A</label> }
           </div>
           <div class="p-4 pt-3">
@@ -108,6 +122,7 @@ import { errorDetail } from '../../core/http-error';
           <div class="p-4 pt-3">
             @if (isSectionNa('payment')) { <span class="bp-body-small text-muted italic">N/A</span> }
             @else {
+              <div class="bp-caption text-muted mb-1">Payment schedule</div>
               <div class="overflow-hidden rounded-md border border-hairline">
                 <div class="grid grid-cols-[110px_90px_90px_110px_minmax(0,1fr)_32px] items-center gap-x-4 border-b border-hairline bg-fill px-3 py-2">
                   <span class="bp-table-column-header">Date</span><span class="bp-table-column-header">Grace</span><span class="bp-table-column-header">Amount</span><span class="bp-table-column-header">Refundable</span><span class="bp-table-column-header">Details</span>
@@ -164,6 +179,25 @@ import { errorDetail } from '../../core/http-error';
           </div>
         }
         @if (editable()) { <button type="button" class="bp-act bp-act--outline self-start" (click)="addExtra()">+ Add section</button> }
+
+        <!-- Section 6 — Signature (boilerplate) -->
+        <div class="bp-card">
+          <div class="bp-sow-head"><span class="bp-card-title">Section 6 · Signature</span></div>
+          <div class="p-4 pt-3">
+            <p class="bp-body-small text-secondary">{{ conclusionText }}</p>
+            <div class="mt-3 flex flex-wrap items-end gap-8 bp-body-small">
+              <div><div class="bp-caption text-muted">Agency</div><div class="font-semibold">{{ s.status === 'counterparty_signed' || s.status === 'executed' ? 'Signed' : 'Awaiting signature' }}</div></div>
+              <div><div class="bp-caption text-muted">Supplier</div><div class="font-semibold">{{ s.status === 'executed' ? 'Signed' : 'Awaiting signature' }}</div></div>
+              @if (canSign()) { <button type="button" class="bp-act bp-act--green" (click)="openSign()">{{ signLabel() }}</button> }
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 7 — Terms & Conditions -->
+        <div class="bp-card">
+          <div class="bp-sow-head"><span class="bp-card-title">Section 7 · Terms &amp; Conditions</span></div>
+          <div class="p-4 pt-3 bp-body-small text-secondary">The supplier's standard terms &amp; conditions apply (attached at supplier level).</div>
+        </div>
 
         @if (s.status === 'counterparty_signed') {
           <p class="bp-body-small text-secondary">
@@ -241,6 +275,10 @@ export class SowPanelComponent {
   protected readonly payment = computed<SowPaymentRow[]>(() => this.edited().payment?.rows ?? []);
   protected readonly extra = computed<SowSubSection[]>(() => this.edited().extra ?? []);
   protected readonly special = computed<SowSubSection>(() => this.edited().specialTerms ?? { name: 'Special Terms', content: null });
+
+  // Boilerplate (fixed) copy — shown but not editable.
+  protected readonly introText = 'This Statement of Work sets out the goods and services to be delivered, the timeline, and the fee and payment terms agreed between the parties below.';
+  protected readonly conclusionText = 'By signing below, both parties agree to the terms of this Statement of Work.';
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
