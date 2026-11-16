@@ -23,6 +23,8 @@ import { ProjectService } from '../../core/projects/project.service';
 import { AgentRailComponent, AgentRailContext } from '../projects/agent-rail.component';
 import { SowPanelComponent } from './sow-panel.component';
 import { ProjectOverviewHeroComponent } from '../projects/project-overview-hero.component';
+import { SowService } from '../../core/sow/sow.service';
+import { Sow } from '../../core/sow/sow.types';
 
 /** pV2-INBOX-01/03 — the per-project conversation surface, viewer-aware.
  *  Supplier (standalone /inbox/:projectId): the left rail is THEIR items
@@ -116,13 +118,18 @@ import { ProjectOverviewHeroComponent } from '../projects/project-overview-hero.
               [selectedThreadId]="selectedThreadId()"
               [selectedId]="selectedId()"
               [isAgency]="isAgency()"
+              [selectedSowId]="sowSelected()"
               (selectThread)="selectThread($event)"
-              (selectItem)="selectItem($event)" />
+              (selectItem)="selectItem($event)"
+              (selectSow)="openSow($event)" />
           }
 
-          <!-- Right pane: the selected item's category conversation. In dialog
-               mode this same panel lifts into a fixed, centred floating card. -->
-          @if (selectedThread(); as t) {
+          <!-- SOW selected from the rail: the Statement of Work takes the right pane. -->
+          @if (sowThread(); as st) {
+            <div class="flex min-h-0 flex-col overflow-y-auto rounded-[var(--radius-card)] border border-hairline bg-surface p-5 shadow-[var(--shadow-xs)]">
+              <app-sow-panel [thread]="st" [viewer]="isAgency() ? 'agency' : 'supplier'" />
+            </div>
+          } @else if (selectedThread(); as t) {
             <div class="flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-surface"
                  [ngClass]="dialogThread() ? 'fixed left-1/2 top-1/2 z-50 w-[min(94vw,920px)] max-h-[85vh] -translate-x-1/2 -translate-y-1/2 shadow-[var(--shadow-lg)]' : 'shadow-[var(--shadow-xs)]'">
               <!-- Header — project name with original/revised cost beneath
@@ -226,11 +233,6 @@ import { ProjectOverviewHeroComponent } from '../projects/project-overview-hero.
                     (cancel)="customizing.set(null)" />
                 </div>
               } @else {
-
-              <!-- pV2-SOW-01 — the per-supplier SOW sits at the top of the thread. -->
-              <div class="border-b border-hairline px-5 py-4">
-                <app-sow-panel [thread]="t" [viewer]="isAgency() ? 'agency' : 'supplier'" />
-              </div>
 
               <!-- Bubbles — on the page (parchment) ground so the white
                    agency bubbles read as cards; "You" stays gradient. In a
@@ -575,6 +577,34 @@ export class InboxProjectComponent {
     if (!p) return null;
     return { id: p.id, name: p.name, description: p.description, coverUrl: p.coverUrl, coverFocalX: p.coverFocalX, coverFocalY: p.coverFocalY, eventDate: p.eventDate } as unknown as ProjectDetail;
   });
+
+  // SOW node (rail) → the Statement of Work takes the right pane. The selected id
+  // is the counterparty on the thread (supplier for the agency, agency for the
+  // supplier); sowThread resolves a matching thread for projectId + supplierOrgId.
+  protected readonly sowSelected = signal<string | null>(null);
+  protected readonly sowThread = computed<InboxThread | null>(() => {
+    const sel = this.sowSelected();
+    if (!sel) return null;
+    const ts = this.threads();
+    return ts.find((t) => (this.isAgency() ? t.supplierOrgId : t.agencyOrgId) === sel) ?? ts[0] ?? null;
+  });
+  protected openSow(id: string): void { this.sowSelected.set(id); }
+
+  // SOWs for the rail node (status pill + last-edited date), keyed by supplier.
+  private readonly sowSvc = inject(SowService);
+  protected readonly sowsRes = resource({
+    params: () => this.projectId() || undefined,
+    loader: ({ params }) => firstValueFrom(this.sowSvc.list(params)),
+  });
+  private readonly sowBySupplier = computed(() => {
+    const m = new Map<string, Sow>();
+    for (const s of this.sowsRes.value() ?? []) {
+      if (s.status === 'declined') continue;
+      const prev = m.get(s.supplierOrgId);
+      if (!prev || new Date(s.createdAt) > new Date(prev.createdAt)) m.set(s.supplierOrgId, s);
+    }
+    return m;
+  });
   protected readonly singleCategory = computed(() => this.threads().length <= 1);
 
   /** One rail card per thread. Agency view labels by supplier; supplier
@@ -592,8 +622,11 @@ export class InboxProjectComponent {
       const key = (this.isAgency() ? t.supplierOrgId : t.agencyOrgId) ?? t.id;
       let o = outers.get(key);
       if (!o) {
+        const sup = this.isAgency() ? key : (t.supplierOrgId ?? null);
+        const sow = sup ? this.sowBySupplier().get(sup) : undefined;
         o = {
           id: key,
+          sow: sow ? { status: sow.status, updatedAt: sow.updatedAt } : undefined,
           label: (this.isAgency() ? t.supplierName : t.agencyName) ?? (this.isAgency() ? 'Supplier' : 'Agency'),
           // Always a Ballpark glyph in the rail (no supplier/agency logo image).
           // building-2 (Lucide's two-tower complex) for both directions — Liam
@@ -882,6 +915,7 @@ export class InboxProjectComponent {
   /** Click a thread card's top row: view the whole thread (clears any item
    *  filter — also the "back to all" gesture). */
   protected selectThread(threadId: string): void {
+    this.sowSelected.set(null);
     this.selectedThreadId.set(threadId);
     this.selectedId.set(null);
     this.decliningId.set(null);
@@ -890,6 +924,7 @@ export class InboxProjectComponent {
   /** Click an item: arm it (and switch to its thread); clicking the armed
    *  item again clears it back to thread-level chat. */
   protected selectItem(itemId: string): void {
+    this.sowSelected.set(null);
     this.decliningId.set(null); // switching items abandons a pending decline
     if (this.selectedId() === itemId) {
       this.selectedId.set(null);

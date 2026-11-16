@@ -130,8 +130,8 @@ import { errorDetail } from '../../core/http-error';
               </div>
               <p class="bp-caption text-muted mt-2">Ballpark platform fee: {{ s.platformFeePct ?? 3 }}%</p>
             }
-            <!-- Special Terms -->
-            <div class="mt-2 flex items-start justify-between gap-2 border-t border-hairline pt-2 group">
+            <!-- Special Terms (sub-row under Fees & Payment) -->
+            <div class="mt-3 flex items-start justify-between gap-2 border-t border-hairline pt-3 group">
               <div class="min-w-0 flex-1">
                 <div class="bp-card-title">Special Terms</div>
                 @if (special().na) { <div class="bp-caption text-muted italic mt-1">N/A</div> }

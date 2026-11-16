@@ -23,6 +23,8 @@ export interface RailOuter {
   iconName: string | null;
   total: number;
   cats: RailCat[];
+  /** The supplier's current SOW (status pill + last-edited date on the rail node). */
+  sow?: { status: string; updatedAt: string };
 }
 
 /** pV2-INBOX — the conversation rail. A project context card, then the
@@ -121,6 +123,16 @@ export interface RailOuter {
                 </button>
               }
             }
+            <!-- SOW node — opens the Statement of Work in the right pane. -->
+            <button type="button" class="flex w-full items-center gap-2.5 border-b border-hairline px-3 py-2.5 text-left last:border-b-0 hover:bg-fill"
+                    [class.bp-item--selected]="o.id === selectedSowId()" (click)="selectSow.emit(o.id)">
+              <lucide-icon name="signature" [size]="18" class="shrink-0 text-[var(--theme-accent)]" />
+              <span class="flex min-w-0 flex-1 flex-col items-start gap-1">
+                <span class="bp-list-title w-full truncate">Statement of Work</span>
+                @if (o.sow) { <app-status-pill list="sow_status" [code]="o.sow.status" /> }
+              </span>
+              @if (o.sow) { <span class="bp-caption shrink-0 text-muted">{{ sowDate(o.sow.updatedAt) }}</span> }
+            </button>
           </div>
         }
       </div>
@@ -132,9 +144,11 @@ export class InboxRailComponent {
   readonly groups = input.required<RailOuter[]>();
   readonly selectedThreadId = input<string | null>(null);
   readonly selectedId = input<string | null>(null);
+  readonly selectedSowId = input<string | null>(null);
   readonly isAgency = input<boolean>(false);
   readonly selectThread = output<string>();
   readonly selectItem = output<string>();
+  readonly selectSow = output<string>();
 
   // Outer expand — expanded-by-id; DEFAULT MINIMIZED (Liam 2026-09-10): the
   // supplier cards start collapsed, showing just name + counts.
@@ -171,6 +185,11 @@ export class InboxRailComponent {
   /** "Last response" day/date stamp for the item row (Liam 2026-10-31). */
   protected lastDate(it: InboxThreadItem): string {
     return dayLabel(it.lastMessageAt);
+  }
+
+  /** "Last edited" day/date stamp for the SOW rail node. */
+  protected sowDate(iso: string): string {
+    return dayLabel(iso);
   }
 
   /** True when this line is waiting on the current user (drives the glisten). */
