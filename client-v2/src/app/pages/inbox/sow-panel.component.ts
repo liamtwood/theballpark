@@ -46,7 +46,7 @@ import { errorDetail } from '../../core/http-error';
           <div class="bp-sow-head">
             <span class="bp-card-title">Section 3 · Timeline</span>
             <div class="flex items-center gap-3">
-              @if (editable()) { <label class="bp-caption flex items-center gap-1"><input type="checkbox" [checked]="isSectionNa('timeline')" (change)="toggleSectionNa('timeline', $any($event.target).checked)" /> N/A</label> }
+              @if (editable()) { <label class="bp-caption flex items-center gap-1"><input type="checkbox" class="accent-[var(--theme-accent)]"[checked]="isSectionNa('timeline')" (change)="toggleSectionNa('timeline', $any($event.target).checked)" /> N/A</label> }
               @if (editable() && !isSectionNa('timeline')) { <button type="button" class="bp-sow-add" title="Add date" (click)="addTimeline()"><lucide-icon name="circle-plus" [size]="20" /></button> }
             </div>
           </div>
@@ -59,10 +59,10 @@ import { errorDetail } from '../../core/http-error';
                   @for (e of timeline(); track $index) {
                     <tr>
                       @if (editable()) {
-                        <td class="pr-2 py-0.5"><input class="bp-sow-input w-full" [ngModel]="e.date" (ngModelChange)="mutTimeline($index,'date',$event)" (change)="save()" /></td>
-                        <td class="pr-2 py-0.5"><input class="bp-sow-input w-full" [ngModel]="e.to" (ngModelChange)="mutTimeline($index,'to',$event)" (change)="save()" /></td>
-                        <td class="pr-2 py-0.5"><input class="bp-sow-input w-full" [ngModel]="e.from" (ngModelChange)="mutTimeline($index,'from',$event)" (change)="save()" /></td>
-                        <td class="pr-2 py-0.5"><input class="bp-sow-input w-full" [ngModel]="e.details" (ngModelChange)="mutTimeline($index,'details',$event)" (change)="save()" /></td>
+                        <td class="pr-2 py-0.5"><input class="ed-input w-full" [ngModel]="e.date" (ngModelChange)="mutTimeline($index,'date',$event)" (change)="save()" /></td>
+                        <td class="pr-2 py-0.5"><input class="ed-input w-full" [ngModel]="e.to" (ngModelChange)="mutTimeline($index,'to',$event)" (change)="save()" /></td>
+                        <td class="pr-2 py-0.5"><input class="ed-input w-full" [ngModel]="e.from" (ngModelChange)="mutTimeline($index,'from',$event)" (change)="save()" /></td>
+                        <td class="pr-2 py-0.5"><input class="ed-input w-full" [ngModel]="e.details" (ngModelChange)="mutTimeline($index,'details',$event)" (change)="save()" /></td>
                         <td class="py-0.5 text-right"><button type="button" class="bp-act bp-act--transparent" (click)="removeTimeline($index)"><lucide-icon name="trash-2" [size]="14" /></button></td>
                       } @else {
                         <td class="font-semibold pr-3 py-0.5">{{ e.date || '—' }}</td><td class="pr-3 py-0.5">{{ e.to }}</td><td class="pr-3 py-0.5">{{ e.from }}</td><td class="py-0.5">{{ e.details }}</td><td></td>
@@ -87,15 +87,14 @@ import { errorDetail } from '../../core/http-error';
               <div class="flex items-start justify-between gap-2 border-b border-hairline py-2.5 last:border-0 group">
                 <div class="min-w-0 flex-1">
                   @if (editable()) {
-                    <input class="bp-sow-input font-semibold" [ngModel]="sec.name" (ngModelChange)="mutServiceName($index,$event)" (change)="save()" />
+                    <input class="ed-input font-semibold" [ngModel]="sec.name" (ngModelChange)="mutServiceName($index,$event)" (change)="save()" />
                   } @else { <div class="bp-card-title">{{ sec.name }}</div> }
                   @if (sec.na) { <div class="bp-caption text-muted italic mt-1">N/A</div> }
                   @else if (sec.content) { <div class="bp-body-small text-secondary mt-1" [innerHTML]="sec.content | md"></div> }
-                  @else if (editable()) { <div class="bp-caption text-muted mt-1">Click the pencil to add…</div> }
-                </div>
+                  </div>
                 @if (editable()) {
                   <div class="flex shrink-0 items-center gap-2 opacity-0 group-hover:opacity-100">
-                    <label class="bp-caption flex items-center gap-1 text-muted"><input type="checkbox" [checked]="!!sec.na" (change)="toggleServiceNa($index, $any($event.target).checked)" /> N/A</label>
+                    <label class="bp-caption flex items-center gap-1 text-muted"><input type="checkbox" class="accent-[var(--theme-accent)]"[checked]="!!sec.na" (change)="toggleServiceNa($index, $any($event.target).checked)" /> N/A</label>
                     @if (!sec.na) { <button type="button" class="bp-act bp-act--transparent" title="Edit" (click)="openEditService($index)"><lucide-icon name="pencil" [size]="15" /></button> }
                     <button type="button" class="bp-act bp-act--transparent" title="Remove" (click)="removeService($index)"><lucide-icon name="trash-2" [size]="14" /></button>
                   </div>
@@ -110,7 +109,7 @@ import { errorDetail } from '../../core/http-error';
           <div class="bp-sow-head">
             <span class="bp-card-title">Section 5 · Fees &amp; Payment</span>
             <div class="flex items-center gap-3">
-              @if (editable()) { <label class="bp-caption flex items-center gap-1"><input type="checkbox" [checked]="isSectionNa('payment')" (change)="toggleSectionNa('payment', $any($event.target).checked)" /> N/A</label> }
+              @if (editable()) { <label class="bp-caption flex items-center gap-1"><input type="checkbox" class="accent-[var(--theme-accent)]"[checked]="isSectionNa('payment')" (change)="toggleSectionNa('payment', $any($event.target).checked)" /> N/A</label> }
               @if (editable() && !isSectionNa('payment')) { <button type="button" class="bp-sow-add" title="Add row" (click)="addPayment()"><lucide-icon name="circle-plus" [size]="20" /></button> }
             </div>
           </div>
@@ -123,11 +122,11 @@ import { errorDetail } from '../../core/http-error';
                 @for (r of payment(); track $index) {
                   <tr>
                     @if (editable()) {
-                      <td class="pr-2 py-0.5"><input class="bp-sow-input w-24" [ngModel]="r.date" (ngModelChange)="mutPay($index,'date',$event)" (change)="save()" /></td>
-                      <td class="pr-2 py-0.5"><input class="bp-sow-input w-20" [ngModel]="r.grace" (ngModelChange)="mutPay($index,'grace',$event)" (change)="save()" /></td>
-                      <td class="pr-2 py-0.5"><input class="bp-sow-input w-16" [ngModel]="r.amount" (ngModelChange)="mutPay($index,'amount',$event)" (change)="save()" /></td>
-                      <td class="pr-2 py-0.5"><select class="bp-sow-input" [ngModel]="r.refundable" (ngModelChange)="mutPay($index,'refundable',$event); save()"><option value="yes">Yes</option><option value="no">No</option><option value="partial">Partial</option><option value="na">N/A</option></select></td>
-                      <td class="pr-2 py-0.5"><input class="bp-sow-input w-full" [ngModel]="r.details" (ngModelChange)="mutPay($index,'details',$event)" (change)="save()" /></td>
+                      <td class="pr-2 py-0.5"><input class="ed-input w-24" [ngModel]="r.date" (ngModelChange)="mutPay($index,'date',$event)" (change)="save()" /></td>
+                      <td class="pr-2 py-0.5"><input class="ed-input w-20" [ngModel]="r.grace" (ngModelChange)="mutPay($index,'grace',$event)" (change)="save()" /></td>
+                      <td class="pr-2 py-0.5"><input class="ed-input w-16" [ngModel]="r.amount" (ngModelChange)="mutPay($index,'amount',$event)" (change)="save()" /></td>
+                      <td class="pr-2 py-0.5"><select class="ed-input" [ngModel]="r.refundable" (ngModelChange)="mutPay($index,'refundable',$event); save()"><option value="yes">Yes</option><option value="no">No</option><option value="partial">Partial</option><option value="na">N/A</option></select></td>
+                      <td class="pr-2 py-0.5"><input class="ed-input w-full" [ngModel]="r.details" (ngModelChange)="mutPay($index,'details',$event)" (change)="save()" /></td>
                       <td class="py-0.5 text-right"><button type="button" class="bp-act bp-act--transparent" (click)="removePayment($index)"><lucide-icon name="trash-2" [size]="14" /></button></td>
                     } @else {
                       <td class="font-semibold pr-3 py-0.5">{{ r.date || '—' }}</td><td class="pr-3 py-0.5">{{ r.grace }}</td><td class="font-semibold pr-3 py-0.5">{{ r.amount }}</td><td class="pr-3 py-0.5">{{ refundableLabel(r.refundable) }}</td><td class="py-0.5">{{ r.details }}</td><td></td>
@@ -144,11 +143,10 @@ import { errorDetail } from '../../core/http-error';
                 <div class="bp-card-title">Special Terms</div>
                 @if (special().na) { <div class="bp-caption text-muted italic mt-1">N/A</div> }
                 @else if (special().content) { <div class="bp-body-small text-secondary mt-1" [innerHTML]="special().content | md"></div> }
-                @else if (editable()) { <div class="bp-caption text-muted mt-1">Click the pencil to add…</div> }
               </div>
               @if (editable()) {
                 <div class="flex shrink-0 items-center gap-2 opacity-0 group-hover:opacity-100">
-                  <label class="bp-caption flex items-center gap-1 text-muted"><input type="checkbox" [checked]="!!special().na" (change)="toggleSpecialNa($any($event.target).checked)" /> N/A</label>
+                  <label class="bp-caption flex items-center gap-1 text-muted"><input type="checkbox" class="accent-[var(--theme-accent)]"[checked]="!!special().na" (change)="toggleSpecialNa($any($event.target).checked)" /> N/A</label>
                   @if (!special().na) { <button type="button" class="bp-act bp-act--transparent" title="Edit" (click)="openEditSpecial()"><lucide-icon name="pencil" [size]="15" /></button> }
                 </div>
               }
@@ -160,7 +158,7 @@ import { errorDetail } from '../../core/http-error';
         @for (ex of extra(); track $index) {
           <div class="bp-card">
             <div class="bp-sow-head">
-              @if (editable()) { <input class="bp-sow-input font-semibold flex-1" [ngModel]="ex.name" (ngModelChange)="mutExtraName($index,$event)" (change)="save()" /> }
+              @if (editable()) { <input class="ed-input font-semibold flex-1" [ngModel]="ex.name" (ngModelChange)="mutExtraName($index,$event)" (change)="save()" /> }
               @else { <span class="bp-card-title">{{ ex.name || 'Section' }}</span> }
               @if (editable()) {
                 <div class="flex items-center gap-2">
@@ -193,7 +191,7 @@ import { errorDetail } from '../../core/http-error';
 
     <!-- prose edit dialog -->
     <app-modal [open]="editOpen()" [title]="'Edit ' + editLabel()" (close)="editOpen.set(false)">
-      <textarea class="bp-sow-input min-h-40 w-full" [ngModel]="editText()" (ngModelChange)="editText.set($event)" placeholder="Markdown supported"></textarea>
+      <textarea class="ed-textarea min-h-40 w-full" [ngModel]="editText()" (ngModelChange)="editText.set($event)" placeholder="Markdown supported"></textarea>
       <button modalFooter type="button" class="bp-btn--secondary" (click)="editOpen.set(false)">Cancel</button>
       <button modalFooter type="button" class="bp-btn--primary" [disabled]="busy()" (click)="saveEdit()">{{ busy() ? 'Saving…' : 'Save' }}</button>
     </app-modal>
@@ -201,8 +199,8 @@ import { errorDetail } from '../../core/http-error';
     <!-- sign dialog -->
     <app-modal [open]="signOpen()" [title]="signLabel() + ' the SOW'" (close)="signOpen.set(false)">
       <div class="flex flex-col gap-3">
-        <label class="bp-body-small text-secondary">Your name <input class="bp-sow-input" [ngModel]="signName()" (ngModelChange)="signName.set($event)" /></label>
-        <label class="bp-body-small text-secondary">Title (optional) <input class="bp-sow-input" [ngModel]="signTitle()" (ngModelChange)="signTitle.set($event)" /></label>
+        <label class="bp-body-small text-secondary">Your name <input class="ed-input" [ngModel]="signName()" (ngModelChange)="signName.set($event)" /></label>
+        <label class="bp-body-small text-secondary">Title (optional) <input class="ed-input" [ngModel]="signTitle()" (ngModelChange)="signTitle.set($event)" /></label>
       </div>
       <button modalFooter type="button" class="bp-btn--secondary" (click)="signOpen.set(false)">Cancel</button>
       <button modalFooter type="button" class="bp-btn--primary" [disabled]="busy() || !signName().trim()" (click)="doSign()">{{ busy() ? 'Signing…' : signLabel() }}</button>
@@ -211,7 +209,6 @@ import { errorDetail } from '../../core/http-error';
   styles: [`
     .bp-sow-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: color-mix(in srgb, var(--theme-accent) 13%, var(--color-surface)); border-radius: 9999px; margin: 0.4rem 0.4rem 0.1rem; padding: 0.45rem 1.1rem; }
     .bp-sow-add { color: var(--theme-accent); display: inline-flex; align-items: center; justify-content: center; line-height: 0; }
-    .bp-sow-input { border: 1px solid var(--color-hairline); border-radius: var(--radius-sm, 0.5rem); background: var(--color-surface); padding: 0.3rem 0.5rem; font: inherit; color: inherit; }
     table th { font-size: 0.72rem; }
   `],
 })
