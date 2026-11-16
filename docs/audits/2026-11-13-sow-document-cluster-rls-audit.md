@@ -164,3 +164,60 @@ service should set `sow_document_id` only to a same-`project` doc.
   `content.payment_schedule`. Treat the **column as SSOT**; the section renders from it, never a separate input.
 - `numeric(5,2)` fits 0–100; app validates the range. Fine.
 - Optional: a partial index on `(org_id) where deleted_at is null` for the agency `_all` query.
+
+---
+
+# Bidirectional expansion — SOW supplier-authored direction (`0040`), 2026-11-16
+
+**Target:** `server/db/rebuild/0040_document_cluster_supplier_direction.sql` (additive to 0039).
+**Change:** `project_documents` becomes **bidirectional** — `org_id` = the **author** (agency OR supplier).
+Agency-authored (0039) is unchanged; supplier-authored is added. Direction = which side of the engagement
+(`project_providers`) equals `org_id`. Liam locked the product shape (confirm step **dropped**; supplier authors
+content + sets the deposit; agency proposes via inbox + signs-or-doesn't).
+
+**Verdict:** **CLEARED both directions, 2026-11-16.** Conditional sign-off (2026-11-16) issued, all conditions
+absorbed into 0040, coverage gate `tests/0040_document_cluster_supplier_direction.test.js` = **31/31 PASS** as
+`web_app_user`. The one hard blocker (a missing engagement pin on the mirror read) was caught pre-apply.
+
+## The blocker — caught and closed
+**Cross-project read leak on the counterparty read.** The proposed mirror read-widen omitted the engagement pin
+`pp.id = d.project_provider_id`. Without it, a single A↔S engagement on one project would widen reads to **every**
+SOW between A and S across **all** shared projects. The built 0039 `_provider_read` pins the engagement; the
+bidirectional policy had to as well. Closed: 0040 ships ONE unified `*_counterparty_read` policy per table (§1)
+that pins `pp.id`, carries S2 (`deleted_at`), requires both reader and owner to be parties, and excludes the owner
+(`app_current_org() <> d.org_id`, owner reads via `_all`). Replaces the 0039 `_provider_read` trio on all three tables.
+
+## Conditions — all built
+- **(b) Unified counterparty read** — one policy/table, engagement pinned, both directions, S2 carried. ✓ (§1)
+- **(c) Engagement guard** (`BEFORE INSERT/UPDATE`, both directions) — `(project_id, project_provider_id)` must be a
+  real engagement the owner is a party to **on that project** (`d.project_id = pp.project_id`, newly load-bearing —
+  nothing checked it before, either direction). Early-returns on reserved NULL (agency→client). ✓ (§2)
+  SECURITY INVOKER: relies on `project_providers` RLS showing **both** parties their shared engagement row — the
+  31/31 green (legitimate authors insert; non-parties rejected) confirms it; re-confirm when the service layer reads pp.
+- **(d) Derive-the-party sign path** — `document_sign` derives author/counterparty from (session org, `org_id`, pp);
+  **never** branches auth on client `p_role` (validated only as an anti-spoof label); `role` stored as party-TYPE
+  (agency|supplier); signing **order** (counterparty-first) derived, never stored. ✓ (§4)
+- **B3 freeze generalized** — keyed on **signature-existence** (not a status name; preserves the first-signature=
+  freeze semantics), extended to the **binding** columns (`project_provider_id`, `project_id`, `org_id`,
+  `supersedes_document_id`) so a signed doc can't be re-pointed onto another engagement, dragging its signatures
+  into the other party's set. `presentation` stays editable. ✓ (§3)
+- **Confirm dropped / status rename** — `document_confirm` retired (signature = acceptance); state machine
+  `draft → counterparty_signed → executed (+ declined)`; `sow_status` value `supplier_signed` → `counterparty_signed`
+  (the agency can sign first). ✓ (§4 + codelist UPDATE)
+- **supplier_org_id denormalized** = the provider party (direction-independent `parties_snapshot`). ✓
+- **Ordering note honoured** — the Phase-1 service MUST materialise snapshots/lines **before** the first signature
+  insert (once a signature exists the freeze trigger rejects the snapshot write itself). Recorded in 0040 §3/§4.
+
+## Coverage (31/31, both directions)
+Cross-project isolation (the `pp.id` pin — A↔S on pp1 can't read S's SOW on pp2) · counterparty-first / author-last
+both directions · **role-spoof rejected** both directions (caller claims the other party's role → rejected) ·
+engagement guard rejects a non-party author AND `project_id ≠ pp.project_id` · **re-point of a signed doc to another
+engagement rejected** (binding freeze) · substance freeze both directions · lockdown (no PUBLIC exec, `search_path`
+pinned, `document_confirm` gone).
+
+## Still owed — Phase-1 service re-audit (not DDL)
+When the service code lands, re-audit: **snapshot resolution + line materialization** (server-side via
+`org_contact`/`supplier_directory`, must run **before** the first signature) · **engagement-scoped file access**
+(`terms_pdf_url` + any agency-supplied attachment) · **engagement-scoped SOW aggregation** — the model's biggest
+practical risk: every reader that filters `project_documents.org_id = :me` now **misses counterparty-authored docs**,
+so all SOW listing/"current-set" derivation must go engagement-scoped. CC flags it in the shipped file.
