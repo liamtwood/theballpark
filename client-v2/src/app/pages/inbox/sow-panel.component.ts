@@ -11,7 +11,7 @@ import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { SowService } from '../../core/sow/sow.service';
-import { Sow, SowContent, SowParties, SowPaymentRow, SowPrefill, SowSubSection, SowTimelineEntry } from '../../core/sow/sow.types';
+import { Sow, SowContent, SowParties, SowPaymentRow, SowPrefill, SowProductionItem, SowSubSection, SowTimelineEntry } from '../../core/sow/sow.types';
 import { InboxThread, InboxProjectSummary } from '../../core/inbox/inbox.service';
 import { ModalComponent } from '../../shared/modal/modal.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
@@ -123,6 +123,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
             @if (editable()) { <button type="button" class="bp-sow-icon" title="Add item" (click)="addService()"><lucide-icon name="circle-plus" [size]="20" /></button> }
           </div>
           <div class="px-4 py-1">
+            <p class="bp-body-small text-secondary py-1">{{ servicesIntro }}</p>
             @for (sec of services(); track $index) {
               <div class="flex items-start justify-between gap-2 border-b border-hairline py-2.5 last:border-0 group">
                 <div class="min-w-0 flex-1">
@@ -140,6 +141,40 @@ import { CodelistService } from '../../core/codelists/codelist.service';
                 }
               </div>
             }
+
+            <!-- Production, Pricing & Price-Matched Items -->
+            <div class="mt-3 border-t border-hairline pt-3">
+              <div class="bp-caption text-muted mb-1">Production, Pricing &amp; Price-Matched Items</div>
+              <div class="overflow-hidden rounded-md border border-hairline">
+                <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_48px_minmax(0,1.2fr)_90px_32px] items-center gap-x-3 border-b border-hairline bg-fill px-3 py-2">
+                  <span class="bp-table-column-header">Item</span><span class="bp-table-column-header">Spec</span><span class="bp-table-column-header">Qty</span><span class="bp-table-column-header">Source</span><span class="bp-table-column-header text-right">Total</span>
+                  @if (editable()) { <button type="button" class="bp-sow-icon justify-self-end" title="Add item" (click)="addItem()"><lucide-icon name="circle-plus" [size]="18" /></button> }
+                </div>
+                @for (it of items(); track $index) {
+                  <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_48px_minmax(0,1.2fr)_90px_32px] items-start gap-x-3 border-b border-hairline last:border-0 px-3 py-1.5 bp-body-small">
+                    @if (editable()) {
+                      <input class="bp-sow-cell font-semibold" [ngModel]="it.item" (ngModelChange)="mutItem($index,'item',$event)" (change)="save()" />
+                      <input class="bp-sow-cell" [ngModel]="it.spec" (ngModelChange)="mutItem($index,'spec',$event)" (change)="save()" />
+                      <input class="bp-sow-cell text-center" type="number" [ngModel]="it.qty" (ngModelChange)="mutItem($index,'qty',$event)" (change)="save()" />
+                      <input class="bp-sow-cell" [ngModel]="it.source" (ngModelChange)="mutItem($index,'source',$event)" (change)="save()" />
+                      <input class="bp-sow-cell text-right" type="number" [ngModel]="it.total" (ngModelChange)="mutItem($index,'total',$event)" (change)="save()" />
+                      <button type="button" class="bp-sow-ibtn justify-self-end" title="Remove" (click)="removeItem($index)"><lucide-icon name="trash-2" [size]="14" /></button>
+                    } @else {
+                      <span class="font-semibold">{{ it.item }}</span><span>{{ it.spec }}</span><span class="text-center">{{ it.qty }}</span><span>{{ it.source }}</span><span class="text-right font-semibold">{{ money(it.total) }}</span><span></span>
+                    }
+                    @if (it.priceNotes) { <div class="col-span-6 bp-caption text-muted italic pt-0.5">{{ it.priceNotes }}</div> }
+                    @else if (editable()) {
+                      <input class="bp-sow-cell col-span-6 bp-caption text-muted pt-0.5" placeholder="Price note (e.g. price-matched from …)" [ngModel]="it.priceNotes" (ngModelChange)="mutItem($index,'priceNotes',$event)" (change)="save()" />
+                    }
+                  </div>
+                }
+                @if (items().length) {
+                  <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_48px_minmax(0,1.2fr)_90px_32px] items-center gap-x-3 bg-fill px-3 py-2 bp-body-small">
+                    <span class="col-span-4 font-semibold">Total (exc. VAT)</span><span class="text-right font-semibold">{{ money(itemsTotal()) }}</span><span></span>
+                  </div>
+                }
+              </div>
+            </div>
           </div>
         </div>
 
@@ -306,6 +341,9 @@ export class SowPanelComponent {
   protected readonly services = computed<SowSubSection[]>(() => this.edited().services ?? []);
   protected readonly payment = computed<SowPaymentRow[]>(() => this.edited().payment?.rows ?? []);
   protected readonly extra = computed<SowSubSection[]>(() => this.edited().extra ?? []);
+  protected readonly items = computed<SowProductionItem[]>(() => this.edited().items ?? []);
+  protected readonly itemsTotal = computed(() => this.items().reduce((s, it) => s + (Number(it.total) || 0), 0));
+  protected readonly servicesIntro = 'The Supplier is responsible for delivering the following services and scope of work, as confirmed and costed via Ballpark.';
   protected readonly special = computed<SowSubSection>(() => this.edited().specialTerms ?? { name: 'Special Terms', content: null });
 
   // Boilerplate (fixed) copy — shown but not editable (verbatim from the SOW spec).
@@ -382,6 +420,18 @@ export class SowPanelComponent {
   mutExtraName(i: number, name: string): void { this.mut((c) => ({ ...c, extra: this.extra().map((x, idx) => (idx === i ? { ...x, name } : x)) })); }
   addExtra(): void { this.mut((c) => ({ ...c, extra: [...this.extra(), { name: 'New section', content: '' }] })); this.save(); }
   removeExtra(i: number): void { this.mut((c) => ({ ...c, extra: this.extra().filter((_, idx) => idx !== i) })); this.save(); }
+
+  mutItem(i: number, f: keyof SowProductionItem, v: string): void { this.mut((c) => ({ ...c, items: this.items().map((x, idx) => (idx === i ? ({ ...x, [f]: v } as SowProductionItem) : x)) })); }
+  addItem(): void { this.mut((c) => ({ ...c, items: [...this.items(), { item: 'New item', spec: null, qty: 1, source: 'This Supplier — own design', priceNotes: null, total: null }] })); this.save(); }
+  removeItem(i: number): void { this.mut((c) => ({ ...c, items: this.items().filter((_, idx) => idx !== i) })); this.save(); }
+
+  /** Display helper — GBP, no decimals for whole amounts. Empty for null/blank. */
+  money(v: number | string | null | undefined): string {
+    if (v === null || v === undefined || v === '') return '—';
+    const n = Number(v);
+    if (!isFinite(n)) return '—';
+    return n.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: n % 1 === 0 ? 0 : 2 });
+  }
 
   isSectionNa(which: 'timeline' | 'payment'): boolean { const s = this.edited()[which] as { na?: boolean } | undefined; return !!s?.na; }
   toggleSectionNa(which: 'timeline' | 'payment', na: boolean): void {
@@ -462,27 +512,17 @@ export class SowPanelComponent {
 
 function buildInitial(pre: SowPrefill): SowContent {
   const p = pre.project;
-  const projectDetails = p
-    ? [p.venueName ? `**Location:** ${p.venueName}` : null, p.eventDate ? `**Date:** ${p.eventDate}` : null, p.durationDays ? `**Duration:** ${p.durationDays} day(s)` : null, p.guestCount ? `**Guests:** ${p.guestCount}` : null].filter(Boolean).join('  \n') || null
-    : null;
-  const scope = pre.items.length
-    ? pre.items.map((it) => {
-        const parts = [`**${it.name}**${it.price != null ? ` — £${it.price}` : ''}`];
-        if (it.description) parts.push(it.description);
-        if (it.installDescription) parts.push(`_Includes:_ ${it.installDescription}`);
-        return parts.join('  \n');
-      }).join('\n\n')
-    : null;
   const includedServices = pre.items.map((it) => it.installDescription).filter((x): x is string => !!x && !!x.trim()).join('  \n') || null;
   return {
     timeline: { entries: p?.eventDate ? [{ date: p.eventDate, to: null, from: null, details: null }] : [] },
     services: [
-      { name: 'Project Details', content: projectDetails, na: !projectDetails },
-      { name: 'Scope', content: scope, na: !scope },
-      { name: 'Concept & Design', content: null, na: true },
+      { name: 'Concept & Design Sign-off', content: null, na: true },
       { name: 'Bespoke Render', content: null, na: true },
-      { name: 'Included Services', content: includedServices, na: !includedServices },
+      { name: 'Install / De-rig', content: includedServices, na: !includedServices },
+      { name: 'Staffing', content: null, na: true },
+      { name: 'Logistics & Other', content: null, na: true },
     ],
+    items: pre.items.map((it) => ({ item: it.name, spec: it.description, qty: 1, source: 'This Supplier — own design', priceNotes: null, total: it.price })),
     payment: {
       rows: [
         { date: 'SOW date', grace: '3 days', amount: '50%', refundable: 'na', details: null },

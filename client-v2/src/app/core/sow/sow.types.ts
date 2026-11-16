@@ -29,9 +29,20 @@ export interface SowSubSection {
   na?: boolean;
 }
 
+/** A row in the Production, Pricing & Price-Matched Items table (Section 4). */
+export interface SowProductionItem {
+  item: string;
+  spec: string | null;
+  qty: number | null;
+  source: string | null; // "This Supplier — own design" | "Price-matched from …"
+  priceNotes: string | null;
+  total: number | null;
+}
+
 export interface SowContent {
   timeline?: { na?: boolean; entries: SowTimelineEntry[] };
   services?: SowSubSection[];
+  items?: SowProductionItem[]; // Section 4 · Production items table
   payment?: { na?: boolean; rows: SowPaymentRow[] };
   specialTerms?: SowSubSection; // under Fees & Payment
   extra?: SowSubSection[];
