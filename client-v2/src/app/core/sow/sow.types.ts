@@ -18,9 +18,16 @@ export interface SowExtraSection {
   content: string;
 }
 
-/** The structured SOW body. Every prose field is null = N/A (shown as "N/A"). */
+/** A dated timeline entry (Timeline is a structured, repeating field). */
+export interface SowTimelineEntry {
+  date: string | null;
+  note: string | null;
+}
+
+/** The structured SOW body. Prose fields are plain strings; `na` lists the
+ *  section keys the author has explicitly marked N/A (the N/A checkbox). */
 export interface SowContent {
-  timeline?: string | null;
+  timeline?: { entries: SowTimelineEntry[] };
   projectDetails?: string | null; // location · date · duration (from the project)
   conceptDesign?: string | null;
   bespokeRender?: string | null;
@@ -28,6 +35,7 @@ export interface SowContent {
   scope?: string | null; // the item menu(s) + price
   payment?: { deposit: SowPaymentRow; final: SowPaymentRow };
   specialTerms?: string | null;
+  na?: string[]; // section keys marked N/A (timeline, conceptDesign, deposit, …)
   extra?: SowExtraSection[];
 }
 
