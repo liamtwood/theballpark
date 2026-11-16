@@ -139,6 +139,48 @@ rejection both directions, engagement guard (non-party + project-id misfile), re
 freeze both directions, lockdown (`document_confirm` gone, `document_sign` not PUBLIC-exec +
 search_path pinned). Supersedes the 0039 test (now a stub pointing here).
 
+## Iteration 3 — Phase 1 server slice (SOW service + routes), 2026-11-16
+
+**Shipped:** `server/src/services/sow.service.js` + `server/src/routes/sow.js`, mounted at
+`/api/sow` on the v2 gated router. **No new DB changes.**
+
+v1 is **content-authored** (Liam 2026-11-16): the party that owns the SOW authors the whole
+thing — line items, prices, deposit, terms — into the doc's `content` (ordered sections). The
+structured `project_document_lines` / catalogue-pull is deferred (it's the only piece that needs
+cross-org line materialisation; v1 avoids it entirely). So three of the four Phase-1 re-audit
+items the designer flagged — **snapshot resolution, line materialisation, engagement-scoped file
+access — are NOT built in v1** (they ride the later "pull my agreed items in" enhancement). The
+fourth, **engagement-scoped aggregation, is built to spec.**
+
+Endpoints (all gated — `authenticate` + `requireActiveMembership`; org from the JWT, never the client):
+- `POST /api/sow` — create a draft; the caller is the author (`org_id = caller`), the supplier
+  party + project are derived from the engagement, the DB engagement guard backstops.
+- `GET /api/sow?projectId=` — the SOWs on a project visible to the caller. **No `org_id` filter** —
+  RLS (author `_all` + unified `counterparty_read`) defines the set, so the caller sees its own AND
+  counterparty-authored SOWs on its engagements (an `org_id=:me` filter would drop most of them in
+  the supplier-authored flow). *(the designer's headline)*
+- `GET /api/sow/:id` — render payload: doc + party names (own org + the audited directory for the
+  counterparty) + signatures + the 3% platform-fee flag.
+- `PATCH /api/sow/:id` — edit a draft (author only — RLS gives the counterparty no write path; the
+  freeze trigger → 409 once signed).
+- `POST /api/sow/:id/sign` — the caller's `org_type` is the party role; `document_sign` re-derives +
+  validates it. Counterparty first → `counterparty_signed`; author last → `executed`.
+
+**No new security surface:** the service is a thin wrapper over the audited RLS + the gated
+`document_sign` definer. The signing role is derived/validated in the DB, not trusted from the client.
+
+### Acceptance
+- Server loads + mounts clean (the gated route answers 401; no load/require errors).
+- SQL-path smoke (the service's exact statements, as the real parties, as `web_app_user`, rolled
+  back) — **11/11 PASS**: create draft (supplier-authored) → list (author sees it) → get → author
+  edits → counterparty can't edit → agency signs → supplier countersigns → executed → post-sign
+  freeze rejects an edit.
+
+Pending: designer walk of the service (lighter than planned — three of the four re-audit items are
+deferred); end-to-end authenticated HTTP verification lands with Phase 2 (the client exercises it);
+no committed service-level test yet (the DB gate covers the RLS/definer; a service test needs the
+app pool/ALS harness). FR/EP ref to mint at ship.
+
 ## QC notes
 (Liam fills this in)
 

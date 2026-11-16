@@ -353,6 +353,9 @@ app.get('/api/unsplash/search', async (req, res) => {
   // v2.use('/taxonomy', require('./routes/taxonomy'));
   // pV2-INBOX-01 — gated inbox façade over v1's message data (RP-INB1).
   v2.use('/inbox', require('./routes/inbox'));
+  // pV2-SOW-01 (Phase 1) — SOW documents over the 0039/0040 cluster. Bidirectional,
+  // content-authored; org_id = the author, counterparty signs first (document_sign).
+  v2.use('/sow', require('./routes/sow'));
   // pV2-IMPORT-ORG-01 (BE-00127) — deterministic org extraction from a vendor
   // website (platform-admin only; the route adds admin.cross_org_view on top of
   // the group's authenticate + requireActiveMembership).
