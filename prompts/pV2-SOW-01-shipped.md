@@ -94,6 +94,51 @@ both are enforced in the service.
 **Suggested fix:** Confirm during the designer re-audit whether presentation should freeze too.
 **Severity:** LOW.
 
+## Iteration 2 — bidirectional SOW (supplier-authored direction), 2026-11-16
+
+**Shipped (DB slice):** `server/db/rebuild/0040_document_cluster_supplier_direction.sql` · gate **31/31 PASS**.
+
+Liam reframed the model: a **supplier** authors an SOW for the work they deliver (the agency
+is the counterparty), as well as the already-built agency-authored SOW. Both now run on **one**
+model:
+
+- **`org_id` = the author.** supplier-authored ⇒ `org_id = supplier`; the agency reads via the
+  engagement. Direction is just which side of the engagement equals `d.org_id`.
+- **Signing rule, both directions:** the **counterparty signs first** on the unsigned draft (the
+  freeze point), the **author counter-signs** → executed. **No separate `confirm` step** — the
+  signature is the acceptance, the negotiation is the inbox. `document_confirm` retired;
+  `supplier_signed` → `counterparty_signed`.
+- **deposit_pct** falls out of ownership: on a supplier-owned doc only the supplier can set it
+  (the agency is read-only), so "supplier sets the deposit" needs no special code. Agency docs
+  stay agency-set.
+
+### What changed in the DB (0040)
+- **Unified counterparty-read** (one policy per table, replaces the built `*_provider_read` trio)
+  — the engagement is **pinned** (`pp.id = d.project_provider_id`); without the pin a single A↔S
+  engagement would leak every S-authored SOW to A across all shared projects (designer caught it).
+- **Engagement guard** — a doc's `(project_id, provider_id)` must be a real engagement its owner
+  is on, with `project_id = pp.project_id` pinned (stops misfiling onto another project).
+- **Generalized freeze** — "frozen once any signature exists", **+ the binding columns**
+  (`project_provider_id`/`project_id`/`org_id`/`supersedes_document_id`), so a signed doc can't be
+  re-pointed onto another engagement and carry its signatures along.
+- **One generalized `document_sign`** — derives the signing party from `(session, d.org_id,
+  engagement)`, **never** branches auth on the client role string (confused-deputy); `p_role` is a
+  validated label only.
+
+### Designer sign-off
+Conditional-approved 2026-11-16; every condition absorbed (engagement pin, project-id guard,
+derive-the-party, party-type role, generalized freeze + binding columns). Designer reconciles
+pV2-SOW-01 + the audit against this settled shape. **Phase-1 service re-audit still owed** when
+that code lands (snapshot resolution + line materialization + engagement-scoped file access +
+engagement-scoped SOW aggregation — readers filtering `org_id = :me` now miss counterparty-authored docs).
+
+### Acceptance — gate 31/31 PASS (both directions)
+`NODE_PATH=server/node_modules node server/db/rebuild/tests/0040_document_cluster_supplier_direction.test.js`
+— cross-project isolation (the pin), counterparty-first/author-last both directions, role-spoof
+rejection both directions, engagement guard (non-party + project-id misfile), re-point rejection,
+freeze both directions, lockdown (`document_confirm` gone, `document_sign` not PUBLIC-exec +
+search_path pinned). Supersedes the 0039 test (now a stub pointing here).
+
 ## QC notes
 (Liam fills this in)
 
