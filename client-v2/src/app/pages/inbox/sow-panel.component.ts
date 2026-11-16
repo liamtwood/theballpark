@@ -56,10 +56,10 @@ import { errorDetail } from '../../core/http-error';
                 @for (e of timeline(); track $index) {
                   <div class="grid grid-cols-[110px_64px_64px_minmax(0,1fr)_32px] items-center gap-x-4 border-b border-hairline last:border-0 px-3 py-1 bp-body-small">
                     @if (editable()) {
-                      <input class="ed-input w-full" [ngModel]="e.date" (ngModelChange)="mutTimeline($index,'date',$event)" (change)="save()" />
-                      <input class="ed-input w-full" [ngModel]="e.to" (ngModelChange)="mutTimeline($index,'to',$event)" (change)="save()" />
-                      <input class="ed-input w-full" [ngModel]="e.from" (ngModelChange)="mutTimeline($index,'from',$event)" (change)="save()" />
-                      <input class="ed-input w-full" [ngModel]="e.details" (ngModelChange)="mutTimeline($index,'details',$event)" (change)="save()" />
+                      <input class="bp-sow-cell" [ngModel]="e.date" (ngModelChange)="mutTimeline($index,'date',$event)" (change)="save()" />
+                      <input class="bp-sow-cell" [ngModel]="e.to" (ngModelChange)="mutTimeline($index,'to',$event)" (change)="save()" />
+                      <input class="bp-sow-cell" [ngModel]="e.from" (ngModelChange)="mutTimeline($index,'from',$event)" (change)="save()" />
+                      <input class="bp-sow-cell" [ngModel]="e.details" (ngModelChange)="mutTimeline($index,'details',$event)" (change)="save()" />
                       <button type="button" class="bp-sow-ibtn justify-self-end" title="Remove" (click)="removeTimeline($index)"><lucide-icon name="trash-2" [size]="14" /></button>
                     } @else {
                       <span class="font-semibold">{{ e.date || '—' }}</span><span>{{ e.to }}</span><span>{{ e.from }}</span><span>{{ e.details }}</span><span></span>
@@ -116,11 +116,11 @@ import { errorDetail } from '../../core/http-error';
                 @for (r of payment(); track $index) {
                   <div class="grid grid-cols-[110px_90px_90px_110px_minmax(0,1fr)_32px] items-center gap-x-4 border-b border-hairline last:border-0 px-3 py-1 bp-body-small">
                     @if (editable()) {
-                      <input class="ed-input w-full" [ngModel]="r.date" (ngModelChange)="mutPay($index,'date',$event)" (change)="save()" />
-                      <input class="ed-input w-full" [ngModel]="r.grace" (ngModelChange)="mutPay($index,'grace',$event)" (change)="save()" />
-                      <input class="ed-input w-full" [ngModel]="r.amount" (ngModelChange)="mutPay($index,'amount',$event)" (change)="save()" />
-                      <select class="ed-input" [ngModel]="r.refundable" (ngModelChange)="mutPay($index,'refundable',$event); save()"><option value="yes">Yes</option><option value="no">No</option><option value="partial">Partial</option><option value="na">N/A</option></select>
-                      <input class="ed-input w-full" [ngModel]="r.details" (ngModelChange)="mutPay($index,'details',$event)" (change)="save()" />
+                      <input class="bp-sow-cell" [ngModel]="r.date" (ngModelChange)="mutPay($index,'date',$event)" (change)="save()" />
+                      <input class="bp-sow-cell" [ngModel]="r.grace" (ngModelChange)="mutPay($index,'grace',$event)" (change)="save()" />
+                      <input class="bp-sow-cell" [ngModel]="r.amount" (ngModelChange)="mutPay($index,'amount',$event)" (change)="save()" />
+                      <select class="bp-sow-cell" [ngModel]="r.refundable" (ngModelChange)="mutPay($index,'refundable',$event); save()"><option value="yes">Yes</option><option value="no">No</option><option value="partial">Partial</option><option value="na">N/A</option></select>
+                      <input class="bp-sow-cell" [ngModel]="r.details" (ngModelChange)="mutPay($index,'details',$event)" (change)="save()" />
                       <button type="button" class="bp-sow-ibtn justify-self-end" title="Remove" (click)="removePayment($index)"><lucide-icon name="trash-2" [size]="14" /></button>
                     } @else {
                       <span class="font-semibold">{{ r.date || '—' }}</span><span>{{ r.grace }}</span><span class="font-semibold">{{ r.amount }}</span><span>{{ refundableLabel(r.refundable) }}</span><span>{{ r.details }}</span><span></span>
@@ -204,6 +204,8 @@ import { errorDetail } from '../../core/http-error';
     .bp-sow-icon { color: var(--theme-accent); display: inline-flex; align-items: center; justify-content: center; line-height: 0; }
     .bp-sow-ibtn { color: var(--color-text-secondary); display: inline-flex; align-items: center; justify-content: center; line-height: 0; padding: 2px; }
     .bp-sow-ibtn:hover { color: var(--color-text); }
+    .bp-sow-cell { width: 100%; min-width: 0; border: none; background: transparent; padding: 0.25rem 0; font: inherit; color: inherit; }
+    .bp-sow-cell:focus { outline: none; background: var(--color-fill); border-radius: 3px; }
     table th { font-size: 0.72rem; }
   `],
 })
