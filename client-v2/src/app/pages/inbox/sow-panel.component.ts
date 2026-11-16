@@ -11,7 +11,7 @@ import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { SowService } from '../../core/sow/sow.service';
-import { Sow, SowContent, SowParties, SowPaymentRow, SowPrefill, SowProductionItem, SowSubSection, SowTimelineEntry } from '../../core/sow/sow.types';
+import { Sow, SowContent, SowItemOverride, SowParties, SowPaymentRow, SowPrefill, SowProductionItem, SowSubSection, SowTimelineEntry } from '../../core/sow/sow.types';
 import { InboxThread, InboxProjectSummary } from '../../core/inbox/inbox.service';
 import { ModalComponent } from '../../shared/modal/modal.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
@@ -142,35 +142,34 @@ import { CodelistService } from '../../core/codelists/codelist.service';
               </div>
             }
 
-            <!-- Production, Pricing & Price-Matched Items -->
+            <!-- Production, Pricing & Price-Matched Items — the agreed (both-accepted)
+                 line items from this engagement; author may overlay Source + a price note. -->
             <div class="mt-3 border-t border-hairline pt-3">
               <div class="bp-caption text-muted mb-1">Production, Pricing &amp; Price-Matched Items</div>
               <div class="overflow-hidden rounded-md border border-hairline">
-                <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_48px_minmax(0,1.2fr)_90px_32px] items-center gap-x-3 border-b border-hairline bg-fill px-3 py-2">
+                <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_48px_minmax(0,1.3fr)_90px] items-center gap-x-3 border-b border-hairline bg-fill px-3 py-2">
                   <span class="bp-table-column-header">Item</span><span class="bp-table-column-header">Spec</span><span class="bp-table-column-header">Qty</span><span class="bp-table-column-header">Source</span><span class="bp-table-column-header text-right">Total</span>
-                  @if (editable()) { <button type="button" class="bp-sow-icon justify-self-end" title="Add item" (click)="addItem()"><lucide-icon name="circle-plus" [size]="18" /></button> }
                 </div>
-                @for (it of items(); track $index) {
-                  <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_48px_minmax(0,1.2fr)_90px_32px] items-start gap-x-3 border-b border-hairline last:border-0 px-3 py-1.5 bp-body-small">
+                @for (it of items(); track it.itemId) {
+                  <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_48px_minmax(0,1.3fr)_90px] items-start gap-x-3 border-b border-hairline last:border-0 px-3 py-1.5 bp-body-small">
+                    <span class="font-semibold">{{ it.item }}</span>
+                    <span class="text-secondary">{{ it.spec }}</span>
+                    <span class="text-center">{{ it.qty }}</span>
                     @if (editable()) {
-                      <input class="bp-sow-cell font-semibold" [ngModel]="it.item" (ngModelChange)="mutItem($index,'item',$event)" (change)="save()" />
-                      <input class="bp-sow-cell" [ngModel]="it.spec" (ngModelChange)="mutItem($index,'spec',$event)" (change)="save()" />
-                      <input class="bp-sow-cell text-center" type="number" [ngModel]="it.qty" (ngModelChange)="mutItem($index,'qty',$event)" (change)="save()" />
-                      <input class="bp-sow-cell" [ngModel]="it.source" (ngModelChange)="mutItem($index,'source',$event)" (change)="save()" />
-                      <input class="bp-sow-cell text-right" type="number" [ngModel]="it.total" (ngModelChange)="mutItem($index,'total',$event)" (change)="save()" />
-                      <button type="button" class="bp-sow-ibtn justify-self-end" title="Remove" (click)="removeItem($index)"><lucide-icon name="trash-2" [size]="14" /></button>
-                    } @else {
-                      <span class="font-semibold">{{ it.item }}</span><span>{{ it.spec }}</span><span class="text-center">{{ it.qty }}</span><span>{{ it.source }}</span><span class="text-right font-semibold">{{ money(it.total) }}</span><span></span>
-                    }
-                    @if (it.priceNotes) { <div class="col-span-6 bp-caption text-muted italic pt-0.5">{{ it.priceNotes }}</div> }
+                      <input class="bp-sow-cell" [ngModel]="it.source" (ngModelChange)="mutItem(it.itemId,'source',$event)" (change)="save()" />
+                    } @else { <span>{{ it.source }}</span> }
+                    <span class="text-right font-semibold">{{ money(it.total) }}</span>
+                    @if (it.priceNotes) { <div class="col-span-5 bp-caption text-muted italic pt-0.5">{{ it.priceNotes }}</div> }
                     @else if (editable()) {
-                      <input class="bp-sow-cell col-span-6 bp-caption text-muted pt-0.5" placeholder="Price note (e.g. price-matched from …)" [ngModel]="it.priceNotes" (ngModelChange)="mutItem($index,'priceNotes',$event)" (change)="save()" />
+                      <input class="bp-sow-cell col-span-5 bp-caption text-muted pt-0.5" placeholder="Price note (e.g. price-matched from …)" [ngModel]="it.priceNotes" (ngModelChange)="mutItem(it.itemId,'priceNotes',$event)" (change)="save()" />
                     }
                   </div>
+                } @empty {
+                  <div class="px-3 py-3 bp-body-small text-muted italic">No agreed items yet — items appear here once both sides accept them.</div>
                 }
                 @if (items().length) {
-                  <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_48px_minmax(0,1.2fr)_90px_32px] items-center gap-x-3 bg-fill px-3 py-2 bp-body-small">
-                    <span class="col-span-4 font-semibold">Total (exc. VAT)</span><span class="text-right font-semibold">{{ money(itemsTotal()) }}</span><span></span>
+                  <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_48px_minmax(0,1.3fr)_90px] items-center gap-x-3 bg-fill px-3 py-2 bp-body-small">
+                    <span class="col-span-4 font-semibold">Total (exc. VAT)</span><span class="text-right font-semibold">{{ money(itemsTotal()) }}</span>
                   </div>
                 }
               </div>
@@ -341,7 +340,27 @@ export class SowPanelComponent {
   protected readonly services = computed<SowSubSection[]>(() => this.edited().services ?? []);
   protected readonly payment = computed<SowPaymentRow[]>(() => this.edited().payment?.rows ?? []);
   protected readonly extra = computed<SowSubSection[]>(() => this.edited().extra ?? []);
-  protected readonly items = computed<SowProductionItem[]>(() => this.edited().items ?? []);
+  // Section 4 items are DERIVED from the thread's approved (both-accepted) line
+  // items — the agreed scope, not a hand-built list. source/priceNotes come from
+  // the author's stored overlay (SowItemOverride), merged by itemId.
+  protected readonly items = computed<SowProductionItem[]>(() => {
+    const ov = new Map((this.edited().itemOverrides ?? []).map((o) => [o.itemId, o]));
+    return (this.thread()?.items ?? [])
+      .filter((it) => it.buyerAccepted && it.sellerAccepted)
+      .map((it) => {
+        const key = it.itemId ?? it.id;
+        const o = ov.get(key);
+        return {
+          itemId: key,
+          item: it.name,
+          spec: it.description,
+          qty: it.quantity,
+          source: o?.source ?? 'This Supplier — own design',
+          priceNotes: o?.priceNotes ?? null,
+          total: it.priceCurrent ?? it.priceRef,
+        } as SowProductionItem;
+      });
+  });
   protected readonly itemsTotal = computed(() => this.items().reduce((s, it) => s + (Number(it.total) || 0), 0));
   protected readonly servicesIntro = 'The Supplier is responsible for delivering the following services and scope of work, as confirmed and costed via Ballpark.';
   protected readonly special = computed<SowSubSection>(() => this.edited().specialTerms ?? { name: 'Special Terms', content: null });
@@ -421,9 +440,17 @@ export class SowPanelComponent {
   addExtra(): void { this.mut((c) => ({ ...c, extra: [...this.extra(), { name: 'New section', content: '' }] })); this.save(); }
   removeExtra(i: number): void { this.mut((c) => ({ ...c, extra: this.extra().filter((_, idx) => idx !== i) })); this.save(); }
 
-  mutItem(i: number, f: keyof SowProductionItem, v: string): void { this.mut((c) => ({ ...c, items: this.items().map((x, idx) => (idx === i ? ({ ...x, [f]: v } as SowProductionItem) : x)) })); }
-  addItem(): void { this.mut((c) => ({ ...c, items: [...this.items(), { item: 'New item', spec: null, qty: 1, source: 'This Supplier — own design', priceNotes: null, total: null }] })); this.save(); }
-  removeItem(i: number): void { this.mut((c) => ({ ...c, items: this.items().filter((_, idx) => idx !== i) })); this.save(); }
+  // Items are derived (no add/remove). The author may only overlay source + a
+  // price note per row; the overlay is keyed by itemId and merged in items().
+  mutItem(itemId: string, f: 'source' | 'priceNotes', v: string): void {
+    this.mut((c) => {
+      const list = (c.itemOverrides ?? []).slice();
+      const i = list.findIndex((o) => o.itemId === itemId);
+      const next: SowItemOverride = { ...(i >= 0 ? list[i] : { itemId, source: null, priceNotes: null }), [f]: v };
+      if (i >= 0) list[i] = next; else list.push(next);
+      return { ...c, itemOverrides: list };
+    });
+  }
 
   /** Display helper — GBP, no decimals for whole amounts. Empty for null/blank. */
   money(v: number | string | null | undefined): string {
@@ -522,7 +549,6 @@ function buildInitial(pre: SowPrefill): SowContent {
       { name: 'Staffing', content: null, na: true },
       { name: 'Logistics & Other', content: null, na: true },
     ],
-    items: pre.items.map((it) => ({ item: it.name, spec: it.description, qty: 1, source: 'This Supplier — own design', priceNotes: null, total: it.price })),
     payment: {
       rows: [
         { date: 'SOW date', grace: '3 days', amount: '50%', refundable: 'na', details: null },

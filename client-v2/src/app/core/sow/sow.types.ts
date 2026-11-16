@@ -29,8 +29,12 @@ export interface SowSubSection {
   na?: boolean;
 }
 
-/** A row in the Production, Pricing & Price-Matched Items table (Section 4). */
+/** A row in the Production, Pricing & Price-Matched Items table (Section 4).
+ *  DERIVED on the draft from the thread's approved (both-accepted) line items —
+ *  not a manually-built list. item/spec/qty/total are the agreed facts (read-
+ *  only); source/priceNotes are the author's overlay (see SowItemOverride). */
 export interface SowProductionItem {
+  itemId: string; // the line's catalogue item_id (or line id) — overlay key
   item: string;
   spec: string | null;
   qty: number | null;
@@ -39,10 +43,18 @@ export interface SowProductionItem {
   total: number | null;
 }
 
+/** Author-set overlay on one derived item row, stored on the SOW and merged
+ *  over the live thread facts (source + price note only; keyed by itemId). */
+export interface SowItemOverride {
+  itemId: string;
+  source: string | null;
+  priceNotes: string | null;
+}
+
 export interface SowContent {
   timeline?: { na?: boolean; entries: SowTimelineEntry[] };
   services?: SowSubSection[];
-  items?: SowProductionItem[]; // Section 4 · Production items table
+  itemOverrides?: SowItemOverride[]; // Section 4 · author overlay on derived items
   payment?: { na?: boolean; rows: SowPaymentRow[] };
   specialTerms?: SowSubSection; // under Fees & Payment
   extra?: SowSubSection[];
