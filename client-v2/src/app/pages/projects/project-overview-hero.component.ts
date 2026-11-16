@@ -42,14 +42,24 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
         </div>
 
         <!-- Cover actions -->
-        <div class="ovh-actions absolute right-4 top-4 flex flex-wrap items-center gap-2">
-          <button type="button" class="bp-cover-btn" (click)="editDetails.emit()">
-            <lucide-icon name="pencil" [size]="15" /> Edit details
-          </button>
-          <button type="button" class="bp-cover-btn" (click)="changeImage.emit()">
-            <lucide-icon name="image" [size]="15" /> Change image
-          </button>
-        </div>
+        @if (canEdit()) {
+          <div class="ovh-actions absolute right-4 top-4 flex flex-wrap items-center gap-2">
+            <button type="button" class="bp-cover-btn" (click)="editDetails.emit()">
+              <lucide-icon name="pencil" [size]="15" /> Edit details
+            </button>
+            <button type="button" class="bp-cover-btn" (click)="changeImage.emit()">
+              <lucide-icon name="image" [size]="15" /> Change image
+            </button>
+          </div>
+        }
+
+        <!-- Event date — bottom-right of the cover. -->
+        @if (p.eventDate) {
+          <div class="ovh-date absolute bottom-5 right-6 text-right">
+            <div class="bp-caption" style="color: rgba(255,255,255,0.7)">Event date</div>
+            <div class="bp-body-small" style="font-weight: 600; color: #fff">{{ p.eventDate }}</div>
+          </div>
+        }
       </div>
       }
 
@@ -58,6 +68,7 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
            Inline radius beats the .bp-card radius cascade. -->
       <!-- .bp-card forces display:block + its own radius (cascade) — inline
            style beats it so the stats sit on ONE flex row in a pill. -->
+      @if (showStats()) {
       <div class="ovh-tiles bp-card px-6 py-3" style="border-radius: 999px; display: flex; flex-wrap: nowrap; align-items: center; column-gap: 2rem;">
         @if (minimised()) {
           <!-- Cover (which carries the project name) is hidden → surface the
@@ -85,6 +96,7 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
           <lucide-icon [name]="minimised() ? 'chevron-down' : 'chevron-up'" [size]="16" />
         </button>
       </div>
+      }
     </div>
   `,
   styles: [`
@@ -96,7 +108,8 @@ import { ProjectOverview } from '../../core/inbox/inbox.service';
       overflow: hidden;
       transition: opacity 0.24s ease, max-height 0.3s ease, margin 0.3s ease;
     }
-    .ovh-actions { transition: opacity 0.24s ease; }
+    .ovh-actions, .ovh-date { transition: opacity 0.24s ease; }
+    .ovh.is-collapsed .ovh-date { opacity: 0; }
     .ovh-name { transition: font-size 0.3s ease; }
     .ovh.is-collapsed .ovh-name { font-size: var(--text-2xl); }
     .ovh-tiles {
@@ -133,6 +146,10 @@ export class ProjectOverviewHeroComponent {
   readonly label = input<string>('project');
   /** Collapse to a slim name band (work tabs) — reverses automatically. */
   readonly collapsed = input<boolean>(false);
+  /** The agency can edit the cover/details; suppliers see a read-only hero. */
+  readonly canEdit = input<boolean>(true);
+  /** The agency negotiation stats pill (hidden for the supplier hero). */
+  readonly showStats = input<boolean>(true);
 
   readonly changeImage = output<void>();
   /** Open the project-details dialog (the create-flow form) to edit name/client/
