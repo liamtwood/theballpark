@@ -105,6 +105,19 @@ export interface SowPrefillItem {
   installDescription: string | null;
   price: number | null;
 }
+export interface SowPartyLegal {
+  orgId: string;
+  name: string | null;
+  companyNumber: string | null;
+  vatNumber: string | null;
+  jurisdiction: string | null;
+  address: string | null;
+}
+export interface SowParties {
+  agency: SowPartyLegal | null;
+  supplier: SowPartyLegal | null;
+}
+
 export interface SowPrefill {
   project: {
     name: string;

@@ -272,4 +272,25 @@ async function prefill({ orgId, orgType, projectId }) {
   };
 }
 
-module.exports = { createDraft, listForProject, getById, updateDraft, sign, prefill, PLATFORM_FEE_PCT };
+// Both parties' legal details for the SOW Parties block (cross-org via the gated
+// sow_parties definer — only an engagement party gets the data).
+async function parties({ id }) {
+  const d = await pool.query('SELECT project_provider_id FROM project_documents WHERE id = $1 AND deleted_at IS NULL', [id]);
+  if (!d.rows[0]) throw httpErr('SOW not found', 404);
+  const out = { agency: null, supplier: null };
+  if (!d.rows[0].project_provider_id) return out;
+  const r = await pool.query('SELECT * FROM public.sow_parties($1)', [d.rows[0].project_provider_id]);
+  for (const row of r.rows) {
+    out[row.role] = {
+      orgId: row.org_id,
+      name: row.name,
+      companyNumber: row.company_number,
+      vatNumber: row.vat_number,
+      jurisdiction: row.country,
+      address: [row.line1, row.line2, row.city, row.region, row.postcode, row.country].filter(Boolean).join(', ') || null,
+    };
+  }
+  return out;
+}
+
+module.exports = { createDraft, listForProject, getById, updateDraft, sign, prefill, parties, PLATFORM_FEE_PCT };

@@ -87,6 +87,17 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
+// GET /api/sow/:id/parties — both parties' legal details (gated cross-org resolver).
+router.get('/:id/parties', async (req, res, next) => {
+  try {
+    if (!UUID.safeParse(req.params.id).success) return res.status(400).json({ error: 'Invalid SOW id' });
+    res.json(await sow.parties({ id: req.params.id }));
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
 // PATCH /api/sow/:id — edit a draft (author only; RLS gives the counterparty no
 // write path, and the freeze trigger rejects edits once a signature exists).
 const UpdateSchema = z

@@ -11,7 +11,7 @@ import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { SowService } from '../../core/sow/sow.service';
-import { Sow, SowContent, SowPaymentRow, SowPrefill, SowSubSection, SowTimelineEntry } from '../../core/sow/sow.types';
+import { Sow, SowContent, SowParties, SowPaymentRow, SowPrefill, SowSubSection, SowTimelineEntry } from '../../core/sow/sow.types';
 import { InboxThread, InboxProjectSummary } from '../../core/inbox/inbox.service';
 import { ModalComponent } from '../../shared/modal/modal.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
@@ -58,11 +58,11 @@ import { CodelistService } from '../../core/codelists/codelist.service';
                 </div>
                 <div class="grid grid-cols-[150px_minmax(0,1fr)] gap-x-4 border-b border-hairline px-3 py-1.5 bp-body-small">
                   <span class="font-semibold">Agency (Buyer)</span>
-                  <span>{{ thread().agencyName || '—' }}<span class="text-muted"> · company no., jurisdiction &amp; registered address (from profile)</span></span>
+                  <span>{{ partyLine('agency') }}</span>
                 </div>
                 <div class="grid grid-cols-[150px_minmax(0,1fr)] gap-x-4 px-3 py-1.5 bp-body-small">
                   <span class="font-semibold">Supplier</span>
-                  <span>{{ thread().supplierName || '—' }}<span class="text-muted"> · company no., jurisdiction &amp; registered address (from profile)</span></span>
+                  <span>{{ partyLine('supplier') }}</span>
                 </div>
               </div>
             </div>
@@ -333,7 +333,7 @@ export class SowPanelComponent {
     const p = this.project();
     const executed = this.current()?.status === 'executed';
     return [
-      { label: 'Ballpark Reference', value: t?.refCode ?? null },
+      { label: 'Ballpark Reference', value: t?.projectId ?? p?.id ?? null },
       { label: 'Effective Date', value: executed ? 'Signed' : 'On signing by both parties' },
       { label: 'SOW Version', value: 'V1' },
       { label: 'Project Title', value: t?.projectName ?? p?.name ?? null },
@@ -342,6 +342,22 @@ export class SowPanelComponent {
       { label: 'Category', value: t?.categoryName ?? null },
     ];
   });
+
+  // Section 2 · SOW Parties — legal details resolved cross-org (gated definer).
+  private readonly partiesRes = resource({
+    params: () => this.current()?.id,
+    loader: ({ params }) => firstValueFrom(this.sowSvc.partiesFor(params)),
+  });
+  protected partyLine(role: 'agency' | 'supplier'): string {
+    const p = (this.partiesRes.value() as SowParties | undefined)?.[role] ?? null;
+    const fallbackName = (role === 'agency' ? this.thread().agencyName : this.thread().supplierName) ?? '—';
+    if (!p) return fallbackName;
+    const bits: string[] = [];
+    if (p.jurisdiction) bits.push(`a company registered in ${p.jurisdiction}`);
+    if (p.companyNumber) bits.push(`under Company Number ${p.companyNumber}`);
+    if (p.address) bits.push(`whose principal place of business is at ${p.address}`);
+    return bits.length ? `${p.name || fallbackName}, ${bits.join(' ')}.` : (p.name || fallbackName);
+  }
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);

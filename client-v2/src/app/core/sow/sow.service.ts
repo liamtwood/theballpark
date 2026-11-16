@@ -5,7 +5,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../api.service';
-import { Sow, SowCreate, SowPrefill, SowSign, SowUpdate } from './sow.types';
+import { Sow, SowCreate, SowParties, SowPrefill, SowSign, SowUpdate } from './sow.types';
 
 @Injectable({ providedIn: 'root' })
 export class SowService {
@@ -39,5 +39,10 @@ export class SowService {
   /** Suggested content for a new SOW, from the project + the supplier's items. */
   prefill(projectId: string): Observable<SowPrefill> {
     return this.api.get<SowPrefill>(`/api/sow/prefill?projectId=${encodeURIComponent(projectId)}`);
+  }
+
+  /** Both parties' legal details (gated cross-org resolver). */
+  partiesFor(id: string): Observable<SowParties> {
+    return this.api.get<SowParties>(`/api/sow/${id}/parties`);
   }
 }
