@@ -22,11 +22,29 @@ export interface SowPaymentRow {
   details: string | null;
 }
 
-/** A row in Services & Goods (or a custom Add-section). na = marked N/A. */
-export interface SowSubSection {
-  name: string;
-  content: string | null;
+/** Which bound table (if any) a subsection renders below its text. */
+export type SowTableKind = 'parties' | 'projectDetails' | 'timeline' | 'production' | 'payment';
+
+/** A subsection block (e.g. 2.1 SOW Parties, 4.1 Scope): editable title + text,
+ *  an optional bound table, and an N/A toggle. */
+export interface SowSubsection {
+  title: string;
+  text?: string | null;
   na?: boolean;
+  table?: SowTableKind | null;
+  /** Appendix attachment (special case). Upload UI is the deferred Documents
+   *  work; the slot is here so a subsection can hold a file later. */
+  file?: { url: string; name: string } | null;
+}
+
+/** A lead (numbered) section: editable title + its own text + a list of
+ *  subsections. `signature` flags the special sign block (no text/subs). */
+export interface SowSection {
+  title: string;
+  text?: string | null;
+  na?: boolean;
+  signature?: boolean;
+  subs: SowSubsection[];
 }
 
 /** A row in the Production, Pricing & Price-Matched Items table (Section 4).
@@ -54,22 +72,19 @@ export interface SowItemOverride {
 }
 
 export interface SowContent {
+  /** The document structure — lead sections, each with text + subsections.
+   *  Absent on older/never-edited SOWs → the panel falls back to the seeded
+   *  default structure; materialized here the first time the author edits it. */
+  sections?: SowSection[];
+  // Table DATA — rendered wherever a subsection binds the matching table kind;
+  // independent of the section structure above.
   timeline?: { na?: boolean; entries: SowTimelineEntry[] };
-  services?: SowSubSection[];
-  itemOverrides?: SowItemOverride[]; // Section 4 · author overlay on derived items
-  /** Section 2 · author overrides on the live-derived Parties / Project Details
-   *  (live value shown by default; an edit replaces it). */
+  payment?: { na?: boolean; rows: SowPaymentRow[] };
+  itemOverrides?: SowItemOverride[]; // Production table · author overlay on derived items
+  /** Parties / Project Details author overrides (live value shown by default,
+   *  an edit replaces it). */
   partyOverrides?: { agency: string | null; supplier: string | null };
   projectDetailOverrides?: Record<string, string>; // keyed by field label
-  payment?: { na?: boolean; rows: SowPaymentRow[] };
-  // Boilerplate text overrides (null/absent = show the sow_boilerplate codelist
-  // default) + their N/A flags — edited via the shared prose popup, same as the
-  // other sections.
-  introNote?: string | null;
-  introNa?: boolean;
-  paymentNote?: string | null; // editable intro under the Payment schedule heading
-  specialTerms?: SowSubSection; // under Fees & Payment
-  extra?: SowSubSection[];
 }
 
 export interface SowPartyRef {
