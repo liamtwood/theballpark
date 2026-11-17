@@ -148,14 +148,14 @@ import { CodelistService } from '../../core/codelists/codelist.service';
                         @case ('production') {
                           <div class="overflow-hidden rounded-md border border-hairline mt-1">
                             <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_48px_minmax(0,1.3fr)_90px] items-center gap-x-3 border-b border-hairline bg-fill px-3 py-2">
-                              <span class="bp-table-column-header">Item</span><span class="bp-table-column-header">Spec</span><span class="bp-table-column-header">Qty</span><span class="bp-table-column-header">Source</span><span class="bp-table-column-header text-right">Total</span>
+                              <span class="bp-table-column-header">Item</span><span class="bp-table-column-header">Spec</span><span class="bp-table-column-header">Qty</span><span class="bp-table-column-header">Variant</span><span class="bp-table-column-header text-right">Total</span>
                             </div>
                             @for (it of items(); track it.itemId) {
                               <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_48px_minmax(0,1.3fr)_90px] items-start gap-x-3 border-b border-hairline last:border-0 px-3 py-1.5 bp-body-small">
                                 <span class="font-semibold">{{ it.item }}</span>
                                 @if (editable()) { <input class="bp-sow-cell text-secondary" [ngModel]="it.spec" (ngModelChange)="mutItem(it.itemId,'spec',$event)" (change)="save()" /> } @else { <span class="text-secondary">{{ it.spec }}</span> }
                                 <span class="text-center">{{ it.qty }}</span>
-                                @if (editable()) { <input class="bp-sow-cell" [ngModel]="it.source" (ngModelChange)="mutItem(it.itemId,'source',$event)" (change)="save()" /> } @else { <span>{{ it.source }}</span> }
+                                <span>{{ it.variant || '—' }}</span>
                                 <span class="text-right font-semibold">{{ money(it.total) }}</span>
                                 @if (it.priceNotes) { <div class="col-span-5 bp-caption text-muted italic pt-0.5">{{ it.priceNotes }}</div> }
                                 @else if (editable()) { <input class="bp-sow-cell col-span-5 bp-caption text-muted pt-0.5" placeholder="Price note (e.g. price-matched from …)" [ngModel]="it.priceNotes" (ngModelChange)="mutItem(it.itemId,'priceNotes',$event)" (change)="save()" /> }
@@ -326,7 +326,7 @@ export class SowPanelComponent {
           item: it.name,
           spec: o?.spec ?? it.description,
           qty: it.quantity,
-          source: o?.source ?? 'This Supplier — own design',
+          variant: it.variant ?? null,
           priceNotes: o?.priceNotes ?? null,
           total: it.priceCurrent ?? it.priceRef,
         } as SowProductionItem;
@@ -432,11 +432,11 @@ export class SowPanelComponent {
 
   // Items are derived (no add/remove). The author may only overlay source + a
   // price note per row; the overlay is keyed by itemId and merged in items().
-  mutItem(itemId: string, f: 'spec' | 'source' | 'priceNotes', v: string): void {
+  mutItem(itemId: string, f: 'spec' | 'priceNotes', v: string): void {
     this.mut((c) => {
       const list = (c.itemOverrides ?? []).slice();
       const i = list.findIndex((o) => o.itemId === itemId);
-      const next: SowItemOverride = { ...(i >= 0 ? list[i] : { itemId, source: null, priceNotes: null }), [f]: v };
+      const next: SowItemOverride = { ...(i >= 0 ? list[i] : { itemId, priceNotes: null }), [f]: v };
       if (i >= 0) list[i] = next; else list.push(next);
       return { ...c, itemOverrides: list };
     });

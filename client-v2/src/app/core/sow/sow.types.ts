@@ -56,18 +56,17 @@ export interface SowProductionItem {
   item: string;
   spec: string | null;
   qty: number | null;
-  source: string | null; // "This Supplier — own design" | "Price-matched from …"
+  variant: string | null; // the agreed line's chosen variant label (read-only)
   priceNotes: string | null;
   total: number | null;
 }
 
 /** Author-set overlay on one derived item row, stored on the SOW and merged
- *  over the live thread facts (spec / source / price note; keyed by itemId —
- *  Item/Qty/Total stay the agreed deal facts, read-only). */
+ *  over the live thread facts (spec / price note; keyed by itemId —
+ *  Item/Qty/Variant/Total stay the agreed deal facts, read-only). */
 export interface SowItemOverride {
   itemId: string;
   spec?: string | null;
-  source: string | null;
   priceNotes: string | null;
 }
 

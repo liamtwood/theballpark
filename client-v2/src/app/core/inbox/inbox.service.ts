@@ -272,6 +272,8 @@ export interface InboxThreadItem {
   itemId: string | null;
   name: string;
   description: string | null;
+  /** The line's chosen variant label (e.g. "Large / Red"), or null. */
+  variant: string | null;
   status: string;
   /** pV2-UNIFY-01: LINE totals (per-unit rate × qty + install). */
   priceRef: number | null;

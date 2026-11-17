@@ -126,6 +126,8 @@ function toThreadItem(raw, state, line, turn) {
     itemId: raw.item_id ?? raw.id,
     name: raw.name,
     description: raw.description || null,
+    // The line's chosen variant label (resolved overlay → frozen), e.g. "Large / Red".
+    variant: raw.r_variant && raw.r_variant.label ? String(raw.r_variant.label) : null,
     status: state.status,
     // Conversation TURN (Liam 2026-10-30): who sent the last message on this line
     // ('buyer' = agency, 'seller' = supplier) and whether that message is newer
