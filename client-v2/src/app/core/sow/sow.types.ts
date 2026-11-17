@@ -62,6 +62,7 @@ export interface SowContent {
   partyOverrides?: { agency: string | null; supplier: string | null };
   projectDetailOverrides?: Record<string, string>; // keyed by field label
   payment?: { na?: boolean; rows: SowPaymentRow[] };
+  paymentNote?: string | null; // editable intro under the Payment schedule heading (defaults to the boilerplate codelist)
   specialTerms?: SowSubSection; // under Fees & Payment
   extra?: SowSubSection[];
 }

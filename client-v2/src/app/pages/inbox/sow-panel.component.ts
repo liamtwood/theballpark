@@ -191,8 +191,12 @@ import { CodelistService } from '../../core/codelists/codelist.service';
           <div class="p-4 pt-3">
             @if (isSectionNa('payment')) { <span class="bp-body-small text-muted italic">N/A</span> }
             @else {
-              <p class="bp-body-small text-secondary mb-2 whitespace-pre-line">{{ bp('payment_schedule') }}</p>
               <div class="bp-caption text-muted mb-1">Payment schedule</div>
+              @if (editable()) {
+                <textarea class="bp-sow-cell mb-2 whitespace-pre-line" rows="3" [ngModel]="paymentNote()" (ngModelChange)="mutPaymentNote($event)" (change)="save()"></textarea>
+              } @else {
+                <p class="bp-body-small text-secondary mb-2 whitespace-pre-line">{{ paymentNote() }}</p>
+              }
               <div class="overflow-hidden rounded-md border border-hairline">
                 <div class="grid grid-cols-[110px_90px_90px_110px_minmax(0,1fr)_32px] items-center gap-x-4 border-b border-hairline bg-fill px-3 py-2">
                   <span class="bp-table-column-header">Date</span><span class="bp-table-column-header">Grace</span><span class="bp-table-column-header">Amount</span><span class="bp-table-column-header">Refundable</span><span class="bp-table-column-header">Details</span>
@@ -410,6 +414,11 @@ export class SowPanelComponent {
   mutDetail(label: string, v: string): void {
     this.mut((c) => ({ ...c, projectDetailOverrides: { ...(c.projectDetailOverrides ?? {}), [label]: v } }));
   }
+
+  // Section 5 · the editable intro under the Payment schedule heading — the
+  // boilerplate (codelist) by default; an edit stores an override.
+  protected readonly paymentNote = computed(() => this.edited().paymentNote ?? this.bp('payment_schedule'));
+  mutPaymentNote(v: string): void { this.mut((c) => ({ ...c, paymentNote: v })); }
 
   // Section 2 · SOW Parties — legal details resolved cross-org (gated definer),
   // shown by default; an edit stores an override per party (mutParty).
