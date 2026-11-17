@@ -19,7 +19,7 @@ FROM (VALUES
 
 Ballpark is a technology platform that connects Agencies with Suppliers and provides ballpark cost estimates, booking tools and payment facilitation. Ballpark is not a party to this SOW, does not provide the Services or Deliverables described in it, and is not responsible for their delivery. See "Role of Ballpark" in Annex A for full detail.'),
   ('payment_schedule', 'Payment schedule', 2,
-   '50% of the Fee is invoiced and taken via Stripe upon signature of this SOW by both the Agency and the Supplier. The remaining 50% is invoiced on completion of the Services, payable within [30] days. Funds are collected and released by Ballpark acting solely as a payment facilitator on the Supplier''s behalf.'),
+   'A percentage of the total Fee is invoiced upon signature of this SOW by both the Agency and the Supplier. The negotiated percentage is defined in the table below, and paid by the Agency via Stripe. The remaining balance is invoiced on completion of the Services, payable within [30] days. Funds are collected and released by Ballpark acting solely as a payment facilitator on the Supplier''s behalf.'),
   ('conclusion', 'Signature conclusion', 3,
    'This Statement of Work is entered into on the Effective Date pursuant to the Supplier''s standard terms of purchase set out in Annex A. Any terms and conditions on the Agency''s form of purchase order are void and have no legal effect unless otherwise agreed. Each party warrants that they have all right, title and interest to bind the applicable entity on whose behalf they are signing.')
 ) AS v(code, label, sort_order, text)
