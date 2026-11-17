@@ -14,7 +14,7 @@ INSERT INTO public.reference_codelist_values (codelist_id, code, label, sort_ord
 SELECT (SELECT id FROM public.reference_codelists WHERE name = 'sow_boilerplate'),
        v.code, v.label, v.sort_order, true, jsonb_build_object('text', v.text)
 FROM (VALUES
-  ('intro', 'Standard Intro', 1,
+  ('intro', 'Document Purpose', 1,
    'This Statement of Work ("SOW") is entered into directly between the Agency and the Supplier named below in connection with the project described. It was generated using cost data and scope details submitted through the Ballpark platform (www.theballpark.ai - operated by The Ballpark AI Ltd, "Ballpark").
 
 Ballpark is a technology platform that connects Agencies with Suppliers and provides ballpark cost estimates, booking tools and payment facilitation. Ballpark is not a party to this SOW, does not provide the Services or Deliverables described in it, and is not responsible for their delivery. See "Role of Ballpark" in Annex A for full detail.'),
