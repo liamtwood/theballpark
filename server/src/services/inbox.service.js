@@ -1084,7 +1084,7 @@ async function getSupplierInboxItems(supplierOrgId, limit = 6) {
   const items = [];
   const seen = new Set();
   for (const p of projs.rows) {
-    const { threads } = await assembleThreads('supplier', supplierOrgId, p.id);
+    const { project, threads } = await assembleThreads('supplier', supplierOrgId, p.id);
     for (const t of threads) {
       const last = t.messages[t.messages.length - 1];
       const lastMessageAt = last ? last.createdAt : null;
@@ -1094,8 +1094,10 @@ async function getSupplierInboxItems(supplierOrgId, limit = 6) {
         if (isDeclined(it.status)) continue;
         items.push({
           projectId: p.id,
+          projectName: project?.name ?? null,
           itemId: it.itemId ?? it.id,
           name: it.name,
+          quantity: it.quantity ?? null,
           agencyName: t.agencyName,
           status: it.status,
           buyerAccepted: it.buyerAccepted,

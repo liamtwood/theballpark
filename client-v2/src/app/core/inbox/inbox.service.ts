@@ -119,8 +119,10 @@ export interface SupplierHomeStats {
 /** One row in the supplier home "Inbox" card. */
 export interface SupplierInboxItem {
   projectId: string;
+  projectName: string | null;
   itemId: string;
   name: string;
+  quantity: number | null;
   agencyName: string | null;
   status: string | null;
   buyerAccepted: boolean | null;

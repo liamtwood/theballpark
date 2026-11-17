@@ -33,12 +33,12 @@ import { StatusPillComponent } from '../status-pill/status-pill.component';
         <p class="bp-inboxcard__muted">No quote requests yet — an agency will reach out here.</p>
       } @else {
         <ul class="bp-inboxcard__list">
-          @for (it of items(); track it.itemId) {
+          @for (it of items(); track it.projectId + '|' + it.itemId) {
             <li>
               <a [routerLink]="['/inbox', it.projectId]" [queryParams]="{ item: it.itemId }" class="bp-inboxcard__row">
                 <span class="bp-inboxcard__main">
-                  <span class="bp-inboxcard__name">{{ it.name }}</span>
-                  @if (it.agencyName) { <span class="bp-inboxcard__agency">{{ it.agencyName }}</span> }
+                  <span class="bp-inboxcard__name">{{ it.projectName || it.name }}</span>
+                  <span class="bp-inboxcard__agency">{{ subline(it) }}</span>
                 </span>
                 <span class="bp-inboxcard__meta">
                   <app-status-pill list="line_display_status" [code]="pill(it)" [strong]="needsYou(it)" />
@@ -89,6 +89,13 @@ export class SupplierInboxCardComponent {
     loader: () => firstValueFrom(this.inbox.supplierInboxItems()),
   });
   protected readonly items = computed(() => this.loader.value() ?? []);
+
+  /** Sub-line under the project name: agency · item · qty (nulls dropped). */
+  protected subline(it: SupplierInboxItem): string {
+    return [it.agencyName, it.name, it.quantity != null ? `${it.quantity}` : null]
+      .filter((x) => x != null && x !== '')
+      .join(' · ');
+  }
 
   /** The line_display_status pill code from the supplier's point of view. */
   protected pill(it: SupplierInboxItem): string {
