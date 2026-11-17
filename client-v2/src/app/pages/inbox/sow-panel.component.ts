@@ -60,7 +60,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
           <div class="p-4 pt-3 flex flex-col gap-3">
             <!-- SOW Parties -->
             <div>
-              <div class="bp-caption text-muted mb-1">SOW Parties</div>
+              <div class="bp-card-title mb-1">SOW Parties</div>
               <div class="overflow-hidden rounded-md border border-hairline">
                 <div class="grid grid-cols-[150px_minmax(0,1fr)] gap-x-4 border-b border-hairline bg-fill px-3 py-2">
                   <span class="bp-table-column-header">Party</span><span class="bp-table-column-header">Details</span>
@@ -79,7 +79,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
             </div>
             <!-- Project Details -->
             <div>
-              <div class="bp-caption text-muted mb-1">Project Details</div>
+              <div class="bp-card-title mb-1">Project Details</div>
               <div class="overflow-hidden rounded-md border border-hairline">
                 <div class="grid grid-cols-[160px_minmax(0,1fr)] gap-x-4 border-b border-hairline bg-fill px-3 py-2">
                   <span class="bp-table-column-header">Field</span><span class="bp-table-column-header">Value</span>
@@ -158,7 +158,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
             <!-- Production, Pricing & Price-Matched Items — the agreed (both-accepted)
                  line items from this engagement; author may overlay Source + a price note. -->
             <div class="mt-3 border-t border-hairline pt-3">
-              <div class="bp-caption text-muted mb-1">Production, Pricing &amp; Price-Matched Items</div>
+              <div class="bp-card-title mb-1">Production, Pricing &amp; Price-Matched Items</div>
               <div class="overflow-hidden rounded-md border border-hairline">
                 <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_48px_minmax(0,1.3fr)_90px] items-center gap-x-3 border-b border-hairline bg-fill px-3 py-2">
                   <span class="bp-table-column-header">Item</span><span class="bp-table-column-header">Spec</span><span class="bp-table-column-header">Qty</span><span class="bp-table-column-header">Source</span><span class="bp-table-column-header text-right">Total</span>
@@ -201,7 +201,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
             @if (isSectionNa('payment')) { <span class="bp-body-small text-muted italic">N/A</span> }
             @else {
               <div class="flex items-center justify-between mb-1">
-                <div class="bp-caption text-muted">Payment schedule</div>
+                <div class="bp-card-title">Payment schedule</div>
                 @if (editable()) { <button type="button" class="bp-sow-ibtn" title="Edit" (click)="openEditBoiler('payment')"><lucide-icon name="pencil" [size]="15" /></button> }
               </div>
               <p class="bp-body-small text-secondary mb-2 whitespace-pre-line">{{ paymentNote() }}</p>
