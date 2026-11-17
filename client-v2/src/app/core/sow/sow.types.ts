@@ -63,6 +63,7 @@ export interface SowContent {
   projectDetailOverrides?: Record<string, string>; // keyed by field label
   payment?: { na?: boolean; rows: SowPaymentRow[] };
   paymentNote?: string | null; // editable intro under the Payment schedule heading (defaults to the boilerplate codelist)
+  conclusionNote?: string | null; // editable Section 6 signature conclusion (defaults to the boilerplate codelist)
   specialTerms?: SowSubSection; // under Fees & Payment
   extra?: SowSubSection[];
 }

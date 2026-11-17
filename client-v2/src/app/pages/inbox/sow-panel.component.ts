@@ -258,7 +258,11 @@ import { CodelistService } from '../../core/codelists/codelist.service';
         <div class="bp-card">
           <div class="bp-sow-head"><span class="bp-card-title">Section 6 · Signature</span></div>
           <div class="p-4 pt-3">
-            <p class="bp-body-small text-secondary whitespace-pre-line">{{ bp('conclusion') }}</p>
+            @if (editable()) {
+              <textarea class="bp-sow-cell whitespace-pre-line" rows="3" [ngModel]="conclusionNote()" (ngModelChange)="mutConclusionNote($event)" (change)="save()"></textarea>
+            } @else {
+              <p class="bp-body-small text-secondary whitespace-pre-line">{{ conclusionNote() }}</p>
+            }
             <div class="mt-3 flex flex-wrap items-end gap-8 bp-body-small">
               <div><div class="bp-caption text-muted">Agency</div><div class="font-semibold">{{ s.status === 'counterparty_signed' || s.status === 'executed' ? 'Signed' : 'Awaiting signature' }}</div></div>
               <div><div class="bp-caption text-muted">Supplier</div><div class="font-semibold">{{ s.status === 'executed' ? 'Signed' : 'Awaiting signature' }}</div></div>
@@ -419,6 +423,10 @@ export class SowPanelComponent {
   // boilerplate (codelist) by default; an edit stores an override.
   protected readonly paymentNote = computed(() => this.edited().paymentNote ?? this.bp('payment_schedule'));
   mutPaymentNote(v: string): void { this.mut((c) => ({ ...c, paymentNote: v })); }
+
+  // Section 6 · signature conclusion — boilerplate (codelist) by default, editable.
+  protected readonly conclusionNote = computed(() => this.edited().conclusionNote ?? this.bp('conclusion'));
+  mutConclusionNote(v: string): void { this.mut((c) => ({ ...c, conclusionNote: v })); }
 
   // Section 2 · SOW Parties — legal details resolved cross-org (gated definer),
   // shown by default; an edit stores an override per party (mutParty).
