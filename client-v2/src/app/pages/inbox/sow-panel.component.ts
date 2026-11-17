@@ -39,10 +39,19 @@ import { CodelistService } from '../../core/codelists/codelist.service';
     @if (current(); as s) {
       <div class="mt-3 flex flex-col gap-3">
 
-        <!-- Section 1 — Standard Intro (boilerplate) -->
+        <!-- Section 1 — Standard Intro (boilerplate, editable) -->
         <div class="bp-card">
-          <div class="bp-sow-head"><span class="bp-card-title">Section 1 · Standard Intro</span></div>
-          <div class="p-4 pt-3 bp-body-small text-secondary whitespace-pre-line">{{ bp('intro') }}</div>
+          <div class="bp-sow-head">
+            <span class="bp-card-title">Section 1 · Standard Intro</span>
+            @if (editable()) {
+              <div class="flex items-center gap-2">
+                <label class="bp-caption flex items-center gap-1"><input type="checkbox" class="accent-[var(--theme-accent)]" [checked]="introNa()" (change)="toggleIntroNa($any($event.target).checked)" /> N/A</label>
+                @if (!introNa()) { <button type="button" class="bp-sow-ibtn" title="Edit" (click)="openEditBoiler('intro')"><lucide-icon name="pencil" [size]="15" /></button> }
+              </div>
+            }
+          </div>
+          @if (introNa()) { <div class="p-4 pt-3 bp-body-small text-muted italic">N/A</div> }
+          @else { <div class="p-4 pt-3 bp-body-small text-secondary whitespace-pre-line">{{ introNote() }}</div> }
         </div>
 
         <!-- Section 2 — Parties & Project -->
@@ -191,12 +200,11 @@ import { CodelistService } from '../../core/codelists/codelist.service';
           <div class="p-4 pt-3">
             @if (isSectionNa('payment')) { <span class="bp-body-small text-muted italic">N/A</span> }
             @else {
-              <div class="bp-caption text-muted mb-1">Payment schedule</div>
-              @if (editable()) {
-                <textarea class="bp-sow-cell mb-2 whitespace-pre-line" rows="3" [ngModel]="paymentNote()" (ngModelChange)="mutPaymentNote($event)" (change)="save()"></textarea>
-              } @else {
-                <p class="bp-body-small text-secondary mb-2 whitespace-pre-line">{{ paymentNote() }}</p>
-              }
+              <div class="flex items-center justify-between mb-1">
+                <div class="bp-caption text-muted">Payment schedule</div>
+                @if (editable()) { <button type="button" class="bp-sow-ibtn" title="Edit" (click)="openEditBoiler('payment')"><lucide-icon name="pencil" [size]="15" /></button> }
+              </div>
+              <p class="bp-body-small text-secondary mb-2 whitespace-pre-line">{{ paymentNote() }}</p>
               <div class="overflow-hidden rounded-md border border-hairline">
                 <div class="grid grid-cols-[110px_90px_90px_110px_minmax(0,1fr)_32px] items-center gap-x-4 border-b border-hairline bg-fill px-3 py-2">
                   <span class="bp-table-column-header">Date</span><span class="bp-table-column-header">Grace</span><span class="bp-table-column-header">Amount</span><span class="bp-table-column-header">Refundable</span><span class="bp-table-column-header">Details</span>
@@ -258,11 +266,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
         <div class="bp-card">
           <div class="bp-sow-head"><span class="bp-card-title">Section 6 · Signature</span></div>
           <div class="p-4 pt-3">
-            @if (editable()) {
-              <textarea class="bp-sow-cell whitespace-pre-line" rows="3" [ngModel]="conclusionNote()" (ngModelChange)="mutConclusionNote($event)" (change)="save()"></textarea>
-            } @else {
-              <p class="bp-body-small text-secondary whitespace-pre-line">{{ conclusionNote() }}</p>
-            }
+            <p class="bp-body-small text-secondary whitespace-pre-line">{{ bp('conclusion') }}</p>
             <div class="mt-3 flex flex-wrap items-end gap-8 bp-body-small">
               <div><div class="bp-caption text-muted">Agency</div><div class="font-semibold">{{ s.status === 'counterparty_signed' || s.status === 'executed' ? 'Signed' : 'Awaiting signature' }}</div></div>
               <div><div class="bp-caption text-muted">Supplier</div><div class="font-semibold">{{ s.status === 'executed' ? 'Signed' : 'Awaiting signature' }}</div></div>
@@ -419,14 +423,13 @@ export class SowPanelComponent {
     this.mut((c) => ({ ...c, projectDetailOverrides: { ...(c.projectDetailOverrides ?? {}), [label]: v } }));
   }
 
-  // Section 5 · the editable intro under the Payment schedule heading — the
-  // boilerplate (codelist) by default; an edit stores an override.
+  // Editable boilerplate (Section 1 Intro + Section 5 Payment note) — the
+  // sow_boilerplate codelist by default, an edit stores an override; edited via
+  // the shared prose popup, same as the other sections. (Conclusion is fixed.)
+  protected readonly introNote = computed(() => this.edited().introNote ?? this.bp('intro'));
+  protected readonly introNa = computed(() => !!this.edited().introNa);
+  toggleIntroNa(na: boolean): void { this.mut((c) => ({ ...c, introNa: na })); this.save(); }
   protected readonly paymentNote = computed(() => this.edited().paymentNote ?? this.bp('payment_schedule'));
-  mutPaymentNote(v: string): void { this.mut((c) => ({ ...c, paymentNote: v })); }
-
-  // Section 6 · signature conclusion — boilerplate (codelist) by default, editable.
-  protected readonly conclusionNote = computed(() => this.edited().conclusionNote ?? this.bp('conclusion'));
-  mutConclusionNote(v: string): void { this.mut((c) => ({ ...c, conclusionNote: v })); }
 
   // Section 2 · SOW Parties — legal details resolved cross-org (gated definer),
   // shown by default; an edit stores an override per party (mutParty).
@@ -537,15 +540,22 @@ export class SowPanelComponent {
   protected readonly editOpen = signal(false);
   protected readonly editLabel = signal('');
   protected readonly editText = signal('');
-  private editTarget: { kind: 'service' | 'extra'; i: number } | { kind: 'special' } | null = null;
+  private editTarget: { kind: 'service' | 'extra'; i: number } | { kind: 'special' } | { kind: 'boiler'; code: 'intro' | 'payment' } | null = null;
   openEditService(i: number): void { this.editTarget = { kind: 'service', i }; this.editLabel.set(this.services()[i]?.name ?? 'Section'); this.editText.set(this.services()[i]?.content ?? ''); this.editOpen.set(true); }
   openEditExtra(i: number): void { this.editTarget = { kind: 'extra', i }; this.editLabel.set(this.extra()[i]?.name ?? 'Section'); this.editText.set(this.extra()[i]?.content ?? ''); this.editOpen.set(true); }
+  openEditBoiler(code: 'intro' | 'payment'): void {
+    this.editTarget = { kind: 'boiler', code };
+    this.editLabel.set(code === 'intro' ? 'Standard Intro' : 'Payment schedule');
+    this.editText.set(code === 'intro' ? this.introNote() : this.paymentNote());
+    this.editOpen.set(true);
+  }
   async saveEdit(): Promise<void> {
     const t = this.editTarget;
     if (!t) return;
     const val = this.editText().trim() || null;
     if (t.kind === 'service') { this.mut((c) => ({ ...c, services: this.services().map((x, idx) => (idx === t.i ? { ...x, content: val, na: false } : x)) })); }
     else if (t.kind === 'special') { this.mut((c) => ({ ...c, specialTerms: { name: 'Special Terms', content: val, na: false } })); }
+    else if (t.kind === 'boiler') { this.mut((c) => (t.code === 'intro' ? { ...c, introNote: val, introNa: false } : { ...c, paymentNote: val })); }
     else { this.mut((c) => ({ ...c, extra: this.extra().map((x, idx) => (idx === t.i ? { ...x, content: val ?? '' } : x)) })); }
     this.editOpen.set(false);
     await this.save();

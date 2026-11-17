@@ -62,8 +62,12 @@ export interface SowContent {
   partyOverrides?: { agency: string | null; supplier: string | null };
   projectDetailOverrides?: Record<string, string>; // keyed by field label
   payment?: { na?: boolean; rows: SowPaymentRow[] };
-  paymentNote?: string | null; // editable intro under the Payment schedule heading (defaults to the boilerplate codelist)
-  conclusionNote?: string | null; // editable Section 6 signature conclusion (defaults to the boilerplate codelist)
+  // Boilerplate text overrides (null/absent = show the sow_boilerplate codelist
+  // default) + their N/A flags — edited via the shared prose popup, same as the
+  // other sections.
+  introNote?: string | null;
+  introNa?: boolean;
+  paymentNote?: string | null; // editable intro under the Payment schedule heading
   specialTerms?: SowSubSection; // under Fees & Payment
   extra?: SowSubSection[];
 }
