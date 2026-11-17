@@ -40,7 +40,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
       <div class="mt-3 flex flex-col gap-3">
 
         @for (sec of sections(); track $index; let si = $index) {
-          <div class="bp-card">
+          <div class="bp-card group/sec">
             <div class="bp-sow-head">
               <div class="flex items-center gap-2 min-w-0 flex-1">
                 <span class="bp-card-title whitespace-nowrap">Section {{ si + 1 }} ·</span>
@@ -49,7 +49,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
                 } @else { <span class="bp-card-title">{{ sec.title }}</span> }
               </div>
               @if (editable() && !sec.signature) {
-                <div class="flex shrink-0 items-center gap-2">
+                <div class="flex shrink-0 items-center gap-2 opacity-0 transition-opacity group-hover/sec:opacity-100 focus-within:opacity-100">
                   <label class="bp-caption flex items-center gap-1"><input type="checkbox" class="accent-[var(--theme-accent)]" [checked]="!!sec.na" (change)="mutSectionNa(si, $any($event.target).checked)" /> N/A</label>
                   @if (!sec.na) {
                     <button type="button" class="bp-sow-ibtn" title="Edit section text" (click)="openEditSection(si)"><lucide-icon name="pencil" [size]="15" /></button>
@@ -75,7 +75,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
               <div class="p-4 pt-3 flex flex-col gap-3">
                 @if (sec.text) { <div class="bp-md bp-body-small text-secondary whitespace-pre-line" [innerHTML]="sec.text | md"></div> }
                 @for (sub of sec.subs; track $index; let sj = $index) {
-                  <div class="group">
+                  <div class="group/sub">
                     <div class="flex items-start justify-between gap-2">
                       <div class="flex items-baseline gap-2 min-w-0 flex-1">
                         <span class="bp-card-title whitespace-nowrap">{{ si + 1 }}.{{ sj + 1 }}</span>
@@ -84,7 +84,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
                         } @else { <span class="bp-card-title">{{ sub.title }}</span> }
                       </div>
                       @if (editable()) {
-                        <div class="flex shrink-0 items-center gap-2">
+                        <div class="flex shrink-0 items-center gap-2 opacity-0 transition-opacity group-hover/sub:opacity-100 focus-within:opacity-100">
                           <label class="bp-caption flex items-center gap-1 text-muted"><input type="checkbox" class="accent-[var(--theme-accent)]" [checked]="!!sub.na" (change)="mutSubNa(si, sj, $any($event.target).checked)" /> N/A</label>
                           @if (!sub.na) { <button type="button" class="bp-sow-ibtn" title="Edit text" (click)="openEditSub(si, sj)"><lucide-icon name="pencil" [size]="15" /></button> }
                           <button type="button" class="bp-sow-ibtn" title="Remove" (click)="removeSub(si, sj)"><lucide-icon name="trash-2" [size]="14" /></button>
