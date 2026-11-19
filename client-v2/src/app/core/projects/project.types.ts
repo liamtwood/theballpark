@@ -86,6 +86,8 @@ export interface QuoteLine {
    *  cost), true/false = explicit. */
   installed: boolean | null;
   unit: string | null;
+  /** Unit-driven size — the platter "serves N" pack size (null for other units). */
+  serves: number | null;
   imageUrl: string | null;
   quantity: number;
   /** Category (joined via the live item) — the Estimate tab groups by it;
@@ -147,6 +149,9 @@ export interface QuoteLine {
    *  values, the per-unit upcharge (stacks on the guide), and a display label
    *  ("Ivory · Bedazzled"). Null when the item has no variant. */
   variant?: { values: Record<string, string>; upcharge: number; label: string | null } | null;
+  /** The chosen variant's own description (per-value markdown, e.g. a menu's
+   *  courses), resolved server-side. Shown below the item description. */
+  variantDescription?: string | null;
 }
 
 /** Per-item send-state — the single switch between the cart and final views. */

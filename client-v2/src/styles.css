@@ -1352,6 +1352,42 @@ a.bp-contact-pill:hover { border-color: var(--theme-accent); }
   border-radius: var(--radius-card);
 }
 
+/* Top-nav "Inbox (N)" attention pulse — set while the needs-your-action count > 0
+   (Liam 2026-11-19). Gentle infinite fade in the accent, so a waiting message
+   keeps drawing the eye without the harsh one-shot .bp-blink outline. */
+@keyframes bp-nav-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.bp-nav-link--alert {
+  color: var(--theme-accent);
+  animation: bp-nav-pulse 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bp-nav-link--alert { animation: none; color: var(--theme-accent); }
+}
+
+/* Inbox landing columns (Liam 2026-11-19): the right-side meta of every inbox card
+   is a fixed Total · SOW · Status grid so columns line up across cards, with a
+   matching header row (.bp-inbox-colhead) above the list. Empty SOW cells (agent
+   project rows, supplier group banners) keep the alignment; cost left-justifies. */
+.bp-inbox-cols {
+  display: grid;
+  grid-template-columns: 90px 118px 128px;
+  align-items: center;
+  justify-items: start;
+  gap: 8px;
+  flex: none;
+}
+.bp-inbox-colhead span {
+  /* Same style as the Ballpark tab's column headers (.bp-estimate-th). */
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
 .bp-card {
   position: relative; /* overlay anchors: .bp-fav-btn, tag chips, badges */
   display: block;
@@ -2418,6 +2454,8 @@ input.bp-input-field::-webkit-inner-spin-button { -webkit-appearance: none; marg
 /* Transparent action (e.g. Change Cost) — no fill, hairline border, fills on hover. */
 .bp-act--transparent { background: transparent; color: var(--color-text); border-color: var(--color-border-hairline); }
 .bp-act--transparent:hover:not(:disabled) { background: var(--color-fill); }
+/* Compact size — content-width (no 8rem min), tighter padding; for header action rows. */
+.bp-act--sm { min-width: 0; padding: 6px 11px; font-size: var(--text-xs); gap: 5px; }
 
 /* White agency bubble — reads as a card on the parchment ground. */
 .bp-bubble {

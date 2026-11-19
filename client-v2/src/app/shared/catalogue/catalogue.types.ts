@@ -31,6 +31,8 @@ export interface CatalogueItem {
   installDescription: string | null;
   basePrice: number | null;
   unit: string | null;
+  /** Unit-driven size — platter "serves N" pack size (null/absent for other units). */
+  serves?: number | null;
   coverUrl: string | null;
   /** All gallery image URLs in display order (cover first) — powers the Quick
    *  View carousel. Optional: only the marketplace list projection carries it;

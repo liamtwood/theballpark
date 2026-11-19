@@ -1,0 +1,6 @@
+name,category,description,base_price,unit,serves,time_unit,size,tier,tags,lead_time_days,install_cost,install_unit,install_description,image_urls,sku
+Canapes,Catering,"Gourmet bite-sized appetizers — from foie gras to pigs in blankets.",55.92,per_guest,,,,,canapés;reception,,,,,https://cdn.example.com/canapes.jpg,
+Food Truck for 200,Street Food & Food Trucks,"Street-food truck catering for up to 200 guests.",12204,platter,200,,,,street food;festival,7,,,,https://cdn.example.com/truck.jpg,
+Aerial Photo & Video,Drones,"Aerial photography and videography packages.",900,time,,day,,,drone;aerial;video,3,,,,https://cdn.example.com/aerial.png,
+Rustic Trestle Table,Furniture,"Reclaimed-wood trestle table, seats 8.",18.00,size,,,large,standard,furniture;tables;hire,2,,,,https://cdn.example.com/table.jpg,TBL-L
+LED Uplighter,AV,"Wireless battery uplighter, RGB colour.",12.50,each,,,,standard,lighting;uplighter,1,2.50,per_item,"Positioning and colour set on arrival.",https://cdn.example.com/uplighter.jpg;https://cdn.example.com/uplighter-2.jpg,UP-01

@@ -5,7 +5,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../api.service';
-import { Sow, SowCreate, SowParties, SowPrefill, SowSign, SowUpdate } from './sow.types';
+import { Sow, SowComment, SowCreate, SowHistory, SowParties, SowPrefill, SowReviewAction, SowSuggestions, SowUpdate } from './sow.types';
 
 @Injectable({ providedIn: 'root' })
 export class SowService {
@@ -31,11 +31,6 @@ export class SowService {
     return this.api.patch<Sow>(`/api/sow/${id}`, patch);
   }
 
-  /** Sign — counterparty first, author counter-signs. */
-  sign(id: string, payload: SowSign): Observable<Sow> {
-    return this.api.post<Sow>(`/api/sow/${id}/sign`, payload);
-  }
-
   /** Suggested content for a new SOW, from the project + the supplier's items. */
   prefill(projectId: string): Observable<SowPrefill> {
     return this.api.get<SowPrefill>(`/api/sow/prefill?projectId=${encodeURIComponent(projectId)}`);
@@ -44,5 +39,55 @@ export class SowService {
   /** Both parties' legal details (gated cross-org resolver). */
   partiesFor(id: string): Observable<SowParties> {
     return this.api.get<SowParties>(`/api/sow/${id}/parties`);
+  }
+
+  /** Render the SOW to a PDF from the client's flat print model (+ header meta). */
+  pdf(id: string, blocks: unknown[], meta?: unknown): Observable<Blob> {
+    return this.api.postBlob(`/api/sow/${id}/pdf`, { blocks, meta });
+  }
+
+  /** A lifecycle transition — send / revise (author) or accept / decline (counterparty). */
+  review(id: string, action: SowReviewAction): Observable<{ status: string }> {
+    return this.api.post<{ status: string }>(`/api/sow/${id}/review`, { action });
+  }
+
+  /** The review-comment thread on a SOW (both parties; RLS-scoped). */
+  comments(id: string): Observable<SowComment[]> {
+    return this.api.get<SowComment[]>(`/api/sow/${id}/comments`);
+  }
+
+  /** Post a comment; `anchorId` = the SOW node id (null = whole document). */
+  addComment(id: string, body: string, anchorId: string | null): Observable<SowComment> {
+    return this.api.post<SowComment>(`/api/sow/${id}/comments`, { body, anchorId });
+  }
+
+  /** Resolve/close a comment (owner side). */
+  resolveComment(id: string, commentId: string): Observable<SowComment> {
+    return this.api.post<SowComment>(`/api/sow/${id}/comments/${commentId}/resolve`, {});
+  }
+
+  /** Edit your own comment's body (author side, while open). */
+  editComment(id: string, commentId: string, body: string): Observable<SowComment> {
+    return this.api.patch<SowComment>(`/api/sow/${id}/comments/${commentId}`, { body });
+  }
+
+  /** Delete your own comment (author side). */
+  deleteComment(id: string, commentId: string): Observable<{ id: string }> {
+    return this.api.delete<{ id: string }>(`/api/sow/${id}/comments/${commentId}`);
+  }
+
+  /** Status-change history + total comment count. */
+  history(id: string): Observable<SowHistory> {
+    return this.api.get<SowHistory>(`/api/sow/${id}/history`);
+  }
+
+  /** AI change proposals from the conversation (author runs it on demand). */
+  suggest(id: string): Observable<SowSuggestions> {
+    return this.api.get<SowSuggestions>(`/api/sow/${id}/suggest`);
+  }
+
+  /** Apply the accepted/edited suggestions (SOW content + the live lines). */
+  applySuggestions(id: string, accepted: Partial<SowSuggestions>): Observable<{ ok: boolean }> {
+    return this.api.post<{ ok: boolean }>(`/api/sow/${id}/apply-suggestions`, accepted);
   }
 }

@@ -135,6 +135,7 @@ export function quoteLineToCatalogueItem(l: QuoteLine): CatalogueItem {
     installDescription: l.installDescription,
     basePrice: l.basePrice,
     unit: l.unit,
+    serves: l.serves,
     coverUrl: l.imageUrl,
     categoryId: l.categoryId ?? '',
     subcategoryId: null,

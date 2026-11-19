@@ -22,6 +22,13 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdf.worker.min.mjs', document.bas
   `,
   styles: [`
     :host ::ng-deep canvas { display: block; width: 100%; height: auto; }
+    /* Print: each canvas IS one PDF page, so keep it whole (never split across
+       sheets) and start every page after the first on a fresh sheet — the
+       embedded PDF then paginates like the original instead of running on. */
+    @media print {
+      :host ::ng-deep canvas { break-inside: avoid; page-break-inside: avoid; }
+      :host ::ng-deep canvas + canvas { break-before: page; page-break-before: always; }
+    }
   `],
 })
 export class PdfPagesComponent {

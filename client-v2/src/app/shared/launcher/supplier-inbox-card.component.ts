@@ -35,14 +35,18 @@ import { StatusPillComponent } from '../status-pill/status-pill.component';
         <ul class="bp-inboxcard__list">
           @for (it of items(); track it.projectId + '|' + it.itemId) {
             <li>
-              <a [routerLink]="['/inbox', it.projectId]" [queryParams]="{ item: it.itemId }" class="bp-inboxcard__row">
+              <a [routerLink]="['/inbox', it.projectId]" [queryParams]="it.kind === 'sow' ? { sow: '1' } : { item: it.itemId }" class="bp-inboxcard__row">
                 <span class="bp-inboxcard__main">
                   <span class="bp-inboxcard__name">{{ it.projectName || it.name }}</span>
-                  <span class="bp-inboxcard__agency">{{ subline(it) }}</span>
+                  <span class="bp-inboxcard__agency">{{ it.kind === 'sow' ? 'Statement of Work' : subline(it) }}</span>
                 </span>
                 <span class="bp-inboxcard__meta">
-                  <app-status-pill list="line_display_status" [code]="pill(it)" [strong]="needsYou(it)" />
-                  @if (it.price != null) { <span class="bp-inboxcard__price">{{ money(it.price) }}</span> }
+                  @if (it.kind === 'sow') {
+                    <app-status-pill list="sow_status" [code]="it.sowStatus || it.status || 'draft'" />
+                  } @else {
+                    <app-status-pill list="line_display_status" [code]="pill(it)" [strong]="needsYou(it)" />
+                    @if (it.price != null) { <span class="bp-inboxcard__price">{{ money(it.price) }}</span> }
+                  }
                 </span>
               </a>
             </li>

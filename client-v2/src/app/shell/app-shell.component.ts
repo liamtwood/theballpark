@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, resource } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, firstValueFrom, map } from 'rxjs';
@@ -41,7 +41,8 @@ import { ConfirmDialogComponent } from '../shared/confirm/confirm-dialog.compone
             @for (item of navItems(); track item.path) {
               <a [routerLink]="item.path" [queryParams]="item.query ?? null"
                  routerLinkActive="bp-nav-link--active"
-                 [routerLinkActiveOptions]="{ exact: item.exact }" class="bp-nav-link">
+                 [routerLinkActiveOptions]="{ exact: item.exact }" class="bp-nav-link"
+                 [class.bp-nav-link--alert]="item.blink">
                 <lucide-icon [name]="item.icon" [size]="16" [strokeWidth]="1.75" />{{ item.label }}
               </a>
             }
@@ -104,7 +105,14 @@ export class AppShellComponent {
     },
     loader: () => firstValueFrom(this.inbox.actionCount()),
   });
-  protected readonly actionCount = computed(() => this.actionCountRes.value()?.actionItems ?? 0);
+  // Keep the LAST known count visible while a navigation re-fetch is in flight —
+  // otherwise value() is undefined mid-reload and the badge drops to 0, which reads
+  // as "no messages" (Liam 2026-11-19). linkedSignal holds the prior value until the
+  // new one lands, so the recalc runs in the background without the count vanishing.
+  protected readonly actionCount = linkedSignal<number | undefined, number>({
+    source: () => this.actionCountRes.value()?.actionItems,
+    computation: (next, prev) => next ?? prev?.value ?? 0,
+  });
 
   /** Primary nav, persona-aware — mirrors the launcher tile sets so the header
    *  and home agree. Suppliers manage incoming work + their shop (no create);
@@ -119,7 +127,7 @@ export class AppShellComponent {
     // Messages (/inbox) item; ballpark has no inbox.
     const base = t === 'supplier' ? SUPPLIER_NAV : AGENCY_NAV;
     return n > 0
-      ? base.map((it) => (it.path === '/inbox' ? { ...it, label: `Inbox (${n})` } : it))
+      ? base.map((it) => (it.path === '/inbox' ? { ...it, label: `Inbox (${n})`, blink: true } : it))
       : base;
   });
 
@@ -142,6 +150,8 @@ interface NavItem {
   icon: string;
   exact: boolean;
   query?: Record<string, string>;
+  /** Pulse the item to draw the eye — set on Inbox when the action count > 0. */
+  blink?: boolean;
 }
 
 /** Agency (default) — create + track projects, message suppliers, browse. */

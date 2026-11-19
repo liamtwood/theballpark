@@ -47,19 +47,47 @@ import { lastActivity } from './inbox-status';
           } @else if ((supplierSummary.value() ?? []).length === 0) {
             <p class="bp-body-small text-secondary">No conversations yet — an agency will reach out here.</p>
           } @else {
+            <!-- Search + Unread filter — the same controls as the agency (Liam 2026-11-19).
+                 No Group by: a supplier only sees their own projects. -->
+            <div class="mx-auto mb-3 flex w-full max-w-[var(--workspace-max)] items-center gap-3">
+              <div class="min-w-0 flex-1">
+                <app-catalogue-search [large]="true" [value]="search()" [count]="filteredSupplierProjects().length" (valueChange)="search.set($event)" />
+              </div>
+              <div class="inline-flex items-center rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
+                <button type="button" class="bp-viewtoggle" [class.bp-viewtoggle--active]="filtersOpen()"
+                        aria-label="Filter options" aria-controls="inbox-filters-sup"
+                        [attr.aria-expanded]="filtersOpen()" (click)="filtersOpen.set(!filtersOpen())">
+                  <lucide-icon name="funnel-plus" [size]="15" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+            @if (filtersOpen()) {
+              <div id="inbox-filters-sup" class="mx-auto mb-4 flex w-full max-w-[var(--workspace-max)] items-center gap-3">
+                <label class="flex h-[38px] cursor-pointer items-center gap-2 bp-body-small text-text">
+                  <input type="checkbox" class="h-4 w-4 cursor-pointer accent-[var(--theme-accent)]"
+                         [checked]="unreadOnly()" (change)="onUnreadChange($event)" />
+                  Unread
+                </label>
+              </div>
+            }
             <!-- Supplier landing: same card shape as the agent, but ITEMS (name /
                  status / cost) instead of suppliers; the project pill is the
                  supplier-perspective rollup (Liam 2026-10-30). -->
             <!-- Full-width rows: each card fills the container (the row-style card
                  reads better stretched than 2-up) — Liam 2026-10-31. -->
-            <div class="mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-3">
-              @for (proj of supplierSummary.value(); track proj.projectId) {
-                <!-- Whole card → the project inbox (all items in detail). No expand;
-                     the top line carries "name · N items" (Liam 2026-10-31). -->
-                <a [routerLink]="['/inbox', proj.projectId]" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="proj.projectName">
-                  <!-- Date circle (left, centred vertically) · project name + supplier
-                       name with its item names (·-joined) · cost + status (Liam 2026-10-31). -->
-                  <div class="flex items-center gap-3 p-5">
+            <!-- One panel: a header row + rows separated by hairlines, matching the
+                 Ballpark tab (Liam 2026-11-19). -->
+            <div class="mx-auto w-full max-w-[var(--workspace-max)] overflow-hidden bp-card">
+              <div class="flex items-center gap-3 border-b border-hairline px-5 py-2.5 bp-inbox-colhead">
+                <span class="w-14 shrink-0">Date</span>
+                <span class="min-w-0 flex-1">Project</span>
+                <div class="bp-inbox-cols"><span>Total</span><span>SOW</span><span>Status</span></div>
+              </div>
+              @if (filteredSupplierProjects().length === 0) {
+                <p class="px-5 py-4 bp-body-small text-secondary">No conversations match "{{ search() }}".</p>
+              }
+              @for (proj of filteredSupplierProjects(); track proj.projectId) {
+                <a [routerLink]="['/inbox', proj.projectId]" class="flex items-center gap-3 border-b border-hairline px-5 py-4 no-underline text-text transition-colors hover:bg-fill" [attr.aria-label]="proj.projectName">
                     <!-- Unactioned (your move) → dark-pink filled circle; otherwise the
                          hairline circle with a corner tick = your side is handled (Liam 2026-10-31). -->
                     <div class="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-fill px-1 text-center"
@@ -86,11 +114,11 @@ import { lastActivity } from './inbox-status';
                         }
                       </div>
                     </div>
-                    <span class="flex shrink-0 items-center gap-2">
+                    <div class="bp-inbox-cols">
                       <span class="text-base font-semibold leading-none text-text">{{ money(proj.confirmedWork) }}</span>
+                      <span>@if (proj.sowStatus) { <app-status-pill list="sow_status" [code]="proj.sowStatus" /> }</span>
                       <app-status-pill list="supplier_self_status" [code]="proj.status" />
-                    </span>
-                  </div>
+                    </div>
                 </a>
               }
             </div>
@@ -142,12 +170,18 @@ import { lastActivity } from './inbox-status';
                date circle + action indicator · name over sub-line · cost + rollup status. -->
           <div class="mx-auto flex w-full max-w-[var(--workspace-max)] flex-col gap-3">
             @if (agentView() === 'project') {
-              @if (filteredRows().length === 0) {
-                <p class="bp-body-small text-secondary">No projects match "{{ search() }}".</p>
-              }
-              @for (row of filteredRows(); track row.id) {
-                <a [routerLink]="['/inbox', row.ref ?? row.id]" class="bp-card bp-card--lifted block no-underline text-text" [attr.aria-label]="row.name">
-                  <div class="flex items-center gap-3 p-5">
+              <!-- One panel: header + hairline-separated rows (Ballpark-tab style, Liam 2026-11-19). -->
+              <div class="overflow-hidden bp-card">
+                <div class="flex items-center gap-3 border-b border-hairline px-5 py-2.5 bp-inbox-colhead">
+                  <span class="w-14 shrink-0">Date</span>
+                  <span class="min-w-0 flex-1">Project</span>
+                  <div class="bp-inbox-cols"><span>Total</span><span>SOW</span><span>Status</span></div>
+                </div>
+                @if (filteredRows().length === 0) {
+                  <p class="px-5 py-4 bp-body-small text-secondary">No projects match "{{ search() }}".</p>
+                }
+                @for (row of filteredRows(); track row.id) {
+                  <a [routerLink]="['/inbox', row.ref ?? row.id]" class="flex items-center gap-3 border-b border-hairline px-5 py-4 no-underline text-text transition-colors hover:bg-fill" [attr.aria-label]="row.name">
                     <div class="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-fill px-1 text-center"
                          [style.background]="row.actionRequired ? 'var(--theme-accent)' : null"
                          [style.border-color]="row.actionRequired ? 'transparent' : null">
@@ -171,13 +205,14 @@ import { lastActivity } from './inbox-status';
                         }
                       </div>
                     </div>
-                    <span class="flex shrink-0 items-center gap-2" [title]="hoverText(row)">
+                    <div class="bp-inbox-cols" [title]="hoverText(row)">
                       <span class="text-base font-semibold leading-none text-text">{{ money(row.confirmedWork) }}</span>
+                      <span></span>
                       <app-status-pill list="supplier_summary_status" [code]="summaryCode(row)" />
-                    </span>
-                  </div>
+                    </div>
                 </a>
-              }
+                }
+              </div>
             } @else {
               <!-- Grouped by supplier: a collapsible banner per supplier (+ toggle)
                    with its project cards grouped underneath (Liam 2026-11-04). -->
@@ -205,10 +240,11 @@ import { lastActivity } from './inbox-status';
                     <div class="bp-list-title truncate" style="font-size: var(--text-xl)">{{ g.name }}<span class="font-normal text-secondary"> · {{ g.rows.length }} project{{ g.rows.length === 1 ? '' : 's' }}</span></div>
                     <div class="truncate text-sm text-secondary">{{ projectNames(g) }}</div>
                   </div>
-                  <span class="flex shrink-0 items-center gap-2" [title]="hoverText(g)">
+                  <div class="bp-inbox-cols" [title]="hoverText(g)">
                     <span class="text-base font-semibold leading-none text-text">{{ money(g.confirmedWork) }}</span>
+                    <span></span>
                     <app-status-pill list="supplier_summary_status" [code]="summaryCode(g)" />
-                  </span>
+                  </div>
                   <lucide-icon [name]="isSupplierOpen(g.orgId) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" aria-hidden="true" />
                 </button>
                   @if (isSupplierOpen(g.orgId)) {
@@ -238,10 +274,11 @@ import { lastActivity } from './inbox-status';
                               }
                             </div>
                           </div>
-                          <span class="flex shrink-0 items-center gap-2" [title]="hoverText(r.supplier)">
+                          <div class="bp-inbox-cols" [title]="hoverText(r.supplier)">
                             <span class="text-base font-semibold leading-none text-text">{{ money(r.supplier.confirmedWork) }}</span>
+                            <span>@if (r.supplier.sowStatus) { <app-status-pill list="sow_status" [code]="r.supplier.sowStatus" /> }</span>
                             <app-status-pill list="supplier_summary_status" [code]="summaryCode(r.supplier)" />
-                          </span>
+                          </div>
                         </div>
                       </a>
                     }
@@ -262,7 +299,10 @@ import { lastActivity } from './inbox-status';
         <div class="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-x-4 gap-y-2">
           @for (s of sb.suppliers; track s.name) {
             <span class="min-w-0 truncate bp-body-small text-text">{{ s.name }}</span>
-            <span [title]="hoverText(s)"><app-status-pill list="supplier_summary_status" [code]="summaryCode(s)" /></span>
+            <span class="flex items-center gap-1.5">
+              <span [title]="hoverText(s)"><app-status-pill list="supplier_summary_status" [code]="summaryCode(s)" /></span>
+              @if (s.sowStatus) { <app-status-pill list="sow_status" [code]="s.sowStatus" /> }
+            </span>
             <span class="bp-body-small text-right text-secondary">{{ s.itemCount }} item{{ s.itemCount === 1 ? '' : 's' }}</span>
             <span class="bp-meta text-right">{{ lastActivity(s.lastMessageAt) }}</span>
             <span class="w-4 text-right text-[var(--color-state-emerald)]">
@@ -375,6 +415,30 @@ export class InboxLandingComponent {
     }
   }
 
+  /** Inbox row order: action-required first, then most-recent last reply
+   *  (Liam 2026-11-19). Copies before sorting so the resource value isn't mutated. */
+  private sortInbox<T>(list: T[], isAction: (x: T) => boolean, lastAt: (x: T) => string | null): T[] {
+    return [...list].sort((a, b) =>
+      ((isAction(b) ? 1 : 0) - (isAction(a) ? 1 : 0))
+      || (lastAt(b) ?? '').localeCompare(lastAt(a) ?? '')
+    );
+  }
+
+  /** Supplier landing filtered by search + Unread, then ordered action-first /
+   *  most-recent (Liam 2026-11-19). */
+  protected readonly filteredSupplierProjects = computed(() => {
+    const q = this.q();
+    const unread = this.unreadOnly();
+    let list = this.supplierSummary.value() ?? [];
+    if (unread) list = list.filter((p) => p.status === 'action_required');
+    if (q) list = list.filter((p) =>
+      p.projectName.toLowerCase().includes(q)
+      || (p.agencyName?.toLowerCase().includes(q) ?? false)
+      || p.items.some((i) => i.name.toLowerCase().includes(q))
+    );
+    return this.sortInbox(list, (p) => p.status === 'action_required', (p) => p.lastMessageAt);
+  });
+
   /** Agency Messages rollup — only hits the network for the agency (the
    *  /summary endpoint returns [] to suppliers anyway; skip the call). */
   protected readonly rows = resource<InboxSummaryRow[], boolean>({
@@ -422,13 +486,13 @@ export class InboxLandingComponent {
     const unread = this.unreadOnly();
     let rows = this.rows.value() ?? [];
     if (unread) rows = rows.filter((r) => r.actionRequired);
-    if (!q) return rows;
-    return rows.filter((r) =>
+    if (q) rows = rows.filter((r) =>
       (r.name?.toLowerCase().includes(q) ?? false)
       || (r.clientName?.toLowerCase().includes(q) ?? false)
       || r.suppliers.some((s) => s.name.toLowerCase().includes(q))
       || r.itemNames.some((n) => n.toLowerCase().includes(q))
     );
+    return this.sortInbox(rows, (r) => r.actionRequired, (r) => this.agentLastMessage(r));
   });
   /** Supplier cards filtered by the search text + the Unread (needs-you) filter. */
   protected readonly filteredSupplierRows = computed(() => {

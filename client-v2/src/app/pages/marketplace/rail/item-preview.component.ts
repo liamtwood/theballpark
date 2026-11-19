@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, resource, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -9,6 +9,8 @@ import { MarkdownPipe } from '../../../shared/markdown.pipe';
 import { currencySymbol, detailsTotalStr } from '../../../shared/details-format';
 import { ItemizedRow } from '../../projects/quote-line.util';
 import { DetailsEditorComponent } from '../../../shared/details-editor.component';
+import { CodelistService } from '../../../core/codelists/codelist.service';
+import { unitServesLabel } from '../../../shared/unit-display';
 
 /** pV2-06b — the rail's ITEM mode: image, name, supplier, price + unit,
  *  category context, full description. Pure preview over the already-
@@ -95,9 +97,15 @@ import { DetailsEditorComponent } from '../../../shared/details-editor.component
       }
     </div>
 
+    <!-- Qty × unit + unit-driven size ("1 × Package (serves 150)"), bold under the
+         line TOTAL. No icon so it left-aligns with the total and the variant icon. -->
+    @if (lineTotal() !== null && unitServesLine()) {
+      <div class="bp-meta mt-2 font-semibold text-text">@if (quantity() != null) {{{ quantity() }} × }{{ unitServesLine() }}</div>
+    }
+
     <!-- pV2-STORE-VARIANTS-UPCHARGE-01 — the chosen variant ("Ivory · Bedazzled"). -->
     @if (variantLabel()) {
-      <div class="bp-meta mt-2 text-secondary"><lucide-icon name="layers" [size]="12" class="mr-1 inline align-[-1px]" />{{ variantLabel() }}</div>
+      <div class="bp-meta mt-2 font-semibold text-text"><lucide-icon name="layers" [size]="12" class="mr-1 inline align-[-1px]" />{{ variantLabel() }}</div>
     }
 
     <!-- Everything below the image + price collapses behind "More" when
@@ -164,6 +172,15 @@ import { DetailsEditorComponent } from '../../../shared/details-editor.component
       }
     }
 
+    <!-- 2b · Variant description — the chosen variant's own copy (e.g. a menu's
+         courses), below the item description in the same block format. -->
+    @if (!editable() && variantDescription()) {
+      <div class="mt-3 border-t border-hairline pt-3">
+        <span class="bp-field-label">{{ variantLabel() || 'Variant' }}</span>
+        <div class="bp-md bp-body-small mt-1 text-secondary" [innerHTML]="variantDescription() | md"></div>
+      </div>
+    }
+
     <!-- 3 · Services — what's included / done on-site. -->
     @if (editable()) {
       <div class="mt-3 border-t border-hairline pt-3">
@@ -226,6 +243,14 @@ import { DetailsEditorComponent } from '../../../shared/details-editor.component
 })
 export class ItemPreviewComponent {
   private readonly auth = inject(AuthService);
+  private readonly codelistSvc = inject(CodelistService);
+
+  // The item's unit + unit-driven size as one label ("Package (serves 150)"),
+  // matching the item edit card — shown under the line TOTAL.
+  private readonly unitsRes = resource({ loader: () => this.codelistSvc.list('item_unit') });
+  protected readonly unitServesLine = computed(() =>
+    unitServesLabel(this.item().unit, this.item().serves ?? null, this.unitsRes.value()),
+  );
 
   readonly item = input.required<CatalogueItem>();
   /** Resolved category name (the store has the rail list — no fetch). */
@@ -251,6 +276,11 @@ export class ItemPreviewComponent {
   /** pV2-STORE-VARIANTS-UPCHARGE-01 — the chosen variant label ("Ivory · Bedazzled"),
    *  shown under the price. Null when the line has no variant. */
   readonly variantLabel = input<string | null>(null);
+  /** The chosen variant's own description (markdown) — rendered as a block below
+   *  the item description (e.g. a menu's courses). Null → block hidden. */
+  readonly variantDescription = input<string | null>(null);
+  /** The line quantity, shown before the unit under the TOTAL ("1 × Package …"). */
+  readonly quantity = input<number | null>(null);
   /** The AGENT's client-facing quote text (rendered as the first block, view
    *  mode). null → an empty prompt when editable, else the block is hidden. */
   readonly clientDescription = input<string | null>(null);

@@ -122,3 +122,61 @@ Extend `sow-document.component.ts` (don't rebuild); reuse `quoteItems` + `estima
 the SSOT; add the §3 items table (Source + AI Price Notes) + §2 render fields
 (`render_included`/`render_amendment_rounds`, additive). New server work = the AI
 Price-Notes generator (inbox `ai.service`) + the cross-org-safe supplier-name read.
+
+---
+
+## 2026-11-17 — SOW review lifecycle + generic review-comment machine (decision)
+
+**Lifecycle (reuses the per-line approvals vocab):** `Draft → In review → Accepted`
+(+ `Declined`), pills reuse the line tones (Accept=green, Decline=red, Suggest=yellow,
+Request-info=gray — `feedback_action_button_colors`).
+- **Draft** — supplier (author) builds; HTML view, editable; agent can't see it (RLS gate:
+  counterparty reads only when `status != 'draft'`).
+- **In review** — supplier "Send for review" (draft→in_review); agent sees the read-only SOW
+  + the comment thread; posts comments; supplier replies / edits / resolves.
+- **Accepted** — agent Accept (green) → snapshot lines **+ generate & freeze the PDF** = the
+  final rubber stamp (PDF is produced ON ACCEPT, not persisted earlier; Preview PDF stays
+  on-demand before). Decline (red) → declined.
+
+**Agent interaction v1 = comments only** (no suggested-edits / direct writes). The document
+stays author-owned & immutable-by-the-agent (keeps the existing SOW RLS boundary); the comment
+thread is the ONE place the agent can write. Suggested-edits = fast-follow.
+
+**Node IDs (DONE 2026-11-17):** `SowNode.id` seeded on create + preserved through edits
+(`withIds()`), new nodes get one in `addChild`. Lets a comment anchor to a section even as the
+tree reorders. Existing drafts must be re-created to seed ids.
+
+**Generic `review_comments` machine (one mechanism, SOW + item-image approvals):**
+```
+review_comments(id, entity_type 'sow'|'image', entity_id, anchor_id /*SOW node id, null for image*/,
+                author_org_id, author_user_id, body, status 'open'|'resolved',
+                created_at, resolved_at, resolved_by)
+```
+- SOW: entity_type='sow', entity_id=sow id, anchor_id=node id.
+- Item approvals (really the IMAGES): entity_type='image', entity_id=image id, anchor_id=null.
+- Machine = post (both parties) → read (both) → owning side **resolves/closes**.
+- **RLS (acquisition-grade, owed):** per-entity party resolver. SOW keys off the engagement
+  (`project_providers`: agency=`org_id`, supplier=`provider_org_id`; party = `app_current_org()
+  in (...)`, mirrors `sow_parties` 0042). Image keys off the image's owning org. Both parties
+  read+insert; owning side resolves. Needs its own RLS coverage test. Migration = 0046.
+
+**Also:** add **Request info** to the per-line item approvals (today accept/adjust/decline) for
+vocab parity — separate change from the SOW comments.
+
+**Build status (2026-11-17):**
+- ✅ Node IDs (`withIds`, seeded on create).
+- ✅ **0046** `review_comments` + per-entity RLS (sow party resolver; image deny) — applied dev.
+- ✅ **0047** draft→review visibility gate (counterparty_read `status<>'draft'`) — applied dev.
+- ✅ **0048** `document_review(id, action)` definer — send/revise (author) · accept/decline
+  (counterparty), party+status derived — applied dev.
+- ✅ **0049** sow_status pill values in_review/accepted — applied dev.
+- ✅ Backend: sow.service listComments/addComment/resolveComment + review + routes.
+- ✅ Client: SowComment/SowStatus/SowReviewAction types, sow.service methods, comment thread
+  dialog (post/resolve, badge per node) + lifecycle buttons (Send for review / Revise /
+  Accept / Decline).
+- ⏳ **OWED:** RLS **coverage test** for review_comments (acquisition-grade, before promote);
+  **PDF-on-accept** (snapshot lines + freeze the rubber-stamp PDF — currently Preview is
+  on-demand only, status flips without snapshot); **PDF-in-dialog** (Preview still opens a
+  tab); image-approval entity resolver; per-line **Request info** action.
+- Existing drafts predate node ids → re-Create to seed. Rebuild migs 0046–0049 applied to dev
+  only; promote runs them for preview/prod.

@@ -45,6 +45,11 @@ export class ApiService {
     return this.http.patch<T>(`${this.base()}${path}`, body, { withCredentials: true });
   }
 
+  /** POST and receive a binary Blob (e.g. a generated PDF). */
+  postBlob(path: string, body: unknown): Observable<Blob> {
+    return this.http.post(`${this.base()}${path}`, body, { withCredentials: true, responseType: 'blob' });
+  }
+
   /** POST multipart/form-data (file uploads). HttpClient sets the boundary
    *  Content-Type itself when handed a FormData — don't set it manually. */
   postForm<T>(path: string, form: FormData): Observable<T> {

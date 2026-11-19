@@ -1,4 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, linkedSignal, output, resource, signal, viewChild } from '@angular/core';
+import { CodelistService } from '../../core/codelists/codelist.service';
+import { unitServesLabel } from '../../shared/unit-display';
 import { CurrencyPipe, DatePipe, Location, NgClass } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -121,13 +123,15 @@ import { Sow } from '../../core/sow/sow.types';
               [selectedSowId]="sowSelected()"
               (selectThread)="selectThread($event)"
               (selectItem)="selectItem($event)"
-              (selectSow)="openSow($event)" />
+              (selectSow)="openSow($event)"
+              (createSow)="createSow($event)" />
           }
 
           <!-- SOW selected from the rail: the Statement of Work takes the right pane. -->
           @if (sowThread(); as st) {
             <div class="flex min-h-0 flex-col overflow-y-auto rounded-[var(--radius-card)] border border-hairline bg-surface p-5 shadow-[var(--shadow-xs)]">
-              <app-sow-panel [thread]="st" [viewer]="isAgency() ? 'agency' : 'supplier'" [project]="project()" />
+              <app-sow-panel [thread]="st" [viewer]="isAgency() ? 'agency' : 'supplier'" [project]="project()"
+                             [autoCreate]="sowAutoCreate()" (created)="sowsRes.reload()" />
             </div>
           } @else if (selectedThread(); as t) {
             <div class="flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-hairline bg-surface"
@@ -157,8 +161,8 @@ import { Sow } from '../../core/sow/sow.types';
                         {{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}
                       }
                     </h2>
-                    @if (selectedItem()) {
-                      <div class="bp-meta mt-0.5">{{ isAgency() ? (t.supplierName ?? 'Supplier') : t.projectName }}</div>
+                    @if (selectedItem(); as it) {
+                      <div class="bp-meta mt-0.5">{{ itemSubline(it) }}</div>
                     }
                     <!-- Hover reveals Original / Revised so they're not shown all the time. -->
                     <div class="pointer-events-none absolute left-0 top-full z-30 mt-1 hidden min-w-[11rem] rounded-[var(--radius-card)] border border-hairline bg-surface p-3 shadow-[var(--shadow-md)] group-hover:block">
@@ -175,12 +179,24 @@ import { Sow } from '../../core/sow/sow.types';
                     </div>
                   </span>
                   </div>
-                  <div class="flex shrink-0 items-center gap-2">
-                    <!-- Codelist-driven status pill (line_display_status) — text +
-                         colour editable in Settings ▸ Codelists (Liam 2026-10-29). -->
-                    @if (headerStatusCode(); as code) {
-                      <app-status-pill list="line_display_status" [code]="code" [strong]="headerNeedsYou()" />
-                    }
+                  <div class="flex shrink-0 items-start gap-2">
+                    <!-- Qty · Total on the top row — plain text, no pills; labels
+                         semibold, Total value in accent pink. Status pill underneath
+                         (Liam 2026-11-19). Total = the hover's "Revised". -->
+                    <div class="flex flex-col items-end gap-1">
+                      @if (selectedItem(); as it) {
+                        <div class="flex items-center gap-2 bp-body-small">
+                          <span>Qty:&nbsp;<span class="font-semibold tabular-nums">{{ it.quantity ?? 1 }}</span></span>
+                          <span class="text-muted">·</span>
+                          <span>Total&nbsp;<span class="font-semibold tabular-nums text-[var(--theme-accent)]">{{ (it.priceCurrent ?? it.priceRef ?? 0) | currency: 'GBP' : 'symbol' : '1.0-0' }}</span></span>
+                        </div>
+                      }
+                      <!-- Codelist-driven status pill (line_display_status) — text +
+                           colour editable in Settings ▸ Codelists (Liam 2026-10-29). -->
+                      @if (headerStatusCode(); as code) {
+                        <app-status-pill list="line_display_status" [code]="code" [strong]="headerNeedsYou()" />
+                      }
+                    </div>
                     <!-- Dialog mode: a close X replaces the kebab (Customize /
                          Assistant aren't offered in the focused dialog). -->
                     @if (dialogThread()) {
@@ -506,6 +522,14 @@ export class InboxProjectComponent {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly auth = inject(AuthService);
+  private readonly codelistSvc = inject(CodelistService);
+  // item_unit labels for the top-bar sub-line ("Package (serves 150) · Menu 1").
+  private readonly itemUnitsRes = resource({ loader: () => this.codelistSvc.list('item_unit') });
+  /** The top-bar sub-line: unit (+ serves) · variant, e.g. "Package (serves 150) · Menu 1". */
+  protected itemSubline(it: InboxThreadItem): string {
+    const unit = unitServesLabel(it.unit, it.unitSize, this.itemUnitsRes.value());
+    return [unit, it.variant].filter((x) => !!x).join(' · ');
+  }
 
   /** Supplier (standalone page) or agency (embedded project Inbox tab). */
   readonly viewer = input<'supplier' | 'agency'>('supplier');
@@ -565,6 +589,13 @@ export class InboxProjectComponent {
     { initialValue: this.route.snapshot.queryParamMap.get('supplier') }
   );
 
+  /** Deep-link: ?sow=1 opens the SOW panel on first load (from the home / feed
+   *  "Statement of Work" link). Honoured once, then normal selection takes over. */
+  private readonly wantSow = toSignal(
+    this.route.queryParamMap.pipe(map((p) => p.get('sow'))),
+    { initialValue: this.route.snapshot.queryParamMap.get('sow') }
+  );
+
   protected readonly threadsRes = resource({
     params: () => this.fetchKey() || undefined,
     loader: ({ params }) => firstValueFrom(this.inbox.projectInbox(params)),
@@ -589,13 +620,33 @@ export class InboxProjectComponent {
     return ts.find((t) => (this.isAgency() ? t.supplierOrgId : t.agencyOrgId) === sel) ?? ts[0] ?? null;
   });
   protected openSow(id: string): void { this.sowSelected.set(id); }
+  // ?sow=1 → open the SOW for the first thread once the threads load (honoured once).
+  private sowLinkHonoured = false;
+  private readonly sowDeepLink = effect(() => {
+    const ts = this.threads();
+    if (this.sowLinkHonoured || !this.wantSow() || !ts.length) return;
+    const t = ts.find((x) => x.items.length) ?? ts[0];
+    if (!t) return;
+    this.sowSelected.set(this.isAgency() ? t.supplierOrgId : t.agencyOrgId);
+    this.sowLinkHonoured = true;
+  });
+
+  // Supplier hit + on the (not-yet-created) SOW node: open the panel and bump a
+  // nonce the panel's effect watches to run its own create() flow. Keeping create
+  // in the panel means one owner for prefill→build→POST; (created) reloads the
+  // rail node pill here.
+  protected readonly sowAutoCreate = signal(0);
+  protected createSow(id: string): void {
+    this.sowSelected.set(id);
+    this.sowAutoCreate.update((n) => n + 1);
+  }
 
   // SOWs for the rail node (status pill + last-edited date), keyed by supplier.
   private readonly sowSvc = inject(SowService);
   protected readonly sowsRes = resource({
     params: () => this.projectId() || undefined,
     loader: ({ params }) => firstValueFrom(this.sowSvc.list(params)),
-  });
+  }); // protected: the SOW panel's (created) reloads this to refresh the rail node
   private readonly sowBySupplier = computed(() => {
     const m = new Map<string, Sow>();
     for (const s of this.sowsRes.value() ?? []) {
@@ -1024,6 +1075,7 @@ export class InboxProjectComponent {
   protected cardsFor(m: InboxBubble): QuoteLine[] {
     return this.cardsByMessage().get(m.id) ?? [];
   }
+
   /** The id of the LAST "New Cost Suggested" message in the current view — the
    *  revised card renders under this message only, so it appears ONCE (at the
    *  latest revision) instead of under every proposal in the history. */

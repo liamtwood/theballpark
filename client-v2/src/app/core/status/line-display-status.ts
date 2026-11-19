@@ -62,9 +62,16 @@ export interface LineStatusInput {
 /** A line is TERMINAL (settled — no turn, never bold) when both sides have
  *  accepted, or it is booked or declined/cancelled. */
 export function isTerminal(s: LineStatusInput): boolean {
-  if (s.buyerAccepted && s.sellerAccepted) return true;
   const st = (s.status ?? '').toString();
-  return st === 'booked' || st.startsWith('declined') || st === 'cancelled';
+  // Hard-terminal: booked or declined/cancelled — a later message doesn't reopen.
+  if (st === 'booked' || st.startsWith('declined') || st === 'cancelled') return true;
+  // Both-accepted is terminal UNLESS a message newer than the last price/accept
+  // action re-opens the ball — a question asked AFTER both sides accepted owes a
+  // reply, so the line is not settled (Liam 2026-11-19).
+  if (s.buyerAccepted && s.sellerAccepted) {
+    return !(s.lastEventIsMessage && s.lastMessageBy != null);
+  }
+  return false;
 }
 
 /** Whether the pill should render BOLD for `viewer`: the OTHER party sent the
@@ -89,19 +96,22 @@ export function lineDisplayCode(
   viewer: 'buyer' | 'seller',
 ): LineDisplayCode {
   const st = (s.status ?? '').toString();
-  // 1) Terminal deal states win — settled, no turn (Liam 2026-10-30).
-  if (s.buyerAccepted && s.sellerAccepted) return 'all_confirmed';
+  // 1) Hard-terminal deal states win — booked / declined / cancelled (no turn).
   if (st === 'booked') return 'booked';
   if (st.startsWith('declined') || st === 'cancelled') return 'declined';
   // 1b) Not sent yet — in the estimate cart, no outreach to the supplier. Shows
   //     "Draft" (a recommended line starts here) until it's sent (Liam 2026-11-03).
   if (st === 'to_send') return 'draft';
-  // 2) If the LAST event on the line is a message-only (newer than the last
-  //    price/accept action), the status IS the turn: you replied, or a reply is
-  //    needed from you. (Bold — needsYou — is applied separately by the surface.)
+  // 2) The ball follows the LAST message: a message newer than the last price/
+  //    accept action IS the status — you replied, or a reply is needed from you.
+  //    This sits ABOVE the both-accepted rollup so a question asked AFTER both
+  //    sides accepted reads "Reply needed", not "All confirmed" (Liam 2026-11-19).
+  //    (Bold — needsYou — is applied separately by the surface.)
   if (s.lastEventIsMessage && s.lastMessageBy != null) {
     return s.lastMessageBy === viewer ? 'replied' : 'reply_needed';
   }
+  // 3) Settled — both accepted, no newer message (Liam 2026-10-30).
+  if (s.buyerAccepted && s.sellerAccepted) return 'all_confirmed';
   // 3) A PROPOSED NEW COST wins over the one-sided accept the data model sets
   //    ("proposing a new cost IS accepting it" — deriveLineState). Without this,
   //    a supplier's new cost rendered as "you/they accepted" (Liam 2026-11-02).

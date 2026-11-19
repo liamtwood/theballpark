@@ -123,16 +123,37 @@ export interface RailOuter {
                 </button>
               }
             }
-            <!-- SOW node — opens the Statement of Work in the right pane. -->
-            <button type="button" class="flex w-full items-center gap-2.5 border-b border-hairline px-3 py-2.5 text-left last:border-b-0 hover:bg-fill"
-                    [class.bp-item--selected]="o.id === selectedSowId()" (click)="selectSow.emit(o.id)">
-              <lucide-icon name="signature" [size]="18" class="shrink-0 text-[var(--theme-accent)]" />
-              <span class="flex min-w-0 flex-1 flex-col items-start gap-1">
-                <span class="bp-list-title w-full truncate">Statement of Work</span>
-                @if (o.sow) { <app-status-pill list="sow_status" [code]="o.sow.status" /> }
-              </span>
-              @if (o.sow) { <span class="bp-caption shrink-0 text-muted">{{ sowDate(o.sow.updatedAt) }}</span> }
-            </button>
+            <!-- SOW node — opens the Statement of Work in the right pane. Before a
+                 SOW exists it shows a Pending pill + how many items are agreed and
+                 ready to add; the supplier (the author) gets a + to create it. -->
+            <div class="flex w-full items-center gap-2.5 border-b border-hairline px-3 py-2.5 last:border-b-0"
+                 [class.bp-item--selected]="o.id === selectedSowId()">
+              <button type="button" class="flex min-w-0 flex-1 items-center gap-2.5 text-left hover:opacity-80" (click)="selectSow.emit(o.id)">
+                <lucide-icon name="signature" [size]="18" class="shrink-0 text-[var(--theme-accent)]" />
+                <span class="flex min-w-0 flex-1 flex-col items-start gap-1">
+                  <span class="bp-list-title w-full truncate">Statement of Work</span>
+                  <span class="flex flex-wrap items-center gap-1.5">
+                    @if (o.sow) {
+                      <app-status-pill list="sow_status" [code]="o.sow.status" />
+                    } @else {
+                      <span class="bp-spill">Pending</span>
+                      @if (c.accepted > 0) {
+                        <span class="bp-caption text-muted">{{ c.accepted }} {{ c.accepted === 1 ? 'item' : 'items' }} ready</span>
+                      }
+                    }
+                  </span>
+                </span>
+              </button>
+              @if (o.sow) {
+                <span class="bp-caption shrink-0 text-muted">{{ sowDate(o.sow.updatedAt) }}</span>
+              } @else if (!isAgency()) {
+                <!-- Supplier authors the SOW: + creates it and opens the panel. -->
+                <button type="button" class="shrink-0 rounded-md p-0.5 text-[var(--theme-accent)] transition-colors hover:bg-fill"
+                        aria-label="Create Statement of Work" title="Create Statement of Work" (click)="createSow.emit(o.id)">
+                  <lucide-icon name="circle-plus" [size]="18" />
+                </button>
+              }
+            </div>
           </div>
         }
       </div>
@@ -149,6 +170,8 @@ export class InboxRailComponent {
   readonly selectThread = output<string>();
   readonly selectItem = output<string>();
   readonly selectSow = output<string>();
+  /** Supplier clicked + on the (not-yet-created) SOW node: create it and open. */
+  readonly createSow = output<string>();
 
   // Outer expand — expanded-by-id; DEFAULT MINIMIZED (Liam 2026-09-10): the
   // supplier cards start collapsed, showing just name + counts.

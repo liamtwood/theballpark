@@ -164,7 +164,7 @@ type Pane = 'item' | 'supplier';
                   <!-- Standing base price shows unless PRICED variants own the price
                        (free-choice dimensions like a menu picker don't — Liam 2026-11-11). -->
                   @if (!hasVariants() && it.basePrice !== null) {
-                    <div class="bp-price-large">From {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-2' }}</div>
+                    <div class="bp-price-large">From {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-2' }}@if (it.unit) { <span class="bp-body-small font-normal text-secondary">/ {{ unitLabel(it.unit) }}@if (it.serves) { · serves {{ it.serves }} }</span> }</div>
                   }
                   <!-- Hairline separates the heading (name / description / price) from
                        the configurator below. -->
@@ -396,6 +396,12 @@ type Pane = 'item' | 'supplier';
 })
 export class QuickViewDialogComponent {
   readonly item = input<CatalogueItem | null>(null);
+  /** Unit code → readable label for the price line (e.g. 'per_guest' → "guest"). */
+  protected unitLabel(u: string | null): string {
+    if (!u) return '';
+    const map: Record<string, string> = { each: 'each', per_guest: 'guest', platter: 'platter', time: 'booking', size: 'unit' };
+    return map[u] ?? u.replace(/_/g, ' ');
+  }
   /** Whether this surface is a management view (My Shop / Approvals). Default false
    *  = read-only: no Edit, no Approve/Reject. The Marketplace browse leaves it false
    *  so the dialog is a pure peek even for owners/admins (Liam 2026-10-28). */

@@ -116,10 +116,22 @@ async function callHaikuJson({ system, user, maxTokens = 2000 }) {
   }
 }
 
+// The DATE RESOLUTION RULE tells the model to resolve relative dates to "the next
+// occurrence after today" — but Haiku's own notion of "today" is its training era
+// (~2025), so with no explicit anchor it picks the WRONG YEAR ("1st Friday in March"
+// → 7 Mar 2025 instead of 6 Mar 2026). Pass the real current date so the year is
+// correct. Shared by every AI call that resolves dates.
+function todayAnchor() {
+  const d = new Date();
+  const iso = d.toISOString().slice(0, 10);
+  const weekday = d.toLocaleDateString('en-GB', { weekday: 'long' });
+  return `Today's date is ${weekday}, ${iso}. Resolve every relative or partial date against THIS date (the next matching occurrence on or after today) and ALWAYS state the correct year.`;
+}
+
 async function parseBrief(rawBriefText) {
   const { parsed, raw: responseText } = await callHaikuJson({
     system: SYSTEM_PROMPT,
-    user: `Scope this event brief into production categories:\n\n${rawBriefText}`,
+    user: `${todayAnchor()}\n\nScope this event brief into production categories:\n\n${rawBriefText}`,
     maxTokens: 2000,
   });
 
@@ -285,4 +297,52 @@ async function classifyGroup(supplierLabel, sampleName, tree = []) {
   return parsed || { category: null, subcategory: null, isNew: false, subsubcategory: null, subsubIsNew: false, confidence: 0 };
 }
 
-module.exports = { parseBrief, callHaikuJson, analyseCatalogue, extractProduct, classifyGroup };
+/** Scan an agency↔supplier negotiation for AGREED changes to propose (never apply)
+ *  when building a SOW. Detects, from the FREE TEXT only: per-item description /
+ *  variant / new-variant / install / cost changes, plus event milestones, payment
+ *  terms and deposit. Each is offered for per-item Accept/Decline in the dialog.
+ *  Structured facts (the line's accepted price / chosen variant) are read from the
+ *  DATA elsewhere — the model's job is the prose it can't see. Only agreed / final-
+ *  negotiated facts; never invent. */
+async function extractSowTerms({ messages, project, items = [] }) {
+  const empty = { milestones: [], payment: [], depositPct: null, items: [] };
+  if (!messages || !messages.length) return empty;
+  const convo = messages.map((m) => `${m.role === 'agency' ? 'AGENCY' : 'SUPPLIER'}: ${m.body}`).join('\n');
+  const itemList = (items || [])
+    .map((it) => `- id:${it.id} "${it.name}"${it.description ? ` — ${String(it.description).slice(0, 160)}` : ''} (current price ${it.price ?? '?'})${it.install ? `\n    install/services: ${String(it.install).slice(0, 400)}` : ''}`)
+    .join('\n') || '(no items)';
+  const system = `You read an agency↔supplier event negotiation and propose AGREED changes for a Statement of Work. Return STRICT JSON only, exactly:
+{"milestones":[{"from":"HH:MM","to":null,"details":"string"}],
+ "payment":[{"amount":"40%","grace":"string","details":"string","refundable":"na"}],
+ "depositPct":number|null,
+ "items":[{"itemId":"string","description":"string|null","variantChange":"string|null","newVariant":"string|null","install":"string|null","cost":number|null}]}
+Rules:
+- Only AGREED facts: both sides concur, or the FINAL negotiated outcome (50%→40% ⇒ 40%; use the LAST agreed value). Ignore superseded offers.
+- MILESTONES: find the event START time; resolve relative times ("3 hours before") to absolute 24-hour HH:MM; order chronologically. "from" = the arrival/start time. Set "to" to the END time = from + the stated DURATION for that staff/activity (duration from the conversation OR an item's install/services detail) — e.g. a chef arriving 15:00 who works "6 hours" ⇒ from "15:00", to "21:00"; front-of-house arriving 17:00 for "4 hours" ⇒ to "21:00". Both "from" and "to" are absolute 24-hour HH:MM. Leave "to" null only when no duration is given.
+- PER ITEM (use the exact itemId from the list): propose only CHANGES stated in the chat — a revised "description", a "variantChange" (change to the chosen option), a "newVariant" (a new option added), an "install" (setup/logistics) change, or a new agreed total "cost" (number). Null for anything not discussed. Omit items with no changes.
+- PAYMENT / depositPct: only STATED terms; never invent a schedule; refundable ∈ yes|no|partial|na; depositPct a plain number or null.
+- Empty arrays / null where nothing applies. NEVER invent facts not in the conversation.`;
+  const user = `${todayAnchor()}\nEvent date: ${project?.eventDate || 'unknown'}. Guests: ${project?.guestCount ?? 'unknown'}.\nITEMS:\n${itemList}\n\nConversation (oldest first):\n${convo}`;
+  try {
+    const { parsed } = await callHaikuJson({ system, user, maxTokens: 1500 });
+    if (!parsed || typeof parsed !== 'object') return empty;
+    const validIds = new Set((items || []).map((it) => it.id));
+    return {
+      milestones: Array.isArray(parsed.milestones) ? parsed.milestones : [],
+      payment: Array.isArray(parsed.payment) ? parsed.payment : [],
+      depositPct: typeof parsed.depositPct === 'number' ? parsed.depositPct : null,
+      items: Array.isArray(parsed.items)
+        ? parsed.items.filter((x) => x && validIds.has(x.itemId)).map((x) => ({
+            itemId: x.itemId,
+            description: typeof x.description === 'string' && x.description.trim() ? x.description.trim() : null,
+            variantChange: typeof x.variantChange === 'string' && x.variantChange.trim() ? x.variantChange.trim() : null,
+            newVariant: typeof x.newVariant === 'string' && x.newVariant.trim() ? x.newVariant.trim() : null,
+            install: typeof x.install === 'string' && x.install.trim() ? x.install.trim() : null,
+            cost: typeof x.cost === 'number' ? x.cost : null,
+          }))
+        : [],
+    };
+  } catch { return empty; }
+}
+
+module.exports = { parseBrief, callHaikuJson, analyseCatalogue, extractProduct, classifyGroup, extractSowTerms };

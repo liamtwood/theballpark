@@ -34,6 +34,16 @@ const { lineTotal } = require('./line-pricing');
 const { isDeclined } = require('./line-total.util');
 const projectLine = require('./project-line.service');
 const mev = require('./message-event.service');
+const codelistSvc = require('./codelist.service');
+
+/** code → meta.needs for item_unit (e.g. 'platter' → 'serves'). Drives the
+ *  unit-size lookup off the CODELIST, not a hardcoded unit code, so it keeps
+ *  working if the code is relabelled or more units gain a size. meta.needs names
+ *  the items column ('serves'/'time_unit'/'size'). */
+async function unitNeedsMap() {
+  const vals = await codelistSvc.values('item_unit');
+  return new Map(vals.map((v) => [v.code, v.meta?.needs ?? null]));
+}
 
 function httpErr(message, status) {
   const e = new Error(message);
@@ -103,6 +113,7 @@ async function resolvedLines(projectItemIds, providerId) {
             COALESCE(q.install_unit, pi0.install_unit) AS r_iu,
             q.price_current AS q_current, q.price_override AS q_override,
             i.install_cost AS i_ic, i.install_unit AS i_iu,
+            i.serves AS i_serves, i.time_unit AS i_time_unit, i.ref AS i_ref,
             i.attributes -> 'price_tiers' AS price_tiers
        FROM project_items pi0
        LEFT JOIN project_item_quotes q
@@ -116,10 +127,44 @@ async function resolvedLines(projectItemIds, providerId) {
   return map;
 }
 
+/** Batched sibling of resolvedLines: resolve MANY (item, engagement) PAIRS in ONE
+ *  query (each item against its own provider overlay), for the set-based inbox
+ *  summary. Same columns lineTotals() reads. Keyed `${itemId}|${engagementId}`.
+ *  (Liam 2026-11-19 — inbox landing was a per-project per-provider N-query assembly.) */
+async function resolvedLinesForPairs(itemIds, engagementIds) {
+  if (!itemIds.length) return new Map();
+  const r = await pool.query(
+    `SELECT pi0.id, pairs.eng AS provider_id, pi0.item_id,
+            COALESCE(q.name, pi0.name) AS name,
+            pi0.base_price AS f_base, pi0.quantity AS f_qty, pi0.variant AS f_variant,
+            pi0.installed AS installed, pi0.install_cost AS f_ic, pi0.install_unit AS f_iu,
+            COALESCE(q.quantity, pi0.quantity)        AS r_qty,
+            COALESCE(q.install_cost, pi0.install_cost) AS r_ic,
+            COALESCE(q.install_unit, pi0.install_unit) AS r_iu,
+            q.price_current AS q_current, q.price_override AS q_override,
+            i.install_cost AS i_ic, i.install_unit AS i_iu,
+            i.attributes -> 'price_tiers' AS price_tiers
+       FROM (SELECT UNNEST($1::uuid[]) AS item, UNNEST($2::uuid[]) AS eng) pairs
+       JOIN project_items pi0 ON pi0.id = pairs.item AND pi0.deleted_at IS NULL
+       LEFT JOIN project_item_quotes q
+         ON q.project_item_id = pi0.id AND q.project_provider_id = pairs.eng AND q.deleted_at IS NULL
+       LEFT JOIN items i ON i.id = pi0.item_id`,
+    [itemIds, engagementIds]
+  );
+  const map = new Map();
+  for (const row of r.rows) map.set(`${row.id}|${row.provider_id}`, row);
+  return map;
+}
+
 /** The InboxThreadItem (client contract). Prices = the pricing module; approval
  *  state = deriveLineState over the (provider × item) events; `line` = the SAME
  *  QuoteLine the Final Quote renders, resolved against the provider overlay. */
-function toThreadItem(raw, state, line, turn) {
+function toThreadItem(raw, state, line, turn, unitNeeds) {
+  // The unit's size value, picked by the codelist's meta.needs (which names the
+  // items column: 'serves'/'time_unit'/'size'). Never keyed off a specific code.
+  const needs = unitNeeds ? unitNeeds.get(raw.unit) : null;
+  const sizeRaw = needs ? raw[`i_${needs}`] : null; // i_serves / i_time_unit (size → attributes, deferred)
+  const unitSize = sizeRaw == null ? null : (needs === 'serves' ? Number(sizeRaw) : sizeRaw);
   const { original, revised } = lineTotals(raw);
   return {
     id: raw.id,
@@ -149,6 +194,9 @@ function toThreadItem(raw, state, line, turn) {
     hasOpenQuestion: false, // buildup/question children shelved (project_buildup_shelved)
     quantity: raw.r_qty == null ? null : Number(raw.r_qty),
     unit: raw.unit ?? null,
+    // SKU (catalogue ref) + the codelist-driven unit size (see above).
+    sku: raw.i_ref ?? null,
+    unitSize,
     installed: raw.installed ?? null,
     installCost: raw.r_ic != null ? Number(raw.r_ic) : (raw.i_ic == null ? null : Number(raw.i_ic)),
     installUnit: raw.r_iu ?? raw.i_iu ?? null,
@@ -330,6 +378,11 @@ async function assembleThreads(viewer, callerOrgId, projectId) {
     const allItemIds = [];
     for (const c of p.cats.values()) for (const id of c.items) allItemIds.push(id);
     const resolved = providerId ? await resolvedLines(allItemIds, providerId) : new Map();
+    // Batch EVERY line for this provider in one round-trip (was a per-item query
+    // in the loop below → an N+1 across projects × items that made the inbox very
+    // slow to paint — Liam 2026-11-19).
+    const lineMap = providerId ? await projectLine.linesByIdsForProvider(pool, allItemIds, providerId) : new Map();
+    const unitNeeds = await unitNeedsMap(); // code → meta.needs, memoised per request
 
     for (const [catId, c] of p.cats.entries()) {
       if (!c.items.size) continue;
@@ -342,7 +395,7 @@ async function assembleThreads(viewer, callerOrgId, projectId) {
         if (!raw) continue;
         const evs = eventsByKey.get(`${providerOrg}|${itemId}`) ?? [];
         const state = mev.deriveLineState(evs, { briefed: true });
-        const line = providerId ? await projectLine.lineByIdForProvider(pool, itemId, providerId) : null;
+        const line = lineMap.get(itemId) ?? null;
         // Conversation turn: who sent the last message on this line, and whether
         // it post-dates the last action (a message-only turn). evs are ASC.
         const lastAction = evs.length ? evs[evs.length - 1].createdAt : null;
@@ -357,7 +410,7 @@ async function assembleThreads(viewer, callerOrgId, projectId) {
           lastMessageAt: mi ? mi.lastAt : null,
           supplierEngaged: supplierEngaged.has(itemId),
         };
-        items.push(toThreadItem(raw, state, line, turn));
+        items.push(toThreadItem(raw, state, line, turn, unitNeeds));
       }
       if (!items.length) continue;
 
@@ -514,8 +567,15 @@ async function listSupplierProjects(supplierOrgId) {
 /** Whose move is one line from the AGENT's perspective: 'agent' | 'supplier' |
  *  null (settled). Mirrors the client inbox-status itemAction for the agency. */
 function itemWaitingOn(it) {
-  if (it.status === 'booked' || (it.buyerAccepted && it.sellerAccepted)) return null;
-  if (isDeclined(it.status)) return null;
+  if (it.status === 'booked' || isDeclined(it.status)) return null;
+  // Ball follows the last message — a message newer than the last price/accept
+  // action reopens the line to the RECIPIENT, even after both sides accepted
+  // (Liam 2026-11-19: a post-acceptance question is an action, not "settled").
+  // Mirrors the client lineDisplayCode / needsYou reorder.
+  if (it.lastEventIsMessage && it.lastMessageBy) {
+    return it.lastMessageBy === 'buyer' ? 'supplier' : 'agent';
+  }
+  if (it.buyerAccepted && it.sellerAccepted) return null;
   if (it.sellerAccepted && !it.buyerAccepted) return 'agent';
   if (it.status === 'adjusted_by_supplier') return 'agent';
   if (it.status === 'brief_sent' || it.status === 'adjusted_by_agent') return 'supplier';
@@ -531,8 +591,14 @@ function truncate(s, max) {
  *  agency has messaged: project name/client, the suppliers on it, and how many
  *  line items are waiting on the agent vs the supplier. org from JWT. */
 async function getAgentInboxSummary(agencyOrgId) {
+  // SET-BASED (Liam 2026-11-19): the old path assembled every project's full thread
+  // (messages, categories, org display, per-item pricing) just to roll up counts +
+  // totals — ~140 queries serialised on ONE pinned connection ≈ 8s. This fetches the
+  // whole agency's active-project data in ~7 batched queries and rolls up in JS,
+  // reusing deriveLineState / itemWaitingOn / lineTotals so counts + £ totals are
+  // identical to the per-thread path.
   const projs = await pool.query(
-    `SELECT p.id, p.ref FROM projects p
+    `SELECT p.id, p.ref, p.name, p.client_name FROM projects p
       WHERE p.org_id = $1 AND p.deleted_at IS NULL
         AND COALESCE(p.status, 'draft') NOT IN ('completed', 'archived')
         AND EXISTS (SELECT 1 FROM project_providers pp
@@ -540,75 +606,134 @@ async function getAgentInboxSummary(agencyOrgId) {
       ORDER BY p.updated_at DESC`,
     [agencyOrgId]
   );
+  if (!projs.rows.length) return [];
+  const projectIds = projs.rows.map((r) => r.id);
 
-  // Assemble every project's threads CONCURRENTLY — was a sequential await loop
-  // (projects × per-project queries serialised → slow inbox load). Order is
-  // preserved; empty-thread projects drop out in the filter below (perf, Liam
-  // 2026-11-04).
-  const out = (await Promise.all(projs.rows.map(async (p) => {
-    const { project, threads } = await assembleThreads('agency', agencyOrgId, p.id);
-    if (!threads.length) return null;
+  const [relR, evR, sowR, engR] = await Promise.all([
+    pool.query(
+      `SELECT mr.project_item_id, m.project_id, m.from_org_id, m.to_org_id, m.body, m.created_at
+         FROM message_relations mr
+         JOIN messages m ON m.id = mr.message_id AND m.deleted_at IS NULL
+         JOIN project_items pi ON pi.id = mr.project_item_id AND pi.deleted_at IS NULL AND pi.parent_id IS NULL
+        WHERE m.project_id = ANY($1::uuid[])
+        ORDER BY m.created_at ASC`, [projectIds]),
+    pool.query(
+      `SELECT mr.project_item_id, m.project_id, m.from_org_id, m.to_org_id,
+              me.status, me.price_current, me.price_override, me.note, me.created_at
+         FROM message_events me
+         JOIN message_relations mr ON mr.id = me.message_relation_id
+         JOIN messages m ON m.id = me.message_id
+        WHERE m.project_id = ANY($1::uuid[])
+        ORDER BY me.created_at ASC`, [projectIds]),
+    pool.query(
+      `SELECT project_id, org_id AS supplier_org, status FROM project_documents
+        WHERE project_id = ANY($1::uuid[]) AND type = 'sow' AND deleted_at IS NULL`, [projectIds]),
+    pool.query(
+      `SELECT id, project_id, provider_org_id FROM project_providers
+        WHERE project_id = ANY($1::uuid[]) AND deleted_at IS NULL`, [projectIds]),
+  ]);
 
-    // Roll up per supplier (a supplier can span multiple category threads).
-    const bySupplier = new Map();
-    for (const t of threads) {
-      let g = bySupplier.get(t.supplierOrgId);
-      if (!g) { g = { orgId: t.supplierOrgId, name: t.supplierName, items: [], lastMessage: null, lastMessageAt: null }; bySupplier.set(t.supplierOrgId, g); }
-      g.items.push(...t.items);
-      const last = t.messages[t.messages.length - 1];
-      if (last && (!g.lastMessageAt || new Date(last.createdAt) > new Date(g.lastMessageAt))) {
-        g.lastMessage = last.body; g.lastMessageAt = last.createdAt;
+  const providerOf = (from, to) => (from === agencyOrgId ? to : from);
+  // engagement id per (project, provider) — the overlay key; a provider with no
+  // engagement is skipped (matches the old path, where no overlay ⇒ no thread).
+  const engBy = new Map();
+  for (const r of engR.rows) engBy.set(`${r.project_id}|${r.provider_org_id}`, r.id);
+
+  // events keyed `${project}|${provider}|${item}`
+  const eventsByKey = new Map();
+  for (const r of evR.rows) {
+    const key = `${r.project_id}|${providerOf(r.from_org_id, r.to_org_id)}|${r.project_item_id}`;
+    let arr = eventsByKey.get(key); if (!arr) { arr = []; eventsByKey.set(key, arr); }
+    arr.push({ status: r.status, side: r.from_org_id === agencyOrgId ? 'buyer' : 'seller',
+               createdAt: r.created_at, note: r.note, priceCurrent: r.price_current, priceOverride: r.price_override });
+  }
+
+  // briefed items per (project, provider); per-item last-message turn; last msg per supplier
+  const sups = new Map(); // `${project}|${provider}` → { project, provider, items:Set, lastMsg:{body,at} }
+  const lastMsgItem = new Map(); // `${sk}|${item}` → { from, at }
+  for (const r of relR.rows) {
+    const provider = providerOf(r.from_org_id, r.to_org_id);
+    const sk = `${r.project_id}|${provider}`;
+    let g = sups.get(sk); if (!g) { g = { project: r.project_id, provider, items: new Set(), lastMsg: null }; sups.set(sk, g); }
+    g.items.add(r.project_item_id);
+    g.lastMsg = { body: r.body, at: r.created_at }; // ASC → last wins
+    lastMsgItem.set(`${sk}|${r.project_item_id}`, { from: r.from_org_id, at: r.created_at });
+  }
+
+  // one batched pricing query across every briefed (item, engagement) pair
+  const itemIds = [], engIds = [];
+  for (const [sk, g] of sups) {
+    const eng = engBy.get(sk);
+    if (!eng) continue;
+    for (const item of g.items) { itemIds.push(item); engIds.push(eng); }
+  }
+  const priceMap = await resolvedLinesForPairs(itemIds, engIds); // `${item}|${eng}` → raw
+
+  const sowBy = new Map();
+  for (const r of sowR.rows) sowBy.set(`${r.project_id}|${r.supplier_org}`, r.status);
+  const providerOrgs = [...new Set([...sups.values()].map((g) => g.provider))];
+  const supplierDisplay = await fetchOrgDisplay('agency', providerOrgs);
+
+  // roll up, in project order
+  const projById = new Map();
+  for (const [sk, g] of sups) {
+    const eng = engBy.get(sk);
+    if (!eng) continue; // no overlay ⇒ the old path produced no thread for this supplier
+    const seenNames = [];
+    let wa = 0, ws = 0, n = 0, cw = 0, actionItemId = null, lineNames = [];
+    for (const itemId of g.items) {
+      const raw = priceMap.get(`${itemId}|${eng}`);
+      if (!raw) continue; // project_item gone
+      const evs = eventsByKey.get(`${g.project}|${g.provider}|${itemId}`) || [];
+      const state = mev.deriveLineState(evs, { briefed: true });
+      if (isDeclined(state.status)) continue;
+      n++;
+      lineNames.push(raw.name);
+      const lastAction = evs.length ? evs[evs.length - 1].createdAt : null;
+      const lm = lastMsgItem.get(`${sk}|${itemId}`);
+      const it = {
+        status: state.status, buyerAccepted: state.buyerAccepted, sellerAccepted: state.sellerAccepted,
+        lastMessageBy: lm ? (lm.from === agencyOrgId ? 'buyer' : 'seller') : null,
+        lastEventIsMessage: !!(lm && lastAction && new Date(lm.at) > new Date(lastAction)),
+      };
+      const w = itemWaitingOn(it);
+      if (w === 'agent') { wa++; if (!actionItemId) actionItemId = itemId; }
+      else if (w === 'supplier') ws++;
+      if (state.status === 'booked' || (state.buyerAccepted && state.sellerAccepted)) {
+        const { original, revised } = lineTotals(raw);
+        cw += Number(revised ?? original ?? 0);
       }
     }
-
-    // Project-level item names (deduped, non-declined) for the card's sub-line —
-    // the suppliers themselves live in the hover mini-table (Liam 2026-11-02).
-    const itemNames = [];
-    const seenNames = new Set();
-    for (const t of threads) for (const it of t.items) {
-      if (seenNames.has(it.id)) continue;
-      seenNames.add(it.id);
-      if (isDeclined(it.status)) continue;
-      itemNames.push(it.name);
-    }
-
-    const suppliers = [];
-    let waitingAgent = 0, waitingSupplier = 0, itemCount = 0, confirmedWork = 0;
-    for (const g of bySupplier.values()) {
-      const seen = new Set();
-      const supplierItemNames = [];
-      let wa = 0, ws = 0, n = 0, cw = 0, actionItemId = null;
-      for (const it of g.items) {
-        if (seen.has(it.id)) continue;
-        seen.add(it.id);
-        if (isDeclined(it.status)) continue;
-        n++;
-        supplierItemNames.push(it.name);
-        const w = itemWaitingOn(it);
-        if (w === 'agent') { wa++; if (!actionItemId) actionItemId = it.id; }
-        else if (w === 'supplier') ws++;
-        // Confirmed work = agreed (booked or both-accepted) revised line totals.
-        if (it.status === 'booked' || (it.buyerAccepted && it.sellerAccepted)) {
-          cw += Number(it.priceCurrent ?? it.priceRef ?? 0);
-        }
-      }
-      suppliers.push({
-        orgId: g.orgId, name: g.name, itemCount: n, waitingAgent: wa, waitingSupplier: ws,
-        actionRequired: wa > 0, actionItemId,
-        // Per-supplier agreed total + item names — the "by supplier" view's cost
-        // and sub-line (Liam 2026-11-02).
-        confirmedWork: Math.round(cw), itemNames: supplierItemNames,
-        lastMessage: truncate(g.lastMessage, 240), lastMessageAt: g.lastMessageAt,
-      });
-      waitingAgent += wa; waitingSupplier += ws; itemCount += n; confirmedWork += cw;
-    }
-
-    return {
-      id: p.id, ref: p.ref ?? null, name: project.name, clientName: project.clientName ?? null,
-      suppliers, itemNames, itemCount, waitingAgent, waitingSupplier, actionRequired: waitingAgent > 0,
-      confirmedWork: Math.round(confirmedWork),
+    const sowStatus = sowBy.get(sk) ?? null;
+    const sowNeedsAgent = sowStatus === 'in_review';
+    const supplier = {
+      orgId: g.provider, name: supplierDisplay.get(g.provider)?.name ?? null,
+      itemCount: n, waitingAgent: wa, waitingSupplier: ws,
+      actionRequired: wa > 0 || sowNeedsAgent, actionItemId,
+      sowStatus,
+      confirmedWork: Math.round(cw), itemNames: lineNames,
+      lastMessage: truncate(g.lastMsg?.body ?? null, 240), lastMessageAt: g.lastMsg?.at ?? null,
     };
-  }))).filter(Boolean);
+    let proj = projById.get(g.project);
+    if (!proj) { proj = { suppliers: [], names: new Map(), wa: 0, ws: 0, n: 0, cw: 0, sowAction: false }; projById.set(g.project, proj); }
+    proj.suppliers.push(supplier);
+    proj.wa += wa; proj.ws += ws; proj.n += n; proj.cw += cw;
+    if (sowNeedsAgent) proj.sowAction = true;
+    for (const nm of lineNames) if (!proj.names.has(nm)) proj.names.set(nm, true);
+  }
+
+  const out = [];
+  for (const p of projs.rows) {
+    const agg = projById.get(p.id);
+    if (!agg) continue; // no visible suppliers ⇒ dropped (old path's empty-thread filter)
+    out.push({
+      id: p.id, ref: p.ref ?? null, name: p.name, clientName: p.client_name ?? null,
+      suppliers: agg.suppliers, itemNames: [...agg.names.keys()],
+      itemCount: agg.n, waitingAgent: agg.wa, waitingSupplier: agg.ws,
+      actionRequired: agg.wa > 0 || agg.sowAction,
+      confirmedWork: Math.round(agg.cw),
+    });
+  }
   return out;
 }
 
@@ -705,6 +830,18 @@ async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
   const results = [];
   let threadCount = 0;
   await withTransaction(async (client) => {
+    // Event context for the brief body — date / guests / venue, fetched once so the
+    // supplier knows what they're quoting for (Liam 2026-11-18). No city column yet.
+    const projRow = await client.query(
+      `SELECT event_date, guest_count, venue_name FROM projects WHERE id = $1`,
+      [projectId]
+    );
+    const pj = projRow.rows[0] || {};
+    const eventCtx = [
+      pj.event_date && `Event date: ${pj.event_date}`,
+      (pj.guest_count != null) && `${pj.guest_count} guests`,
+      pj.venue_name && `Venue: ${pj.venue_name}`,
+    ].filter(Boolean).join(' · ');
     for (const entry of roster) {
       const categoryId = entry.categoryId; // a project_categories bucket id
       const supplierIds = [...new Set((entry.supplierIds || []).filter(Boolean))];
@@ -748,7 +885,7 @@ async function sendOutreach({ agencyOrgId, userId, projectId, roster }) {
              (from_org_id, to_org_id, user_id, project_id, subject, body, status, next_action_by)
            VALUES ($1, $2, $3, $4, $5, $6, 'sent', $2) RETURNING id`,
           [agencyOrgId, supplierId, userId || null, projectId,
-           `Quote request: ${catName}`, `We'd like your quote for ${catName}.`]
+           `Quote request: ${catName}`, `We'd like your quote for ${catName}.` + (eventCtx ? `\n${eventCtx}` : '')]
         );
         const messageId = msg.rows[0].id;
         for (const it of items.rows) {
@@ -1012,9 +1149,93 @@ async function getLineConversation(orgId, projectId, lineId, { limit = 14 } = {}
 /** Total items awaiting the agent's action across ALL the agency's active projects
  *  — the top-nav "Messages (N)" badge. Reuses the summary's per-project waitingAgent
  *  so "waiting on agent" keeps ONE definition (no logic drift). */
+/** Lightweight "needs your action" tally for the top-nav Inbox badge. Uses the
+ *  SAME deriveLineState + itemWaitingOn as the inbox, but fed by TWO batched queries
+ *  across ALL the viewer's active projects — instead of the full per-project thread
+ *  assembly getAgentInboxSummary does (org display, pricing, categories), which the
+ *  badge was running on EVERY navigation → ~8s on a single pinned connection (Liam
+ *  2026-11-19). `who` = the side we tally ('agent' | 'supplier'). Counts briefed
+ *  (project,provider,item) keys, so it can differ from the fully-resolved inbox by
+ *  lines that don't resolve — acceptable for a badge. */
+async function countActionItems(viewerOrg, who) {
+  const projCond = who === 'agent'
+    ? 'p.org_id = $1'
+    : `EXISTS (SELECT 1 FROM messages mm WHERE mm.project_id = p.id
+                AND (mm.from_org_id = $1 OR mm.to_org_id = $1) AND mm.deleted_at IS NULL)`;
+  const projs = await pool.query(
+    `SELECT p.id, p.org_id FROM projects p
+      WHERE p.deleted_at IS NULL AND COALESCE(p.status,'draft') NOT IN ('completed','archived')
+        AND ${projCond}`,
+    [viewerOrg]
+  );
+  if (!projs.rows.length) return 0;
+  const projectIds = projs.rows.map((r) => r.id);
+  const agencyOf = new Map(projs.rows.map((r) => [r.id, r.org_id]));
+
+  const [rel, ev] = await Promise.all([
+    pool.query(
+      `SELECT mr.project_item_id, m.project_id, m.from_org_id, m.to_org_id, m.created_at
+         FROM message_relations mr
+         JOIN messages m ON m.id = mr.message_id AND m.deleted_at IS NULL
+         JOIN project_items pi ON pi.id = mr.project_item_id AND pi.deleted_at IS NULL AND pi.parent_id IS NULL
+        WHERE m.project_id = ANY($1::uuid[])
+        ORDER BY m.created_at ASC`,
+      [projectIds]
+    ),
+    pool.query(
+      `SELECT mr.project_item_id, m.project_id, m.from_org_id, m.to_org_id,
+              me.status, me.price_current, me.price_override, me.note, me.created_at
+         FROM message_events me
+         JOIN message_relations mr ON mr.id = me.message_relation_id
+         JOIN messages m ON m.id = me.message_id
+        WHERE m.project_id = ANY($1::uuid[])
+        ORDER BY me.created_at ASC`,
+      [projectIds]
+    ),
+  ]);
+
+  const keyFor = (projectId, agency, from, to, item) =>
+    `${projectId}|${from === agency ? to : from}|${item}`;
+
+  const evByKey = new Map();
+  for (const r of ev.rows) {
+    const agency = agencyOf.get(r.project_id);
+    const key = keyFor(r.project_id, agency, r.from_org_id, r.to_org_id, r.project_item_id);
+    let arr = evByKey.get(key);
+    if (!arr) { arr = []; evByKey.set(key, arr); }
+    arr.push({
+      status: r.status, side: r.from_org_id === agency ? 'buyer' : 'seller',
+      createdAt: r.created_at, note: r.note, priceCurrent: r.price_current, priceOverride: r.price_override,
+    });
+  }
+  const lastMsg = new Map(); const agencyOfKey = new Map();
+  for (const r of rel.rows) {
+    const agency = agencyOf.get(r.project_id);
+    const key = keyFor(r.project_id, agency, r.from_org_id, r.to_org_id, r.project_item_id);
+    lastMsg.set(key, { from: r.from_org_id, at: r.created_at }); // ASC → last wins
+    agencyOfKey.set(key, agency);
+  }
+
+  let count = 0;
+  for (const [key, agency] of agencyOfKey) {
+    const evs = evByKey.get(key) || [];
+    const state = mev.deriveLineState(evs, { briefed: true });
+    const lastAction = evs.length ? evs[evs.length - 1].createdAt : null;
+    const lm = lastMsg.get(key);
+    const it = {
+      status: state.status,
+      buyerAccepted: state.buyerAccepted,
+      sellerAccepted: state.sellerAccepted,
+      lastMessageBy: lm ? (lm.from === agency ? 'buyer' : 'seller') : null,
+      lastEventIsMessage: !!(lm && lastAction && new Date(lm.at) > new Date(lastAction)),
+    };
+    if (itemWaitingOn(it) === who) count++;
+  }
+  return count;
+}
+
 async function getAgentActionCount(agencyOrgId) {
-  const rows = await getAgentInboxSummary(agencyOrgId);
-  return rows.reduce((sum, r) => sum + (r.waitingAgent || 0), 0);
+  return countActionItems(agencyOrgId, 'agent');
 }
 
 /** Supplier home dashboard stats (Liam 2026-10-30): needs-reply (items where it's
@@ -1085,7 +1306,9 @@ async function getSupplierInboxItems(supplierOrgId, limit = 6) {
   const seen = new Set();
   for (const p of projs.rows) {
     const { project, threads } = await assembleThreads('supplier', supplierOrgId, p.id);
+    let agencyName = null;
     for (const t of threads) {
+      if (!agencyName) agencyName = t.agencyName;
       const last = t.messages[t.messages.length - 1];
       const lastMessageAt = last ? last.createdAt : null;
       for (const it of t.items) {
@@ -1111,6 +1334,27 @@ async function getSupplierInboxItems(supplierOrgId, limit = 6) {
         });
       }
     }
+    // The engagement's SOW appears as its own feed item (kind='sow'), matching how
+    // it shows in the inbox rail. Supplier authors it, so visible in any status;
+    // draft / updates-required (reviewed) are the supplier's turn.
+    const sowRow = await pool.query(
+      `SELECT id, status, updated_at FROM project_documents
+        WHERE project_id = $1 AND type = 'sow' AND org_id = $2 AND deleted_at IS NULL
+        ORDER BY updated_at DESC LIMIT 1`,
+      [p.id, supplierOrgId]
+    );
+    if (sowRow.rows[0]) {
+      const sow = sowRow.rows[0];
+      items.push({
+        projectId: p.id, projectName: project?.name ?? null,
+        itemId: 'sow:' + sow.id, name: 'Statement of Work', quantity: null,
+        agencyName, status: sow.status, kind: 'sow', sowStatus: sow.status,
+        buyerAccepted: null, sellerAccepted: null, lastMessageBy: null,
+        lastEventIsMessage: false, supplierEngaged: true, price: null,
+        waitingSupplier: sow.status === 'draft' || sow.status === 'reviewed' || sow.status === 'agent_approved',
+        lastMessageAt: sow.updated_at,
+      });
+    }
   }
   items.sort((a, b) => {
     if (a.waitingSupplier !== b.waitingSupplier) return a.waitingSupplier ? -1 : 1;
@@ -1124,48 +1368,131 @@ async function getSupplierInboxItems(supplierOrgId, limit = 6) {
  *  (name / status / price) — the agent landing's shape, but items instead of
  *  suppliers. Rollup: action_required (your turn) → awaiting_agency → all_confirmed. */
 async function getSupplierInboxSummary(supplierOrgId) {
+  // SET-BASED (Liam 2026-11-19) — was a SEQUENTIAL per-project assembleThreads loop
+  // (even slower than the agency's). Same batched approach + the same
+  // deriveLineState / itemWaitingOn / lineTotals, so every field is identical.
   const projs = await pool.query(
-    `SELECT DISTINCT p.id, p.name FROM projects p
+    `SELECT DISTINCT p.id, p.name, p.org_id FROM projects p
        JOIN messages m ON m.project_id = p.id
         AND (m.from_org_id = $1 OR m.to_org_id = $1) AND m.deleted_at IS NULL
       WHERE p.deleted_at IS NULL
         AND COALESCE(p.status, 'draft') NOT IN ('completed', 'archived')`,
     [supplierOrgId]
   );
+  if (!projs.rows.length) return [];
+  const projectIds = projs.rows.map((r) => r.id);
+
+  const [relR, evR, sowR, engR] = await Promise.all([
+    pool.query(
+      `SELECT mr.project_item_id, m.project_id, m.from_org_id, m.body, m.created_at
+         FROM message_relations mr
+         JOIN messages m ON m.id = mr.message_id AND m.deleted_at IS NULL
+         JOIN project_items pi ON pi.id = mr.project_item_id AND pi.deleted_at IS NULL AND pi.parent_id IS NULL
+        WHERE m.project_id = ANY($1::uuid[])
+        ORDER BY m.created_at ASC`, [projectIds]),
+    pool.query(
+      `SELECT mr.project_item_id, m.project_id, m.from_org_id,
+              me.status, me.price_current, me.price_override, me.note, me.created_at
+         FROM message_events me
+         JOIN message_relations mr ON mr.id = me.message_relation_id
+         JOIN messages m ON m.id = me.message_id
+        WHERE m.project_id = ANY($1::uuid[])
+        ORDER BY me.created_at ASC`, [projectIds]),
+    pool.query(
+      `SELECT DISTINCT ON (project_id) project_id, status FROM project_documents
+        WHERE project_id = ANY($1::uuid[]) AND type = 'sow' AND org_id = $2 AND deleted_at IS NULL
+        ORDER BY project_id, updated_at DESC`, [projectIds, supplierOrgId]),
+    pool.query(
+      `SELECT id, project_id FROM project_providers
+        WHERE project_id = ANY($1::uuid[]) AND provider_org_id = $2 AND deleted_at IS NULL`, [projectIds, supplierOrgId]),
+  ]);
+
+  const agencyOf = new Map(projs.rows.map((r) => [r.id, r.org_id]));
+  const engBy = new Map();
+  for (const r of engR.rows) engBy.set(r.project_id, r.id);
+
+  const eventsByKey = new Map(); // `${project}|${item}` → events (side relative to agency)
+  for (const r of evR.rows) {
+    const agency = agencyOf.get(r.project_id);
+    const key = `${r.project_id}|${r.project_item_id}`;
+    let arr = eventsByKey.get(key); if (!arr) { arr = []; eventsByKey.set(key, arr); }
+    arr.push({ status: r.status, side: r.from_org_id === agency ? 'buyer' : 'seller',
+               createdAt: r.created_at, note: r.note, priceCurrent: r.price_current, priceOverride: r.price_override });
+  }
+
+  const byProj = new Map(); // project → { items:Set }
+  const lastMsgItem = new Map(); // `${project}|${item}` → { from, at }
+  const engaged = new Set(); // `${project}|${item}` the supplier has messaged on
+  for (const r of relR.rows) {
+    let g = byProj.get(r.project_id); if (!g) { g = { items: new Set() }; byProj.set(r.project_id, g); }
+    g.items.add(r.project_item_id);
+    const ik = `${r.project_id}|${r.project_item_id}`;
+    lastMsgItem.set(ik, { from: r.from_org_id, at: r.created_at });
+    if (r.from_org_id === supplierOrgId) engaged.add(ik);
+  }
+
+  const itemIds = [], engIds = [];
+  for (const [pid, g] of byProj) {
+    const eng = engBy.get(pid);
+    if (!eng) continue;
+    for (const item of g.items) { itemIds.push(item); engIds.push(eng); }
+  }
+  const priceMap = await resolvedLinesForPairs(itemIds, engIds);
+
+  const sowBy = new Map();
+  for (const r of sowR.rows) sowBy.set(r.project_id, r.status);
+  const agencyDisplay = await fetchOrgDisplay('supplier', [...new Set(projs.rows.map((r) => r.org_id))]);
+
   const out = [];
   for (const p of projs.rows) {
-    const { threads } = await assembleThreads('supplier', supplierOrgId, p.id);
+    const g = byProj.get(p.id);
+    const eng = engBy.get(p.id);
+    if (!g || !eng) continue;
+    const agency = p.org_id;
     const items = [];
-    let agencyName = null, waitingSupplier = 0, allAgreed = true, confirmedWork = 0, lastMessageAt = null;
-    const seen = new Set();
-    for (const t of threads) {
-      if (!agencyName && t.agencyName) agencyName = t.agencyName;
-      for (const it of t.items) {
-        if (seen.has(it.id)) continue;
-        seen.add(it.id);
-        if (isDeclined(it.status)) continue;
-        const agreed = it.status === 'booked' || (it.buyerAccepted && it.sellerAccepted);
-        if (!agreed) allAgreed = false;
-        if (agreed) confirmedWork += Number(it.priceCurrent ?? it.priceRef ?? 0);
-        if (itemWaitingOn(it) === 'supplier') waitingSupplier++;
-        if (it.lastMessageAt && (!lastMessageAt || it.lastMessageAt > lastMessageAt)) lastMessageAt = it.lastMessageAt;
-        items.push({
-          itemId: it.itemId ?? it.id,
-          name: it.name,
-          status: it.status,
-          buyerAccepted: it.buyerAccepted,
-          sellerAccepted: it.sellerAccepted,
-          lastMessageBy: it.lastMessageBy,
-          lastEventIsMessage: it.lastEventIsMessage,
-          lastMessageAt: it.lastMessageAt,
-          supplierEngaged: it.supplierEngaged,
-          price: it.priceCurrent ?? it.priceRef ?? null,
-        });
-      }
+    let waitingSupplier = 0, allAgreed = true, confirmedWork = 0, lastMessageAt = null;
+    for (const itemId of g.items) {
+      const raw = priceMap.get(`${itemId}|${eng}`);
+      if (!raw) continue;
+      const evs = eventsByKey.get(`${p.id}|${itemId}`) || [];
+      const state = mev.deriveLineState(evs, { briefed: true });
+      if (isDeclined(state.status)) continue;
+      const ik = `${p.id}|${itemId}`;
+      const lastAction = evs.length ? evs[evs.length - 1].createdAt : null;
+      const lm = lastMsgItem.get(ik);
+      const lastMessageBy = lm ? (lm.from === agency ? 'buyer' : 'seller') : null;
+      const lastEventIsMessage = !!(lm && lastAction && new Date(lm.at) > new Date(lastAction));
+      const { original, revised } = lineTotals(raw);
+      const price = revised ?? original ?? null;
+      const it = { status: state.status, buyerAccepted: state.buyerAccepted, sellerAccepted: state.sellerAccepted, lastMessageBy, lastEventIsMessage };
+      const agreed = state.status === 'booked' || (state.buyerAccepted && state.sellerAccepted);
+      if (!agreed) allAgreed = false;
+      if (agreed) confirmedWork += Number(price ?? 0);
+      if (itemWaitingOn(it) === 'supplier') waitingSupplier++;
+      if (lm?.at && (!lastMessageAt || lm.at > lastMessageAt)) lastMessageAt = lm.at;
+      items.push({
+        itemId: raw.item_id ?? itemId,
+        name: raw.name,
+        status: state.status,
+        buyerAccepted: state.buyerAccepted,
+        sellerAccepted: state.sellerAccepted,
+        lastMessageBy, lastEventIsMessage,
+        lastMessageAt: lm?.at ?? null,
+        supplierEngaged: engaged.has(ik),
+        price: price == null ? null : Number(price),
+      });
     }
     if (!items.length) continue;
-    const status = waitingSupplier > 0 ? 'action_required' : (allAgreed ? 'all_confirmed' : 'awaiting_agency');
-    out.push({ projectId: p.id, projectName: p.name, agencyName, status, items, waitingSupplier, lastMessageAt, confirmedWork: Math.round(confirmedWork) });
+    // The supplier authors the SOW, so they see it in any status. Fold it into the
+    // self-status: draft / updates-required (reviewed / agent_approved) = their turn;
+    // in_review = waiting on the agency; approved / executed = done.
+    const sowStatus = sowBy.get(p.id) ?? null;
+    let status;
+    if (waitingSupplier > 0 || sowStatus === 'draft' || sowStatus === 'reviewed' || sowStatus === 'agent_approved') status = 'action_required';
+    else if (sowStatus === 'in_review') status = 'awaiting_agency';
+    else if (allAgreed) status = 'all_confirmed';
+    else status = 'awaiting_agency';
+    out.push({ projectId: p.id, projectName: p.name, agencyName: agencyDisplay.get(agency)?.name ?? null, status, sowStatus, items, waitingSupplier, lastMessageAt, confirmedWork: Math.round(confirmedWork) });
   }
   return out;
 }
@@ -1175,8 +1502,7 @@ async function getSupplierInboxSummary(supplierOrgId) {
  *  Reuses the supplier summary's per-project waitingSupplier so "waiting on the
  *  supplier" keeps ONE definition (itemWaitingOn), no logic drift. */
 async function getSupplierActionCount(supplierOrgId) {
-  const rows = await getSupplierInboxSummary(supplierOrgId);
-  return rows.reduce((sum, r) => sum + (r.waitingSupplier || 0), 0);
+  return countActionItems(supplierOrgId, 'supplier');
 }
 
 module.exports = {

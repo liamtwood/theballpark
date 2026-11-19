@@ -131,6 +131,10 @@ export interface SupplierInboxItem {
   lastEventIsMessage: boolean;
   supplierEngaged: boolean;
   price: number | null;
+  /** 'sow' for the Statement-of-Work feed entry (shows a sow_status pill); line
+   *  items omit it. `sowStatus` carries the SOW's status code for that entry. */
+  kind?: 'line' | 'sow';
+  sowStatus?: string | null;
 }
 
 /** One line item inside a supplier Messages-landing project card. */
@@ -155,6 +159,9 @@ export interface SupplierInboxProject {
   agencyName: string | null;
   /** supplier_self_status code: action_required | awaiting_agency | all_confirmed. */
   status: string;
+  /** This engagement's SOW status (sow_status code), or null if none yet. The SOW
+   *  folds into `status` (draft/updates-required = your turn; in_review = awaiting). */
+  sowStatus?: string | null;
   items: SupplierInboxLineItem[];
   /** Count of this project's line items awaiting the supplier's action — summed
    *  across projects for the supplier's "Messages (N)" nav badge. */
@@ -198,6 +205,9 @@ export interface InboxSummarySupplier extends InboxWaitingCounts {
   itemNames: string[];
   lastMessage: string | null;
   lastMessageAt: string | null;
+  /** The engagement's SOW status (sow_status code), or null if none visible yet.
+   *  A SOW in review counts toward this supplier's actionRequired. */
+  sowStatus?: string | null;
 }
 
 /** One agency Messages-landing card: a project, its suppliers, and how many
@@ -290,6 +300,10 @@ export interface InboxThreadItem {
   hasOpenQuestion: boolean;
   quantity: number | null;
   unit: string | null;
+  /** SOW production table: catalogue SKU (items.ref) + unit-driven "unit size"
+   *  (platter → serves/guests-per-unit, time → time_unit; null otherwise). */
+  sku: string | null;
+  unitSize: number | string | null;
   installed: boolean | null;
   installCost: number | null;
   installUnit: string | null;

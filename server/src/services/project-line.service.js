@@ -182,7 +182,7 @@ function quoteLineJoin(overlayFrom) {
          i.install_description AS lib_install_description, i.images AS lib_images,
          i.attributes -> 'price_tiers' AS price_tiers,
          i.install_cost AS i_install_cost, i.install_description AS i_install_description,
-         i.install_unit AS i_install_unit,
+         i.install_unit AS i_install_unit, i.serves AS i_serves,
          -- Catalogue lines: the item owner. Custom lines: the supplier asked to
          -- cost it (0033; NULL = the agent's own line).
          COALESCE(i.org_id, pi0.requested_provider_org_id) AS supplier_id,
@@ -216,6 +216,22 @@ function quoteLineJoin(overlayFrom) {
 }
 const QUOTE_LINE_JOIN = quoteLineJoin(RESOLVED_FROM);
 
+/** The chosen variant's own description (the per-value markdown, e.g. a menu's
+ *  courses) resolved from the item's variant definitions by matching the chosen
+ *  value in each dimension. Joins multiple dimensions' descriptions. Null if none. */
+function variantDescriptionFrom(variant, attributes) {
+  const dims = attributes?.variants?.dimensions;
+  if (!variant?.values || !Array.isArray(dims)) return null;
+  const parts = [];
+  for (const dim of dims) {
+    const chosen = variant.values[dim.name];
+    if (chosen == null) continue;
+    const val = (dim.values || []).find((v) => v.value === chosen);
+    if (val?.description) parts.push(val.description);
+  }
+  return parts.length ? parts.join('\n\n') : null;
+}
+
 function toQuoteLine(row) {
   // The resolved per-unit "now": the negotiated overlay rate wins, else the
   // frozen guide base. (At S2 price_current is always null → base_price.)
@@ -243,6 +259,9 @@ function toQuoteLine(row) {
     installUnit: row.install_unit ?? row.i_install_unit ?? null,
     installed: row.installed ?? null,
     unit: row.unit,
+    // Unit-driven "serves" (platter pack size). Catalogue-sourced for now; the
+    // project-item snapshot is the flagged follow-up (Liam's "use the project item").
+    serves: row.i_serves != null ? Number(row.i_serves) : null,
     imageUrl: row.image_url,
     quantity: Number(row.quantity ?? 1),
     categoryId: row.project_category_id ?? null,
@@ -271,6 +290,7 @@ function toQuoteLine(row) {
     details: row.details ?? null, // quote-native (agent self-quote overlay)
     quoteDescription: row.quote_description ?? null, // FR-00229 (agent-owned)
     variant,
+    variantDescription: variantDescriptionFrom(variant, row.attributes),
   };
 }
 
@@ -290,6 +310,19 @@ async function lineByIdForProvider(db, id, providerId) {
   const from = resolvedFrom('q.project_provider_id = $2');
   const r = await db.query(`${quoteLineJoin(from)} WHERE pi0.id = $1`, [id, providerId]);
   return r.rows.length ? toQuoteLine(r.rows[0]) : null;
+}
+
+/** Batched sibling of lineByIdForProvider — resolves MANY lines for ONE provider in
+ *  a single round-trip. The inbox summary assembles every project's threads, so the
+ *  per-item lineByIdForProvider call was an N+1 across projects × items. Returns
+ *  Map(project_items.id → resolved line). (Liam 2026-11-19 — inbox paint perf.) */
+async function linesByIdsForProvider(db, ids, providerId) {
+  if (!ids || !ids.length) return new Map();
+  const from = resolvedFrom('q.project_provider_id = $2');
+  const r = await db.query(`${quoteLineJoin(from)} WHERE pi0.id = ANY($1::uuid[])`, [ids, providerId]);
+  const map = new Map();
+  for (const row of r.rows) map.set(row.id, toQuoteLine(row));
+  return map;
 }
 
 // quote-native fields the agent self-quote overlay carries (patch key → column).
@@ -817,5 +850,5 @@ module.exports = {
   listProjectCategories, ensureProjectCategory,
   listItems, getEstimate, listBallparkTotals, addItem, addCustomItem,
   updateItem, updateLineDetails, setQuoteDescription, removeItem,
-  lineById, lineByIdForProvider, toQuoteLine,
+  lineById, lineByIdForProvider, linesByIdsForProvider, toQuoteLine,
 };
