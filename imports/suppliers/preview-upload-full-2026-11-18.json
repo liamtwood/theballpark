@@ -1,0 +1,4157 @@
+[
+  {
+    "supplier": {
+      "name": "DCLX",
+      "type": "supplier",
+      "city": "Maidstone",
+      "website": "https://dclx.co.uk/",
+      "tagline": "The UK's premier lighting & event production company",
+      "logo_url": "https://dclx.co.uk/wp-content/uploads/2024/08/DCLX-logo.png",
+      "description": "We cater for live events in any scale, whether it’s for thousands of guests or an intimate dinner party, the DCLX team brings market-leading lighting and event production experience to the table. We understand that every project is unique and are dedicated to going above and beyond for each and every project, no matter the size.",
+      "_media_note": "gallery + logo_url hotlinked to supplier WP uploads; CC to download+self-host on load",
+      "images": [
+        {
+          "url": "https://dclx.co.uk/wp-content/uploads/2024/09/Screenshot-2024-01-02-114505.png",
+          "label": "Exhibition",
+          "focalX": 50,
+          "focalY": 50
+        },
+        {
+          "url": "https://dclx.co.uk/wp-content/uploads/2024/08/Fashion-02.png",
+          "label": "Fashion",
+          "focalX": 50,
+          "focalY": 50
+        },
+        {
+          "url": "https://dclx.co.uk/wp-content/uploads/2024/11/64f15abe-c795-4f44-8274-571e7836650e-1024x768.jpg",
+          "label": "Corporate events",
+          "focalX": 50,
+          "focalY": 50
+        },
+        {
+          "url": "https://dclx.co.uk/wp-content/uploads/2024/09/Copy-of-Screenshot-2024-03-22-124016.png",
+          "label": "Live music & festivals",
+          "focalX": 50,
+          "focalY": 50
+        },
+        {
+          "url": "https://dclx.co.uk/wp-content/uploads/2024/10/D3A2340-683x1024.jpg",
+          "label": "Brand activation",
+          "focalX": 50,
+          "focalY": 50
+        },
+        {
+          "url": "https://dclx.co.uk/wp-content/uploads/2024/09/DCLX-Fashion15-1024x683.jpg",
+          "label": "Luxury & private events",
+          "focalX": 50,
+          "focalY": 50
+        }
+      ]
+    },
+    "items": [
+      {
+        "name": "Conference event production — up to 100 guests",
+        "category_ref": "av-and-technology",
+        "unit": "package",
+        "base_price": 14291.0,
+        "description": "Complete mid-scale conference production for up to 100 — staging, d&b sound, twin 85″ screens, crew and transport included.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [
+            {
+              "label": "Capacity",
+              "value": "Up to 100 guests"
+            },
+            {
+              "label": "Lighting",
+              "value": "Stage lighting (2 stands), 24 LED uplights, wireless DMX"
+            },
+            {
+              "label": "Audio",
+              "value": "4-speaker d&b PA, 12 radio mics"
+            },
+            {
+              "label": "Video",
+              "value": "Two 85-inch screens, playback + switching"
+            },
+            {
+              "label": "Stage",
+              "value": "16ft stage, carpet & fascia"
+            },
+            {
+              "label": "Crew",
+              "value": "PM + 4 technicians, 8 local crew; 1.5-day rig"
+            }
+          ],
+          "capacity_max_guests": 100
+        }
+      },
+      {
+        "name": "Conference event production — up to 250 guests",
+        "category_ref": "av-and-technology",
+        "unit": "package",
+        "base_price": 34585.0,
+        "description": "Full conference production for up to 250 — flown lighting, d&b PA with subs, a 6m LED wall, crew and transport included.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [
+            {
+              "label": "Capacity",
+              "value": "Up to 250 guests"
+            },
+            {
+              "label": "Lighting",
+              "value": "Flown truss, 12 moving lights, 24 LED uplights, DMX"
+            },
+            {
+              "label": "Audio",
+              "value": "8-speaker d&b PA + 4 subs, 12 radio mics"
+            },
+            {
+              "label": "Video",
+              "value": "6×3.5m LED wall (3.6mm), playback + switching"
+            },
+            {
+              "label": "Stage",
+              "value": "20ft stage, carpet & fascia, LED masking"
+            },
+            {
+              "label": "Crew",
+              "value": "PM + 10 technicians, 16 local crew; 1.5-day rig"
+            }
+          ],
+          "capacity_max_guests": 250
+        }
+      },
+      {
+        "name": "Conference event production — up to 600 guests",
+        "category_ref": "av-and-technology",
+        "unit": "package",
+        "base_price": 72274.0,
+        "description": "Large-scale conference production for up to 600 — line-array audio, a 12m LED wall, full lighting and rigging, crew and transport included.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [
+            {
+              "label": "Capacity",
+              "value": "Up to 600 guests"
+            },
+            {
+              "label": "Lighting",
+              "value": "Flown + floor package, 30+ moving lights, pixels, 24 uplights, DMX"
+            },
+            {
+              "label": "Audio",
+              "value": "Full d&b line-array, delays + subs, 18 radio mics"
+            },
+            {
+              "label": "Video",
+              "value": "12×4m LED wall (3.6mm), playback + switching"
+            },
+            {
+              "label": "Stage",
+              "value": "30ft stage, steps, LED masking"
+            },
+            {
+              "label": "Crew",
+              "value": "PM + 18 technicians/riggers, 28 local crew; 1.5-day rig"
+            }
+          ],
+          "capacity_max_guests": 600
+        }
+      },
+      {
+        "name": "Battery LED uplights",
+        "category_ref": "av-and-technology",
+        "subcategory_ref": "lighting",
+        "unit": "each",
+        "base_price": 60.0,
+        "description": "Wireless battery LED uplights — delivery and collection within the M25 included. Priced per unit with volume breaks.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [
+            {
+              "min": 12,
+              "max": 23,
+              "price": 60
+            },
+            {
+              "min": 24,
+              "max": 47,
+              "price": 50
+            },
+            {
+              "min": 48,
+              "max": null,
+              "price": 45
+            }
+          ],
+          "measurements": [],
+          "specifications": [
+            {
+              "label": "Minimum order",
+              "value": "12 units"
+            }
+          ]
+        }
+      },
+      {
+        "name": "Lighting control & technician",
+        "category_ref": "av-and-technology",
+        "subcategory_ref": "lighting",
+        "unit": "time",
+        "time_unit": "day",
+        "base_price": 710.0,
+        "description": "Lighting desk with wireless DMX and a technician for a 10-hour day. Control and crew only — fixtures not included.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Launch event / party production",
+        "category_ref": "av-and-technology",
+        "unit": "each",
+        "base_price": 9829.0,
+        "description": "Launch or party production — LED uplights, moving lights, pixel sticks, a d&b DJ PA, DJ booth and crew. Transport included.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "3-camera V-Mix live stream",
+        "category_ref": "av-and-technology",
+        "unit": "each",
+        "base_price": 5500.0,
+        "description": "Three-camera V-Mix live stream — cameras, streaming kit and licences included. Venue must provide a wired internet connection.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Content creator booth lighting & rigging",
+        "category_ref": "av-and-technology",
+        "subcategory_ref": "lighting",
+        "unit": "each",
+        "base_price": 2580.0,
+        "description": "Content-creator booth lighting and rigging — truss structure, four TV soft-light panels and a technician. Delivery included.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      }
+    ]
+  },
+  {
+    "supplier": {
+      "name": "Bravo Bars & Events",
+      "type": "supplier",
+      "city": "Edinburgh",
+      "website": "https://www.bravobravo.co.uk/",
+      "tagline": "Design-led bars, from Edinburgh to everywhere.",
+      "logo_url": "https://images.squarespace-cdn.com/content/v1/671921109aa8995f7d11a13b/58d76c0e-0656-46b6-be87-30b797b6be01/bravobravo.png?format=1500w",
+      "description": "A design-led bars & events agency — event production & logistics, cocktail creation, specialist staffing and bespoke bar builds, from Edinburgh to everywhere.",
+      "_media_note": "logo hotlinked to Squarespace CDN; CC downloads+self-hosts on load. Instagram @bravobarsandevents."
+    },
+    "items": [
+      {
+        "name": "Corporate drinks reception",
+        "category_ref": "catering",
+        "subcategory_ref": "bar-service",
+        "unit": "per_guest",
+        "base_price": 26.62,
+        "description": "Design-led corporate drinks reception — cocktails, a dressed bar and full service. Choose your level.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Tier",
+                "values": [
+                  {
+                    "value": "Bronze",
+                    "mode": "absolute",
+                    "amount": 26.62,
+                    "description": "2hrs service, ~3 cocktails/guest (600 cocktails + 150 softs). Bar team of 4, stainless bar, glassware, ice, menu print."
+                  },
+                  {
+                    "value": "Silver",
+                    "mode": "absolute",
+                    "amount": 29.81,
+                    "description": "As Bronze plus premium cocktails, bar dressing, foliage and a senior bartender."
+                  },
+                  {
+                    "value": "Gold",
+                    "mode": "absolute",
+                    "amount": 48.64,
+                    "description": "Premium + non-alcoholic cocktails, whisky, bar branding, bar cart and premium menu design."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Cocktail party",
+        "category_ref": "catering",
+        "subcategory_ref": "bar-service",
+        "unit": "per_guest",
+        "base_price": 42.4,
+        "description": "Design-led cocktail party service — 4 hours of cocktails, bartenders and bespoke menus. Choose your level.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Tier",
+                "values": [
+                  {
+                    "value": "Bronze",
+                    "mode": "absolute",
+                    "amount": 42.4,
+                    "description": "4hrs, ~4 drinks/guest plus softs. Bartenders, glassware, ice and menu print."
+                  },
+                  {
+                    "value": "Silver",
+                    "mode": "absolute",
+                    "amount": 57.1,
+                    "description": "4hrs, ~4 cocktails/guest incl. premium & non-alc, with a bar manager."
+                  },
+                  {
+                    "value": "Gold",
+                    "mode": "absolute",
+                    "amount": 85.94,
+                    "description": "4hrs, ~6 cocktails/guest, bespoke cocktail R&D, premium menu and foliage."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Intimate dinner drinks",
+        "category_ref": "catering",
+        "subcategory_ref": "bar-service",
+        "unit": "per_guest",
+        "base_price": 64.11,
+        "description": "Intimate dinner drinks service — 4 hours of cocktails and wine for a small table. Choose your level.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Tier",
+                "values": [
+                  {
+                    "value": "Bronze",
+                    "mode": "absolute",
+                    "amount": 64.11,
+                    "description": "4hrs, ~4 drinks/guest plus softs. Cocktails, wine, senior bartender and bar cart."
+                  },
+                  {
+                    "value": "Silver",
+                    "mode": "absolute",
+                    "amount": 74.01,
+                    "description": "As Bronze with premium wine and a larger cocktail selection."
+                  },
+                  {
+                    "value": "Gold",
+                    "mode": "absolute",
+                    "amount": 91.63,
+                    "description": "~6 drinks/guest: premium cocktails, whisky, champagne and premium menu."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "supplier": {
+      "name": "SK Projections",
+      "type": "supplier",
+      "city": "London",
+      "website": "https://skprojections.com/",
+      "tagline": "Project anything, anywhere.",
+      "logo_url": "https://skprojections.com/wp-content/uploads/2023/07/SK-Projections-Logo-w-l.jpg",
+      "description": "Projection and 3D hologram specialists — creative visuals, event backdrops and holograms wherever you need them, at budget-friendly prices.",
+      "_media_note": "logo hotlinked; Instagram @skprojections. Zip has 6 AI-GENERATED concept images (not real work) — pull real photos from skprojections.com or from SK at onboarding; city London inferred from M25 coverage."
+    },
+    "items": [
+      {
+        "name": "Projection Package",
+        "category_ref": "av-and-technology",
+        "subcategory_ref": "projection-and-mapping",
+        "unit": "each",
+        "base_price": 850.0,
+        "description": "Projection setups from a single feature to a full venue takeover — bright 9–10k-lumen projectors, looping playback, install and crew within the M25. Choose your scale.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [
+            {
+              "label": "Projector",
+              "value": "9,000–10,000 lumen on box truss"
+            },
+            {
+              "label": "Included",
+              "value": "Looping playback, install, delivery & collection within M25"
+            },
+            {
+              "label": "Technician",
+              "value": "Included from two projectors"
+            }
+          ],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Projectors",
+                "values": [
+                  {
+                    "value": "Single projector",
+                    "mode": "absolute",
+                    "amount": 850.0,
+                    "description": "One 9–10k-lumen projector on box truss. Looping playback, install, delivery & collection within the M25. For an entrance, brand feature or backdrop."
+                  },
+                  {
+                    "value": "Dual projectors",
+                    "mode": "absolute",
+                    "amount": 2000.0,
+                    "description": "Two projectors + a projection technician. Two visual features or two coordinated zones."
+                  },
+                  {
+                    "value": "Triple projectors",
+                    "mode": "absolute",
+                    "amount": 3000.0,
+                    "description": "Three projectors + technician. Three coordinated projection points across the venue."
+                  },
+                  {
+                    "value": "Four projectors",
+                    "mode": "absolute",
+                    "amount": 4000.0,
+                    "description": "Four projectors + technician. A full four-area venue takeover."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Hologram Package",
+        "category_ref": "av-and-technology",
+        "subcategory_ref": "projection-and-mapping",
+        "unit": "each",
+        "base_price": 850.0,
+        "description": "Hologram-style projection features — a floating welcome, product reveal or hero moment, with projector and power-pack setup. Choose your level.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [
+            {
+              "label": "Setup",
+              "value": "Laser/projector + power pack"
+            },
+            {
+              "label": "Note",
+              "value": "Per-night (Bronze); Silver/Gold hire periods to confirm"
+            }
+          ],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Tier",
+                "values": [
+                  {
+                    "value": "Bronze",
+                    "mode": "absolute",
+                    "amount": 850.0,
+                    "description": "7,000-lumen laser projector, power pack + technician. ~2.5 hrs continuous. Floating welcome, hologram logo or character moment."
+                  },
+                  {
+                    "value": "Silver",
+                    "mode": "absolute",
+                    "amount": 1350.0,
+                    "description": "10,000-lumen laser projector, lens options + power pack. ~2.5 hrs continuous. Product reveal, immersive portal or floating performance."
+                  },
+                  {
+                    "value": "Gold",
+                    "mode": "absolute",
+                    "amount": 1750.0,
+                    "description": "21,000-lumen projector + power pack. ~2 hrs continuous. Hero reveal, spectacular entrance or signature showpiece."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "supplier": {
+      "name": "Grace & Thorn",
+      "type": "supplier",
+      "city": "London",
+      "address": "London Fields, Hackney, London",
+      "website": "https://graceandthorn.com/",
+      "tagline": "Rule-breaking florists with an off-beat approach to flowers.",
+      "logo_url": "https://graceandthorn.com/cdn/shop/files/hq-gnt-logo_300x@2x.png?v=1614738543",
+      "description": "Rule-breaking East London florists with an off-beat approach to flowers — named among the UK's best by Vogue, Time Out and Tatler.",
+      "_media_note": "logo hotlinked (Shopify CDN); CC self-hosts. Zip has 3 brand-package images (Small/Medium/Large) to upload + attach to the Brand Launch size variants."
+    },
+    "items": [
+      {
+        "name": "Brand Launch Florals",
+        "category_ref": "florals",
+        "unit": "each",
+        "base_price": 375.0,
+        "description": "Statement florals for a brand launch or pop-up — a focal arrangement plus coordinated table and counter flowers. Choose your scale.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Size",
+                "values": [
+                  {
+                    "value": "Small",
+                    "mode": "absolute",
+                    "amount": 375.0,
+                    "description": "One statement arrangement for a welcome desk or product display, plus three smaller arrangements for tables or counters."
+                  },
+                  {
+                    "value": "Medium",
+                    "mode": "absolute",
+                    "amount": 525.0,
+                    "description": "One statement arrangement plus six smaller arrangements."
+                  },
+                  {
+                    "value": "Large",
+                    "mode": "absolute",
+                    "amount": 1277.0,
+                    "description": "A medium floral installation, two statement arrangements, plus six smaller arrangements."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "table-centrepieces"
+      },
+      {
+        "name": "Shop Exterior Design",
+        "category_ref": "florals",
+        "unit": "each",
+        "base_price": 3000.0,
+        "description": "A floral display to frame a shop entrance or window — design consultation, flowers and installation. Scope-based, from £3,000.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "poa": true,
+          "price_note": "Guide range £3,000–£20,000; final scope agreed per project."
+        },
+        "subcategory_ref": "entrance-and-arch"
+      },
+      {
+        "name": "Gifting Bunches",
+        "category_ref": "florals",
+        "unit": "each",
+        "base_price": 15.0,
+        "description": "Floral gifting bunches for guests, clients or the team. Choose your size.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Size",
+                "values": [
+                  {
+                    "value": "Small",
+                    "mode": "absolute",
+                    "amount": 15.0,
+                    "description": "A small floral gifting bunch."
+                  },
+                  {
+                    "value": "Medium",
+                    "mode": "absolute",
+                    "amount": 35.0,
+                    "description": "A medium floral gifting bunch."
+                  },
+                  {
+                    "value": "Large",
+                    "mode": "absolute",
+                    "amount": 65.0,
+                    "description": "A large floral gifting bunch."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "bouquets-and-handheld"
+      }
+    ]
+  },
+  {
+    "supplier": {
+      "name": "Larkin Floristry",
+      "type": "supplier",
+      "city": "London",
+      "email": "hello@larkinfloristry.com",
+      "website": "https://www.instagram.com/larkin.florals/",
+      "tagline": "Weddings, events & bespoke florals — London & beyond.",
+      "description": "A floral design studio specialising in weddings, events and bespoke orders — London and beyond.",
+      "logo_url": null,
+      "_media_note": "Instagram-only public presence (@larkin.florals, no website). Logo = hand/flower crest on p1 of the Larkin pricing PDF; 4 arrangement photos on pp.4-8 of that PDF for the gallery — CC extract + upload.",
+      "_terms": "London-only prices (outside London adds delivery & labour); prices exclude de-rig (available as an add-on); vases included and cleared only if de-rig requested."
+    },
+    "items": [
+      {
+        "name": "Bud Vases",
+        "category_ref": "florals",
+        "unit": "each",
+        "base_price": 350.0,
+        "description": "Clusters of single-stem bud vases for tables and bars. Choose a set size.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Set",
+                "values": [
+                  {
+                    "value": "Set of 10",
+                    "mode": "absolute",
+                    "amount": 350.0,
+                    "description": "Ten single-stem bud vases."
+                  },
+                  {
+                    "value": "Set of 20",
+                    "mode": "absolute",
+                    "amount": 680.0,
+                    "description": "Twenty single-stem bud vases."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "table-centrepieces"
+      },
+      {
+        "name": "Centrepiece",
+        "category_ref": "florals",
+        "unit": "each",
+        "base_price": 190.0,
+        "description": "Seasonal table centrepieces built to your palette. Choose your size.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Size",
+                "values": [
+                  {
+                    "value": "Small",
+                    "mode": "absolute",
+                    "amount": 190.0,
+                    "description": "Small table centrepiece."
+                  },
+                  {
+                    "value": "Medium",
+                    "mode": "absolute",
+                    "amount": 220.0,
+                    "description": "Medium table centrepiece."
+                  },
+                  {
+                    "value": "Large",
+                    "mode": "absolute",
+                    "amount": 250.0,
+                    "description": "Large table centrepiece."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "table-centrepieces"
+      },
+      {
+        "name": "Feature Arrangement",
+        "category_ref": "florals",
+        "unit": "each",
+        "base_price": 400.0,
+        "description": "A feature arrangement for a bar or a statement moment. Choose the type.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Type",
+                "values": [
+                  {
+                    "value": "Bar arrangement",
+                    "mode": "absolute",
+                    "amount": 400.0,
+                    "description": "Arrangement styled for a bar."
+                  },
+                  {
+                    "value": "Statement arrangement",
+                    "mode": "absolute",
+                    "amount": 450.0,
+                    "description": "A larger statement arrangement."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "table-centrepieces"
+      },
+      {
+        "name": "Flower Arch",
+        "category_ref": "florals",
+        "unit": "each",
+        "base_price": 3000.0,
+        "description": "A floral arch for an entrance or backdrop. Starting prices; final scope by install size.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Type",
+                "values": [
+                  {
+                    "value": "Asymmetric",
+                    "mode": "absolute",
+                    "amount": 3000.0,
+                    "description": "Asymmetric flower arch — from £3,000."
+                  },
+                  {
+                    "value": "Full",
+                    "mode": "absolute",
+                    "amount": 5000.0,
+                    "description": "Full flower arch — from £5,000."
+                  }
+                ]
+              }
+            ]
+          },
+          "guide": true,
+          "price_note": "Starting price; final scope varies by install size and stem choice."
+        },
+        "subcategory_ref": "entrance-and-arch"
+      },
+      {
+        "name": "Flower Wall",
+        "category_ref": "florals",
+        "unit": "each",
+        "base_price": 6500.0,
+        "description": "A full floral wall for a photo moment or backdrop. Starting at £6,500; final scope by size.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "guide": true,
+          "price_note": "Starting price; final scope varies by install size and stem choice."
+        },
+        "subcategory_ref": "floral-feature-walls"
+      },
+      {
+        "name": "Hanging Flower Cloud",
+        "category_ref": "florals",
+        "unit": "each",
+        "base_price": 1000.0,
+        "description": "A suspended floral cloud overhead. Starting prices; final scope by install size.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Level",
+                "values": [
+                  {
+                    "value": "Minimal",
+                    "mode": "absolute",
+                    "amount": 1000.0,
+                    "description": "Minimal hanging flower cloud — from £1,000."
+                  },
+                  {
+                    "value": "Premium",
+                    "mode": "absolute",
+                    "amount": 2000.0,
+                    "description": "Premium hanging flower cloud — from £2,000."
+                  }
+                ]
+              }
+            ]
+          },
+          "guide": true,
+          "price_note": "Starting price; final scope varies by install size and stem choice."
+        },
+        "subcategory_ref": "hanging-and-suspended-installations"
+      },
+      {
+        "name": "Flower Bundle",
+        "category_ref": "florals",
+        "unit": "each",
+        "base_price": 1290.0,
+        "description": "Curated flower bundles for a whole event — minimalist to premium. Choose your bundle.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Bundle",
+                "values": [
+                  {
+                    "value": "The Minimalist",
+                    "mode": "absolute",
+                    "amount": 1290.0,
+                    "description": "Bud vases (set of 10), 3 small centrepieces, 1 bar arrangement. Worth £1,320."
+                  },
+                  {
+                    "value": "The Standard",
+                    "mode": "absolute",
+                    "amount": 2140.0,
+                    "description": "Bud vases (set of 20), 5 medium centrepieces, 1 bar arrangement. Worth £2,180."
+                  },
+                  {
+                    "value": "The Premium",
+                    "mode": "absolute",
+                    "amount": 2990.0,
+                    "description": "Bud vases (sets of 20 + 10), 3 medium + 2 large centrepieces, 1 bar + 1 statement arrangement. Worth £3,040."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "supplier": {
+      "name": "Inchmere Event Design",
+      "type": "supplier",
+      "city": "Banbury",
+      "address": "Swan Close Road, Banbury, OX16 5TE",
+      "phone": "01295 661000",
+      "email": "alastair@inchmere.co.uk",
+      "website": "https://inchmere.co.uk/",
+      "tagline": "Bring your brand to life — if you can imagine it, we can make it.",
+      "logo_url": "https://inchmere.co.uk/wp-content/uploads/yootheme/cache/7d/inchmere-logo-black-7dd452ba.webp",
+      "description": "An award-winning event production agency for brand experiences — custom vehicles, roadshows, 3D props and exhibitions, with 30+ years turning bold ideas into reality.",
+      "_media_note": "logo hotlinked; CC self-hosts on load. Gallery TODO (project portfolio on inchmere.co.uk)."
+    },
+    "items": [
+      {
+        "name": "Trike hire",
+        "category_ref": "logistics-and-transport",
+        "unit": "time",
+        "time_unit": "week",
+        "base_price": 450.0,
+        "description": "Hire of one branded trike at £450 per week — trike only; freezer, branding, parasol, trailer, respray and power are quoted separately.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Airstream live rental",
+        "category_ref": "logistics-and-transport",
+        "unit": "time",
+        "time_unit": "week",
+        "base_price": 1800.0,
+        "description": "A 5–6m Airstream for live brand activation — guide £1,800 per week. Dressing, branding and staffing quoted to brief.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "guide": true
+        }
+      },
+      {
+        "name": "Sampling bin — weekly hire",
+        "category_ref": "other",
+        "subcategory_ref": "event-accessories",
+        "unit": "time",
+        "time_unit": "week",
+        "base_price": 135.0,
+        "description": "Round sampling bin on wheels for brand activations, hired per bin per week (min. one week). Branding, lid and insulation quoted separately. Choose your wheels.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Wheels",
+                "values": [
+                  {
+                    "value": "Urban (castor)",
+                    "mode": "absolute",
+                    "amount": 135.0,
+                    "description": "Castor wheels for smooth indoor/urban surfaces."
+                  },
+                  {
+                    "value": "All-terrain",
+                    "mode": "absolute",
+                    "amount": 155.0,
+                    "description": "All-terrain wheels for outdoor and rough ground."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Sampling bin — purchase",
+        "category_ref": "other",
+        "subcategory_ref": "event-accessories",
+        "unit": "each",
+        "base_price": 420.0,
+        "description": "Buy a round sampling bin outright for repeat activations. Branding, lid, insulation and fake base quoted separately. Choose your wheels.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Wheels",
+                "values": [
+                  {
+                    "value": "Urban (castor)",
+                    "mode": "absolute",
+                    "amount": 420.0,
+                    "description": "Castor wheels for smooth indoor/urban surfaces."
+                  },
+                  {
+                    "value": "All-terrain",
+                    "mode": "absolute",
+                    "amount": 620.0,
+                    "description": "All-terrain wheels for outdoor and rough ground."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Double-decker bus logistics",
+        "category_ref": "logistics-and-transport",
+        "unit": "each",
+        "base_price": null,
+        "description": "Location- and schedule-dependent logistics for a double-decker bus activation, with an Inchmere driver. Priced on application.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "poa": true,
+          "price_note": "Price on application — depends on location, schedule and crew."
+        }
+      }
+    ]
+  },
+  {
+    "supplier": {
+      "name": "Juno Hire",
+      "type": "supplier",
+      "city": "London",
+      "address": "Unit 2 Centre House, 10 St Leonards Road, Park Royal, London NW10 6ST",
+      "phone": "0208 692 4444",
+      "website": "https://junohire.com/",
+      "tagline": "Beautifully curated furniture for exceptional events.",
+      "logo_url": "https://junohire.com/wp-content/uploads/2026/04/juno-hire-logo.svg",
+      "description": "A family-run furniture hire business built on a simple belief: exceptional events deserve exceptional furniture and exceptional service.",
+      "images": [
+        {
+          "url": "https://b4679300.assetcdn.net/2.0/4679300/wp-content/uploads/2026/07/soho-bar-circle-at-design-museum-3-scaled.jpeg",
+          "label": "Soho bar circle at the Design Museum",
+          "focalX": 50,
+          "focalY": 50
+        }
+      ],
+      "_media_note": "Pieces/finishes/categories from junohire.com sitemap (real catalogue, 168 products -> 104 model items). Finish = free-pick colour selector (mode:none, same price). PRICES matched from the AI xlsx where a model lined up, else NULL (Juno has no online prices -> Liam fills in dev2). PHOTOS: match each model/finish to its junohire.com product page (/shop/.../<slug>/) and upload — CC/photo pass. BUNDLES (curated lounge sets w/ set price + capacity) = follow-up once real set contents captured; collection TAGS too."
+    },
+    "items": [
+      {
+        "name": "Velvet Ottoman",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Velvet Ottoman for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Silver Grey",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Sapphire Blue",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Fluted Silver Grey",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Powder Rose",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Fluted Pink",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Fluted Electric Blue",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Moss Green",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Dinky Armchair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 120.0,
+        "description": "Dinky Armchair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Moss Green",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Millennial Pink",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Mustard Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Claret",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Electric Blue",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Dusky Blue",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "armchairs"
+      },
+      {
+        "name": "Otto Chair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Otto Chair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Dusky Peach Chenille",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Black Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Deep Orange Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Navy Blue Chenille",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Pale Rust Chenille",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Palm Sofa",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 300.0,
+        "description": "Palm Sofa for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Black Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Navy Blue Chenille",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Pale Rust Chenille",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Two Seater Black Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "sofas"
+      },
+      {
+        "name": "Parker Bar",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 300.0,
+        "description": "Parker Bar for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Black White Gloss",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Matt Black",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Silver Mirror",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Gold",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "bar-and-counter-units"
+      },
+      {
+        "name": "Palm Armchair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 120.0,
+        "description": "Palm Armchair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Black Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Deep Orange Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Navy Blue Chenille",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Pale Rust Chenille",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "armchairs"
+      },
+      {
+        "name": "Milano Poseur",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Milano Poseur for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Black",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Rustic Copper",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Stone Finish",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "White Black",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "poseur-tables"
+      },
+      {
+        "name": "Mayfair Sofa",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 240.0,
+        "description": "Mayfair Sofa for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Blue",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Aubergine",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Light Blue",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "sofas"
+      },
+      {
+        "name": "Cappuccino Console Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Cappuccino Console Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Concrete Effect",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Black",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "tables"
+      },
+      {
+        "name": "Noelle Sofa",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Noelle Sofa for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Black Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Deep Orange Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Dusky Peach Chenille",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "sofas"
+      },
+      {
+        "name": "Deco Luxe Chair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Deco Luxe Chair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Ivory Boucle",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Burnt Orange Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Black Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Cocktail Chair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Cocktail Chair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Burnt Orange Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Ivory Boucle",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Midnight Blue Boucle",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Mila Chair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Mila Chair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Marine Moleskin",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Rust Moleskin",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Soft Green Moleskin",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Midnight Poseur",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Midnight Poseur for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "White Stone Effect",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Miami Coral",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Granite Effect",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "poseur-tables"
+      },
+      {
+        "name": "Dinky Sofa",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 230.0,
+        "description": "Dinky Sofa for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Dusky Blue",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Electric Blue",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Mustard Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "sofas"
+      },
+      {
+        "name": "Hexa Chair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 20.0,
+        "description": "Hexa Chair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Black White",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Black Gold",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Melissa Sofa",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 300.0,
+        "description": "Melissa Sofa for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Black Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Burn Orange Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "sofas"
+      },
+      {
+        "name": "Dexter Armchair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 120.0,
+        "description": "Dexter Armchair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Black",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Grey",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "armchairs"
+      },
+      {
+        "name": "Wingback Armchair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 120.0,
+        "description": "Wingback Armchair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Light Grey",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Dark Grey",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "armchairs"
+      },
+      {
+        "name": "Hula Stool",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 25.0,
+        "description": "Hula Stool for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Grey",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "White",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "bar-stools"
+      },
+      {
+        "name": "Mango Side Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Mango Side Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Grand",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Petite",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Terrazzo Side Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Terrazzo Side Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Black",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "White",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Loop Side Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Loop Side Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Black Stone Effect",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "White Stone Effect",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Loop Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Loop Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Black Stone Effect",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "White Stone Effect",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Ralph Sofa",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 350.0,
+        "description": "Ralph Sofa for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Ivory Boucle",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Black Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "sofas"
+      },
+      {
+        "name": "Burnished Gold Side Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Burnished Gold Side Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Round",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Oblong",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Dexter Sofa",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 200.0,
+        "description": "Dexter Sofa for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Light Grey",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Black",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "sofas"
+      },
+      {
+        "name": "Garda Marble Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Garda Marble Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Set",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Set Black",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "tables"
+      },
+      {
+        "name": "Disco Poseur",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Disco Poseur for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Aperol",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Satin Black",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "poseur-tables"
+      },
+      {
+        "name": "Cone Poseur",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Cone Poseur for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "White",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Black",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "poseur-tables"
+      },
+      {
+        "name": "Gatsby Sofa",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 300.0,
+        "description": "Gatsby Sofa for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Black Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Teal Marine",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "sofas"
+      },
+      {
+        "name": "Noelle Armchair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Noelle Armchair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Deep Orange Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Black Velvet",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "armchairs"
+      },
+      {
+        "name": "Sophia Armchair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 120.0,
+        "description": "Sophia Armchair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Red",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Black",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "armchairs"
+      },
+      {
+        "name": "Cone Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Cone Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Green",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Terracotta",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Cone Side Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Cone Side Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Finish",
+                "values": [
+                  {
+                    "value": "Green",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  },
+                  {
+                    "value": "Terracotta",
+                    "mode": "none",
+                    "amount": 0,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Arabella Chair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 32.0,
+        "description": "Arabella Chair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Aspen Bistro Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Aspen Bistro Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "tables"
+      },
+      {
+        "name": "Birdcage Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Birdcage Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Black Pin Marble Side Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Black Pin Marble Side Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Candor Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Candor Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Candor Side Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Candor Side Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Cappuccino Console",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Cappuccino Console for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "tables"
+      },
+      {
+        "name": "Capri Armchair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 150.0,
+        "description": "Capri Armchair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "armchairs"
+      },
+      {
+        "name": "Capri Sofa",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 350.0,
+        "description": "Capri Sofa for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "sofas"
+      },
+      {
+        "name": "Caterina Posuer Glass Top",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Caterina Posuer Glass Top for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "poseur-tables"
+      },
+      {
+        "name": "Classic Back Bar",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 200.0,
+        "description": "Classic Back Bar for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "bar-and-counter-units"
+      },
+      {
+        "name": "Cleo Chair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 32.0,
+        "description": "Cleo Chair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Cleo Stool",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 35.0,
+        "description": "Cleo Stool for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "bar-stools"
+      },
+      {
+        "name": "Club Lounge Chair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Club Lounge Chair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Copper Maze Side Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Copper Maze Side Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Dinky Oak Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Dinky Oak Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Directors Chair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 30.0,
+        "description": "Directors Chair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Disco Stool",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 35.0,
+        "description": "Disco Stool for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "bar-stools"
+      },
+      {
+        "name": "Display Shelf",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Display Shelf for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Drift Lounge Set",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Drift Lounge Set for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "lounge-and-breakout"
+      },
+      {
+        "name": "Faux Marble Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Faux Marble Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Grove Outdoor Lounge Set",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Grove Outdoor Lounge Set for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "lounge-and-breakout"
+      },
+      {
+        "name": "Holbox Chair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 540.0,
+        "description": "Holbox Chair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Hula Chair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 20.0,
+        "description": "Hula Chair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Innate Marble Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Innate Marble Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Innate Side Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Innate Side Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Knightsbridge Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Knightsbridge Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Long Box Console Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Long Box Console Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "tables"
+      },
+      {
+        "name": "Loom Side Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Loom Side Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Malibu Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Malibu Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Malibu Side Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Malibu Side Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Mango Classic Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Mango Classic Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Mango Oval Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Mango Oval Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Milano High Stool",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Milano High Stool for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "bar-stools"
+      },
+      {
+        "name": "Nord Chair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 37.0,
+        "description": "Nord Chair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Nova Wireless Lamp",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Nova Wireless Lamp for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Oak Worktop",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 130.0,
+        "description": "Oak Worktop for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "tables"
+      },
+      {
+        "name": "Olso Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Olso Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Outdoor Jute Style Rug",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Outdoor Jute Style Rug for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Pink Velvet Cushion",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Pink Velvet Cushion for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Pop Up Bar",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 350.0,
+        "description": "Pop Up Bar for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "bar-and-counter-units"
+      },
+      {
+        "name": "Porto Armchair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 150.0,
+        "description": "Porto Armchair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "armchairs"
+      },
+      {
+        "name": "Porto Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 70.0,
+        "description": "Porto Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Porto Sofa",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 50.0,
+        "description": "Porto Sofa for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "sofas"
+      },
+      {
+        "name": "Prism Side Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Prism Side Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Purple Velvet Cushion",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Purple Velvet Cushion for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Redwood Bar",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 250.0,
+        "description": "Redwood Bar for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "bar-and-counter-units"
+      },
+      {
+        "name": "Rope And Post Black Rope",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Rope And Post Black Rope for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Rope And Post Gold",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Rope And Post Gold for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Rope And Post Red Velvet",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Rope And Post Red Velvet for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Rust Velvet Ottoman",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Rust Velvet Ottoman for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Satine Lamp",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 25.0,
+        "description": "Satine Lamp for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Scandinavian Dining Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Scandinavian Dining Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "tables"
+      },
+      {
+        "name": "Serpentine Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Serpentine Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Shore Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 70.0,
+        "description": "Shore Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Signature High Stool",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Signature High Stool for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "bar-stools"
+      },
+      {
+        "name": "Single Soho Bar",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Single Soho Bar for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "bar-and-counter-units"
+      },
+      {
+        "name": "Sloped Floorboard Bar",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Sloped Floorboard Bar for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "bar-and-counter-units"
+      },
+      {
+        "name": "Soho Circle Bar",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 1350.0,
+        "description": "Soho Circle Bar for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "bar-and-counter-units"
+      },
+      {
+        "name": "Statement Rug",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 65.0,
+        "description": "Statement Rug for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Straight Floorboard Bar",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Straight Floorboard Bar for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "bar-and-counter-units"
+      },
+      {
+        "name": "The Parker Bar",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 300.0,
+        "description": "The Parker Bar for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "bar-and-counter-units"
+      },
+      {
+        "name": "Tolix Stool",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 12.0,
+        "description": "Tolix Stool for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "bar-stools"
+      },
+      {
+        "name": "Tubby Chair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Tubby Chair for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "seating"
+      },
+      {
+        "name": "Vanity Mirror",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 50.0,
+        "description": "Vanity Mirror for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Verve Coffee Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Verve Coffee Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Verve Side Table",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": null,
+        "description": "Verve Side Table for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "coffee-tables"
+      },
+      {
+        "name": "Vesper Lamp",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 135.0,
+        "description": "Vesper Lamp for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Wingback Sofa",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 210.0,
+        "description": "Wingback Sofa for event hire.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "sofas"
+      }
+    ]
+  },
+  {
+    "supplier": {
+      "name": "Blue Sky Tipis",
+      "type": "supplier",
+      "city": "London",
+      "address": "Barnet, EN5, London",
+      "phone": "0203 718 7355",
+      "email": "hello@blueskytipis.com",
+      "website": "https://www.blueskytipis.com",
+      "tagline": "Tipi tent hire specialists in London & the South-East.",
+      "logo_url": "https://images.squarespace-cdn.com/content/v1/5f91974081fbdc6b83601901/1605287781301-HCX3R4DSHPZ85I3Y3QB0/BLUE+SKY+TIPIS+LOGO+WHITE-CROP.png?format=1500w",
+      "cover_image_url": "https://static1.squarespace.com/static/5f91974081fbdc6b83601901/t/6877bf4e6588572799f6c029/1752678222521/Blue+Sky+Tipis+Evening+-+for+footer+-+small.jpg?format=1500w",
+      "description": "A London-based tipi tent hire specialist covering the South-East — spacious, high-quality tipis for weddings, corporate events and parties, with furniture and decoration packages.",
+      "_media_note": "logo + cover hotlinked to Squarespace CDN; CC self-hosts on load. Full gallery on the Portfolio page (TODO)."
+    },
+    "items": [
+      {
+        "name": "Giant Hat Tipi",
+        "category_ref": "stand-structure",
+        "unit": "package",
+        "base_price": 1495.83,
+        "description": "Traditional Giant Hat tipis — linked or standalone, with fairy lights, matting and installation. Choose your configuration.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Configuration",
+                "values": [
+                  {
+                    "value": "Single",
+                    "mode": "absolute",
+                    "amount": 1495.83,
+                    "description": "One Giant Hat tipi."
+                  },
+                  {
+                    "value": "Double",
+                    "mode": "absolute",
+                    "amount": 2912.5,
+                    "description": "Two linked tipis."
+                  },
+                  {
+                    "value": "Triple",
+                    "mode": "absolute",
+                    "amount": 4370.83,
+                    "description": "Three linked tipis."
+                  },
+                  {
+                    "value": "Four",
+                    "mode": "absolute",
+                    "amount": 5829.17,
+                    "description": "Four linked tipis."
+                  },
+                  {
+                    "value": "Five",
+                    "mode": "absolute",
+                    "amount": 7333.33,
+                    "description": "Five linked tipis."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "outdoor-and-tensile-structure"
+      },
+      {
+        "name": "Witches Hat Tipi",
+        "category_ref": "stand-structure",
+        "unit": "package",
+        "base_price": 1558.33,
+        "description": "A single Witches Hat tipi — a taller, pointed alternative to the Giant Hat.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "outdoor-and-tensile-structure"
+      },
+      {
+        "name": "Naked Tipi",
+        "category_ref": "stand-structure",
+        "unit": "each",
+        "base_price": 829.17,
+        "description": "A tipi frame without covers — a structural or decorative base.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "outdoor-and-tensile-structure"
+      },
+      {
+        "name": "Tipi porch with timber doors",
+        "category_ref": "stand-structure",
+        "unit": "each",
+        "base_price": 412.5,
+        "description": "A timber-door porch entrance for a tipi.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "outdoor-and-tensile-structure"
+      },
+      {
+        "name": "Disco ball",
+        "category_ref": "av-and-technology",
+        "unit": "each",
+        "base_price": 70.0,
+        "description": "A mirrored disco ball to hang over a dancefloor. Choose your size.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Size",
+                "values": [
+                  {
+                    "value": "Mini (no motor)",
+                    "mode": "absolute",
+                    "amount": 70.0,
+                    "description": "Mini mirror ball, no motor."
+                  },
+                  {
+                    "value": "Giant 50cm (motorised)",
+                    "mode": "absolute",
+                    "amount": 187.5,
+                    "description": "50cm motorised mirror ball."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "lighting"
+      },
+      {
+        "name": "Pearl Drop chandelier",
+        "category_ref": "av-and-technology",
+        "unit": "each",
+        "base_price": 295.83,
+        "description": "A decorative pearl-drop chandelier.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "lighting"
+      },
+      {
+        "name": "Hanging orb",
+        "category_ref": "av-and-technology",
+        "unit": "each",
+        "base_price": 35.0,
+        "description": "A hanging decorative orb light.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "lighting"
+      },
+      {
+        "name": "Festoon lighting — 10 m",
+        "category_ref": "av-and-technology",
+        "unit": "each",
+        "base_price": 35.0,
+        "description": "Warm festoon lighting, per 10m run.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "lighting"
+      },
+      {
+        "name": "Festoon supports (shepherd’s hooks) — 10 m",
+        "category_ref": "av-and-technology",
+        "unit": "each",
+        "base_price": 25.0,
+        "description": "Shepherd’s-hook festoon support poles, per 10m.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "lighting"
+      },
+      {
+        "name": "Reclaimed timber bar",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 145.83,
+        "description": "A reclaimed-timber bar. Choose your length.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Length",
+                "values": [
+                  {
+                    "value": "2 m",
+                    "mode": "absolute",
+                    "amount": 145.83,
+                    "description": "2m reclaimed-timber bar."
+                  },
+                  {
+                    "value": "4 m",
+                    "mode": "absolute",
+                    "amount": 208.33,
+                    "description": "4m reclaimed-timber bar."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "bar-and-counter-units"
+      },
+      {
+        "name": "Leather chill-out furniture set",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 250.0,
+        "description": "A leather chill-out furniture set for a lounge area.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "lounge-and-breakout"
+      },
+      {
+        "name": "Wicker peacock chairs — pair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "multipack",
+        "base_price": 95.0,
+        "description": "A pair of wicker peacock statement chairs.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "armchairs"
+      },
+      {
+        "name": "Folding wooden chair",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 4.17,
+        "description": "A folding wooden event chair.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "folding-chair"
+      },
+      {
+        "name": "Bar stool",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 15.0,
+        "description": "A bar stool.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "bar-stools"
+      },
+      {
+        "name": "Dancefloor — 4.5 m × 4.5 m",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 300.0,
+        "description": "A 4.5 × 4.5m event dancefloor.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Galvanised drinks cooler",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 28.33,
+        "description": "A galvanised tub drinks cooler.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Faux sheepskin rug",
+        "category_ref": "furniture-and-fixtures",
+        "unit": "each",
+        "base_price": 6.67,
+        "description": "A faux sheepskin rug for seating and floors.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        }
+      },
+      {
+        "name": "Flower ring",
+        "category_ref": "other",
+        "unit": "each",
+        "base_price": 190.0,
+        "description": "A free-standing flower ring for floral dressing. Choose your diameter.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": [],
+          "variants": {
+            "dimensions": [
+              {
+                "name": "Diameter",
+                "values": [
+                  {
+                    "value": "1.2 m",
+                    "mode": "absolute",
+                    "amount": 190.0,
+                    "description": "1.2m flower ring."
+                  },
+                  {
+                    "value": "1.5 m",
+                    "mode": "absolute",
+                    "amount": 190.0,
+                    "description": "1.5m flower ring."
+                  },
+                  {
+                    "value": "2 m",
+                    "mode": "absolute",
+                    "amount": 208.33,
+                    "description": "2m flower ring."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "subcategory_ref": "event-accessories"
+      },
+      {
+        "name": "Reclaimed timber pergola",
+        "category_ref": "other",
+        "unit": "each",
+        "base_price": 145.83,
+        "description": "A reclaimed-timber pergola structure.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "event-accessories"
+      },
+      {
+        "name": "Circular fire bowl bench set",
+        "category_ref": "other",
+        "unit": "each",
+        "base_price": 191.67,
+        "description": "A circular fire-bowl with bench seating.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "event-accessories"
+      },
+      {
+        "name": "Corten steel fire bowl",
+        "category_ref": "other",
+        "unit": "each",
+        "base_price": 53.33,
+        "description": "A Corten-steel fire bowl.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "event-accessories"
+      },
+      {
+        "name": "Walkway matting — 10 m",
+        "category_ref": "other",
+        "unit": "each",
+        "base_price": 75.0,
+        "description": "Walkway matting, per 10m.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "event-accessories"
+      },
+      {
+        "name": "Garden games",
+        "category_ref": "other",
+        "unit": "each",
+        "base_price": 32.5,
+        "description": "A set of garden games.",
+        "attributes": {
+          "style": [],
+          "features": [],
+          "materials": [],
+          "price_tiers": [],
+          "measurements": [],
+          "specifications": []
+        },
+        "subcategory_ref": "event-accessories"
+      }
+    ]
+  },
+  {
+    "supplier": {
+      "name": "Anomis Flowers",
+      "type": "supplier",
+      "city": "London",
+      "website": "https://anomisflowers.com/",
+      "description": "North London wedding & event florist — seasonal, architectural floral design for couples, brands and private clients, across London, Surrey and Hertfordshire.",
+      "_status": "SUPPLIER ONLY (header + gallery). Liam is adding the items himself — the event services (Corporate & Brand £800, Private Celebration £800, Engagement & Proposal £1,000, Office & Business £500); weddings excluded. 15 themed portfolio photos = gallery.",
+      "_media_note": "15 portfolio photos in the Anomis zip (themed) — CC upload as gallery/per-look images. Logo not on site meta (data-uri placeholder) — grab from anomisflowers.com or at onboarding.",
+      "tagline": "Seasonal, architectural floral design for brand and private events."
+    },
+    "items": []
+  }
+]
