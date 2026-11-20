@@ -119,23 +119,20 @@ async function snapshotExecutedLines(doc) {
     const approval = st.buyerAcceptedAt && st.sellerAcceptedAt
       ? (new Date(st.buyerAcceptedAt) > new Date(st.sellerAcceptedAt) ? st.buyerAcceptedAt : st.sellerAcceptedAt)
       : null;
-    lines.push([
-      doc.org_id, doc.id, row.project_item_id, row.name, row.spec, row.quantity, row.unit,
-      unitPrice, total, row.currency, 'agreed', approval, row.i_ref, unitSize, variantLabel,
-      variantDescriptionFrom(row.r_variant, row.attributes), row.install_description,
-    ]);
+    lines.push({
+      org_id: doc.org_id, project_item_id: row.project_item_id, name: row.name, spec: row.spec,
+      quantity: row.quantity, unit: row.unit, unit_price: unitPrice, line_total: total,
+      currency: row.currency, source: 'agreed', approval_date: approval, sku: row.i_ref,
+      unit_size: unitSize, variant: variantLabel,
+      variant_description: variantDescriptionFrom(row.r_variant, row.attributes),
+      install_description: row.install_description,
+    });
   }
 
-  await pool.query('DELETE FROM project_document_lines WHERE document_id = $1', [doc.id]);
-  for (const l of lines) {
-    await pool.query(
-      `INSERT INTO project_document_lines
-         (org_id, document_id, project_item_id, name, spec, quantity, unit, unit_price, line_total,
-          currency, source, approval_date, sku, unit_size, variant, variant_description, install_description)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
-      l
-    );
-  }
+  // project_document_lines is SELECT-only to the app role (server-side-only by design,
+  // 0040) — write the snapshot through the freeze_document_lines SECURITY DEFINER
+  // (0065): atomic, party-gated, replaces the document's snapshot wholesale.
+  await pool.query('SELECT public.freeze_document_lines($1, $2::jsonb)', [doc.id, JSON.stringify(lines)]);
 }
 
 function httpErr(message, status) {
@@ -322,12 +319,11 @@ async function getById(id, viewerOrgId) {
     signaturesFor(id),
   ]);
   let linesMap = await linesFor(row.status === 'accepted' ? [row.id] : []);
-  // Fully-Executed (accepted) is the terminal now — the two-step approval
-  // (agent accept → supplier co_approve) replaced the sign→executed flow. Freeze
-  // the agreed items the first time an accepted SOW is viewed, so it shows WHAT WAS
-  // AGREED, not the live thread (Liam 2026-11-19). Self-healing + best-effort: a
-  // snapshot failure falls back to live derivation.
-  if (row.status === 'accepted' && !(linesMap.get(row.id) || []).length) {
+  // Self-heal: if an accepted (Fully Executed) SOW isn't frozen yet, freeze it — but
+  // ONLY when the AUTHOR is viewing, so the lines are read under a consistent org
+  // context (an agency-first view would read quotes under its own RLS). The primary
+  // trigger is co_approve in review(); this is the best-effort backstop.
+  if (row.status === 'accepted' && viewerOrgId === row.org_id && !(linesMap.get(row.id) || []).length) {
     try { await snapshotExecutedLines(row); linesMap = await linesFor([row.id]); }
     catch (e) { console.error('[sow] line snapshot on accept failed:', e.message); }
   }
@@ -356,8 +352,8 @@ async function updateDraft({ id, userId, name, content, depositPct, presentation
     return toSowDto(r.rows[0]);
   } catch (e) {
     if (e.status) throw e;
-    // The freeze trigger raises once the SOW is fully executed — it's immutable.
-    if (/frozen once/i.test(e.message || '')) throw httpErr('This SOW is fully executed and can no longer be edited — create a new SOW to amend', 409);
+    // The freeze trigger raises once the SOW leaves draft (out for review / executed).
+    if (/frozen/i.test(e.message || '')) throw httpErr('This SOW is out for review or executed and can no longer be edited — Revise it to a draft, or create a new SOW to amend', 409);
     throw e;
   }
 }
@@ -369,7 +365,19 @@ async function updateDraft({ id, userId, name, content, depositPct, presentation
 async function review({ id, action }) {
   try {
     const r = await pool.query('SELECT public.document_review($1, $2) AS status', [id, action]);
-    return { status: r.rows[0].status };
+    const status = r.rows[0].status;
+    // Final execution (co_approve → accepted): FREEZE the agreed lines so the SOW
+    // shows WHAT WAS AGREED, immutable. The co_approve caller is the AUTHOR, so the
+    // snapshot reads under a consistent org context and writes via the definer.
+    // Best-effort — a snapshot failure never undoes a completed approval.
+    if (status === 'accepted') {
+      const d = await pool.query('SELECT id, project_id, project_provider_id, org_id FROM project_documents WHERE id = $1', [id]);
+      if (d.rows[0]) {
+        try { await snapshotExecutedLines(d.rows[0]); }
+        catch (e) { console.error('[sow] freeze on accept failed:', e.message); }
+      }
+    }
+    return { status };
   } catch (e) {
     const msg = e.message || '';
     if (/not a party/i.test(msg)) throw httpErr('You are not a party to this SOW', 403);
