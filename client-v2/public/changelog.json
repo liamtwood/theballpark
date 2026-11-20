@@ -2,6 +2,50 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.10.0",
+      "name": "Statements of Work",
+      "build": "v2.1218",
+      "date": "2026-11-20",
+      "datetime": "2026-11-20",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Statements of Work",
+          "items": [
+            {
+              "ref": "pV2-SOW-01",
+              "type": "new",
+              "feature": "Statements of Work",
+              "text": "Create a full, structured contract inside any supplier thread: parties, project details, services and goods at agreed prices, a timeline, a payment schedule and terms. Either side can author; the other reviews. The agent accepts, the supplier co-approves, and it becomes Fully Executed — frozen as the agreed record, with a change history."
+            }
+          ]
+        },
+        {
+          "area": "Inbox",
+          "items": [
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "The Inbox opens near-instantly, down from several seconds. Supplier threads now lead with the project name and a quick agency · item · quantity line, with the project hero up top."
+            }
+          ]
+        },
+        {
+          "area": "Behind the scenes",
+          "items": [
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "BPIN",
+              "text": "Every catalogue item now carries an immutable Ballpark id, so a purchased thing is referenced precisely on a Statement of Work."
+            }
+          ]
+        }
+      ],
+      "fixes": []
+    },
+    {
       "version": "v0.9.1",
       "name": "Create project fix",
       "build": "v2.1157",
