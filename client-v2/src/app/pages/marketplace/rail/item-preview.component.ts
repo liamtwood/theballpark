@@ -32,17 +32,17 @@ import { unitServesLabel } from '../../../shared/unit-display';
         @if (showStoreLink()) {
           @if (item().ownedByActiveOrg) {
             <!-- pV2-STORE-01 — owner edits their own item. -->
-            <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Edit product" aria-label="Edit product" (click)="$event.stopPropagation()">
+            <a [routerLink]="['/store/items', item().bpin ?? item().id]" class="bp-itemprev-close" title="Edit product" aria-label="Edit product" (click)="$event.stopPropagation()">
               <lucide-icon name="square-pen" [size]="14" />
             </a>
           } @else if (canModerate()) {
             <!-- pV2-STORE-01 — ballpark admin reviews / approves the item. -->
-            <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Review product" aria-label="Review product" (click)="$event.stopPropagation()">
+            <a [routerLink]="['/store/items', item().bpin ?? item().id]" class="bp-itemprev-close" title="Review product" aria-label="Review product" (click)="$event.stopPropagation()">
               <lucide-icon name="circle-check" [size]="14" />
             </a>
           } @else {
             <!-- pV2-STORE-01 — anyone else (e.g. an agent) opens the read-only view. -->
-            <a [routerLink]="['/store/items', item().id]" [queryParams]="{ view: 1 }" class="bp-itemprev-close" title="View product" aria-label="View product" (click)="$event.stopPropagation()">
+            <a [routerLink]="['/store/items', item().bpin ?? item().id]" [queryParams]="{ view: 1 }" class="bp-itemprev-close" title="View product" aria-label="View product" (click)="$event.stopPropagation()">
               <lucide-icon name="external-link" [size]="14" />
             </a>
           }

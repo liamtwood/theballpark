@@ -269,8 +269,8 @@ export class ItemCardComponent {
   protected readonly editLink = computed(() => {
     const org = this.adminEditOrgId();
     return org && !this.item().ownedByActiveOrg
-      ? ['/admin/orgs', org, 'items', this.item().id]
-      : ['/store/items', this.item().id];
+      ? ['/admin/orgs', org, 'items', this.item().id] // admin route stays UUID
+      : ['/store/items', this.item().bpin ?? this.item().id]; // store route → BPIN
   });
 
   // ── Moderation (pV2-STORE-APPROVALS-01) ───────────────────────────────────
@@ -366,7 +366,7 @@ export class ItemCardComponent {
     // approvals queue, never the read-only Quick View dead-end. Mirrors the
     // item-preview "Review product" link (isModerator wins over ?view).
     if (this.isAdmin()) {
-      void this.router.navigate(['/store/items', this.item().id]);
+      void this.router.navigate(['/store/items', this.item().bpin ?? this.item().id]);
       return;
     }
     // BE-00104 — a marketplace/browse surface must NEVER route a card click to
@@ -380,7 +380,7 @@ export class ItemCardComponent {
       return;
     }
     void this.router.navigate(
-      ['/store/items', this.item().id],
+      ['/store/items', this.item().bpin ?? this.item().id],
       owned ? {} : { queryParams: { view: 1 } }
     );
   }
@@ -424,8 +424,8 @@ export class ItemCardComponent {
         // Open the new copy in the editor so it can be tweaked + saved.
         void this.router.navigate(
           adminOrg && !this.item().ownedByActiveOrg
-            ? ['/admin/orgs', adminOrg, 'items', copy.id]
-            : ['/store/items', copy.id]
+            ? ['/admin/orgs', adminOrg, 'items', copy.id] // admin route stays UUID
+            : ['/store/items', copy.bpin ?? copy.id]
         );
       })
       .catch(() => { /* host keeps the row; a toast lands with the dialog work */ })

@@ -191,7 +191,7 @@ type Pane = 'item' | 'supplier';
                       <div class="bp-md bp-body-small mt-2 text-secondary" [innerHTML]="it.installDescription | md"></div>
                     </div>
                   }
-                  <app-item-attribute-cards [attributes]="it.attributes ?? null" />
+                  <app-item-attribute-cards [attributes]="it.attributes ?? null" [bpin]="it.bpin ?? null" />
 
                   <p class="bp-caption text-secondary">
                     Specs are indicative and confirmed by the supplier when you message them. Ballpark estimates

@@ -100,7 +100,7 @@ router.get('/suppliers', async (req, res, next) => {
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     vals.push(PAGE_SIZE, offset);
     const r = await pool.query(
-      `SELECT o.id, o.name, o.description, o.logo_url, o.cover_image_url, o.image_display, o.city,
+      `SELECT o.id, o.handle, o.name, o.description, o.logo_url, o.cover_image_url, o.image_display, o.city,
               COUNT(i.id) AS item_count,
               COUNT(*) OVER() AS total
          FROM supplier_directory o
@@ -110,7 +110,7 @@ router.get('/suppliers', async (req, res, next) => {
         -- BE-00129 — group every selected orgs_public column (it's a VIEW, no PK
         -- functional dependency; see /suppliers/options above). v2dev: city is the
         -- public locality from orgs_public (address_locality definer — supplier only).
-        GROUP BY o.id, o.name, o.description, o.logo_url, o.cover_image_url, o.image_display, o.city
+        GROUP BY o.id, o.handle, o.name, o.description, o.logo_url, o.cover_image_url, o.image_display, o.city
         ORDER BY o.name ASC
         LIMIT $${vals.length - 1} OFFSET $${vals.length}`,
       vals
@@ -118,6 +118,7 @@ router.get('/suppliers', async (req, res, next) => {
     const total = r.rows.length ? Number(r.rows[0].total) : 0;
     const items = r.rows.map((row) => ({
       id: row.id,
+      handle: row.handle ?? null,
       name: row.name,
       city: row.city ?? null, // v2dev: public locality via orgs_public (address_locality)
       description: row.description,
@@ -136,8 +137,9 @@ router.get('/suppliers', async (req, res, next) => {
  *  projected here — marketplace-public fields only. */
 router.get('/suppliers/:id', async (req, res, next) => {
   try {
-    const id = z.uuid().safeParse(req.params.id);
-    if (!id.success) return res.status(400).json({ error: 'Invalid id' });
+    // Accept EITHER the org UUID or the human handle (sk-projections) — pV2-BPIN-01.
+    const key = String(req.params.id || '');
+    if (!key || key.length > 200) return res.status(400).json({ error: 'Invalid id' });
     // Cross-org shopfront read via supplier_directory (owner-run; bypasses orgs RLS,
     // which hides the base orgs row cross-org). The directory exposes the marketplace-
     // card columns + `website` (0021 — public supplier info, surfaced on the Quick View
@@ -146,19 +148,20 @@ router.get('/suppliers/:id', async (req, res, next) => {
     // platform inbox) and is nulled below. city/country ARE public locality (via the
     // address_locality definer — supplier only).
     const r = await pool.query(
-      `SELECT id, name, description, website, logo_url, cover_image_url, images, city, country
+      `SELECT id, handle, name, description, website, logo_url, cover_image_url, images, city, country
          FROM supplier_directory
-        WHERE id = $1`,
-      [id.data]
+        WHERE (id::text = $1 OR handle = $1)`,
+      [key]
     );
     if (!r.rows.length) return res.status(404).json({ error: 'Supplier not found' });
+    const orgId = r.rows[0].id; // resolved UUID — key may be a handle
     // pV2-STORE-CAT-DISPLAY-01 — counts must match the /items list SCOPE, or the
     // rail and the grid disagree. The owner of the store (and a ballpark admin)
     // sees their whole catalogue in the list (draft/pending/inactive), so their
     // counts must include those too; the public sees live+approved only. Also
     // note: no c.is_active/deleted_at gate on the category — display follows the
     // items (a category with ≥1 in-scope item shows, whatever its status).
-    const liveFilter = ownerVisibleFilter(req, id.data, 'i');
+    const liveFilter = ownerVisibleFilter(req, orgId, 'i');
     // LEFT JOIN + COALESCE so null-category items (e.g. freshly-pulled, awaiting
     // classification) are NEVER dropped — they surface under an 'uncategorised'
     // bucket the admin can browse + classify (pV2-STORE-EXTRACT-01). Excludes
@@ -183,7 +186,7 @@ router.get('/suppliers/:id', async (req, res, next) => {
           AND i.type IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL ${liveFilter}
         GROUP BY top.id, top.name
         ORDER BY (top.id IS NULL), top.name ASC`,
-      [id.data]
+      [orgId]
     );
     // pV2-STORE-WHATS-HOT-01 — "What's Hot" count drives the shopfront menu link.
     // v2dev: item tags live in item_tags → tags vocab (matched by name). Count the
@@ -197,12 +200,13 @@ router.get('/suppliers/:id', async (req, res, next) => {
         WHERE i.org_id = $1 AND i.deleted_at IS NULL
           AND i.type IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL ${liveFilter}
           AND lower(t.name) = lower($2)`,
-      [id.data, "What's Hot"]
+      [orgId, "What's Hot"]
     );
     const hotCount = hotR.rows[0]?.n ?? 0;
     const row = r.rows[0];
     res.json({
       id: row.id,
+      handle: row.handle ?? null, // human URL id (pV2-BPIN-01)
       name: row.name,
       city: row.city ?? null, // v2dev: public locality via orgs_public (address_locality)
       country: row.country ?? null,
@@ -235,8 +239,13 @@ router.get('/suppliers/:id', async (req, res, next) => {
  *  cover column on categories instead of widening this query. */
 router.get('/suppliers/:id/subcategories', async (req, res, next) => {
   try {
-    const id = z.uuid().safeParse(req.params.id);
-    if (!id.success) return res.status(400).json({ error: 'Invalid id' });
+    // Accept the handle OR the UUID (pV2-BPIN-01); resolve to the org UUID for the
+    // scoped queries below.
+    const key = String(req.params.id || '');
+    if (!key || key.length > 200) return res.status(400).json({ error: 'Invalid id' });
+    const sup = await pool.query('SELECT id FROM supplier_directory WHERE (id::text = $1 OR handle = $1)', [key]);
+    if (!sup.rows.length) return res.status(404).json({ error: 'Supplier not found' });
+    const orgId = sup.rows[0].id;
     // Two row kinds, one shape: real subcats + a CATCH-ALL row per category
     // for the supplier's items that have a category but no subcat (the
     // screenshot's "Catering / 3 items" card). Catch-all drills cat-only.
@@ -245,8 +254,8 @@ router.get('/suppliers/:id/subcategories', async (req, res, next) => {
     // subcategory_id (status-agnostic on the category — a subcat shows iff it has
     // ≥1 in-scope item), plus a catch-all row per category rolling up the
     // uncategorised (subcategory_id IS NULL) items to their macro.
-    const liveOuter = ownerVisibleFilter(req, id.data, 'i');
-    const liveCover = ownerVisibleFilter(req, id.data, 'i2');
+    const liveOuter = ownerVisibleFilter(req, orgId, 'i');
+    const liveCover = ownerVisibleFilter(req, orgId, 'i2');
     // v2dev (0015): ONE category_id at any depth — the chain is derived by walking
     // UP from i.category_id, emitting every ancestor that is NOT the top-level macro
     // (so a deep item contributes an L2 chip AND its L3 chip). An item classified
@@ -290,7 +299,7 @@ router.get('/suppliers/:id/subcategories', async (req, res, next) => {
           AND i.type IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL ${liveOuter}
         GROUP BY c.id, c.name, c.tagline, c.sort_order
         ORDER BY sort_order ASC NULLS LAST, name ASC`,
-      [id.data]
+      [orgId]
     );
     res.json(
       r.rows.map((row) => ({

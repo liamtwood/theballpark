@@ -34,7 +34,7 @@ import { CatalogueSupplier, ViewMode, CARD_GRID_LOOSE, CARD_GRID_DENSE } from '.
         <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
           @for (sup of suppliers(); track sup.id) {
             <a
-              [routerLink]="['/suppliers', sup.id]"
+              [routerLink]="['/suppliers', sup.handle ?? sup.id]"
               class="grid grid-cols-[36px_1fr_auto] items-center gap-3 border-b border-hairline px-3 py-2 text-text no-underline last:border-b-0 hover:bg-fill"
             >
               <span class="bp-supplier-card__logo">{{ initial(sup) }}</span>
@@ -56,7 +56,7 @@ import { CatalogueSupplier, ViewMode, CARD_GRID_LOOSE, CARD_GRID_DENSE } from '.
           </div>
           @for (sup of suppliers(); track sup.id) {
             <a
-              [routerLink]="['/suppliers', sup.id]"
+              [routerLink]="['/suppliers', sup.handle ?? sup.id]"
               class="grid grid-cols-[1.6fr_1fr_110px] gap-x-4 border-b border-hairline px-4 py-2 text-text no-underline last:border-b-0 hover:bg-fill"
             >
               <span class="truncate text-base">{{ sup.name }}</span>

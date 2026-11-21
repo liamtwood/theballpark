@@ -19,7 +19,11 @@ const ItemsQuerySchema = z
     priceMin: z.coerce.number().min(0).max(1000000).optional(),
     priceMax: z.coerce.number().min(0).max(1000000).optional(),
     tier: z.enum(['basic', 'mid', 'premium']).optional(),
-    supplier: z.uuid().optional(),
+    // supplier= may be the org UUID OR the human handle (pV2-BPIN-01). The /items
+    // handler resolves a non-UUID to the org id (supplier_directory lookup; unknown
+    // handle → no-match sentinel) and every value reaches SQL bound. A bare z.uuid()
+    // here 400'd the handle URL before resolution could run (My Shop re-entry bug).
+    supplier: z.string().trim().min(1).max(200).optional(),
     // pV2-STORE-WHATS-HOT-01 — free-text tag filter (items.tags array). Powers the
     // shopfront "What's Hot" menu + any tag-scoped browse. Matched with ANY(i.tags).
     tag: z.string().trim().max(60).optional(),

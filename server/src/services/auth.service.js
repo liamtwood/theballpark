@@ -122,7 +122,7 @@ async function buildSession(userId, targetOrgId = null) {
                      (SELECT uo3.org_id FROM user_orgs uo3
                         WHERE uo3.user_id = u.id AND uo3.status = 'active' AND uo3.deleted_at IS NULL
                         ORDER BY uo3.joined_at ASC NULLS LAST LIMIT 1))) AS home_org_type,
-            o.id AS org_id, o.name AS org_name, o.type AS org_type,
+            o.id AS org_id, o.name AS org_name, o.type AS org_type, o.handle AS org_handle,
             (uo.role IN ('admin','owner')) AS is_admin   -- v2dev: derive org-admin from role enum
        FROM users u
        JOIN user_orgs uo ON uo.user_id = u.id AND uo.status = 'active' AND uo.deleted_at IS NULL
@@ -151,6 +151,7 @@ async function buildSession(userId, targetOrgId = null) {
       displayName: row.display_name,
       avatarUrl: row.avatar_url,
       activeOrgId: null,
+      activeOrgHandle: null,
       activeOrgName: null,
       activeOrgType: null,
       isAdmin: false,
@@ -166,6 +167,7 @@ async function buildSession(userId, targetOrgId = null) {
     displayName: row.display_name,
     avatarUrl: row.avatar_url,
     activeOrgId: row.org_id,
+    activeOrgHandle: row.org_handle ?? null, // human URL slug (pV2-BPIN-01)
     activeOrgName: row.org_name,
     activeOrgType: normalizeOrgType(row.org_type),
     isAdmin: row.is_admin,

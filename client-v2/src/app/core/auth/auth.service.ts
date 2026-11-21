@@ -24,6 +24,8 @@ export interface SessionUser {
   displayName: string | null;
   avatarUrl: string | null;
   activeOrgId: string | null;
+  /** Human URL slug of the active org (e.g. "sk-projections") — pV2-BPIN-01. */
+  activeOrgHandle: string | null;
   activeOrgName: string | null;
   activeOrgType: OrgType | null;
   isAdmin: boolean;

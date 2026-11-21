@@ -117,7 +117,7 @@ async function getById(id) {
      FROM items i
      LEFT JOIN categories c ON i.category_id = c.id
      LEFT JOIN orgs o ON i.org_id = o.id
-     WHERE i.id = $1`,
+     WHERE (i.id::text = $1 OR i.bpin = $1)`,
     [id]
   );
   const item = withHero(result.rows[0] || null);
@@ -129,7 +129,7 @@ async function getById(id) {
        FROM public.item_tags it JOIN public.tags t ON t.id = it.tag_id
       WHERE it.item_id = $1 AND it.deleted_at IS NULL AND t.deleted_at IS NULL
       ORDER BY t.name`,
-    [id]
+    [item.id] // resolved UUID — the param may be a BPIN
   );
   item.tags = tagRows.rows.map((r) => r.name);
   item.item_tags = tagRows.rows.map((r) => ({ tag_id: r.tag_id, dimension: r.dimension, label: r.name }));
@@ -317,16 +317,16 @@ async function listComponents(orgId, itemId) {
     // Seed the estimate margin from the SUPPLIER PROFILE default (orgs.default_
     // margin_pct); null falls back to the client's 20% floor. Items have no
     // per-item margin, so marginPct stays null (the org default drives it).
-    `SELECT i.name, i.description, i.install_description, o.default_margin_pct
+    `SELECT i.id, i.name, i.description, i.install_description, o.default_margin_pct
        FROM items i JOIN orgs o ON o.id = i.org_id
-      WHERE i.id = $1 AND i.org_id = $2 AND i.deleted_at IS NULL`,
+      WHERE (i.id::text = $1 OR i.bpin = $1) AND i.org_id = $2 AND i.deleted_at IS NULL`,
     [itemId, orgId]
   );
   if (!own.rows.length) return null;
   const r = await pool.query(
     `SELECT id, name, base_price, unit, quantity, category_id, type, description, images
        FROM items WHERE parent_item_id = $1 AND deleted_at IS NULL ORDER BY created_at`,
-    [itemId]
+    [own.rows[0].id] // resolved UUID — itemId may be a BPIN
   );
   return {
     components: r.rows.map(toItemComponent),
@@ -342,11 +342,12 @@ async function saveComponents(orgId, itemId, components, parentName, parentDescr
   const list = Array.isArray(components) ? components : [];
   return withTransaction(async (client) => {
     const own = await client.query(
-      `SELECT id FROM items WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`, [itemId, orgId]
+      `SELECT id FROM items WHERE (id::text = $1 OR bpin = $1) AND org_id = $2 AND deleted_at IS NULL`, [itemId, orgId]
     );
     if (!own.rows.length) return null;
+    const realId = own.rows[0].id; // itemId may be a BPIN — use the resolved UUID below
     const existing = await client.query(
-      `SELECT id FROM items WHERE parent_item_id = $1 AND deleted_at IS NULL`, [itemId]
+      `SELECT id FROM items WHERE parent_item_id = $1 AND deleted_at IS NULL`, [realId]
     );
     const keep = new Set(list.filter((c) => c.id).map((c) => c.id));
     for (const row of existing.rows) {
@@ -362,13 +363,13 @@ async function saveComponents(orgId, itemId, components, parentName, parentDescr
         await client.query(
           `UPDATE items SET name=$2, base_price=$3, unit=$4, category_id=$5, type=$6, description=$7, images=$8::jsonb, quantity=$10
             WHERE id=$1 AND parent_item_id=$9`,
-          [c.id, nm, cost, c.unit || null, c.categoryId || null, 'component', c.description || null, img, itemId, qty]
+          [c.id, nm, cost, c.unit || null, c.categoryId || null, 'component', c.description || null, img, realId, qty]
         );
       } else {
         await client.query(
           `INSERT INTO items (org_id, parent_item_id, category_id, name, description, unit, base_price, quantity, type, images, status, approval_status)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'component', $9::jsonb, 'active', 'approved')`,
-          [orgId, itemId, c.categoryId || null, nm, c.description || null, c.unit || null, cost, qty, img]
+          [orgId, realId, c.categoryId || null, nm, c.description || null, c.unit || null, cost, qty, img]
         );
       }
       // Clone-up to the library (INSERT-ONLY, deduped by name).

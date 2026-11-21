@@ -27,13 +27,16 @@ const GROUPS: { key: string; title: string; icon: string }[] = [
     <!-- Options retired (pV2-STORE-VARIANTS-EDIT-01) — selectable choices are now a
          single-dimension VARIANT, rendered by app-item-variant-picker on the surface
          that owns price. This card only shows the descriptive spec groups. -->
-    <!-- DETAILS: the spec-group cards behind a Show-more drill (empty groups hidden). -->
-    @if (groups().length) {
+    <!-- DETAILS: the spec-group cards behind a Show-more drill (empty groups hidden).
+         The Ballpark ID (BPIN) also lives here, so the drill shows when there's a BPIN
+         even if an item has no descriptive spec groups. -->
+    @if (groups().length || bpin()) {
       <button type="button" class="bp-btn-outline bp-body-small" (click)="expanded.set(!expanded())">
         <lucide-icon [name]="expanded() ? 'chevron-up' : 'chevron-down'" [size]="14" />
         {{ expanded() ? 'Hide details' : 'Show more details' }}
       </button>
       @if (expanded()) {
+        @if (groups().length) {
         <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           @for (g of groups(); track g.key) {
             <div class="bp-qv-spec">
@@ -47,6 +50,11 @@ const GROUPS: { key: string; title: string; icon: string }[] = [
             </div>
           }
         </div>
+        }
+        <!-- BPIN as a quiet one-liner under the specs, not a card of its own. -->
+        @if (bpin(); as id) {
+          <p class="bp-caption text-secondary mt-3">Ballpark ID&nbsp;·&nbsp;<span class="text-text" style="font-variant-numeric: tabular-nums; letter-spacing: .03em;">{{ id }}</span></p>
+        }
       }
     }
   `,
@@ -54,6 +62,8 @@ const GROUPS: { key: string; title: string; icon: string }[] = [
 export class ItemAttributeCardsComponent {
   /** The item's `attributes` JSONB (grouped descriptive shape). */
   readonly attributes = input<Record<string, unknown> | null>(null);
+  /** The item's Ballpark ID (BPIN) — shown inside the details drill. */
+  readonly bpin = input<string | null>(null);
   protected readonly expanded = signal(false);
 
   protected readonly groups = computed(() => {

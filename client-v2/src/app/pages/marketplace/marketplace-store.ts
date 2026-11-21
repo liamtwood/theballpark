@@ -77,8 +77,11 @@ export class MarketplaceStore {
 
   /** Owner store (pV2-STORE-01) — the viewer's OWN pinned store. */
   readonly isOwnerStore = computed(() => {
+    // The URL param may be the org UUID OR the human handle now (pV2-BPIN-01) —
+    // match the viewer's org by EITHER (state stays id-based, EP-00021).
     const id = this.pinnedSupplierId();
-    return !!id && this.auth.user()?.activeOrgId === id;
+    const u = this.auth.user();
+    return !!id && (u?.activeOrgId === id || u?.activeOrgHandle === id);
   });
   /** Ballpark admin — moderates the marketplace (sees pending/all cross-org). */
   readonly isBallparkAdmin = computed(() => this.auth.user()?.activeOrgType === 'ballpark');

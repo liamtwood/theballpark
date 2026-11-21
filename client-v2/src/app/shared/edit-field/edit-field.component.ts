@@ -37,6 +37,7 @@ export interface EditFieldOption {
     '[class.bp-edit-field--drawer]': "density() === 'drawer'",
     '[class.bp-edit-field--page]': "density() === 'page'",
     '[class.bp-edit-field--editing]': 'editing()',
+    '[class.bp-edit-field--readonly]': 'readonlyAlways()',
     '[class.bp-edit-field--span2]': 'span2()',
   },
   template: `
@@ -196,6 +197,12 @@ export interface EditFieldOption {
       }
       .bp-edit-field__value {
         cursor: default;
+      }
+      /* Display-only fields (readonlyAlways, e.g. BPIN) carry the SAME hairline
+         border + field rounding as an editable control, but no fill — so they read
+         as a field without inviting edit (Liam 2026-11-21). */
+      :host(.bp-edit-field--readonly) .bp-fld {
+        border-color: var(--color-border-hairline);
       }
     `,
   ],

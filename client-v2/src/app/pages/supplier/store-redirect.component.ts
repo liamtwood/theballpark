@@ -20,7 +20,7 @@ export class StoreRedirectComponent {
     const u = this.auth.user();
     const target =
       u?.activeOrgType === 'supplier' && u.activeOrgId
-        ? ['/suppliers', u.activeOrgId]
+        ? ['/suppliers', u.activeOrgHandle ?? u.activeOrgId] // handle URL (pV2-BPIN-01)
         : ['/home'];
     void this.router.navigate(target, { replaceUrl: true });
   }

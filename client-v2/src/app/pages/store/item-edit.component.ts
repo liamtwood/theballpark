@@ -160,8 +160,14 @@ const WHATS_HOT = "What's Hot";
               <lucide-icon [name]="sectionOpen('details') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
             </button>
             @if (sectionOpen('details')) {
-              <!-- Lead Time (location_coverage dropped in 0015). -->
+              <!-- Ballpark ID (BPIN) + Lead Time share one row, BPIN first. BPIN is
+                   immutable/server-generated → readonlyAlways, so it renders in the
+                   SAME field format as Lead Time but never enters edit (Liam 2026-11-21,
+                   pV2-BPIN-01). location_coverage dropped in 0015. -->
               <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                @if (itemRes.value()?.bpin; as bpin) {
+                  <app-edit-field label="Ballpark ID (BPIN)" density="page" [editing]="editing()" [readonlyAlways]="true" [value]="bpin" />
+                }
                 <app-edit-field label="Lead Time (days)" type="number" density="page" [editing]="editing()" [value]="form().lead_time_days" (valueChange)="patch({ lead_time_days: $event })" />
               </div>
               @if (editing()) {

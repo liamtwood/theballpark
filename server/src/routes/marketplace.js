@@ -465,6 +465,13 @@ router.get('/items', async (req, res, next) => {
       });
     }
     const { cat, sub, q, offset, priceMin, priceMax, tier, supplier, status, active, tag, image } = parsed.data;
+    // supplier= may be the org UUID OR the human handle (pV2-BPIN-01). Resolve a
+    // non-UUID to the org id so the ownership compare + i.org_id filter stay UUID-keyed.
+    let supplierId = supplier;
+    if (supplier && !/^[0-9a-fA-F-]{36}$/.test(supplier)) {
+      const sres = await pool.query('SELECT id FROM supplier_directory WHERE handle = $1', [supplier]);
+      supplierId = sres.rows[0]?.id ?? '00000000-0000-0000-0000-000000000000'; // unknown handle → matches nothing
+    }
     const vals = [req.user.org_id]; // $1 — ownership flag, never from the client
     // kind='component' items are the supplier's private cost-buildup library —
     // surfaced ONLY in Customize (Explore), never in the marketplace browse
@@ -482,7 +489,7 @@ router.get('/items', async (req, res, next) => {
     // (approved + active) for EVERY viewer, so an owner or ballpark admin previewing
     // the Shopfront sees exactly what a customer sees. Overrides owner/admin scope.
     const publicScope = req.query.scope === 'public';
-    const ownerScope = !publicScope && !!supplier && supplier === req.user.org_id;
+    const ownerScope = !publicScope && !!supplierId && supplierId === req.user.org_id;
     const adminScope = !publicScope && req.user.role === 'ballpark_admin';
     // A MANAGEMENT context — a pinned supplier store (owner/admin managing it) OR an
     // explicit status/active filter (e.g. the Approvals nav → /marketplace?status=pending).
@@ -526,7 +533,7 @@ router.get('/items', async (req, res, next) => {
     if (priceMin !== undefined) { vals.push(priceMin); where.push(`i.base_price >= $${vals.length}`); }
     if (priceMax !== undefined) { vals.push(priceMax); where.push(`i.base_price <= $${vals.length}`); }
     if (tier) { vals.push(tier); where.push(`i.tier = $${vals.length}`); }
-    if (supplier) { vals.push(supplier); where.push(`i.org_id = $${vals.length}`); }
+    if (supplier) { vals.push(supplierId); where.push(`i.org_id = $${vals.length}`); }
     // pV2-ITEM-BULK-ACTIONS-01 — "has a photo?" filter (owner/admin management only).
     // images is a jsonb array; a null/non-array column counts as "without". jsonb_array_length
     // errors on a non-array, so gate it behind jsonb_typeof = 'array'.
@@ -551,7 +558,7 @@ router.get('/items', async (req, res, next) => {
     }
     vals.push(PAGE_SIZE, offset);
     const r = await pool.query(
-      `SELECT i.id, i.name, i.description, i.install_description, i.base_price, i.unit, i.images,
+      `SELECT i.id, i.bpin, i.name, i.description, i.install_description, i.base_price, i.unit, i.images,
               i.attributes,
               i.category_id, i.approval_status, i.status,
               -- v2dev: city lives in the address satellite, surfaced on supplier_directory
@@ -578,6 +585,7 @@ router.get('/items', async (req, res, next) => {
     const total = r.rows.length ? Number(r.rows[0].total) : 0;
     const items = r.rows.map((row) => ({
       id: row.id,
+      bpin: row.bpin ?? null,
       name: row.name,
       description: row.description,
       installDescription: row.install_description,
@@ -615,7 +623,7 @@ router.get('/items/:id', async (req, res, next) => {
       `SELECT i.*, c.name AS category_name
          FROM items i
          LEFT JOIN categories c ON c.id = i.category_id
-        WHERE i.id = $1 AND i.deleted_at IS NULL
+        WHERE (i.id::text = $1 OR i.bpin = $1) AND i.deleted_at IS NULL
           AND i.status = 'active' AND i.approval_status = 'approved'
           -- Components + child options are never marketplace-visible, even by
           -- direct link (pV2-BUILDUP-03).
@@ -635,7 +643,9 @@ router.get('/items/:id/options', async (req, res, next) => {
   try {
     const r = await pool.query(
       `SELECT id, name, base_price, unit, category_id, type, description, images
-         FROM items WHERE parent_item_id = $1 AND deleted_at IS NULL ORDER BY created_at`,
+         FROM items
+        WHERE parent_item_id = (SELECT id FROM items WHERE (id::text = $1 OR bpin = $1) AND deleted_at IS NULL LIMIT 1)
+          AND deleted_at IS NULL ORDER BY created_at`,
       [req.params.id]
     );
     res.json(r.rows.map((c) => ({

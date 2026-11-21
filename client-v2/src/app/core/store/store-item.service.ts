@@ -8,6 +8,8 @@ import { ComponentsResponse, ComponentInput, ComponentRow } from '../projects/pr
 /** The editable item row (pV2-STORE-01) — the full item as the editor sees it. */
 export interface StoreItem {
   id: string;
+  /** Immutable Ballpark ID (BPIN) — server-generated, read-only (pV2-BPIN-01). */
+  bpin?: string | null;
   org_id: string;
   /** ONE home category at any depth (0015 — no subcategory axis). */
   category_id: string;

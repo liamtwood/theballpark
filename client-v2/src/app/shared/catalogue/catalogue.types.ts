@@ -25,6 +25,9 @@ export interface CategoryUpdate {
 /** One marketplace item as the browse grid sees it (pV2-06a). */
 export interface CatalogueItem {
   id: string;
+  /** Immutable Ballpark ID (BPIN, e.g. "BP219NZ6EM") — shown in the quick-view
+   *  details drill and used as the item's URL id (pV2-BPIN-01). */
+  bpin?: string | null;
   name: string;
   description: string | null;
   /** "Included Services" — what the install covers (install_description). */
@@ -117,6 +120,8 @@ export interface SupplierOption {
 /** One supplier as the suppliers-mode grid sees it (pV2-06d). */
 export interface CatalogueSupplier {
   id: string;
+  /** Human URL slug (e.g. "sk-projections") — the supplier's URL id (pV2-BPIN-01). */
+  handle?: string | null;
   name: string;
   city: string | null;
   description: string | null;
@@ -150,6 +155,8 @@ export interface SupplierSubcategory {
  *  fields only; items come from /items?supplier=. */
 export interface SupplierDetail {
   id: string;
+  /** Human URL slug (e.g. "sk-projections") — the supplier's URL id (pV2-BPIN-01). */
+  handle?: string | null;
   name: string;
   city: string | null;
   country: string | null;

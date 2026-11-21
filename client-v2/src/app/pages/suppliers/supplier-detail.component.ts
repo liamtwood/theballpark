@@ -289,6 +289,21 @@ export class SupplierDetailComponent {
   private readonly pruneSelection = effect(() => {
     this.selection.retainOnly(this.store.items().map((i) => i.id));
   });
+  /** Canonical URL (EP-00021, pV2-BPIN-01) — the supplier page always settles on the
+   *  handle. A caller that arrived by raw UUID (admin org links, old bookmarks) is
+   *  rewritten to /suppliers/<handle> once the detail resolves, so everyone sees the
+   *  same clean URL. The UUID still resolves (back-compat); this only swaps the bar.
+   *  No loop: after the rewrite the param IS the handle, so the guard short-circuits. */
+  private readonly _canonicalUrl = effect(() => {
+    const param = this.store.pinnedSupplierId();
+    const handle = this.detail.value()?.handle;
+    if (param && handle && param !== handle && /^[0-9a-fA-F-]{36}$/.test(param)) {
+      void this.router.navigate(['/suppliers', handle], {
+        replaceUrl: true,
+        queryParamsHandling: 'preserve',
+      });
+    }
+  });
 
   // pV2-SUPPLIER-TABS-3-01 — three surfaces: Profile (editable, owner/admin only),
   // Shopfront (read-only public brand page, everyone), My Shop/Shop (items grid).
@@ -364,8 +379,12 @@ export class SupplierDetailComponent {
   /** Owner mode (pV2-STORE-01) — the viewer's own-org storefront. Unlocks
    *  "Add product" + per-item Edit; hides the favourite heart. */
   protected readonly isOwner = computed(() => {
+    // The URL param may be the org UUID OR the human handle now (pV2-BPIN-01), so
+    // match the viewer's org by EITHER (no dependency on the loaded detail, which
+    // would cycle through tab()). State stays id-based (EP-00021).
     const id = this.store.pinnedSupplierId();
-    return !!id && this.auth.user()?.activeOrgId === id;
+    const u = this.auth.user();
+    return !!id && (u?.activeOrgId === id || u?.activeOrgHandle === id);
   });
 
   /** Wishlist (favourite) is a buyer action — agency viewers only. */
