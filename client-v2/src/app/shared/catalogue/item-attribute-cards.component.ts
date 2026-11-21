@@ -53,7 +53,7 @@ const GROUPS: { key: string; title: string; icon: string }[] = [
         }
         <!-- BPIN as a quiet one-liner under the specs, not a card of its own. -->
         @if (bpin(); as id) {
-          <p class="bp-caption text-secondary mt-3">Ballpark ID&nbsp;·&nbsp;<span class="text-text" style="font-variant-numeric: tabular-nums; letter-spacing: .03em;">{{ id }}</span></p>
+          <p class="bp-caption text-secondary mt-3">Ballpark ID&nbsp;·&nbsp;<span class="text-text" style="font-family: var(--font-mono); letter-spacing: .03em;">{{ id }}</span></p>
         }
       }
     }

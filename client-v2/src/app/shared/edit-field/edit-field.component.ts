@@ -38,6 +38,7 @@ export interface EditFieldOption {
     '[class.bp-edit-field--page]': "density() === 'page'",
     '[class.bp-edit-field--editing]': 'editing()',
     '[class.bp-edit-field--readonly]': 'readonlyAlways()',
+    '[class.bp-edit-field--mono]': 'mono()',
     '[class.bp-edit-field--span2]': 'span2()',
   },
   template: `
@@ -200,9 +201,19 @@ export interface EditFieldOption {
       }
       /* Display-only fields (readonlyAlways, e.g. BPIN) carry the SAME hairline
          border + field rounding as an editable control, but no fill — so they read
-         as a field without inviting edit (Liam 2026-11-21). */
+         as a field without inviting edit (Liam 2026-11-21). The value is quietened to
+         secondary so "no-fill + normal label + quiet value" reads as info, not a
+         broken-editable field (designer 2026-11-21). */
       :host(.bp-edit-field--readonly) .bp-fld {
         border-color: var(--color-border-hairline);
+      }
+      :host(.bp-edit-field--readonly) .bp-edit-field__value {
+        color: var(--color-text-secondary);
+      }
+      /* Monospace value — a copyable token id (BPIN) reads as code, not prose. */
+      :host(.bp-edit-field--mono) .bp-edit-field__value {
+        font-family: var(--font-mono);
+        letter-spacing: 0.02em;
       }
     `,
   ],
@@ -220,6 +231,9 @@ export class EditFieldComponent {
   readonly editing = input<boolean>(false);
   /** Display-only fields (e.g. server-driven counters) never enter edit. */
   readonly readonlyAlways = input<boolean>(false);
+  /** Render the value in a monospace face — for copyable token-like ids (e.g. BPIN),
+   *  so they read as a code to paste, not prose (designer 2026-11-21). */
+  readonly mono = input<boolean>(false);
   /** Numeric suffix, e.g. "%" (type="number"). */
   readonly suffix = input<string>('');
   /** Read-mode thousands grouping for large numbers (e.g. Budget → "50,000"). */

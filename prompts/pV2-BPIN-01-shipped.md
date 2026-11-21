@@ -58,6 +58,22 @@ Human-readable identifiers at the URL boundary + BPIN surfaced in the UI, per EP
 - BPIN edit-field + quick-view line QC'd by Liam.
 - All temporary diagnostics (`[items-trace]`, `[myshop-dbg]`) removed before commit.
 
+## Iteration 2 — designer polish (2026-11-21, QC'd by Liam)
+- **BPIN mono** on both surfaces (`--font-mono`) — quick-view caption + the item-edit
+  field value — so the id reads as a copyable token, and the two surfaces feel like one
+  object. `app-edit-field` gained a `mono` input (`--bp-edit-field--mono`).
+- **Readonly field value quietened to `--color-text-secondary`** (label stays normal
+  weight, matching its Lead Time row-neighbour) — "no-fill + normal label + quiet value"
+  reads as info, not a broken-editable field.
+- Designer also approved all three surfaces and the `/suppliers/<handle>` + UUID→handle
+  rewrite with no notes. Open suggestion (not built): click-to-copy on the BPIN.
+
+## Iteration 3 — BPIN→id on mutations (2026-11-21, commit `9060b8da`)
+- `DELETE /store/items/:id`, `PATCH /:id/active`, `POST /:id/duplicate` passed the raw
+  `req.params.id` (now a BPIN) to `softDelete`/`update`/`duplicate`, which key on
+  `items.id` → `invalid input syntax for type uuid: "BP…"` on delete. Use the resolved
+  item's `.id`. PUT + components already resolved.
+
 ## Owed / follow-ups
 - Apply `0067` to **preview** (next promote).
 - Peripheral supplier redirects (item-edit post-save, profile-shopfront, orgs-admin) still emit UUIDs;
