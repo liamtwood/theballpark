@@ -559,7 +559,7 @@ router.get('/items', async (req, res, next) => {
     vals.push(PAGE_SIZE, offset);
     const r = await pool.query(
       `SELECT i.id, i.bpin, i.name, i.description, i.install_description, i.base_price, i.unit, i.images,
-              i.attributes,
+              i.attributes, i.serves, i.time_unit,
               i.category_id, i.approval_status, i.status,
               -- v2dev: city lives in the address satellite, surfaced on supplier_directory
               -- via the address_locality definer (city/country only).
@@ -591,6 +591,11 @@ router.get('/items', async (req, res, next) => {
       installDescription: row.install_description,
       basePrice: row.base_price === null ? null : Number(row.base_price),
       unit: row.unit,
+      // Unit-driven size for the price line: platter pack size (serves N) + the
+      // time granularity (time_unit code, e.g. 'week') so the Quick View can show
+      // "/ week" or "/ 50 guests" instead of a generic unit word (Liam 2026-11-21).
+      serves: row.serves ?? null,
+      timeUnit: row.time_unit ?? null,
       coverUrl: heroUrl(row.images),
       // Full gallery in display order (cover first) — the Quick View carousel.
       images: imageUrls(row.images),

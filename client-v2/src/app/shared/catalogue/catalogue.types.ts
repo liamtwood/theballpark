@@ -36,6 +36,9 @@ export interface CatalogueItem {
   unit: string | null;
   /** Unit-driven size — platter "serves N" pack size (null/absent for other units). */
   serves?: number | null;
+  /** Unit-driven granularity — the time_unit code (hour/day/week/…) when unit =
+   *  'time', so the price line reads "/ week" (null/absent for other units). */
+  timeUnit?: string | null;
   coverUrl: string | null;
   /** All gallery image URLs in display order (cover first) — powers the Quick
    *  View carousel. Optional: only the marketplace list projection carries it;

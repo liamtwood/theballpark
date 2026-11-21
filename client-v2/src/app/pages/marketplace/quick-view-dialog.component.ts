@@ -164,7 +164,7 @@ type Pane = 'item' | 'supplier';
                   <!-- Standing base price shows unless PRICED variants own the price
                        (free-choice dimensions like a menu picker don't — Liam 2026-11-11). -->
                   @if (!hasVariants() && it.basePrice !== null) {
-                    <div class="bp-price-large">From {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-2' }}@if (it.unit) { <span class="bp-body-small font-normal text-secondary">/ {{ unitLabel(it.unit) }}@if (it.serves) { · serves {{ it.serves }} }</span> }</div>
+                    <div class="bp-price-large">From {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-2' }}@if (priceUnitLabel(it); as u) { <span class="bp-body-small font-normal text-secondary">/ {{ u }}</span> }</div>
                   }
                   <!-- Hairline separates the heading (name / description / price) from
                        the configurator below. -->
@@ -396,11 +396,19 @@ type Pane = 'item' | 'supplier';
 })
 export class QuickViewDialogComponent {
   readonly item = input<CatalogueItem | null>(null);
-  /** Unit code → readable label for the price line (e.g. 'per_guest' → "guest"). */
-  protected unitLabel(u: string | null): string {
-    if (!u) return '';
-    const map: Record<string, string> = { each: 'each', per_guest: 'guest', platter: 'platter', time: 'booking', size: 'unit' };
-    return map[u] ?? u.replace(/_/g, ' ');
+  /** The price-line unit suffix, UNIT-DRIVEN (Liam 2026-11-21): a time item shows
+   *  its granularity ("From £1000 / week"); a platter/package shows its pack size
+   *  ("From £100 / 50 guests") rather than the generic unit word. Other units keep
+   *  their plain label. '' = no suffix. */
+  protected priceUnitLabel(it: CatalogueItem): string {
+    switch (it.unit) {
+      case 'time':      return it.timeUnit ? it.timeUnit.replace(/_/g, ' ') : 'time';
+      case 'platter':   return it.serves != null ? `${it.serves} guests` : 'package';
+      case 'per_guest': return 'guest';
+      case 'each':      return 'each';
+      case 'size':      return 'unit';
+      default:          return it.unit ? it.unit.replace(/_/g, ' ') : '';
+    }
   }
   /** Whether this surface is a management view (My Shop / Approvals). Default false
    *  = read-only: no Edit, no Approve/Reject. The Marketplace browse leaves it false
