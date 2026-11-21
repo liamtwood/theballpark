@@ -180,7 +180,9 @@ router.patch('/:id/active', async (req, res, next) => {
     if (req.body.is_active === true && existing.approval_status !== 'approved') {
       return res.status(409).json({ error: 'Only approved items can be activated' });
     }
-    const item = await ItemService.update(req.params.id, { status: req.body.is_active ? 'active' : 'retired' });
+    // Use the RESOLVED UUID — req.params.id may be a BPIN (pV2-BPIN-01); the mutation
+    // helpers key on items.id and would uuid-cast-fail on a BPIN.
+    const item = await ItemService.update(existing.id, { status: req.body.is_active ? 'active' : 'retired' });
     res.json(item);
   } catch (err) { next(err); }
 });
@@ -188,8 +190,9 @@ router.patch('/:id/active', async (req, res, next) => {
 // POST /api/store/items/:id/duplicate — clone the item (lands draft + hidden).
 router.post('/:id/duplicate', async (req, res, next) => {
   try {
-    if (!(await ownItemOr(res, req.params.id, req.user.org_id))) return;
-    const copy = await ItemService.duplicate(req.params.id);
+    const existing = await ownItemOr(res, req.params.id, req.user.org_id);
+    if (!existing) return;
+    const copy = await ItemService.duplicate(existing.id); // resolved UUID, not a BPIN
     if (!copy) return res.status(404).json({ error: 'Not found' });
     res.status(201).json(copy);
   } catch (err) { next(err); }
@@ -199,8 +202,9 @@ router.post('/:id/duplicate', async (req, res, next) => {
 // trigger-forbidden). Recoverable in the DB.
 router.delete('/:id', async (req, res, next) => {
   try {
-    if (!(await ownItemOr(res, req.params.id, req.user.org_id))) return;
-    await ItemService.softDelete(req.params.id);
+    const existing = await ownItemOr(res, req.params.id, req.user.org_id);
+    if (!existing) return;
+    await ItemService.softDelete(existing.id); // resolved UUID, not a BPIN
     res.status(204).end();
   } catch (err) { next(err); }
 });
