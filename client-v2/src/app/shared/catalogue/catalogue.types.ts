@@ -60,6 +60,11 @@ export interface CatalogueItem {
    *  card's tag chip. (`subcategory*` are legacy-optional — the axis was dropped;
    *  the server no longer sends them, consumers fall back to categoryName.) */
   categoryName: string | null;
+  /** Top-level (root) category — drives grid grouping + derived supplier categories. */
+  topCategoryId?: string | null;
+  topCategoryName?: string | null;
+  topCategoryIcon?: string | null;
+  topCategorySort?: number | null;
   subcategoryId?: string | null;
   subcategoryName?: string | null;
   /** Server-derived ownership flag (MARKETPLACE.md model) — unlocks
@@ -134,6 +139,9 @@ export interface CatalogueSupplier {
    *  (logo — or cover — shown whole on a white ground). From orgs.image_display. */
   imageDisplay: string | null;
   count: number;
+  /** Derived top-level categories this supplier stocks (sorted by category sort_order).
+   *  Drives the suppliers-view grouping — a supplier shows under each (pV2-MKT-CATGROUP-01). */
+  topCategories?: { id: string; name: string; icon: string | null; sort: number | null }[];
 }
 
 /** One storefront subcat card (pV2-CARDS-01 QC #5, image 7): a

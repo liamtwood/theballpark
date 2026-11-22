@@ -566,6 +566,8 @@ router.get('/items', async (req, res, next) => {
               i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
               o.logo_url AS supplier_logo_url,
               c.name AS category_name,
+              -- Top-level (root) category — grid grouping + derived supplier categories.
+              ct.id AS top_category_id, ct.name AS top_category_name, ct.icon_name AS top_category_icon, ct.sort_order AS top_category_sort,
               (i.org_id = $1) AS owned_by_active_org,
               COUNT(*) OVER() AS total
          FROM items i
@@ -577,6 +579,7 @@ router.get('/items', async (req, res, next) => {
          -- belongs to such an org, and an owner's own org qualifies too.
          JOIN supplier_directory o ON o.id = i.org_id
          LEFT JOIN categories c ON c.id = i.category_id
+         LEFT JOIN LATERAL public.category_top(i.category_id) ct ON true
         WHERE ${where.join(' AND ')}
         ORDER BY i.name ASC
         LIMIT $${vals.length - 1} OFFSET $${vals.length}`,
@@ -608,6 +611,10 @@ router.get('/items', async (req, res, next) => {
       supplierCity: row.supplier_city,
       supplierLogoUrl: row.supplier_logo_url ?? null,
       categoryName: row.category_name,
+      topCategoryId: row.top_category_id ?? null,
+      topCategoryName: row.top_category_name ?? null,
+      topCategoryIcon: row.top_category_icon ?? null,
+      topCategorySort: row.top_category_sort ?? null,
       ownedByActiveOrg: !!row.owned_by_active_org,
       approvalStatus: row.approval_status,
       status: row.status,

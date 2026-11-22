@@ -29,6 +29,7 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
       } @else {
         <app-catalogue-grid
           [items]="items()"
+          [groupByTopCategory]="true"
           [favouriteIds]="favouriteIds()"
           [quoteDraftIds]="quoteDraftIds()"
           [showQuickView]="true"

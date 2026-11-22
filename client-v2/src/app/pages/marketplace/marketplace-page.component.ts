@@ -77,6 +77,7 @@ import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.c
           } @else {
             <app-supplier-grid
               [suppliers]="store.supplierRows()"
+              [groupByTopCategory]="true"
               [viewMode]="store.viewMode()"
               [favouriteIds]="favs.suppliers()"
               (favouriteToggled)="favs.toggle('supplier', $event)"
@@ -97,6 +98,7 @@ import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.c
         } @else {
           <app-catalogue-grid
             [items]="store.items()"
+            [groupByTopCategory]="true"
             [viewMode]="store.viewMode()"
             [selectedId]="store.itemId()"
             [favouriteIds]="favs.items()"

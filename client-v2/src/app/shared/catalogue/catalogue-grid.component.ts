@@ -1,7 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { LucideAngularModule } from 'lucide-angular';
 import { ItemCardComponent } from './item-card.component';
 import { CatalogueItem, ViewMode, sizedImage, CARD_GRID_LOOSE, CARD_GRID_DENSE } from './catalogue.types';
+
+interface GridSection { id: string; name: string | null; icon: string | null; items: readonly CatalogueItem[]; }
 
 /** pV2-06a — the PURE middle grid: entities in, selection events out,
  *  zero fetching. `@switch` on the view mode — card grid / list rows /
@@ -9,7 +12,7 @@ import { CatalogueItem, ViewMode, sizedImage, CARD_GRID_LOOSE, CARD_GRID_DENSE }
 @Component({
   selector: 'app-catalogue-grid',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, ItemCardComponent],
+  imports: [CurrencyPipe, ItemCardComponent, LucideAngularModule],
   host: { class: 'block' },
   template: `
     @switch (viewMode()) {
@@ -17,36 +20,46 @@ import { CatalogueItem, ViewMode, sizedImage, CARD_GRID_LOOSE, CARD_GRID_DENSE }
         <!-- Loose (default, full-width surfaces): 2xl goes 4-up. Dense: for a
              constrained column (project Marketplace in the workspace column) —
              caps at 3-up so cards land ~25% smaller and never cram to 4 in the
-             narrow column. -->
-        <div [class]="'grid gap-4 ' + (dense() ? denseCols : looseCols)">
-          @for (item of items(); track item.id; let i = $index) {
-            <div class="relative">
-              @if (selectable()) {
-                <!-- Overlay select checkbox (top-left) — stops the card's navigate/QV. -->
-                <label class="bp-bulk-check bp-bulk-check--card" (click)="$event.stopPropagation()">
-                  <input type="checkbox" [checked]="isSel(item.id)" (change)="bulkToggle.emit(item.id)" />
-                </label>
-              }
-              <app-item-card
-                [item]="item"
-                [selected]="item.id === selectedId()"
-                [eager]="i < 6"
-                [favourited]="favouriteIds().has(item.id)"
-                [quoted]="quoteDraftIds().has(item.id)"
-                [showQuickView]="showQuickView()"
-                [adminEditOrgId]="adminEditOrgId()"
-                [quickViewOnly]="quickViewOnly()"
-                (clicked)="entitySelected.emit($event)"
-                (favouriteToggled)="favouriteToggled.emit($event)"
-                (quoteToggled)="quoteToggled.emit($event)"
-                (quickView)="quickView.emit($event)"
-                (changed)="changed.emit()"
-                (build)="build.emit($event)"
-                (reclassify)="reclassify.emit($event)"
-              />
+             narrow column. When groupByTopCategory, items render in top-level
+             category sections (icon + name header) — pV2-MKT-CATGROUP-01. -->
+        @for (sec of sections(); track sec.id) {
+          @if (sec.name) {
+            <div class="mb-3 mt-6 flex items-center gap-2 first:mt-0">
+              @if (sec.icon) { <lucide-icon [name]="sec.icon" [size]="16" style="color: var(--theme-accent)" class="shrink-0" /> }
+              <h3 class="bp-list-title text-text">{{ sec.name }}</h3>
+              <span class="bp-caption text-secondary">· {{ sec.items.length }}</span>
             </div>
           }
-        </div>
+          <div [class]="'grid gap-4 ' + (dense() ? denseCols : looseCols)">
+            @for (item of sec.items; track item.id; let i = $index) {
+              <div class="relative">
+                @if (selectable()) {
+                  <!-- Overlay select checkbox (top-left) — stops the card's navigate/QV. -->
+                  <label class="bp-bulk-check bp-bulk-check--card" (click)="$event.stopPropagation()">
+                    <input type="checkbox" [checked]="isSel(item.id)" (change)="bulkToggle.emit(item.id)" />
+                  </label>
+                }
+                <app-item-card
+                  [item]="item"
+                  [selected]="item.id === selectedId()"
+                  [eager]="i < 6"
+                  [favourited]="favouriteIds().has(item.id)"
+                  [quoted]="quoteDraftIds().has(item.id)"
+                  [showQuickView]="showQuickView()"
+                  [adminEditOrgId]="adminEditOrgId()"
+                  [quickViewOnly]="quickViewOnly()"
+                  (clicked)="entitySelected.emit($event)"
+                  (favouriteToggled)="favouriteToggled.emit($event)"
+                  (quoteToggled)="quoteToggled.emit($event)"
+                  (quickView)="quickView.emit($event)"
+                  (changed)="changed.emit()"
+                  (build)="build.emit($event)"
+                  (reclassify)="reclassify.emit($event)"
+                />
+              </div>
+            }
+          </div>
+        }
       }
       @case ('list') {
         <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
@@ -185,6 +198,9 @@ export class CatalogueGridComponent {
   readonly viewMode = input<ViewMode>('card');
   /** Denser card grid for a constrained column (project Marketplace). */
   readonly dense = input<boolean>(false);
+  /** Group the CARD grid into top-level category sections (icon + name header),
+   *  in first-appearance order. Off = one flat grid (pV2-MKT-CATGROUP-01). */
+  readonly groupByTopCategory = input<boolean>(false);
   // FLUID columns — auto-fill packs as many cards as fit at ANY width (no
   // breakpoint cliffs), so the grid fills the space on a laptop (Liam 2026-10-29).
   // A floor of ~200px keeps cards from going too narrow on a phone.
@@ -222,6 +238,30 @@ export class CatalogueGridComponent {
   readonly build = output<string>();
   /** Owner clicked Reclassify on a card — host opens the shared reclassify picker. */
   readonly reclassify = output<string>();
+
+  /** One section per top-level category (first-appearance order) when grouping is
+   *  on; otherwise a single unnamed section holding every item. */
+  protected readonly sections = computed<GridSection[]>(() => {
+    const items = this.items();
+    if (!this.groupByTopCategory()) {
+      return [{ id: '__all', name: null, icon: null, items }];
+    }
+    const out: { id: string; name: string | null; icon: string | null; sort: number; items: CatalogueItem[] }[] = [];
+    const idx = new Map<string, number>();
+    for (const it of items) {
+      const key = it.topCategoryId ?? '__none';
+      let gi = idx.get(key);
+      if (gi === undefined) {
+        gi = out.length;
+        idx.set(key, gi);
+        out.push({ id: key, name: it.topCategoryName ?? 'Other', icon: it.topCategoryIcon ?? null, sort: it.topCategorySort ?? 9999, items: [] });
+      }
+      out[gi].items.push(it);
+    }
+    // Section order follows the category sort_order (Settings ▸ Codelists), name as tiebreak.
+    out.sort((a, b) => a.sort - b.sort || (a.name ?? '').localeCompare(b.name ?? ''));
+    return out;
+  });
 
   protected thumb(url: string | null): string | null {
     return sizedImage(url, 160);

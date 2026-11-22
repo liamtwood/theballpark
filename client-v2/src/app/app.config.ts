@@ -57,6 +57,7 @@ import {
   Zap,
   CircleCheck,
   CircleCheckBig,
+  CircleDashed,
   CircleDollarSign,
   Package,
   BriefcaseBusiness,
@@ -214,7 +215,7 @@ export const appConfig: ApplicationConfig = {
         // pV2-DIALOGS-01 — inline alert severity icons
         Info, Ruler, Pencil, Hash, CircleAlert, TriangleAlert,
         // pV2-INBOX-01 — supplier per-item actions
-        CircleCheckBig, CircleDollarSign,
+        CircleCheckBig, CircleDollarSign, CircleDashed,
         // pV2-PROJECTS-03 — add-project brief page (upload + AI build CTA)
         Upload, FileUp, Sparkles,
         // pV2-PROJECTS-02 — Estimate category-card icons (event categories)

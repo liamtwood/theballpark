@@ -229,6 +229,7 @@ const WHATS_HOT = "What's Hot";
             } @else {
               <app-catalogue-grid
                 [items]="store.items()"
+                [groupByTopCategory]="true"
                 [viewMode]="store.viewMode()"
                 [selectedId]="store.itemId()"
                 [favouriteIds]="favs.items()"

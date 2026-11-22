@@ -102,6 +102,20 @@ router.get('/suppliers', async (req, res, next) => {
     const r = await pool.query(
       `SELECT o.id, o.handle, o.name, o.description, o.logo_url, o.cover_image_url, o.image_display, o.city,
               COUNT(i.id) AS item_count,
+              -- Derived supplier categories (pV2-MKT-CATGROUP-01): the top-level categories
+              -- this supplier stocks, PRIMARY first (most items), each with its count — the
+              -- suppliers view places a supplier under its primary category only (no dupes).
+              (SELECT json_agg(tc ORDER BY tc.cnt DESC, tc.sort NULLS LAST, tc.name)
+                 FROM (
+                   SELECT t.id, t.name, t.icon_name AS icon, t.sort_order AS sort, COUNT(*) AS cnt
+                     FROM items i2
+                     CROSS JOIN LATERAL public.category_top(i2.category_id) t
+                    WHERE i2.org_id = o.id AND i2.deleted_at IS NULL
+                      AND i2.status = 'active' AND i2.approval_status = 'approved'
+                      AND t.id IS NOT NULL
+                    GROUP BY t.id, t.name, t.icon_name, t.sort_order
+                 ) tc
+              ) AS top_categories,
               COUNT(*) OVER() AS total
          FROM supplier_directory o
          JOIN items i ON i.org_id = o.id AND i.deleted_at IS NULL
@@ -126,6 +140,7 @@ router.get('/suppliers', async (req, res, next) => {
       coverUrl: row.cover_image_url,
       imageDisplay: row.image_display ?? null,
       count: Number(row.item_count),
+      topCategories: row.top_categories ?? [],
     }));
     res.json({ items, total, hasMore: offset + items.length < total });
   } catch (err) { next(err); }

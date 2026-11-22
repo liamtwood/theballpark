@@ -1,7 +1,10 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { LucideAngularModule } from 'lucide-angular';
 import { SupplierCardComponent } from './supplier-card.component';
 import { CatalogueSupplier, ViewMode, CARD_GRID_LOOSE, CARD_GRID_DENSE } from './catalogue.types';
+
+interface SupSection { id: string; name: string | null; icon: string | null; sort: number; suppliers: CatalogueSupplier[]; }
 
 /** pV2-06d (v2.15b QC fix) — the suppliers middle region with the SAME
  *  three view modes as items (the toggle was inert in suppliers mode).
@@ -9,26 +12,38 @@ import { CatalogueSupplier, ViewMode, CARD_GRID_LOOSE, CARD_GRID_DENSE } from '.
 @Component({
   selector: 'app-supplier-grid',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, SupplierCardComponent],
+  imports: [RouterLink, SupplierCardComponent, LucideAngularModule],
   host: { class: 'block' },
   template: `
     @switch (viewMode()) {
       @case ('card') {
         <!-- Columns match the item grid exactly (catalogue-grid) so supplier
-             cards are the same size as item cards (Liam 2026-10-29). -->
-        <div [class]="'grid gap-4 ' + (dense() ? denseCols : looseCols)">
-          @for (sup of suppliers(); track sup.id) {
-            <app-supplier-card
-              [supplier]="sup"
-              [favourited]="favouriteIds().has(sup.id)"
-              [quotable]="quotable()"
-              [inQuote]="quoteIds().has(sup.id)"
-              (favouriteToggled)="favouriteToggled.emit($event)"
-              (quoteToggled)="quoteToggled.emit($event)"
-              (selected)="supplierSelected.emit($event)"
-            />
+             cards are the same size as item cards (Liam 2026-10-29). When
+             groupByTopCategory, suppliers group into their derived category
+             sections — a supplier shows under each category it stocks
+             (pV2-MKT-CATGROUP-01). -->
+        @for (sec of sections(); track sec.id) {
+          @if (sec.name) {
+            <div class="mb-3 mt-6 flex items-center gap-2 first:mt-0">
+              @if (sec.icon) { <lucide-icon [name]="sec.icon" [size]="16" style="color: var(--theme-accent)" class="shrink-0" /> }
+              <h3 class="bp-list-title text-text">{{ sec.name }}</h3>
+              <span class="bp-caption text-secondary">· {{ sec.suppliers.length }}</span>
+            </div>
           }
-        </div>
+          <div [class]="'grid gap-4 ' + (dense() ? denseCols : looseCols)">
+            @for (sup of sec.suppliers; track sup.id) {
+              <app-supplier-card
+                [supplier]="sup"
+                [favourited]="favouriteIds().has(sup.id)"
+                [quotable]="quotable()"
+                [inQuote]="quoteIds().has(sup.id)"
+                (favouriteToggled)="favouriteToggled.emit($event)"
+                (quoteToggled)="quoteToggled.emit($event)"
+                (selected)="supplierSelected.emit($event)"
+              />
+            }
+          </div>
+        }
       }
       @case ('list') {
         <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
@@ -75,8 +90,36 @@ export class SupplierGridComponent {
   /** Denser card grid for a constrained column (project Marketplace) — mirrors
    *  catalogue-grid so supplier + item cards are the same size. */
   readonly dense = input<boolean>(false);
+  /** Group the card grid into derived category sections (a supplier shows under
+   *  each top-level category it stocks), ordered by category sort_order. */
+  readonly groupByTopCategory = input<boolean>(false);
   protected readonly looseCols = CARD_GRID_LOOSE;
   protected readonly denseCols = CARD_GRID_DENSE;
+
+  /** Card-view sections: one per top-level category a supplier stocks (duplicated
+   *  across categories), sorted by category sort_order; else one flat section. */
+  protected readonly sections = computed<SupSection[]>(() => {
+    const sups = this.suppliers();
+    if (!this.groupByTopCategory()) {
+      return [{ id: '__all', name: null, icon: null, sort: 0, suppliers: [...sups] }];
+    }
+    const out: SupSection[] = [];
+    const idx = new Map<string, number>();
+    for (const sup of sups) {
+      // PRIMARY category only — the supplier appears ONCE, under the category it
+      // stocks most (server orders topCategories primary-first). No duplication.
+      const cat = sup.topCategories?.[0] ?? { id: '__none', name: 'Other', icon: null, sort: 9999 };
+      let gi = idx.get(cat.id);
+      if (gi === undefined) {
+        gi = out.length;
+        idx.set(cat.id, gi);
+        out.push({ id: cat.id, name: cat.name, icon: cat.icon, sort: cat.sort ?? 9999, suppliers: [] });
+      }
+      out[gi].suppliers.push(sup);
+    }
+    out.sort((a, b) => a.sort - b.sort || (a.name ?? '').localeCompare(b.name ?? ''));
+    return out;
+  });
   readonly favouriteIds = input<ReadonlySet<string>>(new Set<string>());
   readonly favouriteToggled = output<string>();
   /** Card body click — the shell flips to Items + filters by this supplier. */
