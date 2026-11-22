@@ -31,6 +31,12 @@ interface SupplierGroup {
   /** pV2-INVITE-SUPPLIER-01: 'pending' = invited, not joined (Invited pill). */
   supplierStatus?: 'active' | 'pending' | null;
   items: QuoteLine[];
+  /** Active "Running budget" groups by supplier, so each inner band is a CATEGORY
+   *  (Liam 2026-11-22): band shows the category name + its icon, Add/message scope
+   *  to that category. When set, the band is a category, not a supplier. */
+  bandLabel?: string;
+  bandIcon?: string | null;
+  bandCategoryId?: string;
 }
 /** Sub-group a category's items by supplier, in first-appearance order — each
  *  becomes a thin "<Supplier> · <City>" band over its items. */
@@ -285,17 +291,18 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                          is the unit you negotiate with, so it reads as its own block —
                          soft fill + a touch larger name, below the category header. One
                          layout for draft + active (pV2-PROJ-ONEVIEW-01). -->
+                    @if (sg.bandLabel || sg.supplierName) {
                     <div class="mt-2 flex items-center gap-2 rounded-[var(--radius-field)] px-3 py-2"
                          style="background: var(--theme-soft)">
-                      <lucide-icon name="store" [size]="15" class="shrink-0" style="color: var(--theme-accent)" />
-                      <span class="truncate text-sm font-semibold" style="color: var(--theme-text)">{{ sg.supplierName || 'Supplier' }}</span>
+                      <lucide-icon [name]="sg.bandIcon ?? 'store'" [size]="15" class="shrink-0" style="color: var(--theme-accent)" />
+                      <span class="truncate text-sm font-semibold" style="color: var(--theme-text)">{{ sg.bandLabel ?? (sg.supplierName || 'Supplier') }}</span>
                       @if (sg.supplierCity) {
                         <span class="truncate text-xs text-secondary">· {{ sg.supplierCity }}</span>
                       }
                       <!-- pV2-INVITE-SUPPLIER-01: invited, not joined yet — the pill is
                            the display of orgs.status 'pending'; lines can be added,
                            Send holds until they join. -->
-                      @if (inviteCode(sg.supplierStatus); as ic) {
+                      @if (!sg.bandLabel && inviteCode(sg.supplierStatus); as ic) {
                         <app-status-pill class="inline-flex shrink-0" list="supplier_summary_status" [code]="ic"
                                          [attr.title]="'Waiting for ' + (sg.supplierName || 'them') + ' to join'" />
                       }
@@ -308,19 +315,20 @@ function bySupplier(items: QuoteLine[]): SupplierGroup[] {
                                invite listing their lines; the brief follows once they join. -->
                           <button type="button" class="rounded-md p-1 transition-opacity hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-40"
                                   [disabled]="sending()"
-                                  (click)="sg.supplierStatus === 'pending' ? sendInvite(sg.supplierId, sg.supplierName) : messageOneSupplier(sg.supplierId, g.id)"
+                                  (click)="sg.supplierStatus === 'pending' ? sendInvite(sg.supplierId, sg.supplierName) : messageOneSupplier(sg.supplierId, sg.bandCategoryId ?? g.id)"
                                   [attr.aria-label]="(sg.supplierStatus === 'pending' ? 'Send invite to ' : 'Message ') + (sg.supplierName || 'this supplier')"
                                   [attr.title]="sg.supplierStatus === 'pending' ? 'Send the invite with these lines' : 'Message this supplier'">
                             <lucide-icon name="send" [size]="16" style="color: var(--theme-accent)" />
                           </button>
                         }
                         <button type="button" class="rounded-md p-1 transition-opacity hover:opacity-70"
-                                (click)="openAdd({ id: g.id, name: g.name, iconName: g.iconName }, sg.supplierId ? { id: sg.supplierId, name: sg.supplierName } : null)"
-                                [attr.aria-label]="'Add an item to ' + g.name" title="Add item">
+                                (click)="openAdd({ id: sg.bandCategoryId ?? g.id, name: sg.bandLabel ?? g.name, iconName: sg.bandIcon ?? g.iconName }, sg.supplierId ? { id: sg.supplierId, name: sg.supplierName } : null)"
+                                [attr.aria-label]="'Add an item to ' + (sg.bandLabel ?? g.name)" title="Add item">
                           <lucide-icon name="circle-plus" [size]="16" style="color: var(--theme-accent)" />
                         </button>
                       </span>
                     </div>
+                    }
                     <!-- Column headers (per supplier) — left-justified, aligned to
                          every row via .bp-estimate-grid. -->
                     <div class="bp-estimate-grid border-b border-hairline px-3 py-2">
@@ -744,7 +752,22 @@ export class ProjectEstimateComponent {
           hasAgreed: items.some((l) => l.bothAccepted),
           agreedTotal: items.reduce((s, l) => s + (l.bothAccepted && !isDeclined(l) ? lineCost(l) : 0), 0) * (isProject ? 1 : this.marginMarkup()),
           summaryCode,
-          supplierGroups: [{ supplierId: sg.supplierId || '', supplierName: null, supplierCity: null, items }] as SupplierGroup[],
+          // Supplier is the outer group here, so the inner bands are CATEGORIES
+          // (Liam 2026-11-22): one band per category the supplier supplies, with the
+          // category's own icon. The agency's own costs (no supplier) keep a single
+          // bandless list. Message/Add scope to the band's category.
+          supplierGroups: (sg.supplierId
+            ? groupByCategory(items).map((cat) => ({
+                supplierId: sg.supplierId,
+                supplierName: sg.supplierName,
+                supplierCity: null,
+                supplierStatus: sg.supplierStatus,
+                bandLabel: cat.name,
+                bandIcon: cat.items[0]?.categoryIconName ?? 'tag',
+                bandCategoryId: cat.id,
+                items: cat.items,
+              }))
+            : [{ supplierId: '', supplierName: null, supplierCity: null, items }]) as SupplierGroup[],
         };
       });
     }
