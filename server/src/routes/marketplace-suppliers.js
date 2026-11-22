@@ -96,7 +96,17 @@ router.get('/suppliers', async (req, res, next) => {
       where.push(`(o.name ILIKE $${vals.length} OR o.description ILIKE $${vals.length})`);
     }
     if (cat) { vals.push(cat); }
-    const catClause = cat ? `AND i.category_id = $${vals.length}` : '';
+    // Tree-aware category filter (mirrors the /items browse): items classify at ANY
+    // depth, so selecting a top-level category must match its whole subtree. A flat
+    // `category_id = $cat` dropped suppliers whose items sit only in subcategories
+    // (e.g. a florist with everything under Bouquets/Centrepieces vanished) and
+    // undercounted the rest — the "damaged filter".
+    const catClause = cat ? `AND i.category_id IN (
+      WITH RECURSIVE cat_tree AS (
+        SELECT id FROM categories WHERE id = $${vals.length}
+        UNION ALL
+        SELECT c2.id FROM categories c2 JOIN cat_tree ON c2.parent_id = cat_tree.id
+      ) SELECT id FROM cat_tree)` : '';
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     vals.push(PAGE_SIZE, offset);
     const r = await pool.query(
