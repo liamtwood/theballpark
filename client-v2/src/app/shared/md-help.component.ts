@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, HostListener, signal } from '@angular/core';
-import { LucideAngularModule } from 'lucide-angular';
 
 /** A tiny "formatting help" affordance for any markdown-enabled field: a ? button
  *  that pops a reference of the `| md` pipe's syntax (bold/italic/bullets +
@@ -9,13 +8,10 @@ import { LucideAngularModule } from 'lucide-angular';
   selector: 'app-md-help',
   changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
-  imports: [LucideAngularModule],
   template: `
     <span class="bp-mdhelp">
       <button type="button" class="bp-mdhelp__btn" (click)="toggle($event)"
-              [attr.aria-expanded]="open()" aria-label="Formatting help" title="Formatting help">
-        <lucide-icon name="help-circle" [size]="14" />
-      </button>
+              [attr.aria-expanded]="open()" aria-label="Formatting help" title="Formatting help">?</button>
       @if (open()) {
         <div class="bp-mdhelp__pop" role="dialog" aria-label="Markdown formatting">
           <div class="bp-mdhelp__title">Formatting you can use</div>
@@ -37,10 +33,12 @@ import { LucideAngularModule } from 'lucide-angular';
     .bp-mdhelp { position: relative; display: inline-flex; vertical-align: middle; }
     .bp-mdhelp__btn {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%;
+      width: 16px; height: 16px; padding: 0;
+      border: 1px solid var(--color-border-hairline); border-radius: 50%;
       background: transparent; color: var(--color-text-secondary); cursor: pointer;
+      font-size: 11px; font-weight: 700; line-height: 1;
     }
-    .bp-mdhelp__btn:hover { color: var(--color-text); background: var(--color-fill); }
+    .bp-mdhelp__btn:hover { color: var(--color-text); border-color: var(--color-text-secondary); background: var(--color-fill); }
     .bp-mdhelp__pop {
       position: absolute; z-index: 50; top: calc(100% + 6px); left: 0;
       width: 248px; padding: 12px 14px;
