@@ -716,7 +716,20 @@ export class CustomizeDialogComponent implements OnInit, OnDestroy {
       real.unshift({ categoryId: baseCat, rows: [], total: 0, isExtras: false });
     }
     const nul = groups.find((g) => g.categoryId == null);
-    return [...real, { categoryId: null as string | null, rows: nul?.rows ?? [], total: nul?.total ?? 0, isExtras: true }];
+    const nulRows = nul?.rows ?? [];
+    if (this.itemMode()) {
+      // Item mode has no margin/Extras card and no base card, so the uncategorised
+      // bucket must render as a NORMAL card — otherwise a fresh item (its one blank
+      // row is uncategorised) gets zero cards and the estimate shows blank, with no
+      // way to even add a component. Include it when it holds rows, or when there
+      // are no other cards (fresh item), so we don't leave a stray empty
+      // "Uncategorised" card once real category cards exist.
+      if (nulRows.length || real.length === 0) {
+        return [...real, { categoryId: null as string | null, rows: nulRows, total: nul?.total ?? 0, isExtras: false }];
+      }
+      return real;
+    }
+    return [...real, { categoryId: null as string | null, rows: nulRows, total: nul?.total ?? 0, isExtras: true }];
   });
   /** The cards actually rendered — Extras (margin editor + uncategorised) is
    *  HIDDEN for now (Liam 2026-08-31); margin still applies at its default. */
