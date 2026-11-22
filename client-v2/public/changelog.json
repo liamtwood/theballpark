@@ -2,6 +2,27 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.10.3",
+      "name": "Browse by category",
+      "build": "v2.1229",
+      "date": "2026-11-22",
+      "datetime": "2026-11-22",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Marketplace",
+          "items": [
+            {
+              "ref": "pV2-MKT-CATGROUP-01",
+              "type": "new",
+              "feature": "Category sections",
+              "text": "The marketplace, supplier shops and My Shop now organise products into top-level category sections (Catering, Furniture, AV…) with icons. The suppliers view groups each supplier under the category it offers most, so you can scan who does what at a glance."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "v0.10.2",
       "name": "Richer text formatting",
       "build": "v2.1226",
