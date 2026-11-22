@@ -2,6 +2,27 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.10.2",
+      "name": "Richer text formatting",
+      "build": "v2.1226",
+      "date": "2026-11-22",
+      "datetime": "2026-11-22",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Text formatting",
+          "items": [
+            {
+              "ref": "pV2-MD-FORMATTING-01",
+              "type": "new",
+              "feature": "Headings, Shout Out & a formatting helper",
+              "text": "Description and notes fields now take headings (#, ##, ###) and a centred Shout Out line (!!) — on top of bold, italic and bullets. Each formatting field has a ? button that shows exactly what you can type."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "v0.10.1",
       "name": "Readable links & IDs",
       "build": "v2.1223",
