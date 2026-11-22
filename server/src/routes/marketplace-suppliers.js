@@ -53,7 +53,7 @@ router.get('/suppliers/options', async (req, res, next) => {
     const isAdmin = req.user?.role === 'ballpark_admin';
     const itemFilter = isAdmin
       ? `i.deleted_at IS NULL AND i.type IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL`
-      : `i.deleted_at IS NULL AND i.status = 'active' AND i.approval_status = 'approved'`;
+      : `i.deleted_at IS NULL AND i.status = 'active' AND i.approval_status = 'approved' AND i.type IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL`;
     const r = await pool.query(
       // Cross-org supplier read: use supplier_directory — the owner-run public
       // directory view that bypasses orgs RLS (which would hide every other
@@ -112,6 +112,10 @@ router.get('/suppliers', async (req, res, next) => {
                      CROSS JOIN LATERAL public.category_top(i2.category_id) t
                     WHERE i2.org_id = o.id AND i2.deleted_at IS NULL
                       AND i2.status = 'active' AND i2.approval_status = 'approved'
+                      -- Exclude the private build-up library (cost components + child
+                      -- options) so the derived category matches the /items grid — else a
+                      -- supplier with many 'Component' lines mis-groups under "Component".
+                      AND i2.type IS DISTINCT FROM 'component' AND i2.parent_item_id IS NULL
                       AND t.id IS NOT NULL
                     GROUP BY t.id, t.name, t.icon_name, t.sort_order
                  ) tc
@@ -119,7 +123,10 @@ router.get('/suppliers', async (req, res, next) => {
               COUNT(*) OVER() AS total
          FROM supplier_directory o
          JOIN items i ON i.org_id = o.id AND i.deleted_at IS NULL
-              AND i.status = 'active' AND i.approval_status = 'approved' ${catClause}
+              AND i.status = 'active' AND i.approval_status = 'approved'
+              -- Browse count + presence follow the /items grid: exclude the private
+              -- build-up library (components + child options), never marketplace-visible.
+              AND i.type IS DISTINCT FROM 'component' AND i.parent_item_id IS NULL ${catClause}
         ${whereSql}
         -- BE-00129 — group every selected orgs_public column (it's a VIEW, no PK
         -- functional dependency; see /suppliers/options above). v2dev: city is the
