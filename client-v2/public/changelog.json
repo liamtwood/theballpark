@@ -2,6 +2,27 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.10.4",
+      "name": "Category grouping fix",
+      "build": "v2.1230",
+      "date": "2026-11-22",
+      "datetime": "2026-11-22",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Marketplace",
+          "items": [
+            {
+              "ref": "pV2-MKT-CATGROUP-01",
+              "type": "fix",
+              "feature": "Supplier category grouping",
+              "text": "A supplier's private cost build-up lines no longer count towards its marketplace category, so suppliers group under the category they actually sell (e.g. a caterer shows under Catering, not an internal 'Component' bucket). Supplier item counts now match the products shown."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "v0.10.3",
       "name": "Browse by category",
       "build": "v2.1229",
