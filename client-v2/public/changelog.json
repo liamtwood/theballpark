@@ -2,6 +2,38 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.10.1",
+      "name": "Readable links & IDs",
+      "build": "v2.1223",
+      "date": "2026-11-22",
+      "datetime": "2026-11-22",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Marketplace",
+          "items": [
+            {
+              "ref": "pV2-BPIN-01",
+              "type": "new",
+              "feature": "Ballpark IDs",
+              "text": "Every item now carries a short Ballpark ID (e.g. BP…), shown in its view and editor — a stable, copyable reference for links, messages and search. Item web addresses use that ID, and supplier pages now read as the supplier's name (e.g. /suppliers/sk-projections) instead of a long code. Old links keep working."
+            }
+          ]
+        },
+        {
+          "area": "Quick View",
+          "items": [
+            {
+              "ref": "",
+              "type": "improved",
+              "feature": "",
+              "text": "Prices now read with their real unit — a weekly hire shows \"From £X / week\", a per-platter item shows \"From £X / 50 guests\" — instead of a generic label."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "v0.10.0",
       "name": "Statements of Work",
       "build": "v2.1218",
