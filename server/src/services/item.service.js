@@ -385,15 +385,17 @@ async function saveComponents(orgId, itemId, components, parentName, parentDescr
         );
       }
     }
+    // Use realId (the BPIN-resolved UUID) — itemId may be a BPIN (pV2-BPIN-01) and
+    // these columns are uuid-typed (a raw BPIN uuid-cast-fails: the save-didn't-save bug).
     if (typeof parentName === 'string' && parentName.trim())
-      await client.query(`UPDATE items SET name=$2 WHERE id=$1 AND org_id=$3`, [itemId, parentName.trim(), orgId]);
+      await client.query(`UPDATE items SET name=$2 WHERE id=$1 AND org_id=$3`, [realId, parentName.trim(), orgId]);
     if (parentDescription !== undefined)
-      await client.query(`UPDATE items SET description=$2 WHERE id=$1 AND org_id=$3`, [itemId, parentDescription || null, orgId]);
+      await client.query(`UPDATE items SET description=$2 WHERE id=$1 AND org_id=$3`, [realId, parentDescription || null, orgId]);
     if (parentServices !== undefined)
-      await client.query(`UPDATE items SET install_description=$2 WHERE id=$1 AND org_id=$3`, [itemId, parentServices || null, orgId]);
+      await client.query(`UPDATE items SET install_description=$2 WHERE id=$1 AND org_id=$3`, [realId, parentServices || null, orgId]);
     const rows = await client.query(
       `SELECT id, name, base_price, unit, category_id, type, description, images
-         FROM items WHERE parent_item_id=$1 AND deleted_at IS NULL ORDER BY created_at`, [itemId]
+         FROM items WHERE parent_item_id=$1 AND deleted_at IS NULL ORDER BY created_at`, [realId]
     );
     return rows.rows.map(toItemComponent);
   });
