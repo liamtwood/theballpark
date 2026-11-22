@@ -2,6 +2,27 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.10.6",
+      "name": "Supplier filter fix",
+      "build": "v2.1235",
+      "date": "2026-11-22",
+      "datetime": "2026-11-22",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Marketplace",
+          "items": [
+            {
+              "ref": "pV2-MKT-CATGROUP-01",
+              "type": "fix",
+              "feature": "Browse suppliers by category",
+              "text": "Filtering suppliers by a category now includes everyone who stocks it — suppliers whose products sit in subcategories (e.g. a florist with items under Bouquets or Centrepieces) no longer disappear, and item counts are correct."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "v0.10.5",
       "name": "Cost build-up fixes",
       "build": "v2.1233",
