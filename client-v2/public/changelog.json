@@ -2,6 +2,33 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.10.5",
+      "name": "Cost build-up fixes",
+      "build": "v2.1233",
+      "date": "2026-11-22",
+      "datetime": "2026-11-22",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Cost build-up",
+          "items": [
+            {
+              "ref": "pV2-BUILDUP-03",
+              "type": "fix",
+              "feature": "Estimate editor on a fresh item",
+              "text": "Opening Customize on an item with no components now shows the build-up table and Add component, instead of a blank panel."
+            },
+            {
+              "ref": "pV2-BUILDUP-03",
+              "type": "fix",
+              "feature": "Saving a build-up",
+              "text": "Cost build-up edits now save reliably on items opened by their Ballpark ID — a save that silently did nothing is fixed."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "v0.10.4",
       "name": "Category grouping fix",
       "build": "v2.1230",
