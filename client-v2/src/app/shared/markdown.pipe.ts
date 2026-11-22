@@ -11,9 +11,12 @@ import { Pipe, PipeTransform } from '@angular/core';
  *  <br> spacer (one per blank line), so an empty row renders as an empty row.
  *  Leading/trailing blank lines are dropped.
  *
- *  Not a full markdown engine (no links/tables/headings-with-#) — deliberately
- *  the small formatting subset v1 supported. `heading` mode (Details) renders a
- *  non-bulleted line as a bold sub-heading instead of a paragraph. */
+ *  Line syntax (beyond inline bold/italic + bullets):
+ *    # / ## / ###  → heading 1 / 2 / 3 (bp-md-h1..h3)
+ *    !!            → Shout Out (bold, centred, one size up — bp-md-shout)
+ *  Still escaped + whitelist-only (we emit fixed classes, never raw HTML), so it
+ *  stays safe under [innerHTML] without bypassSecurityTrust. `heading` mode
+ *  (Details) renders a non-# line as a bold sub-heading instead of a paragraph. */
 @Pipe({ name: 'md', standalone: true })
 export class MarkdownPipe implements PipeTransform {
   transform(src: string | null | undefined, mode: 'prose' | 'heading' = 'prose'): string {
@@ -33,10 +36,22 @@ export class MarkdownPipe implements PipeTransform {
     for (const raw of src.split('\n')) {
       const line = raw.trimEnd();
       const bullet = line.match(/^\s*[•\-*]\s+(.*)$/);
+      const heading = line.match(/^(#{1,3})\s+(.*\S)\s*$/);
+      const shout = line.match(/^!!\s+(.*\S)\s*$/);
       if (bullet) {
         flushGaps();
         if (!inList) { html += '<ul class="bp-md-list">'; inList = true; }
         html += `<li>${inline(bullet[1])}</li>`;
+        hasContent = true;
+      } else if (heading) {
+        closeList();
+        flushGaps();
+        html += `<p class="bp-md-h${heading[1].length}">${inline(heading[2])}</p>`;
+        hasContent = true;
+      } else if (shout) {
+        closeList();
+        flushGaps();
+        html += `<p class="bp-md-shout">${inline(shout[1])}</p>`;
         hasContent = true;
       } else if (line.trim() === '') {
         closeList();

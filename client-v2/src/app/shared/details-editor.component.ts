@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { currencySymbol, detailsCalcLine, detailsDateLine, detailsTotalStr } from './details-format';
+import { MdHelpComponent } from './md-help.component';
 
 export type DetailsMode = 'calc' | 'date' | 'plain';
 
@@ -15,12 +16,12 @@ export type DetailsMode = 'calc' | 'date' | 'plain';
 @Component({
   selector: 'app-details-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule],
+  imports: [FormsModule, MdHelpComponent],
   host: { class: 'block' },
   template: `
     @if (label()) {
       <div class="flex items-center justify-between gap-2">
-        <span class="bp-field-label">{{ label() }}</span>
+        <span class="bp-field-label">{{ label() }}<app-md-help class="ml-1.5 align-middle" /></span>
         @if (mode() === 'calc' && total(); as tot) {
           <span class="bp-body-small font-semibold tabular-nums text-text">{{ tot }}</span>
         }

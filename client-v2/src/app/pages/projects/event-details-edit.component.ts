@@ -8,6 +8,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
 import { withCommas, natoDate } from '../../shared/details-format';
 import { SaveStatePillComponent, SaveState } from '../../shared/save-state-pill/save-state-pill.component';
 import { SelectComponent, SelectOption } from '../../shared/select/select.component';
+import { MdHelpComponent } from '../../shared/md-help.component';
 
 /** pV2-BUILDUP-04 — the editable "Event details" card at the top of the
  *  Cart/Final, replacing the read-only summary tiles. Each field saves on blur
@@ -17,7 +18,7 @@ import { SelectComponent, SelectOption } from '../../shared/select/select.compon
 @Component({
   selector: 'app-event-details-edit',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, LucideAngularModule, SaveStatePillComponent, SelectComponent],
+  imports: [FormsModule, LucideAngularModule, SaveStatePillComponent, SelectComponent, MdHelpComponent],
   host: { class: 'block' },
   styles: [`
     /* pV2-BUILDUP-04 workspace card — soft white on the pink ground. */
@@ -126,7 +127,7 @@ import { SelectComponent, SelectOption } from '../../shared/select/select.compon
 
     <div class="ed-card mt-4 p-6">
       <div class="flex items-center justify-between">
-        <h2 class="bp-card-title">What Ballpark will read</h2>
+        <h2 class="bp-card-title">What Ballpark will read<app-md-help class="ml-1.5 align-middle" /></h2>
         <app-save-state-pill [state]="state()" [idleShowsSaved]="true" />
       </div>
       <textarea class="ed-textarea mt-4" rows="3"

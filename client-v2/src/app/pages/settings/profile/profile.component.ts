@@ -16,6 +16,7 @@ import { CompletenessCardComponent } from '../../../shared/completeness/complete
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../../shared/tab-band/tab-band.component';
 import { SelectComponent, SelectOption } from '../../../shared/select/select.component';
+import { MdHelpComponent } from '../../../shared/md-help.component';
 import { ProfileEditService } from './profile-edit.service';
 import { ProfileTeamSectionComponent } from './profile-team-section.component';
 import { ProfileShopfrontComponent } from './profile-shopfront.component';
@@ -44,6 +45,7 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
     ProfileTeamSectionComponent,
     ProfileShopfrontComponent,
     SelectComponent,
+    MdHelpComponent,
   ],
   providers: [MessageService, ProfileEditService],
   // bp-vpfit: hero (and the supplier tab-band) stay anchored; only the content
@@ -142,7 +144,8 @@ import { ProfileShopfrontComponent } from './profile-shopfront.component';
                   <!-- About Us — the public description blurb (orgs.description),
                        rendered as inline editable text: no label, no border; click
                        into the paragraph to edit (Liam 2026-11-02). -->
-                  <textarea class="bp-about-edit bp-body mt-3 block w-full resize-none border-0 text-secondary focus:outline-none"
+                  @if (store.canEdit()) { <div class="mt-2 flex justify-end"><app-md-help /></div> }
+                  <textarea class="bp-about-edit bp-body mt-1 block w-full resize-none border-0 text-secondary focus:outline-none"
                             rows="5"
                             placeholder="Tell customers about your company…"
                             [disabled]="!store.canEdit()"

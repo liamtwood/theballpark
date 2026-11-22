@@ -4,6 +4,7 @@ import { VariantMatrix, VariantMode, normalizeVariants } from '../../shared/cata
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
 import { PickerResult, PickerTab } from '../../core/media/media.types';
+import { MdHelpComponent } from '../../shared/md-help.component';
 
 interface ValState { value: string; mode: VariantMode; amount: string; imageUrl: string | null; description: string; }
 interface DimState { name: string; values: ValState[]; }
@@ -16,7 +17,7 @@ interface DimState { name: string; values: ValState[]; }
 @Component({
   selector: 'app-item-variants-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, DrawerComponent, ImagePickerComponent],
+  imports: [LucideAngularModule, DrawerComponent, ImagePickerComponent, MdHelpComponent],
   template: `
     <div class="flex flex-col gap-3">
       @for (d of dims(); track $index; let di = $index) {
@@ -83,7 +84,7 @@ interface DimState { name: string; values: ValState[]; }
              choice boxes in Quick View when the buyer picks this option. Live-saves on
              input, so picking an image (which closes the drawer) never loses it. -->
         <div class="flex flex-col">
-          <label class="bp-field-label">Description</label>
+          <label class="bp-field-label">Description<app-md-help class="ml-1.5 align-middle" /></label>
           <textarea class="bp-store-textarea mt-1" rows="4"
                     placeholder="Supporting copy for this option (optional) — supports **bold**, *italic*, • bullets. Shown when a buyer picks it."
                     [value]="pickDescription()" (input)="setPickDescription($any($event.target).value)"></textarea>

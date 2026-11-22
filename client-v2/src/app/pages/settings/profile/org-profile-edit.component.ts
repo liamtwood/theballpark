@@ -8,6 +8,7 @@ import { ImagePickerComponent } from '../../../shared/image-picker/image-picker.
 import { OrgMediaComponent } from '../../../shared/org-media/org-media.component';
 import { SelectComponent, SelectOption } from '../../../shared/select/select.component';
 import { ProfileEditService } from './profile-edit.service';
+import { MdHelpComponent } from '../../../shared/md-help.component';
 
 /** pV2-ADMIN-ORG-PROFILE-EDIT-01 — the reusable org-profile EDITOR sections
  *  (About Us · Branding/media · Company Information · Gallery), driven by the
@@ -24,7 +25,7 @@ import { ProfileEditService } from './profile-edit.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule, ToastModule, SaveStatePillComponent, DrawerComponent,
-    ImagePickerComponent, OrgMediaComponent, SelectComponent,
+    ImagePickerComponent, OrgMediaComponent, SelectComponent, MdHelpComponent,
   ],
   providers: [MessageService, ProfileEditService],
   host: { class: 'block' },
@@ -38,7 +39,7 @@ import { ProfileEditService } from './profile-edit.service';
         <!-- About Us -->
         <div class="ed-card p-6">
           <div class="flex items-center justify-between">
-            <h2 class="bp-card-title">About Us</h2>
+            <h2 class="bp-card-title">About Us@if (store.canEdit()) {<app-md-help class="ml-1.5 align-middle" />}</h2>
             <app-save-state-pill [state]="store.saveState()" [idleShowsSaved]="true" />
           </div>
           <textarea class="ed-textarea mt-4" rows="5" placeholder="Tell customers about this company…"

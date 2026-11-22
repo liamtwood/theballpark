@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
+import { MdHelpComponent } from '../md-help.component';
 
 export type EditFieldType = 'text' | 'email' | 'tel' | 'number' | 'select' | 'textarea';
 export type EditFieldDensity = 'drawer' | 'page';
@@ -31,7 +32,7 @@ export interface EditFieldOption {
 @Component({
   selector: 'app-edit-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, InputTextModule, InputNumberModule, SelectModule],
+  imports: [FormsModule, InputTextModule, InputNumberModule, SelectModule, MdHelpComponent],
   host: {
     class: 'bp-edit-field',
     '[class.bp-edit-field--drawer]': "density() === 'drawer'",
@@ -43,7 +44,7 @@ export interface EditFieldOption {
   },
   template: `
     @if (label()) {
-      <div class="bp-field-label bp-edit-field__label">{{ label() }}</div>
+      <div class="bp-field-label bp-edit-field__label">{{ label() }}@if (markdown() && editing()) {<app-md-help class="bp-edit-field__mdhelp" />}</div>
     }
     @switch (type()) {
       @case ('select') {
@@ -199,6 +200,7 @@ export interface EditFieldOption {
       .bp-edit-field__value {
         cursor: default;
       }
+      .bp-edit-field__mdhelp { margin-left: 5px; }
       /* Display-only fields (readonlyAlways, e.g. BPIN) carry the SAME hairline
          border + field rounding as an editable control, but no fill — so they read
          as a field without inviting edit (Liam 2026-11-21). The value is quietened to
@@ -234,6 +236,9 @@ export class EditFieldComponent {
   /** Render the value in a monospace face — for copyable token-like ids (e.g. BPIN),
    *  so they read as a code to paste, not prose (designer 2026-11-21). */
   readonly mono = input<boolean>(false);
+  /** Field accepts markdown — shows a formatting-help (?) button next to the label
+   *  while editing (textarea fields). */
+  readonly markdown = input<boolean>(false);
   /** Numeric suffix, e.g. "%" (type="number"). */
   readonly suffix = input<string>('');
   /** Read-mode thousands grouping for large numbers (e.g. Budget → "50,000"). */

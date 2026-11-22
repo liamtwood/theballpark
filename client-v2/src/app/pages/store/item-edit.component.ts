@@ -20,6 +20,7 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { SaveStatePillComponent, SaveState } from '../../shared/save-state-pill/save-state-pill.component';
 import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
+import { MdHelpComponent } from '../../shared/md-help.component';
 import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.component';
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
@@ -66,7 +67,7 @@ const WHATS_HOT = "What's Hot";
     FormsModule, LucideAngularModule, ToastModule, ModalComponent, PageHeroComponent, EditFieldComponent,
     ImageGalleryComponent, ImagePickerComponent, DrawerComponent, ItemApprovalPanelComponent,
     ItemEditActionsComponent, ItemAttributeCardsComponent, SaveStatePillComponent,
-    ItemVariantsEditorComponent, CustomizeDialogComponent, DecimalPipe,
+    ItemVariantsEditorComponent, CustomizeDialogComponent, DecimalPipe, MdHelpComponent,
   ],
   providers: [MessageService],
   template: `
@@ -104,7 +105,7 @@ const WHATS_HOT = "What's Hot";
                   <app-edit-field label="Category" type="select" density="page" [filter]="true" [options]="categoryOptions()" [editing]="editing()" [value]="form().category_id" (valueChange)="onCategory($event)" />
                 </div>
                 <div>
-                  <label class="bp-field-label">Description</label>
+                  <label class="bp-field-label">Description@if (editing()) {<app-md-help class="ml-1.5 align-middle" />}</label>
                   <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="form().description" (ngModelChange)="patch({ description: $event })" [readonly]="!editing()" placeholder="Describe the product…"></textarea>
                 </div>
                 <div class="bp-qv-spec">
@@ -213,7 +214,7 @@ const WHATS_HOT = "What's Hot";
                 <app-edit-field label="Unit" type="select" density="page" [options]="installUnitOptions" [editing]="editing()" [value]="form().install_unit" (valueChange)="patch({ install_unit: $event })" />
               </div>
               <div class="mt-4">
-                <label class="bp-field-label">Included services</label>
+                <label class="bp-field-label">Included services@if (editing()) {<app-md-help class="ml-1.5 align-middle" />}</label>
                 <textarea class="bp-store-textarea mt-1" rows="3" [ngModel]="form().install_description" (ngModelChange)="patch({ install_description: $event })" [readonly]="!editing()" placeholder="What the install covers…"></textarea>
               </div>
             }
