@@ -29,11 +29,15 @@ async function withTransaction(fn, { pool = rlsPool } = {}) {
     // the audit trigger attributes AND, once RLS is live, the policies see the
     // caller's org. Owner still bypasses RLS today → behaviour-neutral for now.
     const store = als.getStore() || {};
+    // pV2-ADMIN-ORG-EDIT-01 — when a request is ACTING AS another org (admin
+    // cross-org edit via lib/acting-org.js), use that org for the tenancy GUC so
+    // the `= app_current_org()` write branch permits the edit. Audit attribution
+    // (current_user_id) stays the real admin. Normal requests: actingOrgId unset.
     await client.query(
       `SELECT set_config('app.current_user_id', $1, true),
               set_config('app.current_org_id',  $2, true),
               set_config('app.is_admin',        $3, true)`,
-      [store.userId || null, store.orgId || null, store.isAdmin ? 't' : 'f'],
+      [store.userId || null, store.actingOrgId || store.orgId || null, store.isAdmin ? 't' : 'f'],
     );
     const result = await fn(client);
     await client.query('COMMIT');

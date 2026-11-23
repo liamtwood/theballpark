@@ -14,6 +14,7 @@ const { StoreItemCreateSchema, StoreItemUpdateSchema } = require('../schemas/sto
 const { ORG_PROFILE_SELECT, toProfile } = require('../services/org-profile.util');
 const { updateOrgProfile } = require('../services/org-profile.service');
 const { withModeration } = require('../lib/moderation');
+const { withActingOrg } = require('../lib/acting-org');
 
 const BALLPARK_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -38,10 +39,15 @@ const CreateBody = z
   .strip(); // drop unknown keys — org.service only writes the columns it names
 
 // FR-00215: authoring an org (profile/catalogue) is enforced at the DB — RLS write
-// = current-org only. A ballpark admin VIEWs any org (cross_org_view) and MODERATEs
-// via the scoped escape, but EDITs an org only when it's their active org (a seat it
-// holds). The old requireOrgEditSeat app-gate was interim tape — removed; the DB is
-// the enforcement now (acceptance: db/rebuild/tests/fr00215_write_close.test.js).
+// = current-org only; app_is_admin() grants cross-org READ + the scoped moderation
+// escapes, never a general write. pV2-ADMIN-ORG-EDIT-01 (Liam, 2026-11-23): a
+// platform admin (admin.cross_org_view) may now EDIT any org's profile + items in
+// place, via withActingOrg() — the admin route acts AS the target org for the write
+// (sets app.current_org_id = :id), satisfying the DB's `= app_current_org()` branch
+// without re-granting is_admin writes. Still DB-enforced; the capability stays
+// confined to these admin.cross_org_view-gated routes. Team invites are NOT in
+// scope (they remain own-org only). Moderation (approve/suspend/takedown) keeps its
+// narrower svc_moderate escape below.
 
 // GET /api/admin/orgs — every org (incl. suspended), newest first.
 router.get('/', async (_req, res, next) => {
@@ -60,15 +66,15 @@ router.get('/:id', async (req, res, next) => {
 
 // PUT /api/admin/orgs/:id — admin edits ANOTHER org's profile (pV2-ADMIN-ORG-
 // PROFILE-EDIT-01). Same OrganisationUpdateSchema + field-set as the self-serve
-// PUT /api/organisation, keyed by :id. The admin.cross_org_view gate set the
-// app.is_admin GUC, so RLS orgs_self permits the cross-org write.
+// PUT /api/organisation, keyed by :id. The write runs via withActingOrg(:id) so the
+// orgs_update `id = app_current_org()` branch permits it (is_admin alone does not).
 router.put('/:id', async (req, res, next) => {
   const parsed = OrganisationUpdateSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
   }
   try {
-    const changed = await updateOrgProfile(req.params.id, parsed.data);
+    const changed = await withActingOrg(req.params.id, () => updateOrgProfile(req.params.id, parsed.data));
     if (!changed) return res.status(400).json({ error: 'No fields to update' });
     const fresh = await pool.query(ORG_PROFILE_SELECT, [req.params.id]);
     if (!fresh.rows.length) return res.status(404).json({ error: 'Not found' });
@@ -116,11 +122,13 @@ router.patch('/:id/active', async (req, res, next) => {
 
 // ── pV2-ADMIN-ORG-ITEM-CREATE-01 — admin cross-org item create/edit ──────────
 // Mirrors store-items.js, but the item's org is :orgId FROM THE URL (never the
-// body/session — that invariant stays sacred on /api/store/items). The admin
-// gate set app.is_admin so RLS permits the cross-org write. ItemService is reused
-// as-is (create takes org_id in its data; the rest key by item id + we assert the
-// item belongs to :orgId). Admin-created items default to PENDING (a) so they run
-// the normal Approvals flow — flip to 'approved' + is_active:true for (b).
+// body/session — that invariant stays sacred on /api/store/items). Cross-org item
+// writes run via withActingOrg(:orgId) so the items_update/items_insert
+// `org_id = app_current_org()` branch permits them (is_admin alone does not).
+// ItemService is reused as-is (create takes org_id in its data; the rest key by
+// item id + we assert the item belongs to :orgId). Admin-created items default to
+// PENDING (a) so they run the normal Approvals flow — flip to 'approved' +
+// is_active:true for (b).
 const ADMIN_ITEM_STATUS = 'pending'; // (a) pending — one-line flip to 'approved' for (b)
 
 /** Resolve an item that belongs to :orgId, else 404 (no cross-org existence oracle). */
@@ -147,11 +155,11 @@ router.post('/:orgId/items', async (req, res, next) => {
   try {
     const parsed = StoreItemCreateSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid item' });
-    const item = await ItemService.createForOrg({
+    const item = await withActingOrg(req.params.orgId, () => ItemService.createForOrg({
       data: parsed.data,
       orgId: req.params.orgId,
       defaultStatus: ADMIN_ITEM_STATUS,
-    });
+    }));
     res.status(201).json(item);
   } catch (err) { next(err); }
 });
@@ -163,7 +171,7 @@ router.put('/:orgId/items/:itemId', async (req, res, next) => {
     if (!existing) return;
     const parsed = StoreItemUpdateSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid item' });
-    res.json(await ItemService.applyEdit(existing, parsed.data, { defaultStatus: ADMIN_ITEM_STATUS }));
+    res.json(await withActingOrg(req.params.orgId, () => ItemService.applyEdit(existing, parsed.data, { defaultStatus: ADMIN_ITEM_STATUS })));
   } catch (err) { next(err); }
 });
 
@@ -171,7 +179,7 @@ router.put('/:orgId/items/:itemId', async (req, res, next) => {
 router.post('/:orgId/items/:itemId/duplicate', async (req, res, next) => {
   try {
     if (!(await orgItemOr(res, req.params.itemId, req.params.orgId))) return;
-    const copy = await ItemService.duplicate(req.params.itemId);
+    const copy = await withActingOrg(req.params.orgId, () => ItemService.duplicate(req.params.itemId));
     if (!copy) return res.status(404).json({ error: 'Not found' });
     res.status(201).json(copy);
   } catch (err) { next(err); }
@@ -189,7 +197,8 @@ router.patch('/:orgId/items/:itemId/active', async (req, res, next) => {
     // is_active is a DERIVED flag, not a column — map it to the status lifecycle
     // (new/active/retired), same as the owner route. Passing { is_active } made
     // update() a no-op (not in UPDATABLE_COLS), so the item never went live.
-    res.json(await ItemService.update(req.params.itemId, { status: req.body.is_active ? 'active' : 'retired' }));
+    // Acts-as-org so the cross-org status UPDATE lands (items_update current-org branch).
+    res.json(await withActingOrg(req.params.orgId, () => ItemService.update(req.params.itemId, { status: req.body.is_active ? 'active' : 'retired' })));
   } catch (err) { next(err); }
 });
 
