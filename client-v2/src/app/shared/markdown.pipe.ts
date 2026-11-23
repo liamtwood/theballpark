@@ -14,6 +14,7 @@ import { Pipe, PipeTransform } from '@angular/core';
  *  Line syntax (beyond inline bold/italic + bullets):
  *    # / ## / ###  → heading 1 / 2 / 3 (bp-md-h1..h3)
  *    !!            → Shout Out (bold, centred, one size up — bp-md-shout)
+ *    >             → shaded callout box (consecutive > lines group — bp-md-box)
  *  Still escaped + whitelist-only (we emit fixed classes, never raw HTML), so it
  *  stays safe under [innerHTML] without bypassSecurityTrust. `heading` mode
  *  (Details) renders a non-# line as a bold sub-heading instead of a paragraph. */
@@ -29,12 +30,29 @@ export class MarkdownPipe implements PipeTransform {
         .replace(/_([^_]+)_/g, '<em>$1</em>');
     let html = '';
     let inList = false;
+    let boxLines: string[] | null = null; // consecutive `>` lines, buffered then rendered recursively
     let pendingGaps = 0;    // blank lines seen since the last content — flushed before the next
     let hasContent = false; // so leading (and trailing) blank lines are dropped
     const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
+    // A shaded callout box renders its inner content as FULL markdown (headings,
+    // bullets, bold/italic all work inside) by recursing on the un-prefixed lines.
+    const closeBox = () => {
+      if (boxLines) { html += `<div class="bp-md-box">${this.transform(boxLines.join('\n'), mode)}</div>`; boxLines = null; }
+    };
     const flushGaps = () => { for (; pendingGaps > 0; pendingGaps--) html += '<br>'; };
     for (const raw of src.split('\n')) {
       const line = raw.trimEnd();
+      const box = line.match(/^>\s?(.*)$/);
+      if (box) {
+        // Buffer this box line (prefix stripped); consecutive `>` lines group into
+        // ONE box. A blank line (or any non-`>` line) ends it.
+        closeList();
+        flushGaps();
+        (boxLines ??= []).push(box[1]);
+        hasContent = true;
+        continue;
+      }
+      closeBox(); // any non-box line ends an open box first
       const bullet = line.match(/^\s*[•\-*]\s+(.*)$/);
       const heading = line.match(/^(#{1,3})\s+(.*\S)\s*$/);
       const shout = line.match(/^!!\s+(.*\S)\s*$/);
@@ -67,6 +85,7 @@ export class MarkdownPipe implements PipeTransform {
       }
     }
     closeList();
+    closeBox();
     return html;
   }
 }

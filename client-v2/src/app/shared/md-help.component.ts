@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, HostListener, signal } from '@angul
 
 /** A tiny "formatting help" affordance for any markdown-enabled field: a ? button
  *  that pops a reference of the `| md` pipe's syntax (bold/italic/bullets +
- *  #/##/### headings + !! Shout Out). Drop <app-md-help /> next to a field label.
+ *  #/##/### headings + !! Shout Out + > shaded box). Drop <app-md-help /> next to a field label.
  *  Self-contained; closes on outside click or Escape. */
 @Component({
   selector: 'app-md-help',
@@ -23,6 +23,7 @@ import { ChangeDetectionStrategy, Component, HostListener, signal } from '@angul
             <dt><code>## Heading</code></dt><dd>Heading 2</dd>
             <dt><code>### Heading</code></dt><dd>Heading 3</dd>
             <dt><code>!! Text</code></dt><dd>Shout Out (bold, centred)</dd>
+            <dt><code>&gt; Text</code></dt><dd>Shaded box (group lines)</dd>
           </dl>
           <div class="bp-mdhelp__foot">A blank line adds a gap. Put each on its own line.</div>
         </div>
