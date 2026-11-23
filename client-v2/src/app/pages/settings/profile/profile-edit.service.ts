@@ -78,16 +78,15 @@ export class ProfileEditService {
   readonly fetching = signal(false);
   readonly flagged = signal<Set<string>>(new Set());
 
-  /** Own org: editable with org.manage_billing. Another org (admin Orgs editor):
-   *  pV2-ADMIN-ORG-EDIT-01 (Liam, 2026-11-23) — a platform admin
-   *  (admin.cross_org_view) edits ANY org's profile in place; the server PUT
-   *  /api/admin/orgs/:id acts AS the target org at the DB (withActingOrg), so no
-   *  per-org membership or org-switch is needed. Non-admins editing a target org
-   *  still need it to be their active org (a seat they hold). */
+  /** Editable only by someone acting AS a member of the org being edited
+   *  (org.manage_billing on the active org). FR-00215 support model: a platform
+   *  admin can VIEW any org's profile but NOT edit one they don't belong to —
+   *  editing requires membership the org granted (Team). So a target org is
+   *  editable only when it IS the viewer's active org; otherwise read-only. The
+   *  server PUT /api/admin/orgs/:id enforces the same membership gate. */
   readonly canEdit = computed(() => {
     const target = this.targetOrgId();
     if (!target) return can(this.auth.role(), 'org.manage_billing'); // own-org editor
-    if (can(this.auth.role(), 'admin.cross_org_view')) return true; // platform admin edits any org
     return this.auth.user()?.activeOrgId === target
       && can(this.auth.role(), 'org.manage_billing');
   });
