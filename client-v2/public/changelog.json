@@ -2,6 +2,44 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.11.1",
+      "name": "Team invites & admin organisation access",
+      "build": "v2.1245",
+      "date": "2026-11-23",
+      "datetime": "2026-11-23",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Team",
+          "items": [
+            {
+              "ref": "pV2-03",
+              "type": "fix",
+              "feature": "Invite a team member",
+              "text": "The Invite Team Member button now works for Ballpark admins — the team roster loads and invites send. (It already worked for agency and supplier admins.)"
+            }
+          ]
+        },
+        {
+          "area": "Organisations (admin)",
+          "items": [
+            {
+              "ref": "pV2-BPIN-01",
+              "type": "fix",
+              "feature": "Open an organisation",
+              "text": "Fixed “Couldn't load this organisation” when opening a supplier's Profile or AI-Assist tab from the Orgs screen."
+            },
+            {
+              "ref": "pV2-ADMIN-ORG-EDIT-01",
+              "type": "fix",
+              "feature": "Edit access by seat",
+              "text": "Admins now edit an organisation's profile and items only where they've been given access: add them to the organisation (a seat), then use “Switch to” from Orgs to manage it. Organisations you don't have access to are view-and-moderate only (Approve / Reject), so there are no Edit controls that silently do nothing."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "v0.11.0",
       "name": "Variant buttons & shaded boxes",
       "build": "v2.1238",
