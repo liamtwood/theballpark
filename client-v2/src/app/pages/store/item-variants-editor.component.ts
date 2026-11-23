@@ -6,7 +6,7 @@ import { ImagePickerComponent } from '../../shared/image-picker/image-picker.com
 import { PickerResult, PickerTab } from '../../core/media/media.types';
 import { MdHelpComponent } from '../../shared/md-help.component';
 
-interface ValState { value: string; mode: VariantMode; amount: string; imageUrl: string | null; description: string; }
+interface ValState { value: string; mode: VariantMode; amount: string; imageUrl: string | null; description: string; color: string | null; }
 interface DimState { name: string; values: ValState[]; }
 
 /** pV2-STORE-VARIANTS-UPCHARGE-01 / IMAGE-VARIANTS-01 — edit an item's variants.
@@ -27,12 +27,22 @@ interface DimState { name: string; values: ValState[]; }
                    (input)="renameDim(di, $any($event.target).value)" />
             <button type="button" class="shrink-0 text-muted hover:text-text" (click)="removeDim(di)" aria-label="Remove dimension"><lucide-icon name="trash-2" [size]="15" /></button>
           </div>
-          <div class="mt-2 grid grid-cols-[1fr_7.5rem_6rem_28px_28px] items-center gap-2">
+          <div class="mt-2 grid grid-cols-[2rem_1fr_7.5rem_6rem_28px_28px] items-center gap-2">
+            <span></span>
             <span class="bp-caption text-muted">Value</span>
             <span class="bp-caption text-muted">Pricing</span>
             <span class="bp-caption text-muted">Amount £</span>
             <span></span><span></span>
             @for (v of d.values; track $index; let vi = $index) {
+              <!-- pV2-STORE-VARIANT-COLOR-01 — the button colour swatch, before the value
+                   (Liam 2026-11-23). Click to pick; the × clears it (falls back to accent). -->
+              <div class="bp-variant-swatch" [class.bp-variant-swatch--empty]="!v.color" [style.--sw]="v.color || 'transparent'">
+                <input type="color" class="bp-variant-swatch__input" [value]="v.color || '#cccccc'"
+                       (input)="setColor(di, vi, $any($event.target).value)" aria-label="Button colour" title="Pick button colour" />
+                @if (v.color) {
+                  <button type="button" class="bp-variant-swatch__clear" (click)="clearColor(di, vi)" aria-label="Clear colour" title="Clear colour"><lucide-icon name="x" [size]="10" /></button>
+                }
+              </div>
               <input class="bp-input-field" placeholder="e.g. A4" [value]="v.value" (input)="setValue(di, vi, $any($event.target).value)" />
               <select class="bp-input-field" [value]="v.mode" (change)="setMode(di, vi, $any($event.target).value)">
                 <option value="none">No cost</option>
@@ -105,6 +115,27 @@ interface DimState { name: string; values: ValState[]; }
       .bp-variant-editico:hover { color: var(--theme-accent); }
       /* Accent once the option has an image and/or a description (at-a-glance "set"). */
       .bp-variant-editico--set { color: var(--theme-accent); }
+      /* pV2-STORE-VARIANT-COLOR-01 — the per-value button-colour swatch (before the
+         value). A round well showing the picked colour; a native colour input overlays
+         it (click to pick); a small × clears it. Empty = a dashed ring. */
+      .bp-variant-swatch {
+        position: relative; width: 26px; height: 26px; border-radius: 50%;
+        background: var(--sw); border: 1px solid var(--color-border-hairline);
+        justify-self: center;
+      }
+      .bp-variant-swatch--empty { background: var(--color-surface); border-style: dashed; }
+      .bp-variant-swatch__input {
+        position: absolute; inset: 0; width: 100%; height: 100%;
+        opacity: 0; cursor: pointer; border: 0; padding: 0; background: transparent;
+      }
+      .bp-variant-swatch__clear {
+        position: absolute; top: -5px; right: -5px; z-index: 2;
+        width: 14px; height: 14px; border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: var(--color-surface); border: 1px solid var(--color-border-hairline);
+        color: var(--color-text-secondary); cursor: pointer;
+      }
+      .bp-variant-swatch__clear:hover { color: var(--color-text); }
     `,
   ],
 })
@@ -148,14 +179,14 @@ export class ItemVariantsEditorComponent {
       this.hydrating = true;
       this.dims.set((m?.dimensions ?? []).map((d) => ({
         name: d.name,
-        values: d.values.map((v) => ({ value: v.value, mode: v.mode, amount: v.amount ? String(v.amount) : '', imageUrl: v.imageUrl ?? null, description: v.description ?? '' })),
+        values: d.values.map((v) => ({ value: v.value, mode: v.mode, amount: v.amount ? String(v.amount) : '', imageUrl: v.imageUrl ?? null, description: v.description ?? '', color: v.color ?? null })),
       })));
       this.hydrating = false;
     });
   }
 
   protected addDim(): void {
-    this.dims.update((ds) => [...ds, { name: '', values: [{ value: '', mode: 'none', amount: '', imageUrl: null, description: '' }] }]);
+    this.dims.update((ds) => [...ds, { name: '', values: [{ value: '', mode: 'none', amount: '', imageUrl: null, description: '', color: null }] }]);
     this.emit();
   }
   protected removeDim(i: number): void { this.dims.update((ds) => ds.filter((_, x) => x !== i)); this.emit(); }
@@ -164,7 +195,7 @@ export class ItemVariantsEditorComponent {
     this.emit();
   }
   protected addValue(i: number): void {
-    this.dims.update((ds) => ds.map((d, x) => (x === i ? { ...d, values: [...d.values, { value: '', mode: 'none', amount: '', imageUrl: null, description: '' }] } : d)));
+    this.dims.update((ds) => ds.map((d, x) => (x === i ? { ...d, values: [...d.values, { value: '', mode: 'none', amount: '', imageUrl: null, description: '', color: null }] } : d)));
     this.emit();
   }
   protected removeValue(i: number, vi: number): void {
@@ -177,6 +208,8 @@ export class ItemVariantsEditorComponent {
     this.patchVal(i, vi, (v) => ({ ...v, mode: m as VariantMode }));
   }
   protected setAmount(i: number, vi: number, amount: string): void { this.patchVal(i, vi, (v) => ({ ...v, amount })); }
+  protected setColor(i: number, vi: number, color: string): void { this.patchVal(i, vi, (v) => ({ ...v, color })); }
+  protected clearColor(i: number, vi: number): void { this.patchVal(i, vi, (v) => ({ ...v, color: null })); }
 
   // ── image per value ────────────────────────────────────────────────────────
   protected openPicker(di: number, vi: number): void { this.picking.set({ di, vi }); this.drawerOpen.set(true); }
@@ -210,6 +243,7 @@ export class ItemVariantsEditorComponent {
             amount: v.mode === 'none' || v.amount.trim() === '' ? 0 : Number(v.amount) || 0,
             ...(v.imageUrl ? { imageUrl: v.imageUrl } : {}),
             ...(v.description.trim() ? { description: v.description.trim() } : {}),
+            ...(v.color ? { color: v.color } : {}),
           })),
       }))
       .filter((d) => d.values.length);

@@ -24,6 +24,10 @@ export interface VariantValue {
    *  under the choice boxes in Quick View when the buyer picks it. Supports the
    *  MarkdownPipe subset (bold/italic/bullets); rendered via `| md`. */
   description?: string | null;
+  /** pV2-STORE-VARIANT-COLOR-01 — optional hex colour for this value's button
+   *  (author-set in the variants editor). Tints the chip and drives its selected
+   *  border + tick; falls back to the theme accent when unset. */
+  color?: string | null;
 }
 export interface VariantDimension { name: string; values: VariantValue[]; }
 export interface VariantMatrix { dimensions: VariantDimension[]; }
@@ -47,9 +51,9 @@ export function normalizeVariants(raw: unknown): VariantMatrix | null {
     const values: VariantValue[] = rawVals.map((v) => {
       // Current shape: {value, mode, amount, imageUrl?, description?}.
       if (v && typeof v === 'object' && 'mode' in (v as object)) {
-        const o = v as { value?: unknown; mode?: unknown; amount?: unknown; imageUrl?: unknown; description?: unknown };
+        const o = v as { value?: unknown; mode?: unknown; amount?: unknown; imageUrl?: unknown; description?: unknown; color?: unknown };
         const mode = (o.mode === 'absolute' || o.mode === 'upcharge') ? o.mode : 'none';
-        return { value: String(o.value ?? ''), mode: mode as VariantMode, amount: Number(o.amount) || 0, imageUrl: o.imageUrl ? String(o.imageUrl) : null, description: o.description ? String(o.description) : null };
+        return { value: String(o.value ?? ''), mode: mode as VariantMode, amount: Number(o.amount) || 0, imageUrl: o.imageUrl ? String(o.imageUrl) : null, description: o.description ? String(o.description) : null, color: o.color ? String(o.color) : null };
       }
       // Earlier upcharge shape: {value, upcharge}.
       if (v && typeof v === 'object' && 'value' in (v as object)) {

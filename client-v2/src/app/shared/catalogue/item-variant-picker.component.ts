@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
-import { TooltipModule } from 'primeng/tooltip';
+import { LucideAngularModule } from 'lucide-angular';
 import { VariantMatrix, VariantValue, normalizeVariants, computeUnitPrice, minUnitPrice, hasPricing, selectedImage, selectedDescriptions } from './variants.util';
 import { MarkdownPipe } from '../markdown.pipe';
 
@@ -17,7 +17,7 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
 @Component({
   selector: 'app-item-variant-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, TooltipModule, MarkdownPipe],
+  imports: [CurrencyPipe, LucideAngularModule, MarkdownPipe],
   template: `
     @if (dimensions().length) {
       <div class="bp-variant-picker">
@@ -30,11 +30,15 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
                   type="button"
                   class="bp-variant-chip"
                   [class.bp-variant-chip--on]="selected()[d.name] === v.value"
-                  [pTooltip]="priceHint(v) ?? ''"
-                  tooltipStyleClass="bp-tooltip"
-                  tooltipPosition="top"
+                  [style.--vc]="v.color || 'var(--theme-accent)'"
                   (click)="pick(d.name, v.value)"
-                >{{ v.value }}</button>
+                >
+                  @if (selected()[d.name] === v.value) {
+                    <lucide-icon class="bp-variant-chip__tick" name="check" [size]="15" />
+                  }
+                  <span class="bp-variant-chip__name">{{ v.value }}</span>
+                  @if (valuePrice(v); as vp) { <span class="bp-variant-chip__price">{{ vp }}</span> }
+                </button>
               }
             </div>
           </div>
@@ -52,8 +56,10 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
           </div>
         }
 
-        <!-- Price line only when a choice can change the price (any non-zero upcharge). -->
-        @if (hasPricing()) {
+        <!-- Price line only when a choice can change the price (any non-zero upcharge),
+             and only when the host hasn't taken over the price (Quick View shows it on
+             the "Add to ballpark · £…" button instead, so showPrice is false there). -->
+        @if (showPrice() && hasPricing()) {
           <div class="bp-variant-price">
             @if (allChosen()) {
               <span class="bp-price-large">{{ unitPrice() | currency: 'GBP' : 'symbol' : priceDigits(unitPrice()) }}</span>
@@ -77,23 +83,44 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
         text-transform: uppercase;
         color: var(--color-text-secondary);
       }
-      .bp-variant-row__opts { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+      .bp-variant-row__opts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+      /* pV2-STORE-VARIANT-COLOR-01 — larger per-value cards: name + price stacked, a
+         per-value colour (--vc) tints the card and drives the selected border + tick.
+         Selection is shown by the tick + coloured ring (not a solid fill). */
       .bp-variant-chip {
-        padding: 0.3rem 0.75rem;
-        border: 1px solid var(--color-border-hairline);
-        border-radius: var(--radius-pill);
-        background: var(--color-surface);
+        position: relative;
+        display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem;
+        min-width: 6.75rem;
+        padding: 0.7rem 1.05rem;
+        border: 1.5px solid var(--color-border-hairline);
+        border-radius: var(--radius-card);
+        /* Graded fill — stronger colour on the left, lightening to the right. */
+        background: linear-gradient(to right,
+          color-mix(in srgb, var(--vc) 16%, var(--color-surface)),
+          color-mix(in srgb, var(--vc) 6%, var(--color-surface)));
         color: var(--color-text);
-        font-size: var(--text-sm);
+        text-align: left;
         cursor: pointer;
-        transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+        transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
       }
-      .bp-variant-chip:hover { border-color: var(--theme-accent); }
+      .bp-variant-chip:hover { border-color: var(--vc); }
       .bp-variant-chip--on {
-        background: var(--theme-accent);
-        border-color: var(--theme-accent);
-        color: var(--theme-accent-contrast, #fff);
+        border-color: var(--vc);
+        background: linear-gradient(to right,
+          color-mix(in srgb, var(--vc) 28%, var(--color-surface)),
+          color-mix(in srgb, var(--vc) 10%, var(--color-surface)));
+        box-shadow: inset 0 0 0 1px var(--vc);
+        padding-right: 2.1rem;
       }
+      .bp-variant-chip__tick { position: absolute; top: 0.6rem; right: 0.7rem; color: var(--vc); }
+      .bp-variant-chip__name { font-weight: 600; font-size: var(--text-lg); line-height: 1.2; }
+      .bp-variant-chip__price {
+        font-size: var(--text-sm);
+        color: var(--color-text-secondary);
+        font-variant-numeric: tabular-nums;
+      }
+      /* Selected: the price goes bold + full-contrast (Liam 2026-11-23). */
+      .bp-variant-chip--on .bp-variant-chip__price { font-weight: 700; color: var(--color-text); }
       .bp-variant-price { display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.15rem; }
       /* pV2-STORE-VARIANT-DESC-01 — the picked value's supporting copy, under the rows. */
       .bp-variant-desc { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -107,6 +134,9 @@ export class ItemVariantPickerComponent {
   readonly attributes = input<Record<string, unknown> | null>(null);
   /** Base unit price — the configured price builds on this (+ upcharges). */
   readonly basePrice = input<number | null>(null);
+  /** Show the picker's own configured-price line. Off when the host surfaces the
+   *  price elsewhere — e.g. Quick View's "Add to ballpark · £…" button (Liam 2026-11-23). */
+  readonly showPrice = input<boolean>(true);
   /** The resolved selection (null until every dimension is chosen). */
   readonly selectionChange = output<VariantSelection | null>();
   /** pV2-STORE-IMAGE-VARIANTS-01 — the image for the current pick (the most specific
@@ -166,13 +196,17 @@ export class ItemVariantPickerComponent {
     });
   }
 
-  /** Hover label for a chip — absolute "£68", upcharge "+£5"/"−£2", null for free. */
-  protected priceHint(v: VariantValue): string | null {
+  /** The price shown UNDER a value's name — whole £ when round, 2 dps when there
+   *  are pence (it's money): absolute "£1,200" / "£1,353.10", upcharge
+   *  "+£5" / "+£5.50"/"−£2.50", null for a free pick (just the name). */
+  protected valuePrice(v: VariantValue): string | null {
     if (v.mode === 'none' || !v.amount) return null;
-    const abs = Math.abs(v.amount);
-    const money = '£' + (abs < 100 ? abs.toFixed(2) : String(Math.round(abs)));
-    if (v.mode === 'absolute') return money;
-    return (v.amount > 0 ? '+' : '−') + money;
+    const money = (n: number) => {
+      const digits = Number.isInteger(n) ? 0 : 2;
+      return '£' + Math.abs(n).toLocaleString('en-GB', { minimumFractionDigits: digits, maximumFractionDigits: 2 });
+    };
+    if (v.mode === 'absolute') return money(v.amount);
+    return (v.amount > 0 ? '+' : '−') + money(v.amount);
   }
 
   protected priceDigits(p: number | null): string {

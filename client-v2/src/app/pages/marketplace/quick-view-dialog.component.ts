@@ -169,7 +169,11 @@ type Pane = 'item' | 'supplier';
                   <!-- Hairline separates the heading (name / description / price) from
                        the configurator below. -->
                   <hr class="bp-qv2__rule" />
+                  <!-- The configured price rides the "Add to ballpark · £…" CTA below,
+                       so the picker doesn't repeat it (admins have no CTA → no price here,
+                       which is fine — they're not buying). -->
                   <app-item-variant-picker [attributes]="it.attributes ?? null" [basePrice]="it.basePrice"
+                                           [showPrice]="false"
                                            (selectionChange)="chosenCombo.set($event)" (imageChange)="onVariantImage($event)" />
 
                   @if (tiers().length) {
