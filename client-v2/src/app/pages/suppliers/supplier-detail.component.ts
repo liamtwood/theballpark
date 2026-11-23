@@ -169,11 +169,12 @@ const WHATS_HOT = "What's Hot";
         @if (tab() === 'profile') {
           <!-- Profile — editable org editor (save-on-blur). Owner/admin only.
                Owner (acting AS this org) edits via their OWN-org endpoint
-               (/api/organisation, orgId unset); only a platform admin viewing
-               ANOTHER org targets /api/admin/orgs/:id — passing orgId while
-               acting-as a supplier hit the admin gate → "Couldn't load this
-               organisation". -->
-          <app-org-profile-edit [orgId]="isOwner() ? null : store.pinnedSupplierId()" />
+               (/api/organisation, orgId unset); a platform admin viewing ANOTHER
+               org targets /api/admin/orgs/:id. Pass the RESOLVED org UUID (sup.id),
+               never pinnedSupplierId() — the URL param is the human handle now
+               (pV2-BPIN-01), and the admin route keys by UUID (a handle → uuid cast
+               error → "Couldn't load this organisation"). -->
+          <app-org-profile-edit [orgId]="isOwner() ? null : sup.id" />
         } @else if (tab() === 'storefront') {
           <!-- Shopfront — the read-only public brand page, for everyone. -->
           <app-storefront-panel
@@ -196,7 +197,7 @@ const WHATS_HOT = "What's Hot";
           <!-- AI Assist — admin-only catalogue extractor (Analyse → Prepare → Load).
                Items land pending → Approvals. Its own tab (was an inline block on the
                Shop tab) so the wizard + background-job progress have room to breathe. -->
-          @if (canAiAssist() && store.pinnedSupplierId(); as orgId) {
+          @if (canAiAssist() && sup.id; as orgId) {
             <div class="bp-gutter px-6">
               <div class="mx-auto w-full max-w-[var(--workspace-max)]">
                 <!-- selfServe when acting-as (no cross_org_view) → own-org extract mount. -->
