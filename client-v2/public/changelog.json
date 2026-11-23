@@ -2,6 +2,38 @@
   "dev": [],
   "preview": [
     {
+      "version": "v0.11.0",
+      "name": "Variant buttons & shaded boxes",
+      "build": "v2.1238",
+      "date": "2026-11-23",
+      "datetime": "2026-11-23",
+      "env": "preview",
+      "notes": [
+        {
+          "area": "Products",
+          "items": [
+            {
+              "ref": "pV2-STORE-VARIANT-COLOR-01",
+              "type": "new",
+              "feature": "Colourful variant buttons",
+              "text": "Product options (e.g. Bronze / Silver / Gold) now show as larger cards with the price underneath and a tick on the chosen one. Suppliers can set each option's colour with a swatch in the item editor, and the selected option's price is bold."
+            }
+          ]
+        },
+        {
+          "area": "Text formatting",
+          "items": [
+            {
+              "ref": "pV2-BUILDUP-04",
+              "type": "new",
+              "feature": "Shaded boxes",
+              "text": "Start a line with > to put it in a shaded box — great for highlighting what's included or key terms. Consecutive > lines group into one box, and headings, bullets, bold and italic all work inside it."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "version": "v0.10.6",
       "name": "Supplier filter fix",
       "build": "v2.1235",
