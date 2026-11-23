@@ -548,11 +548,16 @@ export class ItemEditComponent {
    *  admin org-scoped endpoints and the page is a normal editor (not moderation). */
   protected readonly targetOrgId = this.route.snapshot.paramMap.get('orgId');
 
-  /** Moderation mode — a ballpark admin REVIEWING someone's item (Approve/Reject,
-   *  read-only). NOT the admin-create/edit route (targetOrgId) — that's a normal
-   *  editor. Suppliers never see either. */
+  /** Moderation mode — a ballpark admin VIEWING an existing item they don't act as
+   *  the owner of (Approve/Reject, read-only). Covers BOTH the review route and the
+   *  admin → Orgs item route: a system admin edits an org's items only by holding a
+   *  seat and using "Switch to" (then they act AS the supplier → activeOrgType is no
+   *  longer 'ballpark' → this is false → normal editor). Without a seat it stays
+   *  read-only + moderate, matching the Profile tab (pV2-ADMIN-ORG-EDIT-01 reverted
+   *  to the seat-scoped model, Liam 2026-11-23). Create (isEdit false) is unaffected.
+   *  Suppliers never see moderation. */
   protected readonly isModerator = computed(
-    () => !this.targetOrgId && this.auth.user()?.activeOrgType === 'ballpark'
+    () => this.isEdit && this.auth.user()?.activeOrgType === 'ballpark'
   );
   /** Pure view (read-only, Cancel only) — opened with ?view=1 (e.g. an agent
    *  from the marketplace). Ownership-agnostic: the entry point signals intent,
