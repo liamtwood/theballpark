@@ -36,11 +36,16 @@ const BY_CATEGORY: Record<string, SellModeCode[]> = {
   Floristry: ['single', 'tiers'],
 };
 
-const DEFAULT_MODES: SellModeCode[] = ['single', 'tiers', 'sizes'];
+const DEFAULT_MODES: SellModeCode[] = ['single', 'volume', 'tiers', 'sizes'];
+/** New / uncategorised item → show EVERY option (the supplier narrows by picking a
+ *  category, which then suggests its own set). */
+const ALL_MODES: SellModeCode[] = ['single', 'volume', 'tiers', 'sizes', 'spaces', 'custom'];
 
-/** The sell modes offered for a category (by name), always ending in Custom. */
+/** The sell modes offered for a category (by name), always ending in Custom. With no
+ *  category (a new item) every option is offered. */
 export function sellModesForCategory(categoryName: string | null | undefined): SellModeCode[] {
-  const base = (categoryName && BY_CATEGORY[categoryName]) || DEFAULT_MODES;
+  if (!categoryName) return ALL_MODES;
+  const base = BY_CATEGORY[categoryName] ?? DEFAULT_MODES;
   return base.includes('custom') ? base : [...base, 'custom'];
 }
 
