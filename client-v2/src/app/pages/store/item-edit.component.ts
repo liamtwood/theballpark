@@ -26,10 +26,11 @@ import { ImagePickerComponent } from '../../shared/image-picker/image-picker.com
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
 import { ItemEditActionsComponent } from './item-edit-actions.component';
 import { ItemVariantsEditorComponent } from './item-variants-editor.component';
+import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-picker.component';
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
 import { estimateTotal } from '../projects/estimate-total.util';
 import { DecimalPipe } from '@angular/common';
-import { VariantMatrix, normalizeVariants } from '../../shared/catalogue/variants.util';
+import { VariantMatrix, normalizeVariants, variantMatrixFor } from '../../shared/catalogue/variants.util';
 
 interface ItemForm {
   name: string;
@@ -78,7 +79,7 @@ const WHATS_HOT = "What's Hot";
     FormsModule, LucideAngularModule, ToastModule, ModalComponent, PageHeroComponent, EditFieldComponent,
     ImageGalleryComponent, ImagePickerComponent, DrawerComponent,
     ItemEditActionsComponent, ItemAttributeCardsComponent, SaveStatePillComponent,
-    ItemVariantsEditorComponent, CustomizeDialogComponent, DecimalPipe, MdHelpComponent,
+    ItemVariantsEditorComponent, ItemVariantPickerComponent, CustomizeDialogComponent, DecimalPipe, MdHelpComponent,
   ],
   providers: [MessageService],
   template: `
@@ -111,7 +112,7 @@ const WHATS_HOT = "What's Hot";
               </button>
             }
           </div>
-          @if (isEdit && editing() && !isModerator() && !isViewer()) {
+          @if ((isEdit || createdId()) && editing() && !isModerator() && !isViewer()) {
             <div class="absolute right-0"><app-save-state-pill [state]="saveState()" [idleShowsSaved]="true" /></div>
           }
         </div>
@@ -257,6 +258,14 @@ const WHATS_HOT = "What's Hot";
           }
 
           @if (tab() === 'pricing') {
+          <!-- pV2-STORE-PACKAGES-01 — buyer preview: the packages (or variants) as the
+               SAME chips the marketplace quick-view renders (name + cost + description),
+               live from the editor state. Shown in read + edit (a WYSIWYG preview). -->
+          @if (!editing() && hasPreview()) {
+            <div class="bp-card" style="padding: 1rem 1.15rem;">
+              <app-item-variant-picker [attributes]="previewAttributes()" [basePrice]="basePriceNum()" [showPrice]="true" />
+            </div>
+          }
           <!-- pV2-STORE-TAXONOMY-01 — Volume pricing + Options as their OWN section
                (Liam), separate from the 5 describe-groups. Editing only; the
                read-only view renders them via app-item-attribute-cards below. -->
@@ -360,29 +369,40 @@ const WHATS_HOT = "What's Hot";
                    type='variant' child item (parent_item_id). -->
               <div class="bp-qv-spec mt-4">
                 <span class="bp-qv-spec__label"><lucide-icon name="layers" [size]="13" /> Packages</span>
-                <div class="mt-2 flex flex-col gap-2">
-                  <div class="grid grid-cols-[1.3fr_1.6fr_0.8fr_0.9fr_0.6fr_24px] gap-2">
-                    <span class="bp-caption text-muted">Product name</span>
-                    <span class="bp-caption text-muted">Description</span>
-                    <span class="bp-caption text-muted">Cost £</span>
-                    <span class="bp-caption text-muted">Unit</span>
-                    <span class="bp-caption text-muted">Serves</span><span></span>
-                  </div>
+                <!-- Chips (one per package) + Add — the SAME chip the buyer sees.
+                     Click a chip to edit that package in the form below. -->
+                <div class="mt-3 flex flex-wrap items-stretch gap-2">
                   @for (p of packages(); track $index) {
-                    <div class="grid grid-cols-[1.3fr_1.6fr_0.8fr_0.9fr_0.6fr_24px] items-center gap-2">
-                      <input type="text" class="bp-input-field" placeholder="Bronze" [value]="p.name" (input)="patchPackage($index, 'name', $any($event.target).value)" />
-                      <input type="text" class="bp-input-field" placeholder="What's included" [value]="p.description" (input)="patchPackage($index, 'description', $any($event.target).value)" />
-                      <input type="number" class="bp-input-field" placeholder="0" [value]="p.cost" (input)="patchPackage($index, 'cost', $any($event.target).value)" />
-                      <select class="bp-input-field" (change)="patchPackage($index, 'unit', $any($event.target).value)">
-                        <option value="" [selected]="!p.unit">—</option>
-                        @for (u of unitOptions(); track u.value) { <option [value]="u.value" [selected]="u.value === p.unit">{{ u.label }}</option> }
-                      </select>
-                      <input type="number" class="bp-input-field" placeholder="—" [value]="p.serves" (input)="patchPackage($index, 'serves', $any($event.target).value)" />
-                      <button type="button" class="text-muted hover:text-text" (click)="removePackage($index)" aria-label="Remove package"><lucide-icon name="trash-2" [size]="16" /></button>
-                    </div>
+                    <button type="button" class="bp-variant-chip"
+                            [class.bp-variant-chip--on]="selectedPackage() === $index"
+                            (click)="selectedPackage.set($index)">
+                      @if (selectedPackage() === $index) { <lucide-icon class="bp-variant-chip__tick" name="check" [size]="15" /> }
+                      <span class="bp-variant-chip__name">{{ p.name.trim() || 'Untitled' }}</span>
+                      @if (p.cost !== '') { <span class="bp-variant-chip__price">£{{ p.cost }}</span> }
+                    </button>
                   }
-                  <button type="button" class="bp-btn--secondary bp-body-small self-start" (click)="addPackage()"><lucide-icon name="plus" [size]="14" /> Add package</button>
+                  <button type="button" class="bp-variant-chip bp-variant-chip--add" (click)="addPackage()" aria-label="Add package">
+                    <lucide-icon name="plus" [size]="18" />
+                  </button>
                 </div>
+                <!-- Form for the selected package (name / description / cost / unit / serves). -->
+                @if (selectedPackageRow(); as p) {
+                  <div class="mt-4 flex flex-col gap-4">
+                    <app-edit-field label="Product name" density="page" [editing]="true" [value]="p.name" (valueChange)="patchPackage(selectedPackage(), 'name', $event)" />
+                    <div>
+                      <label class="bp-field-label">Description <app-md-help class="ml-1.5 align-middle" /></label>
+                      <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="p.description" (ngModelChange)="patchPackage(selectedPackage(), 'description', $event)" placeholder="What's included…"></textarea>
+                    </div>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      <app-edit-field [label]="'Cost' + currencySuffix()" type="number" density="page" [editing]="true" [value]="p.cost" (valueChange)="patchPackage(selectedPackage(), 'cost', $event)" />
+                      <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="true" [value]="p.unit" (valueChange)="patchPackage(selectedPackage(), 'unit', $event)" />
+                      <app-edit-field label="Serves" type="number" density="page" [editing]="true" [value]="p.serves" (valueChange)="patchPackage(selectedPackage(), 'serves', $event)" />
+                    </div>
+                    <button type="button" class="bp-btn-outline bp-body-small self-start" (click)="removePackage(selectedPackage())">
+                      <lucide-icon name="trash-2" [size]="14" /> Remove this package
+                    </button>
+                  </div>
+                }
               </div>
               }
             </div>
@@ -475,7 +495,7 @@ const WHATS_HOT = "What's Hot";
           }
 
           <app-item-edit-actions
-            [autosave]="isEdit"
+            [autosave]="isEdit || !!createdId()"
             [isModerator]="isModerator()" [isViewer]="isViewer()" [isApproved]="isApproved()"
             [currentStatus]="currentStatus()" [deciding]="deciding()" [saving]="saving()"
             [canDelete]="canDelete()" [deleting]="deleting()"
@@ -680,8 +700,11 @@ export class ItemEditComponent {
     specifications: [], features: [], style: [], measurements: [], materials: [],
   });
   protected readonly priceTiers = signal<{ min: string; max: string; price: string }[]>([]);
-  // pV2-STORE-PACKAGES-01 — Packages rows (child "variant" items), inline table.
+  // pV2-STORE-PACKAGES-01 — Packages rows (child "variant" items). Authored as chips
+  // (one per row) + a form for the selected one; selectedPackage is its index.
   protected readonly packages = signal<PackageRow[]>([]);
+  protected readonly selectedPackage = signal(0);
+  protected readonly selectedPackageRow = computed<PackageRow | null>(() => this.packages()[this.selectedPackage()] ?? null);
   protected readonly rawAttributes = signal<Record<string, unknown>>({});
   protected readonly measureSuggestions = ['Height', 'Width', 'Depth', 'Weight', 'Seat Height', 'Volume', 'Material'];
 
@@ -709,6 +732,23 @@ export class ItemEditComponent {
   protected openVariantsDialog(): void { this.variantsSeed.set(this.variantsState()); this.variantsDraft.set(this.variantsState()); this.variantsDialogOpen.set(true); }
   protected cancelVariantsDialog(): void { this.variantsDialogOpen.set(false); }
   protected saveVariantsDialog(): void { this.variantsState.set(this.variantsDraft()); this.variantsDialogOpen.set(false); this.scheduleSave(); }
+
+  // pV2-STORE-PACKAGES-01 — buyer preview: a synthetic attributes bag from the LIVE
+  // editor state (packages table / variants), fed to the same picker the marketplace
+  // quick-view uses, so the item page shows the exact chips buyers see.
+  protected readonly previewAttributes = computed<Record<string, unknown>>(() => ({
+    ...(this.variantsState() ? { variants: this.variantsState() } : {}),
+    packages: this.packages()
+      .filter((p) => p.name.trim() !== '')
+      .map((p) => ({ name: p.name.trim(), description: p.description.trim() || null, cost: p.cost === '' ? null : Number(p.cost) })),
+  }));
+  protected readonly hasPreview = computed(() => !!variantMatrixFor(this.previewAttributes())?.dimensions.length);
+  protected readonly basePriceNum = computed<number | null>(() => {
+    const v = this.form().base_price;
+    if (v === '' || v == null) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  });
 
   /** Rows with BOTH a label and a value, for one group — what saves on submit. */
   protected filledFor(key: string): { label: string; value: string }[] {
@@ -1045,13 +1085,15 @@ export class ItemEditComponent {
   protected addDraftTier(): void { this.volumeDraft.update((d) => [...d, { min: '', max: '', price: '' }]); }
   protected removeDraftTier(i: number): void { this.volumeDraft.update((d) => d.filter((_, x) => x !== i)); }
 
-  // ── Packages (child "variant" items) — inline table (pV2-STORE-PACKAGES-01) ──
+  // ── Packages (child "variant" items) — chips + per-row form (pV2-STORE-PACKAGES-01) ──
   protected addPackage(): void {
     this.packages.update((p) => [...p, { name: '', description: '', cost: '', unit: '', serves: '' }]);
+    this.selectedPackage.set(this.packages().length - 1); // edit the new one
     this.scheduleSave();
   }
   protected removePackage(i: number): void {
     this.packages.update((p) => p.filter((_, x) => x !== i));
+    this.selectedPackage.set(Math.max(0, Math.min(this.selectedPackage(), this.packages().length - 1)));
     this.scheduleSave();
   }
   protected patchPackage(i: number, key: keyof PackageRow, val: string): void {
@@ -1192,13 +1234,16 @@ export class ItemEditComponent {
       return;
     }
     const body = this.buildBody(status);
+    // Cancel any pending autosave so an in-flight create can't duplicate this one.
+    if (this.saveTimer) { clearTimeout(this.saveTimer); this.saveTimer = null; }
     this.saving.set(true);
+    const id = this.effectiveId();
     try {
       if (this.targetOrgId) {
-        if (this.itemId) await firstValueFrom(this.store.updateForOrg(this.targetOrgId, this.itemId, body));
+        if (id) await firstValueFrom(this.store.updateForOrg(this.targetOrgId, id, body));
         else await firstValueFrom(this.store.createForOrg(this.targetOrgId, body));
-      } else if (this.itemId) {
-        await firstValueFrom(this.store.update(this.itemId, body));
+      } else if (id) {
+        await firstValueFrom(this.store.update(id, body));
       } else {
         await firstValueFrom(this.store.create(body));
       }
@@ -1221,11 +1266,17 @@ export class ItemEditComponent {
   //    items (no id) fall back to the explicit Create/Submit buttons. ───────────
   protected readonly saveState = signal<SaveState>('idle');
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Only autosave an EXISTING item being edited by the owner/admin with the
-   *  required fields present. */
+  /** pV2-STORE-ITEM-AUTOSAVE-CREATE-01 — a NEW item has no route id; the first
+   *  autosave (once name + category are set) CREATES it and stashes the minted id
+   *  here, so every later save updates it. `effectiveId` is "the id to save against":
+   *  the route's item, else the one the first autosave minted. */
+  protected readonly createdId = signal<string | null>(null);
+  private effectiveId(): string | null { return this.itemId ?? this.createdId(); }
+  /** Autosave when the owner/admin is editing and the required fields are present.
+   *  New items qualify too — the first save mints the id (create-on-first-valid). */
   private autosaveEligible(): boolean {
     const f = this.form();
-    return this.editing() && !!this.itemId && !this.isModerator() && !this.isViewer()
+    return this.editing() && !this.isModerator() && !this.isViewer()
       && !!f.name.trim() && !!f.category_id;
   }
   /** Debounced trigger — call from any edit handler; collapses rapid edits. */
@@ -1236,13 +1287,22 @@ export class ItemEditComponent {
   }
   private async autosaveNow(): Promise<void> {
     if (!this.autosaveEligible()) return;
+    const id = this.effectiveId();
     const cs = this.currentStatus();
-    const status: 'draft' | 'pending' | 'approved' = cs === 'approved' ? 'approved' : cs === 'pending' ? 'pending' : 'draft';
+    // New items (no id yet) are born as drafts; existing items keep their status.
+    const status: 'draft' | 'pending' | 'approved' = !id ? 'draft' : cs === 'approved' ? 'approved' : cs === 'pending' ? 'pending' : 'draft';
     const body = this.buildBody(status);
     this.saveState.set('saving');
     try {
-      if (this.targetOrgId) await firstValueFrom(this.store.updateForOrg(this.targetOrgId, this.itemId!, body));
-      else await firstValueFrom(this.store.update(this.itemId!, body));
+      if (this.targetOrgId) {
+        const saved = id ? await firstValueFrom(this.store.updateForOrg(this.targetOrgId, id, body))
+                         : await firstValueFrom(this.store.createForOrg(this.targetOrgId, body));
+        if (!id) this.createdId.set(saved.id);
+      } else {
+        const saved = id ? await firstValueFrom(this.store.update(id, body))
+                         : await firstValueFrom(this.store.create(body));
+        if (!id) this.createdId.set(saved.id);
+      }
       this.saveState.set('saved');
     } catch (e) {
       console.warn('[ItemEdit] autosave failed', e);

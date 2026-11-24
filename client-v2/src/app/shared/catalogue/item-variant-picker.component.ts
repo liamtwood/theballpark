@@ -84,43 +84,8 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
         color: var(--color-text-secondary);
       }
       .bp-variant-row__opts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-      /* pV2-STORE-VARIANT-COLOR-01 — larger per-value cards: name + price stacked, a
-         per-value colour (--vc) tints the card and drives the selected border + tick.
-         Selection is shown by the tick + coloured ring (not a solid fill). */
-      .bp-variant-chip {
-        position: relative;
-        display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem;
-        min-width: 6.75rem;
-        padding: 0.7rem 1.05rem;
-        border: 1.5px solid var(--color-border-hairline);
-        border-radius: var(--radius-card);
-        /* Graded fill — stronger colour on the left, lightening to the right. */
-        background: linear-gradient(to right,
-          color-mix(in srgb, var(--vc) 16%, var(--color-surface)),
-          color-mix(in srgb, var(--vc) 6%, var(--color-surface)));
-        color: var(--color-text);
-        text-align: left;
-        cursor: pointer;
-        transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
-      }
-      .bp-variant-chip:hover { border-color: var(--vc); }
-      .bp-variant-chip--on {
-        border-color: var(--vc);
-        background: linear-gradient(to right,
-          color-mix(in srgb, var(--vc) 28%, var(--color-surface)),
-          color-mix(in srgb, var(--vc) 10%, var(--color-surface)));
-        box-shadow: inset 0 0 0 1px var(--vc);
-        padding-right: 2.1rem;
-      }
-      .bp-variant-chip__tick { position: absolute; top: 0.6rem; right: 0.7rem; color: var(--vc); }
-      .bp-variant-chip__name { font-weight: 600; font-size: var(--text-lg); line-height: 1.2; }
-      .bp-variant-chip__price {
-        font-size: var(--text-sm);
-        color: var(--color-text-secondary);
-        font-variant-numeric: tabular-nums;
-      }
-      /* Selected: the price goes bold + full-contrast (Liam 2026-11-23). */
-      .bp-variant-chip--on .bp-variant-chip__price { font-weight: 700; color: var(--color-text); }
+      /* .bp-variant-chip* now live in styles.css (shared with the item-edit Packages
+         editor so authoring chips match buyer chips) — pV2-STORE-PACKAGES-01. */
       .bp-variant-price { display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.15rem; }
       /* pV2-STORE-VARIANT-DESC-01 — the picked value's supporting copy, under the rows. */
       .bp-variant-desc { display: flex; flex-direction: column; gap: 0.4rem; }
