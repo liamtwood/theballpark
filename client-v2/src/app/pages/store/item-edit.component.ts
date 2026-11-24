@@ -89,10 +89,24 @@ const WHATS_HOT = "What's Hot";
         @if (isEdit && editing() && !isModerator() && !isViewer()) {
           <div class="mb-3 flex justify-end"><app-save-state-pill [state]="saveState()" [idleShowsSaved]="true" /></div>
         }
+        <!-- pV2-STORE-ITEM-TABS-01 — Listing / Pricing / Details (projects pill style, Liam 2026-11-24). -->
+        <div class="mb-4 flex justify-center">
+          <div class="bp-projnav" role="tablist" aria-label="Item editor sections">
+            @for (t of TABS; track t.key) {
+              <button type="button" role="tab" class="bp-projnav-opt"
+                      [class.bp-projnav-opt--active]="tab() === t.key"
+                      [attr.aria-selected]="tab() === t.key"
+                      (click)="setTab(t.key)">
+                @if (tab() === t.key) { <lucide-icon name="check" [size]="15" /> }
+                <span>{{ t.label }}</span>
+              </button>
+            }
+          </div>
+        </div>
         <div class="grid grid-cols-1 gap-6">
-          <!-- Single column (Liam 2026-11-24): item attributes stacked; Images sits
-               directly under Primary Information. -->
+          <!-- Sections grouped into tabs (Liam 2026-11-24): Listing · Pricing · Details. -->
           <div>
+          @if (tab() === 'listing') {
           <!-- PRIMARY INFORMATION (open by default) — name + category on one line,
                description, cost. Renamed from "Product" (Liam). -->
           <div class="bp-card bp-edit-section" [class.is-collapsed]="!sectionOpen('primary')">
@@ -158,7 +172,9 @@ const WHATS_HOT = "What's Hot";
               </div>
             }
           </div>
+          }
 
+          @if (tab() === 'details') {
           <!-- DETAILS (collapsed by default) — the 5 describe-attribute groups. -->
           <div class="bp-card bp-edit-section mt-4" [class.is-collapsed]="!sectionOpen('details')">
             <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('details')">
@@ -224,7 +240,9 @@ const WHATS_HOT = "What's Hot";
               </div>
             }
           </div>
+          }
 
+          @if (tab() === 'pricing') {
           <!-- pV2-STORE-TAXONOMY-01 — Volume pricing + Options as their OWN section
                (Liam), separate from the 5 describe-groups. Editing only; the
                read-only view renders them via app-item-attribute-cards below. -->
@@ -320,7 +338,9 @@ const WHATS_HOT = "What's Hot";
               }
             </div>
           }
+          }
 
+          @if (tab() === 'details') {
           <!-- pV2-STORE-TAXONOMY-01 — Classification (collapsed by default) above the
                action buttons (Liam): Category cascade → Subcategory → Sub-subcategory. -->
           @if (isEdit) {
@@ -402,6 +422,7 @@ const WHATS_HOT = "What's Hot";
               }
               }
             </div>
+          }
           }
 
           <app-item-edit-actions
@@ -514,6 +535,15 @@ export class ItemEditComponent {
 
   protected readonly itemId = this.route.snapshot.paramMap.get('id');
   protected readonly isEdit = !!this.itemId;
+
+  /** pV2-STORE-ITEM-TABS-01 — editor tabs: Listing / Pricing / Details (Liam 2026-11-24). */
+  protected readonly TABS = [
+    { key: 'listing', label: 'Listing' },
+    { key: 'pricing', label: 'Pricing' },
+    { key: 'details', label: 'Details' },
+  ] as const;
+  protected readonly tab = signal<'listing' | 'pricing' | 'details'>('listing');
+  protected setTab(k: 'listing' | 'pricing' | 'details'): void { this.tab.set(k); }
 
   // pV2-BUILDUP-03 — the "Cost build-up / estimate" composition editor. The panel
   // (app-customize-dialog) runs in ITEM mode off itemId (loads/saves the item's own
