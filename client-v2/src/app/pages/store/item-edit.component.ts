@@ -82,7 +82,9 @@ const WHATS_HOT = "What's Hot";
         <!-- Cross-org / missing id (the API 404/403s) — don't show a blank form. -->
         <p class="bp-body-small text-warn">This item couldn’t be loaded — it may not exist or isn’t yours to view.</p>
       } @else {
-        <div class="w-full">
+        <!-- Narrow, centred single column (Liam 2026-11-24): the editor is a form,
+             not a full-width page — cap the width so it doesn't sprawl. -->
+        <div class="mx-auto w-full max-w-2xl">
         <!-- Save-on-blur confirmation (existing items) — the shared pill, like profile. -->
         @if (isEdit && editing() && !isModerator() && !isViewer()) {
           <div class="mb-3 flex justify-end"><app-save-state-pill [state]="saveState()" [idleShowsSaved]="true" /></div>
