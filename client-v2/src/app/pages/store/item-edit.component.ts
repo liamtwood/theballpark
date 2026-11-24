@@ -272,7 +272,7 @@ const WHATS_HOT = "What's Hot";
                       </div>
                     }
                   </div>
-                  <div class="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div class="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div class="flex items-end gap-1">
                       <app-edit-field class="flex-1" [label]="'Ballpark Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
                       @if (estimateTotal() !== null && editing()) {
@@ -284,10 +284,8 @@ const WHATS_HOT = "What's Hot";
                       }
                     </div>
                     <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="editing()" [value]="form().unit" (valueChange)="patch({ unit: $event })" />
-                    @if (form().unit === 'platter') {
-                      <!-- v0.2.0 unit-driven: platter reveals the serves field (guests per unit). -->
-                      <app-edit-field label="Serves (guests per unit)" type="number" density="page" [editing]="editing()" [value]="form().serves" (valueChange)="patch({ serves: $event })" />
-                    }
+                    <!-- Serves shown unconditionally for now (Liam 2026-11-24): Cost · Unit · Serves, equal width. -->
+                    <app-edit-field label="Serves (guests per unit)" type="number" density="page" [editing]="editing()" [value]="form().serves" (valueChange)="patch({ serves: $event })" />
                     @if (form().unit === 'time') {
                       <!-- v0.2.0 unit-driven: time reveals the time-unit picker (hour/day/…). -->
                       <app-edit-field label="Time unit" type="select" density="page" [options]="timeUnitOptions()" [editing]="editing()" [value]="form().time_unit" (valueChange)="patch({ time_unit: $event })" />
