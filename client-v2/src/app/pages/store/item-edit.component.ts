@@ -85,12 +85,9 @@ const WHATS_HOT = "What's Hot";
         <!-- Narrow, centred single column (Liam 2026-11-24): the editor is a form,
              not a full-width page — cap the width so it doesn't sprawl. -->
         <div class="mx-auto w-full max-w-2xl">
-        <!-- Save-on-blur confirmation (existing items) — the shared pill, like profile. -->
-        @if (isEdit && editing() && !isModerator() && !isViewer()) {
-          <div class="mb-3 flex justify-end"><app-save-state-pill [state]="saveState()" [idleShowsSaved]="true" /></div>
-        }
-        <!-- pV2-STORE-ITEM-TABS-01 — Listing / Pricing / Details (projects pill style, Liam 2026-11-24). -->
-        <div class="mb-4 flex justify-center">
+        <!-- pV2-STORE-ITEM-TABS-01 — Listing / Pricing / Details with the "Details saved"
+             pill on the SAME line (Liam 2026-11-24); tight above (hero) and below (content). -->
+        <div class="relative -mt-2 mb-2 flex items-center justify-center">
           <div class="bp-projnav" role="tablist" aria-label="Item editor sections">
             @for (t of TABS; track t.key) {
               <button type="button" role="tab" class="bp-projnav-opt"
@@ -102,6 +99,9 @@ const WHATS_HOT = "What's Hot";
               </button>
             }
           </div>
+          @if (isEdit && editing() && !isModerator() && !isViewer()) {
+            <div class="absolute right-0"><app-save-state-pill [state]="saveState()" [idleShowsSaved]="true" /></div>
+          }
         </div>
         <div class="grid grid-cols-1 gap-6">
           <!-- Sections grouped into tabs (Liam 2026-11-24): Listing · Pricing · Details. -->
