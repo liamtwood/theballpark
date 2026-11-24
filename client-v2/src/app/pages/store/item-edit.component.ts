@@ -108,48 +108,6 @@ const WHATS_HOT = "What's Hot";
                   <label class="bp-field-label">Description@if (editing()) {<app-md-help class="ml-1.5 align-middle" />}</label>
                   <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="form().description" (ngModelChange)="patch({ description: $event })" [readonly]="!editing()" placeholder="Describe the product…"></textarea>
                 </div>
-                <div class="bp-qv-spec">
-                  <div class="flex items-center justify-between gap-2">
-                    <span class="bp-qv-spec__label"><lucide-icon name="wallet" [size]="13" /> Cost</span>
-                    @if (isEdit) {
-                      <div class="flex items-center gap-2">
-                        @if (estimateTotal() !== null) {
-                          <span class="bp-body-small tabular-nums text-secondary">Estimate £{{ estimateTotal() | number: '1.0-0' }}</span>
-                        }
-                        <button type="button"
-                                class="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-input)] text-muted transition-colors hover:bg-fill hover:text-[var(--theme-accent)]"
-                                title="Build up the cost from components" aria-label="Open cost build-up" (click)="customizeOpen.set(true)">
-                          <lucide-icon name="layers" [size]="16" />
-                        </button>
-                      </div>
-                    }
-                  </div>
-                  <div class="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div class="flex items-end gap-1">
-                      <app-edit-field class="flex-1" [label]="'Ballpark Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
-                      @if (estimateTotal() !== null && editing()) {
-                        <button type="button"
-                                class="mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-input)] text-muted transition-colors hover:bg-fill hover:text-[var(--theme-accent)]"
-                                title="Use the estimate as the Ballpark Cost" aria-label="Use the estimate as the Ballpark Cost" (click)="useEstimate()">
-                          <lucide-icon name="layers-plus" [size]="16" />
-                        </button>
-                      }
-                    </div>
-                    <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="editing()" [value]="form().unit" (valueChange)="patch({ unit: $event })" />
-                    @if (form().unit === 'platter') {
-                      <!-- v0.2.0 unit-driven: platter reveals the serves field (guests per unit). -->
-                      <app-edit-field label="Serves (guests per unit)" type="number" density="page" [editing]="editing()" [value]="form().serves" (valueChange)="patch({ serves: $event })" />
-                    }
-                    @if (form().unit === 'time') {
-                      <!-- v0.2.0 unit-driven: time reveals the time-unit picker (hour/day/…). -->
-                      <app-edit-field label="Time unit" type="select" density="page" [options]="timeUnitOptions()" [editing]="editing()" [value]="form().time_unit" (valueChange)="patch({ time_unit: $event })" />
-                    }
-                    @if (form().unit === 'size') {
-                      <!-- v0.2.0 unit-driven: size reveals the size picker (small…xlarge; → attributes.size). -->
-                      <app-edit-field label="Size" type="select" density="page" [options]="sizeOptions()" [editing]="editing()" [value]="form().size" (valueChange)="patch({ size: $event })" />
-                    }
-                  </div>
-                </div>
               </div>
             }
           </div>
@@ -275,6 +233,49 @@ const WHATS_HOT = "What's Hot";
                 <lucide-icon [name]="sectionOpen('extras') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
               </button>
               @if (sectionOpen('extras')) {
+                <!-- Cost (price + unit + unit-driven) moved here from Primary (Liam 2026-11-24). -->
+                <div class="bp-qv-spec">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="bp-qv-spec__label"><lucide-icon name="wallet" [size]="13" /> Cost</span>
+                    @if (isEdit) {
+                      <div class="flex items-center gap-2">
+                        @if (estimateTotal() !== null) {
+                          <span class="bp-body-small tabular-nums text-secondary">Estimate £{{ estimateTotal() | number: '1.0-0' }}</span>
+                        }
+                        <button type="button"
+                                class="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-input)] text-muted transition-colors hover:bg-fill hover:text-[var(--theme-accent)]"
+                                title="Build up the cost from components" aria-label="Open cost build-up" (click)="customizeOpen.set(true)">
+                          <lucide-icon name="layers" [size]="16" />
+                        </button>
+                      </div>
+                    }
+                  </div>
+                  <div class="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="flex items-end gap-1">
+                      <app-edit-field class="flex-1" [label]="'Ballpark Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
+                      @if (estimateTotal() !== null && editing()) {
+                        <button type="button"
+                                class="mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-input)] text-muted transition-colors hover:bg-fill hover:text-[var(--theme-accent)]"
+                                title="Use the estimate as the Ballpark Cost" aria-label="Use the estimate as the Ballpark Cost" (click)="useEstimate()">
+                          <lucide-icon name="layers-plus" [size]="16" />
+                        </button>
+                      }
+                    </div>
+                    <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="editing()" [value]="form().unit" (valueChange)="patch({ unit: $event })" />
+                    @if (form().unit === 'platter') {
+                      <!-- v0.2.0 unit-driven: platter reveals the serves field (guests per unit). -->
+                      <app-edit-field label="Serves (guests per unit)" type="number" density="page" [editing]="editing()" [value]="form().serves" (valueChange)="patch({ serves: $event })" />
+                    }
+                    @if (form().unit === 'time') {
+                      <!-- v0.2.0 unit-driven: time reveals the time-unit picker (hour/day/…). -->
+                      <app-edit-field label="Time unit" type="select" density="page" [options]="timeUnitOptions()" [editing]="editing()" [value]="form().time_unit" (valueChange)="patch({ time_unit: $event })" />
+                    }
+                    @if (form().unit === 'size') {
+                      <!-- v0.2.0 unit-driven: size reveals the size picker (small…xlarge; → attributes.size). -->
+                      <app-edit-field label="Size" type="select" density="page" [options]="sizeOptions()" [editing]="editing()" [value]="form().size" (valueChange)="patch({ size: $event })" />
+                    }
+                  </div>
+                </div>
               <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <!-- Volume pricing — preview + edit-in-dialog -->
                 <div class="bp-qv-spec">
