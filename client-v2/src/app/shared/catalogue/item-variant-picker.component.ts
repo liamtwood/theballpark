@@ -95,7 +95,18 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
       .bp-variant-row__opts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
       /* .bp-variant-chip* now live in styles.css (shared with the item-edit Packages
          editor so authoring chips match buyer chips) — pV2-STORE-PACKAGES-01. */
-      .bp-variant-select { max-width: 22rem; }
+      /* Custom chevron so the arrow has consistent breathing room (native select
+         crowds it against the edge) — pV2-STORE-PACKAGES-01. */
+      .bp-variant-select {
+        max-width: 22rem;
+        appearance: none;
+        -webkit-appearance: none;
+        padding-right: 2.5rem;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+        background-repeat: no-repeat;
+        background-position: right 0.85rem center;
+        background-size: 1rem;
+      }
       .bp-variant-price { display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.15rem; }
       /* pV2-STORE-VARIANT-DESC-01 — the picked value's supporting copy, under the rows. */
       .bp-variant-desc { display: flex; flex-direction: column; gap: 0.4rem; }

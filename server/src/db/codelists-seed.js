@@ -133,6 +133,8 @@ const NEW_VALUES = {
     { code: 'per_guest', label: 'Per Guest', sort: 10, def: false, meta: { needs: null } },
     { code: 'time',      label: 'Time',      sort: 11, def: false, meta: { needs: 'time' } },
     { code: 'size',      label: 'Size',      sort: 12, def: false, meta: { needs: 'size' } },
+    // pV2-STORE-PACKAGES-01 — venues/spaces: max capacity (guests) → attributes.capacity.
+    { code: 'capacity',  label: 'Capacity',  sort: 13, def: false, meta: { needs: 'capacity' } },
   ],
   // Time granularity now lives only here (item_unit keeps a single 'time'
   // value). Add week/night — surfaced by the unit re-point migration.
@@ -244,11 +246,12 @@ async function seedCodelists(client) {
   //     defaultQuantity() falls back to 1. platter uses the serves branch;
   //     each/size default to qty 1 → auto_fill null.
   const ITEM_UNIT_CFG = {
-    each:      { needs: null,     autoFill: null },
-    per_guest: { needs: null,     autoFill: 'guest_count' },
-    platter:   { needs: 'serves', autoFill: null },
-    time:      { needs: 'time',   autoFill: 'duration_days' },
-    size:      { needs: 'size',   autoFill: null },
+    each:      { needs: null,       autoFill: null },
+    per_guest: { needs: null,       autoFill: 'guest_count' },
+    platter:   { needs: 'serves',   autoFill: null },
+    time:      { needs: 'time',     autoFill: 'duration_days' },
+    size:      { needs: 'size',     autoFill: null },
+    capacity:  { needs: 'capacity', autoFill: null },
   };
   for (const [code, cfg] of Object.entries(ITEM_UNIT_CFG)) {
     await client.query(
@@ -265,7 +268,7 @@ async function seedCodelists(client) {
     `UPDATE shared.reference_codelist_values
         SET is_active = false, updated_at = NOW()
       WHERE list_name = 'item_unit'
-        AND code NOT IN ('each', 'per_guest', 'platter', 'time', 'size')
+        AND code NOT IN ('each', 'per_guest', 'platter', 'time', 'size', 'capacity')
         AND is_active = true`
   );
   // item_time_unit is the live time-granularity list again (day/week/night for

@@ -36,10 +36,11 @@ interface ItemForm {
   name: string;
   category_id: string;
   subcategory_id: string;      // the DEEPEST chosen node (subcat or sub-subcat)
-  unit: string;                // item_unit code (each / per_guest / platter / time / size)
+  unit: string;                // item_unit code (each / per_guest / platter / time / size / capacity)
   serves: string;              // v0.2.0 unit-driven: pack size when unit = platter
   time_unit: string;           // v0.2.0 unit-driven: time granularity (time_unit codelist) when unit = time
   size: string;                // v0.2.0 unit-driven: descriptive size (→ attributes.size) when unit = size
+  capacity: string;            // pV2-STORE-PACKAGES-01: max capacity guests (→ attributes.capacity) when unit = capacity
   base_price: string;          // "Ballpark cost"
   install_cost: string;        // installation cost (separate line)
   install_unit: string;        // how install_cost applies (per_item/order/percentage)
@@ -61,6 +62,7 @@ interface PackageRow {
   cost: string;
   unit: string;
   serves: string;
+  capacity: string;   // max capacity guests when unit = capacity (pV2-STORE-PACKAGES-01)
 }
 
 /** pV2-STORE-PACKAGES-01 — per-group presentation config (attributes.packages_meta):
@@ -328,6 +330,9 @@ const WHATS_HOT = "What's Hot";
                       @case ('size') {
                         <app-edit-field label="Size" type="select" density="page" [options]="sizeOptions()" [editing]="editing()" [value]="form().size" (valueChange)="patch({ size: $event })" />
                       }
+                      @case ('capacity') {
+                        <app-edit-field label="Max capacity (guests)" type="number" density="page" [editing]="editing()" [value]="form().capacity" (valueChange)="patch({ capacity: $event })" />
+                      }
                     }
                   </div>
                 </div>
@@ -414,7 +419,11 @@ const WHATS_HOT = "What's Hot";
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                       <app-edit-field [label]="'Cost' + currencySuffix()" type="number" density="page" [editing]="true" [value]="p.cost" (valueChange)="patchPackage(selectedPackage(), 'cost', $event)" />
                       <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="true" [value]="p.unit" (valueChange)="patchPackage(selectedPackage(), 'unit', $event)" />
-                      <app-edit-field label="Serves" type="number" density="page" [editing]="true" [value]="p.serves" (valueChange)="patchPackage(selectedPackage(), 'serves', $event)" />
+                      @if (p.unit === 'capacity') {
+                        <app-edit-field label="Max capacity (guests)" type="number" density="page" [editing]="true" [value]="p.capacity" (valueChange)="patchPackage(selectedPackage(), 'capacity', $event)" />
+                      } @else {
+                        <app-edit-field label="Serves" type="number" density="page" [editing]="true" [value]="p.serves" (valueChange)="patchPackage(selectedPackage(), 'serves', $event)" />
+                      }
                     </div>
                     <button type="button" class="bp-btn-outline bp-body-small self-start" (click)="removePackage(selectedPackage())">
                       <lucide-icon name="trash-2" [size]="14" /> Remove this package
@@ -695,7 +704,7 @@ export class ItemEditComponent {
   protected readonly deleting = signal(false);
 
   protected readonly form = signal<ItemForm>({
-    name: '', category_id: '', subcategory_id: '', unit: '', serves: '', time_unit: '', size: '', base_price: '', install_cost: '', install_unit: '',
+    name: '', category_id: '', subcategory_id: '', unit: '', serves: '', time_unit: '', size: '', capacity: '', base_price: '', install_cost: '', install_unit: '',
     install_description: '', location_coverage: '', lead_time_days: '', description: '', tier: '', tags: [],
   });
   protected readonly imageUrl = signal<string | null>(null);
@@ -811,8 +820,8 @@ export class ItemEditComponent {
    *  groups, `options`, `price_tiers`) — keeps _source + anything else untouched. */
   private strippedRawAttributes(): Record<string, unknown> {
     const { dimensions: _legacy, specifications: _s, features: _f, style: _st,
-      measurements: _m, materials: _mt, options: _o, price_tiers: _pt, variants: _v, size: _sz, packages: _pk, packages_meta: _pm, ...rest } = this.rawAttributes();
-    void _legacy; void _s; void _f; void _st; void _m; void _mt; void _o; void _pt; void _v; void _sz; void _pk; void _pm;
+      measurements: _m, materials: _mt, options: _o, price_tiers: _pt, variants: _v, size: _sz, packages: _pk, packages_meta: _pm, capacity: _cap, ...rest } = this.rawAttributes();
+    void _legacy; void _s; void _f; void _st; void _m; void _mt; void _o; void _pt; void _v; void _sz; void _pk; void _pm; void _cap;
     return rest;
   }
 
@@ -1022,6 +1031,7 @@ export class ItemEditComponent {
         serves: item.serves != null ? String(item.serves) : '',
         time_unit: item.time_unit ?? '',
         size: ((item.attributes as Record<string, unknown> | null)?.['size'] as string) ?? '',
+        capacity: (() => { const c = (item.attributes as Record<string, unknown> | null)?.['capacity']; return c == null ? '' : String(c); })(),
         base_price: base != null ? String(base) : '',
         install_cost: install != null ? String(install) : '',
         install_unit: item.install_unit ?? '',
@@ -1067,6 +1077,7 @@ export class ItemEditComponent {
         cost: p['cost'] == null ? '' : String(p['cost']),
         unit: typeof p['unit'] === 'string' ? p['unit'] : '',
         serves: p['serves'] == null ? '' : String(p['serves']),
+        capacity: p['capacity'] == null ? '' : String(p['capacity']),
       })));
       const meta = (attrs['packages_meta'] ?? {}) as Partial<PackagesMeta>;
       this.packagesMeta.set({
@@ -1117,7 +1128,7 @@ export class ItemEditComponent {
 
   // ── Packages (child "variant" items) — chips + per-row form (pV2-STORE-PACKAGES-01) ──
   protected addPackage(): void {
-    this.packages.update((p) => [...p, { name: '', description: '', cost: '', unit: '', serves: '' }]);
+    this.packages.update((p) => [...p, { name: '', description: '', cost: '', unit: '', serves: '', capacity: '' }]);
     this.selectedPackage.set(this.packages().length - 1); // edit the new one
     this.scheduleSave();
   }
@@ -1242,6 +1253,7 @@ export class ItemEditComponent {
                   cost: p.cost === '' ? null : Number(p.cost),
                   unit: p.unit || null,
                   serves: p.serves === '' ? null : Number(p.serves),
+                  capacity: p.capacity === '' ? null : Number(p.capacity),
                 })),
               packages_meta: this.packagesMeta(),
             }
@@ -1249,6 +1261,9 @@ export class ItemEditComponent {
         // v0.2.0 unit-driven: size is a descriptive label living in attributes
         // (never a column — item_unit.meta.needs = 'size'). Only when unit = size.
         ...(f.unit === 'size' && f.size ? { size: f.size } : {}),
+        // pV2-STORE-PACKAGES-01 — max capacity (guests) lives in attributes (like size),
+        // never a column. Only when unit = capacity.
+        ...(f.unit === 'capacity' && f.capacity !== '' ? { capacity: Number(f.capacity) } : {}),
       },
       ...(status === 'approved' ? {} : { approval_status: status }),
     };
