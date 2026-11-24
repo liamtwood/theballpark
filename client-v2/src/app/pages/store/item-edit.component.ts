@@ -50,6 +50,18 @@ interface ItemForm {
   tags: string[];              // items.tags free-text array (incl. "What's Hot")
 }
 
+/** pV2-STORE-PACKAGES-01 — a Packages row: a child "variant" item authored inline
+ *  (Bronze/Silver/Gold). Local table shape for now; persisted transitionally to
+ *  attributes.packages, migrating to a type='variant' child item (parent_item_id)
+ *  next. See docs/ITEM-COMPOSITION-MODEL.md. */
+interface PackageRow {
+  name: string;
+  description: string;
+  cost: string;
+  unit: string;
+  serves: string;
+}
+
 /** The merchandising tag the shopfront's "What's Hot" menu keys on. */
 const WHATS_HOT = "What's Hot";
 
@@ -339,6 +351,37 @@ const WHATS_HOT = "What's Hot";
                   <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openVolumeDialog()">
                     <lucide-icon name="pencil" [size]="14" /> Edit volume pricing
                   </button>
+                </div>
+              </div>
+
+              <!-- pV2-STORE-PACKAGES-01 — Packages: child "variant" items authored
+                   as a small table (Liam 2026-11-24). Transitional store
+                   attributes.packages; next step persists each row as a
+                   type='variant' child item (parent_item_id). -->
+              <div class="bp-qv-spec mt-4">
+                <span class="bp-qv-spec__label"><lucide-icon name="layers" [size]="13" /> Packages</span>
+                <div class="mt-2 flex flex-col gap-2">
+                  <div class="grid grid-cols-[1.3fr_1.6fr_0.8fr_0.9fr_0.6fr_24px] gap-2">
+                    <span class="bp-caption text-muted">Product name</span>
+                    <span class="bp-caption text-muted">Description</span>
+                    <span class="bp-caption text-muted">Cost £</span>
+                    <span class="bp-caption text-muted">Unit</span>
+                    <span class="bp-caption text-muted">Serves</span><span></span>
+                  </div>
+                  @for (p of packages(); track $index) {
+                    <div class="grid grid-cols-[1.3fr_1.6fr_0.8fr_0.9fr_0.6fr_24px] items-center gap-2">
+                      <input type="text" class="bp-input-field" placeholder="Bronze" [value]="p.name" (input)="patchPackage($index, 'name', $any($event.target).value)" />
+                      <input type="text" class="bp-input-field" placeholder="What's included" [value]="p.description" (input)="patchPackage($index, 'description', $any($event.target).value)" />
+                      <input type="number" class="bp-input-field" placeholder="0" [value]="p.cost" (input)="patchPackage($index, 'cost', $any($event.target).value)" />
+                      <select class="bp-input-field" (change)="patchPackage($index, 'unit', $any($event.target).value)">
+                        <option value="" [selected]="!p.unit">—</option>
+                        @for (u of unitOptions(); track u.value) { <option [value]="u.value" [selected]="u.value === p.unit">{{ u.label }}</option> }
+                      </select>
+                      <input type="number" class="bp-input-field" placeholder="—" [value]="p.serves" (input)="patchPackage($index, 'serves', $any($event.target).value)" />
+                      <button type="button" class="text-muted hover:text-text" (click)="removePackage($index)" aria-label="Remove package"><lucide-icon name="trash-2" [size]="16" /></button>
+                    </div>
+                  }
+                  <button type="button" class="bp-btn--secondary bp-body-small self-start" (click)="addPackage()"><lucide-icon name="plus" [size]="14" /> Add package</button>
                 </div>
               </div>
               }
@@ -637,6 +680,8 @@ export class ItemEditComponent {
     specifications: [], features: [], style: [], measurements: [], materials: [],
   });
   protected readonly priceTiers = signal<{ min: string; max: string; price: string }[]>([]);
+  // pV2-STORE-PACKAGES-01 — Packages rows (child "variant" items), inline table.
+  protected readonly packages = signal<PackageRow[]>([]);
   protected readonly rawAttributes = signal<Record<string, unknown>>({});
   protected readonly measureSuggestions = ['Height', 'Width', 'Depth', 'Weight', 'Seat Height', 'Volume', 'Material'];
 
@@ -702,8 +747,8 @@ export class ItemEditComponent {
    *  groups, `options`, `price_tiers`) — keeps _source + anything else untouched. */
   private strippedRawAttributes(): Record<string, unknown> {
     const { dimensions: _legacy, specifications: _s, features: _f, style: _st,
-      measurements: _m, materials: _mt, options: _o, price_tiers: _pt, variants: _v, size: _sz, ...rest } = this.rawAttributes();
-    void _legacy; void _s; void _f; void _st; void _m; void _mt; void _o; void _pt; void _v; void _sz;
+      measurements: _m, materials: _mt, options: _o, price_tiers: _pt, variants: _v, size: _sz, packages: _pk, ...rest } = this.rawAttributes();
+    void _legacy; void _s; void _f; void _st; void _m; void _mt; void _o; void _pt; void _v; void _sz; void _pk;
     return rest;
   }
 
@@ -950,6 +995,15 @@ export class ItemEditComponent {
       // pV2-STORE-VARIANTS-UPCHARGE-01 — hydrate the variant matrix (upcharge shape;
       // legacy combos normalised to per-value upcharges).
       this.variantsState.set(normalizeVariants(attrs['variants']));
+      // pV2-STORE-PACKAGES-01 — hydrate the Packages table (transitional store).
+      const pkgs = Array.isArray(attrs['packages']) ? (attrs['packages'] as Record<string, unknown>[]) : [];
+      this.packages.set(pkgs.map((p) => ({
+        name: typeof p['name'] === 'string' ? p['name'] : '',
+        description: typeof p['description'] === 'string' ? p['description'] : '',
+        cost: p['cost'] == null ? '' : String(p['cost']),
+        unit: typeof p['unit'] === 'string' ? p['unit'] : '',
+        serves: p['serves'] == null ? '' : String(p['serves']),
+      })));
       return item;
     },
   });
@@ -990,6 +1044,20 @@ export class ItemEditComponent {
   protected saveVolumeDialog(): void { this.priceTiers.set(this.volumeDraft().map((t) => ({ ...t }))); this.volumeDialogOpen.set(false); this.scheduleSave(); }
   protected addDraftTier(): void { this.volumeDraft.update((d) => [...d, { min: '', max: '', price: '' }]); }
   protected removeDraftTier(i: number): void { this.volumeDraft.update((d) => d.filter((_, x) => x !== i)); }
+
+  // ── Packages (child "variant" items) — inline table (pV2-STORE-PACKAGES-01) ──
+  protected addPackage(): void {
+    this.packages.update((p) => [...p, { name: '', description: '', cost: '', unit: '', serves: '' }]);
+    this.scheduleSave();
+  }
+  protected removePackage(i: number): void {
+    this.packages.update((p) => p.filter((_, x) => x !== i));
+    this.scheduleSave();
+  }
+  protected patchPackage(i: number, key: keyof PackageRow, val: string): void {
+    this.packages.update((p) => p.map((r, x) => (x === i ? { ...r, [key]: val } : r)));
+    this.scheduleSave();
+  }
   protected patchDraftTier(i: number, key: 'min' | 'max' | 'price', val: string): void {
     this.volumeDraft.update((d) => d.map((r, x) => (x === i ? { ...r, [key]: val } : r)));
   }
@@ -1090,6 +1158,21 @@ export class ItemEditComponent {
         // pV2-STORE-VARIANTS-EDIT-01 — write the matrix only when present, so
         // non-variant items keep a clean attributes bag (no empty `variants` key).
         ...(this.variantsState() ? { variants: this.variantsState() } : {}),
+        // pV2-STORE-PACKAGES-01 — transitional store; only named rows persist.
+        // Next step writes each as a type='variant' child item (parent_item_id).
+        ...(this.packages().some((p) => p.name.trim() !== '')
+          ? {
+              packages: this.packages()
+                .filter((p) => p.name.trim() !== '')
+                .map((p) => ({
+                  name: p.name.trim(),
+                  description: p.description.trim(),
+                  cost: p.cost === '' ? null : Number(p.cost),
+                  unit: p.unit || null,
+                  serves: p.serves === '' ? null : Number(p.serves),
+                })),
+            }
+          : {}),
         // v0.2.0 unit-driven: size is a descriptive label living in attributes
         // (never a column — item_unit.meta.needs = 'size'). Only when unit = size.
         ...(f.unit === 'size' && f.size ? { size: f.size } : {}),
