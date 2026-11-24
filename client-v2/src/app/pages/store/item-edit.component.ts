@@ -284,16 +284,19 @@ const WHATS_HOT = "What's Hot";
                       }
                     </div>
                     <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="editing()" [value]="form().unit" (valueChange)="patch({ unit: $event })" />
-                    <!-- Serves only applies to 'platter'; when not needed it's hidden but
-                         keeps its column so Cost · Unit stay put (Liam 2026-11-24). -->
-                    <app-edit-field class="block" [class.invisible]="form().unit !== 'platter'" label="Serves (guests per unit)" type="number" density="page" [editing]="editing()" [value]="form().serves" (valueChange)="patch({ serves: $event })" />
-                    @if (form().unit === 'time') {
-                      <!-- v0.2.0 unit-driven: time reveals the time-unit picker (hour/day/…). -->
-                      <app-edit-field label="Time unit" type="select" density="page" [options]="timeUnitOptions()" [editing]="editing()" [value]="form().time_unit" (valueChange)="patch({ time_unit: $event })" />
-                    }
-                    @if (form().unit === 'size') {
-                      <!-- v0.2.0 unit-driven: size reveals the size picker (small…xlarge; → attributes.size). -->
-                      <app-edit-field label="Size" type="select" density="page" [options]="sizeOptions()" [editing]="editing()" [value]="form().size" (valueChange)="patch({ size: $event })" />
+                    <!-- 3rd column — the unit-driven field: Serves (platter) / Time unit (time)
+                         / Size (size). Exactly one, or none for each/per_guest; grid-cols-3
+                         keeps the column's space either way (Liam 2026-11-24). -->
+                    @switch (form().unit) {
+                      @case ('platter') {
+                        <app-edit-field label="Serves (guests per unit)" type="number" density="page" [editing]="editing()" [value]="form().serves" (valueChange)="patch({ serves: $event })" />
+                      }
+                      @case ('time') {
+                        <app-edit-field label="Time unit" type="select" density="page" [options]="timeUnitOptions()" [editing]="editing()" [value]="form().time_unit" (valueChange)="patch({ time_unit: $event })" />
+                      }
+                      @case ('size') {
+                        <app-edit-field label="Size" type="select" density="page" [options]="sizeOptions()" [editing]="editing()" [value]="form().size" (valueChange)="patch({ size: $event })" />
+                      }
                     }
                   </div>
                 </div>
