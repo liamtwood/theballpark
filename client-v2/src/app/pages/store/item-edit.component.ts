@@ -284,8 +284,9 @@ const WHATS_HOT = "What's Hot";
                       }
                     </div>
                     <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="editing()" [value]="form().unit" (valueChange)="patch({ unit: $event })" />
-                    <!-- Serves shown unconditionally for now (Liam 2026-11-24): Cost · Unit · Serves, equal width. -->
-                    <app-edit-field label="Serves (guests per unit)" type="number" density="page" [editing]="editing()" [value]="form().serves" (valueChange)="patch({ serves: $event })" />
+                    <!-- Serves only applies to 'platter'; when not needed it's hidden but
+                         keeps its column so Cost · Unit stay put (Liam 2026-11-24). -->
+                    <app-edit-field class="block" [class.invisible]="form().unit !== 'platter'" label="Serves (guests per unit)" type="number" density="page" [editing]="editing()" [value]="form().serves" (valueChange)="patch({ serves: $event })" />
                     @if (form().unit === 'time') {
                       <!-- v0.2.0 unit-driven: time reveals the time-unit picker (hour/day/…). -->
                       <app-edit-field label="Time unit" type="select" density="page" [options]="timeUnitOptions()" [editing]="editing()" [value]="form().time_unit" (valueChange)="patch({ time_unit: $event })" />
