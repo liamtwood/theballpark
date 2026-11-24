@@ -327,10 +327,10 @@ const WHATS_HOT = "What's Hot";
                   </div>
                 </div>
 
-                @if (soldAs() === 'single' || soldAs() === 'volume') {
-                <!-- Cost: single only. Volume mode's price IS the Volume tiers (no separate
-                     base cost / unit / serves, Liam). Volume block below: single + volume. -->
-                @if (soldAs() === 'single') {
+                @if (soldAs() === 'single' || soldAs() === 'volume' || soldAs() === 'levels') {
+                <!-- Cost: single + levels (levels = base + option-level upcharges). Volume's
+                     price IS its tiers (no base cost). Volume block below: single + volume. -->
+                @if (soldAs() === 'single' || soldAs() === 'levels') {
                 <div class="bp-qv-spec mt-4">
                   <div class="flex items-center justify-between gap-2">
                     <span class="bp-qv-spec__label"><lucide-icon name="wallet" [size]="13" /> Cost</span>
@@ -381,10 +381,10 @@ const WHATS_HOT = "What's Hot";
                 }
               <!-- Variants on top, Volume under — stacked (Liam 2026-11-24). -->
               <div class="mt-4 grid grid-cols-1 gap-3">
-                <!-- Variants (multi-dimension matrix) — legacy, single mode only. -->
-                @if (soldAs() === 'single') {
+                <!-- Variants / Option Levels (multi-dimension matrix: base + upcharges). -->
+                @if (soldAs() === 'single' || soldAs() === 'levels') {
                 <div class="bp-qv-spec">
-                  <span class="bp-qv-spec__label"><lucide-icon name="layers" [size]="13" /> Variants</span>
+                  <span class="bp-qv-spec__label"><lucide-icon name="layers" [size]="13" /> {{ soldAs() === 'levels' ? 'Option Levels' : 'Variants' }}</span>
                   @if (variantsSummary(); as vs) {
                     <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
                       @for (d of vs.dims; track d.name) {
@@ -401,7 +401,8 @@ const WHATS_HOT = "What's Hot";
                 </div>
                 }
 
-                <!-- Volume pricing — preview + edit-in-dialog -->
+                <!-- Volume pricing — single + volume modes only (not levels). -->
+                @if (soldAs() === 'single' || soldAs() === 'volume') {
                 <div class="bp-qv-spec">
                   <span class="bp-qv-spec__label"><lucide-icon name="tags" [size]="13" /> Volume pricing</span>
                   @if (filledTiers().length) {
@@ -419,10 +420,11 @@ const WHATS_HOT = "What's Hot";
                     <lucide-icon name="pencil" [size]="14" /> Edit volume pricing
                   </button>
                 </div>
+                }
               </div>
               }
 
-              @if (soldAs() !== 'single') {
+              @if (soldAs() !== 'single' && soldAs() !== 'levels') {
               <!-- pV2-STORE-PACKAGES-01 — the composition editor: chips + per-row form,
                    seeded by "How is this sold?" above. One mechanism for packages /
                    options / sizes / spaces. -->
@@ -1280,7 +1282,7 @@ export class ItemEditComponent {
       })));
       const meta = (attrs['packages_meta'] ?? {}) as Partial<PackagesMeta>;
       const soldAsRaw = meta.soldAs;
-      const soldAsOk = (['single', 'tiers', 'sizes', 'spaces', 'custom', 'volume'] as const).includes(soldAsRaw as SellModeCode);
+      const soldAsOk = (['single', 'tiers', 'sizes', 'spaces', 'custom', 'volume', 'levels'] as const).includes(soldAsRaw as SellModeCode);
       this.packagesMeta.set({
         label: typeof meta.label === 'string' && meta.label.trim() ? meta.label : 'Package',
         presentation: meta.presentation === 'picklist' ? 'picklist' : 'buttons',

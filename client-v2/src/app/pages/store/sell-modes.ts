@@ -4,7 +4,7 @@
 // not a fork). The per-category lists are hardcoded defaults for now — the clean
 // home is a `meta.sell_modes` column on categories + an admin editor (deferred).
 
-export type SellModeCode = 'single' | 'tiers' | 'sizes' | 'spaces' | 'custom' | 'volume';
+export type SellModeCode = 'single' | 'tiers' | 'sizes' | 'spaces' | 'custom' | 'volume' | 'levels';
 
 export interface SellModeDef {
   code: SellModeCode;
@@ -20,6 +20,7 @@ export const SELL_MODES: Record<SellModeCode, SellModeDef> = {
   spaces: { code: 'spaces', label: 'Spaces', hint: 'Choose a space / area' },
   custom: { code: 'custom', label: 'Custom options', hint: 'Build your own list' },
   volume: { code: 'volume', label: 'Volume Pricing', hint: 'One price + bulk discount; pick a colour/size' },
+  levels: { code: 'levels', label: 'Option Levels', hint: 'Nest options on a base — pick each; price adds up' },
 };
 
 /** Which modes apply per TOP category (by category name — the client has the name,
@@ -27,19 +28,19 @@ export const SELL_MODES: Record<SellModeCode, SellModeDef> = {
  *  appended so a supplier is never boxed in. */
 const BY_CATEGORY: Record<string, SellModeCode[]> = {
   Venues:    ['single', 'spaces'],
-  'Set Build': ['single', 'tiers', 'volume'],
-  AV:        ['single', 'tiers', 'volume'],
+  'Set Build': ['single', 'tiers', 'volume', 'levels'],
+  AV:        ['single', 'tiers', 'volume', 'levels'],
   Catering:  ['single', 'tiers'],
   Furniture: ['single', 'volume', 'sizes'],
   'Prop Hire': ['single', 'volume', 'sizes'],
-  Graphics:  ['single', 'volume'],
+  Graphics:  ['single', 'volume', 'levels'],
   Floristry: ['single', 'tiers'],
 };
 
 const DEFAULT_MODES: SellModeCode[] = ['single', 'volume', 'tiers', 'sizes'];
 /** New / uncategorised item → show EVERY option (the supplier narrows by picking a
  *  category, which then suggests its own set). */
-const ALL_MODES: SellModeCode[] = ['single', 'volume', 'tiers', 'sizes', 'spaces', 'custom'];
+const ALL_MODES: SellModeCode[] = ['single', 'volume', 'tiers', 'sizes', 'levels', 'spaces', 'custom'];
 
 /** The sell modes offered for a category (by name), always ending in Custom. With no
  *  category (a new item) every option is offered. */
@@ -74,6 +75,10 @@ export function sellModeSeed(code: SellModeCode): SellModeSeed {
       return { meta: { label: 'Space', presentation: 'picklist', select: 'one' }, rows: [], rowUnit: 'capacity' };
     case 'volume':
       // One price + volume up top; free-pick options (no per-option cost).
+      return { meta: { label: 'Option', presentation: 'buttons', select: 'one' }, rows: [], rowUnit: '' };
+    case 'levels':
+      // Multi-dimension configurator — uses the Variants matrix (base + upcharges),
+      // not the single-dim chips; no package rows.
       return { meta: { label: 'Option', presentation: 'buttons', select: 'one' }, rows: [], rowUnit: '' };
     case 'custom':
       return { meta: { label: 'Option', presentation: 'buttons', select: 'one' }, rows: [], rowUnit: '' };
