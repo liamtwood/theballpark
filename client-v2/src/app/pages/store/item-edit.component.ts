@@ -104,8 +104,10 @@ const WHATS_HOT = "What's Hot";
           }
         </div>
         <div class="grid grid-cols-1 gap-6">
-          <!-- Sections grouped into tabs (Liam 2026-11-24): Listing · Pricing · Details. -->
-          <div>
+          <!-- Sections grouped into tabs (Liam 2026-11-24): Listing · Pricing · Details.
+               Flex-col gap spaces the cards; the first card per tab sits tight to the tabs
+               (no stray top margin). -->
+          <div class="flex flex-col gap-4">
           @if (tab() === 'listing') {
           <!-- PRIMARY INFORMATION (open by default) — name + category on one line,
                description, cost. Renamed from "Product" (Liam). -->
@@ -130,7 +132,7 @@ const WHATS_HOT = "What's Hot";
 
           <!-- PHOTOS — directly under Primary Information, single column (Liam 2026-11-24).
                Verbose "Image Approval Process" aside removed. -->
-          <div class="bp-card bp-edit-section mt-4" [class.is-collapsed]="!sectionOpen('images')">
+          <div class="bp-card bp-edit-section" [class.is-collapsed]="!sectionOpen('images')">
             <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('images')">
               <h3 class="bp-edit-section-title">Images</h3>
               <lucide-icon [name]="sectionOpen('images') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
@@ -176,7 +178,7 @@ const WHATS_HOT = "What's Hot";
 
           @if (tab() === 'details') {
           <!-- DETAILS (collapsed by default) — the 5 describe-attribute groups. -->
-          <div class="bp-card bp-edit-section mt-4" [class.is-collapsed]="!sectionOpen('details')">
+          <div class="bp-card bp-edit-section" [class.is-collapsed]="!sectionOpen('details')">
             <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('details')">
               <h3 class="bp-edit-section-title">Details</h3>
               <lucide-icon [name]="sectionOpen('details') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
@@ -224,7 +226,7 @@ const WHATS_HOT = "What's Hot";
           </div>
 
           <!-- INSTALLATION (collapsed by default) — its own section (Liam). -->
-          <div class="bp-card bp-edit-section mt-4" [class.is-collapsed]="!sectionOpen('installation')">
+          <div class="bp-card bp-edit-section" [class.is-collapsed]="!sectionOpen('installation')">
             <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('installation')">
               <h3 class="bp-edit-section-title">Installation</h3>
               <lucide-icon [name]="sectionOpen('installation') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
@@ -247,7 +249,7 @@ const WHATS_HOT = "What's Hot";
                (Liam), separate from the 5 describe-groups. Editing only; the
                read-only view renders them via app-item-attribute-cards below. -->
           @if (editing()) {
-            <div class="bp-card bp-edit-section mt-4" [class.is-collapsed]="!sectionOpen('extras')">
+            <div class="bp-card bp-edit-section" [class.is-collapsed]="!sectionOpen('extras')">
               <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('extras')">
                 <h3 class="bp-edit-section-title">Pricing &amp; Options</h3>
                 <lucide-icon [name]="sectionOpen('extras') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
@@ -345,7 +347,7 @@ const WHATS_HOT = "What's Hot";
           <!-- pV2-STORE-TAXONOMY-01 — Classification (collapsed by default) above the
                action buttons (Liam): Category cascade → Subcategory → Sub-subcategory. -->
           @if (isEdit) {
-            <div class="bp-card bp-edit-section mt-4" [class.is-collapsed]="!sectionOpen('classification')">
+            <div class="bp-card bp-edit-section" [class.is-collapsed]="!sectionOpen('classification')">
               <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('classification')">
                 <h3 class="bp-edit-section-title">Classification</h3>
                 <lucide-icon [name]="sectionOpen('classification') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
