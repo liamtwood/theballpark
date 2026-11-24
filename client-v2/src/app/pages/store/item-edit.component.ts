@@ -17,6 +17,7 @@ import { ConfirmService } from '../../shared/confirm/confirm.service';
 import { CategoryInfo } from '../../shared/catalogue/catalogue.types';
 import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribute-cards.component';
 import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.types';
+import { MediaService } from '../../core/media/media.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { SaveStatePillComponent, SaveState } from '../../shared/save-state-pill/save-state-pill.component';
 import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
@@ -166,39 +167,60 @@ const WHATS_HOT = "What's Hot";
               <lucide-icon [name]="sectionOpen('images') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
             </button>
             @if (sectionOpen('images')) {
-              <label class="bp-field-label mt-4 block">Main Image</label>
-              <div
-                class="bp-item-banner mt-2 max-w-md"
-                [class.bp-item-banner--readonly]="!canEditPhotos()"
-                [attr.role]="canEditPhotos() ? 'button' : null"
-                [attr.tabindex]="canEditPhotos() ? 0 : null"
-                (click)="canEditPhotos() && imageDrawer.set(true)"
-                (keydown.enter)="canEditPhotos() && imageDrawer.set(true)"
-              >
-                @if (imageUrl()) {
-                  <img [src]="imageUrl()" alt="" />
-                } @else {
-                  <span class="bp-caption">{{ canEditPhotos() ? 'Click to upload main image' : 'No image' }}</span>
+              <!-- Left: main + gallery; right: a multi-image drop zone (Liam 2026-11-24). -->
+              <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,26rem)_1fr]">
+                <div>
+                  <label class="bp-field-label block">Main Image</label>
+                  <div
+                    class="bp-item-banner mt-2"
+                    [class.bp-item-banner--readonly]="!canEditPhotos()"
+                    [attr.role]="canEditPhotos() ? 'button' : null"
+                    [attr.tabindex]="canEditPhotos() ? 0 : null"
+                    (click)="canEditPhotos() && imageDrawer.set(true)"
+                    (keydown.enter)="canEditPhotos() && imageDrawer.set(true)"
+                  >
+                    @if (imageUrl()) {
+                      <img [src]="imageUrl()" alt="" />
+                    } @else {
+                      <span class="bp-caption">{{ canEditPhotos() ? 'Click to upload main image' : 'No image' }}</span>
+                    }
+                  </div>
+                  @if (editing() && isApproved()) {
+                    <p class="bp-caption mt-1 text-secondary">Photos are locked on approved items — duplicate to change them.</p>
+                  }
+                  <label class="bp-field-label mt-4 block">Gallery Images</label>
+                  <div class="mt-2">
+                    <app-image-gallery
+                      entityType="item"
+                      [images]="images()"
+                      [primaryUrl]="imageUrl()"
+                      [showSetCover]="false"
+                      [searchSeed]="form().name"
+                      [editable]="canEditPhotos()"
+                      [columns]="4"
+                      [tileAspect]="'1 / 1'"
+                      [maxSlots]="maxImages()"
+                      (imagesChange)="onImagesChange($event)"
+                      (primarySet)="onSetPrimary($event)"
+                    />
+                  </div>
+                </div>
+                @if (canEditPhotos()) {
+                  <div class="flex flex-col">
+                    <label class="bp-field-label block">Quick upload</label>
+                    <div class="bp-dropzone mt-2 flex-1" [class.bp-dropzone--on]="dragOver()"
+                         (dragover)="$event.preventDefault(); dragOver.set(true)"
+                         (dragleave)="dragOver.set(false)"
+                         (drop)="onDrop($event)"
+                         role="button" tabindex="0"
+                         (click)="dzInput.click()" (keydown.enter)="dzInput.click()">
+                      <input #dzInput type="file" class="hidden" accept="image/*" multiple (change)="onMultiFiles($any($event.target))" />
+                      <lucide-icon name="upload" [size]="26" [strokeWidth]="1.5" />
+                      <span class="bp-body-small mt-2">{{ uploadingMulti() ? 'Uploading…' : 'Drop images here' }}</span>
+                      <span class="bp-caption text-secondary mt-1">or click to browse — adds several at once</span>
+                    </div>
+                  </div>
                 }
-              </div>
-              @if (editing() && isApproved()) {
-                <p class="bp-caption mt-1 text-secondary">Photos are locked on approved items — duplicate to change them.</p>
-              }
-              <label class="bp-field-label mt-4 block">Gallery Images</label>
-              <div class="mt-2 max-w-md">
-                <app-image-gallery
-                  entityType="item"
-                  [images]="images()"
-                  [primaryUrl]="imageUrl()"
-                  [showSetCover]="false"
-                  [searchSeed]="form().name"
-                  [editable]="canEditPhotos()"
-                  [columns]="4"
-                  [tileAspect]="'1 / 1'"
-                  [maxSlots]="maxImages()"
-                  (imagesChange)="onImagesChange($event)"
-                  (primarySet)="onSetPrimary($event)"
-                />
               </div>
             }
           </div>
@@ -305,9 +327,10 @@ const WHATS_HOT = "What's Hot";
                   </div>
                 </div>
 
+                @if (soldAs() === 'single' || soldAs() === 'volume') {
+                <!-- Cost: single only. Volume mode's price IS the Volume tiers (no separate
+                     base cost / unit / serves, Liam). Volume block below: single + volume. -->
                 @if (soldAs() === 'single') {
-                <!-- Cost (price + unit + unit-driven) moved here from Primary (Liam 2026-11-24).
-                     mt-4 so title→Cost equals Cost→Variants (both 16px). -->
                 <div class="bp-qv-spec mt-4">
                   <div class="flex items-center justify-between gap-2">
                     <span class="bp-qv-spec__label"><lucide-icon name="wallet" [size]="13" /> Cost</span>
@@ -355,10 +378,11 @@ const WHATS_HOT = "What's Hot";
                     }
                   </div>
                 </div>
+                }
               <!-- Variants on top, Volume under — stacked (Liam 2026-11-24). -->
               <div class="mt-4 grid grid-cols-1 gap-3">
-                <!-- Variants (multi-dimension matrix) — same preview + edit-in-dialog
-                     pattern as Options/Volume, for consistency (Liam). -->
+                <!-- Variants (multi-dimension matrix) — legacy, single mode only. -->
+                @if (soldAs() === 'single') {
                 <div class="bp-qv-spec">
                   <span class="bp-qv-spec__label"><lucide-icon name="layers" [size]="13" /> Variants</span>
                   @if (variantsSummary(); as vs) {
@@ -375,6 +399,7 @@ const WHATS_HOT = "What's Hot";
                     <lucide-icon name="pencil" [size]="14" /> Edit variants
                   </button>
                 </div>
+                }
 
                 <!-- Volume pricing — preview + edit-in-dialog -->
                 <div class="bp-qv-spec">
@@ -437,7 +462,7 @@ const WHATS_HOT = "What's Hot";
                     <div class="flex items-end gap-3">
                       <app-edit-field class="flex-1" label="Product name" density="page" [editing]="true" [value]="p.name" (valueChange)="patchPackage(selectedPackage(), 'name', $event)" />
                       <div class="shrink-0">
-                        <label class="bp-field-label">Colour</label>
+                        <label class="bp-field-label block">Colour</label>
                         <span class="relative mt-2 inline-block">
                           <span class="bp-swatch" [class.bp-swatch--empty]="!p.color" [style.--sw]="p.color || 'transparent'">
                             <input type="color" class="bp-swatch__input" [value]="p.color || '#cccccc'" (input)="patchPackage(selectedPackage(), 'color', $any($event.target).value)" aria-label="Button colour" />
@@ -465,14 +490,29 @@ const WHATS_HOT = "What's Hot";
                           (imagesChange)="onPackageImagesChange($event)"
                           (primarySet)="onPackageSetCover($event)"
                         />
+                        <!-- Multi-image drop zone for this variant (Liam 2026-11-24). -->
+                        <div class="bp-dropzone bp-dropzone--sm mt-2" [class.bp-dropzone--on]="variantDragOver()"
+                             (dragover)="$event.preventDefault(); variantDragOver.set(true)"
+                             (dragleave)="variantDragOver.set(false)"
+                             (drop)="onVariantDrop($event)"
+                             role="button" tabindex="0"
+                             (click)="vzInput.click()" (keydown.enter)="vzInput.click()">
+                          <input #vzInput type="file" class="hidden" accept="image/*" multiple (change)="onVariantMultiFiles($any($event.target))" />
+                          <lucide-icon name="upload" [size]="18" [strokeWidth]="1.5" />
+                          <span class="bp-caption mt-1">{{ variantUploadingMulti() ? 'Uploading…' : 'Drop images to add several' }}</span>
+                        </div>
                       </div>
                     </div>
                     <div>
                       <label class="bp-field-label">Description <app-md-help class="ml-1.5 align-middle" /></label>
                       <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="p.description" (ngModelChange)="patchPackage(selectedPackage(), 'description', $event)" placeholder="What's included…"></textarea>
                     </div>
+                    <!-- Each variant is priced (absolute) — no parent cost. In Volume mode
+                         options are free-pick (one price up top), so no per-option cost. -->
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                      <app-edit-field [label]="'Cost' + currencySuffix()" type="number" density="page" [editing]="true" [value]="p.cost" (valueChange)="patchPackage(selectedPackage(), 'cost', $event)" />
+                      @if (soldAs() !== 'volume') {
+                        <app-edit-field [label]="'Cost' + currencySuffix()" type="number" density="page" [editing]="true" [value]="p.cost" (valueChange)="patchPackage(selectedPackage(), 'cost', $event)" />
+                      }
                       <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="true" [value]="p.unit" (valueChange)="patchPackage(selectedPackage(), 'unit', $event)" />
                       @if (p.unit === 'capacity') {
                         <app-edit-field label="Max capacity (guests)" type="number" density="page" [editing]="true" [value]="p.capacity" (valueChange)="patchPackage(selectedPackage(), 'capacity', $event)" />
@@ -769,6 +809,66 @@ export class ItemEditComponent {
   protected readonly saving = signal(false);
   protected readonly imageDrawer = signal(false);
   protected readonly imageTabs: PickerTab[] = ['upload', 'find'];
+  // pV2-STORE-MEDIA-DROPZONE-01 — multi-image drag/drop upload into the gallery.
+  private readonly media = inject(MediaService);
+  protected readonly dragOver = signal(false);
+  protected readonly uploadingMulti = signal(false);
+  protected onDrop(e: DragEvent): void {
+    e.preventDefault();
+    this.dragOver.set(false);
+    void this.onMultiUpload(e.dataTransfer?.files ?? null);
+  }
+  protected onMultiFiles(input: HTMLInputElement): void {
+    void this.onMultiUpload(input.files);
+    input.value = ''; // allow re-selecting the same files
+  }
+  // Per-variant gallery drop zone — uploads into the SELECTED variant's images.
+  protected readonly variantDragOver = signal(false);
+  protected readonly variantUploadingMulti = signal(false);
+  protected onVariantDrop(e: DragEvent): void {
+    e.preventDefault();
+    this.variantDragOver.set(false);
+    void this.onVariantMultiUpload(e.dataTransfer?.files ?? null);
+  }
+  protected onVariantMultiFiles(input: HTMLInputElement): void {
+    void this.onVariantMultiUpload(input.files);
+    input.value = '';
+  }
+  private async onVariantMultiUpload(files: FileList | null): Promise<void> {
+    if (!files?.length || !this.selectedPackageRow()) return;
+    const imgs = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    if (!imgs.length) return;
+    this.variantUploadingMulti.set(true);
+    try {
+      for (const f of imgs) {
+        const { url } = await firstValueFrom(this.media.upload(f, 'item'));
+        const cur = this.selectedPackageRow()?.images ?? [];
+        this.patchPackageImages([...cur, { url, focalX: 50, focalY: 50, is_hero: cur.length === 0 }]);
+      }
+    } catch (e) {
+      this.toast.add({ severity: 'error', summary: "Couldn't upload some images", detail: errorDetail(e), life: 4000 });
+    } finally {
+      this.variantUploadingMulti.set(false);
+    }
+  }
+  private async onMultiUpload(files: FileList | null): Promise<void> {
+    if (!files?.length || !this.canEditPhotos()) return;
+    const imgs = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    if (!imgs.length) return;
+    this.uploadingMulti.set(true);
+    try {
+      for (const f of imgs) {
+        const { url } = await firstValueFrom(this.media.upload(f, 'item'));
+        this.images.update((cur) => [...cur, { url, focalX: 50, focalY: 50, is_hero: cur.length === 0 }]);
+        if (!this.imageUrl()) this.imageUrl.set(url);
+      }
+      this.scheduleSave();
+    } catch (e) {
+      this.toast.add({ severity: 'error', summary: "Couldn't upload some images", detail: errorDetail(e), life: 4000 });
+    } finally {
+      this.uploadingMulti.set(false);
+    }
+  }
 
   // pV2-STORE-ATTRIBUTE-GROUPS-01 — the 5 canonical descriptive groups (fixed
   // order + keys), each editable as [{label,value}] rows. `rawAttributes` keeps
@@ -815,7 +915,7 @@ export class ItemEditComponent {
     const hasRows = this.packages().some((p) => p.name.trim() !== '');
     // single clears options; tiers/sizes seed a named set → both REPLACE existing rows.
     // spaces/custom carry no seed rows, so they keep whatever's there (just re-label).
-    const willReplaceRows = code === 'single' || seed.rowNames.length > 0;
+    const willReplaceRows = code === 'single' || seed.rows.length > 0;
     if (hasRows && willReplaceRows) {
       const ok = await this.confirm.ask({
         title: 'Change how this is sold?',
@@ -827,7 +927,7 @@ export class ItemEditComponent {
     }
     this.packagesMeta.set({ ...seed.meta, soldAs: code });
     if (willReplaceRows) {
-      this.packages.set(seed.rowNames.map((name) => ({ name, description: '', cost: '', unit: seed.rowUnit, serves: '', capacity: '', images: [], color: '' })));
+      this.packages.set(seed.rows.map((r) => ({ name: r.name, description: '', cost: '', unit: seed.rowUnit, serves: '', capacity: '', images: [], color: r.color ?? '' })));
       this.selectedPackage.set(0);
     }
     this.scheduleSave();
@@ -1180,7 +1280,7 @@ export class ItemEditComponent {
       })));
       const meta = (attrs['packages_meta'] ?? {}) as Partial<PackagesMeta>;
       const soldAsRaw = meta.soldAs;
-      const soldAsOk = (['single', 'tiers', 'sizes', 'spaces', 'custom'] as const).includes(soldAsRaw as SellModeCode);
+      const soldAsOk = (['single', 'tiers', 'sizes', 'spaces', 'custom', 'volume'] as const).includes(soldAsRaw as SellModeCode);
       this.packagesMeta.set({
         label: typeof meta.label === 'string' && meta.label.trim() ? meta.label : 'Package',
         presentation: meta.presentation === 'picklist' ? 'picklist' : 'buttons',

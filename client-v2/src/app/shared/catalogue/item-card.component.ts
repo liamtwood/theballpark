@@ -113,8 +113,8 @@ import { AuthService } from '../../core/auth/auth.service';
       <!-- No unit suffix on the card (v1 parity) — it lives in the
            preview rail + detail view. -->
       <div class="mt-2 flex items-baseline gap-1.5">
-        @if (item().basePrice !== null) {
-          <span class="bp-price-large">From {{ item().basePrice | currency: 'GBP' : 'symbol' : ((item().basePrice ?? 0) < 100 ? '1.2-2' : '1.0-0') }}</span>
+        @if (fromPrice(); as fp) {
+          <span class="bp-price-large">From {{ fp | currency: 'GBP' : 'symbol' : (fp < 100 ? '1.2-2' : '1.0-0') }}</span>
         } @else {
           <span class="bp-caption">Price on request</span>
         }
@@ -332,6 +332,26 @@ export class ItemCardComponent {
     // pV2-STORE-PACKAGES-01 — packages are picker dimensions too → "Select options".
     !!variantMatrixFor((this.item().attributes as Record<string, unknown> | null) ?? null)?.dimensions.length,
   );
+  /** pV2-STORE-PACKAGES-01 — a variant item's card price is the LOWEST priced option
+   *  ("From £x"); every option is priced (no parent cost). Plain items use base price. */
+  protected readonly fromPrice = computed<number | null>(() => {
+    const it = this.item();
+    const attrs = it.attributes as Record<string, unknown> | null;
+    // Priced options (tiers / spaces) → the lowest option.
+    const pkgs = Array.isArray(attrs?.['packages']) ? (attrs!['packages'] as { cost?: unknown }[]) : [];
+    const costs = pkgs.map((p) => Number(p?.cost)).filter((c) => Number.isFinite(c) && c > 0);
+    if (costs.length) return Math.min(...costs);
+    // Single / priced item → base price.
+    if (it.basePrice != null) return it.basePrice;
+    // Volume mode → no base; the price is the volume tiers' entry (lowest min-qty).
+    const tiers = Array.isArray(attrs?.['price_tiers']) ? (attrs!['price_tiers'] as { min?: unknown; price?: unknown }[]) : [];
+    if (tiers.length) {
+      const entry = tiers.reduce((lo, t) => (Number(t.min ?? 1) < Number(lo.min ?? 1) ? t : lo));
+      const p = Number(entry.price);
+      if (Number.isFinite(p) && p > 0) return p;
+    }
+    return null;
+  });
   /** "+" button label — "Select options" for variant items, else the quote toggle. */
   protected readonly quoteBtnLabel = computed(() =>
     this.hasVariantDims() ? 'Select options' : (this.quoted() ? 'Added to Quote' : 'Add to Quote')

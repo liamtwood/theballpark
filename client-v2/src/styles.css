@@ -434,6 +434,30 @@
 }
 .bp-swatch__clear:hover { color: var(--color-text); }
 
+/* pV2-STORE-MEDIA-DROPZONE-01 — multi-image drop zone beside the gallery. */
+.bp-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 12rem;
+  padding: 1.25rem;
+  border: 1.5px dashed var(--color-border-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+.bp-dropzone:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+.bp-dropzone--on {
+  border-color: var(--theme-accent);
+  color: var(--theme-accent);
+  background: color-mix(in srgb, var(--theme-accent) 8%, var(--color-surface));
+}
+.bp-dropzone--sm { min-height: 4.5rem; padding: 0.75rem; }
+
 /* Reserve a stable scrollbar gutter so a scrolling body and the non-scrolling
    hero/tabs above it share the SAME content box — their centred workspace
    columns then line up (the scrollbar no longer shifts the body's centre).

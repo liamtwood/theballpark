@@ -4,7 +4,7 @@
 // not a fork). The per-category lists are hardcoded defaults for now — the clean
 // home is a `meta.sell_modes` column on categories + an admin editor (deferred).
 
-export type SellModeCode = 'single' | 'tiers' | 'sizes' | 'spaces' | 'custom';
+export type SellModeCode = 'single' | 'tiers' | 'sizes' | 'spaces' | 'custom' | 'volume';
 
 export interface SellModeDef {
   code: SellModeCode;
@@ -19,6 +19,7 @@ export const SELL_MODES: Record<SellModeCode, SellModeDef> = {
   sizes:  { code: 'sizes',  label: 'Small, Medium & Large', hint: 'Pick a size' },
   spaces: { code: 'spaces', label: 'Spaces', hint: 'Choose a space / area' },
   custom: { code: 'custom', label: 'Custom options', hint: 'Build your own list' },
+  volume: { code: 'volume', label: 'Volume Pricing', hint: 'One price + bulk discount; pick a colour/size' },
 };
 
 /** Which modes apply per TOP category (by category name — the client has the name,
@@ -26,12 +27,12 @@ export const SELL_MODES: Record<SellModeCode, SellModeDef> = {
  *  appended so a supplier is never boxed in. */
 const BY_CATEGORY: Record<string, SellModeCode[]> = {
   Venues:    ['single', 'spaces'],
-  'Set Build': ['single', 'tiers'],
-  AV:        ['single', 'tiers'],
+  'Set Build': ['single', 'tiers', 'volume'],
+  AV:        ['single', 'tiers', 'volume'],
   Catering:  ['single', 'tiers'],
-  Furniture: ['single', 'sizes'],
-  'Prop Hire': ['single', 'sizes'],
-  Graphics:  ['single'],
+  Furniture: ['single', 'volume', 'sizes'],
+  'Prop Hire': ['single', 'volume', 'sizes'],
+  Graphics:  ['single', 'volume'],
   Floristry: ['single', 'tiers'],
 };
 
@@ -43,10 +44,13 @@ export function sellModesForCategory(categoryName: string | null | undefined): S
   return base.includes('custom') ? base : [...base, 'custom'];
 }
 
-/** What a mode seeds: the presentation meta + the starter row names (blank otherwise). */
+/** A starter row for a mode — name + an optional default chip colour. */
+export interface SellModeRow { name: string; color?: string; }
+
+/** What a mode seeds: the presentation meta + the starter rows (empty otherwise). */
 export interface SellModeSeed {
   meta: { label: string; presentation: 'buttons' | 'picklist'; select: 'one' | 'multi' };
-  rowNames: string[];
+  rows: SellModeRow[];
   /** Default unit for seeded rows (spaces → capacity); '' leaves it unset. */
   rowUnit: string;
 }
@@ -54,15 +58,22 @@ export interface SellModeSeed {
 export function sellModeSeed(code: SellModeCode): SellModeSeed {
   switch (code) {
     case 'tiers':
-      return { meta: { label: 'Package', presentation: 'buttons', select: 'one' }, rowNames: ['Bronze', 'Silver', 'Gold'], rowUnit: '' };
+      return {
+        meta: { label: 'Package', presentation: 'buttons', select: 'one' },
+        rows: [{ name: 'Bronze', color: '#CD7F32' }, { name: 'Silver', color: '#C0C0C0' }, { name: 'Gold', color: '#D4AF37' }],
+        rowUnit: '',
+      };
     case 'sizes':
-      return { meta: { label: 'Size', presentation: 'buttons', select: 'one' }, rowNames: ['Small', 'Medium', 'Large'], rowUnit: '' };
+      return { meta: { label: 'Size', presentation: 'buttons', select: 'one' }, rows: [{ name: 'Small' }, { name: 'Medium' }, { name: 'Large' }], rowUnit: '' };
     case 'spaces':
-      return { meta: { label: 'Space', presentation: 'picklist', select: 'one' }, rowNames: [], rowUnit: 'capacity' };
+      return { meta: { label: 'Space', presentation: 'picklist', select: 'one' }, rows: [], rowUnit: 'capacity' };
+    case 'volume':
+      // One price + volume up top; free-pick options (no per-option cost).
+      return { meta: { label: 'Option', presentation: 'buttons', select: 'one' }, rows: [], rowUnit: '' };
     case 'custom':
-      return { meta: { label: 'Option', presentation: 'buttons', select: 'one' }, rowNames: [], rowUnit: '' };
+      return { meta: { label: 'Option', presentation: 'buttons', select: 'one' }, rows: [], rowUnit: '' };
     case 'single':
     default:
-      return { meta: { label: 'Package', presentation: 'buttons', select: 'one' }, rowNames: [], rowUnit: '' };
+      return { meta: { label: 'Package', presentation: 'buttons', select: 'one' }, rows: [], rowUnit: '' };
   }
 }
