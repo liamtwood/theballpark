@@ -296,26 +296,8 @@ const WHATS_HOT = "What's Hot";
                     }
                   </div>
                 </div>
-              <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <!-- Volume pricing — preview + edit-in-dialog -->
-                <div class="bp-qv-spec">
-                  <span class="bp-qv-spec__label"><lucide-icon name="tags" [size]="13" /> Volume pricing</span>
-                  @if (filledTiers().length) {
-                    <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
-                      @for (t of filledTiers().slice(0, 3); track $index) {
-                        <dt class="bp-body-small text-secondary">{{ t.min || '1' }}@if (t.max !== '' && t.max != null) {–{{ t.max }}} @else {+}</dt>
-                        <dd class="bp-body-small text-text">£{{ t.price }}</dd>
-                      }
-                    </dl>
-                    @if (filledTiers().length > 3) { <p class="bp-caption text-secondary mt-1">+{{ filledTiers().length - 3 }} more</p> }
-                  } @else {
-                    <p class="bp-qv-spec__val bp-qv-spec__val--soon">No volume pricing</p>
-                  }
-                  <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openVolumeDialog()">
-                    <lucide-icon name="pencil" [size]="14" /> Edit volume pricing
-                  </button>
-                </div>
-
+              <!-- Variants on top, Volume under — stacked (Liam 2026-11-24). -->
+              <div class="mt-4 grid grid-cols-1 gap-3">
                 <!-- Variants (multi-dimension matrix) — same preview + edit-in-dialog
                      pattern as Options/Volume, for consistency (Liam). -->
                 <div class="bp-qv-spec">
@@ -332,6 +314,25 @@ const WHATS_HOT = "What's Hot";
                   }
                   <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openVariantsDialog()">
                     <lucide-icon name="pencil" [size]="14" /> Edit variants
+                  </button>
+                </div>
+
+                <!-- Volume pricing — preview + edit-in-dialog -->
+                <div class="bp-qv-spec">
+                  <span class="bp-qv-spec__label"><lucide-icon name="tags" [size]="13" /> Volume pricing</span>
+                  @if (filledTiers().length) {
+                    <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+                      @for (t of filledTiers().slice(0, 3); track $index) {
+                        <dt class="bp-body-small text-secondary">{{ t.min || '1' }}@if (t.max !== '' && t.max != null) {–{{ t.max }}} @else {+}</dt>
+                        <dd class="bp-body-small text-text">£{{ t.price }}</dd>
+                      }
+                    </dl>
+                    @if (filledTiers().length > 3) { <p class="bp-caption text-secondary mt-1">+{{ filledTiers().length - 3 }} more</p> }
+                  } @else {
+                    <p class="bp-qv-spec__val bp-qv-spec__val--soon">No volume pricing</p>
+                  }
+                  <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openVolumeDialog()">
+                    <lucide-icon name="pencil" [size]="14" /> Edit volume pricing
                   </button>
                 </div>
               </div>
