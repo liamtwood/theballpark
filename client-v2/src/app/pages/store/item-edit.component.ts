@@ -764,7 +764,8 @@ export class ItemEditComponent {
 
   /** Collapsible sections — all minimised by default except Primary Information +
    *  Images (Liam). A key in the set is COLLAPSED. */
-  protected readonly collapsed = signal<Set<string>>(new Set(['details', 'installation', 'extras', 'classification']));
+  // All sections expanded by default (Liam 2026-11-24) — empty collapsed set.
+  protected readonly collapsed = signal<Set<string>>(new Set());
   protected sectionOpen(key: string): boolean { return !this.collapsed().has(key); }
   protected toggleSection(key: string): void {
     const next = new Set(this.collapsed());
