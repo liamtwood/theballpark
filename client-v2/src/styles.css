@@ -590,6 +590,12 @@ body {
   color: var(--theme-text);
   font-family: var(--bp-font);
 }
+/* Reserve the window scrollbar gutter ALWAYS so it never toggles when content
+   height changes (e.g. switching item-editor tabs) — no horizontal shift of the
+   centred page. Matches the .bp-gutter stability approach (Liam 2026-11-24). */
+html {
+  scrollbar-gutter: stable;
+}
 
 /* Mobile type overrides at the ROOT (pV2-TYPE-01 / DESIGN.md §5 rule 5:
    update the token in a media query — never re-declare per-component).
