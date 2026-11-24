@@ -396,7 +396,7 @@ const WHATS_HOT = "What's Hot";
                     <p class="bp-qv-spec__val bp-qv-spec__val--soon">No variants</p>
                   }
                   <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openVariantsDialog()">
-                    <lucide-icon name="pencil" [size]="14" /> Edit variants
+                    <lucide-icon name="pencil" [size]="14" /> Edit {{ soldAs() === 'levels' ? 'option levels' : 'variants' }}
                   </button>
                 </div>
                 }
@@ -682,7 +682,7 @@ const WHATS_HOT = "What's Hot";
 
     <!-- Variants (multi-dimension matrix) — draft edited in the dialog, committed on
          Done (same pattern as Options/Volume). Wider — the combo table needs room. -->
-    <app-modal title="Variants" [open]="variantsDialogOpen()" (close)="cancelVariantsDialog()" width="760px" maxWidth="96vw">
+    <app-modal [title]="soldAs() === 'levels' ? 'Option Levels' : 'Variants'" [open]="variantsDialogOpen()" (close)="cancelVariantsDialog()" width="760px" maxWidth="96vw">
       <app-item-variants-editor [variants]="variantsSeed()" (variantsChange)="variantsDraft.set($event)" />
       <button modalFooter type="button" class="bp-btn--secondary" (click)="cancelVariantsDialog()">Cancel</button>
       <button modalFooter type="button" class="bp-btn--primary" (click)="saveVariantsDialog()">Done</button>
