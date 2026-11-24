@@ -65,6 +65,7 @@ interface PackageRow {
   serves: string;
   capacity: string;   // max capacity guests when unit = capacity (pV2-STORE-PACKAGES-01)
   images: GalleryImage[]; // the variant's own gallery (standard component); cover hero-swaps on pick
+  color: string;      // the chip button colour (--vc); '' = theme accent (pV2-STORE-VARIANT-COLOR-01)
 }
 
 /** pV2-STORE-PACKAGES-01 — per-group presentation config (attributes.packages_meta):
@@ -417,6 +418,7 @@ const WHATS_HOT = "What's Hot";
                   @for (p of packages(); track $index) {
                     <button type="button" class="bp-variant-chip"
                             [class.bp-variant-chip--on]="selectedPackage() === $index"
+                            [style.--vc]="p.color || 'var(--theme-accent)'"
                             (click)="selectedPackage.set($index)">
                       @if (selectedPackage() === $index) { <lucide-icon class="bp-variant-chip__tick" name="check" [size]="15" /> }
                       <span class="bp-variant-chip__name">{{ p.name.trim() || 'Untitled' }}</span>
@@ -430,7 +432,22 @@ const WHATS_HOT = "What's Hot";
                 <!-- Form for the selected package (name / description / cost / unit / serves). -->
                 @if (selectedPackageRow(); as p) {
                   <div class="mt-4 flex flex-col gap-4">
-                    <app-edit-field label="Product name" density="page" [editing]="true" [value]="p.name" (valueChange)="patchPackage(selectedPackage(), 'name', $event)" />
+                    <!-- Product name + a compact colour swatch (chip --vc) on one line
+                         (pV2-STORE-VARIANT-COLOR-01). '' = theme accent. -->
+                    <div class="flex items-end gap-3">
+                      <app-edit-field class="flex-1" label="Product name" density="page" [editing]="true" [value]="p.name" (valueChange)="patchPackage(selectedPackage(), 'name', $event)" />
+                      <div class="shrink-0">
+                        <label class="bp-field-label">Colour</label>
+                        <span class="relative mt-2 inline-block">
+                          <span class="bp-swatch" [class.bp-swatch--empty]="!p.color" [style.--sw]="p.color || 'transparent'">
+                            <input type="color" class="bp-swatch__input" [value]="p.color || '#cccccc'" (input)="patchPackage(selectedPackage(), 'color', $any($event.target).value)" aria-label="Button colour" />
+                          </span>
+                          @if (p.color) {
+                            <button type="button" class="bp-swatch__clear" (click)="patchPackage(selectedPackage(), 'color', '')" aria-label="Clear colour"><lucide-icon name="x" [size]="10" /></button>
+                          }
+                        </span>
+                      </div>
+                    </div>
                     <!-- The variant's own gallery — standard component (pV2-STORE-PACKAGES-01). -->
                     <div>
                       <label class="bp-field-label">Images</label>
@@ -810,7 +827,7 @@ export class ItemEditComponent {
     }
     this.packagesMeta.set({ ...seed.meta, soldAs: code });
     if (willReplaceRows) {
-      this.packages.set(seed.rowNames.map((name) => ({ name, description: '', cost: '', unit: seed.rowUnit, serves: '', capacity: '', images: [] })));
+      this.packages.set(seed.rowNames.map((name) => ({ name, description: '', cost: '', unit: seed.rowUnit, serves: '', capacity: '', images: [], color: '' })));
       this.selectedPackage.set(0);
     }
     this.scheduleSave();
@@ -852,7 +869,7 @@ export class ItemEditComponent {
     ...(this.variantsState() ? { variants: this.variantsState() } : {}),
     packages: this.packages()
       .filter((p) => p.name.trim() !== '')
-      .map((p) => ({ name: p.name.trim(), description: p.description.trim() || null, cost: p.cost === '' ? null : Number(p.cost), images: p.images })),
+      .map((p) => ({ name: p.name.trim(), description: p.description.trim() || null, cost: p.cost === '' ? null : Number(p.cost), images: p.images, color: p.color || null })),
     packages_meta: this.packagesMeta(),
   }));
   protected readonly hasPreview = computed(() => !!variantMatrixFor(this.previewAttributes())?.dimensions.length);
@@ -1159,6 +1176,7 @@ export class ItemEditComponent {
         serves: p['serves'] == null ? '' : String(p['serves']),
         capacity: p['capacity'] == null ? '' : String(p['capacity']),
         images: Array.isArray(p['images']) ? (p['images'] as GalleryImage[]) : [],
+        color: typeof p['color'] === 'string' ? p['color'] : '',
       })));
       const meta = (attrs['packages_meta'] ?? {}) as Partial<PackagesMeta>;
       const soldAsRaw = meta.soldAs;
@@ -1213,7 +1231,7 @@ export class ItemEditComponent {
   // ── Packages (child "variant" items) — chips + per-row form (pV2-STORE-PACKAGES-01) ──
   protected addPackage(): void {
     const unit = this.soldAs() === 'spaces' ? 'capacity' : ''; // spaces default to a capacity
-    this.packages.update((p) => [...p, { name: '', description: '', cost: '', unit, serves: '', capacity: '', images: [] }]);
+    this.packages.update((p) => [...p, { name: '', description: '', cost: '', unit, serves: '', capacity: '', images: [], color: '' }]);
     this.selectedPackage.set(this.packages().length - 1); // edit the new one
     this.scheduleSave();
   }
@@ -1358,6 +1376,7 @@ export class ItemEditComponent {
                   serves: p.serves === '' ? null : Number(p.serves),
                   capacity: p.capacity === '' ? null : Number(p.capacity),
                   images: p.images,
+                  color: p.color || null,
                 })),
               packages_meta: this.packagesMeta(),
             }

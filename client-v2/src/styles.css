@@ -392,6 +392,48 @@
 .bp-sellmode__label { font-weight: 600; font-size: var(--text-sm); line-height: 1.2; }
 .bp-sellmode__hint { font-size: var(--text-xs); color: var(--color-text-secondary); }
 
+/* pV2-STORE-VARIANT-COLOR-01 — the per-variant button-colour swatch (opens the native
+   colour picker; dashed when unset = theme accent). */
+.bp-swatch {
+  position: relative;
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--sw);
+  border: 1px solid var(--color-border-hairline);
+  overflow: hidden;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.bp-swatch--empty { background: var(--color-surface); border-style: dashed; }
+.bp-swatch__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+}
+.bp-swatch__clear {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-hairline);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.bp-swatch__clear:hover { color: var(--color-text); }
+
 /* Reserve a stable scrollbar gutter so a scrolling body and the non-scrolling
    hero/tabs above it share the SAME content box — their centred workspace
    columns then line up (the scrollbar no longer shifts the body's centre).
