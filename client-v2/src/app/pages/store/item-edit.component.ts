@@ -826,7 +826,10 @@ export class ItemEditComponent {
   }
 
   private readonly unitsRes = this.api.getResource<{ code: string; label: string }[]>('/api/codelists/item_unit/values');
-  protected readonly unitOptions = computed<EditFieldOption[]>(() => (this.unitsRes.value() ?? []).map((u) => ({ label: u.label, value: u.code })));
+  // Dropdown shows the unit TYPE only — strip the "(serves N)" template suffix so
+  // 'platter' reads "Package", not "Package (serves N)" (Liam 2026-11-24). Surfaces
+  // that fill the N (quick view / inbox) use unitServesLabel and are unaffected.
+  protected readonly unitOptions = computed<EditFieldOption[]>(() => (this.unitsRes.value() ?? []).map((u) => ({ label: u.label.replace(/\s*\(.*\)\s*$/, '').trim() || u.code, value: u.code })));
 
   // v0.2.0 unit-driven reveals (item_unit.meta.needs): time → time_unit picker,
   // size → size picker. Both ballpark codelists; lists admin-editable in Settings.
