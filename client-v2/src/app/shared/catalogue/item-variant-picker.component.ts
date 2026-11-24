@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
-import { VariantMatrix, VariantValue, normalizeVariants, computeUnitPrice, minUnitPrice, hasPricing, selectedImage, selectedDescriptions } from './variants.util';
+import { VariantMatrix, VariantValue, variantMatrixFor, computeUnitPrice, minUnitPrice, hasPricing, selectedImage, selectedDescriptions } from './variants.util';
 import { MarkdownPipe } from '../markdown.pipe';
 
 /** The resolved selection emitted to the host (for add-to-quote wiring). */
@@ -144,9 +144,9 @@ export class ItemVariantPickerComponent {
    *  the hero/cover image live — even before all dimensions are chosen. */
   readonly imageChange = output<string | null>();
 
-  private readonly matrix = computed<VariantMatrix | null>(() => normalizeVariants(
-    (this.attributes() as Record<string, unknown> | null)?.['variants']
-  ));
+  // pV2-STORE-PACKAGES-01 — real variants, else packages as a single "Package"
+  // dimension, so a package item renders through the same picker.
+  private readonly matrix = computed<VariantMatrix | null>(() => variantMatrixFor(this.attributes()));
   protected readonly dimensions = computed(() => this.matrix()?.dimensions ?? []);
   /** Any value affects the price → show the price line. */
   protected readonly hasPricing = computed(() => hasPricing(this.matrix()));

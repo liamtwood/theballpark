@@ -5,6 +5,7 @@ import { firstValueFrom, Observable } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { TooltipModule } from 'primeng/tooltip';
 import { CatalogueItem, sizedImage } from './catalogue.types';
+import { variantMatrixFor } from './variants.util';
 import { itemEditLink } from './item-edit-link';
 import { StatusPillComponent } from '../status-pill/status-pill.component';
 import { StoreItemService } from '../../core/store/store-item.service';
@@ -327,11 +328,10 @@ export class ItemCardComponent {
 
   /** Item has picker dimensions (variants, incl. free-pick) — the buyer must choose
    *  before adding, so the "+" opens the Quick View instead of blind-adding (Liam). */
-  protected readonly hasVariantDims = computed(() => {
-    const a = this.item().attributes as Record<string, unknown> | null | undefined;
-    const v = a && typeof a === 'object' ? (a['variants'] as { dimensions?: unknown } | undefined) : undefined;
-    return !!(v && Array.isArray(v.dimensions) && (v.dimensions as unknown[]).length);
-  });
+  protected readonly hasVariantDims = computed(() =>
+    // pV2-STORE-PACKAGES-01 — packages are picker dimensions too → "Select options".
+    !!variantMatrixFor((this.item().attributes as Record<string, unknown> | null) ?? null)?.dimensions.length,
+  );
   /** "+" button label — "Select options" for variant items, else the quote toggle. */
   protected readonly quoteBtnLabel = computed(() =>
     this.hasVariantDims() ? 'Select options' : (this.quoted() ? 'Added to Quote' : 'Add to Quote')

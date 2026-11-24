@@ -73,6 +73,35 @@ export function normalizeVariants(raw: unknown): VariantMatrix | null {
   return { dimensions };
 }
 
+/** pV2-STORE-PACKAGES-01 — packages (Bronze/Silver/Gold) are a single-dimension
+ *  "Package" variant for DISPLAY: each row → an absolute-priced value (name + cost +
+ *  "what's included"). Lets the existing variant picker render packages identically
+ *  (a button with the name, the cost under it, the description on pick). Transitional:
+ *  reads attributes.packages; superseded once packages persist as child items. */
+export function packagesToMatrix(raw: unknown): VariantMatrix | null {
+  if (!Array.isArray(raw) || !raw.length) return null;
+  const values: VariantValue[] = raw
+    .map((p) => {
+      const o = (p ?? {}) as { name?: unknown; description?: unknown; cost?: unknown };
+      const amount = Number(o.cost) || 0;
+      return {
+        value: String(o.name ?? ''),
+        mode: (amount ? 'absolute' : 'none') as VariantMode,
+        amount,
+        description: o.description ? String(o.description) : null,
+      };
+    })
+    .filter((v) => v.value.trim() !== '');
+  return values.length ? { dimensions: [{ name: 'Package', values }] } : null;
+}
+
+/** The display matrix for an item: its real variants, else packages as a single
+ *  "Package" dimension (pV2-STORE-PACKAGES-01). One source for every price surface. */
+export function variantMatrixFor(attributes: Record<string, unknown> | null): VariantMatrix | null {
+  const a = attributes ?? {};
+  return normalizeVariants(a['variants']) ?? packagesToMatrix(a['packages']);
+}
+
 /** Final unit price for a selection: base, then per dimension in order — absolute
  *  sets, upcharge adds, none skips. Unselected dimensions are ignored. */
 export function computeUnitPrice(base: number | null, m: VariantMatrix | null, selected: Record<string, string>): number {

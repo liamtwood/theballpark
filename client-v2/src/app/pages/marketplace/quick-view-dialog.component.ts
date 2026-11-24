@@ -11,7 +11,7 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { itemEditLink } from '../../shared/catalogue/item-edit-link';
 import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribute-cards.component';
 import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-picker.component';
-import { normalizeVariants, allVariantImages } from '../../shared/catalogue/variants.util';
+import { normalizeVariants, allVariantImages, variantMatrixFor } from '../../shared/catalogue/variants.util';
 import { SupplierProfilePaneComponent } from './supplier-profile-pane.component';
 
 /** Add-to-ballpark payload — the item + the chosen variant (pV2-STORE-VARIANTS-
@@ -636,11 +636,10 @@ export class QuickViewDialogComponent {
 
   /** Has picker DIMENSIONS (incl. free-pick with no combos) — needs a choice before
    *  add-to-quote (Liam: variants → "Select options", never a blind add). */
-  protected readonly hasVariantDims = computed(() => {
-    const a = this.item()?.attributes as Record<string, unknown> | null | undefined;
-    const v = a && typeof a === 'object' ? (a['variants'] as { dimensions?: unknown } | undefined) : undefined;
-    return !!(v && Array.isArray(v.dimensions) && v.dimensions.length);
-  });
+  protected readonly hasVariantDims = computed(() =>
+    // pV2-STORE-PACKAGES-01 — packages count as picker dimensions too (same CTA path).
+    !!variantMatrixFor((this.item()?.attributes as Record<string, unknown> | null) ?? null)?.dimensions.length,
+  );
   protected readonly needsSelection = computed(() => this.hasVariantDims() && !this.chosenCombo());
 
   protected onVisible(visible: boolean): void {
