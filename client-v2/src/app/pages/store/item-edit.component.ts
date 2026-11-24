@@ -122,7 +122,7 @@ const WHATS_HOT = "What's Hot";
             @if (sectionOpen('images')) {
               <label class="bp-field-label mt-4 block">Main Image</label>
               <div
-                class="bp-item-banner mt-2"
+                class="bp-item-banner mt-2 max-w-md"
                 [class.bp-item-banner--readonly]="!canEditPhotos()"
                 [attr.role]="canEditPhotos() ? 'button' : null"
                 [attr.tabindex]="canEditPhotos() ? 0 : null"
@@ -139,7 +139,7 @@ const WHATS_HOT = "What's Hot";
                 <p class="bp-caption mt-1 text-secondary">Photos are locked on approved items — duplicate to change them.</p>
               }
               <label class="bp-field-label mt-4 block">Gallery Images</label>
-              <div class="mt-2">
+              <div class="mt-2 max-w-md">
                 <app-image-gallery
                   entityType="item"
                   [images]="images()"
