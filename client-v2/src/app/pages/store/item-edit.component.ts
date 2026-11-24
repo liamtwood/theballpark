@@ -24,7 +24,6 @@ import { MdHelpComponent } from '../../shared/md-help.component';
 import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.component';
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
-import { ItemApprovalPanelComponent } from './item-approval-panel.component';
 import { ItemEditActionsComponent } from './item-edit-actions.component';
 import { ItemVariantsEditorComponent } from './item-variants-editor.component';
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
@@ -65,7 +64,7 @@ const WHATS_HOT = "What's Hot";
   host: { class: 'block' },
   imports: [
     FormsModule, LucideAngularModule, ToastModule, ModalComponent, PageHeroComponent, EditFieldComponent,
-    ImageGalleryComponent, ImagePickerComponent, DrawerComponent, ItemApprovalPanelComponent,
+    ImageGalleryComponent, ImagePickerComponent, DrawerComponent,
     ItemEditActionsComponent, ItemAttributeCardsComponent, SaveStatePillComponent,
     ItemVariantsEditorComponent, CustomizeDialogComponent, DecimalPipe, MdHelpComponent,
   ],
@@ -88,8 +87,9 @@ const WHATS_HOT = "What's Hot";
         @if (isEdit && editing() && !isModerator() && !isViewer()) {
           <div class="mb-3 flex justify-end"><app-save-state-pill [state]="saveState()" [idleShowsSaved]="true" /></div>
         }
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1.7fr_1fr]">
-          <!-- LEFT — item attributes (one per row) + save actions. -->
+        <div class="grid grid-cols-1 gap-6">
+          <!-- Single column (Liam 2026-11-24): item attributes stacked; Images sits
+               directly under Primary Information. -->
           <div>
           <!-- PRIMARY INFORMATION (open by default) — name + category on one line,
                description, cost. Renamed from "Product" (Liam). -->
@@ -150,6 +150,51 @@ const WHATS_HOT = "What's Hot";
                     }
                   </div>
                 </div>
+              </div>
+            }
+          </div>
+
+          <!-- PHOTOS — directly under Primary Information, single column (Liam 2026-11-24).
+               Verbose "Image Approval Process" aside removed. -->
+          <div class="bp-card bp-edit-section mt-4" [class.is-collapsed]="!sectionOpen('images')">
+            <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('images')">
+              <h3 class="bp-edit-section-title">Images</h3>
+              <lucide-icon [name]="sectionOpen('images') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
+            </button>
+            @if (sectionOpen('images')) {
+              <label class="bp-field-label mt-4 block">Main Image</label>
+              <div
+                class="bp-item-banner mt-2"
+                [class.bp-item-banner--readonly]="!canEditPhotos()"
+                [attr.role]="canEditPhotos() ? 'button' : null"
+                [attr.tabindex]="canEditPhotos() ? 0 : null"
+                (click)="canEditPhotos() && imageDrawer.set(true)"
+                (keydown.enter)="canEditPhotos() && imageDrawer.set(true)"
+              >
+                @if (imageUrl()) {
+                  <img [src]="imageUrl()" alt="" />
+                } @else {
+                  <span class="bp-caption">{{ canEditPhotos() ? 'Click to upload main image' : 'No image' }}</span>
+                }
+              </div>
+              @if (editing() && isApproved()) {
+                <p class="bp-caption mt-1 text-secondary">Photos are locked on approved items — duplicate to change them.</p>
+              }
+              <label class="bp-field-label mt-4 block">Gallery Images</label>
+              <div class="mt-2">
+                <app-image-gallery
+                  entityType="item"
+                  [images]="images()"
+                  [primaryUrl]="imageUrl()"
+                  [showSetCover]="false"
+                  [searchSeed]="form().name"
+                  [editable]="canEditPhotos()"
+                  [columns]="4"
+                  [tileAspect]="'1 / 1'"
+                  [maxSlots]="maxImages()"
+                  (imagesChange)="onImagesChange($event)"
+                  (primarySet)="onSetPrimary($event)"
+                />
               </div>
             }
           </div>
@@ -364,56 +409,6 @@ const WHATS_HOT = "What's Hot";
             (approve)="decide('approve')" (reject)="decide('reject')" (cancel)="cancel()"
             (saveApproved)="saveApproved()" (saveDraft)="save('draft')" (submit)="save('pending')"
             (cancelRequest)="cancelRequest()" (deleteRequested)="onDelete()" />
-          </div>
-
-          <!-- pV2-STORE-ITEM-EDIT-LAYOUT-01 — images live in the right column beside
-               the Image Approval Process (moved out of the left to gain room):
-               main image large on top, gallery thumbnails below to review. -->
-          <div class="bp-card bp-edit-section self-start" [class.is-collapsed]="!sectionOpen('images')">
-            <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('images')">
-              <h3 class="bp-edit-section-title">Images</h3>
-              <lucide-icon [name]="sectionOpen('images') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
-            </button>
-            @if (sectionOpen('images')) {
-              <label class="bp-field-label mt-4 block">Main Image</label>
-              <div
-                class="bp-item-banner mt-2"
-                [class.bp-item-banner--readonly]="!canEditPhotos()"
-                [attr.role]="canEditPhotos() ? 'button' : null"
-                [attr.tabindex]="canEditPhotos() ? 0 : null"
-                (click)="canEditPhotos() && imageDrawer.set(true)"
-                (keydown.enter)="canEditPhotos() && imageDrawer.set(true)"
-              >
-                @if (imageUrl()) {
-                  <img [src]="imageUrl()" alt="" />
-                } @else {
-                  <span class="bp-caption">{{ canEditPhotos() ? 'Click to upload main image' : 'No image' }}</span>
-                }
-              </div>
-              @if (editing() && isApproved()) {
-                <p class="bp-caption mt-1 text-secondary">Photos are locked on approved items — duplicate to change them.</p>
-              }
-              <label class="bp-field-label mt-4 block">Gallery Images</label>
-              <div class="mt-2">
-                <app-image-gallery
-                  entityType="item"
-                  [images]="images()"
-                  [primaryUrl]="imageUrl()"
-                  [showSetCover]="false"
-                  [searchSeed]="form().name"
-                  [editable]="canEditPhotos()"
-                  [columns]="4"
-                  [tileAspect]="'1 / 1'"
-                  [maxSlots]="maxImages()"
-                  (imagesChange)="onImagesChange($event)"
-                  (primarySet)="onSetPrimary($event)"
-                />
-              </div>
-              <!-- Image Approval Process copy + status, under the gallery (Liam). -->
-              <div class="mt-5 border-t border-hairline pt-4">
-                <app-item-approval-panel [status]="currentStatus()" [statusAt]="statusAt()" />
-              </div>
-            }
           </div>
         </div>
         </div>
