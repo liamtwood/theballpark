@@ -11,7 +11,7 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { itemEditLink } from '../../shared/catalogue/item-edit-link';
 import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribute-cards.component';
 import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-picker.component';
-import { normalizeVariants, allVariantImages, variantMatrixFor } from '../../shared/catalogue/variants.util';
+import { allVariantImages, variantMatrixFor } from '../../shared/catalogue/variants.util';
 import { SupplierProfilePaneComponent } from './supplier-profile-pane.component';
 
 /** Add-to-ballpark payload — the item + the chosen variant (pV2-STORE-VARIANTS-
@@ -483,7 +483,9 @@ export class QuickViewDialogComponent {
   protected readonly imageList = computed(() => {
     const it = this.item();
     const gallery = it?.images?.length ? it.images : (it?.coverUrl ? [it.coverUrl] : []);
-    const m = normalizeVariants((it?.attributes as Record<string, unknown> | null)?.['variants']);
+    // pV2-STORE-PACKAGES-01 — include package/variant covers (variantMatrixFor covers
+    // both) so selecting a variant can jump the hero to its cover.
+    const m = variantMatrixFor((it?.attributes as Record<string, unknown> | null) ?? null);
     const imgs = [...gallery, ...allVariantImages(m)].filter((u): u is string => !!u);
     return [...new Set(imgs)];
   });

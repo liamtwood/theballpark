@@ -82,13 +82,17 @@ export function packagesToMatrix(raw: unknown, label = 'Package'): VariantMatrix
   if (!Array.isArray(raw) || !raw.length) return null;
   const values: VariantValue[] = raw
     .map((p) => {
-      const o = (p ?? {}) as { name?: unknown; description?: unknown; cost?: unknown };
+      const o = (p ?? {}) as { name?: unknown; description?: unknown; cost?: unknown; imageUrl?: unknown; images?: unknown };
       const amount = Number(o.cost) || 0;
+      // Cover = the gallery's hero (or first), falling back to the legacy single imageUrl.
+      const imgs = Array.isArray(o.images) ? (o.images as { url?: unknown; is_hero?: unknown }[]) : [];
+      const cover = imgs.find((i) => i?.is_hero)?.url ?? imgs[0]?.url ?? o.imageUrl ?? null;
       return {
         value: String(o.name ?? ''),
         mode: (amount ? 'absolute' : 'none') as VariantMode,
         amount,
         description: o.description ? String(o.description) : null,
+        imageUrl: cover ? String(cover) : null,
       };
     })
     .filter((v) => v.value.trim() !== '');

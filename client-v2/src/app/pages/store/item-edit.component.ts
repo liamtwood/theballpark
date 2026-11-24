@@ -64,6 +64,7 @@ interface PackageRow {
   unit: string;
   serves: string;
   capacity: string;   // max capacity guests when unit = capacity (pV2-STORE-PACKAGES-01)
+  images: GalleryImage[]; // the variant's own gallery (standard component); cover hero-swaps on pick
 }
 
 /** pV2-STORE-PACKAGES-01 — per-group presentation config (attributes.packages_meta):
@@ -430,6 +431,25 @@ const WHATS_HOT = "What's Hot";
                 @if (selectedPackageRow(); as p) {
                   <div class="mt-4 flex flex-col gap-4">
                     <app-edit-field label="Product name" density="page" [editing]="true" [value]="p.name" (valueChange)="patchPackage(selectedPackage(), 'name', $event)" />
+                    <!-- The variant's own gallery — standard component (pV2-STORE-PACKAGES-01). -->
+                    <div>
+                      <label class="bp-field-label">Images</label>
+                      <div class="mt-2 max-w-md">
+                        <app-image-gallery
+                          entityType="item"
+                          [images]="p.images"
+                          [primaryUrl]="packageCoverUrl(p)"
+                          [showSetCover]="false"
+                          [searchSeed]="p.name || form().name"
+                          [editable]="true"
+                          [columns]="4"
+                          [tileAspect]="'1 / 1'"
+                          [maxSlots]="6"
+                          (imagesChange)="onPackageImagesChange($event)"
+                          (primarySet)="onPackageSetCover($event)"
+                        />
+                      </div>
+                    </div>
                     <div>
                       <label class="bp-field-label">Description <app-md-help class="ml-1.5 align-middle" /></label>
                       <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="p.description" (ngModelChange)="patchPackage(selectedPackage(), 'description', $event)" placeholder="What's included…"></textarea>
@@ -575,6 +595,7 @@ const WHATS_HOT = "What's Hot";
         />
       }
     </app-drawer>
+
 
     <!-- pV2-STORE-ATTRIBUTE-GROUPS-01 — Volume pricing add/edit (Ballpark dialog,
          bp-modal — same styling as the quick-view dialog). Edits a draft; Done
@@ -789,7 +810,7 @@ export class ItemEditComponent {
     }
     this.packagesMeta.set({ ...seed.meta, soldAs: code });
     if (willReplaceRows) {
-      this.packages.set(seed.rowNames.map((name) => ({ name, description: '', cost: '', unit: seed.rowUnit, serves: '', capacity: '' })));
+      this.packages.set(seed.rowNames.map((name) => ({ name, description: '', cost: '', unit: seed.rowUnit, serves: '', capacity: '', images: [] })));
       this.selectedPackage.set(0);
     }
     this.scheduleSave();
@@ -831,7 +852,7 @@ export class ItemEditComponent {
     ...(this.variantsState() ? { variants: this.variantsState() } : {}),
     packages: this.packages()
       .filter((p) => p.name.trim() !== '')
-      .map((p) => ({ name: p.name.trim(), description: p.description.trim() || null, cost: p.cost === '' ? null : Number(p.cost) })),
+      .map((p) => ({ name: p.name.trim(), description: p.description.trim() || null, cost: p.cost === '' ? null : Number(p.cost), images: p.images })),
     packages_meta: this.packagesMeta(),
   }));
   protected readonly hasPreview = computed(() => !!variantMatrixFor(this.previewAttributes())?.dimensions.length);
@@ -1137,6 +1158,7 @@ export class ItemEditComponent {
         unit: typeof p['unit'] === 'string' ? p['unit'] : '',
         serves: p['serves'] == null ? '' : String(p['serves']),
         capacity: p['capacity'] == null ? '' : String(p['capacity']),
+        images: Array.isArray(p['images']) ? (p['images'] as GalleryImage[]) : [],
       })));
       const meta = (attrs['packages_meta'] ?? {}) as Partial<PackagesMeta>;
       const soldAsRaw = meta.soldAs;
@@ -1191,7 +1213,7 @@ export class ItemEditComponent {
   // ── Packages (child "variant" items) — chips + per-row form (pV2-STORE-PACKAGES-01) ──
   protected addPackage(): void {
     const unit = this.soldAs() === 'spaces' ? 'capacity' : ''; // spaces default to a capacity
-    this.packages.update((p) => [...p, { name: '', description: '', cost: '', unit, serves: '', capacity: '' }]);
+    this.packages.update((p) => [...p, { name: '', description: '', cost: '', unit, serves: '', capacity: '', images: [] }]);
     this.selectedPackage.set(this.packages().length - 1); // edit the new one
     this.scheduleSave();
   }
@@ -1227,6 +1249,24 @@ export class ItemEditComponent {
     if (r.type === 'image') this.promoteHero(r);
     this.imageDrawer.set(false);
     this.scheduleSave();
+  }
+  // pV2-STORE-PACKAGES-01 — the variant's own gallery (standard app-image-gallery).
+  protected packageCoverUrl(p: PackageRow): string | null {
+    return p.images.find((i) => i.is_hero)?.url ?? p.images[0]?.url ?? null;
+  }
+  private patchPackageImages(images: GalleryImage[]): void {
+    const i = this.selectedPackage();
+    this.packages.update((p) => p.map((r, x) => (x === i ? { ...r, images } : r)));
+    this.scheduleSave();
+  }
+  protected onPackageImagesChange(imgs: GalleryImage[]): void {
+    // Cover = first (mirrors the main gallery: position 0 is the hero).
+    this.patchPackageImages(imgs.map((img, idx) => ({ ...img, is_hero: idx === 0 })));
+  }
+  protected onPackageSetCover(img: GalleryImage): void {
+    const cur = this.selectedPackageRow()?.images ?? [];
+    const rest = cur.filter((i) => i.url !== img.url).map((i) => ({ ...i, is_hero: false }));
+    this.patchPackageImages([{ ...img, is_hero: true }, ...rest]);
   }
   protected onRemoveImage(): void {
     // Drop the current cover from the gallery; the next image (if any) becomes
@@ -1317,6 +1357,7 @@ export class ItemEditComponent {
                   unit: p.unit || null,
                   serves: p.serves === '' ? null : Number(p.serves),
                   capacity: p.capacity === '' ? null : Number(p.capacity),
+                  images: p.images,
                 })),
               packages_meta: this.packagesMeta(),
             }
