@@ -229,7 +229,7 @@ const WHATS_HOT = "What's Hot";
           @if (editing()) {
             <div class="bp-card bp-edit-section mt-4" [class.is-collapsed]="!sectionOpen('extras')">
               <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('extras')">
-                <h3 class="bp-edit-section-title">Volume pricing &amp; Variants</h3>
+                <h3 class="bp-edit-section-title">Pricing &amp; Options</h3>
                 <lucide-icon [name]="sectionOpen('extras') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
               </button>
               @if (sectionOpen('extras')) {
