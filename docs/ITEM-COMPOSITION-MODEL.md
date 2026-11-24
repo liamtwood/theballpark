@@ -114,6 +114,38 @@ convert as they're touched. The bulk `attributes.variants` → rows migration in
 **Scope now:** options only (the fold-into-line `variant` children). Spaces, add-ons and
 reusable components stay on the sequence below; this addendum doesn't pull them forward.
 
+## Addendum 2026-11-24 — "How is this sold?" (category-driven sell modes)
+
+Authoring now opens with one question — **"How is this sold?"** — whose options are
+**driven by the item's category**, not a fixed list (engine thesis: config on the
+taxonomy, not a fork). A venue sells by *space*, catering by *tiers/per-guest*,
+furniture by *size*. Decided with Liam 2026-11-24.
+
+**Vocabulary** (`client-v2/.../store/sell-modes.ts`) — a small reusable set, each mode
+seeds the composition:
+- **Single** → no options; base price on the item (the Cost block).
+- **Tiers** → seeds Bronze/Silver/Gold, label "Package", buttons.
+- **Sizes** → seeds Small/Medium/Large, label "Size", buttons.
+- **Spaces** → label "Space", picklist, new rows default to the **Capacity** unit.
+- **Custom** → blank, label "Option"; you add your own (always offered).
+
+**Category → modes.** Each top category maps to its applicable modes. **Hardcoded in
+the client by category name for now** (`BY_CATEGORY` in sell-modes.ts) — the clean home
+is a `meta.sell_modes` JSONB column on `categories` + an admin editor, deferred (the
+`categories` table has no `meta` column yet; `ref` is the stable key when it lands).
+Decisions: modes are **suggestions, never a lock** (Custom always present); seed logic
+is **seed-empty, confirm-overwrite** — Single/Tiers/Sizes replace rows (confirm if
+edited), **Spaces/Custom keep existing rows and only re-label** (so switching mode on a
+populated item never wipes it).
+
+**Storage.** The chosen mode persists as `attributes.packages_meta.soldAs`; when unset
+(pre-existing items) it's **derived** — rows present → `custom`, else `single`. The
+Capacity unit (`item_unit.capacity`, `meta.needs: 'capacity'`) stores its number in
+`attributes.capacity` (item) / a `capacity` key (package row), like `size` — no column.
+
+**Not yet:** the admin editor for per-category modes; **multipick** cart behaviour (the
+config exposes it, but it shows as pick-one until the add-ons multi-line step).
+
 ## Open follow-ons
 - Availability shape (calendar storage; supplier-maintained vs API-fed) — deferred with spaces.
 - Variant **BPIN postfix / SKU** (ADR-0002, main repo) — once variants are rows they get their own BPIN, so the derived `<BPIN>-<postfix>` SKU may become moot or simplify; reconcile at migration time.

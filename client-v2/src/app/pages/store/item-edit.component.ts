@@ -31,6 +31,7 @@ import { CustomizeDialogComponent } from '../projects/customize-dialog.component
 import { estimateTotal } from '../projects/estimate-total.util';
 import { DecimalPipe } from '@angular/common';
 import { VariantMatrix, normalizeVariants, variantMatrixFor } from '../../shared/catalogue/variants.util';
+import { SellModeCode, SellModeDef, SELL_MODES, sellModesForCategory, sellModeSeed } from './sell-modes';
 
 interface ItemForm {
   name: string;
@@ -72,6 +73,7 @@ interface PackagesMeta {
   label: string;                       // group heading + picker dimension name ("Package" / "Space")
   presentation: 'buttons' | 'picklist'; // buyer sees chips (buttons) or a dropdown (picklist)
   select: 'one' | 'multi';             // pick one (built) or multipick (behaviour pending)
+  soldAs: SellModeCode | '';           // the chosen "How is this sold?" mode ('' = derive from state)
 }
 
 /** The merchandising tag the shopfront's "What's Hot" menu keys on. */
@@ -287,6 +289,21 @@ const WHATS_HOT = "What's Hot";
                 <lucide-icon [name]="sectionOpen('extras') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
               </button>
               @if (sectionOpen('extras')) {
+                <!-- pV2-STORE-PACKAGES-01 — How is this sold? Category-driven sell modes
+                     (sell-modes.ts); picking one seeds the composition below. -->
+                <div class="bp-qv-spec mt-4">
+                  <span class="bp-qv-spec__label"><lucide-icon name="sparkles" [size]="13" /> How is this sold?</span>
+                  <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    @for (m of sellModes(); track m.code) {
+                      <button type="button" class="bp-sellmode" [class.bp-sellmode--on]="soldAs() === m.code" (click)="applySellMode(m.code)">
+                        <span class="bp-sellmode__label">{{ m.label }}</span>
+                        <span class="bp-sellmode__hint">{{ m.hint }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                @if (soldAs() === 'single') {
                 <!-- Cost (price + unit + unit-driven) moved here from Primary (Liam 2026-11-24).
                      mt-4 so title→Cost equals Cost→Variants (both 16px). -->
                 <div class="bp-qv-spec mt-4">
@@ -376,11 +393,12 @@ const WHATS_HOT = "What's Hot";
                   </button>
                 </div>
               </div>
+              }
 
-              <!-- pV2-STORE-PACKAGES-01 — Packages: child "variant" items authored
-                   as a small table (Liam 2026-11-24). Transitional store
-                   attributes.packages; next step persists each row as a
-                   type='variant' child item (parent_item_id). -->
+              @if (soldAs() !== 'single') {
+              <!-- pV2-STORE-PACKAGES-01 — the composition editor: chips + per-row form,
+                   seeded by "How is this sold?" above. One mechanism for packages /
+                   options / sizes / spaces. -->
               <div class="bp-qv-spec mt-4">
                 <span class="bp-qv-spec__label"><lucide-icon name="layers" [size]="13" /> {{ packagesMeta().label || 'Package' }}</span>
                 <!-- Group config: what it's called + how the buyer picks (pV2-STORE-PACKAGES-01). -->
@@ -431,6 +449,7 @@ const WHATS_HOT = "What's Hot";
                   </div>
                 }
               </div>
+              }
               }
             </div>
           }
@@ -733,8 +752,48 @@ export class ItemEditComponent {
   protected readonly selectedPackage = signal(0);
   protected readonly selectedPackageRow = computed<PackageRow | null>(() => this.packages()[this.selectedPackage()] ?? null);
   // pV2-STORE-PACKAGES-01 — group presentation config.
-  protected readonly packagesMeta = signal<PackagesMeta>({ label: 'Package', presentation: 'buttons', select: 'one' });
+  protected readonly packagesMeta = signal<PackagesMeta>({ label: 'Package', presentation: 'buttons', select: 'one', soldAs: '' });
   protected patchPackagesMeta(p: Partial<PackagesMeta>): void { this.packagesMeta.update((m) => ({ ...m, ...p })); this.scheduleSave(); }
+
+  // ── "How is this sold?" — category-driven sell modes (sell-modes.ts) ──────
+  /** The item's TOP category name (form.category_id → the categories list). */
+  protected readonly topCategoryName = computed<string | null>(() =>
+    (this.categoriesRes.value() ?? []).find((c) => c.id === this.form().category_id)?.name ?? null,
+  );
+  /** The sell modes offered for this item's category (always ends in Custom). */
+  protected readonly sellModes = computed<SellModeDef[]>(() =>
+    sellModesForCategory(this.topCategoryName()).map((c) => SELL_MODES[c]),
+  );
+  /** The current mode — stored, else derived (packages present → custom, else single). */
+  protected readonly soldAs = computed<SellModeCode>(() => {
+    const s = this.packagesMeta().soldAs;
+    if (s) return s;
+    return this.packages().length ? 'custom' : 'single';
+  });
+  /** Pick a sell mode — seeds the composition; confirms before replacing edited rows. */
+  protected async applySellMode(code: SellModeCode): Promise<void> {
+    if (code === this.soldAs() && this.packagesMeta().soldAs) return;
+    const seed = sellModeSeed(code);
+    const hasRows = this.packages().some((p) => p.name.trim() !== '');
+    // single clears options; tiers/sizes seed a named set → both REPLACE existing rows.
+    // spaces/custom carry no seed rows, so they keep whatever's there (just re-label).
+    const willReplaceRows = code === 'single' || seed.rowNames.length > 0;
+    if (hasRows && willReplaceRows) {
+      const ok = await this.confirm.ask({
+        title: 'Change how this is sold?',
+        message: 'This replaces the current options with a fresh set — your edits to them will be lost.',
+        confirmLabel: 'Replace',
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    this.packagesMeta.set({ ...seed.meta, soldAs: code });
+    if (willReplaceRows) {
+      this.packages.set(seed.rowNames.map((name) => ({ name, description: '', cost: '', unit: seed.rowUnit, serves: '', capacity: '' })));
+      this.selectedPackage.set(0);
+    }
+    this.scheduleSave();
+  }
   protected readonly presentationOptions: EditFieldOption[] = [{ label: 'Buttons', value: 'buttons' }, { label: 'Picklist', value: 'picklist' }];
   protected readonly selectOptions: EditFieldOption[] = [{ label: 'Pick one', value: 'one' }, { label: 'Multipick (coming soon)', value: 'multi' }];
   protected readonly rawAttributes = signal<Record<string, unknown>>({});
@@ -1080,10 +1139,13 @@ export class ItemEditComponent {
         capacity: p['capacity'] == null ? '' : String(p['capacity']),
       })));
       const meta = (attrs['packages_meta'] ?? {}) as Partial<PackagesMeta>;
+      const soldAsRaw = meta.soldAs;
+      const soldAsOk = (['single', 'tiers', 'sizes', 'spaces', 'custom'] as const).includes(soldAsRaw as SellModeCode);
       this.packagesMeta.set({
         label: typeof meta.label === 'string' && meta.label.trim() ? meta.label : 'Package',
         presentation: meta.presentation === 'picklist' ? 'picklist' : 'buttons',
         select: meta.select === 'multi' ? 'multi' : 'one',
+        soldAs: soldAsOk ? (soldAsRaw as SellModeCode) : '',
       });
       return item;
     },
@@ -1128,7 +1190,8 @@ export class ItemEditComponent {
 
   // ── Packages (child "variant" items) — chips + per-row form (pV2-STORE-PACKAGES-01) ──
   protected addPackage(): void {
-    this.packages.update((p) => [...p, { name: '', description: '', cost: '', unit: '', serves: '', capacity: '' }]);
+    const unit = this.soldAs() === 'spaces' ? 'capacity' : ''; // spaces default to a capacity
+    this.packages.update((p) => [...p, { name: '', description: '', cost: '', unit, serves: '', capacity: '' }]);
     this.selectedPackage.set(this.packages().length - 1); // edit the new one
     this.scheduleSave();
   }
