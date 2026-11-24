@@ -255,8 +255,9 @@ const WHATS_HOT = "What's Hot";
                 <lucide-icon [name]="sectionOpen('extras') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
               </button>
               @if (sectionOpen('extras')) {
-                <!-- Cost (price + unit + unit-driven) moved here from Primary (Liam 2026-11-24). -->
-                <div class="bp-qv-spec">
+                <!-- Cost (price + unit + unit-driven) moved here from Primary (Liam 2026-11-24).
+                     mt-4 so title→Cost equals Cost→Variants (both 16px). -->
+                <div class="bp-qv-spec mt-4">
                   <div class="flex items-center justify-between gap-2">
                     <span class="bp-qv-spec__label"><lucide-icon name="wallet" [size]="13" /> Cost</span>
                     @if (isEdit) {
