@@ -78,7 +78,7 @@ export function normalizeVariants(raw: unknown): VariantMatrix | null {
  *  "what's included"). Lets the existing variant picker render packages identically
  *  (a button with the name, the cost under it, the description on pick). Transitional:
  *  reads attributes.packages; superseded once packages persist as child items. */
-export function packagesToMatrix(raw: unknown): VariantMatrix | null {
+export function packagesToMatrix(raw: unknown, label = 'Package'): VariantMatrix | null {
   if (!Array.isArray(raw) || !raw.length) return null;
   const values: VariantValue[] = raw
     .map((p) => {
@@ -92,14 +92,17 @@ export function packagesToMatrix(raw: unknown): VariantMatrix | null {
       };
     })
     .filter((v) => v.value.trim() !== '');
-  return values.length ? { dimensions: [{ name: 'Package', values }] } : null;
+  return values.length ? { dimensions: [{ name: label, values }] } : null;
 }
 
 /** The display matrix for an item: its real variants, else packages as a single
- *  "Package" dimension (pV2-STORE-PACKAGES-01). One source for every price surface. */
+ *  dimension named by `packages_meta.label` (pV2-STORE-PACKAGES-01). One source for
+ *  every price surface. */
 export function variantMatrixFor(attributes: Record<string, unknown> | null): VariantMatrix | null {
   const a = attributes ?? {};
-  return normalizeVariants(a['variants']) ?? packagesToMatrix(a['packages']);
+  const meta = (a['packages_meta'] ?? {}) as { label?: unknown };
+  const label = typeof meta.label === 'string' && meta.label.trim() ? meta.label.trim() : 'Package';
+  return normalizeVariants(a['variants']) ?? packagesToMatrix(a['packages'], label);
 }
 
 /** Final unit price for a selection: base, then per dimension in order — absolute

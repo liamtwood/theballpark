@@ -63,6 +63,15 @@ interface PackageRow {
   serves: string;
 }
 
+/** pV2-STORE-PACKAGES-01 — per-group presentation config (attributes.packages_meta):
+ *  what the group is called, and how the buyer picks. `select:'multi'` (multipick) is
+ *  authored now but its multi-line cart behaviour lands with the add-ons step. */
+interface PackagesMeta {
+  label: string;                       // group heading + picker dimension name ("Package" / "Space")
+  presentation: 'buttons' | 'picklist'; // buyer sees chips (buttons) or a dropdown (picklist)
+  select: 'one' | 'multi';             // pick one (built) or multipick (behaviour pending)
+}
+
 /** The merchandising tag the shopfront's "What's Hot" menu keys on. */
 const WHATS_HOT = "What's Hot";
 
@@ -368,7 +377,16 @@ const WHATS_HOT = "What's Hot";
                    attributes.packages; next step persists each row as a
                    type='variant' child item (parent_item_id). -->
               <div class="bp-qv-spec mt-4">
-                <span class="bp-qv-spec__label"><lucide-icon name="layers" [size]="13" /> Packages</span>
+                <span class="bp-qv-spec__label"><lucide-icon name="layers" [size]="13" /> {{ packagesMeta().label || 'Package' }}</span>
+                <!-- Group config: what it's called + how the buyer picks (pV2-STORE-PACKAGES-01). -->
+                <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <app-edit-field label="Group label" density="page" [editing]="true" [value]="packagesMeta().label" (valueChange)="patchPackagesMeta({ label: $event })" />
+                  <app-edit-field label="Show as" type="select" density="page" [options]="presentationOptions" [editing]="true" [value]="packagesMeta().presentation" (valueChange)="patchPackagesMeta({ presentation: $any($event) })" />
+                  <app-edit-field label="Selection" type="select" density="page" [options]="selectOptions" [editing]="true" [value]="packagesMeta().select" (valueChange)="patchPackagesMeta({ select: $any($event) })" />
+                </div>
+                @if (packagesMeta().select === 'multi') {
+                  <p class="bp-caption text-secondary mt-1">Multipick shows as pick-one for now — multi-line selection lands with add-ons.</p>
+                }
                 <!-- Chips (one per package) + Add — the SAME chip the buyer sees.
                      Click a chip to edit that package in the form below. -->
                 <div class="mt-3 flex flex-wrap items-stretch gap-2">
@@ -705,6 +723,11 @@ export class ItemEditComponent {
   protected readonly packages = signal<PackageRow[]>([]);
   protected readonly selectedPackage = signal(0);
   protected readonly selectedPackageRow = computed<PackageRow | null>(() => this.packages()[this.selectedPackage()] ?? null);
+  // pV2-STORE-PACKAGES-01 — group presentation config.
+  protected readonly packagesMeta = signal<PackagesMeta>({ label: 'Package', presentation: 'buttons', select: 'one' });
+  protected patchPackagesMeta(p: Partial<PackagesMeta>): void { this.packagesMeta.update((m) => ({ ...m, ...p })); this.scheduleSave(); }
+  protected readonly presentationOptions: EditFieldOption[] = [{ label: 'Buttons', value: 'buttons' }, { label: 'Picklist', value: 'picklist' }];
+  protected readonly selectOptions: EditFieldOption[] = [{ label: 'Pick one', value: 'one' }, { label: 'Multipick (coming soon)', value: 'multi' }];
   protected readonly rawAttributes = signal<Record<string, unknown>>({});
   protected readonly measureSuggestions = ['Height', 'Width', 'Depth', 'Weight', 'Seat Height', 'Volume', 'Material'];
 
@@ -741,6 +764,7 @@ export class ItemEditComponent {
     packages: this.packages()
       .filter((p) => p.name.trim() !== '')
       .map((p) => ({ name: p.name.trim(), description: p.description.trim() || null, cost: p.cost === '' ? null : Number(p.cost) })),
+    packages_meta: this.packagesMeta(),
   }));
   protected readonly hasPreview = computed(() => !!variantMatrixFor(this.previewAttributes())?.dimensions.length);
   protected readonly basePriceNum = computed<number | null>(() => {
@@ -787,8 +811,8 @@ export class ItemEditComponent {
    *  groups, `options`, `price_tiers`) — keeps _source + anything else untouched. */
   private strippedRawAttributes(): Record<string, unknown> {
     const { dimensions: _legacy, specifications: _s, features: _f, style: _st,
-      measurements: _m, materials: _mt, options: _o, price_tiers: _pt, variants: _v, size: _sz, packages: _pk, ...rest } = this.rawAttributes();
-    void _legacy; void _s; void _f; void _st; void _m; void _mt; void _o; void _pt; void _v; void _sz; void _pk;
+      measurements: _m, materials: _mt, options: _o, price_tiers: _pt, variants: _v, size: _sz, packages: _pk, packages_meta: _pm, ...rest } = this.rawAttributes();
+    void _legacy; void _s; void _f; void _st; void _m; void _mt; void _o; void _pt; void _v; void _sz; void _pk; void _pm;
     return rest;
   }
 
@@ -1044,6 +1068,12 @@ export class ItemEditComponent {
         unit: typeof p['unit'] === 'string' ? p['unit'] : '',
         serves: p['serves'] == null ? '' : String(p['serves']),
       })));
+      const meta = (attrs['packages_meta'] ?? {}) as Partial<PackagesMeta>;
+      this.packagesMeta.set({
+        label: typeof meta.label === 'string' && meta.label.trim() ? meta.label : 'Package',
+        presentation: meta.presentation === 'picklist' ? 'picklist' : 'buttons',
+        select: meta.select === 'multi' ? 'multi' : 'one',
+      });
       return item;
     },
   });
@@ -1213,6 +1243,7 @@ export class ItemEditComponent {
                   unit: p.unit || null,
                   serves: p.serves === '' ? null : Number(p.serves),
                 })),
+              packages_meta: this.packagesMeta(),
             }
           : {}),
         // v0.2.0 unit-driven: size is a descriptive label living in attributes

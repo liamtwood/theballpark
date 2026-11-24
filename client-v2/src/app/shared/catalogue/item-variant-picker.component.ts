@@ -24,23 +24,32 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
         @for (d of dimensions(); track d.name) {
           <div class="bp-variant-row">
             <span class="bp-variant-row__label">{{ d.name }}</span>
-            <div class="bp-variant-row__opts">
-              @for (v of d.values; track v.value) {
-                <button
-                  type="button"
-                  class="bp-variant-chip"
-                  [class.bp-variant-chip--on]="selected()[d.name] === v.value"
-                  [style.--vc]="v.color || 'var(--theme-accent)'"
-                  (click)="pick(d.name, v.value)"
-                >
-                  @if (selected()[d.name] === v.value) {
-                    <lucide-icon class="bp-variant-chip__tick" name="check" [size]="15" />
-                  }
-                  <span class="bp-variant-chip__name">{{ v.value }}</span>
-                  @if (valuePrice(v); as vp) { <span class="bp-variant-chip__price">{{ vp }}</span> }
-                </button>
-              }
-            </div>
+            @if (presentation() === 'picklist') {
+              <!-- pV2-STORE-PACKAGES-01 — picklist presentation (packages_meta). -->
+              <select class="bp-input-field bp-variant-select" (change)="choose(d.name, $any($event.target).value)">
+                @for (v of d.values; track v.value) {
+                  <option [value]="v.value" [selected]="selected()[d.name] === v.value">{{ v.value }}@if (valuePrice(v); as vp) { — {{ vp }}}</option>
+                }
+              </select>
+            } @else {
+              <div class="bp-variant-row__opts">
+                @for (v of d.values; track v.value) {
+                  <button
+                    type="button"
+                    class="bp-variant-chip"
+                    [class.bp-variant-chip--on]="selected()[d.name] === v.value"
+                    [style.--vc]="v.color || 'var(--theme-accent)'"
+                    (click)="pick(d.name, v.value)"
+                  >
+                    @if (selected()[d.name] === v.value) {
+                      <lucide-icon class="bp-variant-chip__tick" name="check" [size]="15" />
+                    }
+                    <span class="bp-variant-chip__name">{{ v.value }}</span>
+                    @if (valuePrice(v); as vp) { <span class="bp-variant-chip__price">{{ vp }}</span> }
+                  </button>
+                }
+              </div>
+            }
           </div>
         }
 
@@ -86,6 +95,7 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
       .bp-variant-row__opts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
       /* .bp-variant-chip* now live in styles.css (shared with the item-edit Packages
          editor so authoring chips match buyer chips) — pV2-STORE-PACKAGES-01. */
+      .bp-variant-select { max-width: 22rem; }
       .bp-variant-price { display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.15rem; }
       /* pV2-STORE-VARIANT-DESC-01 — the picked value's supporting copy, under the rows. */
       .bp-variant-desc { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -113,6 +123,12 @@ export class ItemVariantPickerComponent {
   // dimension, so a package item renders through the same picker.
   private readonly matrix = computed<VariantMatrix | null>(() => variantMatrixFor(this.attributes()));
   protected readonly dimensions = computed(() => this.matrix()?.dimensions ?? []);
+  /** pV2-STORE-PACKAGES-01 — buyer picks via chips (buttons) or a dropdown (picklist),
+   *  per attributes.packages_meta.presentation. Real variants always render as chips. */
+  protected readonly presentation = computed<'buttons' | 'picklist'>(() => {
+    const m = (this.attributes() as Record<string, unknown> | null)?.['packages_meta'] as { presentation?: unknown } | undefined;
+    return m?.presentation === 'picklist' ? 'picklist' : 'buttons';
+  });
   /** Any value affects the price → show the price line. */
   protected readonly hasPricing = computed(() => hasPricing(this.matrix()));
   /** pV2-STORE-VARIANT-DESC-01 — descriptions of the currently selected value(s). */
@@ -159,6 +175,11 @@ export class ItemVariantPickerComponent {
       else next[dim] = value;
       return next;
     });
+  }
+
+  /** Picklist (dropdown) selection — always sets, never clears. */
+  protected choose(dim: string, value: string): void {
+    this.selected.update((s) => ({ ...s, [dim]: value }));
   }
 
   /** The price shown UNDER a value's name — whole £ when round, 2 dps when there
