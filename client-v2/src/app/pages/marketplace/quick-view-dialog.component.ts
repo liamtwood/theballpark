@@ -161,9 +161,11 @@ type Pane = 'item' | 'supplier';
                   @if (it.description) {
                     <div class="bp-md bp-body text-secondary" [innerHTML]="it.description | md"></div>
                   }
-                  <!-- Standing base price shows unless PRICED variants own the price
-                       (free-choice dimensions like a menu picker don't — Liam 2026-11-11). -->
-                  @if (!hasVariants() && it.basePrice !== null) {
+                  <!-- Standing base price hides whenever the item has a variant picker
+                       (Liam 2026-11-24): the variant buttons carry no price (showPrice
+                       false) and the configured price rides the Add-to-ballpark CTA, so a
+                       "From £X" up top is misleading. Non-variant items still show it. -->
+                  @if (!hasVariantDims() && it.basePrice !== null) {
                     <div class="bp-price-large">From {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-2' }}@if (priceUnitLabel(it); as u) { <span class="bp-body-small font-normal text-secondary">/ {{ u }}</span> }</div>
                   }
                   <!-- Hairline separates the heading (name / description / price) from
@@ -632,12 +634,6 @@ export class QuickViewDialogComponent {
   protected stepQty(d: number): void { this.qty.set(Math.max(1, this.qty() + d)); }
   protected setQty(v: string): void { const n = Math.floor(Number(v)); this.qty.set(Number.isFinite(n) && n >= 1 ? n : 1); }
 
-  /** Variable product? — the variant picker then owns the price display. */
-  protected readonly hasVariants = computed(() => {
-    const a = this.item()?.attributes as Record<string, unknown> | null | undefined;
-    const v = a && typeof a === 'object' ? (a['variants'] as { combos?: unknown } | undefined) : undefined;
-    return !!(v && Array.isArray(v.combos) && v.combos.length);
-  });
   /** Has picker DIMENSIONS (incl. free-pick with no combos) — needs a choice before
    *  add-to-quote (Liam: variants → "Select options", never a blind add). */
   protected readonly hasVariantDims = computed(() => {
