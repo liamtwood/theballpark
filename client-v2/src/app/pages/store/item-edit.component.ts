@@ -11,7 +11,7 @@ import { MessageService } from 'primeng/api';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { errorDetail } from '../../core/http-error';
-import { StoreItemService, StoreItemWrite } from '../../core/store/store-item.service';
+import { StoreItemService, StoreItemWrite, VariantRow, VariantInput } from '../../core/store/store-item.service';
 import { AdminOrgService } from '../../core/admin-org.service';
 import { ConfirmService } from '../../shared/confirm/confirm.service';
 import { CategoryInfo } from '../../shared/catalogue/catalogue.types';
@@ -59,6 +59,7 @@ interface ItemForm {
  *  attributes.packages, migrating to a type='variant' child item (parent_item_id)
  *  next. See docs/ITEM-COMPOSITION-MODEL.md. */
 interface PackageRow {
+  id?: string;        // the persisted variant child item id (null until first save) — pV2-STORE-VARIANT-CHILDREN-01
   name: string;
   description: string;
   cost: string;
@@ -275,7 +276,11 @@ const WHATS_HOT = "What's Hot";
             }
           </div>
 
-          <!-- INSTALLATION (collapsed by default) — its own section (Liam). -->
+          }
+
+          @if (tab() === 'addons') {
+          <!-- INSTALLATION — moved to its own Add Ons tab for now (Liam 2026-11-25); the
+               add-ons model lands here later. -->
           <div class="bp-card bp-edit-section" [class.is-collapsed]="!sectionOpen('installation')">
             <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('installation')">
               <h3 class="bp-edit-section-title">Installation</h3>
@@ -443,13 +448,21 @@ const WHATS_HOT = "What's Hot";
                      Click a chip to edit that package in the form below. -->
                 <div class="mt-3 flex flex-wrap items-stretch gap-2">
                   @for (p of packages(); track $index) {
-                    <button type="button" class="bp-variant-chip"
+                    <button type="button" class="bp-variant-chip bp-variant-chip--draggable"
                             [class.bp-variant-chip--on]="selectedPackage() === $index"
+                            [class.bp-variant-chip--dragging]="dragIndex() === $index"
+                            [class.bp-variant-chip--dragover]="dragOverIndex() === $index && dragIndex() !== $index"
                             [style.--vc]="p.color || 'var(--theme-accent)'"
+                            draggable="true"
+                            (dragstart)="onChipDragStart($index, $event)"
+                            (dragover)="onChipDragOver($index, $event)"
+                            (dragleave)="onChipDragLeave($index)"
+                            (drop)="onChipDrop($index, $event)"
+                            (dragend)="onChipDragEnd()"
                             (click)="selectedPackage.set($index)">
                       @if (selectedPackage() === $index) { <lucide-icon class="bp-variant-chip__tick" name="check" [size]="15" /> }
                       <span class="bp-variant-chip__name">{{ p.name.trim() || 'Untitled' }}</span>
-                      @if (p.cost !== '') { <span class="bp-variant-chip__price">£{{ p.cost }}</span> }
+                      @if (chipPrice(p.cost); as cp) { <span class="bp-variant-chip__price">{{ cp }}</span> }
                     </button>
                   }
                   <button type="button" class="bp-variant-chip bp-variant-chip--add" (click)="addPackage()" aria-label="Add package">
@@ -534,9 +547,12 @@ const WHATS_HOT = "What's Hot";
           }
           }
 
-          @if (tab() === 'details') {
-          <!-- pV2-STORE-TAXONOMY-01 — Classification (collapsed by default) above the
-               action buttons (Liam): Category cascade → Subcategory → Sub-subcategory. -->
+          @if (tab() === 'classify') {
+          <!-- pV2-STORE-TAXONOMY-01 — Classification tab (Liam 2026-11-25): the item's
+               Category cascade → Subcategory → Sub-subcategory, Tier, and Tags. -->
+          @if (!isEdit) {
+            <div class="bp-card"><p class="bp-body-small text-secondary">Add a name and category on the Listing tab first — you can classify the item once it's saved.</p></div>
+          }
           @if (isEdit) {
             <div class="bp-card bp-edit-section" [class.is-collapsed]="!sectionOpen('classification')">
               <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('classification')">
@@ -546,11 +562,18 @@ const WHATS_HOT = "What's Hot";
               @if (sectionOpen('classification')) {
               <div class="mt-3">
                 @if (editing()) {
+                  <!-- Top Category — intentionally mirrored here from the Listing tab
+                       (Liam 2026-11-25): the SAME control + handler, so classifying in one
+                       place reflects in the other. Changing it resets the cascade below. -->
+                  <app-edit-field label="Category" type="select" density="page" [filter]="true"
+                    [options]="categoryOptions()" [editing]="true" [value]="form().category_id" (valueChange)="onCategory($event)" />
                   <!-- Classify: cascade under the chosen Category — Subcategory, then
                        Sub-subcategory when the picked subcategory has children. The
                        DEEPEST pick is stored as subcategory_id. -->
-                  <app-edit-field label="Subcategory" type="select" density="page" [filter]="true"
-                    [options]="subL2Options()" [editing]="true" [value]="subL2()" (valueChange)="onSubL2($event)" />
+                  <div class="mt-3">
+                    <app-edit-field label="Subcategory" type="select" density="page" [filter]="true"
+                      [options]="subL2Options()" [editing]="true" [value]="subL2()" (valueChange)="onSubL2($event)" />
+                  </div>
                   @if (subL3Options().length) {
                     <div class="mt-3">
                       <app-edit-field label="Sub-subcategory" type="select" density="page" [filter]="true"
@@ -559,7 +582,9 @@ const WHATS_HOT = "What's Hot";
                   }
                   @if (subcategoryLabel(); as sc) { <div class="bp-caption text-muted mt-2">Currently: {{ sc }}</div> }
                 } @else {
-                  <div class="bp-field-label">Subcategory</div>
+                  <div class="bp-field-label">Category</div>
+                  <div class="bp-body-small text-text">{{ topCategoryName() || 'Not set' }}</div>
+                  <div class="bp-field-label mt-3">Subcategory</div>
                   @if (subcategoryLabel(); as sc) {
                     <div class="bp-body-small text-text">{{ sc }}</div>
                   } @else {
@@ -620,7 +645,7 @@ const WHATS_HOT = "What's Hot";
           }
 
           <app-item-edit-actions
-            [autosave]="isEdit || !!createdId()"
+            [autosave]="true"
             [isModerator]="isModerator()" [isViewer]="isViewer()" [isApproved]="isApproved()"
             [currentStatus]="currentStatus()" [deciding]="deciding()" [saving]="saving()"
             [canDelete]="canDelete()" [deleting]="deleting()"
@@ -735,10 +760,12 @@ export class ItemEditComponent {
   protected readonly TABS = [
     { key: 'listing', label: 'Listing' },
     { key: 'pricing', label: 'Pricing' },
+    { key: 'addons', label: 'Add Ons' },
     { key: 'details', label: 'Details' },
+    { key: 'classify', label: 'Classify' },
   ] as const;
-  protected readonly tab = signal<'listing' | 'pricing' | 'details'>('listing');
-  protected setTab(k: 'listing' | 'pricing' | 'details'): void { this.tab.set(k); }
+  protected readonly tab = signal<'listing' | 'pricing' | 'addons' | 'details' | 'classify'>('listing');
+  protected setTab(k: 'listing' | 'pricing' | 'addons' | 'details' | 'classify'): void { this.tab.set(k); }
 
   // pV2-BUILDUP-03 — the "Cost build-up / estimate" composition editor. The panel
   // (app-customize-dialog) runs in ITEM mode off itemId (loads/saves the item's own
@@ -1268,18 +1295,30 @@ export class ItemEditComponent {
       // pV2-STORE-VARIANTS-UPCHARGE-01 — hydrate the variant matrix (upcharge shape;
       // legacy combos normalised to per-value upcharges).
       this.variantsState.set(normalizeVariants(attrs['variants']));
-      // pV2-STORE-PACKAGES-01 — hydrate the Packages table (transitional store).
-      const pkgs = Array.isArray(attrs['packages']) ? (attrs['packages'] as Record<string, unknown>[]) : [];
-      this.packages.set(pkgs.map((p) => ({
-        name: typeof p['name'] === 'string' ? p['name'] : '',
-        description: typeof p['description'] === 'string' ? p['description'] : '',
-        cost: p['cost'] == null ? '' : String(p['cost']),
-        unit: typeof p['unit'] === 'string' ? p['unit'] : '',
-        serves: p['serves'] == null ? '' : String(p['serves']),
-        capacity: p['capacity'] == null ? '' : String(p['capacity']),
-        images: Array.isArray(p['images']) ? (p['images'] as GalleryImage[]) : [],
-        color: typeof p['color'] === 'string' ? p['color'] : '',
-      })));
+      // pV2-STORE-VARIANT-CHILDREN-01 — PREFER real variant child items (type='variant').
+      // Fall back to the transitional attributes.packages JSON when an item has no child
+      // rows yet (existing items; Liam migrates those himself). Owner edit path only — the
+      // moderator/viewer/admin-org reads use the marketplace projection, not this endpoint.
+      let kids: VariantRow[] = [];
+      if (!this.targetOrgId && !this.isModerator() && !this.isViewer()) {
+        try { kids = await firstValueFrom(this.store.getVariants(params)); } catch { kids = []; }
+      }
+      this.hadChildRows.set(kids.length > 0);
+      if (kids.length) {
+        this.packages.set(kids.map((v) => this.childToPackageRow(v)));
+      } else {
+        const pkgs = Array.isArray(attrs['packages']) ? (attrs['packages'] as Record<string, unknown>[]) : [];
+        this.packages.set(pkgs.map((p) => ({
+          name: typeof p['name'] === 'string' ? p['name'] : '',
+          description: typeof p['description'] === 'string' ? p['description'] : '',
+          cost: p['cost'] == null ? '' : String(p['cost']),
+          unit: typeof p['unit'] === 'string' ? p['unit'] : '',
+          serves: p['serves'] == null ? '' : String(p['serves']),
+          capacity: p['capacity'] == null ? '' : String(p['capacity']),
+          images: Array.isArray(p['images']) ? (p['images'] as GalleryImage[]) : [],
+          color: typeof p['color'] === 'string' ? p['color'] : '',
+        })));
+      }
       const meta = (attrs['packages_meta'] ?? {}) as Partial<PackagesMeta>;
       const soldAsRaw = meta.soldAs;
       const soldAsOk = (['single', 'tiers', 'sizes', 'spaces', 'custom', 'volume', 'levels'] as const).includes(soldAsRaw as SellModeCode);
@@ -1346,6 +1385,52 @@ export class ItemEditComponent {
     this.packages.update((p) => p.map((r, x) => (x === i ? { ...r, [key]: val } : r)));
     this.scheduleSave();
   }
+  /** The chip's price label — the house money format (thousands commas; whole £ when
+   *  round, 2 dp when there are pence), matching the buyer-facing variant chip. '' when
+   *  the row has no cost. */
+  protected chipPrice(cost: string): string {
+    if (cost === '' || cost == null) return '';
+    const n = Number(cost);
+    if (!Number.isFinite(n)) return '';
+    const digits = Number.isInteger(n) ? 0 : 2;
+    return '£' + n.toLocaleString('en-GB', { minimumFractionDigits: digits, maximumFractionDigits: 2 });
+  }
+
+  // ── Drag-to-reorder the package chips (pV2-STORE-VARIANT-CHILDREN-01) — mirrors the
+  //    image gallery gesture. The new array order is the authored order; the save writes
+  //    each child's sort_order from its index, so the buyer/card/drill match. ──────────
+  protected readonly dragIndex = signal<number | null>(null);
+  protected readonly dragOverIndex = signal<number | null>(null);
+  protected onChipDragStart(i: number, e: DragEvent): void {
+    this.dragIndex.set(i);
+    if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); }
+  }
+  protected onChipDragOver(i: number, e: DragEvent): void {
+    if (this.dragIndex() === null) return; // only react to a chip drag (not a file drag)
+    e.preventDefault(); // mark a valid drop target
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    this.dragOverIndex.set(i);
+  }
+  protected onChipDragLeave(i: number): void {
+    if (this.dragOverIndex() === i) this.dragOverIndex.set(null);
+  }
+  protected onChipDrop(i: number, e: DragEvent): void {
+    const from = this.dragIndex();
+    this.dragIndex.set(null);
+    this.dragOverIndex.set(null);
+    if (from === null) return; // not a chip drag
+    e.preventDefault();
+    if (from === i) return;
+    this.packages.update((ps) => {
+      const next = [...ps];
+      const [moved] = next.splice(from, 1);
+      next.splice(i, 0, moved);
+      return next;
+    });
+    this.selectedPackage.set(i); // keep the moved one selected
+    this.scheduleSave(); // persists the new order (sort_order written server-side)
+  }
+  protected onChipDragEnd(): void { this.dragIndex.set(null); this.dragOverIndex.set(null); }
   protected patchDraftTier(i: number, key: 'min' | 'max' | 'price', val: string): void {
     this.volumeDraft.update((d) => d.map((r, x) => (x === i ? { ...r, [key]: val } : r)));
   }
@@ -1504,20 +1589,31 @@ export class ItemEditComponent {
       this.toast.add({ severity: 'warn', summary: 'Pick a category', life: 3000 });
       return;
     }
-    const body = this.buildBody(status);
-    // Cancel any pending autosave so an in-flight create can't duplicate this one.
+    // Cancel any PENDING autosave, then wait out any RUNNING one so its minted id is
+    // visible here — otherwise this save reads a null id and CREATES a second row
+    // (duplicate-name violation). The in-flight autosave sets createdId before it clears
+    // the lock, so effectiveId() is correct once we're through.
     if (this.saveTimer) { clearTimeout(this.saveTimer); this.saveTimer = null; }
+    for (let i = 0; i < 100 && this.saveBusy; i++) await new Promise((r) => setTimeout(r, 50));
+    const body = this.buildBody(status);
     this.saving.set(true);
+    this.saveBusy = true;
     const id = this.effectiveId();
     try {
+      let savedId = id;
       if (this.targetOrgId) {
         if (id) await firstValueFrom(this.store.updateForOrg(this.targetOrgId, id, body));
         else await firstValueFrom(this.store.createForOrg(this.targetOrgId, body));
       } else if (id) {
         await firstValueFrom(this.store.update(id, body));
       } else {
-        await firstValueFrom(this.store.create(body));
+        const saved = await firstValueFrom(this.store.create(body));
+        savedId = saved.id;
       }
+      // pV2-STORE-VARIANT-CHILDREN-01 — persist variants as child items (owner path).
+      if (savedId && !this.targetOrgId) await this.persistVariants(savedId);
+      // Mint the id locally too, so a later autosave UPDATEs instead of re-creating.
+      if (!id && savedId) this.createdId.set(savedId);
       this.toast.add({ severity: 'success', summary: successMsg, life: 3000 });
       if (this.targetOrgId) {
         void this.router.navigate(['/suppliers', this.targetOrgId], { queryParams: { tab: 'store' } });
@@ -1526,9 +1622,15 @@ export class ItemEditComponent {
         void this.router.navigate(orgId ? ['/suppliers', orgId] : ['/store']);
       }
     } catch (e) {
-      this.toast.add({ severity: 'error', summary: "Couldn't save — please try again.", detail: errorDetail(e), life: 5000 });
+      // A unique-name clash (items_org_name_uidx) is a user-actionable case, not a
+      // generic failure — name it so they can rename instead of retrying blindly.
+      const dup = /items_org_name_uidx|duplicate key/i.test(`${errorDetail(e)} ${JSON.stringify(e ?? '')}`);
+      this.toast.add(dup
+        ? { severity: 'warn', summary: 'That name is already taken', detail: `You already have an item called “${f.name.trim()}”. Give this one a different name to save.`, life: 6000 }
+        : { severity: 'error', summary: "Couldn't save — please try again.", detail: errorDetail(e), life: 5000 });
     } finally {
       this.saving.set(false);
+      this.saveBusy = false;
     }
   }
 
@@ -1537,6 +1639,9 @@ export class ItemEditComponent {
   //    items (no id) fall back to the explicit Create/Submit buttons. ───────────
   protected readonly saveState = signal<SaveState>('idle');
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** One-save-at-a-time lock shared by autosave + the explicit Save/Submit path, so a
+   *  create can never overlap another create (the duplicate-name race). */
+  private saveBusy = false;
   /** pV2-STORE-ITEM-AUTOSAVE-CREATE-01 — a NEW item has no route id; the first
    *  autosave (once name + category are set) CREATES it and stashes the minted id
    *  here, so every later save updates it. `effectiveId` is "the id to save against":
@@ -1558,6 +1663,11 @@ export class ItemEditComponent {
   }
   private async autosaveNow(): Promise<void> {
     if (!this.autosaveEligible()) return;
+    // Never overlap another save — a second create while the first is in flight both
+    // read a null id and insert the same name (duplicate-name violation). The running
+    // save sets createdId before releasing, so a dropped tick is already covered.
+    if (this.saveBusy) return;
+    this.saveBusy = true;
     const id = this.effectiveId();
     const cs = this.currentStatus();
     // New items (no id yet) are born as drafts; existing items keep their status.
@@ -1574,11 +1684,72 @@ export class ItemEditComponent {
                          : await firstValueFrom(this.store.create(body));
         if (!id) this.createdId.set(saved.id);
       }
+      const savedId = id ?? this.createdId();
+      if (savedId && !this.targetOrgId) await this.persistVariants(savedId);
       this.saveState.set('saved');
     } catch (e) {
       console.warn('[ItemEdit] autosave failed', e);
       this.saveState.set('error');
+    } finally {
+      this.saveBusy = false;
     }
+  }
+
+  // ── pV2-STORE-VARIANT-CHILDREN-01 — variants persist as real child items
+  //    (type='variant', parent_item_id). The parent's attributes.packages JSON is
+  //    still written by buildBody as a transitional mirror (existing items keep
+  //    rendering through it until Liam migrates them); the child rows are the new
+  //    source the picker/card prefer. Owner edit path only — admin cross-org variant
+  //    endpoints land with that surface. ─────────────────────────────────────────
+  /** True once an item is known to carry child variant rows (loaded or saved), so a
+   *  later save that empties the table still POSTs [] to reconcile the soft-delete. */
+  private readonly hadChildRows = signal(false);
+
+  /** The Packages table → the variant child-item payload (named rows only). */
+  private variantsPayload(): VariantInput[] {
+    return this.packages()
+      .filter((p) => p.name.trim() !== '')
+      .map((p) => ({
+        id: p.id,
+        name: p.name.trim(),
+        description: p.description.trim() || null,
+        cost: p.cost === '' ? null : Number(p.cost),
+        unit: p.unit || null,
+        serves: p.serves === '' ? null : Number(p.serves),
+        capacity: p.capacity === '' ? null : Number(p.capacity),
+        color: p.color || null,
+        images: p.images,
+      }));
+  }
+
+  /** A loaded variant CHILD row → the editable Packages table row (carries its id). */
+  private childToPackageRow(v: VariantRow): PackageRow {
+    return {
+      id: v.id,
+      name: v.name ?? '',
+      description: v.description ?? '',
+      cost: v.base_price == null ? '' : String(v.base_price),
+      unit: v.unit ?? '',
+      serves: v.serves == null ? '' : String(v.serves),
+      capacity: v.attributes?.capacity == null ? '' : String(v.attributes.capacity),
+      images: Array.isArray(v.images) ? v.images : [],
+      color: v.attributes?.color ?? '',
+    };
+  }
+
+  /** Reconcile the child rows for the saved parent, then fold the minted ids back into
+   *  the Packages table so the next save UPDATEs (never re-inserts). Skips the request
+   *  entirely for plain items that have never had variants. */
+  private async persistVariants(itemId: string): Promise<void> {
+    const payload = this.variantsPayload();
+    if (!payload.length && !this.hadChildRows()) return;
+    const rows = await firstValueFrom(this.store.saveVariants(itemId, payload));
+    this.hadChildRows.set(rows.length > 0);
+    const byName = new Map(rows.map((r) => [r.name, r.id] as const));
+    this.packages.update((ps) => ps.map((p) => {
+      const rid = byName.get(p.name.trim());
+      return rid && rid !== p.id ? { ...p, id: rid } : p;
+    }));
   }
 
   /** Ballpark-admin moderation — approve (publish) or reject (hide), then back

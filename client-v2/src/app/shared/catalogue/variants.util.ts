@@ -100,14 +100,51 @@ export function packagesToMatrix(raw: unknown, label = 'Package'): VariantMatrix
   return values.length ? { dimensions: [{ name: label, values }] } : null;
 }
 
-/** The display matrix for an item: its real variants, else packages as a single
- *  dimension named by `packages_meta.label` (pV2-STORE-PACKAGES-01). One source for
- *  every price surface. */
-export function variantMatrixFor(attributes: Record<string, unknown> | null): VariantMatrix | null {
+/** pV2-STORE-VARIANT-CHILDREN-01 — a variant CHILD item row, projected onto the
+ *  marketplace item (real `items` row: id/bpin, cost, images, attributes). */
+export interface VariantChild {
+  id?: string;
+  bpin?: string | null;
+  name: string;
+  description?: string | null;
+  cost?: number | null;
+  unit?: string | null;
+  serves?: number | null;
+  attributes?: { color?: string | null; capacity?: number | null } | null;
+  images?: { url?: string; is_hero?: boolean }[] | null;
+}
+
+/** Build the single-dimension matrix from variant CHILD rows (the real items).
+ *  Mirrors packagesToMatrix but reads the child rows instead of the JSON. */
+export function childrenToMatrix(variants: unknown, label = 'Package'): VariantMatrix | null {
+  if (!Array.isArray(variants) || !variants.length) return null;
+  const values: VariantValue[] = (variants as VariantChild[])
+    .map((v) => {
+      const amount = Number(v?.cost) || 0;
+      const imgs = Array.isArray(v?.images) ? v.images : [];
+      const cover = imgs.find((i) => i?.is_hero)?.url ?? imgs[0]?.url ?? null;
+      return {
+        value: String(v?.name ?? ''),
+        mode: (amount ? 'absolute' : 'none') as VariantMode,
+        amount,
+        description: v?.description ? String(v.description) : null,
+        imageUrl: cover ? String(cover) : null,
+        color: v?.attributes?.color ? String(v.attributes.color) : null,
+      };
+    })
+    .filter((v) => v.value.trim() !== '');
+  return values.length ? { dimensions: [{ name: label, values }] } : null;
+}
+
+/** The display matrix for an item. Order of precedence: Option Levels (the
+ *  attributes.variants multi-dim matrix) → real variant CHILD rows → legacy
+ *  attributes.packages JSON (until the item is migrated). One source for every price
+ *  surface (pV2-STORE-VARIANT-CHILDREN-01). */
+export function variantMatrixFor(attributes: Record<string, unknown> | null, variants?: unknown): VariantMatrix | null {
   const a = attributes ?? {};
   const meta = (a['packages_meta'] ?? {}) as { label?: unknown };
   const label = typeof meta.label === 'string' && meta.label.trim() ? meta.label.trim() : 'Package';
-  return normalizeVariants(a['variants']) ?? packagesToMatrix(a['packages'], label);
+  return normalizeVariants(a['variants']) ?? childrenToMatrix(variants, label) ?? packagesToMatrix(a['packages'], label);
 }
 
 /** Final unit price for a selection: base, then per dimension in order — absolute

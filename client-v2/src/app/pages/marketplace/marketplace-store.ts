@@ -62,6 +62,21 @@ export class MarketplaceStore {
 
   /** Subcategory drill (?sub=) — only meaningful with a category set. */
   readonly subcategoryId = computed(() => this.query().get('sub') || null);
+  /** pV2-STORE-VARIANT-CHILDREN-01 — the packages drill: ?parent pins the grid to one
+   *  parent's variant children; ?pkgName carries the parent's name for the back bar. */
+  readonly parentId = computed(() => this.query().get('parent') || null);
+  readonly packageName = computed(() => this.query().get('pkgName') || null);
+  /** The parent's GROUP LABEL (plural, e.g. "Spaces" / "Colours") for the back bar —
+   *  the supplier's own word for the group, not a hardcoded "Packages". */
+  readonly packageLabel = computed(() => this.query().get('pkgLabel') || null);
+  /** Exit the packages drill — drop ?parent/?pkgName/?pkgLabel, back to the normal browse. */
+  exitPackageDrill(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { parent: null, pkgName: null, pkgLabel: null },
+      queryParamsHandling: 'merge',
+    });
+  }
   /** Sub-subcategory drill (?sub2=) — the 3rd rail level, meaningful with a sub set. */
   readonly subSubcategoryId = computed(() => this.query().get('sub2') || null);
 
@@ -125,7 +140,7 @@ export class MarketplaceStore {
   /** The filter signature — offset + accumulation reset on ANY change. */
   private readonly filterKey = computed(
     () =>
-      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.subSubcategoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}|${this.tagFilter() ?? ''}|${this.statusFilter() ?? ''}|${this.activeFilter() ?? ''}|${this.imageFilter() ?? ''}|${this.publicView() ? 'pub' : ''}`
+      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.subSubcategoryId() ?? ''}|${this.parentId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}|${this.tagFilter() ?? ''}|${this.statusFilter() ?? ''}|${this.activeFilter() ?? ''}|${this.imageFilter() ?? ''}|${this.publicView() ? 'pub' : ''}`
   );
 
   /** Local page offset; snaps back to 0 when the filters change. */
@@ -236,6 +251,7 @@ export class MarketplaceStore {
         tier: this.tier(),
         tag: this.tagFilter(),
         supplier: this.pinnedSupplierId() ?? this.supplierId(),
+        parent: this.parentId(),
         // Sent raw (null omitted by the query builder): 'all' reaches the server
         // so it can tell "explicit everything" from the admin default (absent).
         // Shopfront forces the public set (approved+active) regardless of viewer;

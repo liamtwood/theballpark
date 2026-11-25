@@ -174,7 +174,7 @@ type Pane = 'item' | 'supplier';
                   <!-- The configured price rides the "Add to ballpark · £…" CTA below,
                        so the picker doesn't repeat it (admins have no CTA → no price here,
                        which is fine — they're not buying). -->
-                  <app-item-variant-picker [attributes]="it.attributes ?? null" [basePrice]="it.basePrice"
+                  <app-item-variant-picker [attributes]="it.attributes ?? null" [variants]="it.variants ?? []" [basePrice]="it.basePrice"
                                            [showPrice]="false"
                                            (selectionChange)="chosenCombo.set($event)" (imageChange)="onVariantImage($event)" />
 
@@ -485,7 +485,7 @@ export class QuickViewDialogComponent {
     const gallery = it?.images?.length ? it.images : (it?.coverUrl ? [it.coverUrl] : []);
     // pV2-STORE-PACKAGES-01 — include package/variant covers (variantMatrixFor covers
     // both) so selecting a variant can jump the hero to its cover.
-    const m = variantMatrixFor((it?.attributes as Record<string, unknown> | null) ?? null);
+    const m = variantMatrixFor((it?.attributes as Record<string, unknown> | null) ?? null, it?.variants ?? []);
     const imgs = [...gallery, ...allVariantImages(m)].filter((u): u is string => !!u);
     return [...new Set(imgs)];
   });
@@ -640,7 +640,7 @@ export class QuickViewDialogComponent {
    *  add-to-quote (Liam: variants → "Select options", never a blind add). */
   protected readonly hasVariantDims = computed(() =>
     // pV2-STORE-PACKAGES-01 — packages count as picker dimensions too (same CTA path).
-    !!variantMatrixFor((this.item()?.attributes as Record<string, unknown> | null) ?? null)?.dimensions.length,
+    !!variantMatrixFor((this.item()?.attributes as Record<string, unknown> | null) ?? null, this.item()?.variants ?? [])?.dimensions.length,
   );
   protected readonly needsSelection = computed(() => this.hasVariantDims() && !this.chosenCombo());
 

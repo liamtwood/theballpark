@@ -464,7 +464,7 @@ router.get('/items', async (req, res, next) => {
         details: z.flattenError(parsed.error).fieldErrors,
       });
     }
-    const { cat, sub, q, offset, priceMin, priceMax, tier, supplier, status, active, tag, image } = parsed.data;
+    const { cat, sub, q, offset, priceMin, priceMax, tier, supplier, status, active, tag, image, parent } = parsed.data;
     // supplier= may be the org UUID OR the human handle (pV2-BPIN-01). Resolve a
     // non-UUID to the org id so the ownership compare + i.org_id filter stay UUID-keyed.
     let supplierId = supplier;
@@ -478,7 +478,7 @@ router.get('/items', async (req, res, next) => {
     // (pV2-BUILDUP-02). parent_item_id IS NOT NULL rows are an item's child
     // options/components (pV2-BUILDUP-03) — they belong to their parent, never
     // browsable on their own.
-    const where = [`i.deleted_at IS NULL`, `i.type IS DISTINCT FROM 'component'`, `i.parent_item_id IS NULL`];
+    const where = [`i.deleted_at IS NULL`, `i.type IS DISTINCT FROM 'component'`];
     // pV2-STORE-01 — non-public visibility. The `status`/`active` filters are
     // honoured for two callers only: (1) the OWNER of the pinned supplier org
     // — a supplier sees their own draft/pending/inactive items; (2) a BALLPARK
@@ -497,6 +497,17 @@ router.get('/items', async (req, res, next) => {
     // browse is the live catalogue for EVERYONE — admin included (same view for all
     // users); moderation lives in Approvals (explicit ?status) and the supplier Shop.
     const managementContext = (ownerScope || adminScope) && (!!supplier || !!status || !!active);
+    // pV2-STORE-VARIANT-CHILDREN-01 — variant children are hidden EVERYWHERE (they belong
+    // to their parent, which carries the packages-drill button). The ONLY way to see them
+    // as cards is the drill (?parent=<id|bpin>): show exactly that parent's children
+    // (they're active+approved, so the public visibility filter below passes them too).
+    if (parent) {
+      vals.push(parent);
+      where.push(`i.parent_item_id = (SELECT id FROM items WHERE (id::text = $${vals.length} OR bpin = $${vals.length}) AND deleted_at IS NULL LIMIT 1)`);
+      where.push(`i.type = 'variant'`);
+    } else {
+      where.push(`i.parent_item_id IS NULL`);
+    }
     if (managementContext) {
       if (status && status !== 'all') {
         vals.push(status); where.push(`i.approval_status = $${vals.length}`);
@@ -569,6 +580,15 @@ router.get('/items', async (req, res, next) => {
               -- Top-level (root) category — grid grouping + derived supplier categories.
               ct.id AS top_category_id, ct.name AS top_category_name, ct.icon_name AS top_category_icon, ct.sort_order AS top_category_sort,
               (i.org_id = $1) AS owned_by_active_org,
+              -- pV2-STORE-VARIANT-CHILDREN-01 — the item's variant children (real rows),
+              -- for the quick-view picker + card. The grid itself excludes children
+              -- (parent_item_id IS NULL above); this surfaces them under their base.
+              (SELECT COALESCE(json_agg(json_build_object(
+                        'id', v.id, 'bpin', v.bpin, 'name', v.name, 'description', v.description,
+                        'cost', v.base_price, 'unit', v.unit, 'serves', v.serves,
+                        'attributes', v.attributes, 'images', v.images
+                      ) ORDER BY v.sort_order NULLS LAST, v.created_at), '[]'::json)
+                 FROM items v WHERE v.parent_item_id = i.id AND v.type = 'variant' AND v.deleted_at IS NULL) AS variants,
               COUNT(*) OVER() AS total
          FROM items i
          -- Cross-org: the supplier name/city come from supplier_directory — the owner-run
@@ -605,6 +625,9 @@ router.get('/items', async (req, res, next) => {
       // pV2-STORE-ATTRIBUTE-GROUPS-01 — the grouped attributes power the quick-view
       // spec cards + variants picker (rendered from the already-loaded list row).
       attributes: row.attributes ?? null,
+      // pV2-STORE-VARIANT-CHILDREN-01 — real variant child rows (preferred over the
+      // legacy attributes.packages JSON by the picker).
+      variants: Array.isArray(row.variants) ? row.variants : [],
       categoryId: row.category_id,
       supplierId: row.supplier_id,
       supplierName: row.supplier_name,

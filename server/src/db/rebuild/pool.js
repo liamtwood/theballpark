@@ -16,6 +16,16 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
   max: 4,
+  // Match db/pool.js's hardening: Supabase drops idle connections, and an
+  // unhandled 'error' on a dropped idle client crashes Node (nodemon then sits
+  // "waiting for file changes", blocking dev). Keep clients warm + TCP-keepalive,
+  // and swallow idle-client errors — pg evicts the broken client automatically.
+  idleTimeoutMillis: 600000,
+  keepAlive: true,
+});
+
+pool.on('error', (err) => {
+  console.error('[rebuild pool] unexpected idle-client error (non-fatal):', err.message);
 });
 
 // ctx: { userId?, orgId?, isAdmin? } — the identity this request runs as.

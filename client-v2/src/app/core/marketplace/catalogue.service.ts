@@ -81,6 +81,7 @@ export class CatalogueService {
     if (query.image) params.set('image', query.image);
     if (query.scope) params.set('scope', query.scope);
     if (query.tag) params.set('tag', query.tag);
+    if (query.parent) params.set('parent', query.parent);
     if (query.offset) params.set('offset', String(query.offset));
     const url = this.stableUrl('/api/marketplace/items', params);
     return this.cached(url, () => this.api.get<Paginated<CatalogueItem>>(url));

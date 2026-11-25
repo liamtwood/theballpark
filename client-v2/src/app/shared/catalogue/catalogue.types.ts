@@ -48,6 +48,9 @@ export interface CatalogueItem {
    *  price_tiers + options), for the quick-view spec cards. Optional: only the
    *  marketplace list projection carries it. */
   attributes?: Record<string, unknown> | null;
+  /** pV2-STORE-VARIANT-CHILDREN-01 — the item's variant child rows (real items),
+   *  preferred over attributes.packages by the picker/card. */
+  variants?: unknown[];
   categoryId: string;
   supplierId: string;
   supplierName: string;
@@ -107,6 +110,10 @@ export interface ItemsQuery {
   scope?: 'public' | null;
   /** Free-text tag filter (items.tags) — e.g. the shopfront "What's Hot" menu. */
   tag?: string | null;
+  /** pV2-STORE-VARIANT-CHILDREN-01 — drill into a parent's variant children: when set
+   *  (parent item id or bpin), the grid returns that parent's child items as cards
+   *  instead of the normal parent-only browse. */
+  parent?: string | null;
   offset?: number;
 }
 

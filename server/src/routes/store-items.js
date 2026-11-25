@@ -109,6 +109,43 @@ router.post('/:id/components', async (req, res, next) => {
   } catch (err) { console.error('[store.components] ERR id=%s %s', req.params.id, err && (err.stack || err.message || err)); next(err); }
 });
 
+// pV2-STORE-VARIANT-CHILDREN-01 — variants as real child items (type='variant').
+const ItemVariantsSchema = z.object({
+  variants: z.array(z.object({
+    id: z.string().uuid().optional(),
+    name: z.string().trim().min(1),
+    description: z.string().nullish(),
+    cost: z.coerce.number().nonnegative().nullish(),
+    unit: z.string().nullish(),
+    serves: z.coerce.number().nonnegative().nullish(),
+    capacity: z.coerce.number().nonnegative().nullish(),
+    color: z.string().max(20).nullish(),
+    images: z.array(z.object({ url: z.string() }).passthrough()).nullish(),
+  })),
+}).strip();
+
+router.get('/:id/variants', async (req, res, next) => {
+  try {
+    const out = await ItemService.listVariants(req.user.org_id, req.params.id);
+    if (out === null) return res.status(404).json({ error: 'Not found' });
+    res.json(out);
+  } catch (err) { next(err); }
+});
+
+router.post('/:id/variants', async (req, res, next) => {
+  try {
+    const parsed = ItemVariantsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      console.warn('[store.variants] 400 id=%s %s', req.params.id, JSON.stringify(z.flattenError(parsed.error).fieldErrors));
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const rows = await ItemService.saveVariants(req.user.org_id, req.params.id, parsed.data.variants);
+    if (rows === null) return res.status(404).json({ error: 'Not found' });
+    console.log('[store.variants] OK id=%s saved=%s', req.params.id, rows.length);
+    res.status(201).json(rows);
+  } catch (err) { console.error('[store.variants] ERR id=%s %s', req.params.id, err && (err.stack || err.message || err)); next(err); }
+});
+
 router.get('/:id', async (req, res, next) => {
   try {
     const item = await ItemService.getById(req.params.id);

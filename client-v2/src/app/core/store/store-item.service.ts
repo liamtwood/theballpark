@@ -5,6 +5,32 @@ import { CatalogueService } from '../marketplace/catalogue.service';
 import { GalleryImage } from '../media/media.types';
 import { ComponentsResponse, ComponentInput, ComponentRow } from '../projects/project.service';
 
+/** pV2-STORE-VARIANT-CHILDREN-01 — a variant CHILD item. Row = server shape; Input =
+ *  what the editor sends (cost/capacity/colour flattened; server maps to columns +
+ *  attributes). */
+export interface VariantRow {
+  id: string;
+  bpin?: string | null;
+  name: string;
+  description: string | null;
+  base_price: number | string | null;
+  unit: string | null;
+  serves: number | null;
+  attributes: { color?: string | null; capacity?: number | null } | null;
+  images: GalleryImage[] | null;
+}
+export interface VariantInput {
+  id?: string;
+  name: string;
+  description?: string | null;
+  cost?: number | null;
+  unit?: string | null;
+  serves?: number | null;
+  capacity?: number | null;
+  color?: string | null;
+  images?: GalleryImage[];
+}
+
 /** The editable item row (pV2-STORE-01) — the full item as the editor sees it. */
 export interface StoreItem {
   id: string;
@@ -139,6 +165,14 @@ export class StoreItemService {
     return this.api.post<ComponentRow[]>(`/api/store/items/${itemId}/components`, {
       components, parentName: parent?.name, parentDescription: parent?.description, parentServices: parent?.services,
     });
+  }
+
+  /** pV2-STORE-VARIANT-CHILDREN-01 — variants as real child items (type='variant'). */
+  getVariants(itemId: string): Observable<VariantRow[]> {
+    return this.api.get<VariantRow[]>(`/api/store/items/${itemId}/variants`);
+  }
+  saveVariants(itemId: string, variants: VariantInput[]): Observable<VariantRow[]> {
+    return this.api.post<VariantRow[]>(`/api/store/items/${itemId}/variants`, { variants });
   }
 
   /** Ballpark-admin moderation (pV2-STORE-01) — cross-org read of any item. */

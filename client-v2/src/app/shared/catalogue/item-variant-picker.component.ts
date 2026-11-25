@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
-import { VariantMatrix, VariantValue, variantMatrixFor, computeUnitPrice, minUnitPrice, hasPricing, selectedImage, selectedDescriptions } from './variants.util';
+import { VariantMatrix, VariantValue, variantMatrixFor, normalizeVariants, computeUnitPrice, minUnitPrice, hasPricing, selectedImage, selectedDescriptions } from './variants.util';
 import { MarkdownPipe } from '../markdown.pipe';
 
 /** The resolved selection emitted to the host (for add-to-quote wiring). */
@@ -118,6 +118,8 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
 export class ItemVariantPickerComponent {
   /** The item's attributes bag (reads `.variants`). */
   readonly attributes = input<Record<string, unknown> | null>(null);
+  /** pV2-STORE-VARIANT-CHILDREN-01 — the item's variant child rows (preferred source). */
+  readonly variants = input<unknown[]>([]);
   /** Base unit price — the configured price builds on this (+ upcharges). */
   readonly basePrice = input<number | null>(null);
   /** Show the picker's own configured-price line. Off when the host surfaces the
@@ -132,12 +134,16 @@ export class ItemVariantPickerComponent {
 
   // pV2-STORE-PACKAGES-01 — real variants, else packages as a single "Package"
   // dimension, so a package item renders through the same picker.
-  private readonly matrix = computed<VariantMatrix | null>(() => variantMatrixFor(this.attributes()));
+  private readonly matrix = computed<VariantMatrix | null>(() => variantMatrixFor(this.attributes(), this.variants()));
   protected readonly dimensions = computed(() => this.matrix()?.dimensions ?? []);
   /** pV2-STORE-PACKAGES-01 — buyer picks via chips (buttons) or a dropdown (picklist),
    *  per attributes.packages_meta.presentation. Real variants always render as chips. */
   protected readonly presentation = computed<'buttons' | 'picklist'>(() => {
-    const m = (this.attributes() as Record<string, unknown> | null)?.['packages_meta'] as { presentation?: unknown } | undefined;
+    const attrs = this.attributes() as Record<string, unknown> | null;
+    // Option Levels (the multi-dimension configurator held in attributes.variants) reads
+    // better as dropdowns than rows of chips — render it as picklists (Liam 2026-11-25).
+    if (normalizeVariants(attrs?.['variants'])) return 'picklist';
+    const m = attrs?.['packages_meta'] as { presentation?: unknown } | undefined;
     return m?.presentation === 'picklist' ? 'picklist' : 'buttons';
   });
   /** Any value affects the price → show the price line. */

@@ -366,6 +366,13 @@
   color: var(--color-text-secondary);
 }
 .bp-variant-chip--add:hover { color: var(--theme-accent); border-color: var(--theme-accent); }
+/* pV2-STORE-VARIANT-CHILDREN-01 — drag-to-reorder affordance for the authoring chips
+   (buyer chips are never draggable). grab cursor; the dragged chip dims; the drop target
+   shows an accent insert edge. */
+.bp-variant-chip--draggable { cursor: grab; }
+.bp-variant-chip--draggable:active { cursor: grabbing; }
+.bp-variant-chip--dragging { opacity: 0.4; }
+.bp-variant-chip--dragover { box-shadow: -3px 0 0 0 var(--theme-accent); }
 
 /* pV2-STORE-PACKAGES-01 — "How is this sold?" mode buttons (label + hint, selected
    tinted like a chip). */
@@ -1698,6 +1705,68 @@ a.bp-contact-pill:hover { border-color: var(--theme-accent); }
 }
 .bp-fav-btn--on svg {
   fill: currentColor;
+}
+
+/* ═══ Item-card packages affordance (pV2-STORE-VARIANT-CHILDREN-01) ═══════
+   A parent that composes variant children shows a package-open button at the
+   bottom-right of its image; clicking it DRILLS the grid into that parent's
+   children (?parent=). The media wrapper is the button's positioning context. */
+.bp-item-card__media {
+  position: relative;
+}
+.bp-pkg-btn {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+.bp-pkg-btn:hover {
+  background: var(--theme-accent);
+  border-color: transparent;
+  color: var(--theme-accent-contrast, #fff);
+}
+/* The packages-drill breadcrumb/back bar above the grid (host-rendered). */
+.bp-drill-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 7px 14px 7px 10px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.bp-drill-back:hover {
+  color: var(--theme-accent);
+  border-color: var(--theme-accent);
+}
+.bp-drill-back__label {
+  font-weight: 600;
+}
+.bp-drill-back__crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-left: 10px;
+  margin-left: 2px;
+  border-left: 1px solid var(--color-border-hairline);
+  color: var(--color-text-primary);
 }
 
 /* ═══ Project card (pV2-PROJECTS-01, v1 parity — Liam 2026-06-13) ════════

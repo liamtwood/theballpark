@@ -458,6 +458,13 @@ const migrate = async () => {
       ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS parent_item_id  UUID REFERENCES preview.items(id);
       ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS parent_item_id  UUID REFERENCES master.items(id);
 
+      -- pV2-STORE-VARIANT-CHILDREN-01: author-controlled display order for variant
+      -- children (and any future ordered siblings). Nullable — NULL for existing rows;
+      -- ordered reads fall back to created_at. Written from the Packages table index.
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS sort_order      INTEGER;
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS sort_order      INTEGER;
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS sort_order      INTEGER;
+
       ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS attributes      JSONB DEFAULT '{}';
       ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS attributes      JSONB DEFAULT '{}';
       ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS attributes      JSONB DEFAULT '{}';

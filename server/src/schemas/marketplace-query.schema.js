@@ -27,6 +27,10 @@ const ItemsQuerySchema = z
     // pV2-STORE-WHATS-HOT-01 — free-text tag filter (items.tags array). Powers the
     // shopfront "What's Hot" menu + any tag-scoped browse. Matched with ANY(i.tags).
     tag: z.string().trim().max(60).optional(),
+    // pV2-STORE-VARIANT-CHILDREN-01 — the packages drill: a parent item id (UUID) or
+    // bpin; the grid then returns that parent's variant CHILD items as cards instead of
+    // the normal parent-only browse. Resolved + bound in the /items handler.
+    parent: z.string().trim().min(1).max(64).optional(),
     // pV2-STORE-01 — owner store filters. These ONLY take effect when the
     // caller owns the `supplier` org (server-enforced); for everyone else the
     // grid stays active+approved. `status` filters approval_status; `active`

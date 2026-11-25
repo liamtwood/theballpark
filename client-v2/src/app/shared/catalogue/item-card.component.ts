@@ -1,16 +1,27 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom, Observable } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { TooltipModule } from 'primeng/tooltip';
 import { CatalogueItem, sizedImage } from './catalogue.types';
-import { variantMatrixFor } from './variants.util';
+import { variantMatrixFor, VariantChild } from './variants.util';
 import { itemEditLink } from './item-edit-link';
 import { StatusPillComponent } from '../status-pill/status-pill.component';
 import { StoreItemService } from '../../core/store/store-item.service';
 import { ConfirmService } from '../confirm/confirm.service';
 import { AuthService } from '../../core/auth/auth.service';
+
+/** Naive English pluraliser for a GROUP LABEL ("Space" → "Spaces", "Box" → "Boxes",
+ *  "Category" → "Categories"). Labels are short supplier-authored nouns, so the simple
+ *  rules cover them; an already-plural label (ends in "s") is left as-is. */
+function pluralise(word: string): string {
+  const w = word.trim();
+  if (!w || /s$/i.test(w)) return w;
+  if (/(x|z|ch|sh)$/i.test(w)) return w + 'es';
+  if (/[^aeiou]y$/i.test(w)) return w.slice(0, -1) + 'ies';
+  return w + 's';
+}
 
 /** pV2-CARDS-01 — the catalog item card per CARDS.md image 2 (Converted
  *  Railway Arch): image top, name, category `.bp-tag-chip`, prominent
@@ -32,31 +43,48 @@ import { AuthService } from '../../core/auth/auth.service';
     '(keydown.enter)': 'open()',
   },
   template: `
-    @if (item().coverUrl) {
-      <!-- First row eager (LCP); the rest lazy. NOTE: hidden tabs defer
-           lazy images entirely (Chrome) — looks broken in headless
-           previews, fine in real browsers. -->
-      <!-- First row eager (LCP); the rest lazy. NOTE: hidden tabs defer
-           lazy images entirely (Chrome) — looks broken in headless
-           previews, fine in real browsers. Default display = plain object-cover;
-           cover "treatments" (blurred-fill / adaptive background) are a planned
-           per-image supplier option (FR), not applied by default. -->
-      <img
-        class="bp-item-card__img"
-        [src]="cardSrc()"
-        [alt]="item().name"
-        [attr.loading]="eager() ? 'eager' : 'lazy'"
-        decoding="async"
-      />
-    } @else {
-      <!-- Generic "Image coming soon" placeholder — shown when the item has no
-           cover (incl. extracts where only the supplier's generic placeholder was
-           found, which we drop on pull). Deliberate > a wrong/placeholder photo. -->
-      <div class="bp-item-card__img bp-item-card__img--empty flex flex-col items-center justify-center gap-1.5 text-secondary">
-        <lucide-icon name="image" [size]="24" [strokeWidth]="1.5" />
-        <span class="bp-caption">Image coming soon</span>
-      </div>
-    }
+    <!-- Media region — positioning context for the packages affordance + reveal. -->
+    <div class="bp-item-card__media">
+      @if (item().coverUrl) {
+        <!-- First row eager (LCP); the rest lazy. NOTE: hidden tabs defer
+             lazy images entirely (Chrome) — looks broken in headless
+             previews, fine in real browsers. Default display = plain object-cover;
+             cover "treatments" (blurred-fill / adaptive background) are a planned
+             per-image supplier option (FR), not applied by default. -->
+        <img
+          class="bp-item-card__img"
+          [src]="cardSrc()"
+          [alt]="item().name"
+          [attr.loading]="eager() ? 'eager' : 'lazy'"
+          decoding="async"
+        />
+      } @else {
+        <!-- Generic "Image coming soon" placeholder — shown when the item has no
+             cover (incl. extracts where only the supplier's generic placeholder was
+             found, which we drop on pull). Deliberate > a wrong/placeholder photo. -->
+        <div class="bp-item-card__img bp-item-card__img--empty flex flex-col items-center justify-center gap-1.5 text-secondary">
+          <lucide-icon name="image" [size]="24" [strokeWidth]="1.5" />
+          <span class="bp-caption">Image coming soon</span>
+        </div>
+      }
+
+      <!-- pV2-STORE-VARIANT-CHILDREN-01 — a parent that composes variant children gets
+           a "packages" button (bottom-right of the image); clicking it DRILLS the grid
+           into that parent's child items (shown as their own cards via ?parent=). -->
+      @if (hasChildren()) {
+        <button
+          type="button"
+          class="bp-pkg-btn"
+          [attr.aria-label]="'View ' + childCount() + ' ' + packageLabelPlural()"
+          [pTooltip]="'View ' + childCount() + ' ' + (childCount() === 1 ? packageLabel() : packageLabelPlural())"
+          tooltipStyleClass="bp-tooltip"
+          tooltipPosition="top"
+          (click)="drillPackages($event)"
+        >
+          <lucide-icon name="package-open" [size]="15" />
+        </button>
+      }
+    </div>
     @if (!item().isActive) {
       <!-- pV2-STORE-01 — inactive items (owner/admin view) carry their status. -->
       <span class="absolute left-2.5 top-2.5 z-10">
@@ -251,6 +279,7 @@ import { AuthService } from '../../core/auth/auth.service';
 })
 export class ItemCardComponent {
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly store = inject(StoreItemService);
   private readonly confirm = inject(ConfirmService);
   private readonly auth = inject(AuthService);
@@ -330,14 +359,48 @@ export class ItemCardComponent {
    *  before adding, so the "+" opens the Quick View instead of blind-adding (Liam). */
   protected readonly hasVariantDims = computed(() =>
     // pV2-STORE-PACKAGES-01 — packages are picker dimensions too → "Select options".
-    !!variantMatrixFor((this.item().attributes as Record<string, unknown> | null) ?? null)?.dimensions.length,
+    !!variantMatrixFor((this.item().attributes as Record<string, unknown> | null) ?? null, this.item().variants ?? [])?.dimensions.length,
   );
+  /** pV2-STORE-VARIANT-CHILDREN-01 — real variant CHILD rows present → show the packages
+   *  drill button. Distinct from hasVariantDims (which also covers Option-Levels dims held
+   *  in attributes): the drill is about real child items only. */
+  protected readonly childCount = computed(() =>
+    (Array.isArray(this.item().variants) ? (this.item().variants as VariantChild[]) : [])
+      .filter((v) => String(v?.name ?? '').trim() !== '').length,
+  );
+  protected readonly hasChildren = computed(() => this.childCount() > 0);
+  /** pV2-STORE-VARIANT-CHILDREN-01 — the item's own GROUP LABEL (packages_meta.label,
+   *  e.g. "Space" / "Colour"), defaulting to "Package". Drives the drill button + back
+   *  bar so the wording matches how the supplier named the group. Pluralised for display
+   *  (the drill always shows the whole group). */
+  protected readonly packageLabel = computed(() => {
+    const meta = (this.item().attributes as Record<string, unknown> | null)?.['packages_meta'] as { label?: unknown } | undefined;
+    return typeof meta?.label === 'string' && meta.label.trim() ? meta.label.trim() : 'Package';
+  });
+  protected readonly packageLabelPlural = computed(() => pluralise(this.packageLabel()));
+  /** Drill the grid into this parent's children (URL-is-state): set ?parent (+ the parent
+   *  name/label for the back bar), clear the category/tag selection so every child shows,
+   *  keep the pinned-supplier route intact. */
+  protected drillPackages(e: Event): void {
+    e.stopPropagation(); // never bubble to the card's open()
+    const it = this.item();
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { parent: it.bpin ?? it.id, pkgName: it.name, pkgLabel: this.packageLabelPlural(), cat: null, sub: null, sub2: null, tag: null, item: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
   /** pV2-STORE-PACKAGES-01 — a variant item's card price is the LOWEST priced option
    *  ("From £x"); every option is priced (no parent cost). Plain items use base price. */
   protected readonly fromPrice = computed<number | null>(() => {
     const it = this.item();
     const attrs = it.attributes as Record<string, unknown> | null;
-    // Priced options (tiers / spaces) → the lowest option.
+    // pV2-STORE-VARIANT-CHILDREN-01 — real variant child rows → the lowest option cost.
+    const kids = Array.isArray(it.variants) ? (it.variants as { cost?: unknown }[]) : [];
+    const kidCosts = kids.map((v) => Number(v?.cost)).filter((c) => Number.isFinite(c) && c > 0);
+    if (kidCosts.length) return Math.min(...kidCosts);
+    // Priced options (tiers / spaces) → the lowest option (legacy JSON packages).
     const pkgs = Array.isArray(attrs?.['packages']) ? (attrs!['packages'] as { cost?: unknown }[]) : [];
     const costs = pkgs.map((p) => Number(p?.cost)).filter((c) => Number.isFinite(c) && c > 0);
     if (costs.length) return Math.min(...costs);

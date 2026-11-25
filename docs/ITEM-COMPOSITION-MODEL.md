@@ -52,6 +52,16 @@ Model it as **one item per product + its multi-dimensional option schema + exter
 
 Do NOT enumerate print into child rows (30 × 2×2×2×N = thousands of rows for nothing) or force it into the variant/component model. It is a separate pattern (`project_solopress_api`: mirror catalogue + live price, no orders). The single-dimension variant rule is safe precisely because the multi-level case (print) isn't a variant — it's a configurator.
 
+> **Reconciled 2026-11-25 (see [PROJECT-ITEM-COMPOSITION.md](PROJECT-ITEM-COMPOSITION.md)).** The
+> multi-dimensional option **schema** is shared by all configurator products ("Option Levels"); the
+> **pricing source is pluggable**, not fixed to external. General Option-Levels products are
+> **internally priced for now** (per-option `upcharge`/`absolute`, rolled up); **print/Solopress
+> prices externally** (live API). Both are a *price-source* choice on the same schema — bridged by
+> the **derived combo id** (one stable id per distinct configuration), which is exactly what an
+> external pricer quotes against. Still no catalogue-row enumeration either way: a configured combo
+> materialises as **project-side children** (a specific quote's breakdown) with a derived id, never
+> written back to the catalogue.
+
 ## The litmus tests
 1. **Pure attribute/pricing of the one item, or a choosable/addable thing?** → **JSON facet** (volume, describe-groups) vs **row** (variant/space/component/add-on).
 2. **If a row — owned or assigned?** *Exists only within this parent* → **owned child** (`variant`/`space`/`component`), **copy** on reuse. *Stands alone, reused by reference* → **assigned** (`add-on`), **link**.

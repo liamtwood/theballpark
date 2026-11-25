@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { LucideAngularModule } from 'lucide-angular';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { PageConfigService } from '../../core/config/page-config.service';
@@ -25,6 +26,7 @@ import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.c
   selector: 'app-marketplace-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    LucideAngularModule,
     PageHeroComponent,
     MarketplaceWorkspaceComponent,
     CategoryStripComponent,
@@ -69,6 +71,14 @@ import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.c
           (subSubcategorySelected)="store.setSubSubcategory($event)"
         />
 
+        @if (store.parentId()) {
+          <!-- pV2-STORE-VARIANT-CHILDREN-01 — packages drill breadcrumb + exit. -->
+          <button type="button" class="bp-drill-back" (click)="store.exitPackageDrill()">
+            <lucide-icon name="chevron-left" [size]="16" />
+            <span class="bp-drill-back__label">Back</span>
+            <span class="bp-drill-back__crumb"><lucide-icon name="package-open" [size]="14" /> {{ store.packageLabel() || 'Packages' }} of {{ store.packageName() || 'item' }}</span>
+          </button>
+        }
         @if (store.mode() === 'suppliers') {
           @if (store.suppliersRes.isLoading() && store.supplierRows().length === 0) {
             <p class="bp-body-small text-secondary">Loading…</p>
