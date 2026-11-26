@@ -28,6 +28,24 @@ export interface VariantValue {
    *  (author-set in the variants editor). Tints the chip and drives its selected
    *  border + tick; falls back to the theme accent when unset. */
   color?: string | null;
+  /** The per-value unit suffix shown after its price ("week" → "£150 / week"), from the
+   *  child's unit + time granularity. '' / null = no suffix. */
+  unitLabel?: string | null;
+}
+
+/** The full price suffix for a child/item — a human phrase, not a "/ x" (Liam 2026-11-25):
+ *  "per week", "per 200 guests", "up to 300 guests", "per item", etc. '' for the default
+ *  (each) unit. Shared by the item's "From £…" line and each variant/add-on/space price. */
+export function unitLabelFor(unit?: string | null, timeUnit?: string | null, serves?: number | null, capacity?: number | null): string {
+  switch (unit) {
+    case 'time':      return timeUnit ? `per ${timeUnit.replace(/_/g, ' ')}` : 'per use';
+    case 'platter':   return serves != null ? `per ${serves} guests` : 'per platter';
+    case 'per_guest': return 'per guest';
+    case 'each':      return ''; // the default unit — no suffix
+    case 'size':      return 'per item';
+    case 'capacity':  return capacity != null ? `(Max ${capacity})` : 'per space';
+    default:          return unit ? `per ${unit.replace(/_/g, ' ')}` : '';
+  }
 }
 export interface VariantDimension { name: string; values: VariantValue[]; }
 export interface VariantMatrix { dimensions: VariantDimension[]; }
@@ -110,8 +128,18 @@ export interface VariantChild {
   cost?: number | null;
   unit?: string | null;
   serves?: number | null;
-  attributes?: { color?: string | null; capacity?: number | null } | null;
+  /** The time granularity (hour/day/week) when unit = 'time'. */
+  timeUnit?: string | null;
+  attributes?: { color?: string | null; capacity?: number | null; size?: string | null } | null;
   images?: { url?: string; is_hero?: boolean }[] | null;
+  /** pV2 child-item unification — the one `children` list carries the type; display
+   *  surfaces filter by it (variant / addon / component are identical rows). */
+  type?: string | null;
+}
+
+/** Filter the unified `children` list to one type (variant / addon / component). */
+export function childrenOfType(children: unknown, type: string): VariantChild[] {
+  return (Array.isArray(children) ? (children as VariantChild[]) : []).filter((c) => c?.type === type);
 }
 
 /** Build the single-dimension matrix from variant CHILD rows (the real items).
@@ -130,6 +158,7 @@ export function childrenToMatrix(variants: unknown, label = 'Package'): VariantM
         description: v?.description ? String(v.description) : null,
         imageUrl: cover ? String(cover) : null,
         color: v?.attributes?.color ? String(v.attributes.color) : null,
+        unitLabel: unitLabelFor(v?.unit, v?.timeUnit, v?.serves, v?.attributes?.capacity),
       };
     })
     .filter((v) => v.value.trim() !== '');

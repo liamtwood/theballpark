@@ -253,7 +253,33 @@ async function update(id, data) {
     `UPDATE items SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *`,
     params
   );
-  return withHero(result.rows[0] || null);
+  const row = result.rows[0] || null;
+  // pV2-STORE-CHILD-LIFECYCLE-01 — the offering's children (variants/add-ons) mirror
+  // their parent: when a TOP-LEVEL item's lifecycle changes, cascade it to them so
+  // they go live/hidden exactly with the parent (Liam 2026-11-26). Cascade ONLY the
+  // axis that changed — approval_status writes need the svc_moderate GUC (admin
+  // moderation), status does not (owner activate); writing the un-permitted column
+  // would be denied by the column-scoped RLS escape. EXCLUDES type='component' — the
+  // cost build-up lines are internal estimates, never marketplace-visible and never
+  // part of approval (Liam 2026-11-26); they stay as saveComponents wrote them.
+  // Guarded to parents (parent_item_id IS NULL) so editing a child never loops back
+  // onto its siblings.
+  if (row && row.parent_item_id === null) {
+    const cSets = [];
+    const cParams = [];
+    if (Object.prototype.hasOwnProperty.call(data, 'status')) { cParams.push(row.status); cSets.push(`status = $${cParams.length}`); }
+    if (Object.prototype.hasOwnProperty.call(data, 'approval_status')) { cParams.push(row.approval_status); cSets.push(`approval_status = $${cParams.length}`); }
+    if (cSets.length) {
+      cParams.push(id);
+      await pool.query(
+        `UPDATE items SET ${cSets.join(', ')}, updated_at = NOW()
+           WHERE parent_item_id = $${cParams.length} AND deleted_at IS NULL
+             AND type IS DISTINCT FROM 'component'`,
+        cParams
+      );
+    }
+  }
+  return withHero(row);
 }
 
 // Soft-delete: parent-only; cascade to this item's child rows (type='component'/
@@ -407,35 +433,47 @@ async function saveComponents(orgId, itemId, components, parentName, parentDescr
 // gallery and price. Reconciles the base's variant children against the submitted
 // list: update matched (by id), insert new, soft-delete removed. Scoped to
 // type='variant' so it never touches cost components.
-async function listVariants(orgId, itemId) {
+// pV2-STORE-VARIANT-CHILDREN-01 / pV2-ADDONS-01 — ONE engine for owned child items by
+// `type`. Variants (`type='variant'`) and add-ons (`type='addon'`) are the SAME reconcile,
+// sort_order and category-inherit — only the type differs (Liam 2026-11-25: "add-ons are
+// exactly the same as variants, just a different type"). Thin `*Variants` / `*Addons`
+// wrappers below preserve each caller's intent.
+async function listChildren(orgId, itemId, type = 'variant') {
   const own = await pool.query(
     `SELECT id FROM items WHERE (id::text = $1 OR bpin = $1) AND org_id = $2 AND deleted_at IS NULL`,
     [itemId, orgId]
   );
   if (!own.rows.length) return null;
   const r = await pool.query(
-    `SELECT id, bpin, name, description, base_price, unit, serves, attributes, images
-       FROM items WHERE parent_item_id = $1 AND type = 'variant' AND deleted_at IS NULL
+    `SELECT id, bpin, name, description, base_price, unit, serves, time_unit, attributes, images
+       FROM items WHERE parent_item_id = $1 AND type = $2 AND deleted_at IS NULL
       ORDER BY sort_order NULLS LAST, created_at`,
-    [own.rows[0].id]
+    [own.rows[0].id, type]
   );
   return r.rows;
 }
 
-async function saveVariants(orgId, itemId, variants) {
-  const list = Array.isArray(variants) ? variants : [];
+async function saveChildren(orgId, itemId, children, type = 'variant') {
+  const list = Array.isArray(children) ? children : [];
   return withTransaction(async (client) => {
     const own = await client.query(
-      `SELECT id, category_id FROM items WHERE (id::text = $1 OR bpin = $1) AND org_id = $2 AND deleted_at IS NULL`, [itemId, orgId]
+      `SELECT id, category_id, status, approval_status FROM items WHERE (id::text = $1 OR bpin = $1) AND org_id = $2 AND deleted_at IS NULL`, [itemId, orgId]
     );
     if (!own.rows.length) return null;
     const realId = own.rows[0].id; // itemId may be a BPIN — use the resolved UUID
-    // Variant children INHERIT the parent's category so the standalone item editor
-    // (which requires a category to save) can edit them, and so they group under the
-    // real category in My Shop (pV2-STORE-VARIANT-CHILDREN-01, Liam 2026-11-25).
+    // Children INHERIT the parent's category so the standalone item editor (which requires
+    // a category to save) can edit them, and so they group under the real category in My
+    // Shop (pV2-STORE-VARIANT-CHILDREN-01, Liam 2026-11-25).
     const parentCat = own.rows[0].category_id;
+    // pV2-STORE-CHILD-LIFECYCLE-01 — a variant/add-on is PART of its parent, live
+    // exactly when the parent is (Liam 2026-11-26). New children inherit the parent's
+    // CURRENT lifecycle (not a hardcoded 'active'/'approved'): add a variant to a
+    // pending parent and it's pending too. Parent approve/activate then cascades the
+    // rest (see update()).
+    const parentStatus = own.rows[0].status;
+    const parentApproval = own.rows[0].approval_status;
     const existing = await client.query(
-      `SELECT id FROM items WHERE parent_item_id = $1 AND type = 'variant' AND deleted_at IS NULL`, [realId]
+      `SELECT id FROM items WHERE parent_item_id = $1 AND type = $2 AND deleted_at IS NULL`, [realId, type]
     );
     const keep = new Set(list.filter((v) => v.id).map((v) => v.id));
     for (const row of existing.rows) {
@@ -448,8 +486,10 @@ async function saveVariants(orgId, itemId, variants) {
       pos += 1;
       const cost = v.cost == null || v.cost === '' ? null : Number(v.cost);
       const serves = v.serves == null || v.serves === '' ? null : Number(v.serves);
+      const timeUnit = v.timeUnit ? String(v.timeUnit) : null; // the 'week'/'day'/… granularity when unit='time'
       const attrs = JSON.stringify({
         ...(v.capacity != null && v.capacity !== '' ? { capacity: Number(v.capacity) } : {}),
+        ...(v.size ? { size: String(v.size) } : {}),
         ...(v.color ? { color: String(v.color) } : {}),
       });
       const imgs = JSON.stringify(Array.isArray(v.images) ? v.images : []);
@@ -457,26 +497,32 @@ async function saveVariants(orgId, itemId, variants) {
         // category_id only set when the parent has one (never NULL over an existing value).
         await client.query(
           `UPDATE items SET name=$2, description=$3, base_price=$4, unit=$5, serves=$6, attributes=$7::jsonb, images=$8::jsonb,
-                  category_id=COALESCE($10, category_id), sort_order=$11, updated_at=NOW()
-            WHERE id=$1 AND parent_item_id=$9 AND type='variant'`,
-          [v.id, nm, v.description || null, cost, v.unit || null, serves, attrs, imgs, realId, parentCat, pos]
+                  category_id=COALESCE($10, category_id), sort_order=$11, time_unit=$13, updated_at=NOW()
+            WHERE id=$1 AND parent_item_id=$9 AND type=$12`,
+          [v.id, nm, v.description || null, cost, v.unit || null, serves, attrs, imgs, realId, parentCat, pos, type, timeUnit]
         );
       } else {
         await client.query(
-          `INSERT INTO items (org_id, parent_item_id, category_id, name, description, base_price, unit, serves, attributes, images, sort_order, type, status, approval_status)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11,'variant','active','approved')`,
-          [orgId, realId, parentCat, nm, v.description || null, cost, v.unit || null, serves, attrs, imgs, pos]
+          `INSERT INTO items (org_id, parent_item_id, category_id, name, description, base_price, unit, serves, attributes, images, sort_order, type, time_unit, status, approval_status)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11,$12,$13,$14,$15)`,
+          [orgId, realId, parentCat, nm, v.description || null, cost, v.unit || null, serves, attrs, imgs, pos, type, timeUnit, parentStatus, parentApproval]
         );
       }
     }
     const rows = await client.query(
-      `SELECT id, bpin, name, description, base_price, unit, serves, attributes, images
-         FROM items WHERE parent_item_id=$1 AND type='variant' AND deleted_at IS NULL
-        ORDER BY sort_order NULLS LAST, created_at`, [realId]
+      `SELECT id, bpin, name, description, base_price, unit, serves, time_unit, attributes, images
+         FROM items WHERE parent_item_id=$1 AND type=$2 AND deleted_at IS NULL
+        ORDER BY sort_order NULLS LAST, created_at`, [realId, type]
     );
     return rows.rows;
   });
 }
+
+// Type-specific wrappers — same engine, fixed `type`.
+const listVariants = (orgId, itemId) => listChildren(orgId, itemId, 'variant');
+const saveVariants = (orgId, itemId, variants) => saveChildren(orgId, itemId, variants, 'variant');
+const listAddons = (orgId, itemId) => listChildren(orgId, itemId, 'addon');
+const saveAddons = (orgId, itemId, addons) => saveChildren(orgId, itemId, addons, 'addon');
 
 async function listOptions(itemId) {
   const r = await pool.query(
@@ -560,4 +606,4 @@ async function applyEdit(existing, data, { defaultStatus }) {
   return result;
 }
 
-module.exports = { getAll, getById, getTagsByCategory, countsByCategory, create, update, softDelete, duplicate, listComponents, saveComponents, listVariants, saveVariants, listOptions, statusCountsForOrg, createForOrg, applyEdit };
+module.exports = { getAll, getById, getTagsByCategory, countsByCategory, create, update, softDelete, duplicate, listComponents, saveComponents, listChildren, saveChildren, listVariants, saveVariants, listAddons, saveAddons, listOptions, statusCountsForOrg, createForOrg, applyEdit };

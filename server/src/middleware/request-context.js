@@ -24,13 +24,28 @@ module.exports = function requestContext(req, res, next) {
   als.run(ctx, () => {
     pool.connect().then((client) => {
       let released = false;
-      const release = () => {
+      const release = (brokenErr) => {
         if (released) return;
         released = true;
+        client.removeListener('error', onClientError);
+        // A broken client can't run RESET ALL — destroy it (release(err) evicts it
+        // from the pool) rather than returning a dead connection for reuse.
+        if (brokenErr) { try { client.release(brokenErr); } catch { /* already gone */ } return; }
         // Session GUCs persist on a pooled connection — clear them before the
         // client returns to the pool, or the next request inherits this org.
         client.query('RESET ALL').catch(() => {}).finally(() => client.release());
       };
+      // A pinned client sits idle between queries (slow routes, AI calls). pg hands
+      // a checked-out client's 'error' to the caller, so if Supabase drops the
+      // connection mid-request the event is UNHANDLED and crashes the process —
+      // nodemon then wedges "waiting for file changes", taking the whole API down
+      // (the recurring dev-env outage). Catch it: log + destroy the broken client.
+      // Removed on release so it doesn't accumulate across this client's re-checkouts.
+      const onClientError = (err) => {
+        console.error('[request-context] pinned client error (non-fatal):', err.message);
+        release(err);
+      };
+      client.on('error', onClientError);
       // Session-level (third arg false) so the GUCs live for the whole request,
       // not just one txn — combined into one round-trip.
       client

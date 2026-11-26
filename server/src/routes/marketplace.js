@@ -504,7 +504,7 @@ router.get('/items', async (req, res, next) => {
     if (parent) {
       vals.push(parent);
       where.push(`i.parent_item_id = (SELECT id FROM items WHERE (id::text = $${vals.length} OR bpin = $${vals.length}) AND deleted_at IS NULL LIMIT 1)`);
-      where.push(`i.type = 'variant'`);
+      where.push(`i.type IN ('variant', 'addon')`);
     } else {
       where.push(`i.parent_item_id IS NULL`);
     }
@@ -580,15 +580,16 @@ router.get('/items', async (req, res, next) => {
               -- Top-level (root) category — grid grouping + derived supplier categories.
               ct.id AS top_category_id, ct.name AS top_category_name, ct.icon_name AS top_category_icon, ct.sort_order AS top_category_sort,
               (i.org_id = $1) AS owned_by_active_org,
-              -- pV2-STORE-VARIANT-CHILDREN-01 — the item's variant children (real rows),
-              -- for the quick-view picker + card. The grid itself excludes children
-              -- (parent_item_id IS NULL above); this surfaces them under their base.
+              -- pV2 child-item unification — ONE typed children list (variant / addon /
+              -- component are identical rows, distinguished by the type column). The
+              -- card/carousel use them generically; the quick-view groups by type. The grid
+              -- excludes children (parent_item_id IS NULL above); this surfaces them here.
               (SELECT COALESCE(json_agg(json_build_object(
-                        'id', v.id, 'bpin', v.bpin, 'name', v.name, 'description', v.description,
-                        'cost', v.base_price, 'unit', v.unit, 'serves', v.serves,
-                        'attributes', v.attributes, 'images', v.images
-                      ) ORDER BY v.sort_order NULLS LAST, v.created_at), '[]'::json)
-                 FROM items v WHERE v.parent_item_id = i.id AND v.type = 'variant' AND v.deleted_at IS NULL) AS variants,
+                        'id', ch.id, 'bpin', ch.bpin, 'name', ch.name, 'description', ch.description,
+                        'cost', ch.base_price, 'unit', ch.unit, 'serves', ch.serves, 'timeUnit', ch.time_unit,
+                        'attributes', ch.attributes, 'images', ch.images, 'type', ch.type
+                      ) ORDER BY ch.sort_order NULLS LAST, ch.created_at), '[]'::json)
+                 FROM items ch WHERE ch.parent_item_id = i.id AND ch.type IN ('variant', 'addon') AND ch.deleted_at IS NULL) AS children,
               COUNT(*) OVER() AS total
          FROM items i
          -- Cross-org: the supplier name/city come from supplier_directory — the owner-run
@@ -627,7 +628,8 @@ router.get('/items', async (req, res, next) => {
       attributes: row.attributes ?? null,
       // pV2-STORE-VARIANT-CHILDREN-01 — real variant child rows (preferred over the
       // legacy attributes.packages JSON by the picker).
-      variants: Array.isArray(row.variants) ? row.variants : [],
+      // pV2 child-item unification — ONE typed children list (variant / addon / component).
+      children: Array.isArray(row.children) ? row.children : [],
       categoryId: row.category_id,
       supplierId: row.supplier_id,
       supplierName: row.supplier_name,

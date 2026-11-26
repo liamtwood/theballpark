@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, input, output, si
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { VariantMatrix, VariantValue, variantMatrixFor, normalizeVariants, computeUnitPrice, minUnitPrice, hasPricing, selectedImage, selectedDescriptions } from './variants.util';
-import { MarkdownPipe } from '../markdown.pipe';
+import { WhatsIncludedComponent } from './whats-included.component';
 
 /** The resolved selection emitted to the host (for add-to-quote wiring). */
 export interface VariantSelection { values: Record<string, string>; price: number; }
@@ -17,7 +17,7 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
 @Component({
   selector: 'app-item-variant-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule, MarkdownPipe],
+  imports: [CurrencyPipe, LucideAngularModule, WhatsIncludedComponent],
   template: `
     @if (dimensions().length) {
       <div class="bp-variant-picker">
@@ -27,8 +27,10 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
             @if (presentation() === 'picklist') {
               <!-- pV2-STORE-PACKAGES-01 — picklist presentation (packages_meta). -->
               <select class="bp-input-field bp-variant-select" (change)="choose(d.name, $any($event.target).value)">
+                <!-- Placeholder first so the buyer sees the BASE item cover before picking (Liam). -->
+                <option value="" [selected]="!selected()[d.name]">Select {{ d.name }}</option>
                 @for (v of d.values; track v.value) {
-                  <option [value]="v.value" [selected]="selected()[d.name] === v.value">{{ v.value }}@if (valuePrice(v); as vp) { — {{ vp }}}</option>
+                  <option [value]="v.value" [selected]="selected()[d.name] === v.value">{{ v.value }}@if (valuePrice(v); as vp) { — {{ vp }}@if (v.unitLabel) {&nbsp;{{ v.unitLabel }}}}</option>
                 }
               </select>
             } @else {
@@ -45,7 +47,7 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
                       <lucide-icon class="bp-variant-chip__tick" name="check" [size]="15" />
                     }
                     <span class="bp-variant-chip__name">{{ v.value }}</span>
-                    @if (valuePrice(v); as vp) { <span class="bp-variant-chip__price">{{ vp }}</span> }
+                    @if (valuePrice(v); as vp) { <span class="bp-variant-chip__price">{{ vp }}@if (v.unitLabel) { <span class="bp-variant-chip__unit">&nbsp;{{ v.unitLabel }}</span>}</span> }
                   </button>
                 }
               </div>
@@ -57,13 +59,7 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
              the choice boxes. Reveals on pick (mirrors the hero-image swap); markdown
              via the safe md pipe. Multi-dimension items stack one note per picked value
              (tracked by value). -->
-        @if (descriptions().length) {
-          <div class="bp-variant-desc">
-            @for (d of descriptions(); track d.value) {
-              <div class="bp-variant-desc__item bp-md bp-body-small text-secondary" [innerHTML]="d.description | md"></div>
-            }
-          </div>
-        }
+        <app-whats-included [descriptions]="descriptionTexts()" />
 
         <!-- Price line only when a choice can change the price (any non-zero upcharge),
              and only when the host hasn't taken over the price (Quick View shows it on
@@ -109,9 +105,7 @@ export interface VariantSelection { values: Record<string, string>; price: numbe
       }
       .bp-variant-price { display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.15rem; }
       /* pV2-STORE-VARIANT-DESC-01 — the picked value's supporting copy, under the rows. */
-      .bp-variant-desc { display: flex; flex-direction: column; gap: 0.4rem; }
-      .bp-variant-desc__item.bp-md :first-child { margin-top: 0; }
-      .bp-variant-desc__item.bp-md :last-child { margin-bottom: 0; }
+      /* "What's included" copy lives in the shared app-whats-included component. */
     `,
   ],
 })
@@ -150,6 +144,8 @@ export class ItemVariantPickerComponent {
   protected readonly hasPricing = computed(() => hasPricing(this.matrix()));
   /** pV2-STORE-VARIANT-DESC-01 — descriptions of the currently selected value(s). */
   protected readonly descriptions = computed(() => selectedDescriptions(this.matrix(), this.selected()));
+  /** The picked value(s)' description text for the shared "What's included" block. */
+  protected readonly descriptionTexts = computed<string[]>(() => this.descriptions().map((d) => d.description));
 
   /** The chosen value per dimension (empty until the visitor picks). */
   protected readonly selected = signal<Record<string, string>>({});
@@ -166,13 +162,15 @@ export class ItemVariantPickerComponent {
   protected readonly minPrice = computed(() => minUnitPrice(this.basePrice(), this.matrix()));
 
   constructor() {
-    // Auto-select the FIRST value of each dimension whenever the item changes
-    // (Liam 2026-11-11) — Quick View opens pre-configured with a default pick
-    // (its description/image/price), rather than an empty "Select options" state.
+    // BUTTONS: auto-select the first value per dimension (Liam 2026-11-11) so Quick View
+    // opens pre-configured. PICKLIST: start EMPTY on a "Select {group}" placeholder so the
+    // buyer sees the base item cover before picking (Liam 2026-11-25).
     effect(() => {
       const def: Record<string, string> = {};
-      for (const d of (this.matrix()?.dimensions ?? [])) {
-        if (d.values?.length) def[d.name] = d.values[0].value;
+      if (this.presentation() !== 'picklist') {
+        for (const d of (this.matrix()?.dimensions ?? [])) {
+          if (d.values?.length) def[d.name] = d.values[0].value;
+        }
       }
       this.selected.set(def);
     });
@@ -194,9 +192,13 @@ export class ItemVariantPickerComponent {
     });
   }
 
-  /** Picklist (dropdown) selection — always sets, never clears. */
+  /** Picklist (dropdown) selection — the empty placeholder clears the pick. */
   protected choose(dim: string, value: string): void {
-    this.selected.update((s) => ({ ...s, [dim]: value }));
+    this.selected.update((s) => {
+      const next = { ...s };
+      if (value === '') delete next[dim]; else next[dim] = value;
+      return next;
+    });
   }
 
   /** The price shown UNDER a value's name — whole £ when round, 2 dps when there
@@ -204,15 +206,13 @@ export class ItemVariantPickerComponent {
    *  "+£5" / "+£5.50"/"−£2.50", null for a free pick (just the name). */
   protected valuePrice(v: VariantValue): string | null {
     if (v.mode === 'none' || !v.amount) return null;
-    const money = (n: number) => {
-      const digits = Number.isInteger(n) ? 0 : 2;
-      return '£' + Math.abs(n).toLocaleString('en-GB', { minimumFractionDigits: digits, maximumFractionDigits: 2 });
-    };
+    // Whole pounds only — no pence anywhere in the catalogue (Liam 2026-11-25).
+    const money = (n: number) => '£' + Math.round(Math.abs(n)).toLocaleString('en-GB', { maximumFractionDigits: 0 });
     if (v.mode === 'absolute') return money(v.amount);
     return (v.amount > 0 ? '+' : '−') + money(v.amount);
   }
 
-  protected priceDigits(p: number | null): string {
-    return p != null && p < 100 ? '1.2-2' : '1.0-0';
+  protected priceDigits(_p: number | null): string {
+    return '1.0-0'; // whole pounds only — no pence (Liam 2026-11-25)
   }
 }

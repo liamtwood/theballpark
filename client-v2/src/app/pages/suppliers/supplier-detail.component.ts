@@ -230,7 +230,7 @@ const WHATS_HOT = "What's Hot";
               <button type="button" class="bp-drill-back" (click)="store.exitPackageDrill()">
                 <lucide-icon name="chevron-left" [size]="16" />
                 <span class="bp-drill-back__label">Back</span>
-                <span class="bp-drill-back__crumb"><lucide-icon name="package-open" [size]="14" /> {{ store.packageLabel() || 'Packages' }} of {{ store.packageName() || 'item' }}</span>
+                <span class="bp-drill-back__crumb"><lucide-icon name="package-open" [size]="14" /> {{ store.packageLabel() || 'Packages' }} for {{ store.packageName() || 'item' }}</span>
               </button>
             }
             @if (store.items().length === 0 && !store.itemsRes.isLoading()) {

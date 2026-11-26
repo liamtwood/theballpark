@@ -85,10 +85,10 @@ import { unitServesLabel } from '../../../shared/unit-display';
                  [ngModel]="item().unit" (ngModelChange)="unitChange.emit($event)" (click)="$event.stopPropagation()" />
         </span>
       } @else if (lineTotal() !== null) {
-        <span class="bp-price-large">{{ lineTotal() | currency: 'GBP' : 'symbol' : '1.0-2' }}</span>
+        <span class="bp-price-large">{{ lineTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
         <span class="bp-meta uppercase tracking-wide">Total</span>
       } @else if (item().basePrice !== null) {
-        <span class="bp-price-large">@if (showFromPrefix()) {From }{{ item().basePrice | currency: 'GBP' : 'symbol' : ((item().basePrice ?? 0) < 100 ? '1.2-2' : '1.0-0') }}</span>
+        <span class="bp-price-large">@if (showFromPrefix()) {From }{{ item().basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
         @if (item().unit) {
           <span class="bp-meta">/ {{ item().unit }}</span>
         }

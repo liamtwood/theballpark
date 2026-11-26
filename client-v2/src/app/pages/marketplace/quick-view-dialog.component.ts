@@ -11,7 +11,8 @@ import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
 import { itemEditLink } from '../../shared/catalogue/item-edit-link';
 import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribute-cards.component';
 import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-picker.component';
-import { allVariantImages, variantMatrixFor } from '../../shared/catalogue/variants.util';
+import { AddonMultipickerComponent, AddonOrder, BaseLine } from '../../shared/catalogue/addon-multipicker.component';
+import { allVariantImages, variantMatrixFor, childrenOfType, unitLabelFor } from '../../shared/catalogue/variants.util';
 import { SupplierProfilePaneComponent } from './supplier-profile-pane.component';
 
 /** Add-to-ballpark payload — the item + the chosen variant (pV2-STORE-VARIANTS-
@@ -47,6 +48,7 @@ type Pane = 'item' | 'supplier';
     DialogModule,
     ItemAttributeCardsComponent,
     ItemVariantPickerComponent,
+    AddonMultipickerComponent,
     SupplierProfilePaneComponent,
     MarkdownPipe,
   ],
@@ -166,17 +168,27 @@ type Pane = 'item' | 'supplier';
                        false) and the configured price rides the Add-to-ballpark CTA, so a
                        "From £X" up top is misleading. Non-variant items still show it. -->
                   @if (!hasVariantDims() && it.basePrice !== null) {
-                    <div class="bp-price-large">From {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-2' }}@if (priceUnitLabel(it); as u) { <span class="bp-body-small font-normal text-secondary">/ {{ u }}</span> }</div>
+                    <div class="bp-price-large">From {{ it.basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}@if (priceUnitLabel(it); as u) { <span class="bp-body-small font-normal text-secondary">&nbsp;{{ u }}</span> }</div>
                   }
-                  <!-- Hairline separates the heading (name / description / price) from
-                       the configurator below. -->
-                  <hr class="bp-qv2__rule" />
-                  <!-- The configured price rides the "Add to ballpark · £…" CTA below,
-                       so the picker doesn't repeat it (admins have no CTA → no price here,
-                       which is fine — they're not buying). -->
-                  <app-item-variant-picker [attributes]="it.attributes ?? null" [variants]="it.variants ?? []" [basePrice]="it.basePrice"
-                                           [showPrice]="false"
-                                           (selectionChange)="chosenCombo.set($event)" (imageChange)="onVariantImage($event)" />
+                  <!-- Variant group — only when the item actually has variants (incl. Option
+                       Levels). The configured price rides the "Add to ballpark · £…" CTA, so
+                       the picker shows no price here. A separator precedes it only when shown,
+                       so an add-on-only item never gets a stray divider. -->
+                  @if (hasVariantDims()) {
+                    <hr class="bp-qv2__rule" />
+                    <app-item-variant-picker [attributes]="it.attributes ?? null" [variants]="variantChildren()" [basePrice]="it.basePrice"
+                                             [showPrice]="false"
+                                             (selectionChange)="chosenCombo.set($event)" (imageChange)="onVariantImage($event)" />
+                  }
+
+                  <!-- pV2-ADDONS-01 — add-ons as their own group (buyer picks extras; each
+                       becomes its own line). Rendered through the same picker, keyed off the
+                       item's addons_meta for the group label/presentation. -->
+                  @if (addonChildren().length) {
+                    <hr class="bp-qv2__rule" />
+                    <app-addon-multipicker [addons]="addonChildren()" [base]="orderBase(it)" [label]="addonLabel()"
+                                           (orderChange)="chosenOrder.set($event)" (imageChange)="onVariantImage($event)" />
+                  }
 
                   @if (tiers().length) {
                     <hr class="bp-qv2__rule" />
@@ -239,9 +251,10 @@ type Pane = 'item' | 'supplier';
               <lucide-icon name="octagon-x" [size]="15" /> Reject
             </button>
           }
-          @if (showAdd()) {
-            <!-- Qty + Add pinned to the footer so the primary action stays visible
-                 while the detail column scrolls (Liam 2026-11-12). -->
+          @if (showAdd() && !hasExtras()) {
+            <!-- Qty + Add pinned to the footer so the primary action stays visible while the
+                 detail column scrolls (Liam 2026-11-12). Hidden once options are chosen — the
+                 base item's qty then lives in the order list above. -->
             <div class="mr-auto flex items-center gap-1.5">
               <span class="bp-field-label">Qty</span>
               <button type="button" class="bp-qty-step" aria-label="Decrease quantity" (click)="stepQty(-1)"><lucide-icon name="minus" [size]="13" /></button>
@@ -257,7 +270,7 @@ type Pane = 'item' | 'supplier';
               <button type="button" class="bp-btn--primary" disabled>Select options</button>
             } @else {
               <button type="button" class="bp-btn--primary" (click)="emitAdd(it)">
-                Add to ballpark@if ((chosenCombo()?.price ?? it.basePrice) !== null) { &nbsp;·&nbsp;{{ (chosenCombo()?.price ?? it.basePrice) | currency: 'GBP' : 'symbol' : '1.0-2' }} }
+                Add to ballpark@if (ctaTotal() !== null) { &nbsp;·&nbsp;{{ ctaTotal() | currency: 'GBP' : 'symbol' : '1.0-0' }} }
               </button>
             }
           }
@@ -347,7 +360,7 @@ type Pane = 'item' | 'supplier';
         display: block;
         width: 100%;
         height: auto;
-        max-height: 280px;
+        max-height: 340px;
         object-fit: contain;
         border-radius: var(--radius-card);
       }
@@ -402,19 +415,11 @@ type Pane = 'item' | 'supplier';
 })
 export class QuickViewDialogComponent {
   readonly item = input<CatalogueItem | null>(null);
-  /** The price-line unit suffix, UNIT-DRIVEN (Liam 2026-11-21): a time item shows
-   *  its granularity ("From £1000 / week"); a platter/package shows its pack size
-   *  ("From £100 / 50 guests") rather than the generic unit word. Other units keep
-   *  their plain label. '' = no suffix. */
+  /** The price-line unit suffix — the SAME shared helper variants/add-ons use ("per week",
+   *  "(Max 300)", …), so the item and its options read identically (Liam 2026-11-25). */
   protected priceUnitLabel(it: CatalogueItem): string {
-    switch (it.unit) {
-      case 'time':      return it.timeUnit ? it.timeUnit.replace(/_/g, ' ') : 'time';
-      case 'platter':   return it.serves != null ? `${it.serves} guests` : 'package';
-      case 'per_guest': return 'guest';
-      case 'each':      return 'each';
-      case 'size':      return 'unit';
-      default:          return it.unit ? it.unit.replace(/_/g, ' ') : '';
-    }
+    const cap = (it.attributes as Record<string, unknown> | null)?.['capacity'];
+    return unitLabelFor(it.unit, it.timeUnit, it.serves, typeof cap === 'number' ? cap : null);
   }
   /** Whether this surface is a management view (My Shop / Approvals). Default false
    *  = read-only: no Edit, no Approve/Reject. The Marketplace browse leaves it false
@@ -475,6 +480,33 @@ export class QuickViewDialogComponent {
   /** The combo chosen in the variant picker (null until a full combo is picked) —
    *  drives the "Add to ballpark" value. */
   protected readonly chosenCombo = signal<{ values: Record<string, string>; price: number } | null>(null);
+  /** pV2-ADDONS-01 — the configured order (base qty + chosen options) from the multipicker;
+   *  the cart preview each becomes a line in the composition build. */
+  protected readonly chosenOrder = signal<AddonOrder | null>(null);
+  protected readonly hasExtras = computed(() => (this.chosenOrder()?.addons.length ?? 0) > 0);
+  /** The CTA price — the resolved base/variant price, or the full order total (base × qty +
+   *  extras) once options are chosen. */
+  protected readonly ctaTotal = computed<number | null>(() => {
+    const it = this.item();
+    const unit = this.chosenCombo()?.price ?? it?.basePrice ?? null;
+    const o = this.chosenOrder();
+    if (!o || !o.addons.length) return unit;
+    const base = (unit ?? 0) * o.baseQty;
+    const extras = o.addons.reduce((s, x) => s + x.cost * x.qty, 0);
+    return base + extras;
+  });
+  /** The main item as the multipicker's anchor row (its price = the resolved variant/base). */
+  protected orderBase(it: CatalogueItem): BaseLine {
+    return { name: it.name, unit: it.unit, timeUnit: it.timeUnit ?? null, serves: it.serves ?? null, price: this.chosenCombo()?.price ?? it.basePrice };
+  }
+  /** The add-on group's label from the item's addons_meta (falls back to "Add-on"). */
+  protected readonly addonLabel = computed<string>(() => {
+    const meta = (this.item()?.attributes as Record<string, unknown> | null)?.['addons_meta'] as { label?: unknown } | undefined;
+    return typeof meta?.label === 'string' && meta.label.trim() ? meta.label.trim() : 'Add-on';
+  });
+  // pV2 child-item unification — the ONE `children` list, split by type for display.
+  protected readonly variantChildren = computed(() => childrenOfType(this.item()?.children, 'variant'));
+  protected readonly addonChildren = computed(() => childrenOfType(this.item()?.children, 'addon'));
 
   // ── Item image carousel (pV2-STORE-IMAGE-VARIANTS-01) ─────────────────────────
   /** The item's full gallery (cover first) + each variant option's image, deduped —
@@ -485,8 +517,10 @@ export class QuickViewDialogComponent {
     const gallery = it?.images?.length ? it.images : (it?.coverUrl ? [it.coverUrl] : []);
     // pV2-STORE-PACKAGES-01 — include package/variant covers (variantMatrixFor covers
     // both) so selecting a variant can jump the hero to its cover.
-    const m = variantMatrixFor((it?.attributes as Record<string, unknown> | null) ?? null, it?.variants ?? []);
-    const imgs = [...gallery, ...allVariantImages(m)].filter((u): u is string => !!u);
+    const m = variantMatrixFor((it?.attributes as Record<string, unknown> | null) ?? null, this.variantChildren());
+    // pV2-ADDONS-01 — add-on covers too, so picking an add-on can jump the hero (same as a variant).
+    const am = variantMatrixFor(null, this.addonChildren());
+    const imgs = [...gallery, ...allVariantImages(m), ...allVariantImages(am)].filter((u): u is string => !!u);
     return [...new Set(imgs)];
   });
   /** The selected image index into imageList() (hero + thumbnail gallery). */
@@ -524,7 +558,7 @@ export class QuickViewDialogComponent {
   private readonly imgColH = signal(0);
   protected readonly sideMaxH = computed(() => {
     const h = this.imgColH();
-    return h ? Math.max(h, 360) : null;
+    return h ? Math.max(h, 440) : null;
   });
   /** Track height follows the ACTIVE pane (so a short pane leaves no whitespace and a
    *  tall one scrolls the dialog body); during a drag it's the taller of the two so the
@@ -640,7 +674,7 @@ export class QuickViewDialogComponent {
    *  add-to-quote (Liam: variants → "Select options", never a blind add). */
   protected readonly hasVariantDims = computed(() =>
     // pV2-STORE-PACKAGES-01 — packages count as picker dimensions too (same CTA path).
-    !!variantMatrixFor((this.item()?.attributes as Record<string, unknown> | null) ?? null, this.item()?.variants ?? [])?.dimensions.length,
+    !!variantMatrixFor((this.item()?.attributes as Record<string, unknown> | null) ?? null, this.variantChildren())?.dimensions.length,
   );
   protected readonly needsSelection = computed(() => this.hasVariantDims() && !this.chosenCombo());
 

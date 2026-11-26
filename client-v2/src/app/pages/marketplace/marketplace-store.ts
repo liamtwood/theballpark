@@ -284,7 +284,10 @@ export class MarketplaceStore {
   readonly suppliersRes = resource({
     params: () =>
       this.mode() === 'suppliers' && !this.pinnedSupplierId()
-        ? { cat: this.categoryId(), q: this.search() || null, offset: this.offset() }
+        // rev folds in catalogue writes (approve/activate) so a supplier that
+        // becomes qualifying refreshes WITHOUT a hard reload — parity with itemsRes,
+        // which had rev while this didn't (suppliers stayed stale, Liam 2026-11-26).
+        ? { cat: this.categoryId(), q: this.search() || null, offset: this.offset(), rev: this.catalogue.rev() }
         : undefined,
     loader: async ({ params }) => {
       const page = await this.catalogue.suppliers(params);

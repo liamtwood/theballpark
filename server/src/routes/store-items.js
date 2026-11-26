@@ -110,19 +110,23 @@ router.post('/:id/components', async (req, res, next) => {
 });
 
 // pV2-STORE-VARIANT-CHILDREN-01 — variants as real child items (type='variant').
-const ItemVariantsSchema = z.object({
-  variants: z.array(z.object({
-    id: z.string().uuid().optional(),
-    name: z.string().trim().min(1),
-    description: z.string().nullish(),
-    cost: z.coerce.number().nonnegative().nullish(),
-    unit: z.string().nullish(),
-    serves: z.coerce.number().nonnegative().nullish(),
-    capacity: z.coerce.number().nonnegative().nullish(),
-    color: z.string().max(20).nullish(),
-    images: z.array(z.object({ url: z.string() }).passthrough()).nullish(),
-  })),
-}).strip();
+// pV2-STORE-VARIANT-CHILDREN-01 / pV2-ADDONS-01 — one child-row shape; variants and
+// add-ons are the same owned child item, just a different `type` (Liam 2026-11-25).
+const ChildRowSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().trim().min(1),
+  description: z.string().nullish(),
+  cost: z.coerce.number().nonnegative().nullish(),
+  unit: z.string().nullish(),
+  serves: z.coerce.number().nonnegative().nullish(),
+  capacity: z.coerce.number().nonnegative().nullish(),
+  timeUnit: z.string().max(40).nullish(),
+  size: z.string().max(80).nullish(),
+  color: z.string().max(20).nullish(),
+  images: z.array(z.object({ url: z.string() }).passthrough()).nullish(),
+});
+const ItemVariantsSchema = z.object({ variants: z.array(ChildRowSchema) }).strip();
+const ItemAddonsSchema = z.object({ addons: z.array(ChildRowSchema) }).strip();
 
 router.get('/:id/variants', async (req, res, next) => {
   try {
@@ -144,6 +148,29 @@ router.post('/:id/variants', async (req, res, next) => {
     console.log('[store.variants] OK id=%s saved=%s', req.params.id, rows.length);
     res.status(201).json(rows);
   } catch (err) { console.error('[store.variants] ERR id=%s %s', req.params.id, err && (err.stack || err.message || err)); next(err); }
+});
+
+// pV2-ADDONS-01 — add-ons: same engine, `type='addon'`.
+router.get('/:id/addons', async (req, res, next) => {
+  try {
+    const out = await ItemService.listAddons(req.user.org_id, req.params.id);
+    if (out === null) return res.status(404).json({ error: 'Not found' });
+    res.json(out);
+  } catch (err) { next(err); }
+});
+
+router.post('/:id/addons', async (req, res, next) => {
+  try {
+    const parsed = ItemAddonsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      console.warn('[store.addons] 400 id=%s %s', req.params.id, JSON.stringify(z.flattenError(parsed.error).fieldErrors));
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const rows = await ItemService.saveAddons(req.user.org_id, req.params.id, parsed.data.addons);
+    if (rows === null) return res.status(404).json({ error: 'Not found' });
+    console.log('[store.addons] OK id=%s saved=%s', req.params.id, rows.length);
+    res.status(201).json(rows);
+  } catch (err) { console.error('[store.addons] ERR id=%s %s', req.params.id, err && (err.stack || err.message || err)); next(err); }
 });
 
 router.get('/:id', async (req, res, next) => {

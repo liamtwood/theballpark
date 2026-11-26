@@ -48,9 +48,11 @@ export interface CatalogueItem {
    *  price_tiers + options), for the quick-view spec cards. Optional: only the
    *  marketplace list projection carries it. */
   attributes?: Record<string, unknown> | null;
-  /** pV2-STORE-VARIANT-CHILDREN-01 — the item's variant child rows (real items),
-   *  preferred over attributes.packages by the picker/card. */
-  variants?: unknown[];
+  /** pV2 child-item unification — the item's child rows (real items), ONE typed list:
+   *  variant / addon / component are identical rows distinguished by `type`. Display
+   *  surfaces filter by type (variantMatrixFor / childrenOfType). Preferred over the
+   *  legacy attributes.packages JSON by the picker/card. */
+  children?: unknown[];
   categoryId: string;
   supplierId: string;
   supplierName: string;

@@ -5,7 +5,7 @@ import { firstValueFrom, Observable } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { TooltipModule } from 'primeng/tooltip';
 import { CatalogueItem, sizedImage } from './catalogue.types';
-import { variantMatrixFor, VariantChild } from './variants.util';
+import { variantMatrixFor, childrenOfType, unitLabelFor, VariantChild } from './variants.util';
 import { itemEditLink } from './item-edit-link';
 import { StatusPillComponent } from '../status-pill/status-pill.component';
 import { StoreItemService } from '../../core/store/store-item.service';
@@ -142,7 +142,7 @@ function pluralise(word: string): string {
            preview rail + detail view. -->
       <div class="mt-2 flex items-baseline gap-1.5">
         @if (fromPrice(); as fp) {
-          <span class="bp-price-large">From {{ fp | currency: 'GBP' : 'symbol' : (fp < 100 ? '1.2-2' : '1.0-0') }}</span>
+          <span class="bp-price-large">From {{ fp | currency: 'GBP' : 'symbol' : '1.0-0' }}@if (unitSuffix(); as u) { <span class="bp-caption font-normal text-secondary">&nbsp;{{ u }}</span> }</span>
         } @else {
           <span class="bp-caption">Price on request</span>
         }
@@ -359,23 +359,35 @@ export class ItemCardComponent {
    *  before adding, so the "+" opens the Quick View instead of blind-adding (Liam). */
   protected readonly hasVariantDims = computed(() =>
     // pV2-STORE-PACKAGES-01 — packages are picker dimensions too → "Select options".
-    !!variantMatrixFor((this.item().attributes as Record<string, unknown> | null) ?? null, this.item().variants ?? [])?.dimensions.length,
+    !!variantMatrixFor((this.item().attributes as Record<string, unknown> | null) ?? null, childrenOfType(this.item().children, 'variant'))?.dimensions.length,
   );
   /** pV2-STORE-VARIANT-CHILDREN-01 — real variant CHILD rows present → show the packages
    *  drill button. Distinct from hasVariantDims (which also covers Option-Levels dims held
    *  in attributes): the drill is about real child items only. */
   protected readonly childCount = computed(() =>
-    (Array.isArray(this.item().variants) ? (this.item().variants as VariantChild[]) : [])
+    (Array.isArray(this.item().children) ? (this.item().children as VariantChild[]) : [])
       .filter((v) => String(v?.name ?? '').trim() !== '').length,
   );
   protected readonly hasChildren = computed(() => this.childCount() > 0);
+  /** The card's price unit suffix ("per week", "per 200 guests", "(Max 300)") — the SAME
+   *  shared helper the quick view uses, so the card reads the same (Liam 2026-11-25). */
+  protected readonly unitSuffix = computed(() => {
+    const it = this.item();
+    const cap = (it.attributes as Record<string, unknown> | null)?.['capacity'];
+    return unitLabelFor(it.unit, it.timeUnit, it.serves, typeof cap === 'number' ? cap : null);
+  });
   /** pV2-STORE-VARIANT-CHILDREN-01 — the item's own GROUP LABEL (packages_meta.label,
    *  e.g. "Space" / "Colour"), defaulting to "Package". Drives the drill button + back
    *  bar so the wording matches how the supplier named the group. Pluralised for display
    *  (the drill always shows the whole group). */
   protected readonly packageLabel = computed(() => {
-    const meta = (this.item().attributes as Record<string, unknown> | null)?.['packages_meta'] as { label?: unknown } | undefined;
-    return typeof meta?.label === 'string' && meta.label.trim() ? meta.label.trim() : 'Package';
+    const it = this.item();
+    const attrs = it.attributes as Record<string, unknown> | null;
+    // Variant children → packages_meta ("Space" / "Colour"); add-on-only → addons_meta
+    // ("Extras"). So the drill reads "Extras for Food Truck", "Spaces for The O2", etc.
+    const hasVariants = childrenOfType(it.children, 'variant').length > 0;
+    const meta = attrs?.[hasVariants ? 'packages_meta' : 'addons_meta'] as { label?: unknown } | undefined;
+    return typeof meta?.label === 'string' && meta.label.trim() ? meta.label.trim() : (hasVariants ? 'Package' : 'Extra');
   });
   protected readonly packageLabelPlural = computed(() => pluralise(this.packageLabel()));
   /** Drill the grid into this parent's children (URL-is-state): set ?parent (+ the parent
@@ -396,8 +408,8 @@ export class ItemCardComponent {
   protected readonly fromPrice = computed<number | null>(() => {
     const it = this.item();
     const attrs = it.attributes as Record<string, unknown> | null;
-    // pV2-STORE-VARIANT-CHILDREN-01 — real variant child rows → the lowest option cost.
-    const kids = Array.isArray(it.variants) ? (it.variants as { cost?: unknown }[]) : [];
+    // Real variant child rows → the lowest option cost (add-ons excluded — they're extras).
+    const kids = childrenOfType(it.children, 'variant') as { cost?: unknown }[];
     const kidCosts = kids.map((v) => Number(v?.cost)).filter((c) => Number.isFinite(c) && c > 0);
     if (kidCosts.length) return Math.min(...kidCosts);
     // Priced options (tiers / spaces) → the lowest option (legacy JSON packages).

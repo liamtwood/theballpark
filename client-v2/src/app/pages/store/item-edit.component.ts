@@ -1,10 +1,10 @@
 import {
-  ChangeDetectionStrategy, Component, computed, inject, resource, signal,
+  ChangeDetectionStrategy, Component, computed, inject, resource, signal, WritableSignal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { ActivatedRoute, Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable } from 'rxjs';
 import { ToastModule } from 'primeng/toast';
 import { ModalComponent } from '../../shared/modal/modal.component';
 import { MessageService } from 'primeng/api';
@@ -23,6 +23,7 @@ import { SaveStatePillComponent, SaveState } from '../../shared/save-state-pill/
 import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
 import { MdHelpComponent } from '../../shared/md-help.component';
 import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.component';
+import { ItemChildrenEditorComponent, ChildRow } from './item-children-editor.component';
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
 import { ItemEditActionsComponent } from './item-edit-actions.component';
@@ -32,7 +33,7 @@ import { CustomizeDialogComponent } from '../projects/customize-dialog.component
 import { estimateTotal } from '../projects/estimate-total.util';
 import { DecimalPipe } from '@angular/common';
 import { VariantMatrix, normalizeVariants, variantMatrixFor } from '../../shared/catalogue/variants.util';
-import { SellModeCode, SellModeDef, SELL_MODES, sellModesForCategory, sellModeSeed } from './sell-modes';
+import { SellModeCode, SellModeDef, SELL_MODES, ALL_SELL_MODES, sellModeSeed } from './sell-modes';
 
 interface ItemForm {
   name: string;
@@ -54,21 +55,9 @@ interface ItemForm {
   tags: string[];              // items.tags free-text array (incl. "What's Hot")
 }
 
-/** pV2-STORE-PACKAGES-01 — a Packages row: a child "variant" item authored inline
- *  (Bronze/Silver/Gold). Local table shape for now; persisted transitionally to
- *  attributes.packages, migrating to a type='variant' child item (parent_item_id)
- *  next. See docs/ITEM-COMPOSITION-MODEL.md. */
-interface PackageRow {
-  id?: string;        // the persisted variant child item id (null until first save) — pV2-STORE-VARIANT-CHILDREN-01
-  name: string;
-  description: string;
-  cost: string;
-  unit: string;
-  serves: string;
-  capacity: string;   // max capacity guests when unit = capacity (pV2-STORE-PACKAGES-01)
-  images: GalleryImage[]; // the variant's own gallery (standard component); cover hero-swaps on pick
-  color: string;      // the chip button colour (--vc); '' = theme accent (pV2-STORE-VARIANT-COLOR-01)
-}
+/** A Packages/variant row = the shared ChildRow (same shape the Add Ons tab authors) —
+ *  pV2-STORE-VARIANT-CHILDREN-01. The editor UI lives in ItemChildrenEditorComponent. */
+type PackageRow = ChildRow;
 
 /** pV2-STORE-PACKAGES-01 — per-group presentation config (attributes.packages_meta):
  *  what the group is called, and how the buyer picks. `select:'multi'` (multipick) is
@@ -96,7 +85,7 @@ const WHATS_HOT = "What's Hot";
     FormsModule, LucideAngularModule, ToastModule, ModalComponent, PageHeroComponent, EditFieldComponent,
     ImageGalleryComponent, ImagePickerComponent, DrawerComponent,
     ItemEditActionsComponent, ItemAttributeCardsComponent, SaveStatePillComponent,
-    ItemVariantsEditorComponent, ItemVariantPickerComponent, CustomizeDialogComponent, DecimalPipe, MdHelpComponent,
+    ItemVariantsEditorComponent, ItemVariantPickerComponent, ItemChildrenEditorComponent, CustomizeDialogComponent, DecimalPipe, MdHelpComponent,
   ],
   providers: [MessageService],
   template: `
@@ -279,8 +268,71 @@ const WHATS_HOT = "What's Hot";
           }
 
           @if (tab() === 'addons') {
-          <!-- INSTALLATION — moved to its own Add Ons tab for now (Liam 2026-11-25); the
-               add-ons model lands here later. -->
+          <!-- pV2-ADDONS-01 — Add-ons: optional extras offered alongside this item, each a
+               type='addon' child authored with the SAME editor as variants. -->
+          <div class="bp-card bp-edit-section" [class.is-collapsed]="!sectionOpen('addons')">
+            <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('addons')">
+              <h3 class="bp-edit-section-title">Add-ons</h3>
+              <lucide-icon [name]="sectionOpen('addons') ? 'chevron-down' : 'chevron-right'" [size]="16" class="text-muted" />
+            </button>
+            @if (sectionOpen('addons')) {
+              @if (!isEdit && !createdId()) {
+                <p class="bp-body-small text-secondary mt-3">Add a name and category on the Listing tab first — you can add extras once the item is saved.</p>
+              } @else {
+                <p class="bp-body-small text-secondary mt-3">Optional extras offered alongside this item — each is priced on its own and added as its own line.</p>
+                <!-- Group config — same as variants (label + how the buyer picks). -->
+                <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <app-edit-field label="Group label" density="page" [editing]="true" [value]="addonsMeta().label" (valueChange)="patchAddonsMeta({ label: $event })" />
+                  <app-edit-field label="Show as" type="select" density="page" [options]="presentationOptions" [editing]="true" [value]="addonsMeta().presentation" (valueChange)="patchAddonsMeta({ presentation: $any($event) })" />
+                  <app-edit-field label="Selection" type="select" density="page" [options]="selectOptions" [editing]="true" [value]="addonsMeta().select" (valueChange)="patchAddonsMeta({ select: $any($event) })" />
+                </div>
+                <app-item-children-editor
+                  [rows]="addons()"
+                  [selectedIndex]="selectedAddon()"
+                  label="add-on"
+                  [showColor]="false"
+                  [showCost]="true"
+                  [currencySuffix]="currencySuffix()"
+                  [unitOptions]="unitOptions()"
+                  [timeUnitOptions]="timeUnitOptions()"
+                  [sizeOptions]="sizeOptions()"
+                  (selectRow)="selectedAddon.set($event)"
+                  (add)="addAddon()"
+                  (remove)="removeAddon($event)"
+                  (patchRow)="patchAddon(selectedAddon(), $event.key, $event.value)"
+                  (reorder)="onChildReorder(addons, selectedAddon, $event)">
+                  @if (selectedAddonRow(); as a) {
+                    <div childImages>
+                      <app-image-gallery
+                        entityType="item"
+                        [images]="a.images"
+                        [primaryUrl]="packageCoverUrl(a)"
+                        [showSetCover]="false"
+                        [searchSeed]="a.name || form().name"
+                        [editable]="true"
+                        [columns]="4" [tileAspect]="'1 / 1'" [maxSlots]="6"
+                        (imagesChange)="onAddonImagesChange($event)"
+                        (primarySet)="onAddonSetCover($event)"
+                      />
+                      <div class="bp-dropzone bp-dropzone--sm mt-2" [class.bp-dropzone--on]="addonDragOver()"
+                           (dragover)="$event.preventDefault(); addonDragOver.set(true)"
+                           (dragleave)="addonDragOver.set(false)"
+                           (drop)="onAddonDrop($event)"
+                           role="button" tabindex="0"
+                           (click)="azInput.click()" (keydown.enter)="azInput.click()">
+                        <input #azInput type="file" class="hidden" accept="image/*" multiple (change)="onAddonMultiFiles($any($event.target))" />
+                        <lucide-icon name="upload" [size]="18" [strokeWidth]="1.5" />
+                        <span class="bp-caption mt-1">{{ addonUploadingMulti() ? 'Uploading…' : 'Drop images to add several' }}</span>
+                      </div>
+                    </div>
+                  }
+                </app-item-children-editor>
+              }
+            }
+          </div>
+
+          <!-- Installation — a built-in add-on (Liam 2026-11-25: "install is an add-on"):
+               install cost + included services. -->
           <div class="bp-card bp-edit-section" [class.is-collapsed]="!sectionOpen('installation')">
             <button type="button" class="flex w-full items-center justify-between bp-accordion-toggle" (click)="toggleSection('installation')">
               <h3 class="bp-edit-section-title">Installation</h3>
@@ -323,7 +375,7 @@ const WHATS_HOT = "What's Hot";
                 <div class="bp-qv-spec mt-4">
                   <span class="bp-qv-spec__label"><lucide-icon name="sparkles" [size]="13" /> How is this sold?</span>
                   <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    @for (m of sellModes(); track m.code) {
+                    @for (m of sellModes; track m.code) {
                       <button type="button" class="bp-sellmode" [class.bp-sellmode--on]="soldAs() === m.code" (click)="applySellMode(m.code)">
                         <span class="bp-sellmode__label">{{ m.label }}</span>
                         <span class="bp-sellmode__hint">{{ m.hint }}</span>
@@ -384,12 +436,15 @@ const WHATS_HOT = "What's Hot";
                   </div>
                 </div>
                 }
-              <!-- Variants on top, Volume under — stacked (Liam 2026-11-24). -->
+              <!-- Option Levels (levels) OR Volume pricing (volume) — never on a Single
+                   package, which is one flat price (Liam 2026-11-25). -->
+              @if (soldAs() === 'levels' || soldAs() === 'volume') {
               <div class="mt-4 grid grid-cols-1 gap-3">
-                <!-- Variants / Option Levels (multi-dimension matrix: base + upcharges). -->
-                @if (soldAs() === 'single' || soldAs() === 'levels') {
+                <!-- Variants / Option Levels (multi-dimension matrix: base + upcharges).
+                     Levels only — a Single package is one price, no variants (Liam 2026-11-25). -->
+                @if (soldAs() === 'levels') {
                 <div class="bp-qv-spec">
-                  <span class="bp-qv-spec__label"><lucide-icon name="layers" [size]="13" /> {{ soldAs() === 'levels' ? 'Option Levels' : 'Variants' }}</span>
+                  <span class="bp-qv-spec__label"><lucide-icon name="layers" [size]="13" /> Option Levels</span>
                   @if (variantsSummary(); as vs) {
                     <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
                       @for (d of vs.dims; track d.name) {
@@ -401,13 +456,13 @@ const WHATS_HOT = "What's Hot";
                     <p class="bp-qv-spec__val bp-qv-spec__val--soon">No variants</p>
                   }
                   <button type="button" class="bp-btn-outline bp-body-small mt-2" (click)="openVariantsDialog()">
-                    <lucide-icon name="pencil" [size]="14" /> Edit {{ soldAs() === 'levels' ? 'option levels' : 'variants' }}
+                    <lucide-icon name="pencil" [size]="14" /> Edit option levels
                   </button>
                 </div>
                 }
 
-                <!-- Volume pricing — single + volume modes only (not levels). -->
-                @if (soldAs() === 'single' || soldAs() === 'volume') {
+                <!-- Volume pricing — volume mode only; a Single package is one flat price (Liam 2026-11-25). -->
+                @if (soldAs() === 'volume') {
                 <div class="bp-qv-spec">
                   <span class="bp-qv-spec__label"><lucide-icon name="tags" [size]="13" /> Volume pricing</span>
                   @if (filledTiers().length) {
@@ -428,6 +483,7 @@ const WHATS_HOT = "What's Hot";
                 }
               </div>
               }
+              }
 
               @if (soldAs() !== 'single' && soldAs() !== 'levels') {
               <!-- pV2-STORE-PACKAGES-01 — the composition editor: chips + per-row form,
@@ -446,100 +502,53 @@ const WHATS_HOT = "What's Hot";
                 }
                 <!-- Chips (one per package) + Add — the SAME chip the buyer sees.
                      Click a chip to edit that package in the form below. -->
-                <div class="mt-3 flex flex-wrap items-stretch gap-2">
-                  @for (p of packages(); track $index) {
-                    <button type="button" class="bp-variant-chip bp-variant-chip--draggable"
-                            [class.bp-variant-chip--on]="selectedPackage() === $index"
-                            [class.bp-variant-chip--dragging]="dragIndex() === $index"
-                            [class.bp-variant-chip--dragover]="dragOverIndex() === $index && dragIndex() !== $index"
-                            [style.--vc]="p.color || 'var(--theme-accent)'"
-                            draggable="true"
-                            (dragstart)="onChipDragStart($index, $event)"
-                            (dragover)="onChipDragOver($index, $event)"
-                            (dragleave)="onChipDragLeave($index)"
-                            (drop)="onChipDrop($index, $event)"
-                            (dragend)="onChipDragEnd()"
-                            (click)="selectedPackage.set($index)">
-                      @if (selectedPackage() === $index) { <lucide-icon class="bp-variant-chip__tick" name="check" [size]="15" /> }
-                      <span class="bp-variant-chip__name">{{ p.name.trim() || 'Untitled' }}</span>
-                      @if (chipPrice(p.cost); as cp) { <span class="bp-variant-chip__price">{{ cp }}</span> }
-                    </button>
+                <!-- Shared chips + per-row form editor (pV2-STORE-VARIANT-CHILDREN-01) — the
+                     SAME component the Add Ons tab uses. Variants show colour + serves/capacity;
+                     cost hides in Volume mode. The gallery is projected so uploads stay here. -->
+                <app-item-children-editor
+                  [rows]="packages()"
+                  [selectedIndex]="selectedPackage()"
+                  label="package"
+                  [showColor]="true"
+                  [showCost]="soldAs() !== 'volume'"
+                  [currencySuffix]="currencySuffix()"
+                  [unitOptions]="unitOptions()"
+                  [timeUnitOptions]="timeUnitOptions()"
+                  [sizeOptions]="sizeOptions()"
+                  (selectRow)="selectedPackage.set($event)"
+                  (add)="addPackage()"
+                  (remove)="removePackage($event)"
+                  (patchRow)="patchPackage(selectedPackage(), $event.key, $event.value)"
+                  (reorder)="onChildReorder(packages, selectedPackage, $event)">
+                  @if (selectedPackageRow(); as p) {
+                    <div childImages>
+                      <app-image-gallery
+                        entityType="item"
+                        [images]="p.images"
+                        [primaryUrl]="packageCoverUrl(p)"
+                        [showSetCover]="false"
+                        [searchSeed]="p.name || form().name"
+                        [editable]="true"
+                        [columns]="4"
+                        [tileAspect]="'1 / 1'"
+                        [maxSlots]="6"
+                        (imagesChange)="onPackageImagesChange($event)"
+                        (primarySet)="onPackageSetCover($event)"
+                      />
+                      <!-- Multi-image drop zone for this variant (Liam 2026-11-24). -->
+                      <div class="bp-dropzone bp-dropzone--sm mt-2" [class.bp-dropzone--on]="variantDragOver()"
+                           (dragover)="$event.preventDefault(); variantDragOver.set(true)"
+                           (dragleave)="variantDragOver.set(false)"
+                           (drop)="onVariantDrop($event)"
+                           role="button" tabindex="0"
+                           (click)="vzInput.click()" (keydown.enter)="vzInput.click()">
+                        <input #vzInput type="file" class="hidden" accept="image/*" multiple (change)="onVariantMultiFiles($any($event.target))" />
+                        <lucide-icon name="upload" [size]="18" [strokeWidth]="1.5" />
+                        <span class="bp-caption mt-1">{{ variantUploadingMulti() ? 'Uploading…' : 'Drop images to add several' }}</span>
+                      </div>
+                    </div>
                   }
-                  <button type="button" class="bp-variant-chip bp-variant-chip--add" (click)="addPackage()" aria-label="Add package">
-                    <lucide-icon name="plus" [size]="18" />
-                  </button>
-                </div>
-                <!-- Form for the selected package (name / description / cost / unit / serves). -->
-                @if (selectedPackageRow(); as p) {
-                  <div class="mt-4 flex flex-col gap-4">
-                    <!-- Product name + a compact colour swatch (chip --vc) on one line
-                         (pV2-STORE-VARIANT-COLOR-01). '' = theme accent. -->
-                    <div class="flex items-end gap-3">
-                      <app-edit-field class="flex-1" label="Product name" density="page" [editing]="true" [value]="p.name" (valueChange)="patchPackage(selectedPackage(), 'name', $event)" />
-                      <div class="shrink-0">
-                        <label class="bp-field-label block">Colour</label>
-                        <span class="relative mt-2 inline-block">
-                          <span class="bp-swatch" [class.bp-swatch--empty]="!p.color" [style.--sw]="p.color || 'transparent'">
-                            <input type="color" class="bp-swatch__input" [value]="p.color || '#cccccc'" (input)="patchPackage(selectedPackage(), 'color', $any($event.target).value)" aria-label="Button colour" />
-                          </span>
-                          @if (p.color) {
-                            <button type="button" class="bp-swatch__clear" (click)="patchPackage(selectedPackage(), 'color', '')" aria-label="Clear colour"><lucide-icon name="x" [size]="10" /></button>
-                          }
-                        </span>
-                      </div>
-                    </div>
-                    <!-- The variant's own gallery — standard component (pV2-STORE-PACKAGES-01). -->
-                    <div>
-                      <label class="bp-field-label">Images</label>
-                      <div class="mt-2 max-w-md">
-                        <app-image-gallery
-                          entityType="item"
-                          [images]="p.images"
-                          [primaryUrl]="packageCoverUrl(p)"
-                          [showSetCover]="false"
-                          [searchSeed]="p.name || form().name"
-                          [editable]="true"
-                          [columns]="4"
-                          [tileAspect]="'1 / 1'"
-                          [maxSlots]="6"
-                          (imagesChange)="onPackageImagesChange($event)"
-                          (primarySet)="onPackageSetCover($event)"
-                        />
-                        <!-- Multi-image drop zone for this variant (Liam 2026-11-24). -->
-                        <div class="bp-dropzone bp-dropzone--sm mt-2" [class.bp-dropzone--on]="variantDragOver()"
-                             (dragover)="$event.preventDefault(); variantDragOver.set(true)"
-                             (dragleave)="variantDragOver.set(false)"
-                             (drop)="onVariantDrop($event)"
-                             role="button" tabindex="0"
-                             (click)="vzInput.click()" (keydown.enter)="vzInput.click()">
-                          <input #vzInput type="file" class="hidden" accept="image/*" multiple (change)="onVariantMultiFiles($any($event.target))" />
-                          <lucide-icon name="upload" [size]="18" [strokeWidth]="1.5" />
-                          <span class="bp-caption mt-1">{{ variantUploadingMulti() ? 'Uploading…' : 'Drop images to add several' }}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <label class="bp-field-label">Description <app-md-help class="ml-1.5 align-middle" /></label>
-                      <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="p.description" (ngModelChange)="patchPackage(selectedPackage(), 'description', $event)" placeholder="What's included…"></textarea>
-                    </div>
-                    <!-- Each variant is priced (absolute) — no parent cost. In Volume mode
-                         options are free-pick (one price up top), so no per-option cost. -->
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                      @if (soldAs() !== 'volume') {
-                        <app-edit-field [label]="'Cost' + currencySuffix()" type="number" density="page" [editing]="true" [value]="p.cost" (valueChange)="patchPackage(selectedPackage(), 'cost', $event)" />
-                      }
-                      <app-edit-field label="Unit" type="select" density="page" [options]="unitOptions()" [editing]="true" [value]="p.unit" (valueChange)="patchPackage(selectedPackage(), 'unit', $event)" />
-                      @if (p.unit === 'capacity') {
-                        <app-edit-field label="Max capacity (guests)" type="number" density="page" [editing]="true" [value]="p.capacity" (valueChange)="patchPackage(selectedPackage(), 'capacity', $event)" />
-                      } @else {
-                        <app-edit-field label="Serves" type="number" density="page" [editing]="true" [value]="p.serves" (valueChange)="patchPackage(selectedPackage(), 'serves', $event)" />
-                      }
-                    </div>
-                    <button type="button" class="bp-btn-outline bp-body-small self-start" (click)="removePackage(selectedPackage())">
-                      <lucide-icon name="trash-2" [size]="14" /> Remove this package
-                    </button>
-                  </div>
-                }
+                </app-item-children-editor>
               </div>
               }
               }
@@ -857,27 +866,38 @@ export class ItemEditComponent {
   protected onVariantDrop(e: DragEvent): void {
     e.preventDefault();
     this.variantDragOver.set(false);
-    void this.onVariantMultiUpload(e.dataTransfer?.files ?? null);
+    void this.childMultiUpload(this.packages, this.selectedPackage, this.variantUploadingMulti, e.dataTransfer?.files ?? null);
   }
   protected onVariantMultiFiles(input: HTMLInputElement): void {
-    void this.onVariantMultiUpload(input.files);
+    void this.childMultiUpload(this.packages, this.selectedPackage, this.variantUploadingMulti, input.files);
     input.value = '';
   }
-  private async onVariantMultiUpload(files: FileList | null): Promise<void> {
-    if (!files?.length || !this.selectedPackageRow()) return;
+  protected onAddonDrop(e: DragEvent): void {
+    e.preventDefault();
+    this.addonDragOver.set(false);
+    void this.childMultiUpload(this.addons, this.selectedAddon, this.addonUploadingMulti, e.dataTransfer?.files ?? null);
+  }
+  protected onAddonMultiFiles(input: HTMLInputElement): void {
+    void this.childMultiUpload(this.addons, this.selectedAddon, this.addonUploadingMulti, input.files);
+    input.value = '';
+  }
+  /** Shared multi-image upload into a child row's gallery (variants AND add-ons). */
+  private async childMultiUpload(rows: WritableSignal<PackageRow[]>, sel: WritableSignal<number>, uploading: WritableSignal<boolean>, files: FileList | null): Promise<void> {
+    const i = sel();
+    if (!files?.length || !rows()[i]) return;
     const imgs = Array.from(files).filter((f) => f.type.startsWith('image/'));
     if (!imgs.length) return;
-    this.variantUploadingMulti.set(true);
+    uploading.set(true);
     try {
       for (const f of imgs) {
         const { url } = await firstValueFrom(this.media.upload(f, 'item'));
-        const cur = this.selectedPackageRow()?.images ?? [];
-        this.patchPackageImages([...cur, { url, focalX: 50, focalY: 50, is_hero: cur.length === 0 }]);
+        const cur = rows()[sel()]?.images ?? [];
+        this.patchChildImages(rows, sel(), [...cur, { url, focalX: 50, focalY: 50, is_hero: cur.length === 0 }]);
       }
     } catch (e) {
       this.toast.add({ severity: 'error', summary: "Couldn't upload some images", detail: errorDetail(e), life: 4000 });
     } finally {
-      this.variantUploadingMulti.set(false);
+      uploading.set(false);
     }
   }
   private async onMultiUpload(files: FileList | null): Promise<void> {
@@ -918,19 +938,27 @@ export class ItemEditComponent {
   protected readonly packages = signal<PackageRow[]>([]);
   protected readonly selectedPackage = signal(0);
   protected readonly selectedPackageRow = computed<PackageRow | null>(() => this.packages()[this.selectedPackage()] ?? null);
+  // pV2-ADDONS-01 — Add-ons = the SAME child rows, type='addon' (Add Ons tab). Same editor.
+  protected readonly addons = signal<PackageRow[]>([]);
+  protected readonly selectedAddon = signal(0);
+  protected readonly selectedAddonRow = computed<PackageRow | null>(() => this.addons()[this.selectedAddon()] ?? null);
+  protected readonly addonDragOver = signal(false);
+  protected readonly addonUploadingMulti = signal(false);
+  private readonly hadAddonRows = signal(false);
   // pV2-STORE-PACKAGES-01 — group presentation config.
   protected readonly packagesMeta = signal<PackagesMeta>({ label: 'Package', presentation: 'buttons', select: 'one', soldAs: '' });
   protected patchPackagesMeta(p: Partial<PackagesMeta>): void { this.packagesMeta.update((m) => ({ ...m, ...p })); this.scheduleSave(); }
+  // pV2-ADDONS-01 — add-ons group config (same controls as packages; buyer multi-picks).
+  protected readonly addonsMeta = signal<PackagesMeta>({ label: 'Add-on', presentation: 'buttons', select: 'multi', soldAs: '' });
+  protected patchAddonsMeta(p: Partial<PackagesMeta>): void { this.addonsMeta.update((m) => ({ ...m, ...p })); this.scheduleSave(); }
 
   // ── "How is this sold?" — category-driven sell modes (sell-modes.ts) ──────
   /** The item's TOP category name (form.category_id → the categories list). */
   protected readonly topCategoryName = computed<string | null>(() =>
     (this.categoriesRes.value() ?? []).find((c) => c.id === this.form().category_id)?.name ?? null,
   );
-  /** The sell modes offered for this item's category (always ends in Custom). */
-  protected readonly sellModes = computed<SellModeDef[]>(() =>
-    sellModesForCategory(this.topCategoryName()).map((c) => SELL_MODES[c]),
-  );
+  /** Every sell mode, always — the supplier picks the one that fits (Liam 2026-11-25). */
+  protected readonly sellModes: SellModeDef[] = ALL_SELL_MODES.map((c) => SELL_MODES[c]);
   /** The current mode — stored, else derived (packages present → custom, else single). */
   protected readonly soldAs = computed<SellModeCode>(() => {
     const s = this.packagesMeta().soldAs;
@@ -943,8 +971,10 @@ export class ItemEditComponent {
     const seed = sellModeSeed(code);
     const hasRows = this.packages().some((p) => p.name.trim() !== '');
     // single clears options; tiers/sizes seed a named set → both REPLACE existing rows.
-    // spaces/custom carry no seed rows, so they keep whatever's there (just re-label).
-    const willReplaceRows = code === 'single' || seed.rows.length > 0;
+    // spaces starts clean too (a room/area set — Bronze/Silver/Gold are nonsense as
+    // spaces, Liam 2026-11-25): it seeds no rows, so "replace" clears to an empty
+    // capacity-unit set. Only custom carries existing rows forward (build-your-own).
+    const willReplaceRows = code === 'single' || code === 'spaces' || seed.rows.length > 0;
     if (hasRows && willReplaceRows) {
       const ok = await this.confirm.ask({
         title: 'Change how this is sold?',
@@ -956,7 +986,7 @@ export class ItemEditComponent {
     }
     this.packagesMeta.set({ ...seed.meta, soldAs: code });
     if (willReplaceRows) {
-      this.packages.set(seed.rows.map((r) => ({ name: r.name, description: '', cost: '', unit: seed.rowUnit, serves: '', capacity: '', images: [], color: r.color ?? '' })));
+      this.packages.set(seed.rows.map((r) => ({ name: r.name, description: '', cost: '', unit: seed.rowUnit, serves: '', capacity: '', timeUnit: '', size: '', images: [], color: r.color ?? '' })));
       this.selectedPackage.set(0);
     }
     this.scheduleSave();
@@ -1315,10 +1345,26 @@ export class ItemEditComponent {
           unit: typeof p['unit'] === 'string' ? p['unit'] : '',
           serves: p['serves'] == null ? '' : String(p['serves']),
           capacity: p['capacity'] == null ? '' : String(p['capacity']),
+          timeUnit: typeof p['timeUnit'] === 'string' ? p['timeUnit'] : (typeof p['time_unit'] === 'string' ? p['time_unit'] : ''),
+          size: typeof p['size'] === 'string' ? p['size'] : '',
           images: Array.isArray(p['images']) ? (p['images'] as GalleryImage[]) : [],
           color: typeof p['color'] === 'string' ? p['color'] : '',
         })));
       }
+      // pV2-ADDONS-01 — load add-on child rows (type='addon'), same owner path.
+      let addonKids: VariantRow[] = [];
+      if (!this.targetOrgId && !this.isModerator() && !this.isViewer()) {
+        try { addonKids = await firstValueFrom(this.store.getAddons(params)); } catch { addonKids = []; }
+      }
+      this.hadAddonRows.set(addonKids.length > 0);
+      this.addons.set(addonKids.map((v) => this.childToPackageRow(v)));
+      const am = (attrs['addons_meta'] ?? {}) as Partial<PackagesMeta>;
+      this.addonsMeta.set({
+        label: typeof am.label === 'string' && am.label.trim() ? am.label : 'Add-on',
+        presentation: am.presentation === 'picklist' ? 'picklist' : 'buttons',
+        select: am.select === 'one' ? 'one' : 'multi',
+        soldAs: '',
+      });
       const meta = (attrs['packages_meta'] ?? {}) as Partial<PackagesMeta>;
       const soldAsRaw = meta.soldAs;
       const soldAsOk = (['single', 'tiers', 'sizes', 'spaces', 'custom', 'volume', 'levels'] as const).includes(soldAsRaw as SellModeCode);
@@ -1372,7 +1418,7 @@ export class ItemEditComponent {
   // ── Packages (child "variant" items) — chips + per-row form (pV2-STORE-PACKAGES-01) ──
   protected addPackage(): void {
     const unit = this.soldAs() === 'spaces' ? 'capacity' : ''; // spaces default to a capacity
-    this.packages.update((p) => [...p, { name: '', description: '', cost: '', unit, serves: '', capacity: '', images: [], color: '' }]);
+    this.packages.update((p) => [...p, { name: '', description: '', cost: '', unit, serves: '', capacity: '', timeUnit: '', size: '', images: [], color: '' }]);
     this.selectedPackage.set(this.packages().length - 1); // edit the new one
     this.scheduleSave();
   }
@@ -1385,52 +1431,36 @@ export class ItemEditComponent {
     this.packages.update((p) => p.map((r, x) => (x === i ? { ...r, [key]: val } : r)));
     this.scheduleSave();
   }
-  /** The chip's price label — the house money format (thousands commas; whole £ when
-   *  round, 2 dp when there are pence), matching the buyer-facing variant chip. '' when
-   *  the row has no cost. */
-  protected chipPrice(cost: string): string {
-    if (cost === '' || cost == null) return '';
-    const n = Number(cost);
-    if (!Number.isFinite(n)) return '';
-    const digits = Number.isInteger(n) ? 0 : 2;
-    return '£' + n.toLocaleString('en-GB', { minimumFractionDigits: digits, maximumFractionDigits: 2 });
+
+  // ── Add-ons (child items, type='addon') — same editor, own list (pV2-ADDONS-01) ──
+  protected addAddon(): void {
+    this.addons.update((a) => [...a, { name: '', description: '', cost: '', unit: '', serves: '', capacity: '', timeUnit: '', size: '', images: [], color: '' }]);
+    this.selectedAddon.set(this.addons().length - 1);
+    this.scheduleSave();
+  }
+  protected removeAddon(i: number): void {
+    this.addons.update((a) => a.filter((_, x) => x !== i));
+    this.selectedAddon.set(Math.max(0, Math.min(this.selectedAddon(), this.addons().length - 1)));
+    this.scheduleSave();
+  }
+  protected patchAddon(i: number, key: keyof PackageRow, val: string): void {
+    this.addons.update((a) => a.map((r, x) => (x === i ? { ...r, [key]: val } : r)));
+    this.scheduleSave();
   }
 
-  // ── Drag-to-reorder the package chips (pV2-STORE-VARIANT-CHILDREN-01) — mirrors the
-  //    image gallery gesture. The new array order is the authored order; the save writes
-  //    each child's sort_order from its index, so the buyer/card/drill match. ──────────
-  protected readonly dragIndex = signal<number | null>(null);
-  protected readonly dragOverIndex = signal<number | null>(null);
-  protected onChipDragStart(i: number, e: DragEvent): void {
-    this.dragIndex.set(i);
-    if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); }
-  }
-  protected onChipDragOver(i: number, e: DragEvent): void {
-    if (this.dragIndex() === null) return; // only react to a chip drag (not a file drag)
-    e.preventDefault(); // mark a valid drop target
-    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-    this.dragOverIndex.set(i);
-  }
-  protected onChipDragLeave(i: number): void {
-    if (this.dragOverIndex() === i) this.dragOverIndex.set(null);
-  }
-  protected onChipDrop(i: number, e: DragEvent): void {
-    const from = this.dragIndex();
-    this.dragIndex.set(null);
-    this.dragOverIndex.set(null);
-    if (from === null) return; // not a chip drag
-    e.preventDefault();
-    if (from === i) return;
-    this.packages.update((ps) => {
-      const next = [...ps];
-      const [moved] = next.splice(from, 1);
-      next.splice(i, 0, moved);
+  /** Drag-to-reorder a child list (variants or add-ons) — the editor emits {from,to}; we
+   *  move the row, keep it selected, and save (sort_order is written server-side so the
+   *  buyer/card/drill order matches). Shared by both tabs (pV2-STORE-VARIANT-CHILDREN-01). */
+  protected onChildReorder(rows: WritableSignal<PackageRow[]>, sel: WritableSignal<number>, e: { from: number; to: number }): void {
+    rows.update((list) => {
+      const next = [...list];
+      const [moved] = next.splice(e.from, 1);
+      next.splice(e.to, 0, moved);
       return next;
     });
-    this.selectedPackage.set(i); // keep the moved one selected
-    this.scheduleSave(); // persists the new order (sort_order written server-side)
+    sel.set(e.to);
+    this.scheduleSave();
   }
-  protected onChipDragEnd(): void { this.dragIndex.set(null); this.dragOverIndex.set(null); }
   protected patchDraftTier(i: number, key: 'min' | 'max' | 'price', val: string): void {
     this.volumeDraft.update((d) => d.map((r, x) => (x === i ? { ...r, [key]: val } : r)));
   }
@@ -1459,11 +1489,13 @@ export class ItemEditComponent {
   protected packageCoverUrl(p: PackageRow): string | null {
     return p.images.find((i) => i.is_hero)?.url ?? p.images[0]?.url ?? null;
   }
-  private patchPackageImages(images: GalleryImage[]): void {
-    const i = this.selectedPackage();
-    this.packages.update((p) => p.map((r, x) => (x === i ? { ...r, images } : r)));
+  /** Shared core — write child row `i`'s images + save (variants AND add-ons). */
+  private patchChildImages(rows: WritableSignal<PackageRow[]>, i: number, images: GalleryImage[]): void {
+    rows.update((list) => list.map((r, x) => (x === i ? { ...r, images } : r)));
     this.scheduleSave();
   }
+  private patchPackageImages(images: GalleryImage[]): void { this.patchChildImages(this.packages, this.selectedPackage(), images); }
+  private patchAddonImages(images: GalleryImage[]): void { this.patchChildImages(this.addons, this.selectedAddon(), images); }
   protected onPackageImagesChange(imgs: GalleryImage[]): void {
     // Cover = first (mirrors the main gallery: position 0 is the hero).
     this.patchPackageImages(imgs.map((img, idx) => ({ ...img, is_hero: idx === 0 })));
@@ -1472,6 +1504,14 @@ export class ItemEditComponent {
     const cur = this.selectedPackageRow()?.images ?? [];
     const rest = cur.filter((i) => i.url !== img.url).map((i) => ({ ...i, is_hero: false }));
     this.patchPackageImages([{ ...img, is_hero: true }, ...rest]);
+  }
+  protected onAddonImagesChange(imgs: GalleryImage[]): void {
+    this.patchAddonImages(imgs.map((img, idx) => ({ ...img, is_hero: idx === 0 })));
+  }
+  protected onAddonSetCover(img: GalleryImage): void {
+    const cur = this.selectedAddonRow()?.images ?? [];
+    const rest = cur.filter((i) => i.url !== img.url).map((i) => ({ ...i, is_hero: false }));
+    this.patchAddonImages([{ ...img, is_hero: true }, ...rest]);
   }
   protected onRemoveImage(): void {
     // Drop the current cover from the gallery; the next image (if any) becomes
@@ -1568,6 +1608,9 @@ export class ItemEditComponent {
               packages_meta: this.packagesMeta(),
             }
           : {}),
+        // pV2-ADDONS-01 — the add-on group config (label + presentation + selection), so
+        // the buyer quick-view renders add-ons with the supplier's wording.
+        ...(this.addons().some((a) => a.name.trim() !== '') ? { addons_meta: this.addonsMeta() } : {}),
         // v0.2.0 unit-driven: size is a descriptive label living in attributes
         // (never a column — item_unit.meta.needs = 'size'). Only when unit = size.
         ...(f.unit === 'size' && f.size ? { size: f.size } : {}),
@@ -1610,8 +1653,9 @@ export class ItemEditComponent {
         const saved = await firstValueFrom(this.store.create(body));
         savedId = saved.id;
       }
-      // pV2-STORE-VARIANT-CHILDREN-01 — persist variants as child items (owner path).
-      if (savedId && !this.targetOrgId) await this.persistVariants(savedId);
+      // pV2-STORE-VARIANT-CHILDREN-01 / pV2-ADDONS-01 — persist variants + add-ons as child
+      // items (owner path).
+      if (savedId && !this.targetOrgId) { await this.persistVariants(savedId); await this.persistAddons(savedId); }
       // Mint the id locally too, so a later autosave UPDATEs instead of re-creating.
       if (!id && savedId) this.createdId.set(savedId);
       this.toast.add({ severity: 'success', summary: successMsg, life: 3000 });
@@ -1685,7 +1729,7 @@ export class ItemEditComponent {
         if (!id) this.createdId.set(saved.id);
       }
       const savedId = id ?? this.createdId();
-      if (savedId && !this.targetOrgId) await this.persistVariants(savedId);
+      if (savedId && !this.targetOrgId) { await this.persistVariants(savedId); await this.persistAddons(savedId); }
       this.saveState.set('saved');
     } catch (e) {
       console.warn('[ItemEdit] autosave failed', e);
@@ -1705,9 +1749,9 @@ export class ItemEditComponent {
    *  later save that empties the table still POSTs [] to reconcile the soft-delete. */
   private readonly hadChildRows = signal(false);
 
-  /** The Packages table → the variant child-item payload (named rows only). */
-  private variantsPayload(): VariantInput[] {
-    return this.packages()
+  /** A child list (variants OR add-ons) → the child-item payload (named rows only). */
+  private childPayload(rows: WritableSignal<PackageRow[]>): VariantInput[] {
+    return rows()
       .filter((p) => p.name.trim() !== '')
       .map((p) => ({
         id: p.id,
@@ -1717,12 +1761,14 @@ export class ItemEditComponent {
         unit: p.unit || null,
         serves: p.serves === '' ? null : Number(p.serves),
         capacity: p.capacity === '' ? null : Number(p.capacity),
+        timeUnit: p.timeUnit || null,
+        size: p.size || null,
         color: p.color || null,
         images: p.images,
       }));
   }
 
-  /** A loaded variant CHILD row → the editable Packages table row (carries its id). */
+  /** A loaded CHILD row (variant or add-on) → the editable table row (carries its id). */
   private childToPackageRow(v: VariantRow): PackageRow {
     return {
       id: v.id,
@@ -1732,24 +1778,37 @@ export class ItemEditComponent {
       unit: v.unit ?? '',
       serves: v.serves == null ? '' : String(v.serves),
       capacity: v.attributes?.capacity == null ? '' : String(v.attributes.capacity),
+      timeUnit: v.time_unit ?? '',
+      size: v.attributes?.size ?? '',
       images: Array.isArray(v.images) ? v.images : [],
       color: v.attributes?.color ?? '',
     };
   }
 
-  /** Reconcile the child rows for the saved parent, then fold the minted ids back into
-   *  the Packages table so the next save UPDATEs (never re-inserts). Skips the request
-   *  entirely for plain items that have never had variants. */
-  private async persistVariants(itemId: string): Promise<void> {
-    const payload = this.variantsPayload();
-    if (!payload.length && !this.hadChildRows()) return;
-    const rows = await firstValueFrom(this.store.saveVariants(itemId, payload));
-    this.hadChildRows.set(rows.length > 0);
-    const byName = new Map(rows.map((r) => [r.name, r.id] as const));
-    this.packages.update((ps) => ps.map((p) => {
+  /** Reconcile a child list for the saved parent, then fold the minted ids back so the
+   *  next save UPDATEs (never re-inserts). Skips the request for a list that's empty and
+   *  never had rows. Shared by variants + add-ons (pV2-STORE-VARIANT-CHILDREN-01). */
+  private async persistChildren(
+    itemId: string,
+    rows: WritableSignal<PackageRow[]>,
+    had: WritableSignal<boolean>,
+    save: (id: string, payload: VariantInput[]) => Observable<VariantRow[]>,
+  ): Promise<void> {
+    const payload = this.childPayload(rows);
+    if (!payload.length && !had()) return;
+    const saved = await firstValueFrom(save(itemId, payload));
+    had.set(saved.length > 0);
+    const byName = new Map(saved.map((r) => [r.name, r.id] as const));
+    rows.update((list) => list.map((p) => {
       const rid = byName.get(p.name.trim());
       return rid && rid !== p.id ? { ...p, id: rid } : p;
     }));
+  }
+  private persistVariants(itemId: string): Promise<void> {
+    return this.persistChildren(itemId, this.packages, this.hadChildRows, (id, p) => this.store.saveVariants(id, p));
+  }
+  private persistAddons(itemId: string): Promise<void> {
+    return this.persistChildren(itemId, this.addons, this.hadAddonRows, (id, p) => this.store.saveAddons(id, p));
   }
 
   /** Ballpark-admin moderation — approve (publish) or reject (hide), then back

@@ -16,7 +16,8 @@ export interface VariantRow {
   base_price: number | string | null;
   unit: string | null;
   serves: number | null;
-  attributes: { color?: string | null; capacity?: number | null } | null;
+  time_unit?: string | null;
+  attributes: { color?: string | null; capacity?: number | null; size?: string | null } | null;
   images: GalleryImage[] | null;
 }
 export interface VariantInput {
@@ -27,6 +28,8 @@ export interface VariantInput {
   unit?: string | null;
   serves?: number | null;
   capacity?: number | null;
+  timeUnit?: string | null;
+  size?: string | null;
   color?: string | null;
   images?: GalleryImage[];
 }
@@ -173,6 +176,13 @@ export class StoreItemService {
   }
   saveVariants(itemId: string, variants: VariantInput[]): Observable<VariantRow[]> {
     return this.api.post<VariantRow[]>(`/api/store/items/${itemId}/variants`, { variants });
+  }
+  /** pV2-ADDONS-01 — add-ons as real child items (type='addon') — same shape as variants. */
+  getAddons(itemId: string): Observable<VariantRow[]> {
+    return this.api.get<VariantRow[]>(`/api/store/items/${itemId}/addons`);
+  }
+  saveAddons(itemId: string, addons: VariantInput[]): Observable<VariantRow[]> {
+    return this.api.post<VariantRow[]>(`/api/store/items/${itemId}/addons`, { addons });
   }
 
   /** Ballpark-admin moderation (pV2-STORE-01) — cross-org read of any item. */
