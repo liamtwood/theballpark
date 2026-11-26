@@ -249,11 +249,7 @@ async function update(id, data) {
   if (sets.length === 0) return getById(id);
   sets.push('updated_at = NOW()');
   params.push(id);
-  const result = await pool.query(
-    `UPDATE items SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *`,
-    params
-  );
-  const row = result.rows[0] || null;
+  const idParam = `$${params.length}`;
   // pV2-STORE-CHILD-LIFECYCLE-01 — the offering's children (variants/add-ons) mirror
   // their parent: when a TOP-LEVEL item's lifecycle changes, cascade it to them so
   // they go live/hidden exactly with the parent (Liam 2026-11-26). Cascade ONLY the
@@ -262,24 +258,29 @@ async function update(id, data) {
   // would be denied by the column-scoped RLS escape. EXCLUDES type='component' — the
   // cost build-up lines are internal estimates, never marketplace-visible and never
   // part of approval (Liam 2026-11-26); they stay as saveComponents wrote them.
-  // Guarded to parents (parent_item_id IS NULL) so editing a child never loops back
-  // onto its siblings.
-  if (row && row.parent_item_id === null) {
-    const cSets = [];
-    const cParams = [];
-    if (Object.prototype.hasOwnProperty.call(data, 'status')) { cParams.push(row.status); cSets.push(`status = $${cParams.length}`); }
-    if (Object.prototype.hasOwnProperty.call(data, 'approval_status')) { cParams.push(row.approval_status); cSets.push(`approval_status = $${cParams.length}`); }
-    if (cSets.length) {
-      cParams.push(id);
-      await pool.query(
-        `UPDATE items SET ${cSets.join(', ')}, updated_at = NOW()
-           WHERE parent_item_id = $${cParams.length} AND deleted_at IS NULL
-             AND type IS DISTINCT FROM 'component'`,
-        cParams
-      );
-    }
-  }
-  return withHero(row);
+  // ATOMIC: one data-modifying CTE — the parent UPDATE and the child cascade commit
+  // together on the SAME pinned client (so moderation's svc_moderate GUC covers both,
+  // and a cascade failure can't leave an approved parent with stale children). The
+  // `p.parent_item_id IS NULL` join keeps the cascade to top-level parents only, so
+  // editing a child writes nothing to siblings.
+  const cascadeAxes = [];
+  if (Object.prototype.hasOwnProperty.call(data, 'status')) cascadeAxes.push('status = p.status');
+  if (Object.prototype.hasOwnProperty.call(data, 'approval_status')) cascadeAxes.push('approval_status = p.approval_status');
+  const sql = cascadeAxes.length
+    ? `WITH p AS (
+         UPDATE items SET ${sets.join(', ')} WHERE id = ${idParam} RETURNING *
+       ), c AS (
+         UPDATE items ch SET ${cascadeAxes.join(', ')}, updated_at = NOW()
+           FROM p
+          WHERE ch.parent_item_id = p.id
+            AND p.parent_item_id IS NULL
+            AND ch.deleted_at IS NULL
+            AND ch.type IS DISTINCT FROM 'component'
+       )
+       SELECT * FROM p`
+    : `UPDATE items SET ${sets.join(', ')} WHERE id = ${idParam} RETURNING *`;
+  const result = await pool.query(sql, params);
+  return withHero(result.rows[0] || null);
 }
 
 // Soft-delete: parent-only; cascade to this item's child rows (type='component'/

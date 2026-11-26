@@ -439,7 +439,10 @@ export class QuickViewDialogComponent {
     const variant = c
       ? { values: c.values, upcharge: Math.round((c.price - base) * 100) / 100, label: Object.values(c.values).join(' · ') }
       : null;
-    this.add.emit({ id: it.id, variant, quantity: this.qty() });
+    // Add-ons aren't wired into the payload yet (preview-only, pV2-ADDONS-01) — but the
+    // base quantity chosen in the order list IS honored via effectiveBaseQty, so the
+    // amount added matches the CTA the buyer saw.
+    this.add.emit({ id: it.id, variant, quantity: this.effectiveBaseQty() });
   }
 
   private readonly auth = inject(AuthService);
@@ -484,16 +487,20 @@ export class QuickViewDialogComponent {
    *  the cart preview each becomes a line in the composition build. */
   protected readonly chosenOrder = signal<AddonOrder | null>(null);
   protected readonly hasExtras = computed(() => (this.chosenOrder()?.addons.length ?? 0) > 0);
-  /** The CTA price — the resolved base/variant price, or the full order total (base × qty +
-   *  extras) once options are chosen. */
+  /** The base quantity that WILL be added — the order list's baseQty once options are
+   *  shown (the footer Qty is hidden then), else the footer Qty. One source so the CTA
+   *  total and the add payload never diverge. */
+  protected readonly effectiveBaseQty = computed<number>(() =>
+    this.hasExtras() ? (this.chosenOrder()?.baseQty ?? 1) : this.qty());
+  /** The CTA price = the resolved base/variant unit price × the base quantity. Add-ons
+   *  are PREVIEW-ONLY for now (the cart wiring that turns chosenOrder into base + add-on
+   *  lines is a follow-up — pV2-ADDONS-01), so their cost is deliberately NOT folded in:
+   *  the CTA must show exactly what emitAdd() adds, not a total we can't yet deliver
+   *  (audit 2026-11-26 — the folded total misled the buyer). */
   protected readonly ctaTotal = computed<number | null>(() => {
     const it = this.item();
     const unit = this.chosenCombo()?.price ?? it?.basePrice ?? null;
-    const o = this.chosenOrder();
-    if (!o || !o.addons.length) return unit;
-    const base = (unit ?? 0) * o.baseQty;
-    const extras = o.addons.reduce((s, x) => s + x.cost * x.qty, 0);
-    return base + extras;
+    return unit == null ? null : unit * this.effectiveBaseQty();
   });
   /** The main item as the multipicker's anchor row (its price = the resolved variant/base). */
   protected orderBase(it: CatalogueItem): BaseLine {

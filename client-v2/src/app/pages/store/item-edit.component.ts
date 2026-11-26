@@ -959,10 +959,14 @@ export class ItemEditComponent {
   );
   /** Every sell mode, always — the supplier picks the one that fits (Liam 2026-11-25). */
   protected readonly sellModes: SellModeDef[] = ALL_SELL_MODES.map((c) => SELL_MODES[c]);
-  /** The current mode — stored, else derived (packages present → custom, else single). */
+  /** The current mode — stored, else derived. A legacy item carrying the old
+   *  attributes.variants matrix (no stored soldAs, no child rows) opens in Option Levels
+   *  so its existing variants show without a manual mode switch (Liam 2026-11-26 — the
+   *  pre-child-row items). Then packages present → custom, else single. */
   protected readonly soldAs = computed<SellModeCode>(() => {
     const s = this.packagesMeta().soldAs;
     if (s) return s;
+    if ((this.variantsState()?.dimensions?.length ?? 0) > 0) return 'levels';
     return this.packages().length ? 'custom' : 'single';
   });
   /** Pick a sell mode — seeds the composition; confirms before replacing edited rows. */

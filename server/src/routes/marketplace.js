@@ -565,7 +565,10 @@ router.get('/items', async (req, res, next) => {
     }
     if (q) {
       vals.push(`%${q.replace(/[%_\\]/g, '\\$&')}%`);
-      where.push(`(i.name ILIKE $${vals.length} OR i.description ILIKE $${vals.length})`);
+      // Search matches the Ballpark ID (BPIN) too, so pasting/typing a full or partial
+      // BPIN jumps straight to the item (Liam 2026-11-26). ILIKE = case-insensitive, so
+      // the lowercase a buyer types still finds the uppercase stored BPIN.
+      where.push(`(i.name ILIKE $${vals.length} OR i.description ILIKE $${vals.length} OR i.bpin ILIKE $${vals.length})`);
     }
     vals.push(PAGE_SIZE, offset);
     const r = await pool.query(
