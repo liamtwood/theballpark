@@ -10,7 +10,7 @@ const BULK_MAX_IDS = 500; // matches the extract per-pull / refresh cap
 const OwnerBulkSchema = z
   .object({
     ids: z.array(z.uuid()).min(1).max(BULK_MAX_IDS),
-    action: z.enum(['activate', 'deactivate', 'reclassify', 'submit', 'delete', 'refresh-images']),
+    action: z.enum(['activate', 'deactivate', 'deapprove', 'reclassify', 'submit', 'delete', 'refresh-images']),
     // The deepest chosen taxonomy node (one category_id at any depth) — reclassify only.
     categoryId: z.uuid().optional(),
   })

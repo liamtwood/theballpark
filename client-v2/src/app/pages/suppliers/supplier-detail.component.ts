@@ -250,6 +250,7 @@ const WHATS_HOT = "What's Hot";
                 (bulkToggle)="selection.toggle($event)"
                 (bulkToggleAll)="$event ? selection.selectMany(store.items().map(i => i.id)) : selection.clear()"
                 (reclassify)="bulkBar()?.openReclassifyFor($event)"
+                (moreActions)="selectOnly($event)"
                 (entitySelected)="openQuickView($event)"
                 (quickView)="openQuickView($event)"
                 (favouriteToggled)="favs.toggle('item', $event)"
@@ -299,6 +300,11 @@ export class SupplierDetailComponent {
   private readonly pruneSelection = effect(() => {
     this.selection.retainOnly(this.store.items().map((i) => i.id));
   });
+  /** "…" on a card → select ONLY that item so the bulk action bar pulls up for it alone. */
+  protected selectOnly(itemId: string): void {
+    this.selection.clear();
+    this.selection.toggle(itemId);
+  }
   /** Canonical URL (EP-00021, pV2-BPIN-01) — the supplier page always settles on the
    *  handle. A caller that arrived by raw UUID (admin org links, old bookmarks) is
    *  rewritten to /suppliers/<handle> once the detail resolves, so everyone sees the

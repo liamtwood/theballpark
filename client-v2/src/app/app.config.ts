@@ -69,6 +69,7 @@ import {
   Copy,
   Eye,
   EyeOff,
+  EyeClosed,
   Palette,
   PanelTop,
   PanelBottom,
@@ -237,7 +238,7 @@ export const appConfig: ApplicationConfig = {
         // pV2-EA-02 — early-access admin
         ExternalLink, ChevronUp, Download,
         // pV2-STORE-01 — owner item-card actions (duplicate / show-hide / trash)
-        Copy, Eye, EyeOff, Palette, PanelTop, PanelBottom, AlignLeft, ListTree, Maximize2, Minimize2,
+        Copy, Eye, EyeOff, EyeClosed, Palette, PanelTop, PanelBottom, AlignLeft, ListTree, Maximize2, Minimize2,
         // pV2-STORE-APPROVALS-01 — moderation reject action (red stop sign)
         OctagonX,
       })

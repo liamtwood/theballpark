@@ -121,6 +121,7 @@ import { BulkActionBarComponent } from '../../shared/catalogue/bulk-action-bar.c
             (bulkToggle)="selection.toggle($event)"
             (bulkToggleAll)="$event ? selection.selectMany(store.items().map(i => i.id)) : selection.clear()"
             (reclassify)="bulkBar()?.openReclassifyFor($event)"
+            (moreActions)="selectOnly($event)"
             (quickView)="openQuickView($event)"
             (entitySelected)="openQuickView($event)"
             (favouriteToggled)="favs.toggle('item', $event)"
@@ -203,6 +204,12 @@ export class MarketplacePageComponent {
   /** Item click → Quick View dialog (replaces the right-rail selection). */
   protected openQuickView(itemId: string): void {
     this.quickItem.set(this.store.items().find((i) => i.id === itemId) ?? null);
+  }
+
+  /** "…" on a card → select ONLY that item so the bulk action bar pulls up for it alone. */
+  protected selectOnly(itemId: string): void {
+    this.selection.clear();
+    this.selection.toggle(itemId);
   }
 
   /** Quick View "Add to ballpark" → close it, open the project picker.

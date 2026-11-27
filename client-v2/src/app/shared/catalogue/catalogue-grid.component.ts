@@ -53,6 +53,7 @@ interface GridSection { id: string; name: string | null; icon: string | null; it
                   (quoteToggled)="quoteToggled.emit($event)"
                   (quickView)="quickView.emit($event)"
                   (changed)="changed.emit()"
+                  (moreActions)="moreActions.emit($event)"
                   (build)="build.emit($event)"
                   (reclassify)="reclassify.emit($event)"
                 />
@@ -238,6 +239,8 @@ export class CatalogueGridComponent {
   readonly build = output<string>();
   /** Owner clicked Reclassify on a card — host opens the shared reclassify picker. */
   readonly reclassify = output<string>();
+  /** "…" on a card — the host selects only that item so the bulk bar pulls up for it. */
+  readonly moreActions = output<string>();
 
   /** One section per top-level category (first-appearance order) when grouping is
    *  on; otherwise a single unnamed section holding every item. */

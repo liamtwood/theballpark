@@ -1,7 +1,7 @@
 // pV2-ITEM-BULK-ACTIONS-01 — bulk item management for the marketplace list/table.
 // Two personas, two surfaces (mirrors the single-item split):
 //   • OWNER  (/api/store/items/bulk)  — the supplier's OWN items, own-org writes.
-//       actions: activate | deactivate | reclassify | submit | delete | refresh-images
+//       actions: activate | deactivate | deapprove | reclassify | submit | delete | refresh-images
 //   • ADMIN  (/api/admin/items/bulk)  — cross-org moderation, under withModeration.
 //       actions: approve | reject | delete | refresh-images
 //
@@ -21,7 +21,7 @@ const { withTransaction } = require('../db/with-transaction');
 const { withModeration } = require('../lib/moderation');
 const { als } = require('../db/request-context');
 
-const OWNER_ACTIONS = new Set(['activate', 'deactivate', 'reclassify', 'submit', 'delete']);
+const OWNER_ACTIONS = new Set(['activate', 'deactivate', 'deapprove', 'reclassify', 'submit', 'delete']);
 const ADMIN_ACTIONS = new Set(['approve', 'reject', 'delete']);
 
 /** Validate a reclassify target: an existing, non-deleted catalogue category (node at
@@ -55,6 +55,18 @@ async function ownerBulk({ ids, action, categoryId, orgId }) {
     const r = await pool.query(
       `UPDATE items SET status = 'retired', updated_at = now()
         WHERE id = ANY($1::uuid[]) AND org_id = $2 AND deleted_at IS NULL AND status = 'active'
+        RETURNING id`,
+      [ids, orgId]
+    );
+    return done(r.rowCount);
+  }
+  if (action === 'deapprove') {
+    // Pull an APPROVED item back out of the marketplace (Liam 2026-11-27): approval_status →
+    // 'draft' (the owner's workbench — within the supplier-allowed {draft,pending} range) AND
+    // deactivate (status → 'retired'). Only currently-approved own items match; the rest skip.
+    const r = await pool.query(
+      `UPDATE items SET approval_status = 'draft', status = 'retired', updated_at = now()
+        WHERE id = ANY($1::uuid[]) AND org_id = $2 AND deleted_at IS NULL AND approval_status = 'approved'
         RETURNING id`,
       [ids, orgId]
     );

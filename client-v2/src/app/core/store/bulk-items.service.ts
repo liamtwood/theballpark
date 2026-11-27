@@ -8,7 +8,7 @@ export type BulkScope = 'owner' | 'admin';
 
 /** Owner actions (own items) vs admin actions (cross-org moderation). refresh-images
  *  is shared by both. These mirror the server Zod enums 1:1 (defence-in-depth). */
-export type OwnerBulkAction = 'activate' | 'deactivate' | 'reclassify' | 'submit' | 'delete' | 'refresh-images';
+export type OwnerBulkAction = 'activate' | 'deactivate' | 'deapprove' | 'reclassify' | 'submit' | 'delete' | 'refresh-images';
 export type AdminBulkAction = 'approve' | 'reject' | 'delete' | 'refresh-images';
 export type BulkAction = OwnerBulkAction | AdminBulkAction;
 

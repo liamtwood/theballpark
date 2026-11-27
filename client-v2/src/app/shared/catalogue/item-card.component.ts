@@ -191,16 +191,11 @@ function pluralise(word: string): string {
           >
             <lucide-icon [name]="item().isActive ? 'eye-off' : 'eye'" [size]="15" />
           </button>
-          <!-- Reclassify (pV2-ITEM-BULK-ACTIONS-01) — owner-only; opens the shared
-               reclassify picker for THIS item. Replaced the shelved "Build from
-               components" entry (Liam 2026-10-28). -->
-          @if (item().ownedByActiveOrg) {
-            <button type="button" class="bp-item-card__act" title="Reclassify" aria-label="Reclassify" (click)="onReclassify($event)">
-              <lucide-icon name="folder-tree" [size]="15" />
-            </button>
-          }
-          <button type="button" class="bp-item-card__act bp-item-card__act--danger" [disabled]="busy()" title="Move to trash" aria-label="Move to trash" (click)="onTrash($event)">
-            <lucide-icon name="trash-2" [size]="15" />
+          <!-- More actions (Liam 2026-11-27): pulls up the multipick bar for THIS item alone
+               (the host selects only it), giving the full action set — Reclassify, De-approve,
+               Submit, Refresh images, Delete. Replaces the inline Reclassify + Trash icons. -->
+          <button type="button" class="bp-item-card__act" title="More actions" aria-label="More actions" (click)="onMore($event)">
+            <lucide-icon name="ellipsis" [size]="15" />
           </button>
         </div>
       }
@@ -519,6 +514,12 @@ export class ItemCardComponent {
   protected onReclassify(e: Event): void {
     e.stopPropagation();
     this.reclassify.emit(this.item().id);
+  }
+  /** "…" → pull up the multipick bar for THIS item alone (the host selects only it). */
+  readonly moreActions = output<string>();
+  protected onMore(e: Event): void {
+    e.stopPropagation();
+    this.moreActions.emit(this.item().id);
   }
 
   // ── Owner item management (pV2-STORE-01) ──────────────────────────────────

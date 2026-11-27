@@ -11,11 +11,13 @@ import { ApiService } from '../../core/api.service';
 
 /** One bulk action the bar can offer. */
 interface BulkButton {
-  action: 'activate' | 'deactivate' | 'reclassify' | 'submit' | 'delete' | 'refresh-images' | 'approve' | 'reject';
+  action: 'activate' | 'deactivate' | 'deapprove' | 'reclassify' | 'submit' | 'delete' | 'refresh-images' | 'approve' | 'reject';
   label: string;
   icon: string;
   /** Soft-fill tone (feedback: Accept/Approve=green, Decline/Delete=red, else neutral). */
   tone: 'ok' | 'danger' | 'neutral';
+  /** Render a vertical separator after this button (groups the approval-lifecycle actions). */
+  sepAfter?: boolean;
 }
 
 /** pV2-ITEM-BULK-ACTIONS-01 — the SHARED sticky bulk-action bar. Appears whenever the
@@ -48,6 +50,7 @@ interface BulkButton {
                 (click)="onAction(b.action)">
                 <lucide-icon [name]="b.icon" [size]="14" />
               </button>
+              @if (b.sepAfter) { <span class="h-5 w-px bg-hairline"></span> }
             }
           }
 
@@ -176,11 +179,15 @@ export class BulkActionBarComponent {
   // Tones (Liam QC 2026-10-28): only the genuine approve/reject moderation decisions
   // carry colour. Activate + Delete are neutral (a green eye / red trash on multi-pick
   // read as over-loud); the delete is still confirm-gated.
+  // Order (Liam 2026-11-27): the approval-lifecycle group first — Submit, Activate, Deactivate,
+  // De-approve — then a separator, then Reclassify / Refresh / Delete.
   private static readonly OWNER: BulkButton[] = [
+    { action: 'submit', label: 'Submit for review', icon: 'send', tone: 'neutral' },
     { action: 'activate', label: 'Activate', icon: 'eye', tone: 'neutral' },
     { action: 'deactivate', label: 'Deactivate', icon: 'eye-off', tone: 'neutral' },
+    // De-approve — pull an approved item back to draft AND deactivate it (Liam 2026-11-27).
+    { action: 'deapprove', label: 'De-approve', icon: 'eye-closed', tone: 'neutral', sepAfter: true },
     { action: 'reclassify', label: 'Reclassify', icon: 'folder-tree', tone: 'neutral' },
-    { action: 'submit', label: 'Submit for review', icon: 'send', tone: 'neutral' },
     { action: 'refresh-images', label: 'Refresh images', icon: 'image', tone: 'neutral' },
     { action: 'delete', label: 'Delete', icon: 'trash-2', tone: 'neutral' },
   ];
@@ -199,8 +206,27 @@ export class BulkActionBarComponent {
     const sc = this.scope();
     if (!sc || this.busy()) return;
 
-    if (action === 'reclassify') { this.reclassifyOpen.set(true); return; }
+    if (action === 'reclassify') {
+      // A 1-item selection reclassifies in SINGLE mode (loads + shows + replaces its
+      // collections/related), matching the per-card "…" flow; 2+ is bulk add.
+      if (this.selection.count() === 1) this.singleItemId.set(this.ids()[0]);
+      this.reclassifyOpen.set(true);
+      return;
+    }
     if (action === 'refresh-images') { void this.runRefresh(sc); return; }
+
+    if (action === 'deapprove') {
+      const n = this.selection.count();
+      const ok = await this.confirm.ask({
+        title: n === 1 ? 'De-approve item?' : `De-approve ${n} items?`,
+        message: 'Each is turned back to draft and deactivated — it will need to be re-approved before it can go live again.',
+        confirmLabel: 'De-approve',
+        cancelLabel: 'Cancel',
+        danger: false,
+        icon: 'eye-closed',
+      });
+      if (!ok) return;
+    }
 
     if (action === 'delete') {
       const n = this.selection.count();
@@ -326,6 +352,7 @@ export class BulkActionBarComponent {
 const ACTION_VERB: Record<string, string> = {
   activate: 'Activated',
   deactivate: 'Deactivated',
+  deapprove: 'De-approved',
   submit: 'Submitted',
   delete: 'Deleted',
   approve: 'Approved',
