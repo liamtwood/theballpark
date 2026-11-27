@@ -1,12 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { VariantChild, unitLabelFor } from './variants.util';
 import { WhatsIncludedComponent } from './whats-included.component';
 import { QtyInputComponent } from '../../pages/projects/qty-input.component';
 
-/** One chosen option line (add-on / space). Maps 1:1 to the `kind='addon'` quote line
- *  the composition build creates. */
+/** One chosen add-on line. Maps 1:1 to the `kind='addon'` quote line the cart wiring creates. */
 export interface AddedAddon {
   id?: string | null;
   name: string;
@@ -16,63 +15,43 @@ export interface AddedAddon {
   qty: number;
 }
 
-/** The main item, shown as the anchor (first) row once an option is added — you can't have
- *  an option without the base item (Liam 2026-11-25). The list owns its qty (starts at 1);
- *  `price` null = priced on the CTA / not counted in the extras total. */
-export interface BaseLine {
-  name: string;
-  unit: string | null;
-  timeUnit: string | null;
-  serves: number | null;
-  price: number | null;
-}
-
-/** What the buyer has configured: the base item's qty + the chosen options. */
-export interface AddonOrder {
-  baseQty: number;
-  addons: AddedAddon[];
-}
-
-/** pV2-ADDONS-01 — multi-pick for options (add-ons AND spaces — same pattern, Liam
- *  2026-11-25): pick one from the dropdown, click Add → it joins the "order" list at qty 1;
- *  adjust qty per row. As soon as an option is added, the **main item anchors the list** as
- *  the first row (you can't have an option without the base). Each row previews its own quote
- *  line. Uses the project's qty stepper; emits the configured order. */
+/** pV2-ADDONS-02 — the item's add-on picker + cart. Pick an add-on from the dropdown, click
+ *  Add → it joins the EXTRAS list at qty 1; adjust qty per row; each row + the total price the
+ *  add-ons alone (the parent is added by the quick-view footer — option b, Liam 2026-11-27).
+ *  Self-contained: owns its own list, which resets per item (linkedSignal keyed on `addons`). */
 @Component({
   selector: 'app-addon-multipicker',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CurrencyPipe, LucideAngularModule, WhatsIncludedComponent, QtyInputComponent],
   template: `
     <div class="bp-addon-pick">
-      <span class="bp-addon-pick__label">{{ label() }}</span>
-      <div class="bp-addon-pick__row">
-        <select class="bp-input-field bp-addon-pick__select" [value]="pick()" (change)="onPick($any($event.target).value)">
-          <option value="">Choose a {{ labelLower() }}…</option>
-          @for (a of addons(); track a.id ?? a.name) {
-            <option [value]="a.id ?? a.name">{{ a.name }}@if (a.cost) { — {{ a.cost | currency: 'GBP' : 'symbol' : '1.0-0' }}@if (unitOf(a); as u) {&nbsp;{{ u }}}}</option>
-          }
-        </select>
-        <button type="button" class="bp-btn--secondary bp-addon-pick__add" [disabled]="!pick()" (click)="add()">
-          <lucide-icon name="plus" [size]="15" /> Add
-        </button>
-      </div>
+      <!-- Dropdown apparatus only when there are add-on OPTIONS to pick (type='addon'
+           children). Related items are staged by the quick-view's plus button straight into
+           the shared added list, so a related-only item shows just the order list below. -->
+      @if (addons().length) {
+        <span class="bp-addon-pick__label">{{ label() }}</span>
+        <div class="bp-addon-pick__row">
+          <select class="bp-input-field bp-addon-pick__select" [value]="pick()" (change)="onPick($any($event.target).value)">
+            <option value="">Choose a {{ labelLower() }}…</option>
+            @for (a of addons(); track a.id ?? a.name) {
+              <option [value]="a.id ?? a.name">{{ a.name }}@if (a.cost) { — {{ a.cost | currency: 'GBP' : 'symbol' : '1.0-0' }}@if (unitOf(a); as u) {&nbsp;{{ u }}}}</option>
+            }
+          </select>
+          <button type="button" class="bp-btn--secondary bp-addon-pick__add" [disabled]="!pick()" (click)="add()">
+            <lucide-icon name="plus" [size]="15" /> Add
+          </button>
+        </div>
 
-      <!-- Preview the chosen option's "What's included" before adding (its image swaps the
-           hero via imageChange) — the SAME component the variant picker uses. -->
-      <app-whats-included [descriptions]="pickedDescriptions()" />
+        <!-- Preview the chosen option's "What's included" before adding (its image swaps the
+             hero via imageChange) — the SAME component the variant picker uses. -->
+        <app-whats-included [descriptions]="pickedDescriptions()" />
+      }
 
       @if (added().length) {
+        <!-- EXTRAS ONLY — the parent item is NOT in this list (Liam 2026-11-27, option b):
+             it's configured above (variant + hero price) and added by the footer CTA; the
+             extras ride along. So this list + total cover the add-ons / related items alone. -->
         <div class="bp-addon-pick__list">
-          <!-- The main item anchors the list — no trash (you can't drop the base). -->
-          @if (base(); as b) {
-            <div class="bp-addon-pick__item">
-              <span class="bp-addon-pick__name">{{ b.name }}</span>
-              <app-qty-input class="bp-addon-pick__qty" [value]="baseQty()" [label]="b.name" (qtyCommit)="setBaseQty($event)" />
-              <span class="bp-addon-pick__qtyunit">{{ qtyUnit(b) }}</span>
-              <span class="bp-addon-pick__price">@if (b.price != null) { {{ b.price * baseQty() | currency: 'GBP' : 'symbol' : '1.0-0' }} }</span>
-              <span class="bp-addon-pick__rm-spacer"></span>
-            </div>
-          }
           @for (x of added(); track $index) {
             <div class="bp-addon-pick__item">
               <span class="bp-addon-pick__name">{{ x.name }}</span>
@@ -126,11 +105,10 @@ export interface AddonOrder {
 })
 export class AddonMultipickerComponent {
   readonly addons = input<VariantChild[]>([]);
-  /** The main item (anchor row) — shown once an option is added. */
-  readonly base = input<BaseLine | null>(null);
   readonly label = input<string>('Add-on');
-  /** The configured order (base qty + chosen options) — the cart preview. */
-  readonly orderChange = output<AddonOrder>();
+  /** The staged add-on lines — owned here; resets to [] whenever the item (its `addons`) changes
+   *  so a previous item's picks never leak into the next (pV2-ADDONS-02). */
+  protected readonly added = linkedSignal<AddedAddon[]>(() => { this.addons(); return []; });
   /** The chosen option's cover — the host swaps the hero image to it (as a variant does). */
   readonly imageChange = output<string | null>();
 
@@ -142,16 +120,8 @@ export class AddonMultipickerComponent {
     const d = this.pickedAddon()?.description;
     return d ? [String(d)] : [];
   });
-  protected readonly baseQty = signal<number>(1);
-  protected readonly added = signal<AddedAddon[]>([]);
   protected readonly labelLower = computed(() => this.label().toLowerCase());
-  protected readonly total = computed(() => {
-    const b = this.base();
-    const baseTotal = b?.price != null ? b.price * this.baseQty() : 0;
-    return baseTotal + this.added().reduce((s, x) => s + x.cost * x.qty, 0);
-  });
-
-  private emit(): void { this.orderChange.emit({ baseQty: this.baseQty(), addons: this.added() }); }
+  protected readonly total = computed(() => this.added().reduce((s, x) => s + x.cost * x.qty, 0));
 
   protected unitOf(a: { unit?: string | null; timeUnit?: string | null; serves?: number | null; attributes?: { capacity?: number | null } | null }): string {
     return unitLabelFor(a?.unit, a?.timeUnit, a?.serves, a?.attributes?.capacity);
@@ -182,16 +152,12 @@ export class AddonMultipickerComponent {
       { id: a.id, name: a.name, cost: Number(a.cost) || 0, unit: a.unit ?? null, timeUnit: a.timeUnit ?? null, qty: 1 },
     ]);
     this.pick.set('');
-    this.emit();
   }
-  protected setBaseQty(q: number): void { this.baseQty.set(Math.max(1, Math.floor(q) || 1)); this.emit(); }
   protected setQty(i: number, q: number): void {
     const n = Math.max(1, Math.floor(q) || 1);
     this.added.update((list) => list.map((x, idx) => (idx === i ? { ...x, qty: n } : x)));
-    this.emit();
   }
   protected removeAt(i: number): void {
     this.added.update((list) => list.filter((_, x) => x !== i));
-    this.emit();
   }
 }

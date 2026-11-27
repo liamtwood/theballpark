@@ -1,17 +1,20 @@
-import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, input, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, input, linkedSignal, output, resource, signal, viewChild } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { StoreItemService } from '../../core/store/store-item.service';
 import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { LucideAngularModule } from 'lucide-angular';
 import { DialogModule } from 'primeng/dialog';
-import { CatalogueItem } from '../../shared/catalogue/catalogue.types';
+import { CatalogueItem, ItemsQuery } from '../../shared/catalogue/catalogue.types';
+import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { itemEditLink } from '../../shared/catalogue/item-edit-link';
 import { ItemAttributeCardsComponent } from '../../shared/catalogue/item-attribute-cards.component';
 import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-picker.component';
-import { AddonMultipickerComponent, AddonOrder, BaseLine } from '../../shared/catalogue/addon-multipicker.component';
+import { AddonMultipickerComponent } from '../../shared/catalogue/addon-multipicker.component';
+import { CollectionStripComponent, Strip } from '../../shared/catalogue/collection-strip.component';
 import { allVariantImages, variantMatrixFor, childrenOfType, unitLabelFor } from '../../shared/catalogue/variants.util';
 import { SupplierProfilePaneComponent } from './supplier-profile-pane.component';
 
@@ -49,6 +52,7 @@ type Pane = 'item' | 'supplier';
     ItemAttributeCardsComponent,
     ItemVariantPickerComponent,
     AddonMultipickerComponent,
+    CollectionStripComponent,
     SupplierProfilePaneComponent,
     MarkdownPipe,
   ],
@@ -68,11 +72,17 @@ type Pane = 'item' | 'supplier';
       <!-- The page switcher lives in the header (never scrolls) — a labelled
            segmented control + roving tabindex; arrow keys move between panes. -->
       <ng-template pTemplate="header">
-        @if (item(); as it) {
+        @if (displayItem(); as it) {
           <div class="bp-qv-head grid w-full items-center gap-3">
             <!-- Supplier context, top-left (Liam 2026-11-10): the supplier's logo
-                 (store icon fallback) + name. -->
+                 (store icon fallback) + name. A Back button appears when you've followed a
+                 collection/related link — it pops back toward the item you opened from. -->
             <div class="bp-qv-head__supplier flex min-w-0 items-center gap-2">
+              @if (canGoBack()) {
+                <button type="button" class="bp-qv-back" (click)="goBack()" aria-label="Back">
+                  <lucide-icon name="arrow-left" [size]="16" /> Back
+                </button>
+              }
               @if (it.supplierLogoUrl) {
                 <img class="bp-qv-head__logo" [src]="it.supplierLogoUrl" [alt]="it.supplierName" />
               } @else {
@@ -108,7 +118,7 @@ type Pane = 'item' | 'supplier';
         }
       </ng-template>
 
-      @if (item(); as it) {
+      @if (displayItem(); as it) {
         <div class="bp-qv-viewport"
              (touchstart)="onTouchStart($event)"
              (touchmove)="onTouchMove($event)"
@@ -159,7 +169,7 @@ type Pane = 'item' | 'supplier';
                 <!-- RIGHT: all the detail — capped to the image column's height so
                      the image shows in full and the detail scrolls beside it. -->
                 <div class="bp-qv2__side" [style.--qv-side-max.px]="sideMaxH()">
-                  <h2 class="bp-qv2__name">{{ it.name }}</h2>
+                  <h2 class="bp-qv2__name">@if (it.parentName) {<span class="font-normal text-secondary">{{ it.parentName }} — </span>}{{ it.name }}</h2>
                   @if (it.description) {
                     <div class="bp-md bp-body text-secondary" [innerHTML]="it.description | md"></div>
                   }
@@ -184,10 +194,12 @@ type Pane = 'item' | 'supplier';
                   <!-- pV2-ADDONS-01 — add-ons as their own group (buyer picks extras; each
                        becomes its own line). Rendered through the same picker, keyed off the
                        item's addons_meta for the group label/presentation. -->
+                  <!-- The item cart = the add-on picker ONLY (pV2-ADDONS-02): the dropdown + its
+                       extras list + total. Self-contained; the parent is added by the footer CTA. -->
                   @if (addonChildren().length) {
                     <hr class="bp-qv2__rule" />
-                    <app-addon-multipicker [addons]="addonChildren()" [base]="orderBase(it)" [label]="addonLabel()"
-                                           (orderChange)="chosenOrder.set($event)" (imageChange)="onVariantImage($event)" />
+                    <app-addon-multipicker [addons]="addonChildren()" [label]="addonLabel()"
+                                           (imageChange)="onVariantImage($event)" />
                   }
 
                   @if (tiers().length) {
@@ -209,7 +221,19 @@ type Pane = 'item' | 'supplier';
                       <div class="bp-md bp-body-small mt-2 text-secondary" [innerHTML]="it.installDescription | md"></div>
                     </div>
                   }
-                  <app-item-attribute-cards [attributes]="it.attributes ?? null" [bpin]="it.bpin ?? null" />
+                  <app-item-attribute-cards [attributes]="it.attributes ?? null" />
+
+                  <!-- pV2-ADDONS-02 — Related items (complements this item points at) FIRST, then
+                       the membership Collections. ONE behaviour: every member is a LINK (click →
+                       open it, with a Back button to return). Add-to-cart is the add-ons picker only. -->
+                  @for (col of related(); track col.id) {
+                    <hr class="bp-qv2__rule" />
+                    <app-collection-strip [strip]="col" icon="sparkles" (open)="onOpenItem($event)" />
+                  }
+                  @for (col of collections(); track col.id) {
+                    <hr class="bp-qv2__rule" />
+                    <app-collection-strip [strip]="col" icon="layers" (open)="onOpenItem($event)" />
+                  }
 
                   <p class="bp-caption text-secondary">
                     Specs are indicative and confirmed by the supplier when you message them. Ballpark estimates
@@ -232,7 +256,14 @@ type Pane = 'item' | 'supplier';
       }
 
       <ng-template pTemplate="footer">
-        @if (item(); as it) {
+        @if (displayItem(); as it) {
+          <!-- Ballpark ID pinned to the footer's left edge (mr-auto), opposite the
+               Edit/Close actions. Empty slot still holds the left so buttons stay right. -->
+          <div class="mr-auto min-w-0">
+            @if (it.bpin; as id) {
+              <p class="bp-caption truncate text-secondary">Ballpark ID&nbsp;·&nbsp;<span class="text-text" style="font-family: var(--font-mono); letter-spacing: .03em;">{{ id }}</span></p>
+            }
+          </div>
           @if (canManage() && editLink(); as link) {
             <!-- Edit pencil — ONLY in a management surface (My Shop / Approvals), never on
                  the read-only Marketplace browse. Gated by canManage so an admin peeking at
@@ -251,11 +282,11 @@ type Pane = 'item' | 'supplier';
               <lucide-icon name="octagon-x" [size]="15" /> Reject
             </button>
           }
-          @if (showAdd() && !hasExtras()) {
+          @if (showAdd()) {
             <!-- Qty + Add pinned to the footer so the primary action stays visible while the
-                 detail column scrolls (Liam 2026-11-12). Hidden once options are chosen — the
-                 base item's qty then lives in the order list above. -->
-            <div class="mr-auto flex items-center gap-1.5">
+                 detail column scrolls (Liam 2026-11-12). The parent's qty always lives here now —
+                 the cart list above holds only the extras (option b, Liam 2026-11-27). -->
+            <div class="flex items-center gap-1.5">
               <span class="bp-field-label">Qty</span>
               <button type="button" class="bp-qty-step" aria-label="Decrease quantity" (click)="stepQty(-1)"><lucide-icon name="minus" [size]="13" /></button>
               <input type="number" min="1" step="1" inputmode="numeric" class="bp-input-field text-center" style="width: 4rem;"
@@ -317,6 +348,7 @@ type Pane = 'item' | 'supplier';
       /* The configurator column stays in view while the left column scrolls. */
       /* Larger product name in layout 2 (Liam: "make the Name a larger font"). */
       .bp-qv2__rule { border: 0; border-top: 1px solid var(--color-border-hairline); margin: 0; }
+      /* Collection / Related strips live in app-collection-strip (shared). */
       .bp-qv2__name {
         font-family: var(--font-display, var(--font-body));
         font-size: var(--text-2xl, 1.5rem);
@@ -350,6 +382,13 @@ type Pane = 'item' | 'supplier';
         object-fit: cover;
         border: 1px solid var(--color-border-hairline);
       }
+      /* Back button (shown after following a collection/related link). */
+      .bp-qv-back {
+        display: inline-flex; align-items: center; gap: 0.25rem; flex: none;
+        font-size: var(--text-sm); font-weight: 600; color: var(--theme-accent);
+        background: none; border: none; cursor: pointer; padding: 0.25rem 0.4rem 0.25rem 0;
+      }
+      .bp-qv-back:hover { text-decoration: underline; }
       /* Hero photo + thumbnails — standard card radius (Liam: "our standard round").
          height:auto lets the image keep its OWN aspect ratio (a wide shot renders
          short, a tall one tall) so varied image sizes sit naturally with no forced
@@ -431,6 +470,30 @@ export class QuickViewDialogComponent {
   readonly close = output<void>();
   readonly add = output<QuickAddEvent>();
 
+  // ── In-dialog navigation (pV2-ADDONS-02) ──────────────────────────────────
+  // `item` is the ENTRY item (host-owned). Following a collection/related LINK pushes the
+  // clicked item onto `focusStack`; `displayItem` is what the dialog renders (top of stack,
+  // else the entry). A Back button pops. The stack resets whenever the entry item changes.
+  private readonly catalogue = inject(CatalogueService);
+  protected readonly focusStack = linkedSignal<CatalogueItem[]>(() => { this.item(); return []; });
+  protected readonly displayItem = computed<CatalogueItem | null>(() => this.focusStack().at(-1) ?? this.item());
+  protected readonly canGoBack = computed(() => this.focusStack().length > 0);
+  protected goBack(): void { this.focusStack.update((s) => s.slice(0, -1)); }
+  /** A strip link was clicked — fetch that item and push it into focus. In a management view
+   *  (My Shop / admin) we first search the item's OWN supplier scope so own-org DRAFTS resolve
+   *  (a public search only sees approved+active); otherwise / as a fallback, the public search. */
+  protected async onOpenItem(key: string): Promise<void> {
+    const find = async (q: ItemsQuery): Promise<CatalogueItem | null> =>
+      (await this.catalogue.items(q)).items.find((i) => i.bpin === key || i.id === key) ?? null;
+    try {
+      let hit: CatalogueItem | null = null;
+      const sup = this.displayItem()?.supplierId;
+      if (this.canManage() && sup) hit = await find({ q: key, supplier: sup });
+      hit ??= await find({ q: key });
+      if (hit) this.focusStack.update((s) => [...s, hit]);
+    } catch { /* member not reachable in this scope — stay on the current item */ }
+  }
+
   /** Assemble the add payload — the item id + the chosen variant (values, per-unit
    *  upcharge relative to base, and a display label), or null variant when none. */
   protected emitAdd(it: CatalogueItem): void {
@@ -439,33 +502,48 @@ export class QuickViewDialogComponent {
     const variant = c
       ? { values: c.values, upcharge: Math.round((c.price - base) * 100) / 100, label: Object.values(c.values).join(' · ') }
       : null;
-    // Add-ons aren't wired into the payload yet (preview-only, pV2-ADDONS-01) — but the
-    // base quantity chosen in the order list IS honored via effectiveBaseQty, so the
-    // amount added matches the CTA the buyer saw.
-    this.add.emit({ id: it.id, variant, quantity: this.effectiveBaseQty() });
+    // Extras (add-ons + related) aren't sent to the project cart yet (preview-only) — the
+    // bundle wiring that sends parent + extras is the next slice. The parent qty is the footer Qty.
+    this.add.emit({ id: it.id, variant, quantity: this.qty() });
   }
 
   private readonly auth = inject(AuthService);
   private readonly store = inject(StoreItemService);
+  private readonly api = inject(ApiService);
+
+  // pV2-ADDONS-02 — the collections this item is in (+ their other members), lazy-loaded
+  // when the dialog's item changes; drives the collection strip below the content.
+  protected readonly collectionsRes = resource({
+    params: () => { const id = this.displayItem()?.id; return id ? { id } : undefined; },
+    loader: ({ params }) => firstValueFrom(this.api.get<Strip[]>(`/api/marketplace/items/${params.id}/collections`)),
+  });
+  protected readonly collections = computed<Strip[]>(() => this.collectionsRes.value() ?? []);
+
+  // pV2-ADDONS-02 — Related items: members of the collections this item POINTS AT (not a member of).
+  protected readonly relatedRes = resource({
+    params: () => { const id = this.displayItem()?.id; return id ? { id } : undefined; },
+    loader: ({ params }) => firstValueFrom(this.api.get<Strip[]>(`/api/marketplace/items/${params.id}/related`)),
+  });
+  protected readonly related = computed<Strip[]>(() => this.relatedRes.value() ?? []);
 
   /** Edit destination for viewers with rights (owner → their editor; platform admin →
    *  the org-scoped editor/approve page); null otherwise (no pencil). Shared with the
    *  item card's moderation row (extract-before-duplicate). */
-  protected readonly editLink = computed<string[] | null>(() => itemEditLink(this.auth.user(), this.item()));
+  protected readonly editLink = computed<string[] | null>(() => itemEditLink(this.auth.user(), this.displayItem()));
 
   // ── Moderation (pV2-STORE-APPROVALS-01) ───────────────────────────────────
   /** Approve/Reject show for a ballpark admin on a PENDING item — parity with the
    *  card's inline moderation. A supplier (owner) sees only Edit; client gate only,
    *  the server enforces moderator authority. */
   protected readonly canDecide = computed(
-    () => this.auth.user()?.activeOrgType === 'ballpark' && this.item()?.approvalStatus === 'pending'
+    () => this.auth.user()?.activeOrgType === 'ballpark' && this.displayItem()?.approvalStatus === 'pending'
   );
   protected readonly busy = signal(false);
 
   /** Approve/reject, then close — the grid reloads via bust() (rev bump), so the
    *  item leaves the pending queue behind the closing dialog. */
   protected decide(decision: 'approve' | 'reject'): void {
-    const it = this.item();
+    const it = this.displayItem();
     if (!it || this.busy()) return;
     this.busy.set(true);
     firstValueFrom(this.store.decide(it.id, decision))
@@ -476,51 +554,35 @@ export class QuickViewDialogComponent {
 
   /** Volume price tiers (guide pricing) — KEY data shown up top. */
   protected readonly tiers = computed(() => {
-    const a = this.item()?.attributes as Record<string, unknown> | null | undefined;
+    const a = this.displayItem()?.attributes as Record<string, unknown> | null | undefined;
     return (a && Array.isArray(a['price_tiers']) ? a['price_tiers'] : []) as { min: number; max: number | null; price: number }[];
   });
 
   /** The combo chosen in the variant picker (null until a full combo is picked) —
-   *  drives the "Add to ballpark" value. */
+   *  drives the "Add to ballpark" value. Reset per displayed item (the reset effect). */
   protected readonly chosenCombo = signal<{ values: Record<string, string>; price: number } | null>(null);
-  /** pV2-ADDONS-01 — the configured order (base qty + chosen options) from the multipicker;
-   *  the cart preview each becomes a line in the composition build. */
-  protected readonly chosenOrder = signal<AddonOrder | null>(null);
-  protected readonly hasExtras = computed(() => (this.chosenOrder()?.addons.length ?? 0) > 0);
-  /** The base quantity that WILL be added — the order list's baseQty once options are
-   *  shown (the footer Qty is hidden then), else the footer Qty. One source so the CTA
-   *  total and the add payload never diverge. */
-  protected readonly effectiveBaseQty = computed<number>(() =>
-    this.hasExtras() ? (this.chosenOrder()?.baseQty ?? 1) : this.qty());
-  /** The CTA price = the resolved base/variant unit price × the base quantity. Add-ons
-   *  are PREVIEW-ONLY for now (the cart wiring that turns chosenOrder into base + add-on
-   *  lines is a follow-up — pV2-ADDONS-01), so their cost is deliberately NOT folded in:
-   *  the CTA must show exactly what emitAdd() adds, not a total we can't yet deliver
-   *  (audit 2026-11-26 — the folded total misled the buyer). */
+  /** The CTA price = the item's resolved variant/base unit price × the footer qty. (Add-ons show
+   *  their own total in the add-on cart; the footer CTA is the parent item only.) */
   protected readonly ctaTotal = computed<number | null>(() => {
-    const it = this.item();
+    const it = this.displayItem();
     const unit = this.chosenCombo()?.price ?? it?.basePrice ?? null;
-    return unit == null ? null : unit * this.effectiveBaseQty();
+    return unit == null ? null : unit * this.qty();
   });
-  /** The main item as the multipicker's anchor row (its price = the resolved variant/base). */
-  protected orderBase(it: CatalogueItem): BaseLine {
-    return { name: it.name, unit: it.unit, timeUnit: it.timeUnit ?? null, serves: it.serves ?? null, price: this.chosenCombo()?.price ?? it.basePrice };
-  }
   /** The add-on group's label from the item's addons_meta (falls back to "Add-on"). */
   protected readonly addonLabel = computed<string>(() => {
-    const meta = (this.item()?.attributes as Record<string, unknown> | null)?.['addons_meta'] as { label?: unknown } | undefined;
+    const meta = (this.displayItem()?.attributes as Record<string, unknown> | null)?.['addons_meta'] as { label?: unknown } | undefined;
     return typeof meta?.label === 'string' && meta.label.trim() ? meta.label.trim() : 'Add-on';
   });
   // pV2 child-item unification — the ONE `children` list, split by type for display.
-  protected readonly variantChildren = computed(() => childrenOfType(this.item()?.children, 'variant'));
-  protected readonly addonChildren = computed(() => childrenOfType(this.item()?.children, 'addon'));
+  protected readonly variantChildren = computed(() => childrenOfType(this.displayItem()?.children, 'variant'));
+  protected readonly addonChildren = computed(() => childrenOfType(this.displayItem()?.children, 'addon'));
 
   // ── Item image carousel (pV2-STORE-IMAGE-VARIANTS-01) ─────────────────────────
   /** The item's full gallery (cover first) + each variant option's image, deduped —
    *  what the shared carousel pages. Falls back to [coverUrl] when a projection didn't
    *  send the gallery array. */
   protected readonly imageList = computed(() => {
-    const it = this.item();
+    const it = this.displayItem();
     const gallery = it?.images?.length ? it.images : (it?.coverUrl ? [it.coverUrl] : []);
     // pV2-STORE-PACKAGES-01 — include package/variant covers (variantMatrixFor covers
     // both) so selecting a variant can jump the hero to its cover.
@@ -641,12 +703,15 @@ export class QuickViewDialogComponent {
   }
 
   constructor() {
-    // Opening the dialog on a new item resets to the Item pane + the per-item UI state.
+    // Opening — or NAVIGATING to — a new displayed item resets the Item pane + per-item UI
+    // state, so a picked variant never leaks across items (Liam 2026-11-27). Tracks displayItem
+    // so following a collection/related link resets too, not just a new entry item.
     effect(() => {
-      this.item();
+      this.displayItem();
       this.pane.set('item');
       this.heroIdx.set(0);
       this.qty.set(1);
+      this.chosenCombo.set(null);
     });
 
     // Track the active pane's height (ResizeObserver → auto-height the sliding track).
@@ -681,7 +746,7 @@ export class QuickViewDialogComponent {
    *  add-to-quote (Liam: variants → "Select options", never a blind add). */
   protected readonly hasVariantDims = computed(() =>
     // pV2-STORE-PACKAGES-01 — packages count as picker dimensions too (same CTA path).
-    !!variantMatrixFor((this.item()?.attributes as Record<string, unknown> | null) ?? null, this.variantChildren())?.dimensions.length,
+    !!variantMatrixFor((this.displayItem()?.attributes as Record<string, unknown> | null) ?? null, this.variantChildren())?.dimensions.length,
   );
   protected readonly needsSelection = computed(() => this.hasVariantDims() && !this.chosenCombo());
 

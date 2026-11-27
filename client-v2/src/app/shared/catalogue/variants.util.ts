@@ -35,7 +35,9 @@ export interface VariantValue {
 
 /** The full price suffix for a child/item — a human phrase, not a "/ x" (Liam 2026-11-25):
  *  "per week", "per 200 guests", "up to 300 guests", "per item", etc. '' for the default
- *  (each) unit. Shared by the item's "From £…" line and each variant/add-on/space price. */
+ *  (each) unit. Shared by the item's "From £…" line and each variant/add-on/space price.
+ *  NB: a cross-surface standardisation (one suffix system everywhere, Liam's mapping) is
+ *  BACKLOGGED — see Backlog.md "Unit-suffix standardisation". */
 export function unitLabelFor(unit?: string | null, timeUnit?: string | null, serves?: number | null, capacity?: number | null): string {
   switch (unit) {
     case 'time':      return timeUnit ? `per ${timeUnit.replace(/_/g, ' ')}` : 'per use';

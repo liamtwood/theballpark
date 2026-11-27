@@ -134,6 +134,9 @@ function pluralise(word: string): string {
     }
 
     <div class="min-w-0 px-3.5 pb-3.5 pt-3">
+      @if (item().parentName) {
+        <div class="bp-caption truncate text-secondary">{{ item().parentName }}</div>
+      }
       <div class="bp-list-title truncate">{{ item().name }}</div>
       @if (item().subcategoryName || item().categoryName; as chip) {
         <span class="bp-tag-chip mt-1.5">{{ chip }}</span>
@@ -373,6 +376,15 @@ export class ItemCardComponent {
    *  shared helper the quick view uses, so the card reads the same (Liam 2026-11-25). */
   protected readonly unitSuffix = computed(() => {
     const it = this.item();
+    // The suffix must match the SOURCE of the "From" price: when that price is a priced
+    // variant child (packages/sizes), use THAT child's unit — else a £2,516 Small-package
+    // (platter, serves 50) price reads "per guest" off the parent's stale base unit
+    // (Liam 2026-11-26, "notice the per guest on the parent").
+    const child = this.fromChild();
+    if (child) {
+      const cCap = child.attributes?.capacity;
+      return unitLabelFor(child.unit, child.timeUnit, child.serves, typeof cCap === 'number' ? cCap : null);
+    }
     const cap = (it.attributes as Record<string, unknown> | null)?.['capacity'];
     return unitLabelFor(it.unit, it.timeUnit, it.serves, typeof cap === 'number' ? cap : null);
   });
@@ -405,13 +417,22 @@ export class ItemCardComponent {
 
   /** pV2-STORE-PACKAGES-01 — a variant item's card price is the LOWEST priced option
    *  ("From £x"); every option is priced (no parent cost). Plain items use base price. */
+  /** The variant child the "From" price comes from (cheapest PRICED option), or null when
+   *  the price is the item's own base/tier price. ONE source so fromPrice and unitSuffix
+   *  can't diverge (Liam 2026-11-26). */
+  protected readonly fromChild = computed<VariantChild | null>(() => {
+    const kids = (childrenOfType(this.item().children, 'variant') as VariantChild[])
+      .filter((v) => Number.isFinite(Number(v?.cost)) && Number(v?.cost) > 0);
+    if (!kids.length) return null;
+    return kids.reduce((lo, v) => (Number(v.cost) < Number(lo.cost) ? v : lo));
+  });
+
   protected readonly fromPrice = computed<number | null>(() => {
     const it = this.item();
     const attrs = it.attributes as Record<string, unknown> | null;
     // Real variant child rows → the lowest option cost (add-ons excluded — they're extras).
-    const kids = childrenOfType(it.children, 'variant') as { cost?: unknown }[];
-    const kidCosts = kids.map((v) => Number(v?.cost)).filter((c) => Number.isFinite(c) && c > 0);
-    if (kidCosts.length) return Math.min(...kidCosts);
+    const child = this.fromChild();
+    if (child) return Number(child.cost);
     // Priced options (tiers / spaces) → the lowest option (legacy JSON packages).
     const pkgs = Array.isArray(attrs?.['packages']) ? (attrs!['packages'] as { cost?: unknown }[]) : [];
     const costs = pkgs.map((p) => Number(p?.cost)).filter((c) => Number.isFinite(c) && c > 0);

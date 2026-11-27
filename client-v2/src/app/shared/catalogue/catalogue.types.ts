@@ -29,6 +29,9 @@ export interface CatalogueItem {
    *  details drill and used as the item's URL id (pV2-BPIN-01). */
   bpin?: string | null;
   name: string;
+  /** For a CHILD shown in the quick-view — the parent item's name, so the title reads
+   *  "Dinner Drinks (200) — Gold" (pV2-ADDONS, Liam 2026-11-27). Null for top-level. */
+  parentName?: string | null;
   description: string | null;
   /** "Included Services" — what the install covers (install_description). */
   installDescription: string | null;

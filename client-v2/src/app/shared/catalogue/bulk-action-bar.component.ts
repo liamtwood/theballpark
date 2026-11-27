@@ -6,7 +6,8 @@ import { ItemSelectionStore } from './item-selection.store';
 import { MarketplaceStore } from '../../pages/marketplace/marketplace-store';
 import { BulkItemsService, BulkScope, RefreshJob } from '../../core/store/bulk-items.service';
 import { ConfirmService } from '../confirm/confirm.service';
-import { ReclassifyDialogComponent } from './reclassify-dialog.component';
+import { ReclassifyDialogComponent, ReclassifyResult } from './reclassify-dialog.component';
+import { ApiService } from '../../core/api.service';
 
 /** One bulk action the bar can offer. */
 interface BulkButton {
@@ -65,6 +66,7 @@ interface BulkButton {
       [open]="reclassifyOpen() || singleItemId() !== null"
       [count]="singleItemId() ? 1 : selection.count()"
       [seedCategoryId]="reclassifySeedId()"
+      [itemId]="singleItemId()"
       (close)="closeReclassify()"
       (confirm)="onReclassify($event)"
     />
@@ -109,6 +111,7 @@ export class BulkActionBarComponent {
   private readonly store = inject(MarketplaceStore);
   private readonly bulk = inject(BulkItemsService);
   private readonly confirm = inject(ConfirmService);
+  private readonly api = inject(ApiService);
   private readonly toast = inject(MessageService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -232,23 +235,38 @@ export class BulkActionBarComponent {
     }
   }
 
-  protected onReclassify(categoryId: string): void {
-    // Single-card reclassify (singleItemId) vs the whole selection. Reclassify is
-    // owner-only in both paths (the owner bulk set + the owner-gated per-item button),
-    // so it always targets the owner endpoint.
+  protected onReclassify(e: ReclassifyResult): void {
+    // Single-card (singleItemId) vs the whole selection. Reclassify + collections + related are
+    // owner-only. SINGLE mode REPLACES the item's collections + related (PUT) so removals in the
+    // dialog take effect; BULK mode ADDS to the selection (assign). Either axis may be set.
     const single = this.singleItemId();
     const ids = single ? [single] : this.ids();
     this.closeReclassify();
-    if (this.busy() || !ids.length) return;
+    const hasChange = !!e.categoryId || e.collectionIds.length > 0 || e.relatedIds.length > 0;
+    // Single always applies (a PUT with [] is a valid "clear all" edit); bulk needs a change.
+    if (this.busy() || !ids.length || (!single && !hasChange)) return;
     this.busy.set(true);
-    this.busyLabel.set('Reclassifying…');
-    firstValueFrom(this.bulk.run('owner', 'reclassify', ids, { categoryId }))
-      .then((res) => {
-        this.toast.add({ severity: 'success', summary: `Reclassified ${res.updated} ${res.updated === 1 ? 'item' : 'items'}`, life: 4000 });
+    this.busyLabel.set('Applying…');
+    const ops: Promise<unknown>[] = [];
+    if (e.categoryId) ops.push(firstValueFrom(this.bulk.run('owner', 'reclassify', ids, { categoryId: e.categoryId })));
+    if (single) {
+      ops.push(firstValueFrom(this.api.put(`/api/store/collections/item/${single}`, { collectionIds: e.collectionIds })));
+      ops.push(firstValueFrom(this.api.put(`/api/store/collections/related/item/${single}`, { collectionIds: e.relatedIds })));
+    } else {
+      if (e.collectionIds.length) ops.push(firstValueFrom(this.api.post('/api/store/collections/assign', { collectionIds: e.collectionIds, itemIds: ids })));
+      if (e.relatedIds.length) ops.push(firstValueFrom(this.api.post('/api/store/collections/related/assign', { collectionIds: e.relatedIds, itemIds: ids })));
+    }
+    Promise.all(ops)
+      .then(() => {
+        const parts: string[] = [];
+        if (e.categoryId) parts.push('reclassified');
+        if (single) parts.push('collections & related updated');
+        else { if (e.collectionIds.length) parts.push('added to collection'); if (e.relatedIds.length) parts.push('related added'); }
+        this.toast.add({ severity: 'success', summary: `${ids.length} ${ids.length === 1 ? 'item' : 'items'} ${parts.join(' + ') || 'updated'}`, life: 4000 });
         if (!single) this.selection.clear();
         this.done.emit();
       })
-      .catch(() => this.toast.add({ severity: 'error', summary: "Couldn't reclassify.", life: 4000 }))
+      .catch(() => this.toast.add({ severity: 'error', summary: "Couldn't apply the changes.", life: 4000 }))
       .finally(() => this.busy.set(false));
   }
 

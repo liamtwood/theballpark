@@ -326,7 +326,54 @@ async function duplicate(id) {
     );
     const copy = withHero(ins.rows[0]);
     if (!copy) return null;
-    // (item_tags copy returns with the tags sub-slice.)
+
+    // DEEP-COPY the child rows (variants / add-ons / components) under the new copy, so a
+    // duplicate is WHOLE — not a shell with an empty option list (Liam 2026-11-27). Children
+    // land hidden (new/draft) like the parent; new BPIN each; sort_order preserved.
+    // derived_from_id = the original child → lineage AND the old→new map for the tag copy.
+    const kids = await client.query(
+      `INSERT INTO items
+         (org_id, parent_item_id, category_id, name, description,
+          unit, serves, time_unit, base_price, install_cost,
+          lead_time_days, tier, image_display,
+          derived_from_id, attributes, images, status, approval_status,
+          install_description, install_unit, type, external_url, currency, sort_order)
+       SELECT
+          org_id, $2, category_id, name, description,
+          unit, serves, time_unit, base_price, install_cost,
+          lead_time_days, tier, image_display,
+          id, attributes, images, 'new', 'draft',
+          install_description, install_unit, type, external_url, currency, sort_order
+       FROM items WHERE parent_item_id = $1 AND deleted_at IS NULL
+       RETURNING id, derived_from_id AS old_id`,
+      [id, copy.id]
+    );
+
+    // Carry COLLECTION memberships (dimension='collection') from each original — the
+    // parent and each child — to its copy, so the duplicate stays in the same
+    // collections. What's Hot / merchandising is deliberately NOT copied.
+    const idMap = new Map([[id, copy.id]]);
+    for (const row of kids.rows) idMap.set(row.old_id, row.id);
+    for (const [oldId, newId] of idMap) {
+      await client.query(
+        `INSERT INTO item_tags (item_id, tag_id)
+         SELECT $2, it.tag_id FROM item_tags it
+           JOIN tags t ON t.id = it.tag_id AND t.dimension = 'collection' AND t.deleted_at IS NULL
+          WHERE it.item_id = $1 AND it.deleted_at IS NULL
+         ON CONFLICT (item_id, tag_id) DO UPDATE SET deleted_at = NULL`,
+        [oldId, newId]
+      );
+      // Carry Related-items links (item_related_tags) too — the sibling concept to collections
+      // (pV2-ADDONS-02) — so a duplicate keeps offering the same related complements.
+      await client.query(
+        `INSERT INTO item_related_tags (item_id, tag_id)
+         SELECT $2, rt.tag_id FROM item_related_tags rt
+           JOIN tags t ON t.id = rt.tag_id AND t.dimension = 'collection' AND t.deleted_at IS NULL
+          WHERE rt.item_id = $1 AND rt.deleted_at IS NULL
+         ON CONFLICT (item_id, tag_id) DO UPDATE SET deleted_at = NULL`,
+        [oldId, newId]
+      );
+    }
     return copy;
   });
 }

@@ -27,6 +27,7 @@ import { ItemChildrenEditorComponent, ChildRow } from './item-children-editor.co
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
 import { ItemEditActionsComponent } from './item-edit-actions.component';
+import { CollectionsPickerComponent } from './collections-picker.component';
 import { ItemVariantsEditorComponent } from './item-variants-editor.component';
 import { ItemVariantPickerComponent } from '../../shared/catalogue/item-variant-picker.component';
 import { CustomizeDialogComponent } from '../projects/customize-dialog.component';
@@ -84,7 +85,7 @@ const WHATS_HOT = "What's Hot";
   imports: [
     FormsModule, LucideAngularModule, ToastModule, ModalComponent, PageHeroComponent, EditFieldComponent,
     ImageGalleryComponent, ImagePickerComponent, DrawerComponent,
-    ItemEditActionsComponent, ItemAttributeCardsComponent, SaveStatePillComponent,
+    ItemEditActionsComponent, ItemAttributeCardsComponent, SaveStatePillComponent, CollectionsPickerComponent,
     ItemVariantsEditorComponent, ItemVariantPickerComponent, ItemChildrenEditorComponent, CustomizeDialogComponent, DecimalPipe, MdHelpComponent,
   ],
   providers: [MessageService],
@@ -631,6 +632,14 @@ const WHATS_HOT = "What's Hot";
                 }
               </div>
 
+              <!-- pV2-ADDONS-02 — Collections (membership: this item belongs to them) then
+                   Related items (this item points at a collection it is NOT a member of, so
+                   that collection's members show as its related complements). Same picker. -->
+              @if (itemId) {
+                <app-collections-picker [itemId]="itemId" [editing]="editing()" />
+                <app-collections-picker [itemId]="itemId" [editing]="editing()" variant="related" />
+              }
+
               <!-- Auto tags (supplier_item_tag) — the classifier's dimension tags,
                    read-only (colour/material/style…). Distinct from the free-text tags. -->
               @if (classificationTags().length) {
@@ -1107,7 +1116,8 @@ export class ItemEditComponent {
   protected readonly heroTitle = computed(() =>
     this.isModerator() ? 'Review product'
     : this.isViewer() || this.isApproved() ? 'Product'
-    : this.isEdit ? 'Edit product' : 'Add product'
+    // Editing an existing product → show its name (falls back until the form loads).
+    : this.isEdit ? (this.form().name?.trim() || 'Edit product') : 'Add product'
   );
   protected readonly heroSubtitle = computed(() =>
     this.isModerator() ? 'Approve or reject this submission.'
@@ -1395,6 +1405,9 @@ export class ItemEditComponent {
   protected readonly classificationTags = computed(() => {
     const groups = new Map<string, string[]>();
     for (const t of this.itemRes.value()?.item_tags ?? []) {
+      // Collections + merchandising (What's Hot) have their OWN sections — don't repeat
+      // them under "Auto tags" (which is the classifier's colour/material/style dims).
+      if (t.dimension === 'collection' || t.dimension === 'merchandising') continue;
       if (!groups.has(t.dimension)) groups.set(t.dimension, []);
       groups.get(t.dimension)!.push(t.label);
     }

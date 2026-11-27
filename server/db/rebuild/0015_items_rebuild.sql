@@ -57,6 +57,12 @@ alter table public.tags force row level security;
 create policy tags_read on public.tags for select using (true);       -- global faceted vocabulary
 create policy tags_write on public.tags for all
   using (public.app_is_admin()) with check (public.app_is_admin());   -- Ballpark curates the vocabulary
+-- pV2-ADDONS-02 Stage 1: a member may create/manage their OWN org's COLLECTION tags
+-- (dimension='collection' only) — never admin/merchandising vocab, never another org.
+drop policy if exists tags_collection_owner on public.tags;
+create policy tags_collection_owner on public.tags for all
+  using      (dimension = 'collection' and org_id = public.app_current_org())
+  with check (dimension = 'collection' and org_id = public.app_current_org());
 grant select, insert, update, delete on public.tags to web_app_user;
 
 -- Seed the one merchandising tag v2dev supports today: "What's Hot" (the shopfront
@@ -181,3 +187,42 @@ create policy item_tags_write on public.item_tags for all
   with check (exists (select 1 from public.items i where i.id = item_id
                         and (i.org_id = public.app_current_org() or public.app_is_admin())));
 grant select, insert, update, delete on public.item_tags to web_app_user;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- item_related_tags — Class D junction (item → a COLLECTION tag it links to as
+-- "Related items", pV2-ADDONS-02). DISTINCT from item_tags membership: the base item
+-- is NOT a member of that collection — it POINTS AT it, so the collection's members
+-- surface as the item's related complements (Tipi → "Tipi Accessories"). Kept its own
+-- table so neither relationship overloads item_tags' PK (member vs related).
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.item_related_tags (
+  item_id uuid not null references public.items(id),
+  tag_id  uuid not null references public.tags(id),
+  created_at timestamptz not null default now(), created_by uuid references public.users(id),
+  deleted_at timestamptz,
+  primary key (item_id, tag_id)
+);
+create index item_related_tags_tag_idx on public.item_related_tags (tag_id) where deleted_at is null;
+
+alter table public.item_related_tags enable row level security;
+alter table public.item_related_tags force row level security;
+-- Read: rides the item's visibility + ownership (active+approved → public, else own-org/admin),
+-- same as item_tags — so a customer's quick-view can show a public item's related collections.
+create policy item_related_tags_read on public.item_related_tags for select using (
+  exists (select 1 from public.items i where i.id = item_id
+            and ((i.status='active' and i.approval_status='approved' and i.deleted_at is null)
+                 or i.org_id = public.app_current_org() or public.app_is_admin()))
+);
+-- Write: the ITEM is own-org (or admin) AND the linked TAG is an own-org collection (or admin).
+-- The own-org-tag check closes the item_tags_write gap flagged in the 2026-11-27 security
+-- review — a member can only relate their own item to their OWN collections, never cross-org.
+create policy item_related_tags_write on public.item_related_tags for all
+  using      (exists (select 1 from public.items i where i.id = item_id
+                        and (i.org_id = public.app_current_org() or public.app_is_admin())))
+  with check (
+    exists (select 1 from public.items i where i.id = item_id
+              and (i.org_id = public.app_current_org() or public.app_is_admin()))
+    and exists (select 1 from public.tags t where t.id = tag_id and t.dimension = 'collection'
+                  and (t.org_id = public.app_current_org() or public.app_is_admin()))
+  );
+grant select, insert, update, delete on public.item_related_tags to web_app_user;

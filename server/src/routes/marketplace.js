@@ -580,6 +580,9 @@ router.get('/items', async (req, res, next) => {
               i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
               o.logo_url AS supplier_logo_url,
               c.name AS category_name,
+              -- The parent item's name, for a child shown in the quick-view ("Dinner
+              -- Drinks (200) — Gold", Liam 2026-11-27). NULL for top-level items.
+              (SELECT p.name FROM items p WHERE p.id = i.parent_item_id AND p.deleted_at IS NULL) AS parent_name,
               -- Top-level (root) category — grid grouping + derived supplier categories.
               ct.id AS top_category_id, ct.name AS top_category_name, ct.icon_name AS top_category_icon, ct.sort_order AS top_category_sort,
               (i.org_id = $1) AS owned_by_active_org,
@@ -614,6 +617,7 @@ router.get('/items', async (req, res, next) => {
       id: row.id,
       bpin: row.bpin ?? null,
       name: row.name,
+      parentName: row.parent_name ?? null, // the parent item's name for a child (quick-view context)
       description: row.description,
       installDescription: row.install_description,
       basePrice: row.base_price === null ? null : Number(row.base_price),

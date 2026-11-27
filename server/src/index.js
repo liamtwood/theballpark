@@ -333,6 +333,7 @@ app.get('/api/unsplash/search', async (req, res) => {
   // Suppliers endpoints extracted from marketplace.js (STORE-01 audit F-2);
   // mounted BEFORE the main router so /suppliers* matches here first.
   v2.use('/marketplace', require('./routes/marketplace-suppliers'));
+  v2.use('/marketplace', require('./routes/marketplace-collections')); // pV2-ADDONS-02 — item collection strip
   v2.use('/marketplace', require('./routes/marketplace'));
   // pV2-CODELISTS-01 — reference codelists (reads any member; value
   // curation platform admins; DELETE always 405 — locked rule 2).
@@ -345,6 +346,8 @@ app.get('/api/unsplash/search', async (req, res) => {
   v2.use('/media', require('./routes/media')); // pV2-MEDIA-01 — gated image upload
   // pV2-STORE-01 — supplier item editor (create/update own items, draft→submit).
   v2.use('/store/items', require('./routes/store-items'));
+  // pV2-ADDONS-02 Stage 1 — supplier Collections (org-scoped tags) + item membership.
+  v2.use('/store/collections', require('./routes/store-collections'));
   // BE-00099 — taxonomy classifier/tags. DISABLED in v2dev (audit H2, 2026-10-12):
   // taxonomy.service queries tables/columns 0015 dropped (tag/supplier_item_tag/
   // subcategory_id/pending_classification/is_active/namespace), so match-items,
